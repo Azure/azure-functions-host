@@ -190,12 +190,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 using (logger.BeginScope(scopeState))
                 {
                     await Instance.CallAsync(function.Name, arguments, cancellationToken);
-
-                    // TODO: temp
-                    if (arguments.ContainsKey(ScriptConstants.AzureFunctionsHttpResponseKey))
-                    {
-                        return (HttpResponseMessage)arguments[ScriptConstants.AzureFunctionsHttpResponseKey];
-                    }
                 }
             }
 
@@ -337,16 +331,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static Dictionary<string, object> GetFunctionArguments(FunctionDescriptor function, HttpRequestMessage request)
         {
-            Dictionary<string, object> arguments = new Dictionary<string, object>();
-
-            if (function.Metadata.ScriptType == ScriptType.Proxy)
-            {
-                // TODO: proper name
-                arguments.Add(ScriptConstants.AzureFunctionsProxyHttpRequestKey, request);
-                return arguments;
-            }
-
             ParameterDescriptor triggerParameter = function.Parameters.First(p => p.IsTrigger);
+            Dictionary<string, object> arguments = new Dictionary<string, object>();
 
             if (triggerParameter.Type != typeof(HttpRequestMessage))
             {
@@ -510,7 +496,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             foreach (var function in functions)
             {
-                if (function.InputBindings != null)
+                if (function.Metadata is ProxyMetadata)
+                {
+                    // Function Proxy
+                    var proxyMetadata = (ProxyMetadata)function.Metadata;
+
+                    var routeBuilder = routeFactoryContext.CreateBuilder(proxyMetadata.UrlTemplate.TrimStart('/'));
+                    var constraints = routeBuilder.Constraints;
+                    constraints.Add("httpMethod", new HttpMethodConstraint(proxyMetadata.Method));
+
+                    var route = _httpRoutes.CreateRoute(routeBuilder.Template, routeBuilder.Defaults, constraints);
+                    _httpRoutes.Add(function.Metadata.Name, route);
+                    _httpFunctions.Add(route, function);
+                }
+                else
                 {
                     var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
                     if (httpTrigger != null)
@@ -526,19 +525,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             _httpFunctions.Add(httpRoute, function);
                         }
                     }
-                }
-                else if (function.Metadata is ProxyMetadata)
-                {
-                    // Function Proxy
-                    var proxyMetadata = (ProxyMetadata)function.Metadata;
-
-                    var routeBuilder = routeFactoryContext.CreateBuilder(proxyMetadata.UrlTemplate.TrimStart('/'));
-                    var constraints = routeBuilder.Constraints;
-                    constraints.Add("httpMethod", new HttpMethodConstraint(proxyMetadata.Method));
-
-                    var route = _httpRoutes.CreateRoute(routeBuilder.Template, routeBuilder.Defaults, constraints);
-                    _httpRoutes.Add(function.Metadata.Name, route);
-                    _httpFunctions.Add(route, function);
                 }
             }
         }

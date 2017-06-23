@@ -51,12 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             foreach (FunctionDescriptor function in functions)
             {
-                // TODO: parameters
-                if (function.Parameters == null)
-                {
-                    continue;
-                }
-
                 MethodBuilder methodBuilder = tb.DefineMethod(function.Name, MethodAttributes.Public | MethodAttributes.Static);
                 Type[] types = function.Parameters.Select(p => p.Type).ToArray();
                 methodBuilder.SetParameters(types);
