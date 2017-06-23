@@ -461,8 +461,17 @@
       <HintPath>..\..\packages\System.IO.Abstractions.TestingHelpers.2.0.0.140\lib\net40\System.IO.Abstractions.TestingHelpers.dll</HintPath>
       <Private>True</Private>
     </Reference>
+      <Reference Include="Microsoft.Azure.AppService.Proxy.Client">
+          <HintPath>\\omkardesktop1\shared\Hamid\client\Microsoft.Azure.AppService.Proxy.Client.dll</HintPath>
+      </Reference>
+      <Reference Include="Microsoft.Azure.AppService.Proxy.Common">
+          <HintPath>\\omkardesktop1\shared\Hamid\client\Microsoft.Azure.AppService.Proxy.Common.dll</HintPath>
+      </Reference>
+      <Reference Include="Microsoft.Azure.AppService.Proxy.Runtime">
+          <HintPath>\\omkardesktop1\shared\Hamid\client\Microsoft.Azure.AppService.Proxy.Runtime.dll</HintPath>
+      </Reference>
   </ItemGroup>
-  <ItemGroup Condition="'$(EnablePowershell)'=='True'">
+    <ItemGroup Condition="'$(EnablePowershell)'=='True'">
     <Reference Include="System.Management.Automation, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\WindowsPowerShell\3.0\System.Management.Automation.dll</HintPath>
@@ -490,6 +499,7 @@
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilationOptionsTests.cs" />
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilationTests.cs" />
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilerTests.cs" />
+    <Compile Include="Description\Proxy\ProxyFunctionDescriptorProviderTests.cs" />
     <Compile Include="Description\Script\ScriptFunctionInvokerBaseTests.cs" />
     <Compile Include="Diagnostics\FileLoggerTests.cs" />
     <Compile Include="Diagnostics\FunctionTraceWriterFactoryTests.cs" />

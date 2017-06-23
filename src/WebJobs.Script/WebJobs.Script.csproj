@@ -462,6 +462,7 @@
     <Compile Include="Description\PackageRestoreResult.cs" />
     <Compile Include="Description\ProxyMetadata.cs" />
     <Compile Include="Description\Proxy\ProxyFunctionDescriptorProvider.cs" />
+    <Compile Include="Description\Proxy\ProxyFunctionInvoker.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Description\DotNet\Compilation\FSharp\FSharpCompilation.cs" />
     <Compile Include="Diagnostics\ApplicationPerformanceCounters.cs" />
@@ -544,7 +545,6 @@
     <Compile Include="Host\IScriptHostFactory.cs" />
     <Compile Include="Diagnostics\NullTraceWriter.cs" />
     <Compile Include="IO\AutoRecoveringFileSystemWatcher.cs" />
-    <Compile Include="FunctionExecutor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Config\ScriptHostConfiguration.cs" />
     <Compile Include="Config\TypeLocator.cs" />

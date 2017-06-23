@@ -19,8 +19,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
-using Microsoft.Azure.AppService.AdvancedRouting.Gateway.Client;
-using Microsoft.Azure.AppService.AdvancedRouting.Proxy.Gateway;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
@@ -294,21 +292,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public virtual async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (arguments.ContainsKey(ScriptConstants.AzureFunctionsProxyHttpRequestKey))
-            {
-                using (_proxyLogger.BeginScope(new Dictionary<string, object>
-                {
-                    [ScopeKeys.FunctionName] = method
-                }))
-                {
-                    IFuncExecutor myFunc = new FunctionExecutor(ScriptConfig.HostConfig, this);
-
-                    await _proxyClient.CallAsync(arguments, myFunc, _proxyLogger);
-                }
-
-                return;
-            }
-
             // TODO: Validate inputs
             // TODO: Cache this lookup result
             method = method.ToLowerInvariant();
@@ -1157,74 +1140,61 @@ namespace Microsoft.Azure.WebJobs.Script
             return functions;
         }
 
-        public Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null)
+        public static Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, out object proxyClient, ScriptSettingsManager settingsManager = null)
         {
-            var proxies = new Collection<FunctionMetadata>();
-            settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
-            Dictionary<string, string> proxyJsons = new Dictionary<string, string>();
+            proxyClient = null;
 
-            foreach (var scriptDir in Directory.EnumerateDirectories(config.RootScriptPath))
+            // read the proxy config
+            string proxyConfigPath = Path.Combine(config.RootScriptPath, ScriptConstants.ProxyMetadataFileName);
+            if (!File.Exists(proxyConfigPath))
             {
-                string proxyName = null;
-
-                try
-                {
-                    // read the proxy config
-                    string proxyConfigPath = Path.Combine(scriptDir, ScriptConstants.ProxyMetadataFileName);
-                    if (!File.Exists(proxyConfigPath))
-                    {
-                        // not a proxy directory
-                        continue;
-                    }
-
-                    proxyName = Path.GetFileName(scriptDir);
-
-                    ValidateFunctionName(proxyName);
-
-                    string json = File.ReadAllText(proxyConfigPath);
-
-                    proxyJsons.Add(proxyName, json);
-                }
-                catch (Exception ex)
-                {
-                    // log any unhandled exceptions and continue
-                    AddFunctionError(functionErrors, proxyName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
-                }
+                return null;
             }
 
-            ILoggerFactory loggerFactory = ScriptConfig.HostConfig.LoggerFactory;
+            settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
+
+            var proxyAppSettingValue = settingsManager.GetSetting(EnvironmentSettingNames.ProxySiteExtensionEnabledKey);
+
+            // This is for backward compatibility only, if the file is present but the value of proxy app setting(ROUTING_EXTENSION_VERSION) is explicitly set to 'disabled' we will ignore loading the proxies.
+            if (!string.IsNullOrWhiteSpace(proxyAppSettingValue) && proxyAppSettingValue.Equals("disabled", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            var proxies = new Collection<FunctionMetadata>();
+            string proxiesJson = File.ReadAllText(proxyConfigPath);
+
+            LoadProxyRoutes(config, proxies, out proxyClient, proxiesJson);
+
+            return proxies;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void LoadProxyRoutes(ScriptHostConfiguration config, Collection<FunctionMetadata> proxies, out object proxyClient, string proxiesJson)
+        {
+            ILoggerFactory loggerFactory = config.HostConfig.LoggerFactory;
             ILogger proxyStartupLogger = loggerFactory.CreateLogger("Host.Proxies.Initialization");
 
-            _proxyClient = ProxyClientFactory.Create(proxyJsons, proxyStartupLogger);
-            var routes = _proxyClient.GetProxyData();
-
-            // TODO: proper location
-            _proxyLogger = loggerFactory.CreateLogger("Host.Proxies.Runtime");
+            proxyClient = AppService.Proxy.Client.ProxyClientFactory.Create(proxiesJson, proxyStartupLogger);
+            var routes = ((AppService.Proxy.Client.IProxyClient)proxyClient).GetProxyData();
 
             foreach (var route in routes.Routes)
             {
-                string functionName = null;
+                var proxyMetadata = new ProxyMetadata();
 
-                try
-                {
-                    var proxyMetadata = new ProxyMetadata();
+                // This is just to add a http trigger type for proxies so the pipeline doesn't break, the values are all ignored by Proxy.
+                BindingMetadata bindingMetadata = BindingMetadata.Create(JObject.Parse("{\"authLevel\": \"anonymous\",\"name\": \"req\",\"type\": \"httptrigger\",\"direction\": \"in\"}"));
 
-                    proxyMetadata.Name = route.Id.ToString();
-                    proxyMetadata.ScriptType = ScriptType.Proxy;
+                proxyMetadata.Bindings.Add(bindingMetadata);
 
-                    proxyMetadata.Method = route.Method;
-                    proxyMetadata.UrlTemplate = route.UrlTemplate;
+                proxyMetadata.Name = route.Name + "_" + route.Id.ToString();
+                proxyMetadata.ScriptType = ScriptType.Proxy;
 
-                    proxies.Add(proxyMetadata);
-                }
-                catch (Exception ex)
-                {
-                    // log any unhandled exceptions and continue
-                    AddFunctionError(functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
-                }
+                proxyMetadata.Method = route.Method;
+                proxyMetadata.UrlTemplate = route.UrlTemplate;
+
+                proxies.Add(proxyMetadata);
             }
-
-            return proxies;
         }
 
         internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, TraceWriter traceWriter, ILogger logger, string scriptDirectory,
@@ -1390,18 +1360,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private Collection<FunctionDescriptor> GetFunctionDescriptors(Collection<FunctionMetadata> functions)
         {
-<<<<<<< HEAD
-=======
             var functions = ReadFunctionMetadata(ScriptConfig, TraceWriter, _startupLogger, FunctionErrors, _settingsManager);
-            var proxies = ReadProxyMetadata(ScriptConfig, FunctionErrors, _settingsManager);
+            var proxies = ReadProxyMetadata(ScriptConfig, out object proxyClient, _settingsManager);
 
-            // TODO: temp
-            foreach (var proxy in proxies)
-            {
-                functions.Add(proxy);
-            }
-
->>>>>>> Iniitial Changes for Gibraltar in Functions
             var descriptorProviders = new List<FunctionDescriptorProvider>()
                 {
                     new ScriptFunctionDescriptorProvider(this, ScriptConfig),
@@ -1410,12 +1371,24 @@ namespace Microsoft.Azure.WebJobs.Script
 #endif
                     new DotNetFunctionDescriptorProvider(this, ScriptConfig),
 #if FEATURE_POWERSHELL
-                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig),
+                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
 #endif
-                    new ProxyFunctionDescriptorProvider(this, ScriptConfig)
                 };
 
-            return GetFunctionDescriptors(functions, descriptorProviders);
+            IEnumerable<FunctionMetadata> combinedFunctionMetadata = null;
+            if (proxies != null && proxies.Count != 0)
+            {
+                // Proxy routes will take precedence over http trigger functions and http trigger routes so they will be added first to the list of function descriptors.
+                combinedFunctionMetadata = proxies.Concat(functions);
+
+                descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptConfig, proxyClient));
+            }
+            else
+            {
+                combinedFunctionMetadata = functions;
+            }
+
+            return GetFunctionDescriptors(combinedFunctionMetadata, descriptorProviders);
         }
 
         internal Collection<FunctionDescriptor> GetFunctionDescriptors(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
@@ -1457,25 +1430,21 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void ValidateFunction(FunctionDescriptor function, Dictionary<string, HttpTriggerAttribute> httpFunctions)
         {
-            // TODO: InputBindings for triggers
-            if (function.InputBindings != null)
+            var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+            if (httpTrigger != null)
             {
-                var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
-                if (httpTrigger != null)
-                {
-                    ValidateHttpFunction(function.Name, httpTrigger);
+                ValidateHttpFunction(function.Name, httpTrigger);
 
-                    // prevent duplicate/conflicting routes
-                    foreach (var pair in httpFunctions)
+                // prevent duplicate/conflicting routes
+                foreach (var pair in httpFunctions)
+            {
+                if (HttpRoutesConflict(httpTrigger, pair.Value))
                 {
-                    if (HttpRoutesConflict(httpTrigger, pair.Value))
-                    {
-                        throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
-                    }
+                    throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
                 }
+            }
 
-                    httpFunctions.Add(function.Name, httpTrigger);
-                }
+                httpFunctions.Add(function.Name, httpTrigger);
             }
         }
 
