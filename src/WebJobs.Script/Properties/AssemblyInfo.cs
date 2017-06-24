@@ -14,5 +14,6 @@ using System.Runtime.InteropServices;
 [assembly: Guid("1dc670cd-f42f-4d8f-97bd-0e1aa8221094")]
 
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.WebHost")]
+[assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.WebHost.Core")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests.Integration")]

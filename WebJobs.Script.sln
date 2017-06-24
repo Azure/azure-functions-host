@@ -427,6 +427,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script", "src\WebJo
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Host", "src\WebJobs.Script.Host\WebJobs.Script.Host.csproj", "{180EF900-AF1F-4EAE-8EF0-50A3763BDE15}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.WebHost.Core", "src\WebJobs.Script.WebHost.Core\WebJobs.Script.WebHost.Core.csproj", "{76D6ED62-83CA-4A70-B226-3FAB0D1B169A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -453,6 +455,10 @@ Global
 		{180EF900-AF1F-4EAE-8EF0-50A3763BDE15}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{180EF900-AF1F-4EAE-8EF0-50A3763BDE15}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{180EF900-AF1F-4EAE-8EF0-50A3763BDE15}.Release|Any CPU.Build.0 = Release|Any CPU
+		{76D6ED62-83CA-4A70-B226-3FAB0D1B169A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76D6ED62-83CA-4A70-B226-3FAB0D1B169A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76D6ED62-83CA-4A70-B226-3FAB0D1B169A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76D6ED62-83CA-4A70-B226-3FAB0D1B169A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -531,5 +537,6 @@ Global
 		{03FD181C-E3F0-4F15-ACB2-94237F7D2616} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{BCFBE330-871A-44BE-9016-83845231230F} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{180EF900-AF1F-4EAE-8EF0-50A3763BDE15} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
+		{76D6ED62-83CA-4A70-B226-3FAB0D1B169A} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 	EndGlobalSection
 EndGlobal

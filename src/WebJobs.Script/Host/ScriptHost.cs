@@ -285,10 +285,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Set up a host level TraceMonitor that will receive notification
                 // of ALL errors that occur. This allows us to inspect/log errors.
-                var traceMonitor = new TraceMonitor()
-                    .Filter(p => { return true; })
-                    .Subscribe(HandleHostError);
-                hostConfig.Tracing.Tracers.Add(traceMonitor);
+                // TODO: FACAVAL
+                //var traceMonitor = new TraceMonitor()
+                //    .Filter(p => { return true; })
+                //    .Subscribe(HandleHostError);
+                //hostConfig.Tracing.Tracers.Add(traceMonitor);
 
                 System.Diagnostics.TraceLevel hostTraceLevel = hostConfig.Tracing.ConsoleLevel;
                 if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)

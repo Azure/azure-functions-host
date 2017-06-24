@@ -7,16 +7,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public class NullScriptHostEnvironment : IScriptHostEnvironment
+    public interface IKeyValueConverterFactory
     {
-        public void RestartHost()
-        {
-        }
+        IKeyValueReader GetValueReader(Key key);
 
-        public void Shutdown()
-        {
-        }
+        IKeyValueWriter GetValueWriter(Key key);
     }
 }
