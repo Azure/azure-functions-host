@@ -44,14 +44,10 @@ namespace Microsoft.Azure.WebJobs.Logging
 
             set
             {
-                if (value <= 0)
+                if (value <= 0 || value > MaxBatchSize)
                 {
-                    throw new ArgumentOutOfRangeException(nameof(value));
-                }
-
-                if (value > MaxBatchSize)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(value));
+                    string message = $"'{nameof(BatchSize)}' value must be greater than 0 and less than or equal to {MaxBatchSize}.";
+                    throw new ArgumentOutOfRangeException(null, value, message);
                 }
 
                 _batchSize = value;
@@ -67,14 +63,10 @@ namespace Microsoft.Azure.WebJobs.Logging
 
             set
             {
-                if (value <= TimeSpan.Zero)
+                if (value <= TimeSpan.Zero || value > MaxFlushTimeout)
                 {
-                    throw new ArgumentOutOfRangeException(nameof(value));
-                }
-
-                if (value > MaxFlushTimeout)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(value));
+                    string message = $"'{nameof(FlushTimeout)}' value must be greater than '{TimeSpan.Zero.ToString()}' and less than or equal to '{MaxFlushTimeout.ToString()}'.";
+                    throw new ArgumentOutOfRangeException(null, value, message);
                 }
 
                 _flushTimeout = value;
