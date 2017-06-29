@@ -45,8 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly object _syncLock = new object();
         private readonly int _hostTimeoutSeconds;
         private readonly int _hostRunningPollIntervalMilliseconds;
-
-        private readonly WebJobsSdkExtensionHookProvider _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider();
+        private readonly WebJobsSdkExtensionHookProvider _bindingWebHookProvider;
 
         private bool _warmupComplete = false;
         private bool _hostStarted = false;
@@ -90,6 +89,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
             _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, config.HostConfig.LoggerFactory, secretsRepository);
+
+            _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider(_secretManager);
         }
 
         public WebScriptHostManager(ScriptHostConfiguration config,
