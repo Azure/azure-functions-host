@@ -493,7 +493,6 @@
     <Compile Include="Diagnostics\WebHostMetricsLogger.cs" />
     <Compile Include="Extensions\DependencyResolverExtensions.cs" />
     <Compile Include="Filters\AuthorizationLevelAttribute.cs" />
-    <Compile Include="Filters\SystemAuthorizationLevelAttribute.cs" />
     <Compile Include="Formatting\PlaintextMediaTypeFormatter.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -529,6 +528,7 @@
     <Compile Include="Security\ISecretManagerFactory.cs" />
     <Compile Include="Security\ISecretsRepository.cs" />
     <Compile Include="Security\ISecretsRepositoryFactory.cs" />
+    <Compile Include="Security\KeyAuthorizationResult.cs" />
     <Compile Include="Security\KeyOperationResult.cs" />
     <Compile Include="Security\ScriptSecretsType.cs" />
     <Compile Include="Security\SecretsChangedEventArgs.cs" />

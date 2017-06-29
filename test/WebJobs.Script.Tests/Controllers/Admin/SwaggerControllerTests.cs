@@ -56,8 +56,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         [Fact]
         public void HasAuthorizationLevelAttribute()
         {
-            SystemAuthorizationLevelAttribute attribute = typeof(SwaggerController).GetCustomAttribute<SystemAuthorizationLevelAttribute>();
+            var attribute = typeof(SwaggerController).GetCustomAttribute<AuthorizationLevelAttribute>();
             Assert.Equal(AuthorizationLevel.System, attribute.Level);
+            Assert.Equal(ScriptConstants.SwaggerDocumentationKey, attribute.KeyName);
         }
 
         [Fact]

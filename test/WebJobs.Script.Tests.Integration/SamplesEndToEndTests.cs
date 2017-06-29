@@ -286,6 +286,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
             Assert.Equal("Hello Mathew", body);
+
+            // verify request also succeeds with master key
+            uri = $"api/httptrigger?code={MasterKey}&name=Mathew";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Get_Unauthorized_Fails()
+        {
+            // valid system (swagger) key
+            var swaggerSystemKey = "2yHCHEQX/CYqsPASEvWaRL08xI4afd38aHzzvMid8qozJhwqYzhJmQ==";
+            string uri = $"api/httptrigger?code={swaggerSystemKey}&name=Mathew";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // verify the key works for the swagger endpoint
+            uri = $"admin/host/swagger/default?code={swaggerSystemKey}";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // verify the key works for the swagger endpoint
+            var systemKey = "bcnu496ve212kk1p84ncrtdvmtpembduqp25aghe";
+            uri = $"admin/host/swagger/default?code={systemKey}";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
         [Fact]

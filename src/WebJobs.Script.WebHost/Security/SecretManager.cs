@@ -402,7 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return _keyValueConverterFactory.WriteKey(key);
         }
 
-        private static string GenerateSecret()
+        internal static string GenerateSecret()
         {
             using (var rng = RandomNumberGenerator.Create())
             {

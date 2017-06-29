@@ -1,10 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Net;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
@@ -13,7 +13,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
-    [SystemAuthorizationLevel(ScriptConstants.SwaggerDocumentationKey)]
+    [AuthorizationLevel(AuthorizationLevel.System, ScriptConstants.SwaggerDocumentationKey)]
     public class SwaggerController : ApiController
     {
         private readonly ISwaggerDocumentManager _swaggerDocumentManager;
