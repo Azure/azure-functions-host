@@ -53,8 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // No need for assert; this will throw if there's not one and only one
             logs.Single(p => p.EndsWith(functionTrace));
 
-            Assert.Equal(12, _fixture.TelemetryItems.Count);
-
             // Validate the traces. Order by message string as the requests may come in
             // slightly out-of-order or on different threads
             TelemetryPayload[] telemetries = _fixture.TelemetryItems
@@ -70,9 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTrace(telemetries[5], "Host configuration file read:", LogCategories.Startup);
             ValidateTrace(telemetries[6], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
             ValidateTrace(telemetries[7], "Job host started", LogCategories.Startup);
-            ValidateTrace(telemetries[8], "Loaded custom extension: BotFrameworkConfiguration from ''", LogCategories.Startup);
-            ValidateTrace(telemetries[9], "Loaded custom extension: SendGridConfiguration from ''", LogCategories.Startup);
-            ValidateTrace(telemetries[10], "Reading host configuration file", LogCategories.Startup);
+            ValidateTrace(telemetries[8], "Reading host configuration file", LogCategories.Startup);
 
             // Finally, validate the request
             TelemetryPayload request = _fixture.TelemetryItems
