@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
 {
     /// <summary>Provides extension methods for the <see cref="StorageException"/> class.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public static class StorageExceptionExtensions
 #else
     internal static class StorageExceptionExtensions

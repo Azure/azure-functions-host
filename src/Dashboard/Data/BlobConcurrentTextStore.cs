@@ -13,8 +13,7 @@ namespace Dashboard.Data
     public class BlobConcurrentTextStore : IConcurrentTextStore, IConcurrentMetadataTextStore
     {
         private readonly CloudBlobDirectory _directory;
-
-        [CLSCompliant(false)]
+        
         public BlobConcurrentTextStore(CloudBlobDirectory directory)
         {
             _directory = directory;

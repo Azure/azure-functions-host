@@ -12,7 +12,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
     /// <summary>
     /// Provides context input for <see cref="IQueueProcessorFactory"/>.
     /// </summary>
-    [CLSCompliant(false)]
     public class QueueProcessorFactoryContext
     {
         /// <summary>

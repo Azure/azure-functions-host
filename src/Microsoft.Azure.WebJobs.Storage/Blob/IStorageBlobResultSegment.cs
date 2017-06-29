@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
 {
     /// <summary>Defines a segment of blob list results.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public interface IStorageBlobResultSegment
 #else
     internal interface IStorageBlobResultSegment

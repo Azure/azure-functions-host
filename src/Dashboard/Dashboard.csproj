@@ -299,6 +299,7 @@
     <Compile Include="FastTable\NullInvocationIndexReader.cs" />
     <Compile Include="FastTable\SimpleConcurrentDocument.cs" />
     <Compile Include="Filters\AccountContextAttribute.cs" />
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="HostMessaging\Aborter.cs" />
     <Compile Include="HostMessaging\FunctionInstanceArgumentExtensions.cs" />
     <Compile Include="HostMessaging\IAborter.cs" />

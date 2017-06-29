@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 {
     /// <summary>Represents a command that signals a heartbeat from a running host instance.</summary>
 #if PUBLICPROTOCOL
-    [CLSCompliant(false)]
+    
     public class HeartbeatCommand : IHeartbeatCommand
 #else
     internal class HeartbeatCommand : IHeartbeatCommand

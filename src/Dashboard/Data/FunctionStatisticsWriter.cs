@@ -9,8 +9,7 @@ namespace Dashboard.Data
     public class FunctionStatisticsWriter : IFunctionStatisticsWriter
     {
         private readonly IConcurrentDocumentStore<FunctionStatistics> _store;
-
-        [CLSCompliant(false)]
+        
         public FunctionStatisticsWriter(CloudBlobClient client)
             : this(ConcurrentDocumentStore.CreateJsonBlobStore<FunctionStatistics>(
                 client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.FunctionStatistics))

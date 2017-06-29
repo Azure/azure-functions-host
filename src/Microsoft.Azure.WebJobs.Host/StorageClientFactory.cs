@@ -16,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Host
     /// Subclasses can override the various methods to customize client creation.
     /// See <see cref="JobHostConfiguration.StorageClientFactory"/>.
     /// </remarks>
-    [CLSCompliant(false)]
     public class StorageClientFactory
     {
         /// <summary>

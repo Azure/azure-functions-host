@@ -27,8 +27,7 @@ namespace Dashboard
         }
 
         public string SdkStorageAccountName { get; internal set; }
-
-        [CLSCompliant(false)]
+        
         public CloudStorageAccount StorageAccount { get; internal set; }
 
         // True for hosts that don't support invoke from the dashboard. 

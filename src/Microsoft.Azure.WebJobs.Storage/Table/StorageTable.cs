@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
 {
     /// <summary>Represents a table.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public class StorageTable : IStorageTable
 #else
     internal class StorageTable : IStorageTable

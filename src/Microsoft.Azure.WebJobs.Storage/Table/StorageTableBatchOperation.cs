@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
 {
     /// <summary>Represents an atomic batch operation on a table.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public class StorageTableBatchOperation : IStorageTableBatchOperation
 #else
     internal class StorageTableBatchOperation : IStorageTableBatchOperation

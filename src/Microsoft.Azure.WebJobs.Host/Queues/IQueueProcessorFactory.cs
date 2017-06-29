@@ -8,7 +8,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
     /// <summary>
     /// Factory for creating <see cref="QueueProcessor"/> instances.
     /// </summary>
-    [CLSCompliant(false)]
     public interface IQueueProcessorFactory
     {
         /// <summary>

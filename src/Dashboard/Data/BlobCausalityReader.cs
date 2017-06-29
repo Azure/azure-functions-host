@@ -9,7 +9,6 @@ namespace Dashboard.Data
 {
     public static class BlobCausalityReader
     {
-        [CLSCompliant(false)]
         public static Guid? GetParentId(ICloudBlob blob)
         {
             if (!blob.TryFetchAttributes())

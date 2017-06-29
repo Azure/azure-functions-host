@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
 {
     /// <summary>Represents a page blob.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public class StoragePageBlob : IStoragePageBlob
 #else
     internal class StoragePageBlob : IStoragePageBlob

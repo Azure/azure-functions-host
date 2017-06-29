@@ -15,7 +15,7 @@ namespace Dashboard.Data
         private readonly CloudBlobContainer _container;
         private readonly string _directoryPrefix;
 
-        [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0"), CLSCompliant(false)]
+        [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0")]
         public BlobRecentInvocationIndexReader(CloudBlobClient client, string directoryName)
             : this(client.GetContainerReference(DashboardContainerNames.Dashboard).GetDirectoryReference(directoryName))
         {

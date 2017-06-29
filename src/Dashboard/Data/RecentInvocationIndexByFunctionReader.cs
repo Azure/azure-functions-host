@@ -9,8 +9,7 @@ namespace Dashboard.Data
     public class RecentInvocationIndexByFunctionReader : IRecentInvocationIndexByFunctionReader
     {
         private readonly IBlobRecentInvocationIndexReader _innerReader;
-
-        [CLSCompliant(false)]
+        
         public RecentInvocationIndexByFunctionReader(CloudBlobClient client)
             : this(new BlobRecentInvocationIndexReader(client, DashboardDirectoryNames.RecentFunctionsByFunction))
         {

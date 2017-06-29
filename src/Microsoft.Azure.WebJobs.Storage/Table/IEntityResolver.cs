@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
 {
     /// <summary>Defines an entity resolver.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public interface IEntityResolver
 #else
     internal interface IEntityResolver

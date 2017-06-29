@@ -272,7 +272,6 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>
         /// Gets or sets the <see cref="ILoggerFactory"/>. 
         /// </summary>
-        [CLSCompliant(false)]
         public ILoggerFactory LoggerFactory
         {
             get
@@ -306,7 +305,6 @@ namespace Microsoft.Azure.WebJobs
         /// Gets or sets the <see cref="Host.StorageClientFactory"/> that will be used to create
         /// Azure Storage clients.
         /// </summary>
-        [CLSCompliant(false)]
         public StorageClientFactory StorageClientFactory
         {
             get

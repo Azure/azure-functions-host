@@ -25,7 +25,7 @@ namespace Dashboard.Data
         /// Instantiates a new instance of the <see cref="HostVersionReader"/> class.
         /// </summary>
         /// <param name="account">The cloud storage account.</param>
-        [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0"), CLSCompliant(false)]
+        [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0")]
         public HostVersionReader(CloudBlobClient client)
             : this(client.GetContainerReference(DashboardContainerNames.Dashboard)
             .GetDirectoryReference(DashboardDirectoryNames.Versions))

@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
 {
     /// <summary>Represents the system properties of a blob.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public class StorageBlobProperties : IStorageBlobProperties
 #else
     internal class StorageBlobProperties : IStorageBlobProperties

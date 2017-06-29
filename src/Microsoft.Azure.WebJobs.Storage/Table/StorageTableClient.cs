@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
 {
     /// <summary>Represents a table client.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public class StorageTableClient : IStorageTableClient
 #else
     internal class StorageTableClient : IStorageTableClient

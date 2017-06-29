@@ -10,7 +10,6 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCopyright("© Microsoft Corporation. All rights reserved.")]
 
 [assembly: ComVisible(false)]
-[assembly: CLSCompliant(true)]
 
 // Opt in to centralized servicing
 [assembly: AssemblyMetadata("Serviceable", "True")]

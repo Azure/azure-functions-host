@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
 {
     /// <summary>Represents a blob client.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public class StorageBlobClient : IStorageBlobClient
 #else
     internal class StorageBlobClient : IStorageBlobClient

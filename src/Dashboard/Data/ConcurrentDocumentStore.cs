@@ -8,7 +8,6 @@ namespace Dashboard.Data
 {
     public static class ConcurrentDocumentStore
     {
-        [CLSCompliant(false)]
         public static IConcurrentMetadataDocumentStore<TDocument> CreateJsonBlobStore<TDocument>(CloudBlobClient client,
             string containerName, string directoryName)
         {

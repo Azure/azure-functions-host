@@ -9,8 +9,7 @@ namespace Dashboard.Data
     public class RecentInvocationIndexWriter : IRecentInvocationIndexWriter
     {
         private readonly IConcurrentMetadataTextStore _store;
-
-        [CLSCompliant(false)]
+        
         public RecentInvocationIndexWriter(CloudBlobClient client)
             : this(ConcurrentTextStore.CreateBlobStore(
                 client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.RecentFunctionsFlat))

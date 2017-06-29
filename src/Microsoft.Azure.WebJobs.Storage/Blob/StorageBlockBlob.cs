@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
 {
     /// <summary>Represents a block blob.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public class StorageBlockBlob : IStorageBlockBlob
 #else
     internal class StorageBlockBlob : IStorageBlockBlob

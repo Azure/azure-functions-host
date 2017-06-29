@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
 
         /// <summary>Initializes a new instance of the <see cref="HostMessageSender"/> class.</summary>
         /// <param name="client">A queue client for the storage account where the host listens.</param>
-        [CLSCompliant(false)]
+        
         public HostMessageSender(CloudQueueClient client)
         {
             if (client == null)

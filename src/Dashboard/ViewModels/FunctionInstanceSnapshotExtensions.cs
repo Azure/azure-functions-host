@@ -6,7 +6,6 @@ using Dashboard.Data;
 
 namespace Dashboard.ViewModels
 {
-    [CLSCompliant(false)]
     public static class FunctionInstanceSnapshotExtensions
     {
         // null if job hasn't finished yet.

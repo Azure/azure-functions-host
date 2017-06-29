@@ -21,7 +21,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
     /// Custom <see cref="QueueProcessor"/> implementations can be registered by implementing
     /// a custom <see cref="IQueueProcessorFactory"/> and setting it via <see cref="JobHostQueuesConfiguration.QueueProcessorFactory"/>.
     /// </remarks>
-    [CLSCompliant(false)]
     public class QueueProcessor
     {
         private readonly CloudQueue _queue;

@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
     /// <summary>Represents a persistent queue writer.</summary>
     /// <typeparam name="T">The type of messages in the queue.</typeparam>
 #if PUBLICPROTOCOL
-    [CLSCompliant(false)]
+    
     public class PersistentQueueWriter<T> : IPersistentQueueWriter<T> where T : PersistentQueueMessage
 #else
     internal class PersistentQueueWriter<T> : IPersistentQueueWriter<T> where T : PersistentQueueMessage

@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
 {
     /// <summary>Defines a queue.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public interface IStorageQueue
 #else
     internal interface IStorageQueue

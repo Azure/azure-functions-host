@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
 {
     /// <summary>Represents an append blob.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public class StorageAppendBlob : IStorageAppendBlob
 #else
     internal class StorageAppendBlob : IStorageAppendBlob

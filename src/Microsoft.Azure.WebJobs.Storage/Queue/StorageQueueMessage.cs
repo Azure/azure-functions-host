@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
 {
     /// <summary>Represents a queue message.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public class StorageQueueMessage : IStorageQueueMessage
 #else
     internal class StorageQueueMessage : IStorageQueueMessage

@@ -10,8 +10,7 @@ namespace Dashboard.Data
     public class FunctionIndexManager : IFunctionIndexManager
     {
         private readonly IVersionedDocumentStore<FunctionSnapshot> _store;
-
-        [CLSCompliant(false)]
+        
         public FunctionIndexManager(CloudBlobClient client)
             : this(VersionedDocumentStore.CreateJsonBlobStore<FunctionSnapshot>(
                 client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.FunctionsFlat))

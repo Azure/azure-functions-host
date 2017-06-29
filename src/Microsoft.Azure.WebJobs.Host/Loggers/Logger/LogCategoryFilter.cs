@@ -10,7 +10,6 @@ namespace Microsoft.Azure.WebJobs.Logging
     /// <summary>
     /// Provides a filter for use with an <see cref="ILogger"/>.
     /// </summary>
-    [System.CLSCompliant(false)]
     public class LogCategoryFilter
     {
         /// <summary>

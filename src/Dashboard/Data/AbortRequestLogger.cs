@@ -13,7 +13,7 @@ namespace Dashboard.Data
     {
         private readonly CloudBlobDirectory _directory;
 
-        [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0"), CLSCompliant(false)]
+        [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0")]
         public AbortRequestLogger(CloudBlobClient client)
             : this(client.GetContainerReference(DashboardContainerNames.Dashboard)
                 .GetDirectoryReference(DashboardDirectoryNames.AbortRequestLogs))

@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
 
         /// <summary>Initializes a new instance of the <see cref="HeartbeatMonitor"/> class.</summary>
         /// <param name="client">A blob client for the storage account in which to monitor heartbeats.</param>
-        [CLSCompliant(false)]
+        
         public HeartbeatMonitor(CloudBlobClient client)
         {
             _client = client;

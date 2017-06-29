@@ -8,7 +8,6 @@ namespace Dashboard.Data
 {
     public static class VersionedTextStore
     {
-        [CLSCompliant(false)]
         public static IVersionedMetadataTextStore CreateBlobStore(CloudBlobClient client, string containerName,
             string directoryName)
         {

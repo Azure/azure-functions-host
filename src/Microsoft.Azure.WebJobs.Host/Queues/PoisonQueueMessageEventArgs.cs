@@ -10,7 +10,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
     /// Event argument class for when poison messages
     /// are added to a poison queue.
     /// </summary>
-    [CLSCompliant(false)]
     public class PoisonMessageEventArgs : EventArgs
     {
         /// <summary>

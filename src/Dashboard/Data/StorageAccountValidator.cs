@@ -10,8 +10,7 @@ namespace Dashboard.Data
     public static class StorageAccountValidator
     {
         private const string HttpsEndpointScheme = "https";
-
-        [CLSCompliant(false)]
+        
         public static bool ValidateAccountAccessible(CloudStorageAccount account)
         {
             if (account == null)
@@ -40,8 +39,7 @@ namespace Dashboard.Data
 
             return true;
         }
-
-        [CLSCompliant(false)]
+        
         public static bool ValidateEndpointsSecure(CloudStorageAccount account)
         {
             if (account == null)

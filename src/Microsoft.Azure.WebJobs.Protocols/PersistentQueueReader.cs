@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
     /// <summary>Represents a persistent queue reader.</summary>
     /// <typeparam name="T">The type of messages in the queue.</typeparam>
 #if PUBLICPROTOCOL
-    [CLSCompliant(false)]
+    
     public class PersistentQueueReader<T> : IPersistentQueueReader<T> where T : PersistentQueueMessage
 #else
     internal class PersistentQueueReader<T> : IPersistentQueueReader<T> where T : PersistentQueueMessage

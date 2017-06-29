@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
 {
     /// <summary>Defines an operation on a table.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public interface IStorageTableOperation
 #else
     internal interface IStorageTableOperation

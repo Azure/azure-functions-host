@@ -25,7 +25,6 @@ namespace Dashboard.Data
         /// Instantiates a new instance of the <see cref="HostVersionReader"/> class.
         /// </summary>
         /// <param name="client">The cloud storage client.</param>
-        [CLSCompliant(false)]
         public DashboardVersionManager(CloudBlobClient client)
         {
             if (client == null)

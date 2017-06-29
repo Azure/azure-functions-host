@@ -15,7 +15,6 @@ namespace Microsoft.Azure.WebJobs.Host
         /// <summary>
         /// Gets or sets the <see cref="CloudStorageAccount"/> to create a client for.
         /// </summary>
-        [CLSCompliant(false)]
         public CloudStorageAccount Account { get; set; }
 
         /// <summary>

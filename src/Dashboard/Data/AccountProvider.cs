@@ -10,8 +10,7 @@ namespace Dashboard.Data
     public static class AccountProvider
     {
         private static Dictionary<string, CloudStorageAccount> _accounts;
-
-        [CLSCompliant(false)]
+        
         public static CloudStorageAccount GetAccount(string connectionStringName)
         {
             string connectionString = ConnectionStringProvider.GetConnectionString(connectionStringName);
@@ -28,8 +27,7 @@ namespace Dashboard.Data
 
             return account;
         }
-
-        [CLSCompliant(false)]
+        
         public static CloudStorageAccount GetAccountByName(string accountName)
         {
             var accountMap = AccountProvider.GetAccounts();
@@ -43,8 +41,7 @@ namespace Dashboard.Data
 
             return null;
         }
-
-        [CLSCompliant(false)]
+        
         public static IReadOnlyDictionary<string, CloudStorageAccount> GetAccounts()
         {
             if (_accounts == null)
@@ -66,8 +63,7 @@ namespace Dashboard.Data
 
             return _accounts;
         }
-
-        [CLSCompliant(false)]
+        
         public static bool AccountNameMatches(string accountName, CloudStorageAccount account)
         {
             if (account == null || account.Credentials == null)

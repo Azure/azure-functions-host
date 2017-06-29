@@ -8,7 +8,6 @@ namespace Dashboard.Data
 {
     public static class ConcurrentTextStore
     {
-        [CLSCompliant(false)]
         public static IConcurrentMetadataTextStore CreateBlobStore(CloudBlobClient client, string containerName,
             string directoryName)
         {

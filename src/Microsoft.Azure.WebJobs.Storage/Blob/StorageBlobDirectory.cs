@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
 {
     /// <summary>Represents a blob directory.</summary>
 #if PUBLICSTORAGE
-    [CLSCompliant(false)]
+    
     public class StorageBlobDirectory : IStorageBlobDirectory
 #else
     internal class StorageBlobDirectory : IStorageBlobDirectory

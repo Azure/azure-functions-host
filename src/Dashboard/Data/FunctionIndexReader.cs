@@ -17,7 +17,7 @@ namespace Dashboard.Data
         private readonly CloudBlobDirectory _versionDirectory;
         private readonly IVersionMetadataMapper _versionMapper;
 
-        [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0"), CLSCompliant(false)]
+        [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0")]
         public FunctionIndexReader(CloudBlobClient client)
             : this(client.GetContainerReference(DashboardContainerNames.Dashboard).GetDirectoryReference(
                 DashboardDirectoryNames.FunctionsFlat), client.GetContainerReference(DashboardContainerNames.Dashboard)
