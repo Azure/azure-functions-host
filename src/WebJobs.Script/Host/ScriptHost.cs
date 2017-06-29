@@ -334,7 +334,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // If there's a parsing error, set up the logger and write out the previous messages so that they're
                     // discoverable in Application Insights. There's no filter, but that's okay since we cannot parse host.json to
                     // determine how to build the filtler.
-                    ConfigureLoggerFactory(ScriptConfig, FunctionTraceWriterFactory, _settingsManager, () => FileLoggingEnabled);
+                    ConfigureDefaultLoggerFactory();
                     ILogger startupErrorLogger = hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
                     startupErrorLogger.LogInformation(readingFileMessage);
                     startupErrorLogger.LogInformation(readFileMessage);
@@ -342,9 +342,19 @@ namespace Microsoft.Azure.WebJobs.Script
                     throw new FormatException(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex);
                 }
 
-                ApplyConfiguration(hostConfigObject, ScriptConfig);
+                try
+                {
+                    ApplyConfiguration(hostConfigObject, ScriptConfig);
+                }
+                catch (Exception)
+                {
+                    // If we have an error applying the configuration (for example, a value is invalid),
+                    // make sure we have a default LoggerFactory so that the error log can be written.
+                    ConfigureDefaultLoggerFactory();
+                    throw;
+                }
 
-                ConfigureLoggerFactory(ScriptConfig, FunctionTraceWriterFactory, _settingsManager, () => FileLoggingEnabled);
+                ConfigureDefaultLoggerFactory();
 
                 // Use the startupLogger in this class as it is concerned with startup. The public Logger is used
                 // for all other logging after startup.
@@ -542,6 +552,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
             this.TraceWriter.Info($"Loaded custom extension: {name} from '{locationHint}'");
             config.AddExtension(instance);
+        }
+
+        private void ConfigureDefaultLoggerFactory()
+        {
+            ConfigureLoggerFactory(ScriptConfig, FunctionTraceWriterFactory, _settingsManager, () => FileLoggingEnabled);
         }
 
         internal static void ConfigureLoggerFactory(ScriptHostConfiguration scriptConfig, IFunctionTraceWriterFactory traceWriteFactory,

@@ -382,6 +382,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Invalid property identifier character: ~. Path '', line 2, position 4.", ex.InnerException.Message);
         }
 
+        [Fact]
+        public void Create_HostJsonValueError_LogsError()
+        {
+            // Try to load valid host.json file that has an out-of-range value.
+            // Ensure that it's logged to TraceWriter and ILogger
+
+            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\OutOfRange");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
+            {
+                RootScriptPath = rootPath,
+                TraceWriter = traceWriter
+            };
+
+            TestLoggerProvider provider = new TestLoggerProvider();
+            scriptConfig.HostConfig.AddService<ILoggerFactoryBuilder>(new TestLoggerFactoryBuilder(provider));
+
+            var environment = new Mock<IScriptHostEnvironment>();
+            var eventManager = new Mock<IScriptEventManager>();
+
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            {
+                ScriptHost.Create(environment.Object, eventManager.Object, scriptConfig, _settingsManager);
+            });
+
+            string msg = "ScriptHost initialization failed";
+            var trace = traceWriter.Traces.Single(t => t.Level == TraceLevel.Error);
+            Assert.Equal(msg, trace.Message);
+            Assert.Same(ex, trace.Exception);
+
+            var loggerMessage = provider.CreatedLoggers.Single().LogMessages.Single();
+            Assert.Equal(msg, loggerMessage.FormattedMessage);
+            Assert.Same(ex, loggerMessage.Exception);
+        }
+
         [Theory]
         [InlineData("host")]
         [InlineData("-function")]
@@ -1474,6 +1510,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public void Dispose()
             {
+            }
+        }
+
+        private class TestLoggerFactoryBuilder : ILoggerFactoryBuilder
+        {
+            private TestLoggerProvider _provider;
+
+            public TestLoggerFactoryBuilder(TestLoggerProvider provider)
+            {
+                _provider = provider;
+            }
+
+            public void AddLoggerProviders(ILoggerFactory factory, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager)
+            {
+                factory.AddProvider(_provider);
             }
         }
     }

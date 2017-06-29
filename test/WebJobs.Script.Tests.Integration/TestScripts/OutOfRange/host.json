@@ -1,0 +1,7 @@
+﻿{    
+    "logger": {
+        "aggregator": {            
+            "flushTimeout": "00:30:00"
+        }
+    }
+}
