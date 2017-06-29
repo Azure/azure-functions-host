@@ -188,28 +188,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             base.OnActionExecuting(context);
         }
 
-        // TODO: FACAVAL
-        //[Route("admin/extensions/{name}/{*extra}")]
-        //[HttpGet]
-        //[HttpPost]
-        //[AllowAnonymous]
-        //public async Task<HttpResponseMessage> ExtensionWebHookHandler(string name, CancellationToken token)
-        //{
-        //    var provider = _scriptHostManager.BindingWebHookProvider;
+        [Route("admin/extensions/{name}/{*extra}")]
+        [HttpGet]
+        [HttpPost]
+        [AllowAnonymous]
+        public async Task<HttpResponseMessage> ExtensionWebHookHandler(string name, CancellationToken token)
+        {
+            var provider = _scriptHostManager.BindingWebHookProvider;
 
-        //    var handler = provider.GetHandlerOrNull(name);
-        //    if (handler != null)
-        //    {
-        //        string keyName = WebJobsSdkExtensionHookProvider.GetKeyName(name);
-        //        if (!this.Request.HasAuthorizationLevel(AuthorizationLevel.System, keyName))
-        //        {
-        //            return new HttpResponseMessage(HttpStatusCode.Unauthorized);
-        //        }
+            var handler = provider.GetHandlerOrNull(name);
+            if (handler != null)
+            {
+                string keyName = WebJobsSdkExtensionHookProvider.GetKeyName(name);
+                if (!this.Request.HasAuthorizationLevel(AuthorizationLevel.System, keyName))
+                {
+                    return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+                }
 
-        //        return await handler.ConvertAsync(this.Request, token);
-        //    }
+                return await handler.ConvertAsync(this.Request, token);
+            }
 
-        //    return new HttpResponseMessage(HttpStatusCode.NotFound);
-        //}
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
     }
 }
