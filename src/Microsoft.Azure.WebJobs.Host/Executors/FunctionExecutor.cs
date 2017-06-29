@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         public async Task<IDelayedException> TryExecuteAsync(IFunctionInstance functionInstance, CancellationToken cancellationToken)
         {
             FunctionStartedMessage functionStartedMessage = CreateStartedMessageWithoutArguments(functionInstance);
-            IDictionary<string, ParameterLog> parameterLogCollector = new Dictionary<string, ParameterLog>();
+            var parameterHelper = new ParameterHelper(functionInstance.Invoker.ParameterNames);
             FunctionCompletedMessage functionCompletedMessage = null;
             ExceptionDispatchInfo exceptionInfo = null;
             string functionStartedMessageId = null;
@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 using (_logger?.BeginFunctionScope(functionInstance))
                 {
-                    functionStartedMessageId = await ExecuteWithLoggingAsync(functionInstance, functionStartedMessage, fastItem, parameterLogCollector, functionTraceLevel, cancellationToken);
+                    functionStartedMessageId = await ExecuteWithLoggingAsync(functionInstance, functionStartedMessage, fastItem, parameterHelper, functionTraceLevel, cancellationToken);
                 }
                 functionCompletedMessage = CreateCompletedMessage(functionStartedMessage);
             }
@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             if (functionCompletedMessage != null)
             {
-                functionCompletedMessage.ParameterLogs = parameterLogCollector;
+                functionCompletedMessage.ParameterLogs = parameterHelper.ParameterLogCollector;
                 functionCompletedMessage.EndTime = DateTimeOffset.UtcNow;
             }
 
@@ -200,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         private async Task<string> ExecuteWithLoggingAsync(IFunctionInstance instance, FunctionStartedMessage message,
             FunctionInstanceLogEntry fastItem,
-            IDictionary<string, ParameterLog> parameterLogCollector, TraceLevel functionTraceLevel, CancellationToken cancellationToken)
+            ParameterHelper parameterHelper, TraceLevel functionTraceLevel, CancellationToken cancellationToken)
         {
             IFunctionOutputDefinition outputDefinition = null;
             IFunctionOutput outputLog = null;
@@ -239,16 +239,16 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         traceWriter,
                         instance.FunctionDescriptor);
                     var valueBindingContext = new ValueBindingContext(functionContext, cancellationToken);
-                    var parameters = await instance.BindingSource.BindAsync(valueBindingContext);
-
+                    await parameterHelper.BindAsync(instance.BindingSource, valueBindingContext);
+                    
                     Exception invocationException = null;
                     ExceptionDispatchInfo exceptionInfo = null;
                     string startedMessageId = null;
-                    using (ValueProviderDisposable.Create(parameters))
+                    using (parameterHelper)
                     {
                         if (functionTraceLevel >= TraceLevel.Info)
                         {
-                            startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameters, cancellationToken);
+                            startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameterHelper, cancellationToken);
                         }
 
                         if (_functionEventCollector != null)
@@ -260,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                         try
                         {
-                            await ExecuteWithLoggingAsync(instance, parameters, traceWriter, _logger, outputDefinition, parameterLogCollector, functionTraceLevel, functionCancellationTokenSource);
+                            await ExecuteWithLoggingAsync(instance, parameterHelper, traceWriter, _logger, outputDefinition, functionTraceLevel, functionCancellationTokenSource);
                         }
                         catch (Exception ex)
                         {
@@ -275,7 +275,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                             // In error cases, even if logging is disabled for this function, we want to force
                             // log errors. So we must delay initialize logging here
                             await initializeOutputAsync();
-                            startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameters, cancellationToken);
+                            startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameterHelper, cancellationToken);
                         }
 
                         // In the event of cancellation or timeout, we use the original exception without additional logging.
@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     if (exceptionInfo != null)
                     {
                         // release any held singleton lock immediately
-                        SingletonLock singleton = await GetSingletonLockAsync(parameters);
+                        SingletonLock singleton = await parameterHelper.GetSingletonLockAsync();
                         if (singleton != null && singleton.IsHeld)
                         {
                             await singleton.ReleaseAsync(cancellationToken);
@@ -411,13 +411,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         private Task<string> LogFunctionStartedAsync(FunctionStartedMessage message,
             IFunctionOutputDefinition functionOutput,
-            IReadOnlyDictionary<string, IValueProvider> parameters,
+            ParameterHelper parameterHelper,
             CancellationToken cancellationToken)
         {
             // Finish populating the function started snapshot.
             message.OutputBlob = functionOutput.OutputBlob;
             message.ParameterLogBlob = functionOutput.ParameterLogBlob;
-            message.Arguments = CreateArguments(parameters);
+            message.Arguments = parameterHelper.CreateInvokeStringArguments();
 
             // Log that the function started.
             return _functionInstanceLogger.LogFunctionStartedAsync(message, cancellationToken);
@@ -456,28 +456,26 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         }
 
         private async Task ExecuteWithLoggingAsync(IFunctionInstance instance,
-            IReadOnlyDictionary<string, IValueProvider> parameters,
+            ParameterHelper parameterHelper,
             TraceWriter trace,
             ILogger logger,
-            IFunctionOutputDefinition outputDefinition,
-            IDictionary<string, ParameterLog> parameterLogCollector,
+            IFunctionOutputDefinition outputDefinition,            
             TraceLevel functionTraceLevel,
             CancellationTokenSource functionCancellationTokenSource)
         {
             IFunctionInvoker invoker = instance.Invoker;
 
-            IReadOnlyDictionary<string, IWatcher> parameterWatchers = null;
             ITaskSeriesTimer updateParameterLogTimer = null;
             if (functionTraceLevel >= TraceLevel.Info)
             {
-                parameterWatchers = CreateParameterWatchers(parameters);
+                var parameterWatchers = parameterHelper.CreateParameterWatchers();
                 IRecurrentCommand updateParameterLogCommand = outputDefinition.CreateParameterLogUpdateCommand(parameterWatchers, trace, logger);
                 updateParameterLogTimer = StartParameterLogTimer(updateParameterLogCommand, _exceptionHandler);
             }
 
             try
             {
-                await ExecuteWithWatchersAsync(instance, parameters, trace, logger, functionCancellationTokenSource);
+                await ExecuteWithWatchersAsync(instance, parameterHelper, trace, logger, functionCancellationTokenSource);
 
                 if (updateParameterLogTimer != null)
                 {
@@ -495,42 +493,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     ((IDisposable)updateParameterLogTimer).Dispose();
                 }
 
-                if (parameterWatchers != null)
-                {
-                    ValueWatcher.AddLogs(parameterWatchers, parameterLogCollector);
-                }
+                parameterHelper.FlushParameterWatchers();
             }
-        }
-
-        private static IReadOnlyDictionary<string, IWatcher> CreateParameterWatchers(IReadOnlyDictionary<string, IValueProvider> parameters)
-        {
-            Dictionary<string, IWatcher> watches = new Dictionary<string, IWatcher>();
-
-            foreach (KeyValuePair<string, IValueProvider> item in parameters)
-            {
-                IWatchable watchable = item.Value as IWatchable;
-                if (watchable != null)
-                {
-                    watches.Add(item.Key, watchable.Watcher);
-                }
-            }
-
-            return watches;
         }
 
         internal static async Task ExecuteWithWatchersAsync(IFunctionInstance instance,
-            IReadOnlyDictionary<string, IValueProvider> parameters,
+            ParameterHelper parameterHelper,
             TraceWriter traceWriter,
             ILogger logger,
             CancellationTokenSource functionCancellationTokenSource)
         {
             IFunctionInvoker invoker = instance.Invoker;
-            IReadOnlyList<string> parameterNames = invoker.ParameterNames;
 
-            Tuple<object[], IDelayedException> preparedParameters = await PrepareParametersAsync(parameterNames, parameters);
-
-            object[] invokeParameters = preparedParameters.Item1;
-            IDelayedException delayedBindingException = preparedParameters.Item2;
+            IDelayedException delayedBindingException = await parameterHelper.PrepareParametersAsync();
 
             if (delayedBindingException != null)
             {
@@ -540,7 +515,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
 
             // if the function is a Singleton, aquire the lock
-            SingletonLock singleton = await GetSingletonLockAsync(parameters);
+            SingletonLock singleton = await parameterHelper.GetSingletonLockAsync();
             if (singleton != null)
             {
                 await singleton.AcquireAsync(functionCancellationTokenSource.Token);
@@ -556,7 +531,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 TimeSpan timerInterval = timer == null ? TimeSpan.MinValue : TimeSpan.FromMilliseconds(timer.Interval);
                 try
                 {
-                    await InvokeAsync(invoker, invokeParameters, timeoutTokenSource, functionCancellationTokenSource,
+                    await InvokeAsync(invoker, parameterHelper, timeoutTokenSource, functionCancellationTokenSource,
                     throwOnTimeout, timerInterval, instance);
                 }
                 finally
@@ -569,37 +544,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
             }
 
-            // Process any out parameters and persist any pending values.
-            // Ensure IValueBinder.SetValue is called in BindStepOrder. This ordering is particularly important for
-            // ensuring queue outputs occur last. That way, all other function side-effects are guaranteed to have
-            // occurred by the time messages are enqueued.
-            string[] parameterNamesInBindOrder = SortParameterNamesInStepOrder(parameters);
-            foreach (string name in parameterNamesInBindOrder)
-            {
-                IValueProvider provider = parameters[name];
-                IValueBinder binder = provider as IValueBinder;
-
-                if (binder != null)
-                {
-                    object argument = invokeParameters[GetParameterIndex(parameterNames, name)];
-
-                    try
-                    {
-                        // This could do complex things that may fail. Catch the exception.
-                        await binder.SetValueAsync(argument, functionCancellationTokenSource.Token);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
-                    catch (Exception exception)
-                    {
-                        string message = String.Format(CultureInfo.InvariantCulture,
-                            "Error while handling parameter {0} after function returned:", name);
-                        throw new InvalidOperationException(message, exception);
-                    }
-                }
-            }
+            await parameterHelper.ProcessOutputParameters(functionCancellationTokenSource.Token);
 
             if (singleton != null)
             {
@@ -607,9 +552,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        internal static async Task InvokeAsync(IFunctionInvoker invoker, object[] invokeParameters, CancellationTokenSource timeoutTokenSource,
+        internal static async Task InvokeAsync(IFunctionInvoker invoker, ParameterHelper parameterHelper, CancellationTokenSource timeoutTokenSource,
             CancellationTokenSource functionCancellationTokenSource, bool throwOnTimeout, TimeSpan timerInterval, IFunctionInstance instance)
         {
+            object[] invokeParameters = parameterHelper.InvokeParameters;
+
             // There are three ways the function can complete:
             //   1. The invokeTask itself completes first.
             //   2. A cancellation is requested (by host.Stop(), for example).
@@ -674,52 +621,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return false;
         }
 
-        private static async Task<SingletonLock> GetSingletonLockAsync(IReadOnlyDictionary<string, IValueProvider> parameters)
-        {
-            IValueProvider singletonValueProvider = null;
-            SingletonLock singleton = null;
-            if (parameters.TryGetValue(SingletonValueProvider.SingletonParameterName, out singletonValueProvider))
-            {
-                singleton = (SingletonLock)(await singletonValueProvider.GetValueAsync());
-            }
-
-            return singleton;
-        }
-
-        private static async Task<Tuple<object[], IDelayedException>> PrepareParametersAsync(IReadOnlyList<string> parameterNames,
-            IReadOnlyDictionary<string, IValueProvider> parameters)
-        {
-            object[] reflectionParameters = new object[parameterNames.Count];
-            List<Exception> bindingExceptions = new List<Exception>();
-
-            for (int index = 0; index < parameterNames.Count; index++)
-            {
-                string name = parameterNames[index];
-                IValueProvider provider = parameters[name];
-
-                BindingExceptionValueProvider exceptionProvider = provider as BindingExceptionValueProvider;
-
-                if (exceptionProvider != null)
-                {
-                    bindingExceptions.Add(exceptionProvider.Exception);
-                }
-
-                reflectionParameters[index] = await parameters[name].GetValueAsync();
-            }
-
-            IDelayedException delayedBindingException = null;
-            if (bindingExceptions.Count == 1)
-            {
-                delayedBindingException = new DelayedException(bindingExceptions[0]);
-            }
-            else if (bindingExceptions.Count > 1)
-            {
-                delayedBindingException = new DelayedException(new AggregateException(bindingExceptions));
-            }
-
-            return new Tuple<object[], IDelayedException>(reflectionParameters, delayedBindingException);
-        }
-
         private FunctionStartedMessage CreateStartedMessageWithoutArguments(IFunctionInstance instance)
         {
             FunctionStartedMessage message = new FunctionStartedMessage
@@ -769,90 +670,271 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 ParameterLogBlob = startedMessage.ParameterLogBlob
             };
         }
-
-        private static IDictionary<string, string> CreateArguments(IReadOnlyDictionary<string, IValueProvider> parameters)
+                
+        // Handle various phases of parameter building and logging.
+        // The paramerter phases are: 
+        //  1. Initial binding data from the trigger. 
+        //  2. IValueProvider[]. Provides a System.Object along with additional information (liking logging) 
+        //  3. System.Object[]. which can be passed to the actual MethodInfo for execution 
+        internal class ParameterHelper : IDisposable
         {
-            IDictionary<string, string> arguments = new Dictionary<string, string>();
+            // Logs, contain the result from invoking the IWatchers.
+            private IDictionary<string, ParameterLog> _parameterLogCollector = new Dictionary<string, ParameterLog>();
 
-            if (parameters != null)
+            // Optional runtime watchers for the parameters. 
+            private IReadOnlyDictionary<string, IWatcher> _parameterWatchers;
+
+            // ValueProviders for the parameters. These are produced from binding. 
+            private IReadOnlyDictionary<string, IValueProvider> _parameters;
+
+            // ordered parameter names of the underlying physical MethodInfo that will be invoked. 
+            private IReadOnlyList<string> _parameterNames;             
+
+            public ParameterHelper(IReadOnlyList<string> parameterNames)
             {
-                foreach (KeyValuePair<string, IValueProvider> parameter in parameters)
+                this._parameterNames = parameterNames;
+            }
+
+            // Phsyical objects to pass to the underlying method Info. These will get updated for out-parameters. 
+            // These are produced by executing the binders. 
+            public object[] InvokeParameters { get; internal set; }
+
+            public IDictionary<string, ParameterLog> ParameterLogCollector => _parameterLogCollector;
+                        
+            public IReadOnlyDictionary<string, IWatcher> CreateParameterWatchers()
+            {
+                if (_parameterWatchers != null)
                 {
-                    arguments.Add(parameter.Key, parameter.Value.ToInvokeString());
+                    return _parameterWatchers;
+                }
+                Dictionary<string, IWatcher> watches = new Dictionary<string, IWatcher>();
+
+                foreach (KeyValuePair<string, IValueProvider> item in this._parameters)
+                {
+                    IWatchable watchable = item.Value as IWatchable;
+                    if (watchable != null)
+                    {
+                        watches.Add(item.Key, watchable.Watcher);
+                    }
+                }
+
+                _parameterWatchers = watches;
+                return watches;
+            }
+
+            public void FlushParameterWatchers()
+            {
+                if (_parameterWatchers == null)
+                {
+                    return;
+                }
+                foreach (KeyValuePair<string, IWatcher> item in _parameterWatchers)
+                {
+                    IWatcher watch = item.Value;
+
+                    if (watch == null)
+                    {
+                        continue;
+                    }
+
+                    ParameterLog status = watch.GetStatus();
+
+                    if (status == null)
+                    {
+                        continue;
+                    }
+
+                    _parameterLogCollector.Add(item.Key, status);
                 }
             }
 
-            return arguments;
-        }
-
-        private static int GetParameterIndex(IReadOnlyList<string> parameterNames, string name)
-        {
-            for (int index = 0; index < parameterNames.Count; index++)
+            // The binding source has the set of trigger data and raw parameter binders. 
+            // run the binding source to create a set of IValueProviders for this instance. 
+            public async Task BindAsync(IBindingSource bindingSource, ValueBindingContext context)
             {
-                if (parameterNames[index] == name)
+                this._parameters = await bindingSource.BindAsync(context);
+            }
+
+            public IDictionary<string, string> CreateInvokeStringArguments()
+            {
+                IDictionary<string, string> arguments = new Dictionary<string, string>();
+
+                if (_parameters != null)
                 {
-                    return index;
+                    foreach (KeyValuePair<string, IValueProvider> parameter in _parameters)
+                    {
+                        arguments.Add(parameter.Key, parameter.Value.ToInvokeString());
+                    }
+                }
+
+                return arguments;
+            }
+
+            // Run the IValuePRoviders to create the real set of underlying objects that we'll pass to the MethodInfo. 
+            public async Task<IDelayedException> PrepareParametersAsync()
+            {
+                object[] reflectionParameters = new object[_parameterNames.Count];
+                List<Exception> bindingExceptions = new List<Exception>();
+
+                for (int index = 0; index < _parameterNames.Count; index++)
+                {
+                    string name = _parameterNames[index];
+                    IValueProvider provider = _parameters[name];
+
+                    BindingExceptionValueProvider exceptionProvider = provider as BindingExceptionValueProvider;
+
+                    if (exceptionProvider != null)
+                    {
+                        bindingExceptions.Add(exceptionProvider.Exception);
+                    }
+
+                    reflectionParameters[index] = await _parameters[name].GetValueAsync();
+                }
+
+                IDelayedException delayedBindingException = null;
+                if (bindingExceptions.Count == 1)
+                {
+                    delayedBindingException = new DelayedException(bindingExceptions[0]);
+                }
+                else if (bindingExceptions.Count > 1)
+                {
+                    delayedBindingException = new DelayedException(new AggregateException(bindingExceptions));
+                }
+
+                this.InvokeParameters = reflectionParameters;
+                return delayedBindingException;
+            }
+
+            // Retrieve the function singleton lock from the parameters. 
+            // Null if not found. 
+            public async Task<SingletonLock> GetSingletonLockAsync()
+            {
+                IValueProvider singletonValueProvider = null;
+                SingletonLock singleton = null;
+                if (_parameters.TryGetValue(SingletonValueProvider.SingletonParameterName, out singletonValueProvider))
+                {
+                    singleton = (SingletonLock)(await singletonValueProvider.GetValueAsync());
+                }
+
+                return singleton;
+            }
+
+            // Process any out parameters and persist any pending values.
+            // Ensure IValueBinder.SetValue is called in BindStepOrder. This ordering is particularly important for
+            // ensuring queue outputs occur last. That way, all other function side-effects are guaranteed to have
+            // occurred by the time messages are enqueued.
+            public async Task ProcessOutputParameters(CancellationToken cancellationToken)
+            {
+                string[] parameterNamesInBindOrder = this.SortParameterNamesInStepOrder();
+                foreach (string name in parameterNamesInBindOrder)
+                {
+                    IValueProvider provider = this._parameters[name];
+                    IValueBinder binder = provider as IValueBinder;
+
+                    if (binder != null)
+                    {
+                        object argument = this.InvokeParameters[this.GetParameterIndex(name)];
+
+                        try
+                        {
+                            // This could do complex things that may fail. Catch the exception.
+                            await binder.SetValueAsync(argument, cancellationToken);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            throw;
+                        }
+                        catch (Exception exception)
+                        {
+                            string message = String.Format(CultureInfo.InvariantCulture,
+                                "Error while handling parameter {0} after function returned:", name);
+                            throw new InvalidOperationException(message, exception);
+                        }
+                    }
                 }
             }
 
-            throw new InvalidOperationException("Cannot find parameter + " + name + ".");
-        }
-
-        private static string[] SortParameterNamesInStepOrder(IReadOnlyDictionary<string, IValueProvider> parameters)
-        {
-            string[] parameterNames = new string[parameters.Count];
-            int index = 0;
-
-            foreach (string parameterName in parameters.Keys)
+            private int GetParameterIndex(string name)
             {
-                parameterNames[index] = parameterName;
-                index++;
-            }
-
-            IValueProvider[] parameterValues = new IValueProvider[parameters.Count];
-            index = 0;
-
-            foreach (IValueProvider parameterValue in parameters.Values)
-            {
-                parameterValues[index] = parameterValue;
-                index++;
-            }
-
-            Array.Sort(parameterValues, parameterNames, ValueBinderStepOrderComparer.Instance);
-            return parameterNames;
-        }
-
-        private class ValueBinderStepOrderComparer : IComparer<IValueProvider>
-        {
-            private static readonly ValueBinderStepOrderComparer Singleton = new ValueBinderStepOrderComparer();
-
-            private ValueBinderStepOrderComparer()
-            {
-            }
-
-            public static ValueBinderStepOrderComparer Instance
-            {
-                get
+                for (int index = 0; index < _parameterNames.Count; index++)
                 {
-                    return Singleton;
+                    if (_parameterNames[index] == name)
+                    {
+                        return index;
+                    }
+                }
+
+                throw new InvalidOperationException("Cannot find parameter + " + name + ".");
+            }
+
+            private string[] SortParameterNamesInStepOrder()
+            {
+                string[] parameterNames = new string[_parameters.Count];
+                int index = 0;
+
+                foreach (string parameterName in _parameters.Keys)
+                {
+                    parameterNames[index] = parameterName;
+                    index++;
+                }
+
+                IValueProvider[] parameterValues = new IValueProvider[_parameters.Count];
+                index = 0;
+
+                foreach (IValueProvider parameterValue in _parameters.Values)
+                {
+                    parameterValues[index] = parameterValue;
+                    index++;
+                }
+
+                Array.Sort(parameterValues, parameterNames, ValueBinderStepOrderComparer.Instance);
+                return parameterNames;
+            }
+
+            // IDisposable on any of the IValueProviders in our parameter list.             
+            public void Dispose()
+            {
+                if (_parameters != null)
+                {
+                    foreach (var disposableItem in _parameters.Values.OfType<IDisposable>())
+                    {
+                        disposableItem.Dispose();
+                    }
                 }
             }
 
-            public int Compare(IValueProvider x, IValueProvider y)
+            private class ValueBinderStepOrderComparer : IComparer<IValueProvider>
             {
-                return Comparer<int>.Default.Compare((int)GetStepOrder(x), (int)GetStepOrder(y));
-            }
+                private static readonly ValueBinderStepOrderComparer Singleton = new ValueBinderStepOrderComparer();
 
-            private static BindStepOrder GetStepOrder(IValueProvider provider)
-            {
-                IOrderedValueBinder orderedBinder = provider as IOrderedValueBinder;
-
-                if (orderedBinder == null)
+                private ValueBinderStepOrderComparer()
                 {
-                    return BindStepOrder.Default;
                 }
 
-                return orderedBinder.StepOrder;
+                public static ValueBinderStepOrderComparer Instance
+                {
+                    get
+                    {
+                        return Singleton;
+                    }
+                }
+
+                public int Compare(IValueProvider x, IValueProvider y)
+                {
+                    return Comparer<int>.Default.Compare((int)GetStepOrder(x), (int)GetStepOrder(y));
+                }
+
+                private static BindStepOrder GetStepOrder(IValueProvider provider)
+                {
+                    IOrderedValueBinder orderedBinder = provider as IOrderedValueBinder;
+
+                    if (orderedBinder == null)
+                    {
+                        return BindStepOrder.Default;
+                    }
+
+                    return orderedBinder.StepOrder;
+                }
             }
         }
     }

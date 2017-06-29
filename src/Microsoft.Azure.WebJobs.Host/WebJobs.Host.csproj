@@ -893,7 +893,6 @@
     <Compile Include="Bindings\Invoke\StructInvokeBinding.cs" />
     <Compile Include="Bindings\ObjectValueProvider.cs" />
     <Compile Include="Bindings\ClassOutputConverter.cs" />
-    <Compile Include="Bindings\CompositeDisposable.cs" />
     <Compile Include="Bindings\Runtime\RuntimeBindingWatcher.cs" />
     <Compile Include="Bindings\Runtime\RuntimeValueProvider.cs" />
     <Compile Include="Bindings\StorageAccount\CloudStorageAccountValueProvider.cs" />
@@ -918,7 +917,6 @@
     <Compile Include="Bindings\Runtime\RuntimeBindingProvider.cs" />
     <Compile Include="Bindings\ImmutableWatcher.cs" />
     <Compile Include="Bindings\BindStepOrder.cs" />
-    <Compile Include="Bindings\ValueProviderDisposable.cs" />
     <Compile Include="Blobs\Bindings\BlobAttributeBindingProvider.cs" />
     <Compile Include="Blobs\Bindings\BlobBinding.cs" />
     <Compile Include="Blobs\Bindings\BlobCommittedAction.cs" />
@@ -1017,7 +1015,6 @@
     <Compile Include="Queues\Listeners\UpdateQueueMessageVisibilityCommand.cs" />
     <Compile Include="StorageExceptionExtensions.cs" />
     <Compile Include="Executors\UpdateHostHeartbeatCommand.cs" />
-    <Compile Include="Loggers\ValueWatcher.cs" />
     <Compile Include="Blobs\DelegatingStream.cs" />
     <Compile Include="Timers\TaskSeriesTimer.cs" />
     <Compile Include="JobHost.cs" />

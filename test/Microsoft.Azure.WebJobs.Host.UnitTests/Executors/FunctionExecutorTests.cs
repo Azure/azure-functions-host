@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             var shutdownSource = new CancellationTokenSource();
             bool throwOnTimeout = true;
 
-            await FunctionExecutor.InvokeAsync(mockInvoker.Object, new object[0], timeoutSource, shutdownSource,
+            await FunctionExecutor.InvokeAsync(mockInvoker.Object, NewArgs(new object[0]), timeoutSource, shutdownSource,
                 throwOnTimeout, TimeSpan.MinValue, null);
 
             Assert.True(called);
@@ -163,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             bool throwOnTimeout = false;
 
             timeoutSource.CancelAfter(500);
-            await FunctionExecutor.InvokeAsync(mockInvoker.Object, parameters, timeoutSource, shutdownSource,
+            await FunctionExecutor.InvokeAsync(mockInvoker.Object, NewArgs(parameters), timeoutSource, shutdownSource,
                 throwOnTimeout, TimeSpan.MinValue, null);
 
             Assert.True(called);
@@ -196,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 
             TimeSpan timeoutInterval = TimeSpan.FromMilliseconds(500);
             timeoutSource.CancelAfter(timeoutInterval);
-            var ex = await Assert.ThrowsAsync<FunctionTimeoutException>(() => FunctionExecutor.InvokeAsync(mockInvoker.Object, parameters, timeoutSource, shutdownSource,
+            var ex = await Assert.ThrowsAsync<FunctionTimeoutException>(() => FunctionExecutor.InvokeAsync(mockInvoker.Object, NewArgs(parameters), timeoutSource, shutdownSource,
                 throwOnTimeout, timeoutInterval, _mockFunctionInstance.Object));
 
             var expectedMessage = string.Format("Timeout value of {0} was exceeded by function: {1}", timeoutInterval, _mockFunctionInstance.Object.FunctionDescriptor.ShortName);
@@ -225,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             bool throwOnTimeout = false;
 
             shutdownSource.CancelAfter(500);
-            await FunctionExecutor.InvokeAsync(mockInvoker.Object, parameters, timeoutSource, shutdownSource,
+            await FunctionExecutor.InvokeAsync(mockInvoker.Object, NewArgs(parameters), timeoutSource, shutdownSource,
                 throwOnTimeout, TimeSpan.MinValue, null);
 
             Assert.True(called);
@@ -254,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 
             shutdownSource.CancelAfter(500);
             timeoutSource.CancelAfter(1000);
-            await FunctionExecutor.InvokeAsync(mockInvoker.Object, parameters, timeoutSource, shutdownSource,
+            await FunctionExecutor.InvokeAsync(mockInvoker.Object, NewArgs(parameters), timeoutSource, shutdownSource,
                 throwOnTimeout, TimeSpan.MinValue, null);
 
             Assert.True(called);
@@ -288,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             TimeSpan timeoutInterval = TimeSpan.FromMilliseconds(1000);
             shutdownSource.CancelAfter(500);
             timeoutSource.CancelAfter(timeoutInterval);
-            var ex = await Assert.ThrowsAsync<FunctionTimeoutException>(() => FunctionExecutor.InvokeAsync(mockInvoker.Object, parameters, timeoutSource, shutdownSource,
+            var ex = await Assert.ThrowsAsync<FunctionTimeoutException>(() => FunctionExecutor.InvokeAsync(mockInvoker.Object, NewArgs(parameters), timeoutSource, shutdownSource,
                  throwOnTimeout, timeoutInterval, _mockFunctionInstance.Object));
 
             var expectedMessage = string.Format("Timeout value of {0} was exceeded by function: {1}", timeoutInterval, _mockFunctionInstance.Object.FunctionDescriptor.ShortName);
@@ -339,6 +339,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             LogMessage log = logger.LogMessages.Single();
             Assert.Equal(LogLevel.Error, log.Level);
             Assert.Equal(message, log.FormattedMessage);
+        }
+
+        private static FunctionExecutor.ParameterHelper NewArgs(object[] args)
+        {
+            var parameters = new FunctionExecutor.ParameterHelper(null);
+            parameters.InvokeParameters = args;
+            return parameters;
         }
 
         public static void GlobalLevel(CancellationToken cancellationToken)
