@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Net;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -16,6 +17,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             var settingsManager = ScriptSettingsManager.Instance;
             var webHostSettings = WebHostSettings.CreateDefault(settingsManager);
+
+            if (settingsManager.IsDynamicSku)
+            {
+                ServicePointManager.DefaultConnectionLimit = ScriptConstants.DynamicSkuConnectionLimit;
+            }
 
             VerifyAndEnableShadowCopy(webHostSettings);
 
