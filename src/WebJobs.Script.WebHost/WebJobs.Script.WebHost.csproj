@@ -470,7 +470,6 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="Resources\Functions\Test-FSharp\run.fsx" />
     <EmbeddedResource Include="Home.html" />
     <Content Include="Web.config" />
   </ItemGroup>
@@ -591,7 +590,6 @@
     <EmbeddedResource Include="Resources\Functions\host.json" />
     <EmbeddedResource Include="Resources\Functions\Test-CSharp\function.json" />
     <EmbeddedResource Include="Resources\Functions\Test-CSharp\run.csx" />
-    <EmbeddedResource Include="Resources\Functions\Test-FSharp\function.json" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

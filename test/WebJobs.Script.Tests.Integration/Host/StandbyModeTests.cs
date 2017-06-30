@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -121,13 +122,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Warmup_Succeeds()
+        public async Task Warmup_Succeeds()
         {
             using (new TestEnvironment())
             {
                 var settings = GetWebHostSettings();
                 var eventManagerMock = new Mock<IScriptEventManager>();
-                WebScriptHostManager.WarmUp(settings, eventManagerMock.Object);
+                await WebScriptHostManager.WarmUp(settings, eventManagerMock.Object);
 
                 var hostLogPath = Path.Combine(settings.LogPath, @"host");
                 var hostLogFile = Directory.GetFiles(hostLogPath).First();
@@ -135,7 +136,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 Assert.Contains("Warm up started", content);
                 Assert.Contains("Executed 'Functions.Test-CSharp' (Succeeded, Id=", content);
-                Assert.Contains("Executed 'Functions.Test-FSharp' (Succeeded, Id=", content);
                 Assert.Contains("Warm up succeeded", content);
             }
         }

@@ -705,7 +705,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <summary>
         /// Performs required static initialization in the Edge context.
         /// </summary>
-        private static async Task InitializeAsync()
+        internal static async Task InitializeAsync()
         {
             var handle = (ScriptFunc)(err =>
             {

@@ -239,7 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public static void WarmUp(WebHostSettings settings, IScriptEventManager eventManager)
+        public static async Task WarmUp(WebHostSettings settings, IScriptEventManager eventManager)
         {
             var traceWriter = new FileTraceWriter(Path.Combine(settings.LogPath, "Host"), TraceLevel.Info);
             ScriptHost host = null;
@@ -265,14 +265,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 content = ReadResourceString("Functions.Test_CSharp.run.csx");
                 File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
 
-                // read in the F# function
-                functionPath = Path.Combine(rootPath, "Test-FSharp");
-                Directory.CreateDirectory(functionPath);
-                content = ReadResourceString("Functions.Test_FSharp.function.json");
-                File.WriteAllText(Path.Combine(functionPath, "function.json"), content);
-                content = ReadResourceString("Functions.Test_FSharp.run.fsx");
-                File.WriteAllText(Path.Combine(functionPath, "run.fsx"), content);
-
                 traceWriter.Info("Warm up functions deployed");
 
                 ScriptHostConfiguration config = new ScriptHostConfiguration
@@ -296,8 +288,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     { "input", "{}" }
                 };
                 host.CallAsync("Test-CSharp", arguments).Wait();
-                host.CallAsync("Test-FSharp", arguments).Wait();
                 host.Stop();
+
+                await NodeFunctionInvoker.InitializeAsync();
 
                 traceWriter.Info("Warm up succeeded");
             }
