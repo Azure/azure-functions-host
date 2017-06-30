@@ -60,7 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             CloudBlobClient client = account.CreateCloudBlobClient();
 
             _blobContainer = client.GetContainerReference(_secretsContainerName);
-            _blobContainer.CreateIfNotExists();
+            // TODO: Remove this (it is already slated to be removed)
+            _blobContainer.CreateIfNotExistsAsync().GetAwaiter().GetResult();
         }
 
         public event EventHandler<SecretsChangedEventArgs> SecretsChanged;

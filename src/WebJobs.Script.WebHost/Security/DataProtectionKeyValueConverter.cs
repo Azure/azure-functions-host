@@ -8,7 +8,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Azure.Web.DataProtection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -19,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public DataProtectionKeyValueConverter(FileAccess access)
             : base(access)
         {
-            var provider = DataProtectionProvider.CreateAzureDataProtector();
+            var provider = Web.DataProtection.DataProtectionProvider.CreateAzureDataProtector();
             _dataProtector = provider.CreateProtector("function-secrets");
         }
 

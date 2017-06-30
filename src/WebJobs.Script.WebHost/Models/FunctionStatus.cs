@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.ObjectModel;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models

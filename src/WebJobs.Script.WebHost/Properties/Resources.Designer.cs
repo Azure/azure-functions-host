@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
+namespace WebJobs.Script.WebHost.Core.Properties {
     using System;
     
     
@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "4.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "15.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Microsoft.Azure.WebJobs.Script.WebHost.Properties.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("WebJobs.Script.WebHost.Core.Properties.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -107,22 +107,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         internal static string FunctionSecretsSchemaV1 {
             get {
                 return ResourceManager.GetString("FunctionSecretsSchemaV1", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to &lt;!DOCTYPE html&gt;
-        ///&lt;html&gt;
-        ///&lt;head&gt;
-        ///    &lt;title&gt;Your Azure Function App is up and running.&lt;/title&gt;
-        ///    &lt;style type=&quot;text/css&quot;&gt;
-        ///        @font-face {
-        ///            font-family: &apos;SegoeLight&apos;;
-        ///            src: url(//:) format(&apos;no404&apos;), url(data:font/woff;charset=utf-8;base64,d09GRgABAAAAAFbcABAAAAAAjewAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAABGRlRNAAABbAAAABsAAAAcWqtaPUdERUYAAAGIAAAAHQAAACABGAADT1MvMgAAAagAAABYAAAAYGrqcLZjbWFwAAACAAAAAaIAAAIKczqUA2N2dCAAAAOkAAAATAAAAEwOEAwRZnBnbQAAA/AAAAGxAAACZQ+0L6dnYXNwAAAFpAAAAAwAAAAMAA [rest of string was truncated]&quot;;.
-        /// </summary>
-        internal static string Homepage {
-            get {
-                return ResourceManager.GetString("Homepage", resourceCulture);
             }
         }
         

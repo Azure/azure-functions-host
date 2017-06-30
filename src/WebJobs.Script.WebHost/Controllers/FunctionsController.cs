@@ -1,15 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-
+#if HTTP_BINDING
 using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web.Http;
-using System.Web.Http.Controllers;
-using System.Web.Http.Dependencies;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
@@ -114,3 +111,4 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
     }
 }
+#endif

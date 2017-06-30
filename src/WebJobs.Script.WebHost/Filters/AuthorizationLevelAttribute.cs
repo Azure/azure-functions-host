@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+#if HTTP_BINDING
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,57 +9,57 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web.Http;
-using System.Web.Http.Controllers;
-using System.Web.Http.Filters;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = true, AllowMultiple = true)]
-    public class AuthorizationLevelAttribute : AuthorizationFilterAttribute
+    public class AuthorizationLevelAttribute : ActionFilterAttribute, IAsyncAuthorizationFilter
     {
         public const string FunctionsKeyHeaderName = "x-functions-key";
+        private readonly ISecretManager _secretManager;
 
-        public AuthorizationLevelAttribute(AuthorizationLevel level)
+        public AuthorizationLevelAttribute(AuthorizationLevel level, ISecretManager secretManager)
         {
             Level = level;
+            _secretManager = secretManager;
         }
 
         public AuthorizationLevel Level { get; }
 
-        public async override Task OnAuthorizationAsync(HttpActionContext actionContext, CancellationToken cancellationToken)
+        public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
         {
-            if (actionContext == null)
-            {
-                throw new ArgumentNullException("actionContext");
-            }
+            // TODO: FACAVAL 
+            //if (context == null)
+            //{
+            //    throw new ArgumentNullException(nameof(context));
+            //}
 
-            AuthorizationLevel requestAuthorizationLevel = actionContext.Request.GetAuthorizationLevel();
+            //AuthorizationLevel requestAuthorizationLevel = context.HttpContext.Request.GetAuthorizationLevel();
 
-            // If the request has not yet been authenticated, authenticate it
-            var request = actionContext.Request;
-            if (requestAuthorizationLevel == AuthorizationLevel.Anonymous)
-            {
-                // determine the authorization level for the function and set it
-                // as a request property
-                var secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
+            //// If the request has not yet been authenticated, authenticate it
+            //var request = context.HttpContext.Request;
+            //if (requestAuthorizationLevel == AuthorizationLevel.Anonymous)
+            //{
+            //    // determine the authorization level for the function and set it
+            //    // as a request property
+            //    requestAuthorizationLevel = await GetAuthorizationLevelAsync(request, _secretManager, EvaluateKeyMatch);
+            //    request.SetAuthorizationLevel(requestAuthorizationLevel);
+            //}
 
-                requestAuthorizationLevel = await GetAuthorizationLevelAsync(request, secretManager, EvaluateKeyMatch);
-                request.SetAuthorizationLevel(requestAuthorizationLevel);
-            }
+            //if (request.IsAuthDisabled() ||
+            //    SkipAuthorization(actionContext) ||
+            //    Level == AuthorizationLevel.Anonymous)
+            //{
+            //    return;
+            //}
 
-            if (request.IsAuthDisabled() ||
-                SkipAuthorization(actionContext) ||
-                Level == AuthorizationLevel.Anonymous)
-            {
-                return;
-            }
-
-            if (requestAuthorizationLevel < Level)
-            {
-                actionContext.Response = new HttpResponseMessage(HttpStatusCode.Unauthorized);
-            }
+            //if (requestAuthorizationLevel < Level)
+            //{
+            //    context.Result = new StatusCodeResult(StatusCodes.Status401Unauthorized);
+            //}
         }
 
         protected virtual bool EvaluateKeyMatch(IDictionary<string, string> secrets, string keyValue) => HasMatchingKey(secrets, keyValue);
@@ -128,3 +129,4 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
         }
     }
 }
+#endif

@@ -10,8 +10,8 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
+using WebJobs.Script.WebHost.Core.Properties;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
