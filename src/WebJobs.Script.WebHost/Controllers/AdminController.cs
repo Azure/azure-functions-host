@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return new HttpResponseMessage(HttpStatusCode.BadRequest);
             }
 
-            FunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
+            FunctionDescriptor function = _scriptHostManager.Instance.GetFunctionOrNull(name);
             if (function == null)
             {
                 return new HttpResponseMessage(HttpStatusCode.NotFound);

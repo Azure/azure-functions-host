@@ -27,6 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        public FunctionLogger LogInfo => throw new NotImplementedException();
+
         public Task Invoke(object[] parameters)
         {
             Interlocked.Increment(ref _invokeCount);

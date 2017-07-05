@@ -12,6 +12,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     [DebuggerDisplay("{Name} ({Metadata.ScriptType})")]
     public class FunctionDescriptor
     {
+        // For unit tests.
+        internal FunctionDescriptor()
+        {
+        }
+
         public FunctionDescriptor(
             string name,
             IFunctionInvoker invoker,
@@ -30,15 +35,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             OutputBindings = outputBindings;
         }
 
-        public string Name { get; private set; }
+        public string Name { get; internal set; }
 
         public Collection<ParameterDescriptor> Parameters { get; private set; }
 
         public Collection<CustomAttributeBuilder> CustomAttributes { get; private set; }
 
-        public IFunctionInvoker Invoker { get; private set; }
+        public IFunctionInvoker Invoker { get; internal set; }
 
-        public FunctionMetadata Metadata { get; private set; }
+        public FunctionMetadata Metadata { get; internal set; }
 
         public Collection<FunctionBinding> InputBindings { get; set; }
 

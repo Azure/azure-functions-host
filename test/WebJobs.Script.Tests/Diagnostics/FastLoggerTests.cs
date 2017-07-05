@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             var trace = new TestTraceWriter(TraceLevel.Verbose);
             var ex = new InvalidOperationException("Boom!");
-            FastLogger.OnException(ex, trace);
+            FunctionInstanceLogger.OnException(ex, trace);
 
             TraceEvent traceEvent = trace.Traces.Single();
             Assert.StartsWith("Error writing logs to table storage: System.InvalidOperationException: Boom!", traceEvent.Message);
