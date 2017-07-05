@@ -9,10 +9,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.CodeAnalysis;
@@ -23,33 +21,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public abstract class FunctionInvokerBase : IFunctionInvoker, IDisposable
     {
         private bool _disposed = false;
-        private IMetricsLogger _metrics;
         private IDisposable _fileChangeSubscription;
 
         internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata)
         {
             Host = host;
             Metadata = functionMetadata;
-            _metrics = host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
-
-            // Function file logging is only done conditionally
-            TraceWriter traceWriter = host.FunctionTraceWriterFactory.Create(functionMetadata.Name);
-            FileTraceWriter = traceWriter.Conditional(t => Host.FileLoggingEnabled && (!(t.Properties?.ContainsKey(ScriptConstants.TracePropertyPrimaryHostKey) ?? false) || Host.IsPrimary));
-
-            // The global trace writer used by the invoker will write all traces to both
-            // the host trace writer as well as our file trace writer
-            TraceWriter = host.TraceWriter != null ?
-                new CompositeTraceWriter(new TraceWriter[] { FileTraceWriter, host.TraceWriter }) :
-                FileTraceWriter;
-
-            // Apply the function name as an event property to all traces
-            var functionTraceProperties = new Dictionary<string, object>
-            {
-                { ScriptConstants.TracePropertyFunctionNameKey, Metadata.Name }
-            };
-            TraceWriter = TraceWriter.Apply(functionTraceProperties);
-
-            Logger = host.ScriptConfig.HostConfig.LoggerFactory?.CreateLogger(LogCategories.Executor);
+            LogInfo = new FunctionLogger(this.Host, functionMetadata.Name);
         }
 
         protected static IDictionary<string, object> PrimaryHostTraceProperties { get; }
@@ -63,13 +41,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public ScriptHost Host { get; }
 
+        public FunctionLogger LogInfo { get; }
+
         public FunctionMetadata Metadata { get; }
 
-        internal TraceWriter FileTraceWriter { get; set; }
+        protected TraceWriter TraceWriter => LogInfo.TraceWriter;
 
-        public TraceWriter TraceWriter { get; }
+        protected ILogger Logger => LogInfo.Logger;
 
-        public ILogger Logger { get; }
+        public TraceWriter FileTraceWriter => LogInfo.FileTraceWriter;
 
         /// <summary>
         /// All unhandled invocation exceptions will flow through this method.
@@ -85,11 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected virtual void TraceError(string errorMessage)
         {
-            TraceWriter.Error(errorMessage);
-            Logger?.LogError(errorMessage);
-
-            // when any errors occur, we want to flush immediately
-            TraceWriter.Flush();
+            LogInfo.TraceError(errorMessage);
         }
 
         protected bool InitializeFileWatcherIfEnabled()
@@ -110,77 +86,31 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public async Task Invoke(object[] parameters)
         {
+            FunctionInvocationContext context = GetContextFromParameters(parameters, Metadata);
+            await InvokeCore(parameters, context);
+        }
+
+        private static FunctionInvocationContext GetContextFromParameters(object[] parameters, FunctionMetadata metadata)
+        {
             // We require the ExecutionContext, so this will throw if one is not found.
             ExecutionContext functionExecutionContext = parameters.OfType<ExecutionContext>().First();
-            PopulateExecutionContext(functionExecutionContext);
+            functionExecutionContext.FunctionDirectory = metadata.FunctionDirectory;
+            functionExecutionContext.FunctionName = metadata.Name;
 
             // These may not be present, so null is okay.
             TraceWriter functionTraceWriter = parameters.OfType<TraceWriter>().FirstOrDefault();
             Binder binder = parameters.OfType<Binder>().FirstOrDefault();
             ILogger logger = parameters.OfType<ILogger>().FirstOrDefault();
-            string invocationId = functionExecutionContext.InvocationId.ToString();
 
-            var startedEvent = new FunctionStartedEvent(functionExecutionContext.InvocationId, Metadata);
-            _metrics.BeginEvent(startedEvent);
-            var invokeLatencyEvent = LogInvocationMetrics(_metrics, Metadata);
-            var invocationStopWatch = new Stopwatch();
-            invocationStopWatch.Start();
-
-            try
+            FunctionInvocationContext context = new FunctionInvocationContext
             {
-                string startMessage = $"Function started (Id={invocationId})";
-                TraceWriter.Info(startMessage);
-                Logger?.LogInformation(startMessage);
+                ExecutionContext = functionExecutionContext,
+                Binder = binder,
+                TraceWriter = functionTraceWriter,
+                Logger = logger
+            };
 
-                FunctionInvocationContext context = new FunctionInvocationContext
-                {
-                    ExecutionContext = functionExecutionContext,
-                    Binder = binder,
-                    TraceWriter = functionTraceWriter,
-                    Logger = logger
-                };
-
-                await InvokeCore(parameters, context);
-
-                invocationStopWatch.Stop();
-                LogFunctionResult(startedEvent, true, invocationId, invocationStopWatch.ElapsedMilliseconds);
-            }
-            catch (AggregateException ex)
-            {
-                ExceptionDispatchInfo exInfo = null;
-
-                // If there's only a single exception, rethrow it by itself
-                Exception singleEx = ex.Flatten().InnerExceptions.SingleOrDefault();
-                if (singleEx != null)
-                {
-                    exInfo = ExceptionDispatchInfo.Capture(singleEx);
-                }
-                else
-                {
-                    exInfo = ExceptionDispatchInfo.Capture(ex);
-                }
-
-                invocationStopWatch.Stop();
-                LogFunctionResult(startedEvent, false, invocationId, invocationStopWatch.ElapsedMilliseconds);
-                exInfo.Throw();
-            }
-            catch
-            {
-                invocationStopWatch.Stop();
-                LogFunctionResult(startedEvent, false, invocationId, invocationStopWatch.ElapsedMilliseconds);
-                throw;
-            }
-            finally
-            {
-                if (startedEvent != null)
-                {
-                    _metrics.EndEvent(startedEvent);
-                }
-                if (invokeLatencyEvent != null)
-                {
-                    _metrics.EndEvent(invokeLatencyEvent);
-                }
-            }
+            return context;
         }
 
         internal static object LogInvocationMetrics(IMetricsLogger metrics, FunctionMetadata metadata)
@@ -197,23 +127,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return metrics.BeginEvent(MetricEventNames.FunctionInvokeLatency, metadata.Name);
         }
 
-        private void LogFunctionResult(FunctionStartedEvent startedEvent, bool success, string invocationId, long elapsedMs)
-        {
-            if (startedEvent != null)
-            {
-                startedEvent.Success = success;
-            }
-
-            string resultString = success ? "Success" : "Failure";
-            string message = $"Function completed ({resultString}, Id={invocationId ?? "0"}, Duration={elapsedMs}ms)";
-
-            TraceLevel traceWriterLevel = success ? TraceLevel.Info : TraceLevel.Error;
-            LogLevel logLevel = success ? LogLevel.Information : LogLevel.Error;
-
-            TraceWriter.Trace(message, traceWriterLevel, null);
-            Logger?.Log(logLevel, new EventId(0), message, null, (s, e) => s);
-        }
-
         protected TraceWriter CreateUserTraceWriter(TraceWriter traceWriter)
         {
             // We create a composite writer to ensure that all user traces get
@@ -224,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 { ScriptConstants.TracePropertyIsUserTraceKey, true }
             };
-            return new CompositeTraceWriter(new[] { traceWriter, FileTraceWriter }).Apply(userTraceProperties);
+            return new CompositeTraceWriter(new[] { traceWriter, LogInfo.FileTraceWriter }).Apply(userTraceProperties);
         }
 
         protected abstract Task InvokeCore(object[] parameters, FunctionInvocationContext context);
@@ -235,19 +148,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected void TraceOnPrimaryHost(string message, TraceLevel level, string source = null,  Exception exception = null)
         {
+            TraceWriter.Trace(message, level, PrimaryHostTraceProperties);
             var traceEvent = new TraceEvent(level, message, source, exception);
             foreach (var item in PrimaryHostTraceProperties)
             {
                 traceEvent.Properties.Add(item);
             }
-
             TraceWriter.Trace(traceEvent);
-        }
-
-        protected void PopulateExecutionContext(ExecutionContext context)
-        {
-            context.FunctionDirectory = Metadata.FunctionDirectory;
-            context.FunctionName = Metadata.Name;
         }
 
         internal void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics, LogTargets logTarget = LogTargets.All)
@@ -257,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return;
             }
 
-            TraceWriter traceWriter = TraceWriter;
+            TraceWriter traceWriter = LogInfo.TraceWriter;
             IDictionary<string, object> properties = PrimaryHostTraceProperties;
 
             if (!logTarget.HasFlag(LogTargets.User))
@@ -284,7 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     _fileChangeSubscription?.Dispose();
 
-                    (TraceWriter as IDisposable)?.Dispose();
+                    (LogInfo.TraceWriter as IDisposable)?.Dispose();
                 }
 
                 _disposed = true;
@@ -295,6 +202,57 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             Dispose(true);
             GC.SuppressFinalize(this);
+        }
+    }
+
+    // Per function instance
+    public class FunctionInstanceMonitor
+    {
+        // From ctor
+        private readonly FunctionMetadata _metadata;
+        private readonly IMetricsLogger _metrics;
+        private readonly Guid _invocationId;
+        private readonly FunctionLogger _logInfo;
+
+        private readonly Stopwatch _invocationStopWatch = new Stopwatch();
+
+        private FunctionStartedEvent startedEvent;
+        private object invokeLatencyEvent;
+
+        public FunctionInstanceMonitor(
+            FunctionMetadata metadata,
+            IMetricsLogger metrics,
+            Guid invocationId,
+            FunctionLogger logInfo)
+        {
+            _metadata = metadata;
+            _metrics = metrics;
+            _invocationId = invocationId;
+            _logInfo = logInfo;
+        }
+
+        public void Start()
+        {
+            _logInfo.LogFunctionStart(_invocationId.ToString());
+
+            startedEvent = new FunctionStartedEvent(_invocationId, _metadata);
+            _metrics.BeginEvent(startedEvent);
+            invokeLatencyEvent = FunctionInvokerBase.LogInvocationMetrics(_metrics, _metadata);
+            _invocationStopWatch.Start();
+        }
+
+        // Called on success and failure
+        public void End(bool success)
+        {
+            _logInfo.LogFunctionResult(success, _invocationId.ToString(), _invocationStopWatch.ElapsedMilliseconds);
+
+            startedEvent.Success = success;
+            _metrics.EndEvent(startedEvent);
+
+            if (invokeLatencyEvent != null)
+            {
+                _metrics.EndEvent(invokeLatencyEvent);
+            }
         }
     }
 }
