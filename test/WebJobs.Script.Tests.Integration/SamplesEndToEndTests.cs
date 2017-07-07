@@ -10,7 +10,9 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Security.Claims;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Xml.Linq;
@@ -254,6 +256,137 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
 
             Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
+        }
+
+        [Fact]
+        public async Task HttpTrigger_CSharp_Get_Succeeds()
+        {
+            TestHelpers.ClearFunctionLogs("HttpTrigger-CSharp");
+
+            // request with default key and verify results
+            var request = new HttpRequestMessage(HttpMethod.Get, "api/httptrigger-csharp?code=9884kkdlkkdf83ksld8589kflss90sll5kjjsyfjskqv&name=Mathew");
+            var response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var logs = await TestHelpers.GetFunctionLogsAsync("HttpTrigger-CSharp");
+            Assert.NotNull(logs.SingleOrDefault(p => p.Contains("Identity: (key, Function, default)")));
+
+            // request with secondary key and verify results
+            request = new HttpRequestMessage(HttpMethod.Get, "api/httptrigger-csharp?code=8883jkdjs661734orlls8990skkdiij62jqtg66wiwiwu&name=Mathew");
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            logs = await TestHelpers.GetFunctionLogsAsync("HttpTrigger-CSharp");
+            Assert.NotNull(logs.SingleOrDefault(p => p.Contains("Identity: (key, Function, secondary)")));
+
+            // request with master key and verify results
+            request = new HttpRequestMessage(HttpMethod.Get, $"api/httptrigger-csharp?code={MasterKey}&name=Mathew");
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            logs = await TestHelpers.GetFunctionLogsAsync("HttpTrigger-CSharp");
+            Assert.NotNull(logs.SingleOrDefault(p => p.Contains("Identity: (key, Admin, master)")));
+        }
+
+        [Fact]
+        public async Task HttpTrigger_CSharp_UserAuth()
+        {
+            // simulate AppService Environment
+            var holdPrincipal = Thread.CurrentPrincipal;
+            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId, "TestInstance");
+            Assert.True(ScriptSettingsManager.Instance.IsAppServiceEnvironment);
+
+            HttpRequestMessage request = null;
+            HttpResponseMessage response = null;
+            string responseContent = null;
+            try
+            {
+                request = new HttpRequestMessage(HttpMethod.Get, $"api/httptrigger-csharp-userauth");
+
+                MockEasyAuth(request, "facebook", "Mathew Charles", "10241897674253170");
+
+                response = await this._fixture.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                responseContent = await response.Content.ReadAsStringAsync();
+                Assert.Equal("Identity: (facebook, Mathew Charles, 10241897674253170)", responseContent);
+            }
+            finally
+            {
+                ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId, null);
+                Thread.CurrentPrincipal = holdPrincipal;
+            }
+
+            // verify that a request fails if it is totally unauthenticated
+            request = new HttpRequestMessage(HttpMethod.Get, "api/httptrigger-csharp-userauth");
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // verify that a request also fails using a function key
+            // when no user identity is provided
+            request = new HttpRequestMessage(HttpMethod.Get, "api/httptrigger-csharp-userauth?code=09785444kkmmfjfue638i2id888425wrif85kd63jjkv");
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task HttpTrigger_UserAuth()
+        {
+            // simulate AppService Environment
+            var holdPrincipal = Thread.CurrentPrincipal;
+            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId, "TestInstance");
+            Assert.True(ScriptSettingsManager.Instance.IsAppServiceEnvironment);
+
+            HttpRequestMessage request = null;
+            HttpResponseMessage response = null;
+            string responseContent = null;
+            try
+            {
+                request = new HttpRequestMessage(HttpMethod.Get, $"api/httptrigger-userauth");
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+                MockEasyAuth(request, "facebook", "Mathew Charles", "10241897674253170");
+
+                response = await this._fixture.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                responseContent = await response.Content.ReadAsStringAsync();
+                Assert.Equal("Identity: (facebook, Mathew Charles, 10241897674253170)", responseContent);
+            }
+            finally
+            {
+                ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId, null);
+                Thread.CurrentPrincipal = holdPrincipal;
+            }
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Batch_Succeeds()
+        {
+            TestHelpers.ClearFunctionLogs("HttpTrigger-Batch");
+
+            var request = new HttpRequestMessage(HttpMethod.Get, $"api/httptrigger-batch?name=Mathew&code={MasterKey}");
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+            var response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Assert.True(responseContent.Contains("Hello Mathew!"));
+
+            var logs = await TestHelpers.GetFunctionLogsAsync("HttpTrigger-Batch");
+            Assert.True(logs.Any(p => p.Contains("Identity: (key, Admin, master)")));
+        }
+
+        private static void MockEasyAuth(HttpRequestMessage request, string provider, string name, string id)
+        {
+            // mock out the principal by setting it directly
+            // here we're setting up an identity in the way that we
+            // know EasyAuth does
+            var claims = new Claim[]
+            {
+                new Claim("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier", id),
+                new Claim("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", name)
+            };
+            var identity = new ClaimsIdentity(claims, provider);
+            var principal = new ClaimsPrincipal(identity);
+            Thread.CurrentPrincipal = principal;
+
+            request.Headers.Add(ScriptConstants.AntaresEasyAuthProviderHeaderName, provider);
+            request.Headers.Add(ScriptConstants.AntaresEasyAuthProviderIdHeaderName, id);
         }
 
         [Fact]
@@ -564,7 +697,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task GenericWebHook_CSharp_Post_Succeeds()
         {
-            string uri = "api/hooks/csharp/generic/test?code=827bdzxhqy3xc62cxa2hmfsh6gxzhg30s5pi64tu";
+            TestHelpers.ClearFunctionLogs("WebHook-Generic-CSharp");
+
+            string uri = "api/hooks/csharp/generic/test?code=19023kkfmnvu37fk58fkkkc88282874jdmxwx2w5&clientid=c1";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
             request.Content = new StringContent("{ 'Value': 'Foobar' }");
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -575,6 +710,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string body = await response.Content.ReadAsStringAsync();
             JObject jsonObject = JObject.Parse(body);
             Assert.Equal("Value: Foobar Action: test", jsonObject["result"]);
+
+            var logs = await TestHelpers.GetFunctionLogsAsync("WebHook-Generic-CSharp");
+            Assert.NotNull(logs.SingleOrDefault(p => p.Contains("Identity: (key, Function, c1)")));
         }
 
         [Fact]

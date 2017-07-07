@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetAuthorizationLevel_ValidKeyHeader_MasterKey_ReturnsAdmin()
+        public async Task GetAuthorizationResult_ValidKeyHeader_MasterKey_ReturnsAdmin()
         {
             HttpRequestMessage request = new HttpRequestMessage();
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, TestMasterKeyValue);
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(TestHostFunctionKeyValue1, TestFunctionKeyValue1)]
         [InlineData(TestHostFunctionKeyValue2, TestFunctionKeyValue2)]
-        public async Task GetAuthorizationLevel_ValidKeyHeader_FunctionKey_ReturnsFunction(string hostFunctionKeyValue, string functionKeyValue)
+        public async Task GetAuthorizationResult_ValidKeyHeader_FunctionKey_ReturnsFunction(string hostFunctionKeyValue, string functionKeyValue)
         {
             // first verify the host level function key works
             HttpRequestMessage request = new HttpRequestMessage();
@@ -268,7 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetAuthorizationLevel_InvalidKeyHeader_ReturnsAnonymous()
+        public async Task GetAuthorizationResult_InvalidKeyHeader_ReturnsAnonymous()
         {
             HttpRequestMessage request = new HttpRequestMessage();
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, "invalid");
@@ -279,7 +279,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetAuthorizationLevel_ValidCodeQueryParam_MasterKey_ReturnsAdmin()
+        public async Task GetAuthorizationResult_ValidCodeQueryParam_MasterKey_ReturnsAdmin()
         {
             Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", TestMasterKeyValue));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -290,7 +290,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetAuthorizationLevel_ValidCodeQueryParam_SystemKey_ReturnsSystem()
+        public async Task GetAuthorizationResult_ValidCodeQueryParam_SystemKey_ReturnsSystem()
         {
             Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", TestSystemKeyValue1));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -303,7 +303,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(TestHostFunctionKeyValue1, TestFunctionKeyValue1)]
         [InlineData(TestHostFunctionKeyValue2, TestFunctionKeyValue2)]
-        public async Task GetAuthorizationLevel_ValidCodeQueryParam_FunctionKey_ReturnsFunction(string hostFunctionKeyValue, string functionKeyValue)
+        public async Task GetAuthorizationResult_ValidCodeQueryParam_FunctionKey_ReturnsFunction(string hostFunctionKeyValue, string functionKeyValue)
         {
             // first try host level function key
             Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", hostFunctionKeyValue));
@@ -318,7 +318,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetAuthorizationLevel_InvalidCodeQueryParam_ReturnsAnonymous()
+        public async Task GetAuthorizationResult_InvalidCodeQueryParam_ReturnsAnonymous()
         {
             Uri uri = new Uri(string.Format("http://functions/api/foo?code={0}", "invalid"));
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);

@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using EdgeJs;
@@ -391,10 +392,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ["functionDirectory"] = invocationContext.ExecutionContext.FunctionDirectory,
             };
 
-            var context = new Dictionary<string, object>()
+            var identity = CreateIdentity(invocationContext.Identity);
+
+            var context = new Dictionary<string, object>
             {
                 { "invocationId", invocationContext.ExecutionContext.InvocationId },
                 { "executionContext", executionContext },
+                { "identity", identity },
                 { "log", log },
                 { "bindings", bindings },
                 { "bind", bind }
@@ -463,6 +467,29 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             context.Add("_triggerType", _trigger.Type);
 
             return context;
+        }
+
+        internal static Dictionary<string, object> CreateIdentity(ClaimsIdentity identity)
+        {
+            var result = new Dictionary<string, object>
+            {
+                { "authenticationType", identity.AuthenticationType }
+            };
+
+            var claims = new Dictionary<string, object>();
+            foreach (var currClaim in identity.Claims)
+            {
+                var claim = new Dictionary<string, object>
+                {
+                    { "type", currClaim.Type },
+                    { "value", currClaim.Value },
+                    { "issuer", currClaim.Issuer }
+                };
+                claims[currClaim.Type] = claim;
+            }
+            result.Add("claims", claims);
+
+            return result;
         }
 
         internal static Dictionary<string, object> NormalizeBindingData(IDictionary<string, object> bindingData)

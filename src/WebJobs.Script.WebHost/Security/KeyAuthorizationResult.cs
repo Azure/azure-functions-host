@@ -9,11 +9,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
     {
         public KeyAuthorizationResult(string keyId, AuthorizationLevel level)
         {
-            KeyName = keyId;
+            KeyId = keyId;
             AuthorizationLevel = level;
         }
 
-        public string KeyName { get; }
+        public string KeyId { get; }
 
         public AuthorizationLevel AuthorizationLevel { get; }
     }

@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsWebHookContextKey = "MS_AzureFunctionsWebHookContext";
         public const string AzureFunctionsHttpResponseKey = "MS_AzureFunctionsHttpResponse";
         public const string AzureFunctionsHttpRequestAuthorizationLevelKey = "MS_AzureFunctionsAuthorizationLevel";
-        public const string AzureFunctionsHttpRequestKeyNameKey = "MS_AzureFunctionsKeyId";
+        public const string AzureFunctionsHttpRequestKeyIdKey = "MS_AzureFunctionsKeyId";
         public const string AzureFunctionsHttpRequestAuthorizationDisabledKey = "MS_AzureFunctionsAuthorizationDisabled";
         public const string AzureFunctionsHttpFunctionKey = "MS_AzureFunctionsHttpFunction";
         public const string AzureFunctionsRequestIdKey = "MS_AzureFunctionsRequestID";
@@ -21,6 +21,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TracePropertyEventDetailsKey = "MS_EventDetails";
         public const string TracePropertyIsUserTraceKey = "MS_IsUserTrace";
         public const string TracePropertyIsSystemTraceKey = "MS_IsSystemTrace";
+
+        public const string AzureFunctionsKeyAuthenticationType = "key";
+        public const string AzureFunctionsAuthLevelClaimName = "urn:functions:authLevel";
+        public const string AzureFunctionsKeyIdClaimName = "urn:functions:keyId";
 
         public const string TraceSourceSecretManagement = "SecretManagement";
         public const string TraceSourceHostAdmin = "HostAdmin";
@@ -40,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // with user parameters
         public const string SystemTriggerParameterName = "_triggerValue";
         public const string SystemExecutionContextParameterName = "_context";
+        public const string SystemClaimsIdentityParameterName = "_identity";
         public const string SystemLogParameterName = "_log";
         public const string SystemBinderParameterName = "_binder";
         public const string SystemReturnParameterBindingName = "$return";
@@ -52,6 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
 
+        public const string AntaresEasyAuthProviderHeaderName = "X-MS-CLIENT-PRINCIPAL-IDP";
+        public const string AntaresEasyAuthProviderIdHeaderName = "X-MS-CLIENT-PRINCIPAL-ID";
         public const string AntaresLogIdHeaderName = "X-ARR-LOG-ID";
         public const string CheckLoadQueryParameterName = "checkLoad";
         public const string DynamicSku = "Dynamic";

@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsAntaresInternalRequest(this HttpRequestMessage request)
         {
-            if (!ScriptSettingsManager.Instance.IsAzureEnvironment)
+            if (!ScriptSettingsManager.Instance.IsAppServiceEnvironment)
             {
                 return false;
             }
@@ -61,10 +61,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <param name="request">The request.</param>
         /// <param name="level">The level to check.</param>
-        /// <param name="keyName">Optional key name if key based auth is being used</param>
+        /// <param name="keyId">Optional key ID if key based auth is being used</param>
         /// <returns>True if the request is authorized at the specified level,
         /// false otherwise.</returns>
-        public static bool HasAuthorizationLevel(this HttpRequestMessage request, AuthorizationLevel level, string keyName = null)
+        public static bool HasAuthorizationLevel(this HttpRequestMessage request, AuthorizationLevel level, string keyId = null)
         {
             if (request.IsAuthDisabled())
             {
@@ -78,11 +78,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 return true;
             }
 
-            if (keyName != null)
+            if (keyId != null)
             {
                 // if a key name is specified, make sure we have a match
-                string requestKeyName = request.GetPropertyOrDefault<string>(ScriptConstants.AzureFunctionsHttpRequestKeyNameKey);
-                if (string.Compare(keyName, requestKeyName) != 0)
+                string requestKeyId = request.GetPropertyOrDefault<string>(ScriptConstants.AzureFunctionsHttpRequestKeyIdKey);
+                if (string.Compare(keyId, requestKeyId) != 0)
                 {
                     return false;
                 }

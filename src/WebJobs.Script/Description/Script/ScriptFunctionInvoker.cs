@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string functionInstanceOutputPath = Path.Combine(Path.GetTempPath(), "Functions", "Binding", invocationId);
 
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>();
-            InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, context.ExecutionContext);
+            InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, context);
 
             object convertedInput = ConvertInput(input);
             Utility.ApplyBindingData(convertedInput, context.Binder.BindingData);
