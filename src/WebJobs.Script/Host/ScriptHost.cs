@@ -443,7 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Do this after we've loaded the custom extensions. That gives an extension an opportunity to plug in their own implementations.
                 if (storageString != null)
                 {
-                    var lockManager = ScriptConfig.HostConfig.GetService<IDistributedLockManager>();
+                    var lockManager = (IDistributedLockManager)Services.GetService(typeof(IDistributedLockManager));
                     _blobLeaseManager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostConfig.HostId, InstanceId, TraceWriter, hostConfig.LoggerFactory);
                 }
 

@@ -45,6 +45,10 @@ namespace Microsoft.Azure.WebJobs.Script
             _instanceId = instanceId;
 
             _lockManager = lockManager;
+            if (lockManager == null)
+            {
+                throw new ArgumentNullException(nameof(lockManager));
+            }
 
             // Renew the lease three seconds before it expires
             _renewalInterval = renewalInterval ?? leaseTimeout.Add(TimeSpan.FromSeconds(-3));
