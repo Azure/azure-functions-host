@@ -391,6 +391,7 @@
     <Compile Include="ApplicationInsights\ApplicationInsightsEndToEndTestsBase.cs" />
     <Compile Include="ApplicationInsights\ApplicationInsightsTestFixture.cs" />
     <Compile Include="ApplicationInsights\TelemetryPayload.cs" />
+    <Compile Include="DirectLoadEndToEndTests.cs" />
     <Compile Include="Controllers\ControllerDisabledAuthScenarioTestsFixture.cs" />
     <Compile Include="Controllers\Keys\DeleteFunctionKeysScenario.cs" />
     <Compile Include="Controllers\Keys\DeleteHostSystemKeysScenario.cs" />
@@ -444,6 +445,8 @@
     <Compile Include="PowerShellEndToEndTests.cs" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="TestFiles\CSharp-DirectLoad\function.json" />
+    <EmbeddedResource Include="TestFiles\CSharp-DirectLoad\run.cs" />
     <Content Include="TestScripts\ListenerExceptions\ListenerStartupException\index.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

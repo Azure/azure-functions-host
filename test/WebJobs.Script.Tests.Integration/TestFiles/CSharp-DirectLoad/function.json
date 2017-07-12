@@ -1,0 +1,14 @@
+﻿{{
+    "Comments" : "This is a for a direct load scenario. Notice it only has a trigger binding and has the 'configurationSource' set.",
+    "scriptFile":"{0}",
+    "entryPoint": "{1}",
+    "configurationSource" : "attributes",
+    "bindings": [
+        {{
+            "type": "httpTrigger",
+            "name": "req",
+            "direction": "in",
+            "methods": [ "get" ]
+        }}
+    ]
+}}

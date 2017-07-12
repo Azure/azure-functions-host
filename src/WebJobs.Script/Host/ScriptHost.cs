@@ -160,6 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public virtual Collection<FunctionDescriptor> Functions { get; private set; }
 
+        // Maps from FunctionName to a set of errors for that function.
         public virtual Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
 
         public virtual bool IsPrimary
@@ -515,6 +516,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 List<Type> types = new List<Type>();
                 types.Add(type);
 
+                AddDirectTypes(types, functions);
+
                 hostConfig.TypeLocator = new TypeLocator(types);
 
                 Functions = functions;
@@ -563,6 +566,78 @@ namespace Microsoft.Azure.WebJobs.Script
             return bindingTypes;
         }
 
+        // Validate that for any precompiled assembly, all functions have the same configuration precedence.
+        private void VerifyPrecompileStatus(IEnumerable<FunctionDescriptor> functions)
+        {
+            HashSet<string> illegalScriptAssemblies = new HashSet<string>();
+
+            Dictionary<string, bool> mapAssemblySettings = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            foreach (var function in functions)
+            {
+                var metadata = function.Metadata;
+                var scriptFile = metadata.ScriptFile;
+                if (scriptFile.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                {
+                    bool isDirect = metadata.IsDirect;
+                    bool prevIsDirect;
+                    if (mapAssemblySettings.TryGetValue(scriptFile, out prevIsDirect))
+                    {
+                        if (prevIsDirect != isDirect)
+                        {
+                            illegalScriptAssemblies.Add(scriptFile);
+                        }
+                    }
+                    mapAssemblySettings[scriptFile] = isDirect;
+                }
+            }
+
+            foreach (var function in functions)
+            {
+                var metadata = function.Metadata;
+                var scriptFile = metadata.ScriptFile;
+
+                if (illegalScriptAssemblies.Contains(scriptFile))
+                {
+                    // Error. All entries pointing to the same dll must have the same value for IsDirect
+                    string msg = string.Format(CultureInfo.InvariantCulture, "Configuration error: All functions in {0} must have the same config precedence,",
+                        scriptFile);
+
+                    // Adding a function error will cause this function to get ignored
+                    AddFunctionError(this.FunctionErrors, metadata.Name, msg);
+
+                    TraceWriter.Info(msg);
+                    _startupLogger?.LogInformation(msg);
+                }
+
+                return;
+            }
+        }
+
+        private static void AddDirectTypes(List<Type> types, Collection<FunctionDescriptor> functions)
+        {
+            HashSet<Type> visitedTypes = new HashSet<Type>();
+
+            foreach (var function in functions)
+            {
+                var metadata = function.Metadata;
+                if (!metadata.IsDirect)
+                {
+                    continue;
+                }
+
+                string path = metadata.ScriptFile;
+                var typeName = Utility.GetFullClassName(metadata.EntryPoint);
+
+                Assembly assembly = Assembly.LoadFrom(path);
+                var type = assembly.GetType(typeName);
+
+                if (visitedTypes.Add(type))
+                {
+                    types.Add(type);
+                }
+            }
+        }
+
         private IMetricsLogger CreateMetricsLogger()
         {
             IMetricsLogger metricsLogger = ScriptConfig.HostConfig.GetService<IMetricsLogger>();
@@ -581,30 +656,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 foreach (var dir in Directory.EnumerateDirectories(extensionsPath))
                 {
-                    foreach (var path in Directory.EnumerateFiles(dir, "*.dll"))
-                    {
-                        // We don't want to load and reflect over every dll.
-                        // By convention, restrict to based on filenames.
-                        var filename = Path.GetFileName(path);
-                        if (!filename.ToLowerInvariant().Contains("extension"))
-                        {
-                            continue;
-                        }
-
-                        try
-                        {
-                            // See GetNugetPackagesPath() for details
-                            // Script runtime is already setup with assembly resolution hooks, so use LoadFrom
-                            Assembly assembly = Assembly.LoadFrom(path);
-                            LoadExtensions(assembly, path);
-                        }
-                        catch (Exception e)
-                        {
-                            string msg = $"Failed to load custom extension from '{path}'.";
-                            TraceWriter.Error(msg, e);
-                            _startupLogger.LogError(0, e, msg);
-                        }
-                    }
+                    LoadCustomExtensions(dir);
                 }
             }
 
@@ -614,6 +666,34 @@ namespace Microsoft.Azure.WebJobs.Script
             var generalProvider = ScriptConfig.BindingProviders.OfType<GeneralScriptBindingProvider>().First();
             var metadataProvider = this.CreateMetadataProvider();
             generalProvider.CompleteInitialization(metadataProvider);
+        }
+
+        private void LoadCustomExtensions(string extensionsPath)
+        {
+            foreach (var path in Directory.EnumerateFiles(extensionsPath, "*.dll"))
+            {
+                // We don't want to load and reflect over every dll.
+                // By convention, restrict to based on filenames.
+                var filename = Path.GetFileName(path);
+                if (!filename.ToLowerInvariant().Contains("extension"))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    // See GetNugetPackagesPath() for details
+                    // Script runtime is already setup with assembly resolution hooks, so use LoadFrom
+                    Assembly assembly = Assembly.LoadFrom(path);
+                    LoadExtensions(assembly, path);
+                }
+                catch (Exception e)
+                {
+                    string msg = $"Failed to load custom extension from '{path}'.";
+                    TraceWriter.Error(msg, e);
+                    _startupLogger.LogError(0, e, msg);
+                }
+            }
         }
 
         private void LoadExtensions(Assembly assembly, string locationHint)
@@ -930,6 +1010,20 @@ namespace Microsoft.Azure.WebJobs.Script
                 functionMetadata.IsExcluded = (bool)value;
             }
 
+            JToken isDirect;
+            if (configMetadata.TryGetValue("configurationSource", StringComparison.OrdinalIgnoreCase, out isDirect))
+            {
+                var isDirectValue = isDirect.ToString();
+                if (string.Equals(isDirectValue, "attributes", StringComparison.OrdinalIgnoreCase))
+                {
+                    functionMetadata.IsDirect = true;
+                }
+                else if (!string.Equals(isDirectValue, "config", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new FormatException($"Illegal value '{isDirectValue}' for 'configurationSource' property in {functionMetadata.Name}'.");
+                }
+            }
+
             return functionMetadata;
         }
 
@@ -1032,7 +1126,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // determine the script type based on the primary script file extension
             functionMetadata.ScriptType = ParseScriptType(functionMetadata.ScriptFile);
-
             functionMetadata.EntryPoint = (string)functionConfig["entryPoint"];
 
             return true;
@@ -1206,6 +1299,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     AddFunctionError(FunctionErrors, metadata.Name, Utility.FlattenException(ex, includeSource: false));
                 }
             }
+
+            VerifyPrecompileStatus(functionDescriptors);
 
             return functionDescriptors;
         }
