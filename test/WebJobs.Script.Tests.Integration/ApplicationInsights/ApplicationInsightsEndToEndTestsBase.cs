@@ -26,13 +26,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             string functionName = "Scenarios";
             TestHelpers.ClearFunctionLogs(functionName);
 
-            string guid = Guid.NewGuid().ToString();
+            string functionTrace = $"Function trace: {Guid.NewGuid().ToString()}";
 
             ScenarioInput input = new ScenarioInput
             {
                 Scenario = "appInsights",
                 Container = "scenarios-output",
-                Value = guid
+                Value = functionTrace
             };
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
@@ -51,50 +51,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             });
 
             // No need for assert; this will throw if there's not one and only one
-            logs.Single(p => p.EndsWith(guid));
+            logs.Single(p => p.EndsWith(functionTrace));
 
-            // Pull out the function log and verify; it's timestamp may make the following ordering
-            // tough to verify.
-            TelemetryPayload telemetryItem = _fixture.TelemetryItems.Single(t => t.Data.BaseData.Message == guid);
-            ValidateTrace(telemetryItem, guid, LogCategories.Function);
-            _fixture.TelemetryItems.Remove(telemetryItem);
+            Assert.Equal(12, _fixture.TelemetryItems.Count);
 
-            // The Host lock message is on another thread and may fire out of order.
-            // https://github.com/Azure/azure-webjobs-sdk-script/issues/1674
-            telemetryItem = _fixture.TelemetryItems.Single(t => t.Data.BaseData.Message?.StartsWith("Host lock lease acquired by instance ID") ?? false);
-            ValidateTrace(telemetryItem, "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
-            _fixture.TelemetryItems.Remove(telemetryItem);
+            // Validate the traces. Order by message string as the requests may come in
+            // slightly out-of-order or on different threads
+            TelemetryPayload[] telemetries = _fixture.TelemetryItems
+                .Where(t => t.Data.BaseType == "MessageData")
+                .OrderBy(t => t.Data.BaseData.Message)
+                .ToArray();
 
-            // Enqueue by time as the requests may come in slightly out-of-order
-            Queue<TelemetryPayload> telemetryQueue = new Queue<TelemetryPayload>();
-            _fixture.TelemetryItems
-                .Where(t => !IsIndexingError(t)) // Filter out indexing errors
-                .OrderBy(t => t.Time).ToList().ForEach(t => telemetryQueue.Enqueue(t));
+            ValidateTrace(telemetries[0], "Found the following functions:\r\n", LogCategories.Startup);
+            ValidateTrace(telemetries[1], "Function completed (Success, Id=", LogCategories.Executor);
+            ValidateTrace(telemetries[2], "Function started (Id=", LogCategories.Executor);
+            ValidateTrace(telemetries[3], functionTrace, LogCategories.Function);
+            ValidateTrace(telemetries[4], "Generating 1 job function(s)", LogCategories.Startup);
+            ValidateTrace(telemetries[5], "Host configuration file read:", LogCategories.Startup);
+            ValidateTrace(telemetries[6], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
+            ValidateTrace(telemetries[7], "Job host started", LogCategories.Startup);
+            ValidateTrace(telemetries[8], "Loaded custom extension: BotFrameworkConfiguration from ''", LogCategories.Startup);
+            ValidateTrace(telemetries[9], "Loaded custom extension: SendGridConfiguration from ''", LogCategories.Startup);
+            ValidateTrace(telemetries[10], "Reading host configuration file", LogCategories.Startup);
 
-            telemetryItem = telemetryQueue.Dequeue();
-            ValidateTrace(telemetryItem, "Reading host configuration file", LogCategories.Startup);
-
-            telemetryItem = telemetryQueue.Dequeue();
-            ValidateTrace(telemetryItem, "Host configuration file read:", LogCategories.Startup);
-
-            telemetryItem = telemetryQueue.Dequeue();
-            ValidateTrace(telemetryItem, "Generating ", LogCategories.Startup); // "Generating ??? job function(s)"
-
-            telemetryItem = telemetryQueue.Dequeue();
-            ValidateTrace(telemetryItem, "Found the following functions:\r\n", LogCategories.Startup);
-
-            telemetryItem = telemetryQueue.Dequeue();
-            ValidateTrace(telemetryItem, "Job host started", LogCategories.Startup);
-
-            // Even though the RequestTelemetry comes last, the timestamp is at the beginning of the invocation
-            telemetryItem = telemetryQueue.Dequeue();
-            ValidateRequest(telemetryItem);
-
-            telemetryItem = telemetryQueue.Dequeue();
-            ValidateTrace(telemetryItem, "Function started (Id=", LogCategories.Executor);
-
-            telemetryItem = telemetryQueue.Dequeue();
-            ValidateTrace(telemetryItem, "Function completed (Success, Id=", LogCategories.Executor);
+            // Finally, validate the request
+            TelemetryPayload request = _fixture.TelemetryItems
+                .Where(t => t.Data.BaseType == "RequestData")
+                .Single();
+            ValidateRequest(request);
         }
 
         private bool IsIndexingError(TelemetryPayload t)

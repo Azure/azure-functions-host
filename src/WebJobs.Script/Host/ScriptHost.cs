@@ -364,6 +364,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     throw;
                 }
 
+                // Allow tests to modify anything initialized by host.json
+                ScriptConfig.OnConfigurationApplied?.Invoke(ScriptConfig);
+
                 ConfigureDefaultLoggerFactory();
 
                 // Use the startupLogger in this class as it is concerned with startup. The public Logger is used
@@ -516,10 +519,19 @@ namespace Microsoft.Azure.WebJobs.Script
                             continue;
                         }
 
-                        // See GetNugetPackagesPath() for details
-                        // Script runtime is already setup with assembly resolution hooks, so use LoadFrom
-                        Assembly assembly = Assembly.LoadFrom(path);
-                        LoadExtensions(assembly, path);
+                        try
+                        {
+                            // See GetNugetPackagesPath() for details
+                            // Script runtime is already setup with assembly resolution hooks, so use LoadFrom
+                            Assembly assembly = Assembly.LoadFrom(path);
+                            LoadExtensions(assembly, path);
+                        }
+                        catch (Exception e)
+                        {
+                            string msg = $"Failed to load custom extension from '{path}'.";
+                            TraceWriter.Error(msg, e);
+                            _startupLogger.LogError(0, e, msg);
+                        }
                     }
                 }
             }
@@ -541,15 +553,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     continue;
                 }
 
-                try
-                {
-                    IExtensionConfigProvider instance = (IExtensionConfigProvider)Activator.CreateInstance(type);
-                    LoadExtension(instance, locationHint);
-                }
-                catch (Exception e)
-                {
-                    this.TraceWriter.Error($"Failed to load custom extension {type} from '{locationHint}'", e);
-                }
+                IExtensionConfigProvider instance = (IExtensionConfigProvider)Activator.CreateInstance(type);
+                LoadExtension(instance, locationHint);
             }
         }
 
@@ -561,7 +566,9 @@ namespace Microsoft.Azure.WebJobs.Script
             var type = instance.GetType();
             string name = type.Name;
 
-            this.TraceWriter.Info($"Loaded custom extension: {name} from '{locationHint}'");
+            string msg = $"Loaded custom extension: {name} from '{locationHint}'";
+            TraceWriter.Info(msg);
+            _startupLogger.LogInformation(msg);
             config.AddExtension(instance);
         }
 

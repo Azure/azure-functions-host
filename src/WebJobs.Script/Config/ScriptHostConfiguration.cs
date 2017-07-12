@@ -116,5 +116,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Insights client-side sampling. If null, client-side sampling is disabled.
         /// </summary>
         public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
+
+        /// <summary>
+        /// Gets or sets a test hook for modifying the configuration after host.json has been processed.
+        /// </summary>
+        internal Action<ScriptHostConfiguration> OnConfigurationApplied { get; set; }
     }
 }

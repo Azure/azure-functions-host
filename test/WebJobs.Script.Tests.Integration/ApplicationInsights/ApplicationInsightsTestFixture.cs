@@ -47,6 +47,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // turn this off as it makes validation tough
             config.HostConfig.Aggregator.IsEnabled = false;
 
+            config.OnConfigurationApplied = c =>
+            {
+                // Overwrite the generated function whitelist to only include one function.
+                c.Functions = new[] { "Scenarios" };
+            };
+
             StartListening();
         }
 
