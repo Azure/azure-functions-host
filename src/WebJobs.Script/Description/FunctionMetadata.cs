@@ -54,6 +54,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public bool IsExcluded { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether that this function is a direct invoke.
+        /// </summary>
+        public bool IsDirect { get; set; }
+
         public Collection<BindingMetadata> Bindings { get; }
 
         public IEnumerable<BindingMetadata> InputBindings

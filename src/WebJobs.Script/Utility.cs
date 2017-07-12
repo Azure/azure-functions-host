@@ -133,6 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return data.ToDictionary(p => p.Key, p => p.Value != null ? p.Value.ToString() : null, StringComparer.OrdinalIgnoreCase);
         }
 
+        // "Namespace.Class.Method" --> "Method"
         public static string GetFunctionShortName(string functionName)
         {
             int idx = functionName.LastIndexOf('.');
@@ -142,6 +143,14 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return functionName;
+        }
+
+        // "Namespace.Class.Method" --> "Namespace.Class"
+        public static string GetFullClassName(string fullFunctionName)
+        {
+            int i = fullFunctionName.LastIndexOf('.');
+            var typeName = fullFunctionName.Substring(0, i);
+            return typeName;
         }
 
         internal static string GetDefaultHostId(ScriptSettingsManager settingsManager, ScriptHostConfiguration scriptConfig)
