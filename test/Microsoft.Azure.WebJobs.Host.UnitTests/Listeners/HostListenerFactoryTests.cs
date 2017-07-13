@@ -51,11 +51,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Listeners
 
             // create a bunch of function definitions that are disabled
             List<FunctionDefinition> functions = new List<FunctionDefinition>();
-            FunctionDescriptor descriptor = new FunctionDescriptor
-            {
-                Method = jobType.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static),
-                ShortName = string.Format("{0}.{1}", jobType.Name, methodName)
-            };
+            var method = jobType.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
+            FunctionDescriptor descriptor = FunctionIndexer.FromMethod(method, DefaultJobActivator.Instance); 
             FunctionDefinition definition = new FunctionDefinition(descriptor, mockInstanceFactory.Object, mockListenerFactory.Object);
             functions.Add(definition);
 

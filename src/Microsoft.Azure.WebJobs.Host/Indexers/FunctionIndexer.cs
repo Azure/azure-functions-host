@@ -26,14 +26,23 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
         private readonly IJobActivator _activator;
+        private readonly INameResolver _nameResolver;
         private readonly IFunctionExecutor _executor;
         private readonly HashSet<Assembly> _jobAttributeAssemblies;
         private readonly SingletonManager _singletonManager;
         private readonly TraceWriter _trace;
         private readonly ILogger _logger;
 
-        public FunctionIndexer(ITriggerBindingProvider triggerBindingProvider, IBindingProvider bindingProvider, IJobActivator activator, IFunctionExecutor executor, IExtensionRegistry extensions, SingletonManager singletonManager,
-            TraceWriter trace, ILoggerFactory loggerFactory)
+        public FunctionIndexer(
+            ITriggerBindingProvider triggerBindingProvider, 
+            IBindingProvider bindingProvider, 
+            IJobActivator activator, 
+            IFunctionExecutor executor, 
+            IExtensionRegistry extensions, 
+            SingletonManager singletonManager,
+            TraceWriter trace, 
+            ILoggerFactory loggerFactory,
+            INameResolver nameResolver = null)
         {
             if (triggerBindingProvider == null)
             {
@@ -76,6 +85,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             _executor = executor;
             _singletonManager = singletonManager;
             _jobAttributeAssemblies = GetJobAttributeAssemblies(extensions);
+            _nameResolver = nameResolver;
             _trace = trace;
             _logger = loggerFactory?.CreateLogger(LogCategories.Startup);
         }
@@ -311,13 +321,42 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             return new FunctionDefinition(descriptor, instanceFactory, listenerFactory);
         }
 
-        private static FunctionDescriptor CreateFunctionDescriptor(MethodInfo method, string triggerParameterName,
+        // Expose internally for testing purposes 
+        internal static FunctionDescriptor FromMethod(
+            MethodInfo method, 
+            IJobActivator jobActivator = null,
+            INameResolver nameResolver = null)
+        {
+            var disabled = HostListenerFactory.IsDisabled(method, nameResolver, jobActivator);
+
+            // Determine the TraceLevel for this function (affecting both Console as well as Dashboard logging)
+            TraceLevelAttribute traceAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TraceLevelAttribute>(method);
+
+            bool hasCancellationToken = method.GetParameters().Any(p => p.ParameterType == typeof(CancellationToken));
+        
+            return new FunctionDescriptor
+            {
+                Id = method.GetFullName(),
+                LogName = method.Name,
+                FullName = method.GetFullName(),
+                ShortName = method.GetShortName(),
+                IsDisabled = disabled,
+                HasCancellationToken = hasCancellationToken,
+                TraceLevel = traceAttribute?.Level ?? TraceLevel.Verbose,
+                TimeoutAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TimeoutAttribute>(method),
+                SingletonAttributes = method.GetCustomAttributes<SingletonAttribute>()
+            };
+        }
+
+        private FunctionDescriptor CreateFunctionDescriptor(MethodInfo method, string triggerParameterName,
             ITriggerBinding triggerBinding, IReadOnlyDictionary<string, IBinding> nonTriggerBindings)
         {
-            List<ParameterDescriptor> parameters = new List<ParameterDescriptor>();
+            var descr = FromMethod(method, this._activator, _nameResolver);
 
+            List<ParameterDescriptor> parameters = new List<ParameterDescriptor>();
+            
             foreach (ParameterInfo parameter in method.GetParameters())
-            {
+            {            
                 string name = parameter.Name;
 
                 if (name == triggerParameterName)
@@ -329,22 +368,11 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                     parameters.Add(nonTriggerBindings[name].ToParameterDescriptor());
                 }
             }
+                        
+            descr.Parameters = parameters;
+            descr.TriggerParameterDescriptor = parameters.OfType<TriggerParameterDescriptor>().FirstOrDefault();
 
-            // Determine the TraceLevel for this function (affecting both Console as well as Dashboard logging)
-            TraceLevelAttribute traceAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TraceLevelAttribute>(method);
-
-            return new FunctionDescriptor
-            {
-                Id = method.GetFullName(),
-                Method = method,
-                FullName = method.GetFullName(),
-                ShortName = method.GetShortName(),
-                Parameters = parameters,
-                TraceLevel = traceAttribute?.Level ?? TraceLevel.Verbose,
-                TriggerParameterDescriptor = parameters.OfType<TriggerParameterDescriptor>().FirstOrDefault(),
-                TimeoutAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TimeoutAttribute>(method),
-                SingletonAttributes = method.GetCustomAttributes<SingletonAttribute>()
-            };
+            return descr;
         }
 
         private class ListenerFactory : IListenerFactory

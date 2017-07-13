@@ -22,23 +22,30 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// <summary>Gets or sets the ID of the function.</summary>
         public string Id { get; set; }
 
-        /// <summary>Gets or sets the fully qualified name of the function.</summary>
+        /// <summary>Gets or sets the fully qualified name of the function. This is 'Namespace.Class.Method' </summary>
         public string FullName { get; set; }
 
-        /// <summary>Gets or sets the display name of the function.</summary>
+        /// <summary>Gets or sets the display name of the function. This is commonly 'Class.Method' </summary>
         public string ShortName { get; set; }
 
         /// <summary>Gets or sets the function's parameters.</summary>
         public IEnumerable<ParameterDescriptor> Parameters { get; set; }
 
-        /// <summary>
-        /// Gets the <see cref="MethodInfo"/> for this function
-        /// </summary>
-        [JsonIgnore]
-        internal MethodInfo Method { get; set; }
 
 #if PUBLICPROTOCOL
 #else
+        /// <summary>Gets or sets the name used for logging. This is 'Method'. </summary>
+        [JsonIgnore] 
+        internal string LogName { get; set; }
+
+        /// <summary>Gets or sets whether this method is disabled. </summary>
+        [JsonIgnore]
+        internal bool IsDisabled {get;set;}
+
+        /// <summary>Gets or sets whether this signature includes a cancellation token. 
+        /// This indicates whether the method is requesting to be alerted of attempted cancellation. </summary>
+        internal bool HasCancellationToken {get;set;}
+
         /// <summary>
         /// Gets the <see cref="Protocols.TriggerParameterDescriptor"/> for this function
         /// </summary>

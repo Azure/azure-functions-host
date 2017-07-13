@@ -172,12 +172,12 @@ namespace Microsoft.Azure.WebJobs.Host
             _logger?.LogDebug(msg);
         }
 
-        public string FormatLockId(MethodInfo method, SingletonScope scope, string scopeId)
+        public string FormatLockId(FunctionDescriptor method, SingletonScope scope, string scopeId)
         {
             return FormatLockId(method, scope, HostId, scopeId);
         }
 
-        public static string FormatLockId(MethodInfo method, SingletonScope scope, string hostId, string scopeId)
+        public static string FormatLockId(FunctionDescriptor descr, SingletonScope scope, string hostId, string scopeId)
         {
             if (string.IsNullOrEmpty(hostId))
             {
@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Host
             string lockId = string.Empty;
             if (scope == SingletonScope.Function)
             {
-                lockId += string.Format(CultureInfo.InvariantCulture, "{0}.{1}", method.DeclaringType.FullName, method.Name);
+                lockId += descr.FullName;
             }
 
             if (!string.IsNullOrEmpty(scopeId))
@@ -259,12 +259,12 @@ namespace Microsoft.Azure.WebJobs.Host
             return new SingletonListener(null, singletonAttribute, this, innerListener, _trace, _loggerFactory);
         }
 
-        public static SingletonAttribute GetListenerSingletonOrNull(Type listenerType, MethodInfo method)
+        public static SingletonAttribute GetListenerSingletonOrNull(Type listenerType, FunctionDescriptor method)
         {
             // First check the method, then the listener class. This allows a method to override an implicit
             // listener singleton.
             SingletonAttribute singletonAttribute = null;
-            SingletonAttribute[] singletonAttributes = method.GetCustomAttributes<SingletonAttribute>().Where(p => p.Mode == SingletonMode.Listener).ToArray();
+            SingletonAttribute[] singletonAttributes = method.SingletonAttributes.Where(p => p.Mode == SingletonMode.Listener).ToArray();
             if (singletonAttributes.Length > 1)
             {
                 throw new NotSupportedException("Only one SingletonAttribute using mode 'Listener' is allowed.");

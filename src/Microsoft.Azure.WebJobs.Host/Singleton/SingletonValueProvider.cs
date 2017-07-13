@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host
         private readonly SingletonWatcher _watcher;
         private readonly string _scopeId;
 
-        public SingletonValueProvider(MethodInfo method, string scopeId, string functionInstanceId, SingletonAttribute attribute, SingletonManager singletonManager)
+        public SingletonValueProvider(FunctionDescriptor method, string scopeId, string functionInstanceId, SingletonAttribute attribute, SingletonManager singletonManager)
         {
             _scopeId = string.IsNullOrEmpty(scopeId) ? "(null)" : scopeId;
             string lockId = singletonManager.FormatLockId(method, attribute.Scope, scopeId);

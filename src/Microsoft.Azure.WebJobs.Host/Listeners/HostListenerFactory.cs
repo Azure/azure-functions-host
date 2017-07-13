@@ -51,9 +51,8 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
                     continue;
                 }
 
-                // Determine if the function is disabled
-                MethodInfo method = functionDefinition.Descriptor.Method;
-                if (IsDisabled(method, _nameResolver, _activator))
+                // Determine if the function is disabled                
+                if (functionDefinition.Descriptor.IsDisabled)
                 {
                     string msg = string.Format("Function '{0}' is disabled", functionDefinition.Descriptor.ShortName);
                     _trace.Info(msg, TraceSource.Host);
@@ -64,10 +63,10 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
                 IListener listener = await listenerFactory.CreateAsync(cancellationToken);
 
                 // if the listener is a Singleton, wrap it with our SingletonListener
-                SingletonAttribute singletonAttribute = SingletonManager.GetListenerSingletonOrNull(listener.GetType(), method);
+                SingletonAttribute singletonAttribute = SingletonManager.GetListenerSingletonOrNull(listener.GetType(), functionDefinition.Descriptor);
                 if (singletonAttribute != null)
                 {
-                    listener = new SingletonListener(method, singletonAttribute, _singletonManager, listener, _trace, _loggerFactory);
+                    listener = new SingletonListener(functionDefinition.Descriptor, singletonAttribute, _singletonManager, listener, _trace, _loggerFactory);
                 }
 
                 // wrap the listener with a function listener to handle exceptions

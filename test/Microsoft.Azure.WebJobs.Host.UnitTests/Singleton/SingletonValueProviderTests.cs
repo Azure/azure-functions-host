@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Moq;
 using Xunit;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
 {
@@ -19,13 +20,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         private readonly string _lockId;
         private readonly SingletonValueProvider _valueProvider;
         private readonly SingletonAttribute _attribute;
-        private readonly MethodInfo _method;
+        private readonly FunctionDescriptor _method;
 
         public SingletonValueProviderTests()
         {
             _attribute = new SingletonAttribute("TestScope");
             SingletonManager singletonManager = new SingletonManager(null, null, null, null, null, new FixedHostIdProvider(TestHostId));
-            _method = GetType().GetMethod("TestJob", BindingFlags.Static | BindingFlags.Public);
+            var method = GetType().GetMethod("TestJob", BindingFlags.Static | BindingFlags.Public);
+            _method = FunctionIndexer.FromMethod(method);
             _lockId = SingletonManager.FormatLockId(_method, SingletonScope.Function, TestHostId, _attribute.ScopeId);
             _valueProvider = new SingletonValueProvider(_method, "TestScope", TestInstanceId, _attribute, singletonManager);
         }
