@@ -61,9 +61,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTrace(telemetryItem, guid, LogCategories.Function);
             _fixture.TelemetryItems.Remove(telemetryItem);
 
-            // The Host lock message is on another thread and may fire out of order. 
+            // The Host lock message is on another thread and may fire out of order.
             // https://github.com/Azure/azure-webjobs-sdk-script/issues/1674
-            telemetryItem = _fixture.TelemetryItems.Single(t => t.Data.BaseData.Message.StartsWith("Host lock lease acquired by instance ID"));
+            telemetryItem = _fixture.TelemetryItems.Single(t => t.Data.BaseData.Message?.StartsWith("Host lock lease acquired by instance ID") ?? false);
             ValidateTrace(telemetryItem, "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
             _fixture.TelemetryItems.Remove(telemetryItem);
 
