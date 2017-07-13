@@ -61,7 +61,7 @@ namespace Microsoft.Extensions.Logging
                 new Dictionary<string, object>
                 {
                     [ScopeKeys.FunctionInvocationId] = functionInstance?.Id,
-                    [ScopeKeys.FunctionName] = functionInstance?.FunctionDescriptor?.Method?.Name
+                    [ScopeKeys.FunctionName] = functionInstance?.FunctionDescriptor?.LogName
                 });
         }
     }

@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
           
             using (_resultsLogger?.BeginFunctionScope(functionInstance))
             {
-                _resultsLogger?.LogFunctionResult(functionInstance.FunctionDescriptor.Method.Name, fastItem, fastItem.LiveTimer.Elapsed, exceptionInfo?.SourceException);
+                _resultsLogger?.LogFunctionResult(functionInstance.FunctionDescriptor.LogName, fastItem, fastItem.LiveTimer.Elapsed, exceptionInfo?.SourceException);
             }
 
             if (functionCompletedMessage != null &&
@@ -325,8 +325,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             if (timeout != null)
             {
-                MethodInfo method = instance.FunctionDescriptor.Method;
-                bool usingCancellationToken = method.GetParameters().Any(p => p.ParameterType == typeof(CancellationToken));
+                bool usingCancellationToken = instance.FunctionDescriptor.HasCancellationToken;
                 if (!usingCancellationToken && !attribute.ThrowOnTimeout)
                 {
                     // function doesn't bind to the CancellationToken and we will not throw if it fires,
@@ -344,7 +343,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 timer.Elapsed += (o, e) =>
                 {
-                    OnFunctionTimeout(timer, method, instance.Id, timeout.Value, attribute.TimeoutWhileDebugging, trace, logger, cancellationTokenSource,
+                    OnFunctionTimeout(timer, instance.FunctionDescriptor, instance.Id, timeout.Value, attribute.TimeoutWhileDebugging, trace, logger, cancellationTokenSource,
                         () => Debugger.IsAttached);
                 };
 
@@ -356,15 +355,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return null;
         }
 
-        internal static void OnFunctionTimeout(System.Timers.Timer timer, MethodInfo method, Guid instanceId, TimeSpan timeout, bool timeoutWhileDebugging,
+        internal static void OnFunctionTimeout(System.Timers.Timer timer, FunctionDescriptor method, Guid instanceId, TimeSpan timeout, bool timeoutWhileDebugging,
             TraceWriter trace, ILogger logger, CancellationTokenSource cancellationTokenSource, Func<bool> isDebuggerAttached)
         {
             timer.Stop();
 
             bool shouldTimeout = timeoutWhileDebugging || !isDebuggerAttached();
             string message = string.Format(CultureInfo.InvariantCulture,
-                "Timeout value of {0} exceeded by function '{1}.{2}' (Id: '{3}'). {4}",
-                timeout.ToString(), method.DeclaringType.Name, method.Name, instanceId,
+                "Timeout value of {0} exceeded by function '{1}' (Id: '{2}'). {3}",
+                timeout.ToString(), method.ShortName, instanceId,
                 shouldTimeout ? "Initiating cancellation." : "Function will not be cancelled while debugging.");
 
             trace.Error(message, null, TraceSource.Execution);
@@ -497,7 +496,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             // Create a source specifically for timeouts
             using (CancellationTokenSource timeoutTokenSource = new CancellationTokenSource())
             {
-                MethodInfo method = instance.FunctionDescriptor.Method;
                 TimeoutAttribute timeoutAttribute = instance.FunctionDescriptor.TimeoutAttribute;
                 bool throwOnTimeout = timeoutAttribute == null ? false : timeoutAttribute.ThrowOnTimeout;
                 var timer = StartFunctionTimeout(instance, timeoutAttribute, timeoutTokenSource, traceWriter, logger);
@@ -563,9 +561,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// <param name="shutdownToken">A token that is canceled if a host shutdown is requested.</param>
         /// <param name="throwOnTimeout">True if the method should throw an OperationCanceledException if it times out.</param>
         /// <param name="timeoutToken">The token to watch. If it is canceled, taskToTimeout has timed out.</param>
-        /// <param name="onTimeout">A callback to be executed if a timeout occurs.</param>
         /// <param name="timeoutInterval">The timeout period. Used only in the exception message.</param>
         /// <param name="instance">The function instance. Used only in the exceptionMessage</param>
+        /// <param name="onTimeout">A callback to be executed if a timeout occurs.</param>
         /// <returns>True if a timeout occurred. Otherwise, false.</returns>
         private static async Task<bool> TryHandleTimeoutAsync(Task invokeTask, CancellationToken shutdownToken, bool throwOnTimeout, CancellationToken timeoutToken,
             TimeSpan timeoutInterval, IFunctionInstance instance, Action onTimeout)

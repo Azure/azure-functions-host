@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Moq;
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         public SingletonListenerTests()
         {
             MethodInfo methodInfo = this.GetType().GetMethod("TestJob", BindingFlags.Static | BindingFlags.NonPublic);
+            var descriptor = FunctionIndexer.FromMethod(methodInfo);
             _attribute = new SingletonAttribute();
             _config = new SingletonConfiguration
             {
@@ -36,9 +38,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
             _mockSingletonManager.SetupGet(p => p.Config).Returns(_config);
             _mockInnerListener = new Mock<IListener>(MockBehavior.Strict);
 
-            _listener = new SingletonListener(methodInfo, _attribute, _mockSingletonManager.Object, _mockInnerListener.Object,
+            _listener = new SingletonListener(descriptor, _attribute, _mockSingletonManager.Object, _mockInnerListener.Object,
                 new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose), null);
-            _lockId = SingletonManager.FormatLockId(methodInfo, SingletonScope.Function, testHostId, _attribute.ScopeId) + ".Listener";
+            _lockId = SingletonManager.FormatLockId(descriptor, SingletonScope.Function, testHostId, _attribute.ScopeId) + ".Listener";
         }
 
         [Fact]

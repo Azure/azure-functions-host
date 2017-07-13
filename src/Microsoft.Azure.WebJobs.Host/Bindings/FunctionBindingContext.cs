@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             _functionCancellationToken = functionCancellationToken;
             _trace = trace;
 
-            this.MethodName = functionDescriptor?.Method?.Name;
+            this.MethodName = functionDescriptor?.LogName;
         }
 
         /// <summary>

@@ -3,11 +3,10 @@
 
 using System;
 using System.Globalization;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
-using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Logging;
 
@@ -25,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         private RenewableLockHandle _lockHandle;
         private bool _isListening;
 
-        public SingletonListener(MethodInfo method, SingletonAttribute attribute, SingletonManager singletonManager, IListener innerListener, TraceWriter trace, ILoggerFactory loggerFactory)
+        public SingletonListener(FunctionDescriptor method, SingletonAttribute attribute, SingletonManager singletonManager, IListener innerListener, TraceWriter trace, ILoggerFactory loggerFactory)
         {
             _attribute = attribute;
             _singletonManager = singletonManager;

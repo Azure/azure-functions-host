@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
@@ -370,7 +371,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         public void FormatLockId_ReturnsExpectedValue(SingletonScope scope, string scopeId, string expectedLockId)
         {
             MethodInfo methodInfo = this.GetType().GetMethod("TestJob", BindingFlags.Static | BindingFlags.NonPublic);
-            string actualLockId = SingletonManager.FormatLockId(methodInfo, scope, "TestHostId", scopeId);
+            var descriptor = FunctionIndexer.FromMethod(methodInfo);
+            string actualLockId = SingletonManager.FormatLockId(descriptor, scope, "TestHostId", scopeId);
             Assert.Equal(expectedLockId, actualLockId);
         }
 
@@ -475,10 +477,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         public void GetListenerSingletonOrNull_ThrowsOnMultiple()
         {
             MethodInfo method = this.GetType().GetMethod("TestJob_MultipleListenerSingletons", BindingFlags.Static | BindingFlags.NonPublic);
+            var descriptor = FunctionIndexer.FromMethod(method);
 
             NotSupportedException exception = Assert.Throws<NotSupportedException>(() =>
             {
-                SingletonManager.GetListenerSingletonOrNull(typeof(TestListener), method);
+                SingletonManager.GetListenerSingletonOrNull(typeof(TestListener), descriptor);
             });
             Assert.Equal("Only one SingletonAttribute using mode 'Listener' is allowed.", exception.Message);
         }
@@ -487,8 +490,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         public void GetListenerSingletonOrNull_MethodSingletonTakesPrecedence()
         {
             MethodInfo method = this.GetType().GetMethod("TestJob_ListenerSingleton", BindingFlags.Static | BindingFlags.NonPublic);
+            var descriptor = FunctionIndexer.FromMethod(method);
 
-            SingletonAttribute attribute = SingletonManager.GetListenerSingletonOrNull(typeof(TestListener), method);
+            SingletonAttribute attribute = SingletonManager.GetListenerSingletonOrNull(typeof(TestListener), descriptor);
             Assert.Equal("Function", attribute.ScopeId);
         }
 
@@ -496,8 +500,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Singleton
         public void GetListenerSingletonOrNull_ReturnsListenerClassSingleton()
         {
             MethodInfo method = this.GetType().GetMethod("TestJob", BindingFlags.Static | BindingFlags.NonPublic);
+            var descriptor = FunctionIndexer.FromMethod(method);
 
-            SingletonAttribute attribute = SingletonManager.GetListenerSingletonOrNull(typeof(TestListener), method);
+            SingletonAttribute attribute = SingletonManager.GetListenerSingletonOrNull(typeof(TestListener), descriptor);
             Assert.Equal("Listener", attribute.ScopeId);
         }
 

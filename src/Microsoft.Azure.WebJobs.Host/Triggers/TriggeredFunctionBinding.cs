@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
             if (singletonAttribute != null)
             {
                 string boundScopeId = _singletonManager.GetBoundScopeId(singletonAttribute.ScopeId, bindingData);
-                IValueProvider singletonValueProvider = new SingletonValueProvider(_descriptor.Method, boundScopeId, context.FunctionInstanceId.ToString(), singletonAttribute, _singletonManager);
+                IValueProvider singletonValueProvider = new SingletonValueProvider(_descriptor, boundScopeId, context.FunctionInstanceId.ToString(), singletonAttribute, _singletonManager);
                 valueProviders.Add(SingletonValueProvider.SingletonParameterName, singletonValueProvider);
             }
 

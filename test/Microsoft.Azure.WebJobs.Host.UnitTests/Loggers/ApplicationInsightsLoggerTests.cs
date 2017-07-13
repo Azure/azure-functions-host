@@ -14,6 +14,7 @@ using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Logging;
@@ -515,10 +516,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 
         private IFunctionInstance CreateFunctionInstance(Guid id)
         {
-            var descriptor = new FunctionDescriptor
-            {
-                Method = GetType().GetMethod(nameof(TestFunction), BindingFlags.NonPublic | BindingFlags.Static)
-            };
+            var method = GetType().GetMethod(nameof(TestFunction), BindingFlags.NonPublic | BindingFlags.Static);
+            var descriptor = FunctionIndexer.FromMethod(method);
 
             return new FunctionInstance(id, null, new ExecutionReason(), null, null, descriptor);
         }
