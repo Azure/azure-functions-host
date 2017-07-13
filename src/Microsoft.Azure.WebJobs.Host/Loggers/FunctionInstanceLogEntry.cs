@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
@@ -49,12 +51,41 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         /// </summary>
         public string ErrorDetails { get; set; }
 
-        /// <summary>Gets or sets the function's argument values and help strings.</summary>        
+        /// <summary>Gets or sets the function's argument values and help strings.
+        /// If this is null, then the event is before binding. </summary>        
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public IDictionary<string, string> Arguments { get; set; }
 
         /// <summary>Direct inline capture for output written to the per-function instance TextWriter log. 
         /// For large log outputs, this is truncated</summary>
         public string LogOutput { get; set; }
+
+        /// <summary>
+        /// in-memory Property bag that lives for the lifetime of the item. 
+        /// This can be used to help the caller correlate data at various phases. 
+        /// </summary>
+        [JsonIgnore]
+        public IDictionary<string, object> Properties { get; set; }
+
+        /// <summary>
+        /// An in-memory timer to measure the duration during execution. Use <see cref="Duration"/> for persisted cases.
+        /// </summary>
+        [JsonIgnore]
+        public Stopwatch LiveTimer { get; set; }
+
+        /// <summary>
+        /// Function has just started. This is before arguments are bound. 
+        /// </summary>
+        public bool IsStart => !IsCompleted && this.Arguments == null;
+
+        /// <summary>
+        /// Function has bound the arguments but the the body is not yet invoked. 
+        /// </summary>
+        public bool IsPostBind => !IsCompleted && this.Arguments != null;
+
+        /// <summary>
+        /// Function has completed and run body. See <see cref="ErrorDetails"/> to determine if this was success of failure. 
+        /// </summary>
+        public bool IsCompleted => this.EndTime.HasValue;
     }
 }

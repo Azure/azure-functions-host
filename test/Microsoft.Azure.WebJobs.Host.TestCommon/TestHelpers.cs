@@ -129,6 +129,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
 
             var types = new Type[] {
+                typeof(IAsyncCollector<FunctionInstanceLogEntry>),
                 typeof(IHostInstanceLoggerProvider),
                 typeof(IFunctionInstanceLoggerProvider),
                 typeof(IFunctionOutputLoggerProvider),

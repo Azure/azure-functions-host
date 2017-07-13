@@ -260,6 +260,7 @@
     <Compile Include="Executors\TriggeredFunctionExecutorTests.cs" />
     <Compile Include="ExtensionConfigContextTests.cs" />
     <Compile Include="Loggers\ApplicationInsightsLoggerProviderTests.cs" />
+    <Compile Include="Loggers\FunctionExecutorLogOrdering.cs" />
     <Compile Include="Loggers\DefaultTelemetryClientFactoryTests.cs" />
     <Compile Include="Loggers\FilteringTelemetryProcessorTests.cs" />
     <Compile Include="Loggers\FunctionResultAggregatorConfigurationTests.cs" />

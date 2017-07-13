@@ -262,9 +262,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 var logger = _loggerProvider.CreatedLoggers.Where(l => l.Category == LogCategories.Aggregator).Single();
                 Assert.Equal(4, logger.LogMessages.Count);
 
-                // Make sure the eventCollector was logged to
-                // The aggregator ignores 'start' events, so this will be double
-                Assert.True(8 == eventCollector.LogEntries.Count, "Actual function invocations:" + Environment.NewLine + string.Join(Environment.NewLine, eventCollector.LogEntries.Select(l => l.FunctionName)));
+                // Make sure the eventCollector was logged 
+                eventCollector.AssertFunctionCount(4);
             }
         }
 
@@ -327,9 +326,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 var logger = _loggerProvider.CreatedLoggers.Where(l => l.Category == LogCategories.Aggregator).SingleOrDefault();
                 Assert.Null(logger);
 
-                // Make sure the eventCollector was logged to
-                // The aggregator ignores 'start' events, so this will be double
-                Assert.Equal(8, eventCollector.LogEntries.Count);
+                // Make sure the eventCollector was logged
+                eventCollector.AssertFunctionCount(4);
             }
         }
 
@@ -940,10 +938,31 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private class TestFunctionEventCollector : IAsyncCollector<FunctionInstanceLogEntry>
         {
-            public List<FunctionInstanceLogEntry> LogEntries { get; } = new List<FunctionInstanceLogEntry>();
+            private List<FunctionInstanceLogEntry> LogEntries { get; } = new List<FunctionInstanceLogEntry>();
+
+            public Dictionary<Guid, StringBuilder> _state = new Dictionary<Guid, StringBuilder>();
 
             public Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
             {
+                StringBuilder prevState;
+                if (!_state.TryGetValue(item.FunctionInstanceId, out prevState))
+                {
+                    prevState = new StringBuilder();
+                    _state[item.FunctionInstanceId] = prevState;
+                }
+                if (item.IsStart)
+                {
+                    prevState.Append("[start]");
+                }
+                if (item.IsPostBind)
+                {
+                    prevState.Append("[postbind]");
+                }
+                if (item.IsCompleted)
+                {
+                    prevState.Append("[complete]");
+                }            
+                
                 LogEntries.Add(item);
                 return Task.CompletedTask;
             }
@@ -951,6 +970,23 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
             {
                 return Task.CompletedTask;
+            }
+
+            public int FunctionCount
+            {
+                get { return _state.Count; }
+            }
+
+            public void AssertFunctionCount(int expected)
+            {
+                // Verify the event ordering and that we got all notifications. 
+                foreach(var kv in _state)
+                {
+                    Assert.Equal("[start][postbind][complete]", kv.Value.ToString());
+                }
+
+                var actual = this._state.Count;                
+                Assert.True(actual == expected, "Actual function invocations:" + Environment.NewLine + string.Join(Environment.NewLine, this.LogEntries.Select(l => l.FunctionName)));
             }
         }
     }

@@ -343,15 +343,19 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             public Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
             {
+                if (item.Arguments == null)
+                {
+                    return Task.CompletedTask;
+                }
                 var clone = JsonConvert.DeserializeObject<FunctionInstanceLogEntry>(JsonConvert.SerializeObject(item));
                 List.Add(clone);
-                return Task.FromResult(0);
+                return Task.CompletedTask;
             }
 
             public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
             {
                 List.Add(FlushEntry);
-                return Task.FromResult(0);
+                return Task.CompletedTask;
             }
         }
 

@@ -91,8 +91,8 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         public async Task AddAsync(FunctionInstanceLogEntry result, CancellationToken cancellationToken = default(CancellationToken))
         {
-            // We'll get 'Function started' events here, which we don't care about.
-            if (result.EndTime != null)
+            // We only care about completed events.
+            if (result.IsCompleted)
             {
                 await _buffer.SendAsync(result, cancellationToken);
             }

@@ -90,7 +90,13 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             var mockAggregator = new Mock<IAsyncCollector<FunctionInstanceLogEntry>>(MockBehavior.Strict);
             mockAggregator
                 .Setup(a => a.AddAsync(It.IsAny<FunctionInstanceLogEntry>(), It.IsAny<CancellationToken>()))
-                .Callback<FunctionInstanceLogEntry, CancellationToken>((l, t) => addCalls++)
+                .Callback<FunctionInstanceLogEntry, CancellationToken>((l, t) =>
+                {
+                    if (l.IsCompleted)
+                    {
+                        addCalls++; // The default aggregator will ingore the 'Function started' calls.
+                    }
+                })
                 .Returns(Task.CompletedTask);
             mockAggregator
                 .Setup(a => a.FlushAsync(It.IsAny<CancellationToken>()))
@@ -104,8 +110,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             config.AddService<IFunctionResultAggregatorFactory>(mockFactory.Object);
 
+            const int N = 5;
             config.Aggregator.IsEnabled = true;
-            config.Aggregator.BatchSize = 5;
+            config.Aggregator.BatchSize = N;
             config.Aggregator.FlushTimeout = TimeSpan.FromSeconds(1);
 
             using (JobHost host = new JobHost(config))
@@ -114,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
                 var method = typeof(ILoggerFunctions).GetMethod(nameof(ILoggerFunctions.TraceWriterWithILoggerFactory));
 
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < N; i++)
                 {
                     host.Call(method);
                 }
@@ -122,9 +129,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 host.Stop();
             }
 
-            // Add will be called 5 times. The default aggregator will ingore the 
-            // 'Function started' calls.
-            Assert.Equal(10, addCalls);
+            Assert.Equal(N, addCalls);
 
             // Flush is called on host stop
             Assert.Equal(1, flushCalls);
