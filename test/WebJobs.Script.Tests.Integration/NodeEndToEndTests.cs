@@ -33,6 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task CosmosDBTriggerToBlobTest()
+        {
+            await CosmosDBTriggerToBlobTestImpl();
+        }
+
+        [Fact]
         public async Task BlobTriggerToBlobTest()
         {
             TestHelpers.ClearFunctionLogs("BlobTriggerToBlob");

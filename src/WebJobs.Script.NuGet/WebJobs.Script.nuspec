@@ -22,7 +22,7 @@
       <dependency id="Microsoft.Azure.ServiceBus.EventProcessorHost" version="2.2.10" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.ApiHub" version="1.0.0-beta4-10452" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.BotFramework" version="1.0.15-beta" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.DocumentDB" version="1.1.0-beta1-10452" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.DocumentDB" version="1.1.0-beta1-10455" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.Http" version="1.0.0-beta1-10453" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.MobileApps" version="1.1.0-beta1-10452" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.NotificationHubs" version="1.1.0-beta1-10452" />

@@ -1,0 +1,11 @@
+﻿{
+    "bindings": [
+      {
+        "type": "cosmosDBTrigger",
+        "name": "input",
+        "direction": "in",
+        "databaseName": "myDatabase",
+        "collectionName": "myCollection"
+      }
+    ]
+}
