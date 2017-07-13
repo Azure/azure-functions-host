@@ -12,6 +12,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -345,6 +346,11 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return false;
+        }
+
+        public static IJobHostMetadataProvider CreateMetadataProvider(this JobHost host)
+        {
+            return (IJobHostMetadataProvider)host.Services.GetService(typeof(IJobHostMetadataProvider));
         }
 
         internal static bool IsNullable(Type type)

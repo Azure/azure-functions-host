@@ -29,9 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         // The constructor is fixed and ScriptBindingProvider are instantated for us by the Script runtime.
         // Extensions may get registered after this class is instantiated.
         // So we need a final call that lets us get the tooling snapshot of the graph after all extensions are set.
-        public void CompleteInitialization()
+        public void CompleteInitialization(IJobHostMetadataProvider metadataProvider)
         {
-            this._metadataProvider = this.Config.CreateMetadataProvider();
+            this._metadataProvider = metadataProvider;
         }
 
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
