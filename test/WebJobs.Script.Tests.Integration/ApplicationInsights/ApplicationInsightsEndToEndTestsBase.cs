@@ -130,13 +130,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             Assert.NotNull(telemetryItem.Data.BaseData.Duration);
             Assert.True(telemetryItem.Data.BaseData.Success);
 
-            Assert.NotNull(telemetryItem.Data.BaseData.Properties["param__blob"]);
-            Assert.NotNull(telemetryItem.Data.BaseData.Properties["param__input"]);
-            Assert.NotNull(telemetryItem.Data.BaseData.Properties["param___context"]);
-            Assert.Equal("Functions.Scenarios", telemetryItem.Data.BaseData.Properties["FullName"].ToString());
-            Assert.Equal("This function was programmatically called via the host APIs.", telemetryItem.Data.BaseData.Properties["TriggerReason"].ToString());
+            AssertHasKey(telemetryItem.Data.BaseData.Properties, "param__blob");
+            AssertHasKey(telemetryItem.Data.BaseData.Properties, "param__input");
+            AssertHasKey(telemetryItem.Data.BaseData.Properties, "param___context");
+            AssertHasKey(telemetryItem.Data.BaseData.Properties, "FullName", "Functions.Scenarios");
+            AssertHasKey(telemetryItem.Data.BaseData.Properties, "TriggerReason", "This function was programmatically called via the host APIs.");
 
             ValidateSdkVersion(telemetryItem);
+        }
+
+        private static void AssertHasKey(IDictionary<string, string> dict, string keyName, string expectedValue = null)
+        {
+            string actualValue;
+            if (!dict.TryGetValue(keyName, out actualValue))
+            {
+                var msg = $"Missing key '${keyName}'. Keys=" + string.Join(",", dict.Keys);
+                Assert.True(false, msg);
+            }
+            if (expectedValue != null)
+            {
+                Assert.Equal(expectedValue, actualValue);
+            }
         }
 
         private static void ValidateSdkVersion(TelemetryPayload telemetryItem)
