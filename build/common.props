@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+  <TargetFramework>netstandard2.0</TargetFramework>
+    <SignAssembly>True</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)PublicKey.snk</AssemblyOriginatorKeyFile>
+    <DelaySign>True</DelaySign>
+    <Version>3.0.0-beta1$(VersionSuffix)</Version>
+    <Authors>Microsoft</Authors>
+    <Company>Microsoft</Company>
+    <PackageProjectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Azure/azure-webjobs-sdk</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Copyright>© .NET Foundation.  All rights reserved.</Copyright>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+    <PackageLicenseUrl>http://www.microsoft.com/web/webpi/eula/aspnetcomponent_rtw_enu.htm</PackageLicenseUrl>
+    <PackageIconUrl>https://raw.githubusercontent.com/Azure/azure-webjobs-sdk/dev/webjobs.png</PackageIconUrl>
+    <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>  
+</Project>

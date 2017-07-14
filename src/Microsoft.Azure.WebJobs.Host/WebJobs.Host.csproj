@@ -1,23 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+  <Import Project="..\..\build\common.props" />
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>..\Common\PublicKey.snk</AssemblyOriginatorKeyFile>
-    <DelaySign>True</DelaySign>
-    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-    <Copyright>© .NET Foundation.  All rights reserved.</Copyright>
-    <Description>This package contains the runtime assemblies for Microsoft.Azure.WebJobs.Host. It also adds rich diagnostics capabilities which makes it easier to monitor the WebJobs in the dashboard. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</Description>
-    <Product>WebJobs</Product>
-    <Company>Microsoft</Company>
-    <Authors>Microsoft</Authors>
-    <Version>3.0.0-beta1$(VersionSuffix)</Version>
     <PackageId>Microsoft.Azure.WebJobs</PackageId>
-    <RepositoryUrl>https://github.com/azure/azure-webjobs-sdk</RepositoryUrl>
-    <PackageIconUrl>https://raw.githubusercontent.com/Azure/azure-webjobs-sdk/dev/webjobs.png</PackageIconUrl>
-    <PackageProjectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</PackageProjectUrl>
-    <PackageLicenseUrl>http://www.microsoft.com/web/webpi/eula/aspnetcomponent_rtw_enu.htm</PackageLicenseUrl>
-    <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
+    <Description>This package contains the runtime assemblies for Microsoft.Azure.WebJobs.Host. It also adds rich diagnostics capabilities which makes it easier to monitor the WebJobs in the dashboard. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,13 +11,15 @@
   </ItemGroup>
 
   <ItemGroup>
+  <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.0.0-preview2-final" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="2.0.0-preview2-final" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="2.0.0-preview2-final" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.0.0-preview2-final" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.0.0-preview2-final" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
     <PackageReference Include="System.Threading.Tasks.Dataflow" Version="4.8.0-preview2-25405-01" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.1.4" />
   </ItemGroup>
@@ -131,10 +119,6 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTableClient.cs" Link="Storage\Table\StorageTableClient.cs" />
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTableOperation.cs" Link="Storage\Table\StorageTableOperation.cs" />
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\TypeEntityResolver.cs" Link="Storage\Table\TypeEntityResolver.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="..\Common\PublicKey.snk" Link="PublicKey.snk" />
   </ItemGroup>
 
   <ItemGroup>

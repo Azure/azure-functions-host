@@ -1,22 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+  <Import Project="..\..\build\common.props" />
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>..\Common\PublicKey.snk</AssemblyOriginatorKeyFile>
-    <DelaySign>True</DelaySign>
-    <Version>3.0.0-beta1$(VersionSuffix)</Version>
     <PackageId>Microsoft.Azure.WebJobs.Logging.ApplicationInsights</PackageId>
-    <Authors>Microsoft</Authors>
-    <Company>Microsoft</Company>
-    <PackageProjectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Azure/azure-webjobs-sdk</RepositoryUrl>
-    <Copyright>© .NET Foundation.  All rights reserved.</Copyright>
     <Description>This package contains the runtime assemblies for Microsoft.Azure.WebJobs.Logging.ApplicationInsights. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</Description>
-    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-    <PackageLicenseUrl>http://www.microsoft.com/web/webpi/eula/aspnetcomponent_rtw_enu.htm</PackageLicenseUrl>
-    <PackageIconUrl>https://raw.githubusercontent.com/Azure/azure-webjobs-sdk/dev/webjobs.png</PackageIconUrl>
-    <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,11 +11,13 @@
   </ItemGroup>
   
   <ItemGroup>
+  <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.4.0-beta5" />
     <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.4.0-beta5" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.0.0-preview2-final" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.0.0-preview2-final" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
     <PackageReference Include="System.Diagnostics.TraceSource" Version="4.3.0" />
     <PackageReference Include="System.Threading" Version="4.3.0" />
     <PackageReference Include="System.Threading.Thread" Version="4.3.0" />

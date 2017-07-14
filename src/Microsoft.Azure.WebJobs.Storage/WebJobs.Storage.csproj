@@ -1,17 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+  <Import Project="..\..\build\common.props" />
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Microsoft.Azure.WebJobs.Storage</RootNamespace>
     <PackageId>Microsoft.Azure.WebJobs.Storage</PackageId>
-    <Company>Microsoft</Company>
-    <Product>Microsoft.Azure.WebJobs.Storage</Product>
-    <AssemblyVersion>2.1.0.0</AssemblyVersion>
-    <FileVersion>2.1.0.0</FileVersion>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>..\Common\PublicKey.snk</AssemblyOriginatorKeyFile>
-    <DelaySign>True</DelaySign>
-    <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,7 +15,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="WindowsAzure.Storage" Version="8.1.4" />
   </ItemGroup>
 

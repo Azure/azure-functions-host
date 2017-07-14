@@ -1,22 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+  <Import Project="..\..\build\common.props" />
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>..\Common\PublicKey.snk</AssemblyOriginatorKeyFile>
-    <DelaySign>True</DelaySign>
     <PackageId>Microsoft.Azure.WebJobs.Logging</PackageId>
-    <Version>3.0.0-beta1$(VersionSuffix)</Version>
-    <Authors>Microsoft</Authors>
-    <Company>Microsoft</Company>
-    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>This package contains the runtime assemblies for Microsoft.Azure.WebJobs.Logging. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</Description>
-    <PackageLicenseUrl>http://www.microsoft.com/web/webpi/eula/aspnetcomponent_rtw_enu.htm</PackageLicenseUrl>
-    <PackageProjectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</PackageProjectUrl>
-    <Copyright>© .NET Foundation.  All rights reserved.</Copyright>
-    <RepositoryUrl>https://github.com/Azure/azure-webjobs-sdk</RepositoryUrl>
-    <PackageIconUrl>https://raw.githubusercontent.com/Azure/azure-webjobs-sdk/dev/webjobs.png</PackageIconUrl>
-    <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,12 +11,9 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="WindowsAzure.Storage" Version="8.1.4" />
   </ItemGroup>
-
-  <ItemGroup>
-    <None Include="..\Common\PublicKey.snk" Link="PublicKey.snk" />
-  </ItemGroup>
-
 </Project>

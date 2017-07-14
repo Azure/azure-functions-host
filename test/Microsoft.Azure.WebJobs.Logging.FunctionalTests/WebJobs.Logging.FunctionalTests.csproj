@@ -1,14 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
+  <Import Project="..\..\build\common.props" />
   <PropertyGroup>
     <TargetFramework>netcoreapp2.0</TargetFramework>
-    <SignAssembly>True</SignAssembly>
-    <AssemblyOriginatorKeyFile>..\..\src\Common\PublicKey.snk</AssemblyOriginatorKeyFile>
-    <DelaySign>True</DelaySign>
     <IsPackable>false</IsPackable>
     <AssemblyName>Microsoft.Azure.WebJobs.Logging.FunctionalTests</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Logging.FunctionalTests</RootNamespace>
-    <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,11 +12,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.4.0-beta5" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="2.0.0-preview2-final" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.3.0-preview-20170628-02" />
     <PackageReference Include="Moq" Version="4.7.63" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.1.4" />
     <PackageReference Include="xunit" Version="2.3.0-beta3-build3705" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.3.0-beta3-build3705" />
@@ -34,6 +32,10 @@
 
   <ItemGroup>
     <Service Include="{82a7f48d-3b50-4b1e-b82e-3ada8210c358}" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
 
 </Project>
