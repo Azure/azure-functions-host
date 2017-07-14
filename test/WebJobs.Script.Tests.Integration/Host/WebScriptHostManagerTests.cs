@@ -83,7 +83,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string[] events = _fixture.EventGenerator.Events.Where(e => !e.Contains("TimerTrigger")).ToArray();
             Assert.True(events.Length == 4, $"Expected 4 events. Actual: {events.Length}. Actual events: {Environment.NewLine}{string.Join(Environment.NewLine, events)}");
-            Assert.Equal(4, _fixture.EventGenerator.Events.Count);
             Assert.StartsWith("Info WebJobs.Execution Executing 'Functions.ManualTrigger' (Reason='This function was programmatically called via the host APIs.', Id=", events[0]);
             Assert.StartsWith("Info ManualTrigger Function started (Id=", events[1]);
             Assert.StartsWith("Info ManualTrigger Function completed (Success, Id=", events[2]);
