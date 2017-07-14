@@ -1,7 +1,9 @@
 version: 1.0.{build}
 branches:
   only:
-  - core2
+  - dev
+  - master
+  - next
 image: Visual Studio 2017
 install:
 - ps: >-
