@@ -451,7 +451,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         }
 
         [Fact]
-        [Trait("SecretsRequired", "true")]
+        [Trait("Category", "secretsrequired")]
         public void IndexingExceptions_CanBeHandledByTraceWriter()
         {
             JobHostConfiguration config = new JobHostConfiguration();

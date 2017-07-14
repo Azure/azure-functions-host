@@ -1,11 +1,11 @@
 ﻿Azure WebJobs SDK
 ===
 
-|Branch|Status|
-|---|---|
-|master|[![Build status](https://ci.appveyor.com/api/projects/status/3qmk6ukn942q220j/branch/master?svg=true)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-rqm4t/branch/master)|
-|dev|[![Build status](https://ci.appveyor.com/api/projects/status/3qmk6ukn942q220j/branch/dev?svg=true)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-rqm4t/branch/dev)|
-|v2.x|[![Build status](https://ci.appveyor.com/api/projects/status/3qmk6ukn942q220j/branch/v2.x?svg=true)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-rqm4t/branch/v2.x)|
+|Branch|Windows|macOS/Linux
+|---|:---:|:---:|
+|master|[![Build status](https://ci.appveyor.com/api/projects/status/3qmk6ukn942q220j/branch/master?svg=true)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-rqm4t/branch/master)|[![Build Status](https://travis-ci.org/Azure/azure-webjobs-sdk.svg?branch=master)](https://travis-ci.org/Azure/azure-webjobs-sdk)
+|dev|[![Build status](https://ci.appveyor.com/api/projects/status/3qmk6ukn942q220j/branch/dev?svg=true)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-rqm4t/branch/dev)|[![Build Status](https://travis-ci.org/Azure/azure-webjobs-sdk.svg?branch=dev)](https://travis-ci.org/Azure/azure-webjobs-sdk)|
+|v2.x|[![Build status](https://ci.appveyor.com/api/projects/status/3qmk6ukn942q220j/branch/v2.x?svg=true)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-rqm4t/branch/v2.x)|-|
 
 The **Azure WebJobs SDK** is a framework that simplifies the task of writing background processing code that runs in Azure. The Azure WebJobs SDK includes a declarative **binding** and **trigger** system that works with Azure Storage Blobs, Queues and Tables as well as Service Bus. The binding system makes it incredibly easy to write code that reads or writes Azure Storage objects. The trigger system automatically invokes a function in your code whenever any new data is received in a queue or blob.
 
