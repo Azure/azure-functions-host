@@ -1,11 +1,6 @@
 version: '{build}'
 pull_requests:
   do_not_increment_build_number: true
-branches:
-  only:
-  - dev
-  - master
-  - next
 image: Visual Studio 2015
 configuration: Release
 platform: x86
