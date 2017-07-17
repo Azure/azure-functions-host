@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             IDictionary<string, object> responseObject = null;
             if (content is JObject)
             {
-                responseObject = JsonConvert.DeserializeObject<ExpandoObject>(stringContent);
+                responseObject = JsonConvert.DeserializeObject<ExpandoObject>(content.ToString());
             }
             else
             {

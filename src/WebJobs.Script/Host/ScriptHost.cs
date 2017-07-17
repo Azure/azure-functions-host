@@ -1054,6 +1054,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     return ScriptType.FSharp;
                 case "dll":
                     return ScriptType.DotNetAssembly;
+                case "jar":
+                    return ScriptType.JavaArchive;
                 default:
                     return ScriptType.Unknown;
             }
@@ -1071,8 +1073,9 @@ namespace Microsoft.Azure.WebJobs.Script
 #endif
                     new DotNetFunctionDescriptorProvider(this, ScriptConfig),
 #if FEATURE_POWERSHELL
-                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
+                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig),
 #endif
+                    new JavaFunctionDescriptorProvider(this, ScriptConfig)
                 };
 
             return GetFunctionDescriptors(functions, descriptorProviders);
