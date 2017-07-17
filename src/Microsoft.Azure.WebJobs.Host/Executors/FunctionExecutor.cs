@@ -668,13 +668,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         // Called before function body is executed; after arguments are bound. 
         private Task NotifyPostBindAsync(FunctionInstanceLogEntry fastItem, IDictionary<string, string> arguments)
         {
+            // Log post-bind event. 
+            fastItem.Arguments = arguments;
+            Debug.Assert(fastItem.IsPostBind);
+
             if (_functionEventCollector == null)
             {
                 return Task.CompletedTask;
             }
-            // Log post-bind event. 
-            fastItem.Arguments = arguments;
-            Debug.Assert(fastItem.IsPostBind);
             return _functionEventCollector.AddAsync(fastItem);
         }
 
@@ -683,10 +684,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             fastItem.LiveTimer.Stop();
 
-            if (_functionEventCollector == null)
-            {
-                return Task.CompletedTask;
-            }
 
             // log result            
             fastItem.EndTime = DateTime.UtcNow;
@@ -704,6 +701,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     ex = ex.InnerException;
                 }
                 fastItem.ErrorDetails = ex.Message;
+            }
+
+            if (_functionEventCollector == null)
+            {
+                return Task.CompletedTask;
             }
             return _functionEventCollector.AddAsync(fastItem);
         }
