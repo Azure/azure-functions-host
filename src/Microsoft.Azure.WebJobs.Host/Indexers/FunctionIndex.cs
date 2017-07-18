@@ -46,6 +46,20 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             return _functionsById[functionId];
         }
 
+        public IFunctionDefinition LookupByName(string name)
+        {
+            foreach (var items in _functionDescriptors)
+            {
+                if (string.Equals(items.ShortName, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    var id = items.Id;
+                    return Lookup(id);
+                }
+            }
+            // Not found.
+            return null;
+        }        
+
         public IFunctionDefinition Lookup(MethodInfo method)
         {
             if (!_functionsByMethod.ContainsKey(method))

@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         public IEnumerable<ParameterDescriptor> Parameters { get; set; }
 #if PUBLICPROTOCOL
 #else
-        /// <summary>Gets or sets the name used for logging. This is 'Method'. </summary>
+        /// <summary>Gets or sets the name used for logging. This is 'Method' or the value overwritten by [FunctionName] </summary>
         [JsonIgnore] 
         internal string LogName { get; set; }
 

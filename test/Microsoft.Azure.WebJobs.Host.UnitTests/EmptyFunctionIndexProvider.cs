@@ -31,6 +31,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 return null;
             }
 
+            public IFunctionDefinition LookupByName(string name)
+            {
+                return null;
+            }
+
             public IEnumerable<IFunctionDefinition> ReadAll()
             {
                 return Enumerable.Empty<IFunctionDefinition>();

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -26,5 +27,10 @@ namespace Microsoft.Azure.WebJobs
         /// Gets the function name.
         /// </summary>
         public string Name => _name;
+
+        /// <summary>
+        /// Validation for name. 
+        /// </summary>
+        public static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     }
 }
