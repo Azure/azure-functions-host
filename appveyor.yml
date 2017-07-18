@@ -52,3 +52,5 @@ test_script:
 artifacts:
 - path: buildoutput\*.nupkg
   name: Binaries
+hosts:
+  api.nuget.org: 93.184.221.200
