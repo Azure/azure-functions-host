@@ -37,5 +37,11 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
         {
             get { return _bindingData; }
         }
+
+        /// <summary>
+        /// If non-null, then this trigger handles a return value. 
+        /// The binding data contract should have a "$return" entry of byref type too. 
+        /// </summary>
+        public IValueBinder ReturnValueProvider { get; set; }
     }
 }

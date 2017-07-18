@@ -14,6 +14,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         public Guid? ParentId { get; set; }
         public ExecutionReason ExecutionReason { get; set; }
         public IDictionary<string, object> Parameters { get; set; }
-        public Func<Func<Task>, Task> InvokeHandler { get; set; }
+        public Func<Func<Task<object>>, Task<object>> InvokeHandler { get; set; }
     }
 }

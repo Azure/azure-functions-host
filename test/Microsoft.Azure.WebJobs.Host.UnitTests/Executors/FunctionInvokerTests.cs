@@ -3,11 +3,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Moq;
 using Xunit;
 
@@ -28,11 +25,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                                .Verifiable();
             IFactory<object> instanceFactory = instanceFactoryMock.Object;
 
-            Mock<IMethodInvoker<object>> methodInvokerMock = new Mock<IMethodInvoker<object>>(MockBehavior.Strict);
+            Mock<IMethodInvoker<object, object>> methodInvokerMock = new Mock<IMethodInvoker<object, object>>(MockBehavior.Strict);
             methodInvokerMock.Setup(i => i.InvokeAsync(expectedInstance, expectedArguments))
-                             .Returns(Task.FromResult(0))
+                             .Returns(Task.FromResult<object>(null))
                              .Verifiable();
-            IMethodInvoker<object> methodInvoker = methodInvokerMock.Object;
+            IMethodInvoker<object, object> methodInvoker = methodInvokerMock.Object;
 
             IFunctionInvoker product = CreateProductUnderTest(instanceFactory, methodInvoker);
 
@@ -55,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             IDisposable disposable = disposableMock.Object;
 
             IFactory<object> instanceFactory = CreateStubFactory(disposable);
-            IMethodInvoker<object> methodInvoker = CreateStubMethodInvoker();
+            IMethodInvoker<object, object> methodInvoker = CreateStubMethodInvoker();
 
             IFunctionInvoker product = CreateProductUnderTest(instanceFactory, methodInvoker);
             object[] arguments = new object[0];
@@ -79,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 
             IFactory<object> instanceFactory = CreateStubFactory(disposable);
             TaskCompletionSource<object> taskSource = new TaskCompletionSource<object>();
-            IMethodInvoker<object> methodInvoker = CreateStubMethodInvoker(taskSource.Task);
+            IMethodInvoker<object, object> methodInvoker = CreateStubMethodInvoker(taskSource.Task);
 
             IFunctionInvoker product = CreateProductUnderTest(instanceFactory, methodInvoker);
             object[] arguments = new object[0];
@@ -94,18 +91,18 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             task.GetAwaiter().GetResult();
         }
 
-        private static FunctionInvoker<object> CreateProductUnderTest(IFactory<object> instanceFactory,
-            IMethodInvoker<object> methodInvoker)
+        private static FunctionInvoker<object, object> CreateProductUnderTest(IFactory<object> instanceFactory,
+            IMethodInvoker<object, object> methodInvoker)
         {
-            return CreateProductUnderTest<object>(new string[0], instanceFactory, methodInvoker);
+            return CreateProductUnderTest<object, object>(new string[0], instanceFactory, methodInvoker);
         }
 
-        private static FunctionInvoker<TReflected> CreateProductUnderTest<TReflected>(
+        private static FunctionInvoker<TReflected, TReturnValue> CreateProductUnderTest<TReflected, TReturnValue>(
             IReadOnlyList<string> parameterNames,
             IFactory<TReflected> instanceFactory,
-            IMethodInvoker<TReflected> methodInvoker)
+            IMethodInvoker<TReflected, TReturnValue> methodInvoker)
         {
-            return new FunctionInvoker<TReflected>(parameterNames, instanceFactory, methodInvoker);
+            return new FunctionInvoker<TReflected, TReturnValue>(parameterNames, instanceFactory, methodInvoker);
         }
 
         private static IFactory<object> CreateStubFactory(object instance)
@@ -116,14 +113,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             return mock.Object;
         }
 
-        private static IMethodInvoker<object> CreateStubMethodInvoker()
+        private static IMethodInvoker<object, object> CreateStubMethodInvoker()
         {
-            return CreateStubMethodInvoker(Task.FromResult(0));
+            return CreateStubMethodInvoker(Task.FromResult<object>(null));
         }
 
-        private static IMethodInvoker<object> CreateStubMethodInvoker(Task task)
+        private static IMethodInvoker<object, object> CreateStubMethodInvoker(Task<object> task)
         {
-            Mock<IMethodInvoker<object>> mock = new Mock<IMethodInvoker<object>>(MockBehavior.Strict);
+            Mock<IMethodInvoker<object, object>> mock = new Mock<IMethodInvoker<object, object>>(MockBehavior.Strict);
             mock.Setup(i => i.InvokeAsync(It.IsAny<object>(), It.IsAny<object[]>()))
                 .Returns(task);
             return mock.Object;

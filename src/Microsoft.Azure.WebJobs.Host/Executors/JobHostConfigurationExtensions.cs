@@ -257,7 +257,16 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (functionIndexProvider == null)
                 {
-                    functionIndexProvider = new FunctionIndexProvider(services.GetService<ITypeLocator>(), triggerBindingProvider, bindingProvider, activator, functionExecutor, extensions, singletonManager, trace, loggerFactory);
+                    functionIndexProvider = new FunctionIndexProvider(
+                        services.GetService<ITypeLocator>(),
+                        triggerBindingProvider,
+                        bindingProvider,
+                        activator,
+                        functionExecutor,
+                        extensions,
+                        singletonManager,
+                        trace,
+                        loggerFactory);
 
                     // Important to set this so that the func we passed to DynamicHostIdProvider can pick it up. 
                     services.AddService<IFunctionIndexProvider>(functionIndexProvider);

@@ -21,15 +21,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             bool invoked = false;
             object instance = null;
             object[] arguments = null;
-            Func<object, object[], Task> lambda = (i, a) =>
+            Func<object, object[], Task<object>> lambda = (i, a) =>
             {
                 invoked = true;
                 instance = i;
                 arguments = a;
-                return Task.FromResult(0);
+                return Task.FromResult<object>(null);
             };
 
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            IMethodInvoker<object, object> invoker = CreateProductUnderTest(lambda);
 
             // Act
             Task task = invoker.InvokeAsync(expectedInstance, expectedArguments);
@@ -47,12 +47,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             // Arrange
             InvalidOperationException expectedException = new InvalidOperationException();
-            Func<object, object[], Task> lambda = (i1, i2) =>
+            Func<object, object[], Task<object>> lambda = (i1, i2) =>
             {
                 throw expectedException;
             };
 
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            IMethodInvoker<object, object> invoker = CreateProductUnderTest(lambda);
             object instance = null;
             object[] arguments = null;
 
@@ -66,14 +66,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         public void InvokeAsync_IfLambdaReturnsCanceledTask_ReturnsCanceledTask()
         {
             // Arrange
-            Func<object, object[], Task> lambda = (i1, i2) =>
+            Func<object, object[], Task<object>> lambda = (i1, i2) =>
             {
                 TaskCompletionSource<object> source = new TaskCompletionSource<object>();
                 source.SetCanceled();
                 return source.Task;
             };
 
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            IMethodInvoker<object, object> invoker = CreateProductUnderTest(lambda);
             object instance = null;
             object[] arguments = null;
 
@@ -91,14 +91,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             // Arrange
             Exception expectedException = new InvalidOperationException();
-            Func<object, object[], Task> lambda = (i1, i2) =>
+            Func<object, object[], Task<object>> lambda = (i1, i2) =>
             {
                 TaskCompletionSource<object> source = new TaskCompletionSource<object>();
                 source.SetException(expectedException);
                 return source.Task;
             };
 
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            IMethodInvoker<object, object> invoker = CreateProductUnderTest(lambda);
             object instance = null;
             object[] arguments = null;
 
@@ -117,8 +117,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         public void InvokeAsync_IfLambdaReturnsNull_ReturnsNull()
         {
             // Arrange
-            Func<object, object[], Task> lambda = (i1, i2) => null;
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            Func<object, object[], Task<object>> lambda = (i1, i2) => null;
+            IMethodInvoker<object, object> invoker = CreateProductUnderTest(lambda);
             object instance = null;
             object[] arguments = null;
 
@@ -130,63 +130,18 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         }
 
         [Fact]
-        public void InvokeAsync_IfLambdaReturnsNonGenericTask_ReturnsCompletedTask()
-        {
-            // Arrange
-            Func<object, object[], Task> lambda = (i1, i2) =>
-            {
-                Task innerTask = new Task(() => { });
-                innerTask.Start();
-                Assert.False(innerTask.GetType().IsGenericType); // Guard
-                return innerTask;
-            };
-
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
-            object instance = null;
-            object[] arguments = null;
-
-            // Act
-            Task task = invoker.InvokeAsync(instance, arguments);
-
-            // Assert
-            Assert.NotNull(task);
-            task.WaitUntilCompleted();
-            Assert.Equal(TaskStatus.RanToCompletion, task.Status);
-        }
-
-        [Fact]
-        public void InvokeAsync_IfLambdaReturnsNestedTask_Throws()
-        {
-            // Arrange
-            Func<object, object[], Task> lambda = (i1, i2) =>
-            {
-                TaskCompletionSource<Task> source = new TaskCompletionSource<Task>();
-                source.SetResult(null);
-                return source.Task;
-            };
-
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
-            object instance = null;
-            object[] arguments = null;
-
-            // Act & Assert
-            ExceptionAssert.ThrowsInvalidOperation(() => invoker.InvokeAsync(instance, arguments),
-                "Returning a nested Task is not supported. Did you mean to await or Unwrap the task instead of " +
-                "returning it?");
-        }
-
-        [Fact]
         public void InvokeAsync_IfLambdaReturnsTaskDelayTask_ReturnsCompletedTask()
         {
             // Arrange
-            Func<object, object[], Task> lambda = (i1, i2) =>
+            Func<object, object[], Task<object>> lambda = async (i1, i2) =>
             {
                 Task innerTask = Task.Delay(1);
                 Assert.False(innerTask.GetType().IsGenericType); // Guard
-                return innerTask;
+                await innerTask;
+                return null;
             };
 
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            IMethodInvoker<object, object> invoker = CreateProductUnderTest(lambda);
             object instance = null;
             object[] arguments = null;
 
@@ -203,14 +158,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         public void InvokeAsync_IfLambdaReturnsTaskWhenAllTask_ReturnsCompletedTask()
         {
             // Arrange
-            Func<object, object[], Task> lambda = (i1, i2) =>
+            Func<object, object[], Task<object>> lambda = async (i1, i2) =>
             {
                 Task innerTask = Task.WhenAll(Task.Delay(1));
                 Assert.False(innerTask.GetType().IsGenericType); // Guard
-                return innerTask;
+                await innerTask;
+                return null;
             };
 
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            IMethodInvoker<object, object> invoker = CreateProductUnderTest(lambda);
             object instance = null;
             object[] arguments = null;
 
@@ -227,16 +183,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         public void InvokeAsync_IfLambdaReturnsTaskWhenAllCancelledTask_ReturnsCancelledTask()
         {
             // Arrange
-            Func<object, object[], Task> lambda = (i1, i2) =>
+            Func<object, object[], Task<object>> lambda = async (i1, i2) =>
             {
                 var cancellationSource = new System.Threading.CancellationTokenSource();
                 Task innerTask = new Task(() => { }, cancellationSource.Token);
                 Assert.False(innerTask.GetType().IsGenericType); // Guard
                 cancellationSource.Cancel();
-                return Task.WhenAll(innerTask);
+                await Task.WhenAll(innerTask);
+                return null;
             };
 
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            IMethodInvoker<object, object> invoker = CreateProductUnderTest(lambda);
             object instance = null;
             object[] arguments = null;
 
@@ -254,15 +211,16 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             // Arrange
             Exception expectedException = new InvalidOperationException();
-            Func<object, object[], Task> lambda = (i1, i2) =>
+            Func<object, object[], Task<object>> lambda = async (i1, i2) =>
             {
                 Task innerTask = new Task(() => { throw expectedException; });
                 innerTask.Start();
                 Assert.False(innerTask.GetType().IsGenericType); // Guard
-                return Task.WhenAll(innerTask);
+                await Task.WhenAll(innerTask);
+                return null;
             };
 
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            IMethodInvoker<object, object> invoker = CreateProductUnderTest(lambda);
             object instance = null;
             object[] arguments = null;
 
@@ -281,13 +239,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         public void InvokeAsync_IfLambdaReturnsTaskWhenAllTaskWithReturnTypes_ReturnsCompletedTask()
         {
             // Arrange
-            Func<object, object[], Task> lambda = (i1, i2) =>
+            Func<object, object[], Task<object>> lambda = async (i1, i2) =>
             {
-                Task innerTask = Task.WhenAll(Task.FromResult(0));
-                return innerTask;
+                Task innerTask = Task.WhenAll(Task.FromResult<object>(null));
+                await innerTask;
+                return null;
             };
 
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            IMethodInvoker<object, object> invoker = CreateProductUnderTest(lambda);
             object instance = null;
             object[] arguments = null;
 
@@ -304,14 +263,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         public void InvokeAsync_IfLambdaReturnsTaskWhenAllCancelledTaskWithReturnTypes_ReturnsCancelledTask()
         {
             // Arrange
-            Func<object, object[], Task> lambda = (i1, i2) =>
+            Func<object, object[], Task<object>> lambda = async (i1, i2) =>
             {
                 TaskCompletionSource<object> source = new TaskCompletionSource<object>();
                 source.SetCanceled();
-                return Task.WhenAll(source.Task);
+                await Task.WhenAll(source.Task);
+                return null;
             };
 
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            IMethodInvoker<object, object> invoker = CreateProductUnderTest(lambda);
             object instance = null;
             object[] arguments = null;
 
@@ -329,14 +289,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             // Arrange
             Exception expectedException = new InvalidOperationException();
-            Func<object, object[], Task> lambda = (i1, i2) =>
+            Func<object, object[], Task<object>> lambda = async (i1, i2) =>
             {
                 TaskCompletionSource<object> source = new TaskCompletionSource<object>();
                 source.SetException(expectedException);
-                return Task.WhenAll(source.Task);
+                await Task.WhenAll(source.Task);
+                return null;
             };
 
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            IMethodInvoker<object, object> invoker = CreateProductUnderTest(lambda);
             object instance = null;
             object[] arguments = null;
 
@@ -351,9 +312,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             Assert.Same(expectedException, task.Exception.InnerException);
         }
 
-        private static TaskMethodInvoker<object> CreateProductUnderTest(Func<object, object[], Task> lambda)
+        private static TaskMethodInvoker<object, object> CreateProductUnderTest(Func<object, object[], Task<object>> lambda)
         {
-            return new TaskMethodInvoker<object>(lambda);
+            return new TaskMethodInvoker<object, object>(lambda);
         }
     }
 }

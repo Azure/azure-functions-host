@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                 .Returns(() =>
                 {
                     called = true;
-                    return Task.FromResult(0);
+                    return Task.FromResult<object>(null);
                 });
 
             var timeoutSource = new CancellationTokenSource();
@@ -155,6 +155,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                         await Task.Delay(1000);
                     }
                     called = true;
+                    return null;
                 });
 
             var timeoutSource = new CancellationTokenSource();
@@ -182,6 +183,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                     {
                         await Task.Delay(500);
                     }
+                    return null;
                 });
 
             // setup the instance details for the exception message
@@ -217,6 +219,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                         await Task.Delay(1000);
                     }
                     called = true;
+                    return null;
                 });
 
             var timeoutSource = new CancellationTokenSource();
@@ -245,6 +248,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                         await Task.Delay(1500);
                     }
                     called = true;
+                    return null;
                 });
 
             var timeoutSource = new CancellationTokenSource();
@@ -273,6 +277,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                     {
                         await Task.Delay(500);
                     }
+                    return null;
                 });
 
             // setup the instance details for the exception message

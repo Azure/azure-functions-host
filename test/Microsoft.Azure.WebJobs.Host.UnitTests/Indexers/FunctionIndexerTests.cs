@@ -93,38 +93,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         }
 
         [Fact]
-        public void IndexMethod_IfMethodReturnsNonTask_Throws()
-        {
-            // Arrange
-            IFunctionIndexCollector index = CreateDummyFunctionIndex();
-            FunctionIndexer product = CreateProductUnderTest();
-
-            // Act & Assert
-            FunctionIndexingException exception = Assert.Throws<FunctionIndexingException>(
-                () => product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("ReturnNonTask"), index,
-                    CancellationToken.None).GetAwaiter().GetResult());
-            InvalidOperationException innerException = exception.InnerException as InvalidOperationException;
-            Assert.NotNull(innerException);
-            Assert.Equal("Functions must return Task or void.", innerException.Message);
-        }
-
-        [Fact]
-        public void IndexMethod_IfMethodReturnsTaskOfTResult_Throws()
-        {
-            // Arrange
-            IFunctionIndexCollector index = CreateDummyFunctionIndex();
-            FunctionIndexer product = CreateProductUnderTest();
-
-            // Act & Assert
-            FunctionIndexingException exception = Assert.Throws<FunctionIndexingException>(
-                () => product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("ReturnGenericTask"), index,
-                    CancellationToken.None).GetAwaiter().GetResult());
-            InvalidOperationException innerException = exception.InnerException as InvalidOperationException;
-            Assert.NotNull(innerException);
-            Assert.Equal("Functions must return Task or void.", innerException.Message);
-        }
-
-        [Fact]
         public void IndexMethod_IfMethodReturnsVoid_DoesNotThrow()
         {
             // Arrange

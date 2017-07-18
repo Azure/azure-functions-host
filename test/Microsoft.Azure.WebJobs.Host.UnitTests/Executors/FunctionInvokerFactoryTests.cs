@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             IFunctionInvoker invoker = FunctionInvokerFactory.Create(method, activator);
 
             // Assert
-            Assert.IsType<FunctionInvoker<FunctionInvokerFactoryTests>>(invoker);
+            Assert.IsType<FunctionInvoker<FunctionInvokerFactoryTests, object>>(invoker);
         }
 
         [Fact]
@@ -91,9 +91,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             IFunctionInvoker invoker = FunctionInvokerFactory.Create(method, activator);
 
             // Assert
-            Assert.IsType<FunctionInvoker<FunctionInvokerFactoryTests>>(invoker);
-            FunctionInvoker<FunctionInvokerFactoryTests> typedInvoker =
-                (FunctionInvoker<FunctionInvokerFactoryTests>)invoker;
+            Assert.IsType<FunctionInvoker<FunctionInvokerFactoryTests, object>>(invoker);
+            FunctionInvoker<FunctionInvokerFactoryTests, object> typedInvoker =
+                (FunctionInvoker<FunctionInvokerFactoryTests, object>)invoker;
             Assert.IsType<NullInstanceFactory<FunctionInvokerFactoryTests>>(typedInvoker.InstanceFactory);
         }
 
@@ -108,9 +108,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             IFunctionInvoker invoker = FunctionInvokerFactory.Create(method, activator);
 
             // Assert
-            Assert.IsType<FunctionInvoker<FunctionInvokerFactoryTests>>(invoker);
-            FunctionInvoker<FunctionInvokerFactoryTests> typedInvoker =
-                (FunctionInvoker<FunctionInvokerFactoryTests>)invoker;
+            Assert.IsType<FunctionInvoker<FunctionInvokerFactoryTests, object>>(invoker);
+            FunctionInvoker<FunctionInvokerFactoryTests, object> typedInvoker =
+                (FunctionInvoker<FunctionInvokerFactoryTests, object>)invoker;
             Assert.IsType<ActivatorInstanceFactory<FunctionInvokerFactoryTests>>(typedInvoker.InstanceFactory);
         }
 
@@ -125,8 +125,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             IFunctionInvoker invoker = FunctionInvokerFactory.Create(method, activator);
 
             // Assert
-            Assert.IsType<FunctionInvoker<Subclass>>(invoker);
-            FunctionInvoker<Subclass> typedInvoker = (FunctionInvoker<Subclass>)invoker;
+            Assert.IsType<FunctionInvoker<Subclass, object>>(invoker);
+            FunctionInvoker<Subclass, object> typedInvoker = (FunctionInvoker<Subclass, object>)invoker;
             Assert.IsType<ActivatorInstanceFactory<Subclass>>(typedInvoker.InstanceFactory);
         }
 
