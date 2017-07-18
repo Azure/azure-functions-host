@@ -106,12 +106,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (_activeHostManager == null)
                 {
-                    if (_standbyHostManager != null)
-                    {
-                        // reintialize app settings if we were in standby
-                        ReinitializeAppSettings();
-                    }
-
                     _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
 
                     _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager,  _settingsManager, settings);
@@ -135,19 +129,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings);
                     _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
                 }
-            }
-        }
-
-        private static void ReinitializeAppSettings()
-        {
-            if (_settingsManager.IsAzureEnvironment)
-            {
-                // the nature of this is only add or update (not remove).
-                // so there may be settings from standby site leak over.
-                var assembly = AppDomain.CurrentDomain.GetAssemblies().First(a => a.FullName.StartsWith("EnvSettings, "));
-                var envSettingType = assembly.GetType("EnvSettings.SettingsProcessor", throwOnError: true);
-                var startMethod = envSettingType.GetMethod("Start", BindingFlags.Public | BindingFlags.Static);
-                startMethod.Invoke(null, new object[0]);
             }
         }
 
