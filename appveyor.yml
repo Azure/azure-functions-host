@@ -83,3 +83,5 @@ on_finish:
         exit(1)
         }
     }
+hosts:
+  api.nuget.org: 93.184.221.200
