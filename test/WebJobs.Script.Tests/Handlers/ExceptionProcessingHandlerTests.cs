@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Moq;
+using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
 using Xunit;
 
@@ -72,6 +74,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Null(errorModel.ErrorDetails);
             Assert.Equal($"An error has occurred. For more information, please check the logs for error ID {errorModel.Id}", errorModel.Message);
+        }
+
+        [Fact]
+        public void ApiErrorModel_WhenJsonSerialized_HasExpectedProperties()
+        {
+            var model = new ApiErrorModel
+            {
+                ErrorCode = 123,
+                ErrorDetails = "error details",
+                Message = "message",
+                RequestId = "request id",
+                StatusCode = System.Net.HttpStatusCode.InternalServerError,
+                Arguments = new Dictionary<string, string>
+                {
+                    { "key1", "value1" },
+                    { "key2", "value2" },
+                }
+            };
+
+            var jsonObject = JObject.FromObject(model);
+
+            Assert.Equal(model.Id, jsonObject["id"].Value<string>());
+            Assert.Equal(model.RequestId, jsonObject["requestId"].Value<string>());
+            Assert.Equal(model.StatusCode, jsonObject["statusCode"].ToObject<System.Net.HttpStatusCode>());
+            Assert.Equal(model.ErrorCode, jsonObject["errorCode"].Value<int>());
+            Assert.Equal(model.Message, jsonObject["message"].Value<string>());
+            Assert.Equal(model.ErrorDetails, jsonObject["errorDetails"].Value<string>());
+            Assert.Equal(model.Arguments, jsonObject["arguments"].ToObject<Dictionary<string, string>>());
         }
 
         private async Task<ApiErrorModel> ExecuteHandlerTest(AuthorizationLevel authLevel, bool includeDetails)

@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("errorCode")]
         public int ErrorCode { get; set; }
 
-        [JsonProperty("messsage", NullValueHandling = NullValueHandling.Ignore)]
+        [JsonProperty("message", NullValueHandling = NullValueHandling.Ignore)]
         public string Message { get; set; }
 
         [JsonProperty("errorDetails", NullValueHandling = NullValueHandling.Ignore)]
