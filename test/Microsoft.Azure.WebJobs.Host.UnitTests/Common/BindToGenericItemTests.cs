@@ -83,6 +83,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
 
                 host.Call("Func2", new { k = 1 });
                 Assert.Equal("Func2", _log);
+
+                host.Call("FuncRename", new { k = 1 });
+                Assert.Equal("newname", _log);
             }
 
             string _log;
@@ -110,6 +113,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
 
             // Missing path, will default to method name 
             public void Func2([Test2] string w)
+            {
+                _log = w;
+            }
+
+            // Missing path, will default to method name 
+            [FunctionName("newname")]
+            public void FuncRename([Test2] string w)
             {
                 _log = w;
             }

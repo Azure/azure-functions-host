@@ -268,11 +268,41 @@ namespace Microsoft.Azure.WebJobs
             return CallAsyncCore(method, arguments, cancellationToken);
         }
 
+        /// <summary>Calls a job method.</summary>
+        /// <param name="name">The name of the function to call.</param>
+        /// <param name="arguments">The argument names and values to bind to parameters in the job method. In addition to parameter values, these may also include binding data values. </param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A <see cref="Task"/> that will call the job method.</returns>
+        public async Task CallAsync(string name, IDictionary<string, object> arguments = null,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            if (name == null)
+            {
+                throw new ArgumentNullException(nameof(name));
+            }
+
+            ThrowIfDisposed();
+
+            await EnsureHostStartedAsync(cancellationToken);
+
+            IFunctionDefinition function = _context.FunctionLookup.LookupByName(name);
+            Validate(function, name);
+            IFunctionInstance instance = CreateFunctionInstance(function, arguments);
+
+            IDelayedException exception = await _context.Executor.TryExecuteAsync(instance, cancellationToken);
+
+            if (exception != null)
+            {
+                exception.Throw();
+            }
+        }
+
         private async Task CallAsyncCore(MethodInfo method, IDictionary<string, object> arguments,
             CancellationToken cancellationToken)
         {
             await EnsureHostStartedAsync(cancellationToken);
-            IFunctionDefinition function = ResolveFunctionDefinition(method, _context.FunctionLookup);
+            IFunctionDefinition function = _context.FunctionLookup.Lookup(method);
+            Validate(function, method);
             IFunctionInstance instance = CreateFunctionInstance(function, arguments);
 
             IDelayedException exception = await _context.Executor.TryExecuteAsync(instance, cancellationToken);
@@ -333,17 +363,13 @@ namespace Microsoft.Azure.WebJobs
             return func.InstanceFactory.Create(context);
         }
 
-        private static IFunctionDefinition ResolveFunctionDefinition(MethodInfo method, IFunctionIndexLookup functionLookup)
-        {
-            IFunctionDefinition function = functionLookup.Lookup(method);
-
+        private static void Validate(IFunctionDefinition function, object key)
+        { 
             if (function == null)
             {
-                string msg = String.Format(CultureInfo.CurrentCulture, "'{0}' can't be invoked from Azure WebJobs SDK. Is it missing Azure WebJobs SDK attributes?", method);
+                string msg = String.Format(CultureInfo.CurrentCulture, "'{0}' can't be invoked from Azure WebJobs SDK. Is it missing Azure WebJobs SDK attributes?", key);
                 throw new InvalidOperationException(msg);
             }
-
-            return function;
         }
 
         private void ThrowIfDisposed()

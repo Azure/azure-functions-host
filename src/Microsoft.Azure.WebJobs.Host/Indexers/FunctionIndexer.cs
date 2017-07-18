@@ -365,13 +365,26 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             TraceLevelAttribute traceAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TraceLevelAttribute>(method);
 
             bool hasCancellationToken = method.GetParameters().Any(p => p.ParameterType == typeof(CancellationToken));
-        
+
+            string logName = method.Name;
+            string shortName = method.GetShortName();
+            FunctionNameAttribute nameAttribute = method.GetCustomAttribute<FunctionNameAttribute>();
+            if (nameAttribute != null)
+            {
+                logName = nameAttribute.Name;
+                shortName = logName;
+                if (!FunctionNameAttribute.FunctionNameValidationRegex.IsMatch(logName))
+                {
+                    throw new InvalidOperationException(string.Format("'{0}' is not a valid function name.", logName));
+                }
+            }
+
             return new FunctionDescriptor
             {
                 Id = method.GetFullName(),
-                LogName = method.Name,
+                LogName = logName,
                 FullName = method.GetFullName(),
-                ShortName = method.GetShortName(),
+                ShortName = shortName,
                 IsDisabled = disabled,
                 HasCancellationToken = hasCancellationToken,
                 TraceLevel = traceAttribute?.Level ?? TraceLevel.Verbose,
