@@ -8,7 +8,9 @@ using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Extensions.Logging;
 using System;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -94,7 +96,10 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
         public static JobHostConfiguration NewConfig(Type functions, params object[] services)
         {
             var config = NewConfig(services);
-            config.AddServices(new FakeTypeLocator(functions));
+            if (!services.OfType<ITypeLocator>().Any())
+            {
+                config.AddServices(new FakeTypeLocator(functions));
+            }
             return config;
         }
 
@@ -142,6 +147,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                 typeof(IQueueConfiguration),
                 typeof(IExtensionRegistry),
                 typeof(IDistributedLockManager),
+                typeof(ILoggerFactory),
                 typeof(IFunctionIndexProvider) // set to unit test indexing. 
             };
 

@@ -31,11 +31,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IAsyncCollector<FunctionInstanceLogEntry> _functionEventCollector;
         private readonly ILogger _logger;
         private readonly ILogger _resultsLogger;
+        private readonly IJobInvoker _jobInvoker;
 
         private HostOutputMessage _hostOutputMessage;
 
         public FunctionExecutor(IFunctionInstanceLogger functionInstanceLogger, IFunctionOutputLogger functionOutputLogger,
-                IWebJobsExceptionHandler exceptionHandler, TraceWriter trace, IAsyncCollector<FunctionInstanceLogEntry> functionEventCollector = null,
+                IWebJobsExceptionHandler exceptionHandler, TraceWriter trace, IJobInvoker jobInvoker,
+                IAsyncCollector<FunctionInstanceLogEntry> functionEventCollector = null,
                 ILoggerFactory loggerFactory = null)
         {
             if (functionInstanceLogger == null)
@@ -62,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             _functionOutputLogger = functionOutputLogger;
             _exceptionHandler = exceptionHandler;
             _trace = trace;
+            _jobInvoker = jobInvoker;
             _functionEventCollector = functionEventCollector;
             _logger = loggerFactory?.CreateLogger(LogCategories.Executor);
             _resultsLogger = loggerFactory?.CreateLogger(LogCategories.Results);
@@ -444,7 +447,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             try
             {
-                await ExecuteWithWatchersAsync(instance, parameterHelper, trace, logger, functionCancellationTokenSource);
+                await ExecuteWithWatchersAsync(instance, parameterHelper, trace, logger, functionCancellationTokenSource, _jobInvoker);
 
                 if (updateParameterLogTimer != null)
                 {
@@ -470,7 +473,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             ParameterHelper parameterHelper,
             TraceWriter traceWriter,
             ILogger logger,
-            CancellationTokenSource functionCancellationTokenSource)
+            CancellationTokenSource functionCancellationTokenSource,
+            IJobInvoker jobInvoker)
         {
             IFunctionInvoker invoker = instance.Invoker;
 
@@ -490,24 +494,41 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 await singleton.AcquireAsync(functionCancellationTokenSource.Token);
             }
 
-            // Create a source specifically for timeouts
-            using (CancellationTokenSource timeoutTokenSource = new CancellationTokenSource())
+            // Check to see if there are any filters
+            var jobInstance = invoker.CreateInstance();
+            parameterHelper.ObjectInstance = jobInstance;
+            using (jobInstance as IDisposable)
             {
-                TimeoutAttribute timeoutAttribute = instance.FunctionDescriptor.TimeoutAttribute;
-                bool throwOnTimeout = timeoutAttribute == null ? false : timeoutAttribute.ThrowOnTimeout;
-                var timer = StartFunctionTimeout(instance, timeoutAttribute, timeoutTokenSource, traceWriter, logger);
-                TimeSpan timerInterval = timer == null ? TimeSpan.MinValue : TimeSpan.FromMilliseconds(timer.Interval);
-                try
+                List<IFunctionInvocationFilter> filters = GetFilters(instance.FunctionDescriptor, jobInstance);
+
+                // Create a source specifically for timeouts
+                using (CancellationTokenSource timeoutTokenSource = new CancellationTokenSource())
                 {
-                    await InvokeAsync(invoker, parameterHelper, timeoutTokenSource, functionCancellationTokenSource,
-                    throwOnTimeout, timerInterval, instance);
-                }
-                finally
-                {
-                    if (timer != null)
+                    TimeoutAttribute timeoutAttribute = instance.FunctionDescriptor.TimeoutAttribute;
+                    bool throwOnTimeout = timeoutAttribute == null ? false : timeoutAttribute.ThrowOnTimeout;
+                    var timer = StartFunctionTimeout(instance, timeoutAttribute, timeoutTokenSource, traceWriter, logger);
+                    TimeSpan timerInterval = timer == null ? TimeSpan.MinValue : TimeSpan.FromMilliseconds(timer.Interval);
+                    try
                     {
-                        timer.Stop();
-                        timer.Dispose();
+                        // Create a dictionary that will pass the user properties from the Executing filter to the Executed filter
+                        Dictionary<string, object> properties = new Dictionary<string, object>();
+
+                        // Create the context objects for the filter execution
+                        FunctionExecutingContext executingContext = NewFilter<FunctionExecutingContext>(instance, parameterHelper, properties, logger, jobInvoker);
+                        FunctionExecutedContext executedContext = NewFilter<FunctionExecutedContext>(instance, parameterHelper, properties, logger, jobInvoker);
+
+                        invoker = FunctionWithFilterInvoker.ApplyFilters(invoker, filters, executingContext, executedContext);
+
+                        await InvokeAsync(invoker, parameterHelper, timeoutTokenSource, functionCancellationTokenSource,
+                            throwOnTimeout, timerInterval, instance);
+                    }
+                    finally
+                    {
+                        if (timer != null)
+                        {
+                            timer.Stop();
+                            timer.Dispose();
+                        }
                     }
                 }
             }
@@ -534,28 +555,70 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             //      b. If !throwOnTimeout, wait for the task to complete.
 
             // Start the invokeTask.
-            var objInstance = invoker.CreateInstance();
+            var objInstance = parameterHelper.ObjectInstance;
 
-            using (objInstance as IDisposable)
+            Task<object> invokeTask = invoker.InvokeAsync(objInstance, invokeParameters);
+
+            // Combine #1 and #2 with a timeout task (handled by this method).
+            // functionCancellationTokenSource.Token is passed to each function that requests it, so we need to call Cancel() on it
+            // if there is a timeout.
+            bool isTimeout = await TryHandleTimeoutAsync(invokeTask, functionCancellationTokenSource.Token, throwOnTimeout, timeoutTokenSource.Token,
+                timerInterval, instance, () => functionCancellationTokenSource.Cancel());
+
+            // #2 occurred. If we're going to throwOnTimeout, watch for a timeout while we wait for invokeTask to complete.
+            if (throwOnTimeout && !isTimeout && functionCancellationTokenSource.IsCancellationRequested)
             {
-                Task<object> invokeTask = invoker.InvokeAsync(objInstance, invokeParameters);
-
-                // Combine #1 and #2 with a timeout task (handled by this method).
-                // functionCancellationTokenSource.Token is passed to each function that requests it, so we need to call Cancel() on it
-                // if there is a timeout.
-                bool isTimeout = await TryHandleTimeoutAsync(invokeTask, functionCancellationTokenSource.Token, throwOnTimeout, timeoutTokenSource.Token,
-                    timerInterval, instance, () => functionCancellationTokenSource.Cancel());
-
-                // #2 occurred. If we're going to throwOnTimeout, watch for a timeout while we wait for invokeTask to complete.
-                if (throwOnTimeout && !isTimeout && functionCancellationTokenSource.IsCancellationRequested)
-                {
-                    await TryHandleTimeoutAsync(invokeTask, CancellationToken.None, throwOnTimeout, timeoutTokenSource.Token, timerInterval, instance, null);
-                }
-
-                object returnValue = await invokeTask;
-
-                parameterHelper.SetReturnValue(returnValue);
+                await TryHandleTimeoutAsync(invokeTask, CancellationToken.None, throwOnTimeout, timeoutTokenSource.Token, timerInterval, instance, null);
             }
+
+            object returnValue = await invokeTask;
+
+            parameterHelper.SetReturnValue(returnValue);
+        }
+
+        // Helper to create a filter context object 
+        private static T NewFilter<T>(
+            IFunctionInstance instance,
+            ParameterHelper parameterHelper,
+            Dictionary<string, object> properties,
+            ILogger logger,
+            IJobInvoker jobInvoker)
+            where T : FunctionInvocationContext, new()
+        {
+            return new T
+            {
+                FunctionInstanceId = instance.Id,
+                FunctionName = instance.FunctionDescriptor.ShortName,
+                Arguments = parameterHelper.GetParametersAsDictionary(),
+                Properties = properties,
+                Logger = logger,
+                JobHost = jobInvoker
+            };
+        }
+
+        // Return a list of filters in order that they should be executed. 
+        private static List<IFunctionInvocationFilter> GetFilters(FunctionDescriptor functionDescriptor, object instance)
+        {
+            List<IFunctionInvocationFilter> filters = new List<IFunctionInvocationFilter>();
+
+            if (instance is IFunctionInvocationFilter instanceFilter)
+            {
+                filters.Add(instanceFilter);
+            }
+
+            // Check for class filters
+            if (functionDescriptor.DeclaringClassFilters != null)
+            {
+                filters.AddRange(functionDescriptor.DeclaringClassFilters);
+            }
+
+            // Check for method filters
+            if (functionDescriptor.DeclaringMethodFilters != null)
+            {
+                filters.AddRange(functionDescriptor.DeclaringMethodFilters);
+            }
+
+            return filters;
         }
 
         /// <summary>
@@ -569,7 +632,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// <param name="instance">The function instance. Used only in the exceptionMessage</param>
         /// <param name="onTimeout">A callback to be executed if a timeout occurs.</param>
         /// <returns>True if a timeout occurred. Otherwise, false.</returns>
-        private static async Task<bool> TryHandleTimeoutAsync(Task invokeTask, CancellationToken shutdownToken, bool throwOnTimeout, CancellationToken timeoutToken,
+        private static async Task<bool> TryHandleTimeoutAsync(Task invokeTask, 
+            CancellationToken shutdownToken, bool throwOnTimeout, CancellationToken timeoutToken,
             TimeSpan timeoutInterval, IFunctionInstance instance, Action onTimeout)
         {
             Task timeoutTask = Task.Delay(-1, timeoutToken);
@@ -749,9 +813,26 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             // These are produced by executing the binders. 
             public object[] InvokeParameters { get; internal set; }
 
+            public object ObjectInstance { get; set; }
+
             public IDictionary<string, ParameterLog> ParameterLogCollector => _parameterLogCollector;
 
             public object ReturnValue => _returnValue;
+
+            // Convert the parameters and their names to a dictionary
+            public Dictionary<string, object> GetParametersAsDictionary()
+            {
+                Dictionary<string, object> parametersAsDictionary = new Dictionary<string, object>();
+
+                int counter = 0;
+                foreach (var name in _parameterNames)
+                {
+                    parametersAsDictionary[name] = InvokeParameters[counter];
+                    counter++;
+                }
+
+                return parametersAsDictionary;
+            }
 
             public IReadOnlyDictionary<string, IWatcher> CreateParameterWatchers()
             {
@@ -992,6 +1073,96 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     }
 
                     return orderedBinder.StepOrder;
+                }
+            }
+        }
+
+        public class FunctionWithFilterInvoker : IFunctionInvoker
+        {
+            private List<IFunctionInvocationFilter> _filters;
+
+            private IFunctionInvoker _body;
+
+            private FunctionExecutingContext _pre;
+
+            private FunctionExecutedContext _post;
+
+            public IReadOnlyList<string> ParameterNames => _body.ParameterNames;
+
+            public static IFunctionInvoker ApplyFilters(IFunctionInvoker inner, List<IFunctionInvocationFilter> filters, FunctionExecutingContext pre, FunctionExecutedContext post)
+            {
+                if (filters.Count == 0)
+                {
+                    return inner;
+                }
+
+                return new FunctionWithFilterInvoker
+                {
+                    _body = inner,
+                    _filters = filters,
+                    _pre = pre, 
+                    _post = post
+                };
+            }
+
+            public object CreateInstance()
+            {
+                return _body.CreateInstance();
+            }
+
+            public async Task<object> InvokeAsync(object instance, object[] arguments)
+            {
+                // Invoke the filter pipeline.
+                // Basic rules:
+                // - Iff a Pre filter runs, then run the corresponding post. 
+                // - if a pre-filter fails, short circuit the pipeline. Skip the remaining pre-filters and body.
+
+                CancellationToken token;
+
+                int len = _filters.Count;
+                int highestSuccessfulFilter = -1;
+
+                try
+                {
+                    for (int i = 0; i < len; i++)
+                    {
+                        var filter = _filters[i];
+
+                        await filter.OnExecutingAsync(_pre, token);
+
+                        highestSuccessfulFilter = i;
+                    }
+
+                    var result = await _body.InvokeAsync(instance, arguments);
+                    return result;
+                }
+                finally
+                {
+                    Exception exception = null;
+
+                    // Run post filters in reverse order. 
+                    // Only run the post if the corresponding pre executed successfully. 
+                    for (int i = highestSuccessfulFilter; i >= 0; i--)
+                    {
+                        var filter = _filters[i];
+
+                        try
+                        {
+                            await filter.OnExecutedAsync(_post, token);
+                        }
+                        catch (Exception e)
+                        {
+                            exception = e;
+                        }
+                    }
+
+                    // last exception wins. 
+                    // If the body threw, then the finally will automatically rethrow that. 
+                    // If a post-filter throws, capture that 
+                    if (exception != null)
+                    {
+                        throw exception;
+                    }
                 }
             }
         }

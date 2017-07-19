@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs
     /// A <see cref="JobHost"/> is the execution container for jobs. Once started, the
     /// <see cref="JobHost"/> will manage and run job functions when they are triggered.
     /// </summary>
-    public class JobHost : IDisposable
+    public class JobHost : IDisposable, IJobInvoker
     {
         private const int StateNotStarted = 0;
         private const int StateStarting = 1;
