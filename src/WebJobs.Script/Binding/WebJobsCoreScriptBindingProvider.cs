@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 httpConfig = configSection.ToObject<HttpExtensionConfiguration>();
             }
             httpConfig = httpConfig ?? new HttpExtensionConfiguration();
+            httpConfig.SetResponse = HttpBinding.SetResponse;
 
             Config.UseScriptExtensions();
             Config.UseHttp(httpConfig);
