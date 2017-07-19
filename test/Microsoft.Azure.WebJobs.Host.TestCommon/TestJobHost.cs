@@ -32,7 +32,9 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             base.Call(typeof(TProgram).GetMethod(methodName), arguments);
         }
 
+#pragma warning disable CS0108 // Member hides inherited member; missing new keyword
         public Task CallAsync(string methodName, IDictionary<string, object> arguments,
+#pragma warning restore CS0108 // Member hides inherited member; missing new keyword
             CancellationToken cancellationToken)
         {
             return base.CallAsync(typeof(TProgram).GetMethod(methodName), arguments, cancellationToken);
