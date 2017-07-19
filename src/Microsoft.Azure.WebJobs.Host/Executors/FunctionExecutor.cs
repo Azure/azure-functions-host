@@ -686,7 +686,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             fastItem.LiveTimer.Stop();
 
-
             // log result            
             fastItem.EndTime = DateTime.UtcNow;
             fastItem.Duration = fastItem.LiveTimer.Elapsed;
