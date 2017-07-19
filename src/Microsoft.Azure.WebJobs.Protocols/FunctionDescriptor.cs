@@ -30,8 +30,6 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
         /// <summary>Gets or sets the function's parameters.</summary>
         public IEnumerable<ParameterDescriptor> Parameters { get; set; }
-
-
 #if PUBLICPROTOCOL
 #else
         /// <summary>Gets or sets the name used for logging. This is 'Method'. </summary>
@@ -40,11 +38,11 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
         /// <summary>Gets or sets whether this method is disabled. </summary>
         [JsonIgnore]
-        internal bool IsDisabled {get;set;}
+        internal bool IsDisabled { get; set; }
 
         /// <summary>Gets or sets whether this signature includes a cancellation token. 
         /// This indicates whether the method is requesting to be alerted of attempted cancellation. </summary>
-        internal bool HasCancellationToken {get;set;}
+        internal bool HasCancellationToken { get; set; }
 
         /// <summary>
         /// Gets the <see cref="Protocols.TriggerParameterDescriptor"/> for this function
