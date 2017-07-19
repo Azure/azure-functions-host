@@ -391,7 +391,9 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 HasCancellationToken = hasCancellationToken,
                 TraceLevel = traceAttribute?.Level ?? TraceLevel.Verbose,
                 TimeoutAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TimeoutAttribute>(method),
-                SingletonAttributes = method.GetCustomAttributes<SingletonAttribute>()
+                SingletonAttributes = method.GetCustomAttributes<SingletonAttribute>(),
+                DeclaringMethodFilters = method.GetCustomAttributes().OfType<IFunctionInvocationFilter>(),
+                DeclaringClassFilters = method.DeclaringType.GetCustomAttributes().OfType<IFunctionInvocationFilter>()
             };
         }
 

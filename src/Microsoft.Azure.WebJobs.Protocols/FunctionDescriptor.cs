@@ -67,6 +67,18 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// </summary>
         [JsonIgnore]
         internal IEnumerable<SingletonAttribute> SingletonAttributes { get; set; }
+
+        /// <summary>
+        /// Gets any <see cref="IFunctionInvocationFilter"/>s for this function
+        /// </summary>
+        [JsonIgnore]
+        internal IEnumerable<IFunctionInvocationFilter> DeclaringMethodFilters { get; set; }
+
+        /// <summary>
+        /// Gets any <see cref="IFunctionInvocationFilter"/>s for the declaring function
+        /// </summary>
+        [JsonIgnore]
+        internal IEnumerable<IFunctionInvocationFilter> DeclaringClassFilters { get; set; }
 #endif
     }
 }

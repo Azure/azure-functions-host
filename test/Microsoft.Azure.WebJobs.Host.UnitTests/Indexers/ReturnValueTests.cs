@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
                 return Task.FromResult(result);
             }
 
-            [return: Alpha] // 
+            [return: Alpha]
             public string ExplicitReturnWins([Beta] string trigger)
             {
                 return trigger + "alpha";
