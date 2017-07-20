@@ -83,12 +83,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             string functionStartedMessageId = null;
             TraceLevel functionTraceLevel = functionInstance.FunctionDescriptor.TraceLevel;
 
-            FunctionInstanceLogEntry fastItem = await this.NotifyPreBindAsync(functionStartedMessage);
+            FunctionInstanceLogEntry fastItem = null;
                         
             try
             {
                 using (_logger?.BeginFunctionScope(functionInstance))
                 {
+                    fastItem = await this.NotifyPreBindAsync(functionStartedMessage);
                     functionStartedMessageId = await ExecuteWithLoggingAsync(functionInstance, functionStartedMessage, fastItem, parameterHelper, functionTraceLevel, cancellationToken);
                 }
                 functionCompletedMessage = CreateCompletedMessage(functionStartedMessage);
@@ -127,11 +128,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 logCompletedCancellationToken = cancellationToken;
             }
-
-            await NotifyCompleteAsync(fastItem, functionCompletedMessage.Arguments, exceptionInfo);
-          
+            
             using (_resultsLogger?.BeginFunctionScope(functionInstance))
             {
+                await NotifyCompleteAsync(fastItem, functionCompletedMessage.Arguments, exceptionInfo);
                 _resultsLogger?.LogFunctionResult(functionInstance.FunctionDescriptor.LogName, fastItem, fastItem.LiveTimer.Elapsed, exceptionInfo?.SourceException);
             }
 
