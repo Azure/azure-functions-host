@@ -21,6 +21,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal class FunctionIndexer
     {
+        public const string ReturnParamName = "$return";
+
         private static readonly BindingFlags PublicMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
 
         private readonly ITriggerBindingProvider _triggerBindingProvider;
@@ -113,9 +115,14 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             if (method.ContainsGenericParameters)
             {
                 return false;
-            }
+            }            
 
             if (method.GetCustomAttributesData().Any(HasJobAttribute))
+            {
+                return true;
+            }
+
+            if (method.ReturnParameter.GetCustomAttributesData().Any(HasJobAttribute))
             {
                 return true;
             }
@@ -173,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
             ITriggerBinding triggerBinding = null;
             ParameterInfo triggerParameter = null;
-            ParameterInfo[] parameters = method.GetParameters();
+            IEnumerable<ParameterInfo> parameters = method.GetParameters();
 
             foreach (ParameterInfo parameter in parameters)
             {
@@ -208,6 +215,25 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             bool hasParameterBindingAttribute = false;
             Exception invalidInvokeBindingException = null;
 
+            ReturnParameterInfo returnParameter = null;
+            bool triggerHasReturnBinding = false;
+
+            Type methodReturnType;
+            if (TypeUtility.TryGetReturnType(method, out methodReturnType))
+            {
+                Type triggerReturnType;
+                if (bindingDataContract != null && bindingDataContract.TryGetValue(ReturnParamName, out triggerReturnType))
+                {
+                    // The trigger will handle the return value.
+                    triggerHasReturnBinding = true;
+                }
+                
+                // We treat binding to the return type the same as binding to an 'out T' parameter. 
+                // An explicit return binding takes precedence over an implicit trigger binding. 
+                returnParameter = new ReturnParameterInfo(method);
+                parameters = parameters.Concat(new ParameterInfo[] { returnParameter });                
+            }
+
             foreach (ParameterInfo parameter in parameters)
             {
                 if (parameter == triggerParameter)
@@ -218,6 +244,21 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 IBinding binding = await _bindingProvider.TryCreateAsync(new BindingProviderContext(parameter, bindingDataContract, cancellationToken));
                 if (binding == null)
                 {
+                    if (parameter == returnParameter)
+                    {
+                        if (triggerHasReturnBinding)
+                        {
+                            // Ok. Skip and let trigger own the return binding. 
+                            continue;
+                        }
+                        else
+                        {
+                            // If the method has a return value, then we must have a binding to it. 
+                            // This is similar to the error we used to throw. 
+                            invalidInvokeBindingException = new InvalidOperationException("Functions must return Task or void, have a binding attribute for the return value, or be triggered by a binding that natively supports return values.");
+                        }
+                    }
+
                     if (triggerBinding != null && !hasNoAutomaticTriggerAttribute)
                     {
                         throw new InvalidOperationException(
@@ -264,13 +305,6 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 string msg = $"Function '{method.Name}' is async but does not return a Task. Your function may not run correctly.";
                 _trace.Warning(msg);
                 _logger?.LogWarning(msg);
-            }
-
-            Type returnType = method.ReturnType;
-
-            if (returnType != typeof(void) && returnType != typeof(Task))
-            {
-                throw new InvalidOperationException("Functions must return Task or void.");
             }
 
             if (invalidInvokeBindingException != null)
@@ -405,6 +439,29 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             {
                 ListenerFactoryContext context = new ListenerFactoryContext(_descriptor, _executor, cancellationToken);
                 return _binding.CreateListenerAsync(context);
+            }
+        }
+
+        // Get a ParameterInfo that represents the return type as a parameter. 
+        private class ReturnParameterInfo : ParameterInfo
+        {
+            private readonly IEnumerable<Attribute> _attributes;
+
+            public ReturnParameterInfo(MethodInfo method)
+            {
+                var retType = method.ReturnType.MakeByRefType(); // 'return T' is 'out T'
+                ClassImpl = retType;
+                AttrsImpl = ParameterAttributes.Out;
+                NameImpl = ReturnParamName;
+                MemberImpl = method;
+
+                // union all the parameter attributes
+                _attributes = method.ReturnParameter.GetCustomAttributes();
+            }
+
+            public override object[] GetCustomAttributes(Type attributeType, bool inherit)
+            {
+                return _attributes.Where(p => p.GetType() == attributeType).ToArray();
             }
         }
     }

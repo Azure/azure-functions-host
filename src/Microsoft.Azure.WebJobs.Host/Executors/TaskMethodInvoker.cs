@@ -7,18 +7,18 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
-    internal class TaskMethodInvoker<TReflected> : IMethodInvoker<TReflected>
+    internal class TaskMethodInvoker<TReflected, TReturnType> : IMethodInvoker<TReflected, TReturnType>
     {
-        private readonly Func<TReflected, object[], Task> _lambda;
+        private readonly Func<TReflected, object[], Task<TReturnType>> _lambda;
 
-        public TaskMethodInvoker(Func<TReflected, object[], Task> lambda)
+        public TaskMethodInvoker(Func<TReflected, object[], Task<TReturnType>> lambda)
         {
             _lambda = lambda;
         }
 
-        public Task InvokeAsync(TReflected instance, object[] arguments)
+        public Task<TReturnType> InvokeAsync(TReflected instance, object[] arguments)
         {
-            Task task = _lambda.Invoke(instance, arguments);
+            Task<TReturnType> task = _lambda.Invoke(instance, arguments);
             ThrowIfWrappedTaskInstance(task);
             return task;
         }

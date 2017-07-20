@@ -11,6 +11,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         IReadOnlyList<string> ParameterNames { get; }
 
         // The cancellation token, if any, is provided along with the other arguments.
-        Task InvokeAsync(object[] arguments);
+        Task<object> InvokeAsync(object[] arguments);
     }
 }

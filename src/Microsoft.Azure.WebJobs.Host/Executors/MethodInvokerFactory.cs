@@ -12,18 +12,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal static class MethodInvokerFactory
     {
-        public static IMethodInvoker<TReflected> Create<TReflected>(MethodInfo method)
+        public static IMethodInvoker<TReflected, TReturnValue> Create<TReflected, TReturnValue>(MethodInfo method)
         {
             if (method == null)
             {
                 throw new ArgumentNullException("method");
-            }
-
-            Type returnType = method.ReturnType;
-
-            if (returnType != typeof(void) && returnType != typeof(Task))
-            {
-                throw new NotSupportedException("Methods may only return void or Task.");
             }
 
             if (typeof(TReflected) != method.ReflectedType)
@@ -49,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             // If the method returns a value: T returnValue
             ParameterExpression returnValue;
 
+            Type returnType = method.ReturnType;
             if (returnType == typeof(void))
             {
                 returnValue = null;
@@ -153,19 +147,42 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             if (call.Type == typeof(void))
             {
                 // for: public void JobMethod()
-                Expression<Action<TReflected, object[]>> lambda =
-                    Expression.Lambda<Action<TReflected, object[]>>(block, instanceParameter, argumentsParameter);
+                var lambda = Expression.Lambda<Action<TReflected, object[]>>(
+                    block,
+                    instanceParameter,
+                    argumentsParameter);
                 Action<TReflected, object[]> compiled = lambda.Compile();
-                return new VoidMethodInvoker<TReflected>(compiled);
+                return new VoidMethodInvoker<TReflected, TReturnValue>(compiled);
+            }
+            else if (call.Type == typeof(Task))
+            {
+                // for: public Task JobMethod()
+                var lambda = Expression.Lambda<Func<TReflected, object[], Task>>(
+                    block,
+                    instanceParameter,
+                    argumentsParameter);
+                Func<TReflected, object[], Task> compiled = lambda.Compile();
+                return new VoidTaskMethodInvoker<TReflected, TReturnValue>(compiled);
+            }
+            else if (typeof(Task).IsAssignableFrom(call.Type))
+            {
+                // for: public Task<TReturnValue> JobMethod()
+                var lambda = Expression.Lambda<Func<TReflected, object[], Task<TReturnValue>>>(
+                    block,
+                    instanceParameter,
+                    argumentsParameter);
+                Func<TReflected, object[], Task<TReturnValue>> compiled = lambda.Compile();
+                return new TaskMethodInvoker<TReflected, TReturnValue>(compiled);
             }
             else
             {
-                // for: public Task JobMethod()
-                Debug.Assert(call.Type == typeof(Task));
-                Expression<Func<TReflected, object[], Task>> lambda =
-                    Expression.Lambda<Func<TReflected, object[], Task>>(block, instanceParameter, argumentsParameter);
-                Func<TReflected, object[], Task> compiled = lambda.Compile();
-                return new TaskMethodInvoker<TReflected>(compiled);
+                // for: public TReturnValue JobMethod()
+                var lambda = Expression.Lambda<Func<TReflected, object[], TReturnValue>>(
+                    block,
+                    instanceParameter,
+                    argumentsParameter);
+                Func<TReflected, object[], TReturnValue> compiled = lambda.Compile();
+                return new MethodInvokerWithReturnValue<TReflected, TReturnValue>(compiled);
             }
         }
     }

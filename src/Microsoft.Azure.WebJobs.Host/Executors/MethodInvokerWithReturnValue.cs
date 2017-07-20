@@ -6,19 +6,19 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
-    internal class VoidMethodInvoker<TReflected, TReturnValue> : IMethodInvoker<TReflected, TReturnValue>
+    internal class MethodInvokerWithReturnValue<TReflected, TReturnValue> : IMethodInvoker<TReflected, TReturnValue>
     {
-        private readonly Action<TReflected, object[]> _lambda;
+        private readonly Func<TReflected, object[], TReturnValue> _lambda;
 
-        public VoidMethodInvoker(Action<TReflected, object[]> lambda)
+        public MethodInvokerWithReturnValue(Func<TReflected, object[], TReturnValue> lambda)
         {
             _lambda = lambda;
         }
 
         public Task<TReturnValue> InvokeAsync(TReflected instance, object[] arguments)
         {
-            _lambda.Invoke(instance, arguments);
-            return Task.FromResult(default(TReturnValue));
+            TReturnValue result = _lambda.Invoke(instance, arguments);
+            return Task.FromResult(result);
         }
     }
 }

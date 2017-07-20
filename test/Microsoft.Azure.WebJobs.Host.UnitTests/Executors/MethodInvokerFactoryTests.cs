@@ -2,14 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
-using Xunit.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 {
@@ -24,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             MethodInfo method = null;
 
             // Act & Assert
-            ExceptionAssert.ThrowsArgumentNull(() => MethodInvokerFactory.Create<MethodInvokerFactoryTests>(method),
+            ExceptionAssert.ThrowsArgumentNull(() => MethodInvokerFactory.Create<MethodInvokerFactoryTests, object>(method),
                 "method");
         }
 
@@ -37,38 +34,27 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             MethodInfo method = GetMethodInfo(isInstance, "ReturnVoid");
 
             // Act
-            IMethodInvoker<MethodInvokerFactoryTests> invoker =
-                MethodInvokerFactory.Create<MethodInvokerFactoryTests>(method);
+            IMethodInvoker<MethodInvokerFactoryTests, object> invoker =
+                MethodInvokerFactory.Create<MethodInvokerFactoryTests, object>(method);
 
             // Assert
-            Assert.IsType<VoidMethodInvoker<MethodInvokerFactoryTests>>(invoker);
+            Assert.IsType<VoidMethodInvoker<MethodInvokerFactoryTests, object>>(invoker);
         }
 
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
-        public void Create_IfStaticMethodReturnsTask_ReturnsTaskInvoker(bool isInstance)
+        public void Create_IfStaticMethodReturnsTask_ReturnsVoidTaskInvoker(bool isInstance)
         {
             // Arrange
             MethodInfo method = GetMethodInfo(isInstance, "ReturnTask");
 
             // Act
-            IMethodInvoker<MethodInvokerFactoryTests> invoker =
-                MethodInvokerFactory.Create<MethodInvokerFactoryTests>(method);
+            IMethodInvoker<MethodInvokerFactoryTests, object> invoker =
+                MethodInvokerFactory.Create<MethodInvokerFactoryTests, object>(method);
 
             // Assert
-            Assert.IsType<TaskMethodInvoker<MethodInvokerFactoryTests>>(invoker);
-        }
-
-        [Fact]
-        public void Create_IfMethodReturnsNonTask_Throws()
-        {
-            // Arrange
-            MethodInfo method = GetMethodInfo("ReturnInt");
-
-            // Act & Assert
-            ExceptionAssert.ThrowsNotSupported(() => MethodInvokerFactory.Create<MethodInvokerFactoryTests>(method),
-                "Methods may only return void or Task.");
+            Assert.IsType<VoidTaskMethodInvoker<MethodInvokerFactoryTests, object>>(invoker);
         }
 
         [Theory]
@@ -80,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             MethodInfo method = GetMethodInfo(isInstance, "ReturnVoid");
 
             // Act & Assert
-            ExceptionAssert.ThrowsInvalidOperation(() => MethodInvokerFactory.Create<object>(method),
+            ExceptionAssert.ThrowsInvalidOperation(() => MethodInvokerFactory.Create<object, object>(method),
                 "The Type must match the method's ReflectedType.");
         }
 
@@ -96,8 +82,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             object[] expectedC = new object[] { new object() };
 
             // Act
-            IMethodInvoker<MethodInvokerFactoryTests> invoker =
-                MethodInvokerFactory.Create<MethodInvokerFactoryTests>(method);
+            IMethodInvoker<MethodInvokerFactoryTests, object> invoker =
+                MethodInvokerFactory.Create<MethodInvokerFactoryTests, object>(method);
 
             // Assert
             Assert.NotNull(invoker);
@@ -127,8 +113,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             object[] expectedC = new object[] { new object() };
 
             // Act
-            IMethodInvoker<MethodInvokerFactoryTests> invoker =
-                MethodInvokerFactory.Create<MethodInvokerFactoryTests>(method);
+            IMethodInvoker<MethodInvokerFactoryTests, object> invoker =
+                MethodInvokerFactory.Create<MethodInvokerFactoryTests, object>(method);
 
             // Assert
             Assert.NotNull(invoker);
@@ -164,8 +150,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             object[] expectedFinalC = new object[] { new object(), default(int), String.Empty };
 
             // Act
-            IMethodInvoker<MethodInvokerFactoryTests> invoker =
-                MethodInvokerFactory.Create<MethodInvokerFactoryTests>(method);
+            IMethodInvoker<MethodInvokerFactoryTests, object> invoker =
+                MethodInvokerFactory.Create<MethodInvokerFactoryTests, object>(method);
 
             // Assert
             Assert.NotNull(invoker);
@@ -202,8 +188,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             object[] expectedC = new object[] { new object(), default(int), String.Empty };
 
             // Act
-            IMethodInvoker<MethodInvokerFactoryTests> invoker =
-                MethodInvokerFactory.Create<MethodInvokerFactoryTests>(method);
+            IMethodInvoker<MethodInvokerFactoryTests, object> invoker =
+                MethodInvokerFactory.Create<MethodInvokerFactoryTests, object>(method);
 
             // Assert
             Assert.NotNull(invoker);
@@ -234,8 +220,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             MethodInfo method = GetMethodInfo(isInstance, "ReturnCanceledTask");
 
             // Act
-            IMethodInvoker<MethodInvokerFactoryTests> invoker =
-                MethodInvokerFactory.Create<MethodInvokerFactoryTests>(method);
+            IMethodInvoker<MethodInvokerFactoryTests, object> invoker =
+                MethodInvokerFactory.Create<MethodInvokerFactoryTests, object>(method);
 
             // Assert
             MethodInvokerFactoryTests instance = GetInstance(isInstance);
@@ -254,8 +240,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             MethodInfo method = GetMethodInfo(isInstance, "ParameterlessMethod");
 
             // Act
-            IMethodInvoker<MethodInvokerFactoryTests> invoker =
-                MethodInvokerFactory.Create<MethodInvokerFactoryTests>(method);
+            IMethodInvoker<MethodInvokerFactoryTests, object> invoker =
+                MethodInvokerFactory.Create<MethodInvokerFactoryTests, object>(method);
 
             try
             {

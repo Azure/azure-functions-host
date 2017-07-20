@@ -35,9 +35,28 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             var context = new FunctionInstanceFactoryContext<TTriggerValue>()
             {
                 TriggerValue = (TTriggerValue)input.TriggerValue,
-                ParentId = input.ParentId,
-                InvokeHandler = input.InvokeHandler
+                ParentId = input.ParentId
             };
+
+            // To support return value handling by triggers without breaking back-compat in 2.x,
+            // we do some gymnastics to flow the return value through the trigger-provided handler.
+            // This will likely be removed in 3.x in favor of a contract that supports return values.
+            if (input.InvokeHandler != null)
+            {
+                context.InvokeHandler = async next =>
+                {
+                    object returnValue = null;
+                    Func<Task<object>> nextWapper = async () =>
+                    {
+                        returnValue = await next();
+                        return returnValue;
+                    };
+                    
+                    await input.InvokeHandler(nextWapper);
+                    return returnValue;
+                };
+            }
+
             IFunctionInstance instance = _instanceFactory.Create(context);
             IDelayedException exception = await _executor.TryExecuteAsync(instance, cancellationToken);
 

@@ -259,6 +259,7 @@
     <Compile Include="Blobs\WatchableReadStreamTests.cs" />
     <Compile Include="Executors\TriggeredFunctionExecutorTests.cs" />
     <Compile Include="ExtensionConfigContextTests.cs" />
+    <Compile Include="Indexers\ReturnValueTests.cs" />
     <Compile Include="Indexers\FunctionNameTests.cs" />
     <Compile Include="Loggers\ApplicationInsightsLoggerProviderTests.cs" />
     <Compile Include="Loggers\FunctionExecutorLogOrdering.cs" />

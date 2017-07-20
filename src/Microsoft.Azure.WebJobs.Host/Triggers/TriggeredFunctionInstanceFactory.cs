@@ -59,18 +59,18 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
         private class InvokeWrapper : IFunctionInvoker
         {
             private readonly IFunctionInvoker _inner;
-            private readonly Func<Func<Task>, Task> _handler;
+            private readonly Func<Func<Task<object>>, Task<object>> _handler;
 
-            public InvokeWrapper(IFunctionInvoker inner, Func<Func<Task>, Task> handler)
+            public InvokeWrapper(IFunctionInvoker inner, Func<Func<Task<object>>, Task<object>> handler)
             {
                 _inner = inner;
                 _handler = handler;
             }
             public IReadOnlyList<string> ParameterNames => _inner.ParameterNames;
 
-            public Task InvokeAsync(object[] arguments)
+            public Task<object> InvokeAsync(object[] arguments)
             {
-                Func<Task> inner = () => _inner.InvokeAsync(arguments);
+                Func<Task<object>> inner = () => _inner.InvokeAsync(arguments);
                 return _handler(inner);
             }
         }

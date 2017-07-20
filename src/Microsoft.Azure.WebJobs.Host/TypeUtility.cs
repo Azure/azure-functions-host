@@ -167,5 +167,24 @@ namespace Microsoft.Azure.WebJobs.Host
         {
             return IsAsync(methodInfo) && (methodInfo.ReturnType == typeof(void));
         }
+
+        public static bool TryGetReturnType(MethodInfo methodInfo, out Type type)
+        {
+            Type returnType = methodInfo.ReturnType;
+            if (returnType == typeof(void) || returnType == typeof(Task))
+            {
+                type = null;
+            }
+            else if (typeof(Task).IsAssignableFrom(methodInfo.ReturnType))
+            {
+                type = returnType.GetGenericArguments()[0];
+            }
+            else
+            {
+                type = returnType;
+            }
+
+            return type != null;
+        }
     }
 }

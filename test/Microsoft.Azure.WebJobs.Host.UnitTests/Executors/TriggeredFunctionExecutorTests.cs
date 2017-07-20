@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             mockInvoker.Setup(m => m.InvokeAsync(null)).Returns(() =>
             {
                 innerInvokerInvoked = true;
-                return Task.CompletedTask;
+                return Task.FromResult<object>(null);
             });
 
             bool customInvokerInvoked = false;

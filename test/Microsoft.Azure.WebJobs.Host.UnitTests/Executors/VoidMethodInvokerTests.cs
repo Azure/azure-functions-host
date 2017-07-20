@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
                 arguments = a;
             };
 
-            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
+            IMethodInvoker<object, object> invoker = CreateProductUnderTest(lambda);
 
             // Act
             Task task = invoker.InvokeAsync(expectedInstance, expectedArguments);
@@ -39,9 +39,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             Assert.Same(expectedArguments, arguments);
         }
 
-        private static VoidMethodInvoker<object> CreateProductUnderTest(Action<object, object[]> lambda)
+        private static VoidMethodInvoker<object, object> CreateProductUnderTest(Action<object, object[]> lambda)
         {
-            return new VoidMethodInvoker<object>(lambda);
+            return new VoidMethodInvoker<object, object>(lambda);
         }
     }
 }

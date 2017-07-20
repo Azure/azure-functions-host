@@ -492,6 +492,8 @@
     <Compile Include="Executors\FunctionInstanceFactoryContext.cs" />
     <Compile Include="Executors\FunctionInstanceFactoryContextOfT.cs" />
     <Compile Include="Executors\FunctionInstanceTraceWriter.cs" />
+    <Compile Include="Executors\MethodInvokerWithReturnValue.cs" />
+    <Compile Include="Executors\VoidTaskMethodInvoker.cs" />
     <Compile Include="Extensions\CloudQueueMessageExtensions.cs" />
     <Compile Include="Extensions\IJobHostMetadataProvider.cs" />
     <Compile Include="Extensions\JobHostMetadataProvider.cs" />

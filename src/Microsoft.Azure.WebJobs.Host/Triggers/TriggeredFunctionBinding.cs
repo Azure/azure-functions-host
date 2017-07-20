@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.Triggers
@@ -50,11 +51,13 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
             IValueProvider triggerProvider;
             IReadOnlyDictionary<string, object> bindingData;
 
+            IValueBinder triggerReturnValueProvider = null;
             try
             {
                 ITriggerData triggerData = await _triggerBinding.BindAsync(value, context);
                 triggerProvider = triggerData.ValueProvider;
                 bindingData = triggerData.BindingData;
+                triggerReturnValueProvider = (triggerData as TriggerData)?.ReturnValueProvider;
             }
             catch (OperationCanceledException)
             {
@@ -65,8 +68,8 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
                 triggerProvider = new BindingExceptionValueProvider(_triggerParameterName, exception);
                 bindingData = null;
             }
+
             valueProviders.Add(_triggerParameterName, triggerProvider);
-            BindingContext bindingContext = FunctionBinding.NewBindingContext(context, bindingData, parameters);
 
             // Bind Singleton if specified
             SingletonAttribute singletonAttribute = SingletonManager.GetFunctionSingletonOrNull(_descriptor, isTriggered: true);
@@ -77,6 +80,7 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
                 valueProviders.Add(SingletonValueProvider.SingletonParameterName, singletonValueProvider);
             }
 
+            BindingContext bindingContext = FunctionBinding.NewBindingContext(context, bindingData, parameters);
             foreach (KeyValuePair<string, IBinding> item in _nonTriggerBindings)
             {
                 string name = item.Key;
@@ -104,6 +108,17 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
                 }
 
                 valueProviders.Add(name, valueProvider);
+            }
+
+            // Triggers can optionally process the return values of functions. They do so by declaring
+            // a "$return" key in their binding data dictionary and mapping it to an IValueBinder.
+            // An explicit return binding takes precedence over an implicit trigger binding. 
+            if (!valueProviders.ContainsKey(FunctionIndexer.ReturnParamName))
+            {
+                if (triggerReturnValueProvider != null)
+                {
+                    valueProviders.Add(FunctionIndexer.ReturnParamName, triggerReturnValueProvider);
+                }
             }
 
             return valueProviders;

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
@@ -27,7 +28,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             MethodInfo genericMethodDefinition = typeof(FunctionInvokerFactory).GetMethod("CreateGeneric",
                 BindingFlags.NonPublic | BindingFlags.Static);
             Debug.Assert(genericMethodDefinition != null);
-            MethodInfo genericMethod = genericMethodDefinition.MakeGenericMethod(reflectedType);
+
+            Type returnType;
+            if (!TypeUtility.TryGetReturnType(method, out returnType))
+            {
+                returnType = typeof(object);
+            }
+
+            MethodInfo genericMethod = genericMethodDefinition.MakeGenericMethod(reflectedType, returnType);
             Debug.Assert(genericMethod != null);
             Func<MethodInfo, IJobActivator, IFunctionInvoker> lambda =
                 (Func<MethodInfo, IJobActivator, IFunctionInvoker>)Delegate.CreateDelegate(
@@ -35,17 +43,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return lambda.Invoke(method, activator);
         }
 
-        private static IFunctionInvoker CreateGeneric<TReflected>(MethodInfo method, IJobActivator activator)
+        private static IFunctionInvoker CreateGeneric<TReflected, TReturnValue>(
+            MethodInfo method,
+            IJobActivator activator)
         {
             Debug.Assert(method != null);
 
             List<string> parameterNames = method.GetParameters().Select(p => p.Name).ToList();
 
-            IMethodInvoker<TReflected> methodInvoker = MethodInvokerFactory.Create<TReflected>(method);
+            IMethodInvoker<TReflected, TReturnValue> methodInvoker = MethodInvokerFactory.Create<TReflected, TReturnValue>(method);
 
             IFactory<TReflected> instanceFactory = CreateInstanceFactory<TReflected>(method, activator);
 
-            return new FunctionInvoker<TReflected>(parameterNames, instanceFactory, methodInvoker);
+            return new FunctionInvoker<TReflected, TReturnValue>(parameterNames, instanceFactory, methodInvoker);
         }
 
         private static IFactory<TReflected> CreateInstanceFactory<TReflected>(MethodInfo method,

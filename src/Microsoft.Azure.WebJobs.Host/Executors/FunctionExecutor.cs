@@ -13,6 +13,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -537,7 +538,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             //      b. If !throwOnTimeout, wait for the task to complete.
 
             // Start the invokeTask.
-            Task invokeTask = invoker.InvokeAsync(invokeParameters);
+            Task<object> invokeTask = invoker.InvokeAsync(invokeParameters);
 
             // Combine #1 and #2 with a timeout task (handled by this method).
             // functionCancellationTokenSource.Token is passed to each function that requests it, so we need to call Cancel() on it
@@ -551,7 +552,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 await TryHandleTimeoutAsync(invokeTask, CancellationToken.None, throwOnTimeout, timeoutTokenSource.Token, timerInterval, instance, null);
             }
 
-            await invokeTask;
+            object returnValue = await invokeTask;
+
+            parameterHelper.SetReturnValue(returnValue);
         }
 
         /// <summary>
@@ -723,10 +726,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             private IReadOnlyDictionary<string, IWatcher> _parameterWatchers;
 
             // ValueProviders for the parameters. These are produced from binding. 
+            // This includes a possible $return for the return value. 
             private IReadOnlyDictionary<string, IValueProvider> _parameters;
 
             // ordered parameter names of the underlying physical MethodInfo that will be invoked. 
-            private IReadOnlyList<string> _parameterNames;             
+            // This litererally matches the ParameterInfo[] and does not include return value. 
+            private IReadOnlyList<string> _parameterNames;
+
+            // the return value of the function
+            private object _returnValue;
 
             public ParameterHelper(IReadOnlyList<string> parameterNames)
             {
@@ -738,7 +746,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             public object[] InvokeParameters { get; internal set; }
 
             public IDictionary<string, ParameterLog> ParameterLogCollector => _parameterLogCollector;
-                        
+
+            public object ReturnValue => _returnValue;
+
             public IReadOnlyDictionary<string, IWatcher> CreateParameterWatchers()
             {
                 if (_parameterWatchers != null)
@@ -871,7 +881,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                     if (binder != null)
                     {
-                        object argument = this.InvokeParameters[this.GetParameterIndex(name)];
+                        bool isReturn = name == FunctionIndexer.ReturnParamName;                        
+                        object argument = isReturn ? this._returnValue : this.InvokeParameters[this.GetParameterIndex(name)];
 
                         try
                         {
@@ -927,6 +938,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 Array.Sort(parameterValues, parameterNames, ValueBinderStepOrderComparer.Instance);
                 return parameterNames;
+            }
+
+            internal void SetReturnValue(object returnValue)
+            {
+                _returnValue = returnValue;
             }
 
             // IDisposable on any of the IValueProviders in our parameter list.             
