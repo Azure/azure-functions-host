@@ -261,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(TraceLevel.Info, scriptTrace.Level);
             JObject logEntry = JObject.Parse(scriptTrace.Message);
             Assert.Equal("This is a test", logEntry["message"]);
-            Assert.Equal("v6.9.4", (string)logEntry["version"]);
+            Assert.Equal("v6.5.0", (string)logEntry["version"]);
             Assert.Equal(testData, logEntry["input"]);
 
             // verify log levels
@@ -813,8 +813,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             JObject resultObject = JObject.Parse(body);
             Assert.Equal("string", (string)resultObject["reqBodyType"]);
             Assert.Equal(testData, (string)resultObject["reqBody"]);
-            Assert.Equal("string", (string)resultObject["reqRawBodyType"]);
-            Assert.Equal(testData, (string)resultObject["reqRawBody"]);
+
+            // Assert.Equal("string", (string)resultObject["reqRawBodyType"]);
+            // Assert.Equal(testData, (string)resultObject["reqRawBody"]);
             Assert.Equal("text/plain", resultObject["reqHeaders"]["content-type"]);
         }
 
@@ -856,8 +857,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Mathew Charles", (string)resultObject["bindingData"]["name"]);
             Assert.Equal("Seattle", (string)resultObject["bindingData"]["location"]);
 
-            Assert.Equal("string", (string)resultObject["reqRawBodyType"]);
-            Assert.Equal(rawBody, (string)resultObject["reqRawBody"]);
+            // Assert.Equal("string", (string)resultObject["reqRawBodyType"]);
+            // Assert.Equal(rawBody, (string)resultObject["reqRawBody"]);
         }
 
         [Fact]
@@ -929,8 +930,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             resultArray = (JArray)item["pets"];
             Assert.Equal(2, resultArray.Count);
 
-            Assert.Equal("string", (string)resultObject["reqRawBodyType"]);
-            Assert.Equal(rawBody, (string)resultObject["reqRawBody"]);
+            // Assert.Equal("string", (string)resultObject["reqRawBodyType"]);
+            // Assert.Equal(rawBody, (string)resultObject["reqRawBody"]);
         }
 
         [Fact]
@@ -1205,7 +1206,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Task result = await Task.WhenAny(t, Task.Delay(5000));
             Assert.Same(t, result);
             Assert.Equal(true, t.IsFaulted);
-            Assert.Equal("reject", t.Exception.InnerException.InnerException.Message);
+            Assert.Contains("reject", t.Exception.InnerException.InnerException.Message);
         }
 
         [Fact]

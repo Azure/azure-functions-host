@@ -20,10 +20,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             while (await requestStream.MoveNext(CancellationToken.None))
             {
-                if (requestStream.Current.Type == StreamingMessage.Types.Type.StartStream)
+                if (requestStream.Current.ContentCase == StreamingMessage.ContentOneofCase.StartStream)
                 {
                     // TODO Worker start Async needs to wait for the startStream message before it completes the task
-                    var startStream = requestStream.Current.Content.Unpack<StartStream>();
+                    var startStream = requestStream.Current.StartStream;
 
                     output.Subscribe(msg => responseStream.WriteAsync(msg));
 
@@ -35,10 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         OutputStream = output
                     });
                 }
-                else
-                {
-                    input.OnNext(requestStream.Current);
-                }
+                input.OnNext(requestStream.Current);
             }
         }
     }

@@ -4,13 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using Google.Protobuf.Collections;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Rpc.Messages;
-using Newtonsoft.Json;
-using RpcDataType = Microsoft.Azure.WebJobs.Script.Rpc.Messages.TypedData.Types.Type;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
@@ -76,57 +75,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 return null;
             }
-            if (inputMessage.RawResponse != null)
-            {
-                object rawResponseData = inputMessage.RawResponse.FromRpcTypedDataToObject();
-                try
-                {
-                    dynamic obj = JsonConvert.DeserializeObject<ExpandoObject>(rawResponseData.ToString());
-                    return obj;
-                }
-                catch (Exception)
-                {
-                    return rawResponseData;
-                }
-            }
+
             dynamic expando = new ExpandoObject();
             expando.method = inputMessage.Method;
             expando.query = inputMessage.Query as IDictionary<string, string>;
             expando.statusCode = inputMessage.StatusCode;
-            IDictionary<string, string> inputMessageHeaders = inputMessage.Headers as IDictionary<string, string>;
-            IDictionary<string, object> headers = new Dictionary<string, object>();
-            foreach (var item in inputMessageHeaders)
-            {
-                headers.Add(item.Key, item.Value);
-            }
-            expando.headers = headers;
+            expando.headers = inputMessage.Headers.ToDictionary(p => p.Key, p => (object)p.Value);
+            expando.isRaw = inputMessage.IsRaw;
+
             if (inputMessage.Body != null)
             {
-                if (inputMessage.IsRaw && inputMessage.Body.TypeVal != RpcDataType.Bytes)
-                {
-                    expando.body = inputMessage.Body.StringVal;
-                }
-                else
-                {
-                    object bodyConverted = inputMessage.Body.FromRpcTypedDataToObject();
-                    try
-                    {
-                        dynamic d = JsonConvert.DeserializeObject<ExpandoObject>(bodyConverted.ToString());
-                        expando.body = d;
-                    }
-                    catch (Exception)
-                    {
-                        expando.body = bodyConverted;
-                    }
-                }
-                if (inputMessage.IsRaw)
-                {
-                    expando.isRaw = true;
-                }
-            }
-            else
-            {
-                expando.body = null;
+                expando.body = inputMessage.Body.FromRpcTypedDataToObject(true);
             }
             return expando;
         }

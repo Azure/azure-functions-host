@@ -3,12 +3,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
+using System.Linq;
 using Google.Protobuf;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc.Messages;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
-using RpcDataType = Microsoft.Azure.WebJobs.Script.Rpc.Messages.TypedData.Types.Type;
+using RpcDataType = Microsoft.Azure.WebJobs.Script.Rpc.Messages.TypedData.DataOneofCase;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
@@ -59,8 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         if (inputBinding.Key == "req" || inputBinding.Key == "request" || inputBinding.Key == "webhookReq")
                         {
                             RpcHttp httpRequest = ToRpcHttpMessage((Dictionary<string, object>)item.Key);
-                            typedData.TypeVal = RpcDataType.Http;
-                            typedData.HttpVal = httpRequest;
+                            typedData.Http = httpRequest;
                             parameterBinding.Data = typedData;
                         }
                         else if (item.Key != null)
@@ -108,13 +110,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     bodyValue = item.Value;
                 }
-                else if (item.Key == "rawBody")
-                {
-                    requestMessage.RawBody = item.Value.ToString();
-                }
                 else if (item.Key == "params")
                 {
-                    requestMessage.Params.Add(Utilities.GetMetadataFromDictionary((Dictionary<string, object>)item.Value));
+                    var parameters = item.Value as IDictionary<string, string>;
+                    requestMessage.Params.Add(parameters);
+                }
+                else if (item.Key == "rawBody")
+                {
+                    // explicity ignored
                 }
                 else
                 {
@@ -129,19 +132,41 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return requestMessage;
         }
 
-        public static object FromRpcTypedDataToObject(this TypedData typedData)
+        public static object FromRpcTypedDataToObject(this TypedData typedData, bool useExpando = true)
         {
-            switch (typedData.TypeVal)
+            switch (typedData.DataCase)
             {
                 case RpcDataType.Bytes:
                 case RpcDataType.Stream:
-                    return typedData.BytesVal.ToByteArray();
+                    return typedData.Bytes.ToByteArray();
                 case RpcDataType.String:
-                    return typedData.StringVal;
+                    return typedData.String;
                 case RpcDataType.Json:
-                    return JObject.Parse(typedData.StringVal);
+                    if (useExpando)
+                    {
+                        try
+                        {
+                            return JsonConvert.DeserializeObject<ExpandoObject>(typedData.Json, new ExpandoObjectConverter());
+                        }
+                        catch
+                        {
+                            // TODO: improve array handling - FunctionBinding.ReadAsEnumerable
+                            var jarray = JArray.Parse(typedData.Json);
+                            return jarray.AsJEnumerable().ToArray();
+                        }
+                    }
+                    else
+                    {
+                        return JObject.Parse(typedData.Json);
+                    }
                 case RpcDataType.Http:
-                    return Utilities.ConvertFromHttpMessageToExpando(typedData.HttpVal);
+                    return Utilities.ConvertFromHttpMessageToExpando(typedData.Http);
+                case RpcDataType.Int:
+                    return typedData.Int;
+                case RpcDataType.Double:
+                    return typedData.Double;
+                case RpcDataType.None:
+                    return null;
                 default:
                     // TODO better exception
                     throw new InvalidOperationException("Unknown RpcDataType");
@@ -158,35 +183,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             if (scriptExecutionContextValue.GetType().FullName.Contains("Byte"))
             {
-                typedData.TypeVal = RpcDataType.Bytes;
-                typedData.BytesVal = ByteString.CopyFrom((byte[])scriptExecutionContextValue);
+                typedData.Bytes = ByteString.CopyFrom((byte[])scriptExecutionContextValue);
             }
             else if (scriptExecutionContextValue.GetType().FullName.Contains("Generic.Dictionary"))
             {
-                typedData.TypeVal = RpcDataType.String;
-                typedData.StringVal = JObject.FromObject(scriptExecutionContextValue).ToString();
+                typedData.String = JObject.FromObject(scriptExecutionContextValue).ToString();
             }
             else if (scriptExecutionContextValue.GetType().FullName.Contains("ExpandoObject"))
             {
-                typedData.TypeVal = RpcDataType.String;
-                typedData.StringVal = JsonConvert.SerializeObject(scriptExecutionContextValue);
-            }
-            else if (scriptExecutionContextValue.GetType().FullName.Contains("Newtonsoft.Json.Linq.JObject"))
-            {
-                typedData.TypeVal = RpcDataType.Json;
-                typedData.StringVal = scriptExecutionContextValue.ToString();
-            }
-            else if (scriptExecutionContextValue.GetType().FullName.Contains("Newtonsoft.Json.Linq.JArray"))
-            {
-                typedData.TypeVal = RpcDataType.Json;
-                typedData.StringVal = scriptExecutionContextValue.ToString();
+                typedData.String = JsonConvert.SerializeObject(scriptExecutionContextValue);
             }
             else
             {
-                // default to string
-
-                typedData.TypeVal = RpcDataType.String;
-                typedData.StringVal = scriptExecutionContextValue.ToString();
+                // default to string (JObject, JArray, etc)
+                typedData.String = scriptExecutionContextValue.ToString();
             }
             return typedData;
         }

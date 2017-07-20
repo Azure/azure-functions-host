@@ -12,7 +12,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Rpc.Messages;
-using Newtonsoft.Json.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             scriptExecutionContext.Add("functionId", functionMetadata.FunctionId);
             InvocationRequest invocationRequest = scriptExecutionContext.ToRpcInvocationRequest();
             object result = null;
-            InvocationResponse invocationResponse = await _context.SendAsync<InvocationRequest, InvocationResponse>(invocationRequest);
+            InvocationResponse invocationResponse = await _context.InvokeAsync(invocationRequest);
             Dictionary<string, object> itemsDictionary = new Dictionary<string, object>();
             if (invocationResponse.OutputData?.Count > 0)
             {
@@ -72,8 +72,9 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         public async Task HandleFileEventAsync(FileSystemEventArgs fileEvent)
         {
-            FileChangeEventRequest request = new FileChangeEventRequest();
-            FileChangeEventResponse response = await _context.SendAsync<FileChangeEventRequest, FileChangeEventResponse>(request);
+            // FileChangeEventRequest request = new FileChangeEventRequest();
+            // FileChangeEventResponse response = await _context.LoadAsync(request);
+            await Task.CompletedTask;
         }
 
         protected Task<FunctionLoadResponse> LoadInternalAsync(FunctionMetadata functionMetadata)
@@ -84,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                 Metadata = functionMetadata.ToRpcFunctionMetadata()
             };
             functionMetadata.FunctionId = request.FunctionId;
-            return _context.SendAsync<FunctionLoadRequest, FunctionLoadResponse>(request);
+            return _context.LoadAsync(request);
         }
 
         public void LoadAsync(FunctionMetadata functionMetadata)
@@ -117,6 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                     subscription?.Dispose();
                 });
             Utilities.IsTcpEndpointAvailable("127.0.0.1", 50051, _logger);
+
             Task startWorkerTask = StartWorkerAsync(_workerConfig, requestId);
 
             await Task.WhenAny(startWorkerTask, connectionSource.Task);
@@ -125,22 +127,45 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         private void HandleLogs(StreamingMessage msg)
         {
             // TODO figure out live logging
-            if (msg.Type == StreamingMessage.Types.Type.RpcLog)
+            if (msg.ContentCase == StreamingMessage.ContentOneofCase.RpcLog)
             {
-                var logMessage = msg.Content.Unpack<RpcLog>();
+                var logMessage = msg.RpcLog;
 
                 // TODO get rest of the properties from log message
-                JObject logData = JObject.Parse(logMessage.Message);
-                string message = (string)logData["msg"];
+                string message = logMessage.Message;
                 if (message != null)
                 {
                     try
                     {
                         // TODO Initialize SystemTraceWriter
-                         TraceLevel level = (TraceLevel)System.Enum.Parse(typeof(TraceLevel), logData["lvl"].ToString());
+                        LogLevel logLevel = (LogLevel)logMessage.Level;
+                        TraceLevel level = TraceLevel.Off;
+                        switch (logLevel)
+                        {
+                            case LogLevel.Critical:
+                            case LogLevel.Error:
+                                level = TraceLevel.Error;
+                                break;
+
+                            case LogLevel.Trace:
+                            case LogLevel.Debug:
+                                level = TraceLevel.Verbose;
+                                break;
+
+                            case LogLevel.Information:
+                                level = TraceLevel.Info;
+                                break;
+
+                            case LogLevel.Warning:
+                                level = TraceLevel.Warning;
+                                break;
+
+                            default:
+                                break;
+                        }
 
                         // _logger.Trace(new TraceEvent(level, message));
-                         _userTraceWriter.Trace(new TraceEvent(level, message));
+                        _userTraceWriter.Trace(new TraceEvent(level, message));
                     }
                     catch (ObjectDisposedException)
                     {

@@ -3,13 +3,12 @@ syntax = "proto3";
 
 option java_multiple_files = true;
 option java_package = "com.microsoft.azure.webjobs.script.rpc.messages";
-option java_outer_classname = "FunctionRpcProto";
+option java_outer_classname = "FunctionRpc";
 option objc_class_prefix = "FunctionRpc";
 option csharp_namespace = "Microsoft.Azure.WebJobs.Script.Rpc.Messages";
 
 package FunctionRpc;
 
-import "google/protobuf/any.proto";
 import "google/protobuf/duration.proto";
 
 // Interface exported by the server.
@@ -17,53 +16,45 @@ service FunctionRpc {
  rpc EventStream (stream StreamingMessage) returns (stream StreamingMessage) {}
 }
 
-message StreamingMessage{
-    enum Type {
-      StartStream = 0; 
+message StreamingMessage {
+  string request_id = 1;
+  oneof content {
+    StartStream start_stream = 20; 
 
-      //// WORKER/HOST
-      
-      // Host sends capabilities/init data to worker
-      WorkerInitRequest = 1;
-      // Worker responds after initializing with its capabilities & status
-      WorkerInitResponse = 2;
+    // Host sends capabilities/init data to worker
+    WorkerInitRequest worker_init_request = 17;
+    // Worker responds after initializing with its capabilities & status
+    WorkerInitResponse worker_init_response = 16;
 
-      // Worker periodically sends empty heartbeat message to host
-      WorkerHeartbeat = 3;
+    // Worker periodically sends empty heartbeat message to host
+    WorkerHeartbeat worker_heartbeat = 15;
 
-      // Host sends terminate message to worker.
-      // Worker terminates if it can, otherwise host terminates after a grace period
-      WorkerTerminate = 4;
+    // Host sends terminate message to worker.
+    // Worker terminates if it can, otherwise host terminates after a grace period
+    WorkerTerminate worker_terminate = 14;
 
-      // Add any worker relevant status to response
-      WorkerStatusRequest = 5;
-      WorkerStatusResponse = 6;
+    // Add any worker relevant status to response
+    WorkerStatusRequest worker_status_request = 12;
+    WorkerStatusResponse worker_status_response = 13;
 
-      // On file change event, host sends notification to worker
-      FileChangeEventRequest = 8;
-      // Worker responds with the desired action (ignore, restart worker, reload function)
-      FileChangeEventResponse = 9;
-      
-      //// FUNCTION
+    // On file change event, host sends notification to worker
+    FileChangeEventRequest file_change_event_request = 6;
+    // Worker responds with the desired action (ignore, restart worker, reload function)
+    FileChangeEventResponse file_change_event_response = 7;
+    
+    // Host sends required metadata to worker to load function
+    FunctionLoadRequest function_load_request = 8;
+    // Worker responds after loading with the load result
+    FunctionLoadResponse function_load_response = 9;
+    
+    InvocationRequest invocation_request = 4;
+    InvocationResponse invocation_response = 5;
+    // Host sends cancel message to attempt to cancel an invocation. 
+    // If an invocation is cancelled, host will receive an invocation response with status cancelled.
+    InvocationCancel invocation_cancel = 21;
 
-      // Host sends required metadata to worker to load function
-      FunctionLoadRequest = 10;
-      // Worker responds after loading with the load result
-      FunctionLoadResponse = 11;
-      
-      //// INVOCATION
-      InvocationRequest = 12;
-      InvocationResponse = 14;
-      // Host sends cancel message to attempt to cancel an invocation. 
-      // If an invocation is cancelled, host will receive an invocation response with status cancelled.
-      InvocationCancel = 15;
-
-      //// MISC
-      RpcLog = 19;
-    }
-    Type type = 1;
-    google.protobuf.Any content = 2;
-	string request_id = 3;
+    RpcLog rpc_log = 2;
+  }
 }
 
 // Process.Start required info
@@ -191,17 +182,15 @@ message InvocationResponse {
 }
 
 message TypedData {
-  enum Type {
-    String = 0;
-    Json = 1;
-    Bytes = 2;
-    Stream = 3;
-    Http = 4;
+  oneof data {
+    string string = 1;
+    string json = 2;
+    bytes bytes = 3;
+    bytes stream = 4;
+    RpcHttp http = 5;
+	sint64 int = 6;
+    double double = 7;
   }
-  Type type_val = 1;
-  string string_val = 2;
-  bytes  bytes_val = 4;
-  RpcHttp http_val = 5;
 }
 
 message ParameterBinding {
@@ -245,10 +234,8 @@ message RpcHttp {
   string url = 2; 
   map<string,string> headers = 3;
   TypedData body = 4;
-  map<string,TypedData> params = 10;
-  string raw_body = 11;
+  map<string,string> params = 10;
   string status_code = 12;
-  TypedData raw_response = 14;
   map<string,string> query = 15;
   bool is_raw = 16;
 }

@@ -10,8 +10,6 @@ using System.Reactive.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    using StreamTypes = StreamingMessage.Types.Type;
-
     public class ChannelContext
     {
         public IObservable<StreamingMessage> InputStream { get; set; }
@@ -22,37 +20,53 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public string WorkerId { get; set; }
 
-        public Task<TResponse> SendAsync<TRequest, TResponse>(TRequest request, TimeSpan? timeout = null) 
-            where TRequest : IMessage
-            where TResponse : IMessage, new()
+        public async Task<FunctionLoadResponse> LoadAsync(FunctionLoadRequest request)
         {
-            // build request id
-            string requestId = Guid.NewGuid().ToString();
-
-            // build streaming message
-            StreamingMessage streamingMessage = new StreamingMessage()
+            var result = await SendAsync(new StreamingMessage
             {
-                RequestId = requestId,
-                Type = _typeMap[typeof(TRequest)],
-                Content = Any.Pack(request)
-            };
+                FunctionLoadRequest = request
+            });
+            return result.FunctionLoadResponse;
+        }
+
+        public async Task<InvocationResponse> InvokeAsync(InvocationRequest request)
+        {
+            // handle cancellation
+            var response = (await SendAsync(new StreamingMessage
+            {
+                InvocationRequest = request
+            }, TimeSpan.FromMinutes(5))).InvocationResponse;
+
+            var result = response.Result;
+            if (response.Result.Status == StatusResult.Types.Status.Failure)
+            {
+                var exc = response.Result.Exception;
+                throw new InvalidOperationException($"{exc.Message}\n{exc.StackTrace}");
+            }
+            return response;
+        }
+
+        private Task<StreamingMessage> SendAsync(StreamingMessage request, TimeSpan? timeout = null)
+        {
+            if (string.IsNullOrEmpty(request.RequestId))
+            {
+                request.RequestId = Guid.NewGuid().ToString();
+            }
 
             // send streaming message
-            OutputStream.OnNext(streamingMessage);
+            OutputStream.OnNext(request);
 
-            TaskCompletionSource<TResponse> responseSource = new TaskCompletionSource<TResponse>();
+            TaskCompletionSource<StreamingMessage> responseSource = new TaskCompletionSource<StreamingMessage>();
 
             IDisposable subscription = null;
 
             // create request subscription
             // TODO: timeouts
             subscription = InputStream
-                .Where(msg => msg.RequestId == requestId)
-                
-                // .Timeout(timeout ?? TimeSpan.FromSeconds(10))
-                .Subscribe(msg =>
+                .Where(msg => msg.RequestId == request.RequestId)
+                .Timeout(timeout ?? TimeSpan.FromSeconds(10))
+                .Subscribe(response =>
                 {
-                    TResponse response = msg.Content.Unpack<TResponse>();
                     responseSource.SetResult(response);
                     subscription?.Dispose();
                 }, err =>
@@ -63,25 +77,5 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             return responseSource.Task;
         }
-
-        // TODO: remove enum? Any's type urls sufficient?
-        private static IDictionary<System.Type, StreamTypes> _typeMap = new Dictionary<System.Type, StreamTypes>()
-        {
-            [typeof(StartStream)] = StreamTypes.StartStream,
-            [typeof(WorkerInitRequest)] = StreamTypes.WorkerInitRequest,
-            [typeof(WorkerInitResponse)] = StreamTypes.WorkerInitResponse,
-            [typeof(WorkerHeartbeat)] = StreamTypes.WorkerHeartbeat,
-            [typeof(WorkerTerminate)] = StreamTypes.WorkerTerminate,
-            [typeof(WorkerStatusRequest)] = StreamTypes.WorkerStatusRequest,
-            [typeof(WorkerStatusResponse)] = StreamTypes.WorkerStatusResponse,
-            [typeof(FileChangeEventRequest)] = StreamTypes.FileChangeEventRequest,
-            [typeof(FileChangeEventResponse)] = StreamTypes.FileChangeEventResponse,
-            [typeof(FunctionLoadRequest)] = StreamTypes.FunctionLoadRequest,
-            [typeof(FunctionLoadResponse)] = StreamTypes.FunctionLoadResponse,
-            [typeof(InvocationRequest)] = StreamTypes.InvocationRequest,
-            [typeof(InvocationResponse)] = StreamTypes.InvocationResponse,
-            [typeof(InvocationCancel)] = StreamTypes.InvocationCancel,
-            [typeof(RpcLog)] = StreamTypes.RpcLog
-        };
     }
 }

@@ -200,7 +200,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 // see if the content is a response object, defining http response properties
                 IDictionary<string, object> functionOutputs = null;
-                if (functionResult is JObject)
+                if (functionResult is ExpandoObject)
+                {
+                    functionOutputs = functionResult as ExpandoObject;
+                }
+                else if (functionResult is JObject)
                 {
                     functionOutputs = JsonConvert.DeserializeObject<ExpandoObject>(stringContent);
                 }
