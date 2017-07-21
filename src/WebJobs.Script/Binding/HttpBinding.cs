@@ -263,14 +263,23 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             HttpRequestMessage request = (HttpRequestMessage)functionArguments.Values.Union(systemArguments).FirstOrDefault(p => p is HttpRequestMessage);
             if (request != null)
             {
-                HttpResponseMessage response = result as HttpResponseMessage;
-                if (response == null)
-                {
-                    response = CreateNegotiatedResponse(request, HttpStatusCode.OK, result);
-                }
-
-                request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+                SetResponse(request, result);
             }
+        }
+
+        internal static void SetResponse(HttpRequestMessage request, object result)
+        {
+            if (result == null)
+            {
+                return;
+            }
+            HttpResponseMessage response = result as HttpResponseMessage;
+            if (response == null)
+            {
+                response = CreateNegotiatedResponse(request, HttpStatusCode.OK, result);
+            }
+
+            request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
         }
 
         public bool CanProcessResult(object result)
