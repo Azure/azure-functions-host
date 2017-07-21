@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
         {
         }
 
-        [Fact]
+        [Fact(Skip = "unstable test. https://github.com/Azure/azure-webjobs-sdk-script/issues/1674")]
         public async Task ApplicationInsights_Succeeds()
         {
             await ApplicationInsights_SucceedsTest();
