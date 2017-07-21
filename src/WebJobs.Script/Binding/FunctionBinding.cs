@@ -37,15 +37,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public abstract Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType);
 
-        internal static Collection<FunctionBinding> GetBindings(ScriptHostConfiguration config, IEnumerable<BindingMetadata> functions, FileAccess fileAccess)
+        internal static Collection<FunctionBinding> GetBindings(ScriptHostConfiguration config, IEnumerable<BindingMetadata> bindingMetadatas, FileAccess fileAccess)
         {
             Collection<FunctionBinding> bindings = new Collection<FunctionBinding>();
 
             if (bindings != null)
             {
-                foreach (var function in functions)
+                foreach (var bindingMetadata in bindingMetadatas)
                 {
-                    string type = function.Type.ToLowerInvariant();
+                    string type = bindingMetadata.Type.ToLowerInvariant();
                     switch (type)
                     {
                         case "http":
@@ -53,11 +53,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             {
                                 throw new InvalidOperationException("Http binding can only be used for output.");
                             }
-                            bindings.Add(new HttpBinding(config, function, FileAccess.Write));
+                            bindings.Add(new HttpBinding(config, bindingMetadata, FileAccess.Write));
                             break;
                         default:
                             FunctionBinding binding = null;
-                            if (TryParseFunctionBinding(config, function.Raw, out binding))
+                            if (TryParseFunctionBinding(config, bindingMetadata.Raw, out binding))
                             {
                                 bindings.Add(binding);
                             }
