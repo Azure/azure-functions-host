@@ -37,7 +37,6 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
             _server = new GrpcServer();
 
-            // TODO need to start grpc service before any of the workers
             _server.Start();
 
             // TODO Add only if there are java script functions
@@ -90,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             {
                 foreach (var workerConfig in workerConfigs)
                 {
-                    var worker = new LanguageWorkerChannel(_scriptConfig, workerConfig, _logger, _server.Connections);
+                    var worker = new LanguageWorkerChannel(_scriptConfig, workerConfig, _logger, _server);
                     _workers.Add(worker);
 
                     foreach (var scriptType in workerConfig.SupportedScriptTypes)

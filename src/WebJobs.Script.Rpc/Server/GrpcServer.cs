@@ -5,6 +5,7 @@ using System;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Rpc.Messages;
+using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 { 
@@ -13,18 +14,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Server _server;
         private FunctionRpcImpl _serverImpl;
 
-        // TODO: start in a new thread?
         public GrpcServer()
         {
             _serverImpl = new FunctionRpcImpl();
             _server = new Server
             {
                 Services = { FunctionRpc.BindService(_serverImpl) },
-
-                // TODO: port selection, encryption
-                Ports = { new ServerPort("127.0.0.1", 50051, ServerCredentials.Insecure) }
+                Ports = { new ServerPort("127.0.0.1", ServerPort.PickUnused, ServerCredentials.Insecure) }
             };
-            
         }
 
         public IObservable<ChannelContext> Connections => _serverImpl.Connections;
@@ -32,5 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public void Start() => _server.Start();
 
         public Task ShutdownAsync() => _server.ShutdownAsync();
+
+        public int BoundPort => _server.Ports.First().BoundPort;
     }
 }

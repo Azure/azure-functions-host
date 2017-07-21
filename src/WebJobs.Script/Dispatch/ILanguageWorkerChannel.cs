@@ -11,20 +11,9 @@ using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
-    internal enum ChannelState
-    {
-        Stopped,
-        Started,
-        Connected,
-        Faulted
-    }
-
     // wrapper around proc.start & grpc channel with some state management
     internal interface ILanguageWorkerChannel : IDisposable
     {
-        // TODO: use state machine framework like stateless?
-        ChannelState State { get; set; }
-
         Task StartAsync();
 
         Task StopAsync();

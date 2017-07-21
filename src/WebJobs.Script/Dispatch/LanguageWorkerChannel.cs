@@ -26,19 +26,17 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         private Process _process;
         private IObservable<ChannelContext> _connections;
         private ChannelContext _context;
-        private ChannelState _state;
         private IDictionary<FunctionMetadata, Task<FunctionLoadResponse>> _functionLoadState = new Dictionary<FunctionMetadata, Task<FunctionLoadResponse>>();
+        private int _port;
 
-        public LanguageWorkerChannel(ScriptHostConfiguration scriptConfig, LanguageWorkerConfig workerConfig, TraceWriter logger, IObservable<ChannelContext> connections)
+        public LanguageWorkerChannel(ScriptHostConfiguration scriptConfig, LanguageWorkerConfig workerConfig, TraceWriter logger, GrpcServer server)
         {
             _workerConfig = workerConfig;
             _scriptConfig = scriptConfig;
             _logger = logger;
-            _connections = connections;
-            _state = ChannelState.Stopped;
+            _connections = server.Connections;
+            _port = server.BoundPort;
         }
-
-        public ChannelState State { get => _state; set => _state = value; }
 
         public async Task<object> InvokeAsync(FunctionMetadata functionMetadata, Dictionary<string, object> scriptExecutionContext)
         {
@@ -109,11 +107,9 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                     _context = msg;
                     connectionSource.SetResult(true);
                     subscription?.Dispose();
-                    _state = ChannelState.Connected;
                     _context.InputStream.Subscribe(HandleLogs);
                 }, exc =>
                 {
-                    _state = ChannelState.Faulted;
                     connectionSource.SetException(exc);
                     subscription?.Dispose();
                 });
@@ -189,7 +185,6 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         internal Task StartWorkerAsync(LanguageWorkerConfig config, string requestId)
         {
             var tcs = new TaskCompletionSource<bool>();
-            _state = ChannelState.Started;
 
             try
             {
@@ -204,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                     UseShellExecute = false,
                     ErrorDialog = false,
                     WorkingDirectory = _scriptConfig.RootScriptPath,
-                    Arguments = config.ToArgumentString(requestId)
+                    Arguments = config.ToArgumentString(_port, requestId)
                 };
 
                 _process = new Process { StartInfo = startInfo };
@@ -221,7 +216,6 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                 {
                     _process.WaitForExit();
                     _process.Close();
-                    _state = ChannelState.Stopped;
                     tcs.SetResult(true);
                 };
 
@@ -233,7 +227,6 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             catch (Exception exc)
             {
                 _logger.Error("Error starting LanguageWorkerChannel", exc);
-                _state = ChannelState.Faulted;
                 tcs.SetException(exc);
             }
             return tcs.Task;
