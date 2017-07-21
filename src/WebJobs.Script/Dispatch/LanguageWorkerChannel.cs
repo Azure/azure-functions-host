@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             IDisposable subscription = null;
             subscription = _connections
                 .Where(msg => msg.RequestId == requestId)
-                .Timeout(TimeSpan.FromSeconds(10))
+                .Timeout(TimeSpan.FromSeconds(5))
                 .Subscribe(msg =>
                 {
                     _context = msg;
@@ -113,11 +113,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                     connectionSource.SetException(exc);
                     subscription?.Dispose();
                 });
-            Utilities.IsTcpEndpointAvailable("127.0.0.1", 50051, _logger);
 
-            Task startWorkerTask = StartWorkerAsync(_workerConfig, requestId);
-
-            await Task.WhenAny(startWorkerTask, connectionSource.Task);
+            await StartWorkerAsync(_workerConfig, requestId, connectionSource);
         }
 
         private void HandleLogs(StreamingMessage msg)
@@ -182,10 +179,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             return Task.CompletedTask;
         }
 
-        internal Task StartWorkerAsync(LanguageWorkerConfig config, string requestId)
+        internal Task StartWorkerAsync(LanguageWorkerConfig config, string requestId, TaskCompletionSource<bool> tcs)
         {
-            var tcs = new TaskCompletionSource<bool>();
-
             try
             {
                 List<string> output = new List<string>();
@@ -214,9 +209,12 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                 _process.EnableRaisingEvents = true;
                 _process.Exited += (s, e) =>
                 {
+                    if (_process.ExitCode > 0)
+                    {
+                        tcs.TrySetException(new Exception($"Worker process exited with code ${_process.ExitCode}"));
+                    }
                     _process.WaitForExit();
                     _process.Close();
-                    tcs.SetResult(true);
                 };
 
                 _process.Start();

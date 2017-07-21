@@ -42,8 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             // TODO Add only if there are java script functions
             AddWorkers(new List<LanguageWorkerConfig>()
             {
-                new NodeLanguageWorkerConfig(),
-                new JavaLanguageWorkerConfig()
+                new NodeLanguageWorkerConfig()
             });
         }
 
