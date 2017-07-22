@@ -17,8 +17,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// Invoke the function using the specified parameters.
         /// </summary>
         /// <param name="parameters">The parameters.</param>
-        /// <returns>A <see cref="Task"/> for the invocation.</returns>
-        Task Invoke(object[] parameters);
+        /// <returns>A <see cref="Task"/> for the invocation with a return value.</returns>
+        Task<object> Invoke(object[] parameters);
 
         /// <summary>
         /// This method is called by the host when invocation exceptions occur

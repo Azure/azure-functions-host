@@ -173,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return null;
         }
 
-        protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
+        protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
             // Ensure we're properly initialized
             await _initializer.Value.ConfigureAwait(false);
@@ -193,6 +193,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             object functionResult = await function(scriptExecutionContext);
 
             await ProcessOutputBindingsAsync(_outputBindings, input, context.Binder, bindingData, scriptExecutionContext, functionResult);
+
+            return functionResult;
         }
 
         private async Task ProcessInputBindingsAsync(Binder binder, Dictionary<string, object> executionContext, Dictionary<string, object> bindingData)

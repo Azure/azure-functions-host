@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
+        protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
             // Separate system parameters from the actual method parameters
             object[] originalParameters = parameters;
@@ -291,6 +291,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 originalParameters[originalParameters.Length - 1] = result;
             }
+
+            return result;
         }
 
         private object[] ProcessInputParameters(object[] parameters)

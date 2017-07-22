@@ -164,7 +164,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     descriptors.Add(new ParameterDescriptor(ScriptConstants.SystemTriggerParameterName, typeof(HttpRequestMessage)));
                 }
 
-                if (TryCreateReturnValueParameterDescriptor(functionTarget.ReturnType, bindings, out descriptor))
+                if (TryCreateReturnValueParameterDescriptor(functionTarget.ReturnType, bindings, out descriptor) ||
+                    TryCreateReturnValueParameterDescriptor(functionTarget.ReturnType, null, out descriptor))
                 {
                     // If a return value binding has been specified, set up an output
                     // binding to map it to. By convention, this is set up as the last
@@ -195,35 +196,56 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             descriptor = null;
 
-            var returnBinding = bindings.SingleOrDefault(p => p.Metadata.IsReturn);
-            if (returnBinding == null)
+            FunctionBinding returnBinding = null;
+            if (bindings != null)
             {
-                return false;
-            }
-            var resultBinding = returnBinding as IResultProcessingBinding;
-            if (resultBinding != null)
-            {
-                if (resultBinding.CanProcessResult(true))
+                returnBinding = bindings.SingleOrDefault(p => p.Metadata.IsReturn);
+                if (returnBinding == null)
                 {
-                    // The trigger binding (ie, httpTrigger) will handle the return.
                     return false;
                 }
+                var resultBinding = returnBinding as IResultProcessingBinding;
+                if (resultBinding != null)
+                {
+                    if (resultBinding.CanProcessResult(true))
+                    {
+                        // The trigger binding (ie, httpTrigger) will handle the return.
+                        return false;
+                    }
+                }
+            }
+
+            if (functionReturnType == typeof(void))
+            {
+                if (returnBinding != null)
+                {
+                    throw new InvalidOperationException($"{ScriptConstants.SystemReturnParameterBindingName} cannot be bound to return type {functionReturnType.Name}.");
+                }
+
+                return false;
             }
 
             if (typeof(Task).IsAssignableFrom(functionReturnType))
             {
                 if (!(functionReturnType.IsGenericType && functionReturnType.GetGenericTypeDefinition() == typeof(Task<>)))
                 {
-                    throw new InvalidOperationException($"{ScriptConstants.SystemReturnParameterBindingName} cannot be bound to return type {functionReturnType.Name}.");
+                    if (returnBinding != null)
+                    {
+                        throw new InvalidOperationException($"{ScriptConstants.SystemReturnParameterBindingName} cannot be bound to return type {functionReturnType.Name}.");
+                    }
+
+                    return false;
                 }
+
                 functionReturnType = functionReturnType.GetGenericArguments()[0];
             }
 
             var byRefType = functionReturnType.MakeByRefType();
-            descriptor = new ParameterDescriptor(ScriptConstants.SystemReturnParameterName, byRefType);
+            string parameterName = bindings != null ? ScriptConstants.SystemReturnParameterName : ScriptConstants.SystemReturnParameterBindingName;
+            descriptor = new ParameterDescriptor(parameterName, byRefType);
             descriptor.Attributes |= ParameterAttributes.Out;
 
-            Collection<CustomAttributeBuilder> customAttributes = returnBinding.GetCustomAttributes(byRefType);
+            Collection<CustomAttributeBuilder> customAttributes = returnBinding?.GetCustomAttributes(byRefType);
             if (customAttributes != null)
             {
                 foreach (var customAttribute in customAttributes)

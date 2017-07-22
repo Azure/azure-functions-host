@@ -10,7 +10,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -22,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
         }
 
-        protected override Task InvokeCore(object[] parameters, FunctionInvocationContext context)
+        protected override Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
             throw new NotImplementedException();
         }

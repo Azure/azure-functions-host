@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return _invokerMap[method];
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Maintainability", "CA1502:AvoidExcessiveComplexity")]
         public static Type Generate(string functionAssemblyName, string typeName, Collection<CustomAttributeBuilder> typeAttributes, Collection<FunctionDescriptor> functions)
         {
             if (functions == null)
@@ -54,7 +55,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 MethodBuilder methodBuilder = tb.DefineMethod(function.Name, MethodAttributes.Public | MethodAttributes.Static);
                 Type[] types = function.Parameters.Select(p => p.Type).ToArray();
                 methodBuilder.SetParameters(types);
-                methodBuilder.SetReturnType(typeof(Task));
+
+                if (function.Parameters.Any(p => p.Name == ScriptConstants.SystemReturnParameterBindingName))
+                {
+                    // TODO: In order for return value trigger binding (new feature) to work correctly, we need to set
+                    //       the return type to Task<TReturnValue> instead of Task<object>. Using Task<object> will only
+                    //       work for triggers which support binding to System.Object.
+                    methodBuilder.SetReturnType(typeof(Task<object>));
+                }
+                else
+                {
+                    methodBuilder.SetReturnType(typeof(Task));
+                }
 
                 if (function.CustomAttributes != null)
                 {

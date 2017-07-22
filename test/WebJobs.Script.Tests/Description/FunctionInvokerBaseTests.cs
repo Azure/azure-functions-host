@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     metrics);
             }
 
-            protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
+            protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
             {
                 FunctionInstanceLogEntry item = new FunctionInstanceLogEntry
                 {
@@ -216,6 +216,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     item.ErrorDetails = error;
                     await _fastLogger.AddAsync(item);
                 }
+
+                return null;
             }
         }
 

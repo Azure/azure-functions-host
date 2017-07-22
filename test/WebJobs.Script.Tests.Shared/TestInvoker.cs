@@ -29,11 +29,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public FunctionLogger LogInfo => throw new NotImplementedException();
 
-        public Task Invoke(object[] parameters)
+        public Task<object> Invoke(object[] parameters)
         {
             Interlocked.Increment(ref _invokeCount);
             _invokeCallback(parameters);
-            return Task.FromResult(0);
+            return Task.FromResult<object>(null);
         }
 
         public void OnError(Exception ex)
