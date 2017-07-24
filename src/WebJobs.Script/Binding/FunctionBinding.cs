@@ -258,6 +258,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     bytes = BitConverter.GetBytes((int)value);
                 }
+                else if (type == typeof(long))
+                {
+                    int val = unchecked((int)((long)value));
+                    bytes = BitConverter.GetBytes(val);
+                }
                 else if (type == typeof(bool))
                 {
                     bytes = BitConverter.GetBytes((bool)value);

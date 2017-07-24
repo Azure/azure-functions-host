@@ -19,3 +19,4 @@ msbuild.log
 /tools/NuGet.exe
 /node_modules
 /.output
+/sample/workers
