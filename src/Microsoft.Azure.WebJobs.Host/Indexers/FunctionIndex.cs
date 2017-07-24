@@ -48,14 +48,17 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
         public IFunctionDefinition LookupByName(string name)
         {
+            // For compat, accept either the short name ("Class.Name") or log name (just "Name")
             foreach (var items in _functionDescriptors)
             {
-                if (string.Equals(items.ShortName, name, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(items.ShortName, name, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(items.LogName, name, StringComparison.OrdinalIgnoreCase))
                 {
                     var id = items.Id;
                     return Lookup(id);
                 }
             }
+ 
             // Not found.
             return null;
         }        
