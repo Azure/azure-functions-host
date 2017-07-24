@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             return SchedulingStrategy(pool);
         }
 
-        private ILanguageWorkerChannel SchedulingStrategy(WorkerPool pool)
+        private static ILanguageWorkerChannel SchedulingStrategy(WorkerPool pool)
         {
             return pool.First();
         }

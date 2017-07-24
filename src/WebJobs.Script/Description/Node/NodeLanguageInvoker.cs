@@ -33,7 +33,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ICompilationService<IJavaScriptCompilation> _compilationService;
         private readonly BindingMetadata _trigger;
         private readonly string _entryPoint;
-        private readonly IMetricsLogger _metricsLogger;
         private Func<Task> _reloadScript;
 
         internal NodeLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
@@ -53,8 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 _compilationService = new ConditionalJavaScriptCompilationService(Host.SettingsManager, compilationService, () => Host.IsPrimary);
             }
-
-            _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
 
             _reloadScript = ReloadScriptAsync;
             _reloadScript = _reloadScript.Debounce();

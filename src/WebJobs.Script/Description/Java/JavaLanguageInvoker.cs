@@ -32,7 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly BindingMetadata _trigger;
         private readonly string _entryPoint;
-        private readonly IMetricsLogger _metricsLogger;
         private Func<Task> _reloadScript;
 
         internal JavaLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
@@ -44,8 +43,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _entryPoint = functionMetadata.EntryPoint;
-
-            _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
 
             _reloadScript = ReloadScriptAsync;
             _reloadScript = _reloadScript.Debounce();
@@ -203,7 +200,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             // The ScriptHost is already monitoring for changes to function.json, so we skip those
             string fileName = Path.GetFileName(e.Name);
-            string fileExtension = Path.GetExtension(fileName);
             if (string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) != 0)
             {
                 _reloadScript();

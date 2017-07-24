@@ -183,8 +183,6 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         {
             try
             {
-                List<string> output = new List<string>();
-
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = config.ExecutablePath,
@@ -211,10 +209,11 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                 {
                     if (_process.ExitCode > 0)
                     {
-                        tcs.TrySetException(new Exception($"Worker process exited with code ${_process.ExitCode}"));
+                        tcs.TrySetException(new InvalidOperationException($"Worker process exited with code ${_process.ExitCode}"));
                     }
                     _process.WaitForExit();
                     _process.Close();
+                    _process.Dispose();
                 };
 
                 _process.Start();
@@ -233,6 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         public void Dispose()
         {
             _process?.Kill();
+            _process?.Dispose();
         }
     }
 }
