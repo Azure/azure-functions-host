@@ -14,7 +14,9 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+#if HTTP
 using Microsoft.Azure.WebJobs.Extensions.Http;
+#endif
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -35,9 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private Func<Task> _reloadScript;
 
         internal JavaLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
-            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
-            ITraceWriterFactory traceWriterFactory = null)
-            : base(host, functionMetadata, traceWriterFactory)
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+            : base(host, functionMetadata)
         {
             _trigger = trigger;
             _inputBindings = inputBindings;
@@ -213,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // _functionLoader.Reset();
             // _scriptFunc = null;
 
-            TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), TraceLevel.Info);
+            TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), System.Diagnostics.TraceLevel.Info);
             await Task.CompletedTask;
         }
 
@@ -244,6 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // convert the request to a json object
             if (input is HttpRequestMessage request)
             {
+#if HTTP
                 var requestObject = await CreateRequestObjectAsync(request).ConfigureAwait(false);
                 input = requestObject;
 
@@ -262,6 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // make the entire request object available as well
                 // this is symmetric with context.res which we also support
                 context["req"] = requestObject;
+#endif
             }
             else if (input is TimerInfo)
             {
@@ -393,7 +396,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             return false;
         }
-
+#if HTTP
         private static async Task<Dictionary<string, object>> CreateRequestObjectAsync(HttpRequestMessage request)
         {
             // TODO: need to provide access to remaining request properties
@@ -456,6 +459,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             return requestObject;
         }
+#endif
 
         /// <summary>
         /// If the specified input is a JSON string, an array of JSON strings, or JToken, attempt to deserialize it into

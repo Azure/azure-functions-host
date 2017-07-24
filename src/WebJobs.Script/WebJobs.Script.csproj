@@ -41,6 +41,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WebJobs.Script.Extensibility\WebJobs.Script.Extensibility.csproj" />
+    <ProjectReference Include="..\WebJobs.Script.Rpc\WebJobs.Script.Rpc.csproj" />
   </ItemGroup>
 
 </Project>

@@ -14,7 +14,9 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+#if HTTP
 using Microsoft.Azure.WebJobs.Extensions.Http;
+#endif
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -37,8 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         internal NodeLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings,
-            ICompilationService<IJavaScriptCompilation> compilationService, ITraceWriterFactory traceWriterFactory = null)
-            : base(host, functionMetadata, traceWriterFactory)
+            ICompilationService<IJavaScriptCompilation> compilationService)
+            : base(host, functionMetadata)
         {
             _trigger = trigger;
             _inputBindings = inputBindings;
@@ -74,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     {
                         bool compilationSucceeded = !diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error);
 
-                        TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.", compilationSucceeded ? "succeeded" : "failed"), TraceLevel.Info);
+                        TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.", compilationSucceeded ? "succeeded" : "failed"), System.Diagnostics.TraceLevel.Info);
                     }
                 }
 
@@ -82,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (CompilationErrorException ex)
             {
-                TraceOnPrimaryHost("Function compilation error", TraceLevel.Error);
+                TraceOnPrimaryHost("Function compilation error", System.Diagnostics.TraceLevel.Error);
                 TraceCompilationDiagnostics(ex.Diagnostics, logTargets);
 
                 if (throwOnCompilationError)
@@ -263,14 +265,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // _functionLoader.Reset();
             // _scriptFunc = null;
 
-            TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), TraceLevel.Info);
+            TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), System.Diagnostics.TraceLevel.Info);
 
             IJavaScriptCompilation compilation = await CompileAndTraceAsync(LogTargets.User, throwOnCompilationError: false);
 
             if (compilation.SupportsDiagnostics)
             {
                 bool compilationSucceeded = !compilation.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error);
-                TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.", compilationSucceeded ? "succeeded" : "failed"), TraceLevel.Info);
+                TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.", compilationSucceeded ? "succeeded" : "failed"), System.Diagnostics.TraceLevel.Info);
             }
         }
 
@@ -298,9 +300,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 context["_entryPoint"] = _entryPoint;
             }
 
+
             // convert the request to a json object
             if (input is HttpRequestMessage request)
             {
+#if HTTP
                 var requestObject = await CreateRequestObjectAsync(request).ConfigureAwait(false);
                 input = requestObject;
 
@@ -315,10 +319,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     // TODO
                     inputBindings.Add("webhookReq", new KeyValuePair<object, DataType>(requestObject, dataType));
                 }
-
                 // make the entire request object available as well
                 // this is symmetric with context.res which we also support
                 context["req"] = requestObject;
+#endif
             }
             else if (input is TimerInfo)
             {
@@ -451,6 +455,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return false;
         }
 
+#if HTTP
         private static async Task<Dictionary<string, object>> CreateRequestObjectAsync(HttpRequestMessage request)
         {
             // TODO: need to provide access to remaining request properties
@@ -513,7 +518,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             return requestObject;
         }
-
+#endif
         /// <summary>
         /// If the specified input is a JSON string, an array of JSON strings, or JToken, attempt to deserialize it into
         /// an object or array.
