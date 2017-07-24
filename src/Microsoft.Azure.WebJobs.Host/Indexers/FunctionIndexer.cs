@@ -230,7 +230,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 
                 // We treat binding to the return type the same as binding to an 'out T' parameter. 
                 // An explicit return binding takes precedence over an implicit trigger binding. 
-                returnParameter = new ReturnParameterInfo(method);
+                returnParameter = new ReturnParameterInfo(method, methodReturnType);
                 parameters = parameters.Concat(new ParameterInfo[] { returnParameter });                
             }
 
@@ -447,9 +447,10 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         {
             private readonly IEnumerable<Attribute> _attributes;
 
-            public ReturnParameterInfo(MethodInfo method)
+            public ReturnParameterInfo(MethodInfo method, Type methodReturnType)
             {
-                var retType = method.ReturnType.MakeByRefType(); // 'return T' is 'out T'
+                // If Method is Task<T>, then unwrap to jsut T. 
+                var retType = methodReturnType.MakeByRefType(); // 'return T' is 'out T'
                 ClassImpl = retType;
                 AttrsImpl = ParameterAttributes.Out;
                 NameImpl = ReturnParamName;

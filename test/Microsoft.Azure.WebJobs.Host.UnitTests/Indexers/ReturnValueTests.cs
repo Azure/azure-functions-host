@@ -31,12 +31,32 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         }
 
         [Fact]
+        public void ImplicitTaskReturn()
+        {
+            var ext = new MyExtension();
+            var prog = TestHelpers.NewJobHost<TestProg>(ext);
+
+            prog.Call("ImplicitTaskReturn", new { trigger = "trigger" });
+            ext.AssertFromBeta("triggerbeta");
+        }
+
+        [Fact]
         public void ExplicitReturn()
         {
             var ext = new MyExtension();
             var prog = TestHelpers.NewJobHost<TestProg>(ext);
 
             prog.Call("ExplicitReturn");
+            ext.AssertFromAlpha("alpha");
+        }
+
+        [Fact]
+        public void ExplicitTaskReturn()
+        {
+            var ext = new MyExtension();
+            var prog = TestHelpers.NewJobHost<TestProg>(ext);
+
+            prog.Call("ExplicitTaskReturn");
             ext.AssertFromAlpha("alpha");
         }
 
@@ -212,11 +232,25 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             {
                 return "alpha";
             }
-                        
+
+            // Return is explict
+            [return: Alpha]
+            public Task<string> ExplicitTaskReturn()
+            {
+                return Task.FromResult("alpha");
+            }
+
             // Return is from Trigger 
             public string ImplicitReturn([Beta] string trigger)
             {
                 return trigger + "beta";
+            }
+
+            // Return is from Trigger 
+            public Task<string> ImplicitTaskReturn([Beta] string trigger)
+            {
+                var result = trigger + "beta";
+                return Task.FromResult(result);
             }
 
             [return: Alpha] // 
