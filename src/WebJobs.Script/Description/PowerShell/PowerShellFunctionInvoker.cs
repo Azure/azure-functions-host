@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, context.ExecutionContext);
 
-            var userTraceWriter = CreateUserTraceWriter(context.TraceWriter);
+            var userTraceWriter = context.TraceWriter;
             PSDataCollection<ErrorRecord> errors = await InvokePowerShellScript(environmentVariables, userTraceWriter);
 
             await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, context.Binder, bindingData);

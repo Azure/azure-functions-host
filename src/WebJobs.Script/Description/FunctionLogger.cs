@@ -50,6 +50,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             TraceWriter.Flush();
         }
 
+        public TraceWriter CreateUserTraceWriter(TraceWriter traceWriter)
+        {
+            // We create a composite writer to ensure that all user traces get
+            // written to both the original trace writer as well as our file trace writer
+            // This is a "user" trace writer that will mark all traces going through
+            // it as a "user" trace so they are filtered from system logs.
+            var userTraceProperties = new Dictionary<string, object>
+            {
+                { ScriptConstants.TracePropertyIsUserTraceKey, true }
+            };
+            return new CompositeTraceWriter(new[] { traceWriter, FileTraceWriter }).Apply(userTraceProperties);
+        }
+
         // Helper to emit a standard log message for function started.
         public void LogFunctionStart(string invocationId)
         {

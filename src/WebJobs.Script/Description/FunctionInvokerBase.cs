@@ -127,19 +127,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return metrics.BeginEvent(MetricEventNames.FunctionInvokeLatency, metadata.Name);
         }
 
-        protected TraceWriter CreateUserTraceWriter(TraceWriter traceWriter)
-        {
-            // We create a composite writer to ensure that all user traces get
-            // written to both the original trace writer as well as our file trace writer
-            // This is a "user" trace writer that will mark all traces going through
-            // it as a "user" trace so they are filtered from system logs.
-            var userTraceProperties = new Dictionary<string, object>
-            {
-                { ScriptConstants.TracePropertyIsUserTraceKey, true }
-            };
-            return new CompositeTraceWriter(new[] { traceWriter, LogInfo.FileTraceWriter }).Apply(userTraceProperties);
-        }
-
         protected abstract Task InvokeCore(object[] parameters, FunctionInvocationContext context);
 
         protected virtual void OnScriptFileChanged(FileSystemEventArgs e)
