@@ -328,5 +328,24 @@ describe('functions', () => {
                 expect(context._done).to.be.true;
             });
         });
+
+        it('supports this parameter', () => {
+            function Func() {
+                this.prop = true;
+                this.run = function (ctx) {
+                    ctx.bindings.prop = this.test();
+                    ctx.done();
+                }
+            }
+            Func.prototype.test = function () {
+                return this.prop;
+            }
+
+            var func = functions.createFunction(new Func());
+
+            func(context, (results) => {
+                expect(results).to.eql({ prop: true });
+            });
+        })
     });
 });
