@@ -70,6 +70,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 await BindJTokenAsync<JArray>(context, Access);
             }
+            else if (_binding.DefaultType == typeof(string))
+            {
+                await BindStringAsync(context);
+            }
             else
             {
                 throw new NotSupportedException($"ScriptBinding type {_binding.DefaultType} is not supported");
