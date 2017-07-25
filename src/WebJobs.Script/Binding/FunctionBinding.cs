@@ -219,6 +219,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
+        internal static async Task BindStringAsync(BindingContext context)
+        {
+            string str = await context.Binder.BindAsync<string>(context.Attributes);
+            context.Value = str;
+        }
+
         internal static async Task BindStreamAsync(BindingContext context, FileAccess access)
         {
             Stream stream = await context.Binder.BindAsync<Stream>(context.Attributes);
