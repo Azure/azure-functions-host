@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             SetExecutionContextVariables(context.ExecutionContext, environmentVariables);
 
             Process process = CreateProcess(path, workingDirectory, arguments, environmentVariables);
-            var userTraceWriter = CreateUserTraceWriter(context.TraceWriter);
+            var userTraceWriter = context.TraceWriter;
             process.OutputDataReceived += (s, e) =>
             {
                 if (e.Data != null)

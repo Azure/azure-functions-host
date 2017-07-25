@@ -263,8 +263,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             object[] systemParameters = parameters.Skip(actualParameterCount).ToArray();
             parameters = parameters.Take(actualParameterCount).ToArray();
 
-            parameters = ProcessInputParameters(parameters);
-
             object result = function.Invoke(null, parameters);
 
             // after the function executes, we have to copy values back into the original
@@ -291,19 +289,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 originalParameters[originalParameters.Length - 1] = result;
             }
-        }
-
-        private object[] ProcessInputParameters(object[] parameters)
-        {
-            for (int i = 0; i < parameters.Length; i++)
-            {
-                if (parameters[i] is TraceWriter writer)
-                {
-                    parameters[i] = CreateUserTraceWriter(writer);
-                }
-            }
-
-            return parameters;
         }
 
         private async Task<MethodInfo> CreateFunctionTarget(CancellationToken cancellationToken)

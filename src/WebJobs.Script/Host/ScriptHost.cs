@@ -285,6 +285,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     hostConfig.LoggerFactory = new LoggerFactory();
                 }
 
+                {
+                    Func<string, FunctionDescriptor> funcLookup = (name) => this.GetFunctionOrNull(name);
+                    hostConfig.AddService(funcLookup);
+                }
+
                 // Set up a host level TraceMonitor that will receive notification
                 // of ALL errors that occur. This allows us to inspect/log errors.
                 var traceMonitor = new TraceMonitor()

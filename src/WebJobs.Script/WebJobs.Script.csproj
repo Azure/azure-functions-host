@@ -396,6 +396,7 @@
   <ItemGroup>
     <Compile Include="Binding\ApiHubScriptBindingProvider.cs" />
     <Compile Include="Binding\BindingContext.cs" />
+    <Compile Include="Binding\FunctionTraceBinderProvider.cs" />
     <Compile Include="Binding\GeneralScriptBindingProvider.cs" />
     <Compile Include="Binding\CoreExtensionsScriptBindingProvider.cs" />
     <Compile Include="Binding\DocumentDBScriptBindingProvider.cs" />
