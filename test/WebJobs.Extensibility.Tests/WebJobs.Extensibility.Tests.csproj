@@ -107,18 +107,18 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\WebJobs.Script.Extensibility\WebJobs.Script.Extensibility.csproj">
-      <Project>{479b0873-cbdc-4ae9-85ba-dd6cf2dca29d}</Project>
-      <Name>WebJobs.Script.Extensibility</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
   <ItemGroup>
     <Analyzer Include="..\..\packages\StyleCop.Analyzers.1.1.0-beta001\analyzers\dotnet\cs\Newtonsoft.Json.dll" />
     <Analyzer Include="..\..\packages\StyleCop.Analyzers.1.1.0-beta001\analyzers\dotnet\cs\StyleCop.Analyzers.CodeFixes.dll" />
     <Analyzer Include="..\..\packages\StyleCop.Analyzers.1.1.0-beta001\analyzers\dotnet\cs\StyleCop.Analyzers.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\WebJobs.Script\WebJobs.Script.csproj">
+      <Project>{1dc670cd-f42f-4d8f-97bd-0e1aa8221094}</Project>
+      <Name>WebJobs.Script</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

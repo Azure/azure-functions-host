@@ -129,9 +129,6 @@
     <Reference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights, Version=2.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.2.1.0-beta1-10947\lib\net45\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs.Script.Extensibility, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Script.Extensibility.1.0.0-beta3-10955\lib\net45\Microsoft.Azure.WebJobs.Script.Extensibility.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.ServiceBus, Version=2.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.ServiceBus.2.1.0-beta1-10947\lib\net45\Microsoft.Azure.WebJobs.ServiceBus.dll</HintPath>
     </Reference>
@@ -397,6 +394,9 @@
     <Compile Include="Binding\ApiHubScriptBindingProvider.cs" />
     <Compile Include="Binding\BindingContext.cs" />
     <Compile Include="Binding\FunctionTraceBinderProvider.cs" />
+    <Compile Include="Binding\Extensibility\ScriptBinding.cs" />
+    <Compile Include="Binding\Extensibility\ScriptBindingContext.cs" />
+    <Compile Include="Binding\Extensibility\ScriptBindingProvider.cs" />
     <Compile Include="Binding\GeneralScriptBindingProvider.cs" />
     <Compile Include="Binding\CoreExtensionsScriptBindingProvider.cs" />
     <Compile Include="Binding\DocumentDBScriptBindingProvider.cs" />
