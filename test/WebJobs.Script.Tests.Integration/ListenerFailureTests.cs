@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-webjobs-sdk-script/issues/1715")]
         public async Task ListenerError_LogsAndDoesNotStopHost()
         {
             IList<string> logs = null;
