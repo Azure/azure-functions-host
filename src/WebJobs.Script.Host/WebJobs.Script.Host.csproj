@@ -136,9 +136,6 @@
     <Reference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights, Version=2.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.2.1.0-beta1-10947\lib\net45\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs.Script.Extensibility, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Script.Extensibility.1.0.0-beta3-10955\lib\net45\Microsoft.Azure.WebJobs.Script.Extensibility.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.ServiceBus, Version=2.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.ServiceBus.2.1.0-beta1-10947\lib\net45\Microsoft.Azure.WebJobs.ServiceBus.dll</HintPath>
     </Reference>
