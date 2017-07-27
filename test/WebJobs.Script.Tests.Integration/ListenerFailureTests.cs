@@ -14,9 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-webjobs-sdk-script/issues/1715")]
+        [Fact]
         public async Task ListenerError_LogsAndDoesNotStopHost()
         {
+            string queueName = "samples-input-nonexistent";
+            bool exists = await Fixture.NamespaceManager.QueueExistsAsync(queueName);
+            Assert.False(exists, $"This test expects the queue '{queueName}' to not exist, but it does.");
+
             IList<string> logs = null;
 
             await TestHelpers.Await(() =>

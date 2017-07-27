@@ -84,6 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public Microsoft.ServiceBus.Messaging.QueueClient ServiceBusQueueClient { get; private set; }
 
+        public NamespaceManager NamespaceManager { get; private set; }
+
         public CloudQueue TestQueue { get; private set; }
 
         public CloudQueue MobileTablesQueue { get; private set; }
@@ -153,10 +155,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string serviceBusQueueName = string.Format("test-input-{0}", FixtureId);
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
-            var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
+            NamespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
 
-            namespaceManager.DeleteQueue(serviceBusQueueName);
-            namespaceManager.CreateQueue(serviceBusQueueName);
+            NamespaceManager.DeleteQueue(serviceBusQueueName);
+            NamespaceManager.CreateQueue(serviceBusQueueName);
 
             ServiceBusQueueClient = Microsoft.ServiceBus.Messaging.QueueClient.CreateFromConnectionString(connectionString, serviceBusQueueName);
         }
