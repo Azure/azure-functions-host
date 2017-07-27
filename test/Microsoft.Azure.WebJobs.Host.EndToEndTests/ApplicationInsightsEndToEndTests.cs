@@ -27,6 +27,124 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private const string _mockQuickPulseUrl = "http://localhost:4005/QuickPulseService.svc/";
         private const string _mockApplicationInsightsKey = "some_key";
 
+        [Fact]
+        public async Task ApplicationInsights_SuccessfulFunction()
+        {
+            string testName = nameof(TestApplicationInsightsInformation);
+            LogCategoryFilter filter = new LogCategoryFilter();
+            filter.DefaultLevel = LogLevel.Information;
+
+            var loggerFactory = new LoggerFactory()
+                .AddApplicationInsights(
+                    new TestTelemetryClientFactory(_mockApplicationInsightsKey, new SamplingPercentageEstimatorSettings(), filter.Filter));
+
+            JobHostConfiguration config = new JobHostConfiguration
+            {
+                LoggerFactory = loggerFactory,
+                TypeLocator = new FakeTypeLocator(GetType()),
+            };
+            config.Aggregator.IsEnabled = false;
+
+            using (var listener = new ApplicationInsightsTestListener())
+            {
+                listener.StartListening();
+
+                using (JobHost host = new JobHost(config))
+                {
+                    await host.StartAsync();
+                    var methodInfo = GetType().GetMethod(testName, BindingFlags.Public | BindingFlags.Static);
+                    await host.CallAsync(methodInfo, new { input = "function input" });
+                    await host.StopAsync();
+                }
+
+                // wait for everything to flush
+                await Task.Delay(2000);
+
+                Assert.Equal(6, listener.TelemetryItems.Count);
+
+                // Validate the traces. Order by message string as the requests may come in
+                // slightly out-of-order or on different threads
+                TelemetryPayload[] telemetries = listener.TelemetryItems
+                    .Where(t => t.Data.BaseType == "MessageData")
+                    .OrderBy(t => t.Data.BaseData.Message)
+                    .ToArray();
+
+                ValidateTrace(telemetries[0], "Found the following functions:\r\n", LogCategories.Startup);
+                ValidateTrace(telemetries[1], "Job host started", LogCategories.Startup);
+                ValidateTrace(telemetries[2], "Job host stopped", LogCategories.Startup);
+                ValidateTrace(telemetries[3], "Logger", LogCategories.Function, testName);
+                ValidateTrace(telemetries[4], "Trace", LogCategories.Function, testName);
+
+                // Finally, validate the request
+                TelemetryPayload request = listener.TelemetryItems
+                    .Where(t => t.Data.BaseType == "RequestData")
+                    .Single();
+                ValidateRequest(request, testName, true);
+            }
+        }
+
+        [Fact]
+        public async Task ApplicationInsights_FailedFunction()
+        {
+            string testName = nameof(TestApplicationInsightsFailure);
+            LogCategoryFilter filter = new LogCategoryFilter();
+            filter.DefaultLevel = LogLevel.Information;
+
+            var loggerFactory = new LoggerFactory()
+                .AddApplicationInsights(
+                    new TestTelemetryClientFactory(_mockApplicationInsightsKey, new SamplingPercentageEstimatorSettings(), filter.Filter));
+
+            JobHostConfiguration config = new JobHostConfiguration
+            {
+                LoggerFactory = loggerFactory,
+                TypeLocator = new FakeTypeLocator(GetType()),
+            };
+            config.Aggregator.IsEnabled = false;
+
+            using (var listener = new ApplicationInsightsTestListener())
+            {
+                listener.StartListening();
+
+                using (JobHost host = new JobHost(config))
+                {
+                    await host.StartAsync();
+                    var methodInfo = GetType().GetMethod(testName, BindingFlags.Public | BindingFlags.Static);
+                    await Assert.ThrowsAsync<FunctionInvocationException>(() => host.CallAsync(methodInfo, new { input = "function input" }));
+                    await host.StopAsync();
+                }
+
+                // wait for everything to flush
+                await Task.Delay(2000);
+
+                Assert.Equal(7, listener.TelemetryItems.Count);
+
+                // Validate the traces. Order by message string as the requests may come in
+                // slightly out-of-order or on different threads
+                TelemetryPayload[] telemetries = listener.TelemetryItems
+                    .Where(t => t.Data.BaseType == "MessageData")
+                    .OrderBy(t => t.Data.BaseData.Message)
+                    .ToArray();
+
+                ValidateTrace(telemetries[0], "Found the following functions:\r\n", LogCategories.Startup);
+                ValidateTrace(telemetries[1], "Job host started", LogCategories.Startup);
+                ValidateTrace(telemetries[2], "Job host stopped", LogCategories.Startup);
+                ValidateTrace(telemetries[3], "Logger", LogCategories.Function, testName);
+                ValidateTrace(telemetries[4], "Trace", LogCategories.Function, testName);
+
+                // Validate the exception
+                TelemetryPayload exception = listener.TelemetryItems
+                    .Where(t => t.Data.BaseType == "ExceptionData")
+                    .Single();
+                ValidateException(exception, testName);
+
+                // Finally, validate the request
+                TelemetryPayload request = listener.TelemetryItems
+                    .Where(t => t.Data.BaseType == "RequestData")
+                    .Single();
+                ValidateRequest(request, testName, false);
+            }
+        }
+
         [Theory]
         [InlineData(LogLevel.None, 0)]
         [InlineData(LogLevel.Information, 18)]
@@ -56,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 {
                     await host.StartAsync();
 
-                    var methodInfo = GetType().GetMethod(nameof(TestApplicationInsights), BindingFlags.Public | BindingFlags.Static);
+                    var methodInfo = GetType().GetMethod(nameof(TestApplicationInsightsWarning), BindingFlags.Public | BindingFlags.Static);
 
                     for (int i = 0; i < requests; i++)
                     {
@@ -88,7 +206,23 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         // Test Functions
         [NoAutomaticTrigger]
-        public static void TestApplicationInsights(TraceWriter trace, ILogger logger)
+        public static void TestApplicationInsightsInformation(string input, TraceWriter trace, ILogger logger)
+        {
+            trace.Info("Trace");
+            logger.LogInformation("Logger");
+        }
+
+        [NoAutomaticTrigger]
+        public static void TestApplicationInsightsFailure(string input, TraceWriter trace, ILogger logger)
+        {
+            trace.Info("Trace");
+            logger.LogInformation("Logger");
+
+            throw new Exception("Boom!");
+        }
+
+        [NoAutomaticTrigger]
+        public static void TestApplicationInsightsWarning(TraceWriter trace, ILogger logger)
         {
             trace.Warning("Trace");
             logger.LogWarning("Logger");
@@ -259,6 +393,84 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
         }
 
+        private static void ValidateTrace(TelemetryPayload telemetryItem, string expectedMessageStartsWith,
+            string expectedCategory, string expectedOperationName = null)
+        {
+            Assert.Equal("MessageData", telemetryItem.Data.BaseType);
+
+            Assert.StartsWith(expectedMessageStartsWith, telemetryItem.Data.BaseData.Message);
+            Assert.Equal("Information", telemetryItem.Data.BaseData.SeverityLevel);
+
+            Assert.Equal(expectedCategory, telemetryItem.Data.BaseData.Properties["Category"]);
+
+            if (expectedCategory == LogCategories.Function || expectedCategory == LogCategories.Executor)
+            {
+                // These should have associated operation information
+                Assert.Equal(expectedOperationName, telemetryItem.Tags["ai.operation.name"]);
+                Assert.NotNull(telemetryItem.Tags["ai.operation.id"]);
+            }
+            else
+            {
+                Assert.DoesNotContain("ai.operation.name", telemetryItem.Tags.Keys);
+                Assert.DoesNotContain("ai.operation.id", telemetryItem.Tags.Keys);
+            }
+
+            ValidateSdkVersion(telemetryItem);
+        }
+
+        private static void ValidateException(TelemetryPayload telemetryItem, string expectedOperationName)
+        {
+            Assert.Equal("ExceptionData", telemetryItem.Data.BaseType);
+
+            Assert.Null(telemetryItem.Data.BaseData.Name);
+            Assert.Equal("Host.Results", telemetryItem.Data.BaseData.Properties["Category"]);
+            Assert.Equal(expectedOperationName, telemetryItem.Tags["ai.operation.name"]);
+            Assert.NotNull(telemetryItem.Tags["ai.operation.id"]);
+
+            // Check that the Function details show up as 'prop__'. We may change this in the future as
+            // it may not be exceptionally useful.
+            Assert.Equal(expectedOperationName, telemetryItem.Data.BaseData.Properties[$"{LoggingKeys.CustomPropertyPrefix}{LoggingKeys.Name}"]);
+            Assert.Equal("This function was programmatically called via the host APIs.", telemetryItem.Data.BaseData.Properties[$"{LoggingKeys.CustomPropertyPrefix}{LoggingKeys.TriggerReason}"]);
+
+            // TODO: Parameter logging shouldn't have prop__ prefixes. Need to revisit.
+            Assert.Equal("function input", telemetryItem.Data.BaseData.Properties[$"{LoggingKeys.CustomPropertyPrefix}{LoggingKeys.ParameterPrefix}input"]);
+
+            Assert.Equal(2, telemetryItem.Data.BaseData.Exceptions.Length);
+
+            TelemetryException first = telemetryItem.Data.BaseData.Exceptions[0];
+            Assert.Equal("Microsoft.Azure.WebJobs.Host.FunctionInvocationException", first.TypeName);
+            Assert.Equal("n/a", first.Message);
+            Assert.True(first.HasFullStack);
+
+            TelemetryException second = telemetryItem.Data.BaseData.Exceptions[1];
+            Assert.Equal("System.Exception", second.TypeName);
+            Assert.Equal("Boom!", second.Message);
+            Assert.True(second.HasFullStack);
+
+            ValidateSdkVersion(telemetryItem);
+        }
+
+        private static void ValidateRequest(TelemetryPayload telemetryItem, string operationName, bool success)
+        {
+            Assert.Equal("RequestData", telemetryItem.Data.BaseType);
+
+            Assert.NotNull(telemetryItem.Data.BaseData.Id);
+            Assert.Equal(operationName, telemetryItem.Data.BaseData.Name);
+            Assert.NotNull(telemetryItem.Data.BaseData.Duration);
+            Assert.Equal(success, telemetryItem.Data.BaseData.Success);
+
+            Assert.NotNull(telemetryItem.Data.BaseData.Properties[$"{LoggingKeys.ParameterPrefix}input"]);
+            Assert.Equal($"ApplicationInsightsEndToEndTests.{operationName}", telemetryItem.Data.BaseData.Properties[LoggingKeys.FullName].ToString());
+            Assert.Equal("This function was programmatically called via the host APIs.", telemetryItem.Data.BaseData.Properties[LoggingKeys.TriggerReason].ToString());
+
+            ValidateSdkVersion(telemetryItem);
+        }
+
+        private static void ValidateSdkVersion(TelemetryPayload telemetryItem)
+        {
+            Assert.StartsWith("webjobs: ", telemetryItem.Tags["ai.internal.sdkVersion"]);
+        }
+
         private class TelemetryPayload
         {
             public string Name { get; set; }
@@ -284,6 +496,15 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             public TelemetryBaseData BaseData { get; } = new TelemetryBaseData();
         }
 
+        private class TelemetryException
+        {
+            public string TypeName { get; set; }
+
+            public string Message { get; set; }
+
+            public bool HasFullStack { get; set; }
+        }
+
         private class TelemetryBaseData
         {
             public string Id { get; set; }
@@ -299,6 +520,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             public string Message { get; set; }
 
             public string SeverityLevel { get; set; }
+
+            public TelemetryException[] Exceptions { get; set; }
 
             public IDictionary<string, string> Properties { get; } = new Dictionary<string, string>();
         }
