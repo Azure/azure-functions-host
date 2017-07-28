@@ -549,6 +549,7 @@
     <Compile Include="TestMetricsLogger.cs" />
     <Compile Include="UtilityTests.cs" />
     <Compile Include="WebApiApplicationTests.cs" />
+    <Compile Include="WebConfigTests\WebConfigTests.cs" />
     <Compile Include="WebHooks\DynamicWebHookReceiverConfigTests.cs" />
     <Compile Include="Handlers\WebScriptHostHandlerTests.cs" />
     <Compile Include="WebHooks\WebHookReceiverManagerTests.cs" />
@@ -557,6 +558,9 @@
     <AdditionalFiles Include="..\..\stylecop.json">
       <Link>stylecop.json</Link>
     </AdditionalFiles>
+    <EmbeddedResource Include="..\..\src\WebJobs.Script.WebHost\Web.config">
+      <Link>WebConfigTests\Web.config</Link>
+    </EmbeddedResource>
     <None Include="app.config">
       <SubType>Designer</SubType>
     </None>
