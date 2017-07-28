@@ -5,7 +5,9 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
+using Microsoft.Azure.Documents.ChangeFeedProcessor;
 using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.WebJobs.Extensions.DocumentDB;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json.Linq;
@@ -32,7 +34,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             binding = null;
 
-            if (string.Compare(context.Type, "documentDB", StringComparison.OrdinalIgnoreCase) == 0)
+            if (string.Compare(context.Type, "documentDB", StringComparison.OrdinalIgnoreCase) == 0
+                || string.Compare(context.Type, "cosmosDBTrigger", StringComparison.OrdinalIgnoreCase) == 0)
             {
                 binding = new DocumentDBScriptBinding(context);
             }
@@ -43,7 +46,19 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         /// <inheritdoc/>
         public override void Initialize()
         {
-            Config.UseDocumentDB();
+            DocumentDBConfiguration documentDBConfiguration = new DocumentDBConfiguration();
+
+            JObject configSection = (JObject)Metadata.GetValue("documentDB", StringComparison.OrdinalIgnoreCase);
+            if (configSection != null)
+            {
+                JToken leaseOptions = configSection["leaseOptions"];
+                if (leaseOptions != null)
+                {
+                    documentDBConfiguration.LeaseOptions = leaseOptions.ToObject<ChangeFeedHostOptions>();
+                }
+            }
+
+            Config.UseDocumentDB(documentDBConfiguration);
         }
 
         /// <inheritdoc/>
@@ -89,25 +104,40 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                 string databaseName = Context.GetMetadataValue<string>("databaseName");
                 string collectionName = Context.GetMetadataValue<string>("collectionName");
+                string connection = Context.GetMetadataValue<string>("connection");
 
-                DocumentDBAttribute attribute = null;
-                if (!string.IsNullOrEmpty(databaseName) || !string.IsNullOrEmpty(collectionName))
+                if (Context.IsTrigger)
                 {
-                    attribute = new DocumentDBAttribute(databaseName, collectionName);
+                    CosmosDBTriggerAttribute attributeTrigger = new CosmosDBTriggerAttribute(databaseName, collectionName);
+                    attributeTrigger.ConnectionStringSetting = connection;
+
+                    attributeTrigger.LeaseDatabaseName = Context.GetMetadataValue<string>("leaseDatabaseName");
+                    attributeTrigger.LeaseCollectionName = Context.GetMetadataValue<string>("leaseCollectionName");
+                    attributeTrigger.LeaseConnectionStringSetting = Context.GetMetadataValue<string>("leaseConnection");
+
+                    attributes.Add(attributeTrigger);
                 }
                 else
                 {
-                    attribute = new DocumentDBAttribute();
+                    DocumentDBAttribute attribute = null;
+                    if (!string.IsNullOrEmpty(databaseName) || !string.IsNullOrEmpty(collectionName))
+                    {
+                        attribute = new DocumentDBAttribute(databaseName, collectionName);
+                    }
+                    else
+                    {
+                        attribute = new DocumentDBAttribute();
+                    }
+
+                    attribute.CreateIfNotExists = Context.GetMetadataValue<bool>("createIfNotExists");
+                    attribute.ConnectionStringSetting = connection;
+                    attribute.Id = Id;
+                    attribute.PartitionKey = Context.GetMetadataValue<string>("partitionKey");
+                    attribute.CollectionThroughput = Context.GetMetadataValue<int>("collectionThroughput");
+                    attribute.SqlQuery = Context.GetMetadataValue<string>("sqlQuery");
+
+                    attributes.Add(attribute);
                 }
-
-                attribute.CreateIfNotExists = Context.GetMetadataValue<bool>("createIfNotExists");
-                attribute.ConnectionStringSetting = Context.GetMetadataValue<string>("connection");
-                attribute.Id = Id;
-                attribute.PartitionKey = Context.GetMetadataValue<string>("partitionKey");
-                attribute.CollectionThroughput = Context.GetMetadataValue<int>("collectionThroughput");
-                attribute.SqlQuery = Context.GetMetadataValue<string>("sqlQuery");
-
-                attributes.Add(attribute);
 
                 return attributes;
             }

@@ -1,0 +1,17 @@
+﻿{
+  "bindings": [
+    {
+      "type": "cosmosDBTrigger",
+      "name": "input",
+      "direction": "in",
+      "databaseName": "ItemDb",
+      "collectionName": "ItemCollection"
+    },
+    {
+      "type": "blob",
+      "name": "completed",
+      "direction": "out",
+      "path": "test-output-csharp/cosmosdbtriggere2e-completed"
+    }
+  ]
+}

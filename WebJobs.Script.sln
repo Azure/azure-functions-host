@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26430.6
+VisualStudioVersion = 15.0.26430.14
 MinimumVisualStudioVersion = 15.0.0.0
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}"
 EndProject
@@ -186,6 +186,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-CSharp", "Docume
 	ProjectSection(SolutionItems) = preProject
 		sample\DocumentDB-CSharp\function.json = sample\DocumentDB-CSharp\function.json
 		sample\DocumentDB-CSharp\run.csx = sample\DocumentDB-CSharp\run.csx
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CosmosDBTrigger-CSharp", "CosmosDBTrigger-CSharp", "{BEDE4C1D-B523-47F8-ADB6-0DAD5F0341A7}"
+	ProjectSection(SolutionItems) = preProject
+		sample\CosmosDBTrigger-CSharp\function.json = sample\CosmosDBTrigger-CSharp\function.json
+		sample\CosmosDBTrigger-CSharp\run.csx = sample\CosmosDBTrigger-CSharp\run.csx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-FSharp", "DocumentDB-FSharp", "{437EB182-8CB9-42BD-9019-E5F6E69D1DB4}"
@@ -526,6 +532,7 @@ Global
 		{C23BB3D1-6921-4FCF-8E45-09540E1F986E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{87E44645-EA02-4F12-8C3E-820B5710292D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{437EB182-8CB9-42BD-9019-E5F6E69D1DB3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{BEDE4C1D-B523-47F8-ADB6-0DAD5F0341A7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{437EB182-8CB9-42BD-9019-E5F6E69D1DB4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{8811DCFB-1023-4577-AB9C-B4F191200082} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C11EBC32-877C-4EBA-85B2-14720555BB71} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}

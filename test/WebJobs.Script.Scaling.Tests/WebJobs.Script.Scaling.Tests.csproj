@@ -143,7 +143,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\WebJobs.Script.Scaling\WebJobs.Script.Scaling.csproj">
       <Project>{292A9038-5807-4095-B37F-9A77170D7402}</Project>
-      <Name>WebJobs.Script.Extensibility</Name>
+      <Name>WebJobs.Script.Scaling</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
