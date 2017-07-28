@@ -32,6 +32,8 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait("Category", "E2E")]
+    [Trait("E2E", nameof(SamplesEndToEndTests))]
     public class SamplesEndToEndTests : IClassFixture<SamplesEndToEndTests.TestFixture>
     {
         internal const string MasterKey = "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy";
