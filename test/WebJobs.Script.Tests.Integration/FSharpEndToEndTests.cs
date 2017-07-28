@@ -14,6 +14,8 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait("Category", "E2E")]
+    [Trait("E2E", nameof(FSharpEndToEndTests))]
     public class FSharpEndToEndTests : EndToEndTestsBase<FSharpEndToEndTests.TestFixture>
     {
         public FSharpEndToEndTests(TestFixture fixture) : base(fixture)

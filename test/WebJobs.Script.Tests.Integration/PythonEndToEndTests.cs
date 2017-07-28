@@ -6,6 +6,8 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait("Category", "E2E")]
+    [Trait("E2E", nameof(PythonEndToEndTests))]
     public class PythonEndToEndTests : EndToEndTestsBase<PythonEndToEndTests.TestFixture>
     {
         public PythonEndToEndTests(TestFixture fixture)

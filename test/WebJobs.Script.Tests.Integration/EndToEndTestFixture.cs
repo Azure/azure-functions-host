@@ -21,6 +21,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Moq;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {

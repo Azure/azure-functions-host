@@ -20,6 +20,8 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait("Category", "E2E")]
+    [Trait("E2E", nameof(DirectLoadEndToEndTests))]
     public class DirectLoadEndToEndTests : EndToEndTestsBase<DirectLoadEndToEndTests.TestFixture>
     {
         public DirectLoadEndToEndTests(TestFixture fixture) : base(fixture)
