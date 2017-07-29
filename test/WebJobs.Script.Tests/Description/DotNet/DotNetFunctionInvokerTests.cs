@@ -2,11 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -25,6 +27,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class DotNetFunctionInvokerTests
     {
+        public static IEnumerable<object[]> CompilationEnvironment
+        {
+            get
+            {
+                yield return new object[] { new Dictionary<string, string> { { EnvironmentSettingNames.CompilationReleaseMode, bool.TrueString } } };
+                yield return new object[] { new Dictionary<string, string> { { EnvironmentSettingNames.CompilationReleaseMode, bool.FalseString } } };
+            }
+        }
+
         [Fact]
         public async Task ReloadScript_WithInvalidCompilationAndMissingMethod_ReportsResults()
         {
@@ -83,80 +94,119 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
         }
 
-        [Fact]
-        public async Task Compilation_WithMissingBindingArguments_LogsAF004Warning()
+        [Theory]
+        [MemberData(nameof(CompilationEnvironment))]
+        public async Task Compilation_WithMissingBindingArguments_LogsAF004Warning(IDictionary<string, string> environment)
         {
-            // Create the compilation exception we expect to throw during the reload
-            string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(rootFunctionsFolder);
-
-            // Create the invoker dependencies and setup the appropriate method to throw the exception
-            RunDependencies dependencies = CreateDependencies();
-
-            // Create a dummy file to represent our function
-            string filePath = Path.Combine(rootFunctionsFolder, Guid.NewGuid().ToString() + ".csx");
-            File.WriteAllText(filePath, Resources.TestFunctionWithMissingBindingArgumentsCode);
-
-            var metadata = new FunctionMetadata
+            using (var testEnvironment = new TestScopedEnvironmentVariable(environment))
             {
-                ScriptFile = filePath,
-                FunctionDirectory = Path.GetDirectoryName(filePath),
-                Name = Guid.NewGuid().ToString(),
-                ScriptType = ScriptType.CSharp
-            };
+                // Create the compilation exception we expect to throw during the reload
+                string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                Directory.CreateDirectory(rootFunctionsFolder);
 
-            metadata.Bindings.Add(new BindingMetadata() { Name = "myQueueItem", Type = "ManualTrigger" });
+                // Create the invoker dependencies and setup the appropriate method to throw the exception
+                RunDependencies dependencies = CreateDependencies();
 
-            var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
+                // Create a dummy file to represent our function
+                string filePath = Path.Combine(rootFunctionsFolder, Guid.NewGuid().ToString() + ".csx");
+                File.WriteAllText(filePath, Resources.TestFunctionWithMissingBindingArgumentsCode);
 
-            var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
-                new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null));
+                var metadata = new FunctionMetadata
+                {
+                    ScriptFile = filePath,
+                    FunctionDirectory = Path.GetDirectoryName(filePath),
+                    Name = Guid.NewGuid().ToString(),
+                    ScriptType = ScriptType.CSharp
+                };
 
-            await invoker.GetFunctionTargetAsync();
+                metadata.Bindings.Add(new BindingMetadata() { Name = "myQueueItem", Type = "ManualTrigger" });
 
-            Assert.Contains(dependencies.TraceWriter.Traces,
-                t => t.Message.Contains($"warning {DotNetConstants.MissingBindingArgumentCompilationCode}") && t.Message.Contains("'TestBinding'"));
+                var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
+
+                var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
+                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
+                    new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null));
+
+                try
+                {
+                    await invoker.GetFunctionTargetAsync();
+                }
+                catch (CompilationErrorException exc)
+                {
+                    var builder = new StringBuilder();
+                    builder.AppendLine(Resources.TestFunctionWithMissingBindingArgumentsCode);
+                    builder.AppendLine();
+
+                    string compilationDetails = exc.Diagnostics.Aggregate(
+                        builder,
+                        (a, d) => a.AppendLine(d.ToString()),
+                        a => a.ToString());
+
+                    throw new Exception(compilationDetails, exc);
+                }
+
+                Assert.Contains(dependencies.TraceWriter.Traces,
+                    t => t.Message.Contains($"warning {DotNetConstants.MissingBindingArgumentCompilationCode}") && t.Message.Contains("'TestBinding'"));
+            }
         }
 
-        [Fact]
-        public async Task Compilation_OnSecondaryHost_SuppressesLogs()
+        [Theory]
+        [MemberData(nameof(CompilationEnvironment))]
+        public async Task Compilation_OnSecondaryHost_SuppressesLogs(IDictionary<string, string> environment)
         {
-            // Create the compilation exception we expect to throw during the reload
-            string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(rootFunctionsFolder);
-
-            // Create the invoker dependencies and setup the appropriate method to throw the exception
-            RunDependencies dependencies = CreateDependencies();
-
-            // Set the host to secondary
-            dependencies.Host.SetupGet(h => h.IsPrimary).Returns(false);
-
-            // Create a dummy file to represent our function
-            string filePath = Path.Combine(rootFunctionsFolder, Guid.NewGuid().ToString() + ".csx");
-            File.WriteAllText(filePath, Resources.TestFunctionWithMissingBindingArgumentsCode);
-
-            var metadata = new FunctionMetadata
+            using (new TestScopedEnvironmentVariable(environment))
             {
-                ScriptFile = filePath,
-                FunctionDirectory = Path.GetDirectoryName(filePath),
-                Name = Guid.NewGuid().ToString(),
-                ScriptType = ScriptType.CSharp
-            };
+                // Create the compilation exception we expect to throw during the reload
+                string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                Directory.CreateDirectory(rootFunctionsFolder);
 
-            metadata.Bindings.Add(new BindingMetadata() { Name = "myQueueItem", Type = "ManualTrigger" });
+                // Create the invoker dependencies and setup the appropriate method to throw the exception
+                RunDependencies dependencies = CreateDependencies();
 
-            var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
+                // Set the host to secondary
+                dependencies.Host.SetupGet(h => h.IsPrimary).Returns(false);
 
-            var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
-                new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null));
+                // Create a dummy file to represent our function
+                string filePath = Path.Combine(rootFunctionsFolder, Guid.NewGuid().ToString() + ".csx");
+                File.WriteAllText(filePath, Resources.TestFunctionWithMissingBindingArgumentsCode);
 
-            await invoker.GetFunctionTargetAsync();
+                var metadata = new FunctionMetadata
+                {
+                    ScriptFile = filePath,
+                    FunctionDirectory = Path.GetDirectoryName(filePath),
+                    Name = Guid.NewGuid().ToString(),
+                    ScriptType = ScriptType.CSharp
+                };
 
-            // Verify that logs on the second instance were suppressed
-            int count = dependencies.TraceWriter.Traces.Count();
-            Assert.Equal(0, count);
+                metadata.Bindings.Add(new BindingMetadata() { Name = "myQueueItem", Type = "ManualTrigger" });
+
+                var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
+
+                var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
+                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
+                    new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null));
+                try
+                {
+                    await invoker.GetFunctionTargetAsync();
+                }
+                catch (CompilationErrorException exc)
+                {
+                    var builder = new StringBuilder();
+                    builder.AppendLine(Resources.TestFunctionWithMissingBindingArgumentsCode);
+                    builder.AppendLine();
+
+                    string compilationDetails = exc.Diagnostics.Aggregate(
+                        builder,
+                        (a, d) => a.AppendLine(d.ToString()),
+                        a => a.ToString());
+
+                    throw new Exception(compilationDetails, exc);
+                }
+
+                // Verify that logs on the second instance were suppressed
+                int count = dependencies.TraceWriter.Traces.Count();
+                Assert.Equal(0, count);
+            }
         }
 
         [Fact]

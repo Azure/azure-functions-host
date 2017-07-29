@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             EventManager = eventManager ?? new ScriptEventManager();
 
-            _structuredLogWriter = new StructuredLogWriter(eventManager, config.RootLogPath);
+            _structuredLogWriter = new StructuredLogWriter(EventManager, config.RootLogPath);
         }
 
         protected IScriptEventManager EventManager { get; }

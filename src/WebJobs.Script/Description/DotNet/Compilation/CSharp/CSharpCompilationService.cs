@@ -69,19 +69,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             Compilation compilation = script.GetCompilation();
 
-            if (_optimizationLevel == OptimizationLevel.Debug)
-            {
-                string scriptFileName = Path.GetFileName(functionMetadata.ScriptFile);
-                SyntaxTree scriptTree = compilation.SyntaxTrees.FirstOrDefault(t => string.Equals(t.FilePath, scriptFileName));
-                var debugTree = SyntaxFactory.SyntaxTree(scriptTree.GetRoot(),
-                  encoding: UTF8WithNoBOM,
-                  path: scriptFileName,
-                  options: new CSharpParseOptions(kind: SourceCodeKind.Script));
+            string scriptFileName = Path.GetFileName(functionMetadata.ScriptFile);
+            SyntaxTree scriptTree = compilation.SyntaxTrees.FirstOrDefault(t => string.Equals(t.FilePath, scriptFileName));
+            scriptTree = SyntaxFactory.SyntaxTree(
+                scriptTree.GetRoot(),
+                encoding: UTF8WithNoBOM,
+                path: scriptFileName,
+                options: new CSharpParseOptions(kind: SourceCodeKind.Script));
 
-                compilation = compilation
-                    .RemoveAllSyntaxTrees()
-                    .AddSyntaxTrees(debugTree);
-            }
+            compilation = compilation
+                .RemoveAllSyntaxTrees()
+                .AddSyntaxTrees(scriptTree);
 
             return compilation.WithOptions(compilation.Options.WithOptimizationLevel(_optimizationLevel))
                 .WithAssemblyName(FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, compilation.AssemblyName));
