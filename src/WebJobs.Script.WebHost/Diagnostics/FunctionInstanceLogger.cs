@@ -71,6 +71,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     string shortName = Utility.GetFunctionShortName(item.FunctionName);
 
                     FunctionDescriptor descr = _funcLookup(shortName);
+                    if (descr == null)
+                    {
+                        // This exception will cause the function to not get executed.
+                        throw new InvalidOperationException($"Missing function.json for '{shortName}'.");
+                    }
                     FunctionLogger logInfo = descr.Invoker.LogInfo;
                     state = new FunctionInstanceMonitor(descr.Metadata, _metrics, item.FunctionInstanceId, logInfo);
 
