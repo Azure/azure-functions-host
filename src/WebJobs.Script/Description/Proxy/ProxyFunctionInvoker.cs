@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.AppService.Proxy.Client;
+using Microsoft.Azure.AppService.Proxy.Client.Contract;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
