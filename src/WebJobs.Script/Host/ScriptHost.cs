@@ -1175,8 +1175,13 @@ namespace Microsoft.Azure.WebJobs.Script
             ILoggerFactory loggerFactory = config.HostConfig.LoggerFactory;
             ILogger proxyStartupLogger = loggerFactory.CreateLogger("Host.Proxies.Initialization");
 
-            proxyClient = AppService.Proxy.Client.ProxyClientFactory.Create(proxiesJson, proxyStartupLogger);
-            var routes = ((AppService.Proxy.Client.IProxyClient)proxyClient).GetProxyData();
+            proxyClient = AppService.Proxy.Client.Contract.ProxyClientFactory.Create(proxiesJson, proxyStartupLogger);
+            if (proxyClient == null)
+            {
+                return;
+            }
+
+            var routes = ((AppService.Proxy.Client.Contract.IProxyClient)proxyClient).GetProxyData();
 
             foreach (var route in routes.Routes)
             {
