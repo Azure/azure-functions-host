@@ -20,11 +20,13 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
         }
 
+        public string AppDirectory { get; set; }
+
         /// <inheritdoc/>
         public override void Initialize()
         {
             Config.UseTimers();
-            Config.UseCore();
+            Config.UseCore(AppDirectory);
         }
 
         /// <inheritdoc/>
