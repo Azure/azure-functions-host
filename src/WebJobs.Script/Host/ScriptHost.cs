@@ -488,6 +488,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
                 LoadBuiltinBindings(usedBindingTypes);
+
+                var directTypes = GetDirectTypes(functionMetadata);
+
+                LoadDirectlyReferencesExtensions(directTypes);
+
                 LoadCustomExtensions();
 
                 // Do this after we've loaded the custom extensions. That gives an extension an opportunity to plug in their own implementations.
@@ -517,7 +522,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 List<Type> types = new List<Type>();
                 types.Add(type);
 
-                AddDirectTypes(types, functions);
+                types.AddRange(directTypes);
 
                 hostConfig.TypeLocator = new TypeLocator(types);
 
@@ -614,13 +619,14 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private static void AddDirectTypes(List<Type> types, Collection<FunctionDescriptor> functions)
+        // Get the set of types that should be directly loaded. These have the "configurationSource" : "attributes" set.
+        // They will be indexed and invoked directly by the WebJobs SDK and skip the IL generator and invoker paths.
+        private static IEnumerable<Type> GetDirectTypes(IEnumerable<FunctionMetadata> functionMetadatas)
         {
             HashSet<Type> visitedTypes = new HashSet<Type>();
 
-            foreach (var function in functions)
+            foreach (var metadata in functionMetadatas)
             {
-                var metadata = function.Metadata;
                 if (!metadata.IsDirect)
                 {
                     continue;
@@ -632,11 +638,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 Assembly assembly = Assembly.LoadFrom(path);
                 var type = assembly.GetType(typeName);
 
-                if (visitedTypes.Add(type))
-                {
-                    types.Add(type);
-                }
+                visitedTypes.Add(type);
             }
+            return visitedTypes;
         }
 
         private IMetricsLogger CreateMetricsLogger()
@@ -697,6 +701,19 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        // Load extensions that are directly references by the user types.
+        private void LoadDirectlyReferencesExtensions(IEnumerable<Type> userTypes)
+        {
+            var possibleExtensionAssemblies = UserTypeScanner.GetPossibleExtensionAssemblies(userTypes);
+
+            foreach (var kv in possibleExtensionAssemblies)
+            {
+                var assembly = kv.Key;
+                var locationHint = kv.Value;
+                LoadExtensions(assembly, locationHint);
+            }
+        }
+
         private void LoadExtensions(Assembly assembly, string locationHint)
         {
             foreach (var type in assembly.ExportedTypes)
@@ -706,9 +723,29 @@ namespace Microsoft.Azure.WebJobs.Script
                     continue;
                 }
 
+                if (IsExtensionLoaded(type))
+                {
+                    continue;
+                }
+
                 IExtensionConfigProvider instance = (IExtensionConfigProvider)Activator.CreateInstance(type);
                 LoadExtension(instance, locationHint);
             }
+        }
+
+        private bool IsExtensionLoaded(Type type)
+        {
+            var registry = this.ScriptConfig.HostConfig.GetService<IExtensionRegistry>();
+            var extensions = registry.GetExtensions<IExtensionConfigProvider>();
+            foreach (var extension in extensions)
+            {
+                var loadedExtentionType = extension.GetType();
+                if (loadedExtentionType == type)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // Load a single extension

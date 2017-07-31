@@ -520,6 +520,7 @@
     <Compile Include="Extensions\IMetricsLoggerExtensions.cs" />
     <Compile Include="Extensions\TraceWriterExtensions.cs" />
     <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="Host\UserTypeScanner.cs" />
     <Compile Include="Host\PrimaryHostCoordinator.cs" />
     <Compile Include="Host\IScriptHostEnvironment.cs" />
     <Compile Include="Host\NullScriptHostEnvironment.cs" />
