@@ -47,9 +47,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     Assembly assembly = attr.GetType().Assembly;
 
                     var method = parameter.Member;
-                    string hintPath = $"referenced by: Method='{method.DeclaringType.FullName}.{method.Name}', Parameter='{parameter.Name}'.";
+                    string locationHint = $"referenced by: Method='{method.DeclaringType.FullName}.{method.Name}', Parameter='{parameter.Name}'.";
 
-                    possibleExtensionAssemblies[assembly] = hintPath;
+                    possibleExtensionAssemblies[assembly] = locationHint;
                 }
             }
         }

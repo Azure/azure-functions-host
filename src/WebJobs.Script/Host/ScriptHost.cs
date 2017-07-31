@@ -621,11 +621,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         // Get the set of types that should be directly loaded. These have the "configurationSource" : "attributes" set.
         // They will be indexed and invoked directly by the WebJobs SDK and skip the IL generator and invoker paths.
-        private static IEnumerable<Type> GetDirectTypes(IEnumerable<FunctionMetadata> functionMetadatas)
+        private static IEnumerable<Type> GetDirectTypes(IEnumerable<FunctionMetadata> functionMetadataList)
         {
             HashSet<Type> visitedTypes = new HashSet<Type>();
 
-            foreach (var metadata in functionMetadatas)
+            foreach (var metadata in functionMetadataList)
             {
                 if (!metadata.IsDirect)
                 {
@@ -735,7 +735,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private bool IsExtensionLoaded(Type type)
         {
-            var registry = this.ScriptConfig.HostConfig.GetService<IExtensionRegistry>();
+            var registry = ScriptConfig.HostConfig.GetService<IExtensionRegistry>();
             var extensions = registry.GetExtensions<IExtensionConfigProvider>();
             foreach (var extension in extensions)
             {
