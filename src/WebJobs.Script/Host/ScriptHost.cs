@@ -471,6 +471,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfigObject, TraceWriter, _startupLogger, usedBindingTypes);
                 ScriptConfig.BindingProviders = bindingProviders;
 
+                var coreBinder = bindingProviders.OfType<CoreExtensionsScriptBindingProvider>().First();
+                coreBinder.AppDirectory = ScriptConfig.RootScriptPath;
+
                 // Allow BindingProviders to initialize
                 foreach (var bindingProvider in ScriptConfig.BindingProviders)
                 {
