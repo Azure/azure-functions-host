@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26510.0
+VisualStudioVersion = 15.0.26724.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{639967B0-0544-4C52-94AC-9A3D25E33256}"
 EndProject
@@ -30,6 +30,12 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Logging.FunctionalTests", "test\Microsoft.Azure.WebJobs.Logging.FunctionalTests\WebJobs.Logging.FunctionalTests.csproj", "{C8EAAE01-E8CF-4131-9D4B-F0FDF00DA4BE}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Host.EndToEndTests", "test\Microsoft.Azure.WebJobs.Host.EndToEndTests\WebJobs.Host.EndToEndTests.csproj", "{340AB554-5482-4B3D-B65F-46DFF5AF1684}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{3B089351-285A-4829-8F60-30768A7469BD}"
+	ProjectSection(SolutionItems) = preProject
+		build\common.props = build\common.props
+		build\PublicKey.snk = build\PublicKey.snk
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -96,5 +102,8 @@ Global
 		{C6B834AB-7B6A-47AE-A7C3-C102B0C861FF} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{C8EAAE01-E8CF-4131-9D4B-F0FDF00DA4BE} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{340AB554-5482-4B3D-B65F-46DFF5AF1684} = {639967B0-0544-4C52-94AC-9A3D25E33256}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {371BFA14-0980-4A43-A18A-CA1C1A9CB784}
 	EndGlobalSection
 EndGlobal

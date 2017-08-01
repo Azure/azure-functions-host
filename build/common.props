@@ -17,5 +17,9 @@
     <PackageLicenseUrl>http://www.microsoft.com/web/webpi/eula/aspnetcomponent_rtw_enu.htm</PackageLicenseUrl>
     <PackageIconUrl>https://raw.githubusercontent.com/Azure/azure-webjobs-sdk/dev/webjobs.png</PackageIconUrl>
     <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>  
+  </PropertyGroup>
+  <Target Name="WebJobsCleanup" AfterTargets="Clean">
+    <RemoveDir Directories="$(TargetDir)" />
+    <RemoveDir Directories="$(ProjectDir)$(BaseIntermediateOutputPath)" />
+  </Target>
 </Project>
