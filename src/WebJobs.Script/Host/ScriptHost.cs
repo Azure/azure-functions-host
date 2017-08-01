@@ -608,7 +608,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (illegalScriptAssemblies.Contains(scriptFile))
                 {
                     // Error. All entries pointing to the same dll must have the same value for IsDirect
-                    string msg = string.Format(CultureInfo.InvariantCulture, "Configuration error: All functions in {0} must have the same config precedence,",
+                    string msg = string.Format(CultureInfo.InvariantCulture, "Configuration error: all functions in {0} must have the same value for 'configurationSource'.",
                         scriptFile);
 
                     // Adding a function error will cause this function to get ignored
