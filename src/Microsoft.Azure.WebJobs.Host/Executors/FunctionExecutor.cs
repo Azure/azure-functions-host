@@ -538,23 +538,28 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             //      b. If !throwOnTimeout, wait for the task to complete.
 
             // Start the invokeTask.
-            Task<object> invokeTask = invoker.InvokeAsync(invokeParameters);
+            var objInstance = invoker.CreateInstance();
 
-            // Combine #1 and #2 with a timeout task (handled by this method).
-            // functionCancellationTokenSource.Token is passed to each function that requests it, so we need to call Cancel() on it
-            // if there is a timeout.
-            bool isTimeout = await TryHandleTimeoutAsync(invokeTask, functionCancellationTokenSource.Token, throwOnTimeout, timeoutTokenSource.Token,
-                timerInterval, instance, () => functionCancellationTokenSource.Cancel());
-
-            // #2 occurred. If we're going to throwOnTimeout, watch for a timeout while we wait for invokeTask to complete.
-            if (throwOnTimeout && !isTimeout && functionCancellationTokenSource.IsCancellationRequested)
+            using (objInstance as IDisposable)
             {
-                await TryHandleTimeoutAsync(invokeTask, CancellationToken.None, throwOnTimeout, timeoutTokenSource.Token, timerInterval, instance, null);
+                Task<object> invokeTask = invoker.InvokeAsync(objInstance, invokeParameters);
+
+                // Combine #1 and #2 with a timeout task (handled by this method).
+                // functionCancellationTokenSource.Token is passed to each function that requests it, so we need to call Cancel() on it
+                // if there is a timeout.
+                bool isTimeout = await TryHandleTimeoutAsync(invokeTask, functionCancellationTokenSource.Token, throwOnTimeout, timeoutTokenSource.Token,
+                    timerInterval, instance, () => functionCancellationTokenSource.Cancel());
+
+                // #2 occurred. If we're going to throwOnTimeout, watch for a timeout while we wait for invokeTask to complete.
+                if (throwOnTimeout && !isTimeout && functionCancellationTokenSource.IsCancellationRequested)
+                {
+                    await TryHandleTimeoutAsync(invokeTask, CancellationToken.None, throwOnTimeout, timeoutTokenSource.Token, timerInterval, instance, null);
+                }
+
+                object returnValue = await invokeTask;
+
+                parameterHelper.SetReturnValue(returnValue);
             }
-
-            object returnValue = await invokeTask;
-
-            parameterHelper.SetReturnValue(returnValue);
         }
 
         /// <summary>

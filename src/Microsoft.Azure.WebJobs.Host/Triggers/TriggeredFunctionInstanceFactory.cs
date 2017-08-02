@@ -68,10 +68,15 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
             }
             public IReadOnlyList<string> ParameterNames => _inner.ParameterNames;
 
-            public Task<object> InvokeAsync(object[] arguments)
+            public Task<object> InvokeAsync(object instance, object[] arguments)
             {
-                Func<Task<object>> inner = () => _inner.InvokeAsync(arguments);
+                Func<Task<object>> inner = () => _inner.InvokeAsync(instance, arguments);
                 return _handler(inner);
+            }
+
+            public object CreateInstance()
+            {
+                return _inner.CreateInstance();
             }
         }
     }
