@@ -48,17 +48,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             get { return _parameterNames; }
         }
 
-        public async Task<object> InvokeAsync(object[] arguments)
+
+        public object CreateInstance()
+        {
+            TReflected instance = _instanceFactory.Create();
+            return instance;
+        }
+
+        public async Task<object> InvokeAsync(object instance, object[] arguments)
         {
             // Return a task immediately in case the method is not async.
             await Task.Yield();
 
-            TReflected instance = _instanceFactory.Create();
-
-            using (instance as IDisposable)
-            {
-                return await _methodInvoker.InvokeAsync(instance, arguments);
-            }
+            return await _methodInvoker.InvokeAsync((TReflected) instance, arguments);            
         }
     }
 }

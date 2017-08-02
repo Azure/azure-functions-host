@@ -21,13 +21,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             mockExecutor.Setup(m => m.TryExecuteAsync(It.IsAny<IFunctionInstance>(), It.IsAny<CancellationToken>())).
                 Returns<IFunctionInstance, CancellationToken>((x, y) =>
                 {
-                    x.Invoker.InvokeAsync(null).Wait();
+                    x.Invoker.InvokeAsync(null, null).Wait();
                     return Task.FromResult<IDelayedException>(null);
                 });
 
             bool innerInvokerInvoked = false;
             Mock<IFunctionInvoker> mockInvoker = new Mock<IFunctionInvoker>();
-            mockInvoker.Setup(m => m.InvokeAsync(null)).Returns(() =>
+            mockInvoker.Setup(m => m.InvokeAsync(null, null)).Returns(() =>
             {
                 innerInvokerInvoked = true;
                 return Task.FromResult<object>(null);

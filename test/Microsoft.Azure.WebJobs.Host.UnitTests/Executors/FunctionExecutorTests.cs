@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             bool called = false;
             Mock<IFunctionInvoker> mockInvoker = new Mock<IFunctionInvoker>();
-            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
+            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object>(), It.IsAny<object[]>()))
                 .Returns(() =>
                 {
                     called = true;
@@ -146,8 +146,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             bool called = false;
             Mock<IFunctionInvoker> mockInvoker = new Mock<IFunctionInvoker>();
-            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
-                .Returns<object[]>(async (invokeParameters) =>
+            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object>(), It.IsAny<object[]>()))
+                .Returns<object, object[]>(async (invokeInstance, invokeParameters) =>
                 {
                     var token = (CancellationToken)invokeParameters[0];
                     while (!token.IsCancellationRequested)
@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         public async Task InvokeAsync_Timeout_Throw()
         {
             Mock<IFunctionInvoker> mockInvoker = new Mock<IFunctionInvoker>();
-            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
+            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object>(), It.IsAny<object[]>()))
                 .Returns(async () =>
                 {
                     bool exit = false;
@@ -210,8 +210,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             bool called = false;
             Mock<IFunctionInvoker> mockInvoker = new Mock<IFunctionInvoker>();
-            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
-                .Returns<object[]>(async (invokeParameters) =>
+            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object>(), It.IsAny<object[]>()))
+                .Returns<object, object[]>(async (invokeInstance, invokeParameters) =>
                 {
                     var token = (CancellationToken)invokeParameters[0];
                     while (!token.IsCancellationRequested)
@@ -239,8 +239,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             bool called = false;
             Mock<IFunctionInvoker> mockInvoker = new Mock<IFunctionInvoker>();
-            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
-                .Returns<object[]>(async (invokeParameters) =>
+            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object>(), It.IsAny<object[]>()))
+                .Returns<object, object[]>(async (invokeInstance, invokeParameters) =>
                 {
                     var token = (CancellationToken)invokeParameters[0];
                     while (!token.IsCancellationRequested)
@@ -268,7 +268,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         public async Task InvokeAsync_Stop_Timeout_Throw()
         {
             Mock<IFunctionInvoker> mockInvoker = new Mock<IFunctionInvoker>();
-            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object[]>()))
+            mockInvoker.Setup(i => i.InvokeAsync(It.IsAny<object>(), It.IsAny<object[]>()))
                 .Returns(async () =>
                 {
                     bool exit = false;

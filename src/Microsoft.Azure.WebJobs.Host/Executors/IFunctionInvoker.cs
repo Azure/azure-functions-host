@@ -11,6 +11,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         IReadOnlyList<string> ParameterNames { get; }
 
         // The cancellation token, if any, is provided along with the other arguments.
-        Task<object> InvokeAsync(object[] arguments);
+        // Caller can get an instance via NewInstance(). 
+        // Caller is responsible for calling dispose. 
+        Task<object> InvokeAsync(object instance, object[] arguments);
+
+        // Create an instance that can be passed into Invoke. 
+        // This exists separately so that callers can inspect the instance before it is invoked. 
+        object CreateInstance();
     }
 }
