@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 
 #if PUBLICSTORAGE
@@ -743,6 +744,21 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
             }
 
             return extendedInformation.ErrorCode == "LeaseLost";
+        }
+
+        /// <summary>
+        /// Determines whether the exception is due to a task cancellation.
+        /// </summary>
+        /// <param name="exception">The storage exception.</param>
+        /// <returns><see langword="true"/> if the inner exception is a <see cref="TaskCanceledException"/>. Otherwise, <see langword="false"/>.</returns>
+        public static bool IsTaskCanceled(this StorageException exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
+            return exception.InnerException is TaskCanceledException;
         }
 
         /// <summary>

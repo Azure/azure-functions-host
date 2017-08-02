@@ -266,6 +266,10 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
                 await _queueProcessor.CompleteProcessingMessageAsync(message.SdkObject, result, cancellationToken);
             }
+            catch (StorageException ex) when (ex.IsTaskCanceled())
+            {
+                // TaskCanceledExceptions may be wrapped in StorageException.
+            }
             catch (OperationCanceledException)
             {
                 // Don't fail the top-level task when an inner task cancels.

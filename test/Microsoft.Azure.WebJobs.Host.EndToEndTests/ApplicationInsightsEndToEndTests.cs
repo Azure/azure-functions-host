@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Extensions.Logging;
@@ -36,9 +37,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             JobHostConfiguration config = new JobHostConfiguration
             {
                 LoggerFactory = loggerFactory,
-                TypeLocator = new FakeTypeLocator(GetType()),
+                TypeLocator = new FakeTypeLocator(GetType()),                
             };
             config.Aggregator.IsEnabled = false;
+            config.AddService<IWebJobsExceptionHandler>(new TestExceptionHandler());
 
             using (JobHost host = new JobHost(config))
             {
@@ -87,6 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 TypeLocator = new FakeTypeLocator(GetType()),
             };
             config.Aggregator.IsEnabled = false;
+            config.AddService<IWebJobsExceptionHandler>(new TestExceptionHandler());
 
             using (JobHost host = new JobHost(config))
             {

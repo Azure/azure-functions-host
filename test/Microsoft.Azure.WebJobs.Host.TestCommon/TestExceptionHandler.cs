@@ -5,6 +5,7 @@ using System;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
@@ -16,15 +17,13 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         public Task OnTimeoutExceptionAsync(ExceptionDispatchInfo exceptionInfo, TimeSpan timeoutGracePeriod)
         {
-            Console.WriteLine("Timeout exception in test exception handler: {0}", exceptionInfo);
-
+            Assert.True(false, $"Timeout exception in test exception handler: {exceptionInfo.SourceException}");
             return Task.CompletedTask;
         }
 
         public Task OnUnhandledExceptionAsync(ExceptionDispatchInfo exceptionInfo)
         {
-            Console.WriteLine("Error in test exception handler: {0}", exceptionInfo);
-
+            Assert.True(false, $"Error in test exception handler: {exceptionInfo.SourceException}");
             return Task.CompletedTask;
         }
     }
