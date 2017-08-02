@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             Func<string, FunctionDescriptor> funcLookup,
             IMetricsLogger metrics,
             string hostName,
-            string accountConnectionString,
+            string accountConnectionString, // May be null
             TraceWriter trace) : this(funcLookup, metrics)
         {
             if (trace == null)
@@ -36,12 +36,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 throw new ArgumentNullException(nameof(trace));
             }
 
-            CloudStorageAccount account = CloudStorageAccount.Parse(accountConnectionString);
-            var client = account.CreateCloudTableClient();
-            var tableProvider = LogFactory.NewLogTableProvider(client);
+            if (accountConnectionString != null)
+            {
+                CloudStorageAccount account = CloudStorageAccount.Parse(accountConnectionString);
+                var client = account.CreateCloudTableClient();
+                var tableProvider = LogFactory.NewLogTableProvider(client);
 
-            string containerName = Environment.MachineName;
-            this._writer = LogFactory.NewWriter(hostName, containerName, tableProvider, (e) => OnException(e, trace));
+                string containerName = Environment.MachineName;
+                this._writer = LogFactory.NewWriter(hostName, containerName, tableProvider, (e) => OnException(e, trace));
+            }
         }
 
         internal FunctionInstanceLogger(
