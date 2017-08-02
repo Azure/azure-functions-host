@@ -3,12 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
-using System.Net.Http;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
         private readonly string _categoryName;
         private const string DefaultCategoryName = "Default";
         private const string DateTimeFormatString = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fffK";
+        private const string OperationContext = "MS_OperationContext";
 
         public ApplicationInsightsLogger(TelemetryClient client, string categoryName)
         {
@@ -47,8 +48,8 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             // for all telemetry.
             using (BeginScope(new Dictionary<string, object>
             {
-                [LoggingKeys.CategoryName] = _categoryName,
-                [LoggingKeys.LogLevel] = (LogLevel?)logLevel
+                [LogConstants.CategoryNameKey] = _categoryName,
+                [LogConstants.LogLevelKey] = (LogLevel?)logLevel
             }))
             {
                 // Log a function result
@@ -146,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 
                 // Since there is no nesting of properties, apply a prefix before the property name to lessen
                 // the chance of collisions.
-                telemetry.Properties.Add(LoggingKeys.CustomPropertyPrefix + property.Key, stringValue);
+                telemetry.Properties.Add(LogConstants.CustomPropertyPrefix + property.Key, stringValue);
             }
         }
 
@@ -161,11 +162,11 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             {
                 switch (value.Key)
                 {
-                    case LoggingKeys.Name:
+                    case LogConstants.NameKey:
                         functionName = value.Value.ToString();
                         break;
-                    case LoggingKeys.Timestamp:
-                    case LoggingKeys.OriginalFormat:
+                    case LogConstants.TimestampKey:
+                    case LogConstants.OriginalFormatKey:
                         // Timestamp is created automatically
                         // We won't use the format string here
                         break;
@@ -195,7 +196,15 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
         {
             IDictionary<string, object> scopeProps = DictionaryLoggerScope.GetMergedStateDictionary() ?? new Dictionary<string, object>();
 
-            RequestTelemetry requestTelemetry = new RequestTelemetry();
+            var operation = scopeProps.GetValueOrDefault<IOperationHolder<RequestTelemetry>>(OperationContext);
+
+            // We somehow never started the operation, so there's no way to complete it.
+            if (operation == null || operation.Telemetry == null)
+            {
+                throw new InvalidOperationException("No started telemetry was found.");
+            }
+
+            RequestTelemetry requestTelemetry = operation.Telemetry;
             requestTelemetry.Success = exception == null;
             requestTelemetry.ResponseCode = "0";
 
@@ -216,7 +225,9 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                 LogException(logLevel, values, exception, null);
             }
 
-            _telemetryClient.TrackRequest(requestTelemetry);
+            // Note: we do not have to set Duration, StartTime, etc. These are handled by the call
+            // to StopOperation, which also tracks the telemetry.
+            _telemetryClient.StopOperation(operation);
         }
 
         private static void ApplyHttpRequestProperties(RequestTelemetry requestTelemetry, HttpRequest request)
@@ -239,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             }
 
             requestTelemetry.Url = uriBuilder.Uri;
-            requestTelemetry.Properties[LoggingKeys.HttpMethod] = request.Method;
+            requestTelemetry.Properties[LogConstants.HttpMethodKey] = request.Method;
 
             requestTelemetry.Context.Location.Ip = GetIpAddress(request);
             if (request.Headers.TryGetValue(HeaderNames.UserAgent, out StringValues userAgentHeader))
@@ -269,24 +280,24 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             {
                 switch (prop.Key)
                 {
-                    case LoggingKeys.Name:
-                        requestTelemetry.Name = prop.Value.ToString();
+                    case LogConstants.NameKey:
+                        // Name is already set at telemetry start
                         break;
-                    case LoggingKeys.InvocationId:
-                        requestTelemetry.Id = prop.Value.ToString();
+                    case LogConstants.InvocationIdKey:
+                        // InvocationId is already set at telemetry start
                         break;
-                    case LoggingKeys.StartTime:
+                    case LogConstants.StartTimeKey:
                         DateTimeOffset startTime = new DateTimeOffset((DateTime)prop.Value, TimeSpan.Zero);
                         requestTelemetry.Timestamp = startTime;
                         requestTelemetry.Properties.Add(prop.Key, startTime.ToString(DateTimeFormatString));
                         break;
-                    case LoggingKeys.Duration:
+                    case LogConstants.DurationKey:
                         if (prop.Value is TimeSpan)
                         {
                             requestTelemetry.Duration = (TimeSpan)prop.Value;
                         }
                         break;
-                    case LoggingKeys.OriginalFormat:
+                    case LogConstants.OriginalFormatKey:
                         // this is the format string; we won't use it here
                         break;
                     default:
@@ -318,7 +329,39 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                 throw new ArgumentNullException(nameof(state));
             }
 
-            return DictionaryLoggerScope.Push(state);
+            var stateValues = state as IDictionary<string, object>;
+            if (stateValues == null)
+            {
+                // There's nothing we can do without a dictionary.
+                return null;
+            }
+
+            StartTelemetryIfFunctionInvocation(stateValues);
+
+            return DictionaryLoggerScope.Push(new ReadOnlyDictionary<string, object>(stateValues));
+        }
+
+        private void StartTelemetryIfFunctionInvocation(IDictionary<string, object> stateValues)
+        {
+            string functionName = stateValues.GetValueOrDefault<string>(ScopeKeys.FunctionName);
+            string functionInvocationId = stateValues.GetValueOrDefault<string>(ScopeKeys.FunctionInvocationId);
+            string eventName = stateValues.GetValueOrDefault<string>(ScopeKeys.Event);
+
+            // If we have the invocation id, function name, and event, we know it's a new function. That means
+            // that we want to start a new operation and let App Insights track it for us.
+            if (!string.IsNullOrEmpty(functionName) &&
+                !string.IsNullOrEmpty(functionInvocationId) &&
+                eventName == LogConstants.FunctionStartEvent)
+            {
+                RequestTelemetry request = new RequestTelemetry()
+                {
+                    Id = functionInvocationId,
+                    Name = functionName
+                };
+
+                // We'll need to store this operation context so we can stop it when the function completes
+                stateValues[OperationContext] = _telemetryClient.StartOperation(request);
+            }
         }
 
         internal static string GetIpAddress(HttpRequest httpRequest)

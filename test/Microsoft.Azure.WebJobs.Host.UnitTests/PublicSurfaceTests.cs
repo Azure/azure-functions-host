@@ -232,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "FunctionResultAggregatorConfiguration",
                 "LogCategoryFilter",
                 "LogCategories",
-                "LoggingKeys",
+                "LogConstants",
                 "ScopeKeys",
                 "IDistributedLockManager",
                 "IDistributedLock",

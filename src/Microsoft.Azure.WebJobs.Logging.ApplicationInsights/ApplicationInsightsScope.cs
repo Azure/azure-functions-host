@@ -9,17 +9,17 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 {
     internal class DictionaryLoggerScope
     {
-        private readonly object _state;
+        private static AsyncLocal<DictionaryLoggerScope> _value = new AsyncLocal<DictionaryLoggerScope>();
 
-        private DictionaryLoggerScope(object state, DictionaryLoggerScope parent)
+        private DictionaryLoggerScope(IReadOnlyDictionary<string, object> state, DictionaryLoggerScope parent)
         {
-            _state = state;
+            State = state;
             Parent = parent;
         }
 
-        internal DictionaryLoggerScope Parent { get; private set; }
+        internal IReadOnlyDictionary<string, object> State { get; private set; }
 
-        private static AsyncLocal<DictionaryLoggerScope> _value = new AsyncLocal<DictionaryLoggerScope>();
+        internal DictionaryLoggerScope Parent { get; private set; }
 
         public static DictionaryLoggerScope Current
         {
@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             }
         }
 
-        public static IDisposable Push(object state)
+        public static IDisposable Push(IReadOnlyDictionary<string, object> state)
         {
             Current = new DictionaryLoggerScope(state, Current);
             return new DisposableScope();
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             var current = Current;
             while (current != null)
             {
-                foreach (var entry in current.GetStateDictionary())
+                foreach (var entry in current.State)
                 {
                     // inner scopes win
                     if (!scopeInfo.Keys.Contains(entry.Key))
@@ -61,8 +61,6 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 
             return scopeInfo;
         }
-
-        private IDictionary<string, object> GetStateDictionary() => _state as IDictionary<string, object>;
 
         private class DisposableScope : IDisposable
         {

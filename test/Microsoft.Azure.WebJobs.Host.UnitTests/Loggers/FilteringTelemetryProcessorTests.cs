@@ -41,8 +41,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             var processor = new FilteringTelemetryProcessor(filter.Filter, _nextTelemetryProcessorMock.Object);
 
             var telemetry = new TestTelemetry();
-            telemetry.Properties[LoggingKeys.CategoryName] = LogCategories.Results;
-            telemetry.Properties[LoggingKeys.LogLevel] = telemetryLevel.ToString();
+            telemetry.Properties[LogConstants.CategoryNameKey] = LogCategories.Results;
+            telemetry.Properties[LogConstants.LogLevelKey] = telemetryLevel.ToString();
 
             processor.Process(telemetry);
 
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             var processor = new FilteringTelemetryProcessor(filter.Filter, _nextTelemetryProcessorMock.Object);
 
             var telemetry = new TestTelemetry();
-            telemetry.Properties[LoggingKeys.LogLevel] = telemetryLevel.ToString();
+            telemetry.Properties[LogConstants.LogLevelKey] = telemetryLevel.ToString();
             // no category specified
 
             processor.Process(telemetry);
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             var processor = new FilteringTelemetryProcessor(filter.Filter, _nextTelemetryProcessorMock.Object);
 
             var telemetry = new TestTelemetry();
-            telemetry.Properties[LoggingKeys.CategoryName] = LogCategories.Results;
+            telemetry.Properties[LogConstants.CategoryNameKey] = LogCategories.Results;
             // no log level specified
 
             processor.Process(telemetry);
@@ -129,8 +129,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             var processor = new FilteringTelemetryProcessor(filter.Filter, _nextTelemetryProcessorMock.Object);
 
             var telemetry = new TestTelemetry();
-            telemetry.Properties[LoggingKeys.CategoryName] = LogCategories.Results;
-            telemetry.Properties[LoggingKeys.LogLevel] = "InvalidLevel";
+            telemetry.Properties[LogConstants.CategoryNameKey] = LogCategories.Results;
+            telemetry.Properties[LogConstants.LogLevelKey] = "InvalidLevel";
 
             processor.Process(telemetry);
             _nextTelemetryProcessorMock.Verify(m => m.Process(telemetry), Times.Once);

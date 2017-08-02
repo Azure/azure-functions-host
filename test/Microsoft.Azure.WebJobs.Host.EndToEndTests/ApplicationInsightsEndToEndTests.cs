@@ -176,11 +176,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             // Check that the Function details show up as 'prop__'. We may change this in the future as
             // it may not be exceptionally useful.
-            Assert.Equal(expectedOperationName, telemetryItem.Properties[$"{LoggingKeys.CustomPropertyPrefix}{LoggingKeys.Name}"]);
-            Assert.Equal("This function was programmatically called via the host APIs.", telemetryItem.Properties[$"{LoggingKeys.CustomPropertyPrefix}{LoggingKeys.TriggerReason}"]);
+            Assert.Equal(expectedOperationName, telemetryItem.Properties[$"{LogConstants.CustomPropertyPrefix}{LogConstants.NameKey}"]);
+            Assert.Equal("This function was programmatically called via the host APIs.", telemetryItem.Properties[$"{LogConstants.CustomPropertyPrefix}{LogConstants.TriggerReasonKey}"]);
 
             // TODO: Parameter logging shouldn't have prop__ prefixes. Need to revisit.
-            Assert.Equal("function input", telemetryItem.Properties[$"{LoggingKeys.CustomPropertyPrefix}{LoggingKeys.ParameterPrefix}input"]);
+            Assert.Equal("function input", telemetryItem.Properties[$"{LogConstants.CustomPropertyPrefix}{LogConstants.ParameterPrefix}input"]);
                         
             Assert.IsType<FunctionInvocationException>(telemetryItem.Exception);
             Assert.IsType<Exception>(telemetryItem.Exception.InnerException);
@@ -195,9 +195,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             Assert.NotNull(telemetry.Duration);
             Assert.Equal(success, telemetry.Success);
 
-            Assert.NotNull(telemetry.Properties[$"{LoggingKeys.ParameterPrefix}input"]);
-            Assert.Equal($"ApplicationInsightsEndToEndTests.{operationName}", telemetry.Properties[LoggingKeys.FullName].ToString());
-            Assert.Equal("This function was programmatically called via the host APIs.", telemetry.Properties[LoggingKeys.TriggerReason].ToString());
+            Assert.NotNull(telemetry.Properties[$"{LogConstants.ParameterPrefix}input"]);
+            Assert.Equal($"ApplicationInsightsEndToEndTests.{operationName}", telemetry.Properties[LogConstants.FullNameKey].ToString());
+            Assert.Equal("This function was programmatically called via the host APIs.", telemetry.Properties[LogConstants.TriggerReasonKey].ToString());
 
             ValidateSdkVersion(telemetry);
         }

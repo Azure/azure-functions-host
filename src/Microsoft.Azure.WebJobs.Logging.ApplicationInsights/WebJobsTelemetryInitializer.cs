@@ -35,27 +35,23 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             // Apply our special scope properties
             IDictionary<string, object> scopeProps = DictionaryLoggerScope.GetMergedStateDictionary() ?? new Dictionary<string, object>();
 
-            Guid invocationId = scopeProps.GetValueOrDefault<Guid>(ScopeKeys.FunctionInvocationId);
-            if (invocationId != default(Guid))
-            {
-                telemetry.Context.Operation.Id = invocationId.ToString();
-            }
+            telemetry.Context.Operation.Id = scopeProps.GetValueOrDefault<string>(ScopeKeys.FunctionInvocationId);
             telemetry.Context.Operation.Name = scopeProps.GetValueOrDefault<string>(ScopeKeys.FunctionName);
 
             // Apply Category and LogLevel to all telemetry
             ISupportProperties telemetryProps = telemetry as ISupportProperties;
             if (telemetryProps != null)
             {
-                string category = scopeProps.GetValueOrDefault<string>(LoggingKeys.CategoryName);
+                string category = scopeProps.GetValueOrDefault<string>(LogConstants.CategoryNameKey);
                 if (category != null)
                 {
-                    telemetryProps.Properties[LoggingKeys.CategoryName] = category;
+                    telemetryProps.Properties[LogConstants.CategoryNameKey] = category;
                 }
 
-                LogLevel? logLevel = scopeProps.GetValueOrDefault<LogLevel?>(LoggingKeys.LogLevel);
+                LogLevel? logLevel = scopeProps.GetValueOrDefault<LogLevel?>(LogConstants.LogLevelKey);
                 if (logLevel != null)
                 {
-                    telemetryProps.Properties[LoggingKeys.LogLevel] = logLevel.Value.ToString();
+                    telemetryProps.Properties[LogConstants.LogLevelKey] = logLevel.Value.ToString();
                 }
             }
         }

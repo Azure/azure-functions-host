@@ -13,13 +13,13 @@ namespace Microsoft.Extensions.Logging
     internal static class LoggerExtensions
     {
         // We want the short name for use with Application Insights.
-        internal static void LogFunctionResult(this ILogger logger, string shortName, FunctionInstanceLogEntry logEntry, TimeSpan duration, Exception exception = null)
+        internal static void LogFunctionResult(this ILogger logger, FunctionInstanceLogEntry logEntry)
         {
-            bool succeeded = exception == null;
+            bool succeeded = logEntry.Exception == null;
 
             // build the string and values
             string result = succeeded ? "Succeeded" : "Failed";
-            string logString = $"Executed '{{{LoggingKeys.FullName}}}' ({result}, Id={{{LoggingKeys.InvocationId}}})";
+            string logString = $"Executed '{{{LogConstants.FullNameKey}}}' ({result}, Id={{{LogConstants.InvocationIdKey}}})";
             object[] values = new object[]
             {
                 logEntry.FunctionName,
@@ -28,24 +28,24 @@ namespace Microsoft.Extensions.Logging
 
             // generate additional payload that is not in the string
             IDictionary<string, object> properties = new Dictionary<string, object>();
-            properties.Add(LoggingKeys.Name, shortName);
-            properties.Add(LoggingKeys.TriggerReason, logEntry.TriggerReason);
-            properties.Add(LoggingKeys.StartTime, logEntry.StartTime);
-            properties.Add(LoggingKeys.EndTime, logEntry.EndTime);
-            properties.Add(LoggingKeys.Duration, duration);
-            properties.Add(LoggingKeys.Succeeded, succeeded);
+            properties.Add(LogConstants.NameKey, logEntry.LogName);
+            properties.Add(LogConstants.TriggerReasonKey, logEntry.TriggerReason);
+            properties.Add(LogConstants.StartTimeKey, logEntry.StartTime);
+            properties.Add(LogConstants.EndTimeKey, logEntry.EndTime);
+            properties.Add(LogConstants.DurationKey, logEntry.Duration);
+            properties.Add(LogConstants.SucceededKey, succeeded);
 
             if (logEntry.Arguments != null)
             {
                 foreach (var arg in logEntry.Arguments)
                 {
-                    properties.Add(LoggingKeys.ParameterPrefix + arg.Key, arg.Value);
+                    properties.Add(LogConstants.ParameterPrefix + arg.Key, arg.Value);
                 }
             }
 
             FormattedLogValuesCollection payload = new FormattedLogValuesCollection(logString, values, new ReadOnlyDictionary<string, object>(properties));
             LogLevel level = succeeded ? LogLevel.Information : LogLevel.Error;
-            logger.Log(level, 0, payload, exception, (s, e) => s.ToString());
+            logger.Log(level, 0, payload, logEntry.Exception, (s, e) => s.ToString());
         }
 
         internal static void LogFunctionResultAggregate(this ILogger logger, FunctionResultAggregate resultAggregate)
@@ -60,8 +60,9 @@ namespace Microsoft.Extensions.Logging
             return logger?.BeginScope(
                 new Dictionary<string, object>
                 {
-                    [ScopeKeys.FunctionInvocationId] = functionInstance?.Id,
-                    [ScopeKeys.FunctionName] = functionInstance?.FunctionDescriptor?.LogName
+                    [ScopeKeys.FunctionInvocationId] = functionInstance?.Id.ToString(),
+                    [ScopeKeys.FunctionName] = functionInstance?.FunctionDescriptor?.LogName,
+                    [ScopeKeys.Event] = LogConstants.FunctionStartEvent
                 });
         }
     }
