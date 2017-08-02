@@ -441,14 +441,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Register the new "FastLogger" for Dashboard support
             var dashboardString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Dashboard);
-            if (dashboardString != null)
-            {
-                // hostId may be missing in local test scenarios.
-                var hostId = config.HostConfig.HostId ?? "default";
-                Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
-                var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, dashboardString, config.TraceWriter);
-                hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
-            }
+
+            // hostId may be missing in local test scenarios.
+            var hostId = config.HostConfig.HostId ?? "default";
+            Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
+            var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, dashboardString, config.TraceWriter);
+            hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
+
             hostConfig.DashboardConnectionString = null; // disable slow logging
         }
 
