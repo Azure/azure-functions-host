@@ -328,7 +328,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                     IEnumerable<MethodInfo> indexedMethods = functions.ReadAllMethods();
                     Assembly hostAssembly = GetHostAssembly(indexedMethods);
-                    string displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
+                    string displayName = hostAssembly != null ? AssemblyNameCache.GetName(hostAssembly).Name : "Unknown";
 
                     hostOutputMessage = new DataOnlyHostOutputMessage
                     {

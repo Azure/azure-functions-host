@@ -235,7 +235,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "LoggingKeys",
                 "ScopeKeys",
                 "IDistributedLockManager",
-                "IDistributedLock"
+                "IDistributedLock",
+                "AssemblyNameCache"
             };
 
             AssertPublicTypes(expected, assembly);

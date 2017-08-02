@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
         private void AddAssembly(Assembly assembly)
         {
-            AssemblyName name = assembly.GetName();
+            AssemblyName name = AssemblyNameCache.GetName(assembly);
             _resolvedAssemblies[name.FullName] = assembly;
             _resolvedAssemblies[name.Name] = assembly;
         }
