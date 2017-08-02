@@ -26,8 +26,11 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         /// <summary>The parent instance that caused this function instance to run. this is used to establish causality between functions. </summary>
         public Guid? ParentId { get; set; }
 
-        /// <summary>The name of the function. This serves as an identifier.</summary>
+        /// <summary>The name of the function, including the class name. This serves as an identifier.</summary>
         public string FunctionName { get; set; }
+
+        /// <summary>The name of the function method, excluding the class name.</summary>
+        public string LogName { get; set; }
 
         /// <summary>
         /// An optional hint about why this function was invoked. It may have been triggered, replayed, manually invoked, etc. 
@@ -51,8 +54,15 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         /// </summary>
         public string ErrorDetails { get; set; }
 
-        /// <summary>Gets or sets the function's argument values and help strings.
-        /// If this is null, then the event is before binding. </summary>        
+        /// <summary>
+        /// Null on success. Else, set to the Exception thrown by the function invocation.
+        /// </summary>
+        public Exception Exception { get; set; }
+
+        /// <summary>
+        /// Gets or sets the function's argument values and help strings.
+        /// If this is null, then the event is before binding. 
+        /// </summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public IDictionary<string, string> Arguments { get; set; }
 

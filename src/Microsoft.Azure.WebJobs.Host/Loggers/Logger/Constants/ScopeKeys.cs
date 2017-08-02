@@ -17,5 +17,10 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// A key identifying the function name.
         /// </summary>
         public const string FunctionName = "MS_FunctionName";
+
+        /// <summary>
+        /// A key identifying the event starting with the current scope
+        /// </summary>
+        public const string Event = "MS_Event";
     }
 }

@@ -23,15 +23,15 @@ namespace Microsoft.Azure.WebJobs.Logging
         {
             return new ReadOnlyDictionary<string, object>(new Dictionary<string, object>
             {
-                [LoggingKeys.Name] = Name,
-                [LoggingKeys.Count] = Count,
-                [LoggingKeys.Timestamp] = Timestamp,
-                [LoggingKeys.AverageDuration] = AverageDuration,
-                [LoggingKeys.MaxDuration] = MaxDuration,
-                [LoggingKeys.MinDuration] = MinDuration,
-                [LoggingKeys.Successes] = Successes,
-                [LoggingKeys.Failures] = Failures,
-                [LoggingKeys.SuccessRate] = SuccessRate
+                [LogConstants.NameKey] = Name,
+                [LogConstants.CountKey] = Count,
+                [LogConstants.TimestampKey] = Timestamp,
+                [LogConstants.AverageDurationKey] = AverageDuration,
+                [LogConstants.MaxDurationKey] = MaxDuration,
+                [LogConstants.MinDurationKey] = MinDuration,
+                [LogConstants.SuccessesKey] = Successes,
+                [LogConstants.FailuresKey] = Failures,
+                [LogConstants.SuccessRateKey] = SuccessRate
             });
         }
     }

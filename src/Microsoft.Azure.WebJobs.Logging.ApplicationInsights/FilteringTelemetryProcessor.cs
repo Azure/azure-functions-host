@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             if (telemetry != null && _filter != null)
             {
                 string categoryName = null;
-                if (!telemetry.Properties.TryGetValue(LoggingKeys.CategoryName, out categoryName))
+                if (!telemetry.Properties.TryGetValue(LogConstants.CategoryNameKey, out categoryName))
                 {
                     // If no category is specified, it will be filtered by the default filter
                     categoryName = string.Empty;
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                 // Extract the log level and apply the filter
                 string logLevelString = null;
                 LogLevel logLevel;
-                if (telemetry.Properties.TryGetValue(LoggingKeys.LogLevel, out logLevelString) &&
+                if (telemetry.Properties.TryGetValue(LogConstants.LogLevelKey, out logLevelString) &&
                     Enum.TryParse(logLevelString, out logLevel))
                 {
                     enabled = _filter(categoryName, logLevel);

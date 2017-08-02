@@ -8,7 +8,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -84,66 +83,63 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             TraceLevel functionTraceLevel = functionInstance.FunctionDescriptor.TraceLevel;
 
             FunctionInstanceLogEntry fastItem = null;
-                        
-            try
-            {
-                using (_logger?.BeginFunctionScope(functionInstance))
-                {
-                    fastItem = await this.NotifyPreBindAsync(functionStartedMessage);
-                    functionStartedMessageId = await ExecuteWithLoggingAsync(functionInstance, functionStartedMessage, fastItem, parameterHelper, functionTraceLevel, cancellationToken);
-                }
-                functionCompletedMessage = CreateCompletedMessage(functionStartedMessage);
-            }
-            catch (Exception exception)
-            {
-                if (functionCompletedMessage == null)
-                {
-                    functionCompletedMessage = CreateCompletedMessage(functionStartedMessage);
-                }
 
-                functionCompletedMessage.Failure = new FunctionFailure
-                {
-                    Exception = exception,
-                    ExceptionType = exception.GetType().FullName,
-                    ExceptionDetails = exception.ToDetails(),
-                };
-
-                exceptionInfo = ExceptionDispatchInfo.Capture(exception);
-            }
-
-            if (functionCompletedMessage != null)
-            {
-                functionCompletedMessage.ParameterLogs = parameterHelper.ParameterLogCollector;
-                functionCompletedMessage.EndTime = DateTimeOffset.UtcNow;
-            }
-
-            bool loggedStartedEvent = functionStartedMessageId != null;
-            CancellationToken logCompletedCancellationToken;
-            if (loggedStartedEvent)
-            {
-                // If function started was logged, don't cancel calls to log function completed.
-                logCompletedCancellationToken = CancellationToken.None;
-            }
-            else
-            {
-                logCompletedCancellationToken = cancellationToken;
-            }
-            
             using (_resultsLogger?.BeginFunctionScope(functionInstance))
             {
+                try
+                {
+                    fastItem = await NotifyPreBindAsync(functionStartedMessage);
+                    functionStartedMessageId = await ExecuteWithLoggingAsync(functionInstance, functionStartedMessage, fastItem, parameterHelper, functionTraceLevel, cancellationToken);
+                    functionCompletedMessage = CreateCompletedMessage(functionStartedMessage);
+                }
+                catch (Exception exception)
+                {
+                    if (functionCompletedMessage == null)
+                    {
+                        functionCompletedMessage = CreateCompletedMessage(functionStartedMessage);
+                    }
+
+                    functionCompletedMessage.Failure = new FunctionFailure
+                    {
+                        Exception = exception,
+                        ExceptionType = exception.GetType().FullName,
+                        ExceptionDetails = exception.ToDetails(),
+                    };
+
+                    exceptionInfo = ExceptionDispatchInfo.Capture(exception);
+                }
+
+                if (functionCompletedMessage != null)
+                {
+                    functionCompletedMessage.ParameterLogs = parameterHelper.ParameterLogCollector;
+                    functionCompletedMessage.EndTime = DateTimeOffset.UtcNow;
+                }
+
+                bool loggedStartedEvent = functionStartedMessageId != null;
+                CancellationToken logCompletedCancellationToken;
+                if (loggedStartedEvent)
+                {
+                    // If function started was logged, don't cancel calls to log function completed.
+                    logCompletedCancellationToken = CancellationToken.None;
+                }
+                else
+                {
+                    logCompletedCancellationToken = cancellationToken;
+                }
+
                 await NotifyCompleteAsync(fastItem, functionCompletedMessage.Arguments, exceptionInfo);
-                _resultsLogger?.LogFunctionResult(functionInstance.FunctionDescriptor.LogName, fastItem, fastItem.LiveTimer.Elapsed, exceptionInfo?.SourceException);
-            }
+                _resultsLogger?.LogFunctionResult(fastItem);
 
-            if (functionCompletedMessage != null &&
-                ((functionTraceLevel >= TraceLevel.Info) || (functionCompletedMessage.Failure != null && functionTraceLevel >= TraceLevel.Error)))
-            {
-                await _functionInstanceLogger.LogFunctionCompletedAsync(functionCompletedMessage, logCompletedCancellationToken);
-            }
+                if (functionCompletedMessage != null &&
+                    ((functionTraceLevel >= TraceLevel.Info) || (functionCompletedMessage.Failure != null && functionTraceLevel >= TraceLevel.Error)))
+                {
+                    await _functionInstanceLogger.LogFunctionCompletedAsync(functionCompletedMessage, logCompletedCancellationToken);
+                }
 
-            if (loggedStartedEvent)
-            {
-                await _functionInstanceLogger.DeleteLogFunctionStartedAsync(functionStartedMessageId, cancellationToken);
+                if (loggedStartedEvent)
+                {
+                    await _functionInstanceLogger.DeleteLogFunctionStartedAsync(functionStartedMessageId, cancellationToken);
+                }
             }
 
             if (exceptionInfo != null)
@@ -209,13 +205,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                     // Must bind before logging (bound invoke string is included in log message).
                     FunctionBindingContext functionContext = new FunctionBindingContext(
-                        instance.Id, 
-                        functionCancellationTokenSource.Token, 
+                        instance.Id,
+                        functionCancellationTokenSource.Token,
                         traceWriter,
                         instance.FunctionDescriptor);
                     var valueBindingContext = new ValueBindingContext(functionContext, cancellationToken);
                     await parameterHelper.BindAsync(instance.BindingSource, valueBindingContext);
-                    
+
                     Exception invocationException = null;
                     ExceptionDispatchInfo exceptionInfo = null;
                     string startedMessageId = null;
@@ -432,7 +428,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             ParameterHelper parameterHelper,
             TraceWriter trace,
             ILogger logger,
-            IFunctionOutputDefinition outputDefinition,            
+            IFunctionOutputDefinition outputDefinition,
             TraceLevel functionTraceLevel,
             CancellationTokenSource functionCancellationTokenSource)
         {
@@ -658,6 +654,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 FunctionInstanceId = functionStartedMessage.FunctionInstanceId,
                 ParentId = functionStartedMessage.ParentId,
                 FunctionName = functionStartedMessage.Function.ShortName,
+                LogName = functionStartedMessage.Function.LogName,
                 TriggerReason = functionStartedMessage.ReasonDetails,
                 StartTime = functionStartedMessage.StartTime.DateTime,
                 Properties = new Dictionary<string, object>(),
@@ -703,6 +700,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             if (exceptionInfo != null)
             {
                 var ex = exceptionInfo.SourceException;
+                fastItem.Exception = ex;
                 if (ex.InnerException != null)
                 {
                     ex = ex.InnerException;
@@ -886,7 +884,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                     if (binder != null)
                     {
-                        bool isReturn = name == FunctionIndexer.ReturnParamName;                        
+                        bool isReturn = name == FunctionIndexer.ReturnParamName;
                         object argument = isReturn ? this._returnValue : this.InvokeParameters[this.GetParameterIndex(name)];
 
                         try

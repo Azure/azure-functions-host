@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             ILoggerFactory factory = CreateMockLoggerFactory((props) =>
             {
                 publishCalls++;
-                Assert.Equal(batchSize, props[LoggingKeys.Successes]);
+                Assert.Equal(batchSize, props[LogConstants.SuccessesKey]);
             });
 
             var aggregator = new FunctionResultAggregator(batchSize, TimeSpan.FromMinutes(1), factory);
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             ILoggerFactory factory = CreateMockLoggerFactory((props) =>
             {
                 publishCalls++;
-                Assert.Equal(numberToInsert, props[LoggingKeys.Successes]);
+                Assert.Equal(numberToInsert, props[LogConstants.SuccessesKey]);
             });
 
             var aggregator = new FunctionResultAggregator(batchSize, TimeSpan.FromSeconds(1), factory);
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             ILoggerFactory factory = CreateMockLoggerFactory((props) =>
             {
                 publishCalls++;
-                totalSuccesses += Convert.ToInt32(props[LoggingKeys.Successes]);
+                totalSuccesses += Convert.ToInt32(props[LogConstants.SuccessesKey]);
             });
 
             var aggregator = new FunctionResultAggregator(batchSize, TimeSpan.FromSeconds(1), factory);
@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             ILoggerFactory factory = CreateMockLoggerFactory((props) =>
             {
                 publishCalls++;
-                Assert.Equal(10, props[LoggingKeys.Successes]);
+                Assert.Equal(10, props[LogConstants.SuccessesKey]);
             });
 
             var aggregator = new FunctionResultAggregator(batchSize, TimeSpan.FromSeconds(1), factory);
@@ -116,8 +116,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             ILoggerFactory factory = CreateMockLoggerFactory((props) =>
             {
                 publishCalls++;
-                Assert.Equal(10, props[LoggingKeys.Successes]);
-                Assert.Equal("SomeTest", props[LoggingKeys.Name]);
+                Assert.Equal(10, props[LogConstants.SuccessesKey]);
+                Assert.Equal("SomeTest", props[LogConstants.NameKey]);
             });
 
             var aggregator = new FunctionResultAggregator(batchSize, TimeSpan.FromSeconds(1), factory);
@@ -134,8 +134,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             ILoggerFactory factory = CreateMockLoggerFactory((props) =>
             {
                 publishCalls++;
-                Assert.Equal(10, props[LoggingKeys.Successes]);
-                Assert.Equal("AnotherClass.SomeTest", props[LoggingKeys.Name]);
+                Assert.Equal(10, props[LogConstants.SuccessesKey]);
+                Assert.Equal("AnotherClass.SomeTest", props[LogConstants.NameKey]);
             });
 
             var aggregator = new FunctionResultAggregator(batchSize, TimeSpan.FromSeconds(1), factory);

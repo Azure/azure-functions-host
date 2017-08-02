@@ -510,7 +510,7 @@
     <Compile Include="Loggers\Logger\Aggregator\FunctionResultAggregatorFactory.cs" />
     <Compile Include="Loggers\Logger\Aggregator\IFunctionResultAggregatorFactory.cs" />
     <Compile Include="Loggers\Logger\Constants\LogCategories.cs" />
-    <Compile Include="Loggers\Logger\Constants\LoggingKeys.cs" />
+    <Compile Include="Loggers\Logger\Constants\LogConstants.cs" />
     <Compile Include="Loggers\Logger\Constants\ScopeKeys.cs" />
     <Compile Include="Loggers\Logger\LoggerExtensions.cs" />
     <Compile Include="Loggers\Logger\LogCategoryFilter.cs" />
