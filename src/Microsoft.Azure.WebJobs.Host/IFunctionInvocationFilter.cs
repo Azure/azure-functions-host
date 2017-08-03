@@ -12,19 +12,19 @@ namespace Microsoft.Azure.WebJobs.Host
     public interface IFunctionInvocationFilter
     {
         /// <summary>
-        /// Method invoked before the target function is called
+        /// Method invoked before the target function is called.
         /// </summary>
-        /// <param name="executingContext">The context</param>
-        /// <param name="cancellationToken">The cancellation token</param>
-        /// <returns></returns>
+        /// <param name="executingContext">The execution context.</param>
+        /// <param name="cancellationToken">The cancellation token to use.</param>
+        /// <returns>A <see cref="Task"/> representing the filter execution.</returns>
         Task OnExecutingAsync(FunctionExecutingContext executingContext, CancellationToken cancellationToken);
 
         /// <summary>
         /// Method invoked after the target function is called
         /// </summary>
-        /// <param name="executedContext">The context</param>
-        /// <param name="cancellationToken">The cancellation token</param>
-        /// <returns></returns>
+        /// <param name="executedContext">The execution context.</param>
+        /// <param name="cancellationToken">The cancellation token to use.</param>
+        /// <returns>A <see cref="Task"/> representing the filter execution.</returns>
         Task OnExecutedAsync(FunctionExecutedContext executedContext, CancellationToken cancellationToken);
     }
 }

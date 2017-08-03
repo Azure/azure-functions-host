@@ -1,10 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host.Loggers;
-using Microsoft.Azure.WebJobs.Host.TestCommon;
-using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,6 +9,10 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         // This test reenacts a scenario where the filter utilizes the HTTPRequest for a function
         // A user can perform actions with the request, like authentication, before running the actual function.
         [Fact]
-        public async Task TestHTTPRequestFilter()
+        public async Task TestHttpRequestFilter()
         {
             // Setup the test in memory
             var activator = new FakeActivator();

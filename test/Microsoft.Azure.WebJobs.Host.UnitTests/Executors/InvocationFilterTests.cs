@@ -2,25 +2,23 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Host.Executors;
-using Moq;
-using Xunit;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
-using System.Collections.Generic;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 {
-    public class FilterTests
+    public class InvocationFilterTests
     {
         public static StringBuilder _log = new StringBuilder();
 
         static string _throwAtPhase;
 
-        public FilterTests()
+        public InvocationFilterTests()
         {
             _log.Clear();
             _throwAtPhase = null;

@@ -390,8 +390,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 TraceLevel = traceAttribute?.Level ?? TraceLevel.Verbose,
                 TimeoutAttribute = TypeUtility.GetHierarchicalAttributeOrNull<TimeoutAttribute>(method),
                 SingletonAttributes = method.GetCustomAttributes<SingletonAttribute>(),
-                DeclaringMethodFilters = method.GetCustomAttributes().OfType<IFunctionInvocationFilter>(),
-                DeclaringClassFilters = method.DeclaringType.GetCustomAttributes().OfType<IFunctionInvocationFilter>()
+                MethodLevelInvocationFilters = method.GetCustomAttributes().OfType<IFunctionInvocationFilter>(),
+                ClassLevelInvocationFilters = method.DeclaringType.GetCustomAttributes().OfType<IFunctionInvocationFilter>()
             };
         }
 
