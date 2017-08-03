@@ -34,12 +34,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // TimeSpan expression is invalid
                 triggerMetadata["schedule"] = "00:00:15";
                 var ex = Assert.Throws<ArgumentException>(() => binding.GetAttributes());
-                Assert.Equal("'00:00:15' is not a valid CRON expression.", ex.Message);
+                Assert.Equal("'00:00:15' is not a valid CRON expression. Schedule expressions in the form HH:MM:SS can only be used in an App Service Plan.", ex.Message);
 
                 // TimeSpan specified via app setting is invalid
                 triggerMetadata["schedule"] = "%TEST_SCHEDULE_TIMESPAN%";
                 ex = Assert.Throws<ArgumentException>(() => binding.GetAttributes());
-                Assert.Equal("'00:00:15' is not a valid CRON expression.", ex.Message);
+                Assert.Equal("'00:00:15' is not a valid CRON expression. Schedule expressions in the form HH:MM:SS can only be used in an App Service Plan.", ex.Message);
 
                 // Cron expression is valid
                 triggerMetadata["schedule"] = "0 * * * * *";

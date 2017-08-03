@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     };
                     if (CrontabSchedule.TryParse(schedule, options) == null)
                     {
-                        throw new ArgumentException(string.Format("'{0}' is not a valid CRON expression.", schedule));
+                        throw new ArgumentException(string.Format("'{0}' is not a valid CRON expression. Schedule expressions in the form HH:MM:SS can only be used in an App Service Plan.", schedule));
                     }
                 }
 
