@@ -5,12 +5,11 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Protocols;
-using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Host
-{    
+{
     /// <summary>
-    /// Bind the filter context parameters (<see cref="FunctionExecutedContext"/> and 
+    /// Binding provider for filter context parameters (<see cref="FunctionExecutedContext"/> and 
     /// <see cref="FunctionExecutingContext"/> ).
     /// </summary>
     internal class FunctionFilterBindingProvider : IBindingProvider
@@ -65,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Host
                         return Bind(val);
                     }
                 }
-                throw new InvalidOperationException($"Can't bind filter context.");
+                throw new InvalidOperationException("Unable to bind filter context.");
             }
 
             public ParameterDescriptor ToParameterDescriptor()

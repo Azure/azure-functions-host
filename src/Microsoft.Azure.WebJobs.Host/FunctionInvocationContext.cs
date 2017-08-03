@@ -8,34 +8,38 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
-    /// The context for an executed filter or function
+    /// Base context class for <see cref="IFunctionInvocationFilter"/> context objects.
     /// </summary>
     public abstract class FunctionInvocationContext
     {
-        /// <summary>Gets or sets the ID of the function.</summary>
+        /// <summary>
+        /// Gets or sets the function instance ID.
+        /// </summary>
         public Guid FunctionInstanceId { get; set; }
 
-        /// <summary>Gets or sets the name of the function.</summary>
+        /// <summary>
+        /// Gets or sets the name of the function.
+        /// </summary>
         public string FunctionName { get; set; }
 
         /// <summary>
-        /// Gets or sets the function arguments
+        /// Gets or sets the function arguments.
         /// </summary>
         public IReadOnlyDictionary<string, object> Arguments { get; set; }
 
         /// <summary>
-        /// User properties
+        /// Gets or sets the property bag.
         /// </summary>
         public IDictionary<string, object> Properties { get; set; }
 
         /// <summary>
-        /// Gets or sets the function logger
+        /// Gets or sets the logger.
         /// </summary>
         public ILogger Logger { get; set; }
 
         /// <summary>
-        /// gets or sets an object for invoking other functions
+        /// Gets or sets the <see cref="IJobInvoker"/>.
         /// </summary>
-        internal IJobInvoker JobHost { get; set; }
+        internal IJobInvoker Invoker { get; set; }
     }
 }

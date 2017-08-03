@@ -8,9 +8,8 @@ using System.Threading.Tasks;
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
-    /// Base class for declarative function invocation filters
+    /// Base class for declarative function invocation filters.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = true, AllowMultiple = false)]
     public abstract class InvocationFilterAttribute : Attribute, IFunctionInvocationFilter
     {
         /// <inheritdoc/>

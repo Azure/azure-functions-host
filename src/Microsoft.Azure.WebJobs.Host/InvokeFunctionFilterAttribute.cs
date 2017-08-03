@@ -3,8 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -12,16 +10,16 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
-    /// An invocation filter that invokes job methods
+    /// An invocation filter that invokes job methods.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = true, AllowMultiple = true)]
     public sealed class InvokeFunctionFilterAttribute : InvocationFilterAttribute
     {
         /// <summary>
-        /// Constructs a new instance
+        /// Constructs a new instance.
         /// </summary>
-        /// <param name="executingFilter">The name of the function to execute before the target function is called</param>
-        /// <param name="executedFilter">The name of the function to execute after the target function is called</param>
+        /// <param name="executingFilter">The name of the function to execute before the target function is called.</param>
+        /// <param name="executedFilter">The name of the function to execute after the target function is called.</param>
         public InvokeFunctionFilterAttribute(string executingFilter = null, string executedFilter = null)
         {
             ExecutingFilter = executingFilter;
@@ -29,12 +27,12 @@ namespace Microsoft.Azure.WebJobs.Host
         }
 
         /// <summary>
-        /// The name of the function to execute before the target function is called
+        /// The name of the function to execute before the target function is called.
         /// </summary>
         public string ExecutingFilter { get; }
 
         /// <summary>
-        /// The name of the function to execute after the target function is called
+        /// The name of the function to execute after the target function is called.
         /// </summary>
         public string ExecutedFilter { get; }
 
@@ -48,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
             if (!string.IsNullOrEmpty(ExecutingFilter))
             {
-                executingContext.Logger?.LogInformation("Executing Function Filter '" + ExecutingFilter + "'");
+                executingContext.Logger?.LogInformation($"Executing Function Filter '{ExecutingFilter}'");
 
                 await InvokeJobFunctionAsync(ExecutingFilter, executingContext, cancellationToken);
             }
@@ -72,20 +70,15 @@ namespace Microsoft.Azure.WebJobs.Host
 
         internal static async Task InvokeJobFunctionAsync<TContext>(string methodName, TContext context, CancellationToken cancellationToken) where TContext : FunctionInvocationContext
         {
-            var invokeArguments = GetArgsForFilterContext(context);
-            await context.JobHost.CallAsync(methodName, invokeArguments, cancellationToken);
-        }
+            // See <see cref="Microsoft.Azure.WebJobs.Host.FunctionFilterBindingProvider"/> which
+            // is responsible for binding to this context.
+            // The binding is by Type, so the name we use here doesn't matter.
+            var invokeArguments = new Dictionary<string, object>()
+            {
+                { "$invocationContext", context }
+            };
 
-        /// <summary>
-        /// See <see cref="Microsoft.Azure.WebJobs.Host.FunctionFilterBindingProvider"/> for how binders will extract 
-        /// the filter context and map it back to the parameter. 
-        /// </summary>
-        private static IDictionary<string, object> GetArgsForFilterContext(FunctionInvocationContext context)
-        {
-            // Extraction is by type, so we don't need to know the parameter name.
-            IDictionary<string, object> invokeArguments = new Dictionary<string, object>();
-            invokeArguments["$filter"] = context;
-            return invokeArguments;
+            await context.Invoker.CallAsync(methodName, invokeArguments, cancellationToken);
         }
     }
 }
