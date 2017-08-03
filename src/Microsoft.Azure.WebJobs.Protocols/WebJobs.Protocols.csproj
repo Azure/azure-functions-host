@@ -2,6 +2,8 @@
   <Import Project="..\..\build\common.props" />
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>Microsoft.Azure.WebJobs.Protocols</AssemblyName>
+    <RootNamespace>Microsoft.Azure.WebJobs.Protocols</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

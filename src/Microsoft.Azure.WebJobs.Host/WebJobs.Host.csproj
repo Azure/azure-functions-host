@@ -4,6 +4,8 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageId>Microsoft.Azure.WebJobs</PackageId>
     <Description>This package contains the runtime assemblies for Microsoft.Azure.WebJobs.Host. It also adds rich diagnostics capabilities which makes it easier to monitor the WebJobs in the dashboard. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</Description>
+    <AssemblyName>Microsoft.Azure.WebJobs.Host</AssemblyName>
+    <RootNamespace>Microsoft.Azure.WebJobs.Host</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

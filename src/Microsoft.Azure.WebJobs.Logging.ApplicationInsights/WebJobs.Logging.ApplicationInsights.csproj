@@ -4,6 +4,8 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageId>Microsoft.Azure.WebJobs.Logging.ApplicationInsights</PackageId>
     <Description>This package contains the runtime assemblies for Microsoft.Azure.WebJobs.Logging.ApplicationInsights. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</Description>
+    <AssemblyName>Microsoft.Azure.WebJobs.Logging.ApplicationInsights</AssemblyName>
+    <RootNamespace>Microsoft.Azure.WebJobs.Logging.ApplicationInsights</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

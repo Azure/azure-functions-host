@@ -4,6 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Microsoft.Azure.WebJobs.Storage</RootNamespace>
     <PackageId>Microsoft.Azure.WebJobs.Storage</PackageId>
+    <AssemblyName>Microsoft.Azure.WebJobs.Storage</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
