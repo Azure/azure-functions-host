@@ -32,8 +32,6 @@ namespace Microsoft.Azure.WebJobs.Host
         // so we can pull the context parameter from the binding data by type. 
         private class FilterBinding : IBinding
         {
-            public bool FromAttribute => false;
-
             private readonly Type _type;
             private readonly string _parameterName;
 
@@ -42,6 +40,8 @@ namespace Microsoft.Azure.WebJobs.Host
                 _type = type;
                 _parameterName = parameterName;
             }
+
+            public bool FromAttribute => false;
 
             public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
             {

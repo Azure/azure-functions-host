@@ -572,7 +572,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             List<IFunctionInvocationFilter> filters = new List<IFunctionInvocationFilter>();
 
-            if (instance is IFunctionInvocationFilter instanceFilter)
+            IFunctionInvocationFilter instanceFilter = instance as IFunctionInvocationFilter;
+            if (instanceFilter != null)
             {
                 filters.Add(instanceFilter);
             }

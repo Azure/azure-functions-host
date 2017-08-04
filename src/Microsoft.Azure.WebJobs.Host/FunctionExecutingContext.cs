@@ -4,7 +4,7 @@
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
-    /// Context class for <see cref="IFunctionInvocationFilter.OnExecutingAsync/>>.
+    /// Context class for <see cref="IFunctionInvocationFilter.OnExecutingAsync(FunctionExecutingContext, System.Threading.CancellationToken)"/>>.
     /// </summary>
     public class FunctionExecutingContext : FunctionInvocationContext
     {

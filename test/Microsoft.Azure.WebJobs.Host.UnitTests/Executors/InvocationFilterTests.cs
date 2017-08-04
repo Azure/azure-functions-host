@@ -173,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         }
 
         [Fact]
-        public async Task InvokeMethods()
+        public void InvokeMethods()
         {
             var host = TestHelpers.NewJobHost<MyProg5>();
             host.Call("Main");

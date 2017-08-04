@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
-    /// Context class for <see cref="IFunctionInvocationFilter.OnExecutedAsync"/>>.
+    /// Context class for <see cref="IFunctionInvocationFilter.OnExecutedAsync(FunctionExecutedContext, System.Threading.CancellationToken)"/>>.
     /// </summary>
     public class FunctionExecutedContext : FunctionInvocationContext
     {
