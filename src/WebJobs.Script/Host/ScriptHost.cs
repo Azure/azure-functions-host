@@ -11,7 +11,6 @@ using System.Globalization;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
-using System.Net.Http;
 using System.Reactive.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -104,8 +103,6 @@ namespace Microsoft.Azure.WebJobs.Script
             { "Microsoft.Azure.ApiHub.Sdk" },
             { "Microsoft.Azure.WebJobs.Extensions.ApiHub" }
         };
-        private IProxyClient _proxyClient;
-        private ILogger _proxyLogger;
 
         protected internal ScriptHost(IScriptHostEnvironment environment,
             IScriptEventManager eventManager,
@@ -1365,7 +1362,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private Collection<FunctionDescriptor> GetFunctionDescriptors(Collection<FunctionMetadata> functions)
         {
-            var functions = ReadFunctionMetadata(ScriptConfig, TraceWriter, _startupLogger, FunctionErrors, _settingsManager);
             var proxies = ReadProxyMetadata(ScriptConfig, out object proxyClient, _settingsManager);
 
             var descriptorProviders = new List<FunctionDescriptorProvider>()
