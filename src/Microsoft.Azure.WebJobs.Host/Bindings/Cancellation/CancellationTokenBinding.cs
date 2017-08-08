@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Cancellation
 
         public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
-            if (value is CancellationToken)
+            if (!(value is CancellationToken))
             {
                 throw new InvalidOperationException("Unable to convert value to CancellationToken.");
             }
