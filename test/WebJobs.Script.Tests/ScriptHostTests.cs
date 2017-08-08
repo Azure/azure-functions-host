@@ -1356,7 +1356,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Mock<IScriptHostEnvironment> mockEnvironment = new Mock<IScriptHostEnvironment>(MockBehavior.Strict);
             var config = new ScriptHostConfiguration();
             var eventManager = new Mock<IScriptEventManager>();
-            var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, eventManager.Object, config, null });
+            var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, eventManager.Object, config, null, null });
 
             var functions = new Collection<FunctionDescriptor>();
             var functionErrors = new Dictionary<string, Collection<string>>();

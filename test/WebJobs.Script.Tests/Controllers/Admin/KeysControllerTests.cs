@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var config = new ScriptHostConfiguration();
             var environment = new NullScriptHostEnvironment();
             var eventManager = new Mock<IScriptEventManager>();
-            _hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, eventManager.Object, config, null });
+            _hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, eventManager.Object, config, null, null });
             _hostMock.Setup(p => p.Functions).Returns(_testFunctions);
             _hostMock.Setup(p => p.FunctionErrors).Returns(_testFunctionErrors);
 

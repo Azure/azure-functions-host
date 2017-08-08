@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
             _testFunctions = new Collection<FunctionDescriptor>();
             var environment = new NullScriptHostEnvironment();
             var eventManager = new Mock<IScriptEventManager>();
-            _hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, eventManager.Object, _config, null });
+            _hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, eventManager.Object, _config, null, null });
             _hostMock.Setup(p => p.Functions).Returns(_testFunctions);
             _hostMock.Object.ScriptConfig.SwaggerEnabled = true;
 

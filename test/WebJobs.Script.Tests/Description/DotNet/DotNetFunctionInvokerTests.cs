@@ -364,7 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             scriptHostConfiguration.HostConfig.Tracing.ConsoleLevel = System.Diagnostics.TraceLevel.Verbose;
             var eventManager = new ScriptEventManager();
-            var host = new Mock<ScriptHost>(environment ?? new NullScriptHostEnvironment(), eventManager, scriptHostConfiguration, null);
+            var host = new Mock<ScriptHost>(environment ?? new NullScriptHostEnvironment(), eventManager, scriptHostConfiguration, null, null);
 
             var traceWriterFactory = new Mock<IFunctionTraceWriterFactory>();
             traceWriterFactory.Setup(f => f.Create(It.IsAny<string>()))

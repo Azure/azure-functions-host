@@ -207,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var eventManager = new Mock<IScriptEventManager>();
-            var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), eventManager.Object, config, null);
+            var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), eventManager.Object, config, null, null);
             var factoryMock = new Mock<IScriptHostFactory>();
             factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, It.IsAny<ScriptHostConfiguration>()))
                 .Returns(hostMock.Object);
