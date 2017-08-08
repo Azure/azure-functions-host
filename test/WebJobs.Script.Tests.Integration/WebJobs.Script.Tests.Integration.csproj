@@ -1073,6 +1073,9 @@
     <None Include="TestScripts\PowerShell\TimeoutSync\run.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\Proxy\host.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\Proxy\httptrigger\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
