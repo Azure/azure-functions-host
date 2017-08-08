@@ -591,7 +591,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 var metadata = function.Metadata;
                 var scriptFile = metadata.ScriptFile;
-                if (scriptFile.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                if (scriptFile != null && scriptFile.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
                 {
                     bool isDirect = metadata.IsDirect;
                     bool prevIsDirect;
