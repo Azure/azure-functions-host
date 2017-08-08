@@ -11,6 +11,7 @@ using Microsoft.Azure.AppService.Proxy.Client.Contract;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -35,9 +36,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var environment = new Mock<IScriptHostEnvironment>();
             var eventManager = new Mock<IScriptEventManager>();
+
+            IProxyClientGenerator proxyClientGenerator = GetMockProxyClientGenerator();
+
             _settingsManager = ScriptSettingsManager.Instance;
-            _host = ScriptHost.Create(environment.Object, eventManager.Object, _config, _settingsManager);
-            _metadataCollection = ScriptHost.ReadProxyMetadata(_config, out _proxyClient, _settingsManager);
+            _host = ScriptHost.Create(environment.Object, eventManager.Object, _config, _settingsManager, proxyClientGenerator);
+            _metadataCollection = ScriptHost.ReadProxyMetadata(_config, out _proxyClient, proxyClientGenerator, _settingsManager);
+        }
+
+        private IProxyClientGenerator GetMockProxyClientGenerator()
+        {
+            var proxyClientGenerator = new Mock<IProxyClientGenerator>();
+            var proxyClient = new Mock<IProxyClient>();
+
+            ProxyData proxyData = new ProxyData();
+            proxyData.Routes.Add(new Routes()
+            {
+                Id = 1001,
+                Method = HttpMethod.Get,
+                Name = "test",
+                UrlTemplate = "/myproxy"
+            });
+
+            proxyData.Routes.Add(new Routes()
+            {
+                Id = 1002,
+                Method = HttpMethod.Get,
+                Name = "localFunction",
+                UrlTemplate = "/mymockhttp"
+            });
+
+            proxyClient.Setup(p => p.GetProxyData()).Returns(proxyData);
+
+            proxyClient.Setup(p => p.CallAsync(It.IsAny<object[]>(), It.IsAny<IFuncExecutor>(), It.IsAny<ILogger>())).Returns(
+                (object[] arguments, IFuncExecutor funcExecutor, ILogger logger) =>
+                {
+                    object requestObj = arguments != null && arguments.Length > 0 ? arguments[0] : null;
+                    var request = requestObj as HttpRequestMessage;
+                    var response = new HttpResponseMessage(HttpStatusCode.OK);
+                    request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+                    return Task.CompletedTask;
+                });
+
+            proxyClientGenerator.Setup(p => p.CreateProxyClient(It.IsAny<string>(), It.IsAny<ILogger>())).Returns(proxyClient.Object);
+
+            return proxyClientGenerator.Object;
         }
 
         [Fact]

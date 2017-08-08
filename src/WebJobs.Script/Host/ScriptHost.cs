@@ -61,6 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ILogger _startupLogger;
         private FileWatcherEventSource _fileEventSource;
         private IDisposable _fileEventsSubscription;
+        private IProxyClientGenerator _proxyClientGenerator;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -107,7 +108,8 @@ namespace Microsoft.Azure.WebJobs.Script
         protected internal ScriptHost(IScriptHostEnvironment environment,
             IScriptEventManager eventManager,
             ScriptHostConfiguration scriptConfig = null,
-            ScriptSettingsManager settingsManager = null)
+            ScriptSettingsManager settingsManager = null,
+            IProxyClientGenerator proxyClientGenerator = null)
             : base(scriptConfig.HostConfig)
         {
             scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
@@ -125,6 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script
             EventManager = eventManager;
 
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
+            _proxyClientGenerator = proxyClientGenerator;
         }
 
         public event EventHandler IsPrimaryChanged;
@@ -927,9 +930,9 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         public static ScriptHost Create(IScriptHostEnvironment environment, IScriptEventManager eventManager,
-            ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
+            ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null, IProxyClientGenerator proxyClientGenerator = null)
         {
-            ScriptHost scriptHost = new ScriptHost(environment, eventManager, scriptConfig, settingsManager);
+            ScriptHost scriptHost = new ScriptHost(environment, eventManager, scriptConfig, settingsManager, proxyClientGenerator);
             try
             {
                 scriptHost.Initialize();
@@ -1137,7 +1140,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functions;
         }
 
-        public static Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, out object proxyClient, ScriptSettingsManager settingsManager = null)
+        public static Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, out object proxyClient, IProxyClientGenerator proxyClientGenerator = null, ScriptSettingsManager settingsManager = null)
         {
             proxyClient = null;
 
@@ -1161,18 +1164,24 @@ namespace Microsoft.Azure.WebJobs.Script
             var proxies = new Collection<FunctionMetadata>();
             string proxiesJson = File.ReadAllText(proxyConfigPath);
 
-            LoadProxyRoutes(config, proxies, out proxyClient, proxiesJson);
+            LoadProxyRoutes(config, proxies, out proxyClient, proxiesJson, proxyClientGenerator);
 
             return proxies;
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        private static void LoadProxyRoutes(ScriptHostConfiguration config, Collection<FunctionMetadata> proxies, out object proxyClient, string proxiesJson)
+        private static void LoadProxyRoutes(ScriptHostConfiguration config, Collection<FunctionMetadata> proxies, out object proxyClient, string proxiesJson, IProxyClientGenerator proxyClientGenerator)
         {
             ILoggerFactory loggerFactory = config.HostConfig.LoggerFactory;
             ILogger proxyStartupLogger = loggerFactory.CreateLogger("Host.Proxies.Initialization");
 
-            proxyClient = AppService.Proxy.Client.Contract.ProxyClientFactory.Create(proxiesJson, proxyStartupLogger);
+            if (proxyClientGenerator == null)
+            {
+                proxyClientGenerator = new ProxyClientGenerator();
+            }
+
+            proxyClient = proxyClientGenerator.CreateProxyClient(proxiesJson, proxyStartupLogger);
+
             if (proxyClient == null)
             {
                 return;
@@ -1362,7 +1371,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private Collection<FunctionDescriptor> GetFunctionDescriptors(Collection<FunctionMetadata> functions)
         {
-            var proxies = ReadProxyMetadata(ScriptConfig, out object proxyClient, _settingsManager);
+            var proxies = ReadProxyMetadata(ScriptConfig, out object proxyClient, _proxyClientGenerator, _settingsManager);
 
             var descriptorProviders = new List<FunctionDescriptorProvider>()
                 {
