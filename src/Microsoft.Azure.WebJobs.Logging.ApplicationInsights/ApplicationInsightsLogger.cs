@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Web;
@@ -18,9 +19,26 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
     {
         private readonly TelemetryClient _telemetryClient;
         private readonly string _categoryName;
+
         private const string DefaultCategoryName = "Default";
         private const string DateTimeFormatString = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fffK";
         private const string OperationContext = "MS_OperationContext";
+                
+        internal const string MetricCountKey = "count";
+        internal const string MetricMinKey = "min";
+        internal const string MetricMaxKey = "max";
+        internal const string MetricStandardDeviationKey = "standarddeviation";
+
+        private static readonly string[] SystemScopeKeys =
+            {
+                LogConstants.CategoryNameKey,
+                LogConstants.LogLevelKey,
+                LogConstants.OriginalFormatKey,
+                ScopeKeys.Event,
+                ScopeKeys.FunctionInvocationId,
+                ScopeKeys.FunctionName,
+                OperationContext
+            };
 
         public ApplicationInsightsLogger(TelemetryClient client, string categoryName)
         {
@@ -51,6 +69,13 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                 [LogConstants.LogLevelKey] = (LogLevel?)logLevel
             }))
             {
+                // Log a metric
+                if (eventId.Id == LogConstants.MetricEventId)
+                {
+                    LogMetric(stateValues);
+                    return;
+                }
+
                 // Log a function result
                 if (_categoryName == LogCategories.Results)
                 {
@@ -77,13 +102,75 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             }
         }
 
+        private void LogMetric(IEnumerable<KeyValuePair<string, object>> values)
+        {
+            MetricTelemetry telemetry = new MetricTelemetry();            
+
+            foreach (var entry in values)
+            {
+                if (entry.Value == null)
+                {
+                    continue;
+                }
+
+                // Name and Value are not lower-case so check for them explicitly first and move to the
+                // next entry if found.
+                switch (entry.Key)
+                {
+                    case LogConstants.NameKey:
+                        telemetry.Name = entry.Value.ToString();
+                        continue;
+                    case LogConstants.MetricValueKey:
+                        telemetry.Sum = (double)entry.Value;
+                        continue;
+                    default:
+                        break;
+                }
+
+                // Now check for case-insensitive matches
+                switch (entry.Key.ToLowerInvariant())
+                {
+                    case MetricCountKey:
+                        telemetry.Count = Convert.ToInt32(entry.Value); 
+                        break;
+                    case MetricMinKey:
+                        telemetry.Min = Convert.ToDouble(entry.Value);
+                        break;
+                    case MetricMaxKey:
+                        telemetry.Max = Convert.ToDouble(entry.Value);
+                        break;
+                    case MetricStandardDeviationKey:
+                        telemetry.StandardDeviation = Convert.ToDouble(entry.Value);
+                        break;
+                    default:
+                        // Otherwise, it's a custom property.
+                        ApplyProperty(telemetry, entry, LogConstants.CustomPropertyPrefix);
+                        break;
+                }       
+            }
+
+            ApplyCustomScopeProperties(telemetry);
+
+            _telemetryClient.TrackMetric(telemetry);
+        }       
+
+        // Applies custom scope properties; does not apply 'system' used properties
+        private static void ApplyCustomScopeProperties(ISupportProperties telemetry)
+        {
+            var scopeProperties = DictionaryLoggerScope.GetMergedStateDictionary()
+                .Where(p => !SystemScopeKeys.Contains(p.Key, StringComparer.Ordinal));
+
+            ApplyProperties(telemetry, scopeProperties, LogConstants.CustomPropertyPrefix);
+        }
+
         private void LogException(LogLevel logLevel, IEnumerable<KeyValuePair<string, object>> values, Exception exception, string formattedMessage)
         {
             ExceptionTelemetry telemetry = new ExceptionTelemetry(exception);
             telemetry.Message = formattedMessage;
             telemetry.SeverityLevel = GetSeverityLevel(logLevel);
             telemetry.Timestamp = DateTimeOffset.UtcNow;
-            ApplyCustomProperties(telemetry, values);
+            ApplyProperties(telemetry, values, LogConstants.CustomPropertyPrefix);
+            ApplyCustomScopeProperties(telemetry);
             _telemetryClient.TrackException(telemetry);
         }
 
@@ -92,7 +179,8 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             TraceTelemetry telemetry = new TraceTelemetry(formattedMessage);
             telemetry.SeverityLevel = GetSeverityLevel(logLevel);
             telemetry.Timestamp = DateTimeOffset.UtcNow;
-            ApplyCustomProperties(telemetry, values);
+            ApplyProperties(telemetry, values, LogConstants.CustomPropertyPrefix);
+            ApplyCustomScopeProperties(telemetry);
             _telemetryClient.TrackTrace(telemetry);
         }
 
@@ -117,7 +205,13 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             }
         }
 
-        private static void ApplyCustomProperties(ISupportProperties telemetry, IEnumerable<KeyValuePair<string, object>> values)
+        private static void ApplyProperty(ISupportProperties telemetry, KeyValuePair<string, object> value, string propertyPrefix = null)
+        {
+            ApplyProperties(telemetry, new[] { value }, propertyPrefix);
+        }
+
+        // Inserts properties into the telemetry's properties. Properly formats dates, removes nulls, applies prefix, etc.
+        private static void ApplyProperties(ISupportProperties telemetry, IEnumerable<KeyValuePair<string, object>> values, string propertyPrefix = null)
         {
             foreach (var property in values)
             {
@@ -142,11 +236,9 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                 else
                 {
                     stringValue = property.Value.ToString();
-                }
+                }               
 
-                // Since there is no nesting of properties, apply a prefix before the property name to lessen
-                // the chance of collisions.
-                telemetry.Properties.Add(LogConstants.CustomPropertyPrefix + property.Key, stringValue);
+                telemetry.Properties.Add($"{propertyPrefix}{property.Key}", stringValue);
             }
         }
 
@@ -265,36 +357,17 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             {
                 switch (prop.Key)
                 {
-                    case LogConstants.NameKey:
-                        // Name is already set at telemetry start
-                        break;
-                    case LogConstants.InvocationIdKey:
-                        // InvocationId is already set at telemetry start
-                        break;
+                    case LogConstants.NameKey:                        
+                    case LogConstants.InvocationIdKey:                                                
                     case LogConstants.StartTimeKey:
-                        DateTimeOffset startTime = new DateTimeOffset((DateTime)prop.Value, TimeSpan.Zero);
-                        requestTelemetry.Timestamp = startTime;
-                        requestTelemetry.Properties.Add(prop.Key, startTime.ToString(DateTimeFormatString));
-                        break;
                     case LogConstants.DurationKey:
-                        if (prop.Value is TimeSpan)
-                        {
-                            requestTelemetry.Duration = (TimeSpan)prop.Value;
-                        }
-                        break;
-                    case LogConstants.OriginalFormatKey:
-                        // this is the format string; we won't use it here
+                        // These values are set by the calls to Start/Stop the telemetry. Other
+                        // Loggers may want them, but we'll ignore.
                         break;
                     default:
-                        if (prop.Value is DateTime)
-                        {
-                            DateTimeOffset date = new DateTimeOffset((DateTime)prop.Value, TimeSpan.Zero);
-                            requestTelemetry.Properties.Add(prop.Key, date.ToString(DateTimeFormatString));
-                        }
-                        else
-                        {
-                            requestTelemetry.Properties.Add(prop.Key, prop.Value?.ToString());
-                        }
+                        // There should be no custom properties here, so just copy
+                        // the passed-in values without any 'prop__' prefix.
+                        ApplyProperty(requestTelemetry, prop);
                         break;
                 }
             }
@@ -317,7 +390,22 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             var stateValues = state as IDictionary<string, object>;
             if (stateValues == null)
             {
-                // There's nothing we can do without a dictionary.
+                var stateEnum = state as IEnumerable<KeyValuePair<string, object>>;
+                if (stateEnum != null)
+                {
+                    // Convert this to a dictionary as we have scenarios where we cannot have duplicates. In this
+                    // case, if there are dupes, the later entry wins.
+                    stateValues = new Dictionary<string, object>();
+                    foreach (var entry in stateEnum)
+                    {
+                        stateValues[entry.Key] = entry.Value;
+                    }
+                }
+            }
+            
+            if (stateValues == null)
+            {
+                // There's nothing we can do with other states.
                 return null;
             }
 

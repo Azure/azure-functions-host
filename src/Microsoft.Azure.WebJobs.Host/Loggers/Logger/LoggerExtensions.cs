@@ -10,9 +10,29 @@ using Microsoft.Azure.WebJobs.Logging;
 
 namespace Microsoft.Extensions.Logging
 {
-    internal static class LoggerExtensions
+    /// <summary>
+    /// Extension methods for use with <see cref="ILogger"/>.
+    /// </summary>
+    public static class LoggerExtensions
     {
-        // We want the short name for use with Application Insights.
+        /// <summary>
+        /// Logs a metric value.
+        /// </summary>
+        /// <param name="logger">The ILogger.</param>
+        /// <param name="name">The name of the metric.</param>
+        /// <param name="value">The value of the metric.</param>
+        /// <param name="properties">Named string values for classifying and filtering metrics.</param>
+        public static void LogMetric(this ILogger logger, string name, double value, IDictionary<string, object> properties = null)
+        {
+            IDictionary<string, object> state = properties == null ? new Dictionary<string, object>() : new Dictionary<string, object>(properties);
+
+            state[LogConstants.NameKey] = name;
+            state[LogConstants.MetricValueKey] = value;
+
+            IDictionary<string, object> payload = new ReadOnlyDictionary<string, object>(state);
+            logger?.Log(LogLevel.Information, LogConstants.MetricEventId, payload, null, (s, e) => null);
+        }
+
         internal static void LogFunctionResult(this ILogger logger, FunctionInstanceLogEntry logEntry)
         {
             bool succeeded = logEntry.Exception == null;
@@ -51,8 +71,7 @@ namespace Microsoft.Extensions.Logging
         internal static void LogFunctionResultAggregate(this ILogger logger, FunctionResultAggregate resultAggregate)
         {
             // we won't output any string here, just the data
-            FormattedLogValuesCollection payload = new FormattedLogValuesCollection(string.Empty, null, resultAggregate.ToReadOnlyDictionary());
-            logger.Log(LogLevel.Information, 0, payload, null, (s, e) => s.ToString());
+            logger.Log(LogLevel.Information, 0, resultAggregate.ToReadOnlyDictionary(), null, (s, e) => null);
         }
 
         internal static IDisposable BeginFunctionScope(this ILogger logger, IFunctionInstance functionInstance)

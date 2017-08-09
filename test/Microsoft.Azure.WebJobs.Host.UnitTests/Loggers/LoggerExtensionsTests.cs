@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
         {
             DateTimeOffset now = DateTimeOffset.Now;
             int logCount = 0;
-            ILogger logger = CreateMockLogger<FormattedLogValuesCollection>((l, e, o, ex, f) =>
+            ILogger logger = CreateMockLogger<IReadOnlyDictionary<string, object>>((l, e, payload, ex, f) =>
             {
                 logCount++;
                 Assert.Equal(LogLevel.Information, l);
@@ -96,12 +96,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 Assert.Null(ex);
 
                 // nothing logged
-                Assert.Equal(string.Empty, f(o, ex));
+                Assert.Null(f(payload, ex));
 
-                // convert to dictionary                
-                var payload = o.ToDictionary(k => k.Key, v => v.Value);
-
-                Assert.Equal(10, payload.Count);
+                Assert.Equal(9, payload.Count);
                 Assert.Equal(_functionShortName, payload[LogConstants.NameKey]);
                 Assert.Equal(4, payload[LogConstants.FailuresKey]);
                 Assert.Equal(116, payload[LogConstants.SuccessesKey]);
@@ -111,9 +108,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 Assert.Equal(now, payload[LogConstants.TimestampKey]);
                 Assert.Equal(120, payload[LogConstants.CountKey]);
                 Assert.Equal(96.67, payload[LogConstants.SuccessRateKey]);
-
-                // {OriginalFormat} is still added, even though it is empty
-                Assert.Equal(string.Empty, payload[LogConstants.OriginalFormatKey]);
             });
 
             var resultAggregate = new FunctionResultAggregate
