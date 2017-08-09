@@ -292,13 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public virtual async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
         {
-            // TODO: Validate inputs
-            // TODO: Cache this lookup result
-            method = method.ToLowerInvariant();
-            Type type = ScriptConfig.HostConfig.TypeLocator.GetTypes().SingleOrDefault(p => p.Name == ScriptHost.GeneratedTypeName);
-            var methodInfo = type.GetMethods().SingleOrDefault(p => p.Name.ToLowerInvariant() == method);
-
-            await CallAsync(method, arguments, cancellationToken);
+            await base.CallAsync(method, arguments, cancellationToken);
         }
 
         protected virtual void Initialize()
