@@ -26,8 +26,16 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
             public TestEventHubAsyncCollector() : base(_testClient)
             {
             }
-            protected override Task SendBatchAsync(EventData[] batch)
+            protected override Task SendBatchAsync(IEnumerable<EventData> batch)
             {
+
+                // Assert they all have the same partition key (could be null)
+                var partitionKey = batch.First().PartitionKey;
+                foreach(var e in batch)
+                {
+                    Assert.Equal(partitionKey, e.PartitionKey);
+                }
+
                 lock(_sentEvents)
                 {
                     foreach (var e in batch)
@@ -45,7 +53,29 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests
         public void NullArgumentCheck()
         {
             Assert.Throws<ArgumentNullException>(() => new EventHubAsyncCollector(null));
-        }             
+        }
+
+        [Fact]
+        public async Task SendMultiplePartitions()
+        {
+            var collector = new TestEventHubAsyncCollector();
+                        
+            await collector.AddAsync(new EventData(new byte[] { 1 }) { PartitionKey = "pk1" });
+            await collector.AddAsync(new EventData(new byte[] { 2 }) { PartitionKey = "pk2" });
+
+            // Not physically sent yet since we haven't flushed 
+            Assert.Equal(0, collector._sentEvents.Count);
+
+            await collector.FlushAsync();
+
+            // Partitions aren't flushed in a specific order. 
+            Assert.Equal(2, collector._sentEvents.Count);
+            var items = collector._sentEvents.ToArray();
+
+            var item0 = items[0];
+            var item1 = items[1];
+            Assert.Equal(3, item0[0] + item1[0]); // either order. 
+        }
 
         [Fact]
         public async Task NotSentUntilFlushed()
