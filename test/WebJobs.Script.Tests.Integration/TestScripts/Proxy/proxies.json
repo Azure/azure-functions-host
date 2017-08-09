@@ -18,7 +18,7 @@
         },
       "responseOverrides": {
         "response.headers.myversion": "123",
-        "response.status": "200 FINE"
+        "response.statusCode": "200"
       }
     }
    }
