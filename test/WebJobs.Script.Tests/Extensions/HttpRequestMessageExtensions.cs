@@ -129,29 +129,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(request.IsAuthDisabled());
         }
 
-        [Fact]
-        public void HasAuthorizationLevel_ReturnsExpectedValue()
-        {
-            var request = new HttpRequestMessage();
-            Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Anonymous));
+        //[Fact]
+        //public void HasAuthorizationLevel_ReturnsExpectedValue()
+        //{
+        //    var request = new HttpRequestMessage();
+        //    Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Anonymous));
 
-            Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Function));
-            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey, AuthorizationLevel.Anonymous);
-            Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Function));
-            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey, AuthorizationLevel.Function);
-            Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Function));
-            Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Anonymous));
+        //    Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Function));
+        //    request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey, AuthorizationLevel.Anonymous);
+        //    Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Function));
+        //    request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey, AuthorizationLevel.Function);
+        //    Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Function));
+        //    Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Anonymous));
 
-            Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
-            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey, AuthorizationLevel.Admin);
-            Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
-            Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Function));
-            Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Anonymous));
+        //    Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
+        //    request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey, AuthorizationLevel.Admin);
+        //    Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
+        //    Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Function));
+        //    Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Anonymous));
 
-            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey, AuthorizationLevel.Anonymous);
-            Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
-            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationDisabledKey, true);
-            Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
-        }
+        //    request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey, AuthorizationLevel.Anonymous);
+        //    Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
+        //    request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationDisabledKey, true);
+        //    Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
+        //}
     }
 }

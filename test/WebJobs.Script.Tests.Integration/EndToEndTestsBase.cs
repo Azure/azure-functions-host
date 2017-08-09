@@ -289,6 +289,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             //    Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(id), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
         }
 
+        //protected async Task CosmosDBTriggerToBlobTestImpl()
+        //{
+        //    // DocumentDB tests need the following environment vars:
+        //    // "AzureWebJobsDocumentDBConnectionString" -- the connection string to the account
+
+        //    // Waiting for the Processor to adquire leases
+        //    await Task.Delay(10000);
+
+        //    await Fixture.InitializeDocumentClient();
+        //    bool collectionsCreated = await Fixture.CreateDocumentCollections();
+        //    var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbtriggere2e-completed");
+        //    await resultBlob.DeleteIfExistsAsync();
+
+        //    string id = Guid.NewGuid().ToString();
+
+        //    Document documentToTest = new Document()
+        //    {
+        //        Id = id
+        //    };
+
+        //    await Fixture.DocumentClient.CreateDocumentAsync(UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection"), documentToTest);
+
+        //    // wait for logs to flush
+        //    await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+
+        //    // now wait for function to be invoked
+        //    string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
+
+        //    if (collectionsCreated)
+        //    {
+        //        // cleanup collections
+        //        await Fixture.DeleteDocumentCollections();
+        //    }
+
+        //    Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(id), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
+        //}
+
         protected async Task NotificationHubTest(string functionName)
         {
             //    // NotificationHub tests need the following environment vars:

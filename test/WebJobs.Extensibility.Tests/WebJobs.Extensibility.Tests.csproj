@@ -16,8 +16,4 @@
     <Folder Include="Properties\" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\WebJobs.Script.Extensibility\WebJobs.Script.Extensibility.csproj" />
-  </ItemGroup>
-
 </Project>
