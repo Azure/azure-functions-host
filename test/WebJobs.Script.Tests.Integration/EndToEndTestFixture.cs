@@ -6,20 +6,14 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web.Http;
-using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Moq;
-using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -60,9 +54,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("ListenerStartupException");
 
             InitializeConfig(config);
-            Func<string, FunctionDescriptor> funcLookup = (name) => this.Host.GetFunctionOrNull(name);
-            var fastLogger = new FunctionInstanceLogger(funcLookup, new MetricsLogger());
-            config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
+
+            // TODO: FACAVAL - Metrics
+            //Func<string, FunctionDescriptor> funcLookup = (name) => this.Host.GetFunctionOrNull(name);
+            //var fastLogger = new FunctionInstanceLogger(funcLookup, new MetricsLogger());
+            //config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
 
             Host = ScriptHost.Create(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager);
             Host.Start();
@@ -82,11 +78,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public CloudBlobClient BlobClient { get; private set; }
 
+        // TODO: FACAVAL
         // public Microsoft.ServiceBus.Messaging.QueueClient ServiceBusQueueClient { get; private set; }
 
-        public NamespaceManager NamespaceManager { get; private set; }
+        // public NamespaceManager NamespaceManager { get; private set; }
 
-        public DocumentClient DocumentClient { get; private set; }
+        // public DocumentClient DocumentClient { get; private set; }
 
         public CloudQueue TestQueue { get; private set; }
 
@@ -171,55 +168,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             Host.Stop();
             Host.Dispose();
-            ServiceBusQueueClient.Close();
-            DocumentClient?.Dispose();
+
+            // TODO: FACAVAL - SB AND DOCUMENTDB
+            //ServiceBusQueueClient.Close();
+            //DocumentClient?.Dispose();
         }
 
-        public async Task InitializeDocumentClient()
-        {
-            if (DocumentClient == null)
-            {
-                var builder = new System.Data.Common.DbConnectionStringBuilder();
-                builder.ConnectionString = AmbientConnectionStringProvider.Instance.GetConnectionString("AzureWebJobsDocumentDBConnectionString");
-                var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
+        //public async Task InitializeDocumentClient()
+        //{
+        //    if (DocumentClient == null)
+        //    {
+        //        var builder = new System.Data.Common.DbConnectionStringBuilder();
+        //        builder.ConnectionString = AmbientConnectionStringProvider.Instance.GetConnectionString("AzureWebJobsDocumentDBConnectionString");
+        //        var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
 
-                DocumentClient = new DocumentClient(serviceUri, builder["AccountKey"].ToString());
-                await DocumentClient.OpenAsync();
-            }
-        }
+        //        DocumentClient = new DocumentClient(serviceUri, builder["AccountKey"].ToString());
+        //        await DocumentClient.OpenAsync();
+        //    }
+        //}
 
-        public async Task<bool> CreateDocumentCollections()
-        {
-            bool willCreateCollection = false;
-            Documents.Database db = new Documents.Database() { Id = "ItemDb" };
-            await DocumentClient.CreateDatabaseIfNotExistsAsync(db);
-            Uri dbUri = UriFactory.CreateDatabaseUri(db.Id);
+        //public async Task<bool> CreateDocumentCollections()
+        //{
+        //    bool willCreateCollection = false;
+        //    Documents.Database db = new Documents.Database() { Id = "ItemDb" };
+        //    await DocumentClient.CreateDatabaseIfNotExistsAsync(db);
+        //    Uri dbUri = UriFactory.CreateDatabaseUri(db.Id);
 
-            Documents.DocumentCollection collection = new Documents.DocumentCollection() { Id = "ItemCollection" };
-            willCreateCollection = !DocumentClient.CreateDocumentCollectionQuery(dbUri).Where(x => x.Id == collection.Id).ToList().Any();
-            await DocumentClient.CreateDocumentCollectionIfNotExistsAsync(dbUri, collection,
-                new RequestOptions()
-                {
-                    OfferThroughput = 400
-                });
+        //    Documents.DocumentCollection collection = new Documents.DocumentCollection() { Id = "ItemCollection" };
+        //    willCreateCollection = !DocumentClient.CreateDocumentCollectionQuery(dbUri).Where(x => x.Id == collection.Id).ToList().Any();
+        //    await DocumentClient.CreateDocumentCollectionIfNotExistsAsync(dbUri, collection,
+        //        new RequestOptions()
+        //        {
+        //            OfferThroughput = 400
+        //        });
 
-            Documents.DocumentCollection leasesCollection = new Documents.DocumentCollection() { Id = "leases" };
-            await DocumentClient.CreateDocumentCollectionIfNotExistsAsync(dbUri, leasesCollection,
-                new RequestOptions()
-                {
-                    OfferThroughput = 400
-                });
+        //    Documents.DocumentCollection leasesCollection = new Documents.DocumentCollection() { Id = "leases" };
+        //    await DocumentClient.CreateDocumentCollectionIfNotExistsAsync(dbUri, leasesCollection,
+        //        new RequestOptions()
+        //        {
+        //            OfferThroughput = 400
+        //        });
 
-            return willCreateCollection;
-        }
+        //    return willCreateCollection;
+        //}
 
-        public async Task DeleteDocumentCollections()
-        {
-            Uri collectionsUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection");
-            Uri leasesCollectionsUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "leases");
-            await DocumentClient.DeleteDocumentCollectionAsync(collectionsUri);
-            await DocumentClient.DeleteDocumentCollectionAsync(leasesCollectionsUri);
-        }
+        //public async Task DeleteDocumentCollections()
+        //{
+        //    Uri collectionsUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection");
+        //    Uri leasesCollectionsUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "leases");
+        //    await DocumentClient.DeleteDocumentCollectionAsync(collectionsUri);
+        //    await DocumentClient.DeleteDocumentCollectionAsync(leasesCollectionsUri);
+        //}
 
         public async Task DeleteEntities(CloudTable table, string partition = null)
         {

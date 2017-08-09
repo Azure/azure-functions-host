@@ -47,12 +47,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await ServiceBusQueueTriggerToBlobTestImpl();
         }
 
-
-        [Fact]
-        public async Task CosmosDBTriggerToBlobTest()
-        {
-            await CosmosDBTriggerToBlobTestImpl();
-        }
+        //[Fact(Skip = "Not supported")]
+        //public async Task CosmosDBTriggerToBlobTest()
+        //{
+        //    // await CosmosDBTriggerToBlobTestImpl();
+        //}
 
         [Fact]
         public async Task TwilioReferenceInvokeSucceeds()

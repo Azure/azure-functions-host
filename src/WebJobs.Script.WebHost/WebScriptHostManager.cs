@@ -96,9 +96,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // _swaggerDocumentManager = new SwaggerDocumentManager(config);
 
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
-            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, config.HostConfig.LoggerFactory, secretsRepository);
+            _secretManager = secretManagerFactory.Create(settingsManager, config.HostConfig.LoggerFactory, secretsRepository);
 
-            _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider(_secretManager);
+            // TODO: FACAVAL
+            // _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider(_secretManager);
         }
 
         public WebScriptHostManager(ScriptHostConfiguration config,
@@ -341,11 +342,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Register the new "FastLogger" for Dashboard support
             var dashboardString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Dashboard);
 
+            // TODO: FACAVAL - METRICS
             // hostId may be missing in local test scenarios.
-            var hostId = config.HostConfig.HostId ?? "default";
-            Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
-            var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, dashboardString, config.TraceWriter);
-            hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
+            //var hostId = config.HostConfig.HostId ?? "default";
+            //Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
+            //var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, dashboardString, config.TraceWriter);
+            //hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
 
             hostConfig.DashboardConnectionString = null; // disable slow logging
         }

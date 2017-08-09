@@ -218,6 +218,21 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
+        internal static void SetResponse(HttpRequest request, object result)
+        {
+            if (result == null)
+            {
+                return;
+            }
+            var response = result as IActionResult;
+            if (response == null)
+            {
+                response = CreateResult(request, result);
+            }
+
+            request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+        }
+
         public bool CanProcessResult(object result)
         {
             return result != null;
