@@ -101,7 +101,9 @@ namespace Microsoft.Azure.WebJobs.Script
             { "Microsoft.Azure.Documents.Client" },
             { "Microsoft.Azure.WebJobs.Extensions.DocumentDB" },
             { "Microsoft.Azure.ApiHub.Sdk" },
-            { "Microsoft.Azure.WebJobs.Extensions.ApiHub" }
+            { "Microsoft.Azure.WebJobs.Extensions.ApiHub" },
+            { "Microsoft.ServiceBus" },
+            { "Sendgrid" },
         };
 
         protected internal ScriptHost(IScriptHostEnvironment environment,
