@@ -49,6 +49,12 @@ function createFunction(f) {
         });
         context.log = log;
 
+        var origMetric = context._metric;
+        delete context._metric;
+        context.log.metric = function (name, value, properties) {
+            origMetric({ name: name, value: value, properties: properties});
+        };        
+
         context.done = function (err, result) {
             if (context._done) {
                 if (context._promise) {
@@ -83,7 +89,7 @@ function createFunction(f) {
 
         var lowercaseTrigger = context._triggerType && context._triggerType.toLowerCase();
         switch (lowercaseTrigger) {
-            case "httptrigger": 
+            case "httptrigger":
                 context.req = request(context);
                 context.res = response(context);
                 break;
@@ -121,8 +127,8 @@ function getEntryPoint(f, context) {
 
     if (!util.isFunction(f)) {
         throw "Unable to determine function entry point. If multiple functions are exported, " +
-            "you must indicate the entry point, either by naming it 'run' or 'index', or by naming it " +
-            "explicitly via the 'entryPoint' metadata property.";
+        "you must indicate the entry point, either by naming it 'run' or 'index', or by naming it " +
+        "explicitly via the 'entryPoint' metadata property.";
     }
 
     return f;

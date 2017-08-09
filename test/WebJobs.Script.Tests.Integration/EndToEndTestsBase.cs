@@ -515,10 +515,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class ScenarioInput
         {
+            [JsonProperty("scenario")]
             public string Scenario { get; set; }
 
+            [JsonProperty("container")]
             public string Container { get; set; }
 
+            [JsonProperty("value")]
             public string Value { get; set; }
         }
     }

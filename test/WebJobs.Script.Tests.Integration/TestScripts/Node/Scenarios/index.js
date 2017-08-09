@@ -3,7 +3,6 @@ var assert = require('assert');
 
 ﻿module.exports = function (context, input) {
     var scenario = input.scenario;
-    context.log("Running scenario '%s'", scenario);
 
     if (scenario === 'nextTick') {
         process.nextTick(function () {
@@ -84,6 +83,22 @@ var assert = require('assert');
         context.log.info("FunctionName:" + context.executionContext.functionName);
         context.log.info("FunctionDirectory:" + context.executionContext.functionDirectory);
         context.log.info("InvocationId:" + context.executionContext.invocationId);
+        context.done();
+    }
+    else if (scenario === 'appInsights') {
+
+        var logPayload = {
+            InvocationId: context.executionContext.invocationId,
+            Trace: input.value
+        };
+
+        context.log(JSON.stringify(logPayload));
+        context.log.metric("TestMetric", 1234, {
+            count: 50,
+            min: 10.4,
+            max: 23,
+            MyCustomMetricProperty: 100
+        });
         context.done();
     }
     else {

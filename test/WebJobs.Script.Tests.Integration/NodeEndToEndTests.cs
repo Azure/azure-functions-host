@@ -287,18 +287,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("loglevel error", traces[4].Message);
 
             // verify logs made it to file logs
-            Assert.True(logs.Count == 15, string.Join(Environment.NewLine, logs));
+            Assert.True(logs.Count == 14, string.Join(Environment.NewLine, logs));
 
             // verify most of the logs look correct
-            Assert.EndsWith("Mathew Charles", logs[5]);
-            Assert.EndsWith("null", logs[6]);
-            Assert.EndsWith("1234", logs[7]);
-            Assert.EndsWith("true", logs[8]);
-            Assert.EndsWith("loglevel default", logs[9]);
-            Assert.EndsWith("loglevel info", logs[10]);
-            Assert.EndsWith("loglevel verbose", logs[11]);
-            Assert.EndsWith("loglevel warn", logs[12]);
-            Assert.EndsWith("loglevel error", logs[13]);
+            Assert.EndsWith("Mathew Charles", logs[4]);
+            Assert.EndsWith("null", logs[5]);
+            Assert.EndsWith("1234", logs[6]);
+            Assert.EndsWith("true", logs[7]);
+            Assert.EndsWith("loglevel default", logs[8]);
+            Assert.EndsWith("loglevel info", logs[9]);
+            Assert.EndsWith("loglevel verbose", logs[10]);
+            Assert.EndsWith("loglevel warn", logs[11]);
+            Assert.EndsWith("loglevel error", logs[12]);
         }
 
         private async Task<CloudBlobContainer> GetEmptyContainer(string containerName)

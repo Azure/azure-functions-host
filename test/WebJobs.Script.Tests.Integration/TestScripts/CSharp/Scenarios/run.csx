@@ -1,6 +1,10 @@
 #r "Newtonsoft.Json"
 
-public static void Run(ScenarioInput input, out string blob, TraceWriter trace, ILogger logger)
+using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+
+public static void Run(ScenarioInput input, out string blob, TraceWriter trace, ILogger logger, ExecutionContext context)
 {
     blob = null;
 
@@ -17,7 +21,20 @@ public static void Run(ScenarioInput input, out string blob, TraceWriter trace, 
     }
     else if (input.Scenario == "appInsights")
     {
-        logger.LogInformation(input.Value);
+        var logPayload = new
+        {
+            InvocationId = context.InvocationId,
+            Trace = input.Value
+        };
+
+        logger.LogInformation(JObject.FromObject(logPayload).ToString(Formatting.None));
+        logger.LogMetric("TestMetric", 1234, new Dictionary<string, object>
+        {
+            ["Count"] = 50,
+            ["Min"] = 10.4,
+            ["Max"] = 23,
+            ["MyCustomMetricProperty"] = 100
+        });
     }
     else
     {

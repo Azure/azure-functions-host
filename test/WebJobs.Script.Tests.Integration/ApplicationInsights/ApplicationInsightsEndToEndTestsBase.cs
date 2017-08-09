@@ -4,9 +4,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
@@ -27,20 +32,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             TestHelpers.ClearFunctionLogs(functionName);
 
             string functionTrace = $"Function trace: {Guid.NewGuid().ToString()}";
+            int invocationCount = 5;
 
-            ScenarioInput input = new ScenarioInput
+            for (int i = 0; i < invocationCount; i++)
             {
-                Scenario = "appInsights",
-                Container = "scenarios-output",
-                Value = functionTrace
-            };
+                ScenarioInput input = new ScenarioInput
+                {
+                    Scenario = "appInsights",
+                    Container = "scenarios-output",
+                    Value = functionTrace
+                };
 
-            Dictionary<string, object> arguments = new Dictionary<string, object>
-            {
-                { "input", JsonConvert.SerializeObject(input) }
-            };
+                Dictionary<string, object> arguments = new Dictionary<string, object>
+                {
+                    { "input", JsonConvert.SerializeObject(input) }
+                };
 
-            await Fixture.Host.CallAsync(functionName, arguments);
+                await Fixture.Host.CallAsync(functionName, arguments);
+            }
 
             // make sure file logs have the info
             IList<string> logs = null;
@@ -50,87 +59,122 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 return logs.Count > 0;
             });
 
-            // No need for assert; this will throw if there's not one and only one
-            logs.Single(p => p.EndsWith(functionTrace));
+            Assert.Equal(invocationCount, logs.Count(p => p.Contains(functionTrace)));
 
-            // Validate the traces. Order by message string as the requests may come in
+            // Each invocation produces 5 telemetries. Then there are 6 created by the host.
+            Assert.Equal((5 * invocationCount) + 6, _fixture.Channel.Telemetries.Count);
+
+            // Validate the telemetry for a specific function. There should be 5 for each, and these should all
+            // include the function name and invocation id. Pull out the function trace first and
+            // use the invocation id to find the related items.
+            var functionTraces = _fixture.Channel.Telemetries
+                .OfType<TraceTelemetry>()
+                .Where(t => t.Properties[LogConstants.CategoryNameKey] == LogCategories.Function);
+
+            Assert.Equal(invocationCount, functionTraces.Count());
+
+            foreach (var trace in functionTraces)
+            {
+                JObject logPayload = JObject.Parse(trace.Message);
+                string invocationId = logPayload["InvocationId"].ToString();
+
+                // Find all with this matching operation id. There should be 4.
+                ITelemetry[] relatedTelemetry = _fixture.Channel.Telemetries
+                    .Where(t => t.Context.Operation.Id == invocationId)
+                    .ToArray();
+
+                Assert.Equal(5, relatedTelemetry.Length);
+
+                TraceTelemetry[] traces = relatedTelemetry
+                    .OfType<TraceTelemetry>()
+                    .OrderBy(t => t.Message)
+                    .ToArray();
+
+                ValidateTrace(traces[0], functionTrace, LogCategories.Function, functionName, invocationId);
+                ValidateTrace(traces[1], "Function completed (Success, Id=" + invocationId, LogCategories.Executor, functionName, invocationId);
+                ValidateTrace(traces[2], "Function started (Id=" + invocationId, LogCategories.Executor, functionName, invocationId);
+
+                MetricTelemetry metric = relatedTelemetry
+                    .OfType<MetricTelemetry>()
+                    .Single();
+                ValidateMetric(metric, functionName);
+
+                RequestTelemetry request = relatedTelemetry
+                    .OfType<RequestTelemetry>()
+                    .Single();
+                ValidateRequest(request, "Scenarios", true);
+            }
+
+            // Validate the rest of the traces. Order by message string as the requests may come in
             // slightly out-of-order or on different threads
-            TelemetryPayload[] telemetries = _fixture.TelemetryItems
-                .Where(t => t.Data.BaseType == "MessageData")
-                .OrderBy(t => t.Data.BaseData.Message)
+            TraceTelemetry[] telemetries = _fixture.Channel.Telemetries
+                .OfType<TraceTelemetry>()
+                .Where(t => t.Context.Operation.Id == null)
+                .OrderBy(t => t.Message)
                 .ToArray();
 
             ValidateTrace(telemetries[0], "Found the following functions:\r\n", LogCategories.Startup);
-            ValidateTrace(telemetries[1], "Function completed (Success, Id=", LogCategories.Executor);
-            ValidateTrace(telemetries[2], "Function started (Id=", LogCategories.Executor);
-            ValidateTrace(telemetries[3], functionTrace, LogCategories.Function);
-            ValidateTrace(telemetries[4], "Generating 1 job function(s)", LogCategories.Startup);
-            ValidateTrace(telemetries[5], "Host configuration file read:", LogCategories.Startup);
-            ValidateTrace(telemetries[6], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
-            ValidateTrace(telemetries[7], "Job host started", LogCategories.Startup);
-            ValidateTrace(telemetries[8], "Reading host configuration file", LogCategories.Startup);
-
-            // Finally, validate the request
-            TelemetryPayload request = _fixture.TelemetryItems
-                .Where(t => t.Data.BaseType == "RequestData")
-                .Single();
-            ValidateRequest(request);
+            ValidateTrace(telemetries[1], "Generating 1 job function(s)", LogCategories.Startup);
+            ValidateTrace(telemetries[2], "Host configuration file read:", LogCategories.Startup);
+            ValidateTrace(telemetries[3], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
+            ValidateTrace(telemetries[4], "Job host started", LogCategories.Startup);
+            ValidateTrace(telemetries[5], "Reading host configuration file", LogCategories.Startup);
         }
 
-        private bool IsIndexingError(TelemetryPayload t)
+        private static void ValidateMetric(MetricTelemetry telemetry, string expectedOperationName)
         {
-            if (t.Data.BaseType == "ExceptionData")
-            {
-                return true;
-            }
-            var message = t.Data.BaseData.Message;
-            if (message != null && message.StartsWith("Microsoft.Azure.WebJobs.Host: Error indexing method "))
-            {
-                return true;
-            }
-            return false;
+            Assert.Equal(expectedOperationName, telemetry.Context.Operation.Name);
+            Assert.NotNull(telemetry.Context.Operation.Id);
+            Assert.Equal(LogCategories.Function, telemetry.Properties[LogConstants.CategoryNameKey]);
+            Assert.Equal(LogLevel.Information.ToString(), telemetry.Properties[LogConstants.LogLevelKey]);
+
+            Assert.Equal("TestMetric", telemetry.Name);
+            Assert.Equal(1234, telemetry.Sum);
+            Assert.Equal(50, telemetry.Count);
+            Assert.Equal(10.4, telemetry.Min);
+            Assert.Equal(23, telemetry.Max);
+            Assert.Equal("100", telemetry.Properties[$"{LogConstants.CustomPropertyPrefix}MyCustomMetricProperty"]);
+
+            ValidateSdkVersion(telemetry);
         }
 
-        private static void ValidateTrace(TelemetryPayload telemetryItem, string expectedMessageStartsWith, string expectedCategory)
+        private static void ValidateTrace(TraceTelemetry telemetry, string expectedMessageContains,
+            string expectedCategory, string expectedOperationName = null, string expectedOperationId = null)
         {
-            Assert.Equal("MessageData", telemetryItem.Data.BaseType);
+            Assert.Contains(expectedMessageContains, telemetry.Message);
+            Assert.Equal(SeverityLevel.Information, telemetry.SeverityLevel);
 
-            Assert.StartsWith(expectedMessageStartsWith, telemetryItem.Data.BaseData.Message);
-            Assert.Equal("Information", telemetryItem.Data.BaseData.SeverityLevel);
-
-            Assert.Equal(expectedCategory, telemetryItem.Data.BaseData.Properties["Category"]);
+            Assert.Equal(expectedCategory, telemetry.Properties[LogConstants.CategoryNameKey]);
 
             if (expectedCategory == LogCategories.Function || expectedCategory == LogCategories.Executor)
             {
                 // These should have associated operation information
-                Assert.Equal("Scenarios", telemetryItem.Tags["ai.operation.name"]);
-                Assert.NotNull(telemetryItem.Tags["ai.operation.id"]);
+                Assert.True(expectedOperationId == telemetry.Context.Operation.Id,
+                    $"Unexpected Operation Id. Expected: '{expectedOperationId}'; Actual: '{telemetry.Context.Operation.Id}'; Message: '{telemetry.Message}'");
+                Assert.True(expectedOperationName == telemetry.Context.Operation.Name,
+                    $"Unexpected Operation Name. Expected: '{expectedOperationName}'; Actual: '{telemetry.Context.Operation.Name}'; Message: '{telemetry.Message}'");
             }
             else
             {
-                Assert.DoesNotContain("ai.operation.name", telemetryItem.Tags.Keys);
-                Assert.DoesNotContain("ai.operation.id", telemetryItem.Tags.Keys);
+                Assert.Null(telemetry.Context.Operation.Name);
+                Assert.Null(telemetry.Context.Operation.Id);
             }
 
-            ValidateSdkVersion(telemetryItem);
+            ValidateSdkVersion(telemetry);
         }
 
-        private static void ValidateRequest(TelemetryPayload telemetryItem)
+        private static void ValidateRequest(RequestTelemetry telemetry, string operationName, bool success)
         {
-            Assert.Equal("RequestData", telemetryItem.Data.BaseType);
+            Assert.NotNull(telemetry.Context.Operation.Id);
+            Assert.Equal(operationName, telemetry.Context.Operation.Name);
+            Assert.NotNull(telemetry.Duration);
+            Assert.Equal(success, telemetry.Success);
 
-            Assert.NotNull(telemetryItem.Data.BaseData.Id);
-            Assert.Equal("Scenarios", telemetryItem.Data.BaseData.Name);
-            Assert.NotNull(telemetryItem.Data.BaseData.Duration);
-            Assert.True(telemetryItem.Data.BaseData.Success);
+            AssertHasKey(telemetry.Properties, "param__input");
+            AssertHasKey(telemetry.Properties, "FullName", "Functions.Scenarios");
+            AssertHasKey(telemetry.Properties, "TriggerReason", "This function was programmatically called via the host APIs.");
 
-            AssertHasKey(telemetryItem.Data.BaseData.Properties, "param__blob");
-            AssertHasKey(telemetryItem.Data.BaseData.Properties, "param__input");
-            AssertHasKey(telemetryItem.Data.BaseData.Properties, "param___context");
-            AssertHasKey(telemetryItem.Data.BaseData.Properties, "FullName", "Functions.Scenarios");
-            AssertHasKey(telemetryItem.Data.BaseData.Properties, "TriggerReason", "This function was programmatically called via the host APIs.");
-
-            ValidateSdkVersion(telemetryItem);
+            ValidateSdkVersion(telemetry);
         }
 
         private static void AssertHasKey(IDictionary<string, string> dict, string keyName, string expectedValue = null)
@@ -138,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             string actualValue;
             if (!dict.TryGetValue(keyName, out actualValue))
             {
-                var msg = $"Missing key '${keyName}'. Keys=" + string.Join(",", dict.Keys);
+                var msg = $"Missing key '{keyName}'. Keys = " + string.Join(", ", dict.Keys);
                 Assert.True(false, msg);
             }
             if (expectedValue != null)
@@ -147,9 +191,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             }
         }
 
-        private static void ValidateSdkVersion(TelemetryPayload telemetryItem)
+        private static void ValidateSdkVersion(ITelemetry telemetry)
         {
-            Assert.StartsWith("azurefunctions: ", telemetryItem.Tags["ai.internal.sdkVersion"]);
+            PropertyInfo propInfo = typeof(TelemetryContext).GetProperty("Tags", BindingFlags.NonPublic | BindingFlags.Instance);
+            IDictionary<string, string> tags = propInfo.GetValue(telemetry.Context) as IDictionary<string, string>;
+
+            Assert.StartsWith("azurefunctions: ", tags["ai.internal.sdkVersion"]);
         }
     }
 }

@@ -146,6 +146,7 @@ describe('http', () => {
 describe('functions', () => {
     var context = {};
     var logs = [];
+    var metrics = [];
     var bindingValues = {};
     beforeEach(() => {
         bindingValues = {};
@@ -154,6 +155,7 @@ describe('functions', () => {
             _inputs: [],
             bindings: {},
             log: (message) => logs.push(message),
+            _metric: (metric) => metrics.push(metric),
             bind: (val, cb) => {
                 bindingValues = val;
                 cb && cb(val);
@@ -271,10 +273,26 @@ describe('functions', () => {
                     { lvl: 1, msg: 'error' },
                     { lvl: 2, msg: 'warn' },
                     { lvl: 3, msg: 'info' },
-                    { lvl: 4, msg: 'verbose' }
+                    { lvl: 4, msg: 'verbose' },
                 ]);
                 done();
             });
+        });
+
+        it('logs metric', (done) => {
+            var func = functions.createFunction((context) => {
+                context.log.metric("metricA", 1);
+                context.log.metric("metricB", 2.4, { customProp: "customValue" });
+                context.done();
+            });
+
+            func(context, () => {
+                expect(metrics).to.eql([
+                    { name: "metricA", value: 1, properties: undefined },
+                    { name: "metricB", value: 2.4, properties: { customProp: "customValue" } }
+                ]);
+                done();
+            });            
         });
 
         it('done passes data to binder', () => {

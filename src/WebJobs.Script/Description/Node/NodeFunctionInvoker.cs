@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ScriptFunc = System.Func<object, System.Threading.Tasks.Task<object>>;
@@ -352,11 +353,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         // Node captures the AsyncLocal value of the first invocation, which means that logs
                         // are correlated incorrectly. Here we'll overwrite that value with the correct value
                         // immediately before logging.
-                        using (invocationContext.Logger.BeginScope(
-                            new Dictionary<string, object>
-                            {
-                                ["MS_FunctionInvocationId"] = invocationContext.ExecutionContext.InvocationId
-                            }))
+                        using (BeginFunctionScope(invocationContext))
                         {
                             // TraceWriter already logs to ILogger
                             traceWriter.Trace(evt);
@@ -367,6 +364,28 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         // if a function attempts to write to a disposed
                         // TraceWriter. Might happen if a function tries to
                         // log after calling done()
+                    }
+                }
+
+                return Task.FromResult<object>(null);
+            });
+
+            var metric = (ScriptFunc)(p =>
+            {
+                var metricObject = (IDictionary<string, object>)p;
+                string name = (string)metricObject["name"];
+                object valueObject = metricObject["value"];
+
+                if (name != null && valueObject != null)
+                {
+                    double value = Convert.ToDouble(valueObject);
+
+                    // properties are optional
+                    var properties = (IDictionary<string, object>)metricObject["properties"];
+
+                    using (BeginFunctionScope(invocationContext))
+                    {
+                        invocationContext.Logger.LogMetric(name, value, properties);
                     }
                 }
 
@@ -396,6 +415,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 { "invocationId", invocationContext.ExecutionContext.InvocationId },
                 { "executionContext", executionContext },
                 { "log", log },
+                { "_metric", metric },
                 { "bindings", bindings },
                 { "bind", bind }
             };
@@ -463,6 +483,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             context.Add("_triggerType", _trigger.Type);
 
             return context;
+        }
+
+        private static IDisposable BeginFunctionScope(FunctionInvocationContext context)
+        {
+            // Node captures the AsyncLocal value of the first invocation, which means that logs
+            // are correlated incorrectly. Here we'll overwrite that value with the correct value
+            // immediately before logging.
+            return context.Logger.BeginScope(
+                new Dictionary<string, object>
+                {
+                    ["MS_FunctionName"] = context.ExecutionContext.FunctionName,
+                    ["MS_FunctionInvocationId"] = context.ExecutionContext.InvocationId.ToString()
+                });
         }
 
         internal static Dictionary<string, object> NormalizeBindingData(IDictionary<string, object> bindingData)
