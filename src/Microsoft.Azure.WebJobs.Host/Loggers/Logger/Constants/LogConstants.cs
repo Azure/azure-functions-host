@@ -128,6 +128,16 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// <summary>
         /// Gets the function start event name.
         /// </summary>
-        public const string FunctionStartEvent = "FunctionStart";
+        public const string FunctionStartEvent = "FunctionStart";        
+
+        /// <summary>
+        /// Gets the event id for a metric event.
+        /// </summary>
+        public const int MetricEventId = 1;
+
+        /// <summary>
+        /// Gets the name of the key used to store a metric sum.
+        /// </summary>
+        public const string MetricValueKey = "Value";
     }
 }

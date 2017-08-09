@@ -70,13 +70,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
         }
 
         [Fact]
-        public void LogFunctionResult_Succeeded_SendsCorrectTelemetry()
+        public async Task LogFunctionResult_Succeeded_SendsCorrectTelemetry()
         {
             var result = CreateDefaultInstanceLogEntry();
             ILogger logger = CreateLogger(LogCategories.Results);
 
             using (logger.BeginFunctionScope(CreateFunctionInstance(_invocationId)))
             {
+                // sleep briefly to provide a non-zero Duration
+                await Task.Delay(100);
                 logger.LogFunctionResult(result);
             }
 
@@ -85,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(_invocationId.ToString(), telemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, telemetry.Name);
             Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
+            Assert.True(telemetry.Duration > TimeSpan.Zero, "Expected a non-zero Duration.");
             Assert.Equal(defaultIp, telemetry.Context.Location.Ip);
             Assert.Equal(LogCategories.Results, telemetry.Properties[LogConstants.CategoryNameKey]);
             Assert.Equal(LogLevel.Information.ToString(), telemetry.Properties[LogConstants.LogLevelKey]);
@@ -381,6 +384,112 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Same(ex, telemetry.Exception);
             Assert.Equal(scopeGuid.ToString(), telemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
+        }
+
+        [Fact]
+        public void LogMetric_NoProperties()
+        {
+            ILogger logger = CreateLogger(LogCategories.Function);
+            Guid scopeGuid = Guid.NewGuid();
+
+            using (logger.BeginFunctionScope(CreateFunctionInstance(scopeGuid)))
+            {
+                logger.LogMetric("CustomMetric", 44.9);
+            }
+
+            var telemetry = _channel.Telemetries.Single() as MetricTelemetry;
+
+            Assert.Equal(2, telemetry.Properties.Count);
+            Assert.Equal(LogCategories.Function, telemetry.Properties[LogConstants.CategoryNameKey]);
+            Assert.Equal(LogLevel.Information.ToString(), telemetry.Properties[LogConstants.LogLevelKey]);
+
+            Assert.Equal("CustomMetric", telemetry.Name);
+            Assert.Equal(44.9, telemetry.Sum);
+            Assert.Equal(scopeGuid.ToString(), telemetry.Context.Operation.Id);
+            Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
+
+            Assert.Null(telemetry.Min);
+            Assert.Null(telemetry.Max);
+            Assert.Equal(1, telemetry.Count);
+            Assert.Null(telemetry.StandardDeviation);
+        }
+
+        [Fact]
+        public void LogMetric_AllProperties()
+        {
+            ILogger logger = CreateLogger(LogCategories.Function);
+            Guid scopeGuid = Guid.NewGuid();
+
+            using (logger.BeginFunctionScope(CreateFunctionInstance(scopeGuid)))
+            {
+                var props = new Dictionary<string, object>
+                {
+                    ["MyCustomProp1"] = "abc",
+                    ["MyCustomProp2"] = "def",
+                    ["Count"] = 2,
+                    ["Min"] = 3.3,
+                    ["Max"] = 4.4,
+                    ["StandardDeviation"] = 5.5                    
+                };
+                logger.LogMetric("CustomMetric", 1.1, props);
+            }
+
+            var telemetry = _channel.Telemetries.Single() as MetricTelemetry;
+
+            Assert.Equal(4, telemetry.Properties.Count);
+            Assert.Equal(LogCategories.Function, telemetry.Properties[LogConstants.CategoryNameKey]);
+            Assert.Equal(LogLevel.Information.ToString(), telemetry.Properties[LogConstants.LogLevelKey]);
+            Assert.Equal("abc", telemetry.Properties[$"{LogConstants.CustomPropertyPrefix}MyCustomProp1"]);
+            Assert.Equal("def", telemetry.Properties[$"{LogConstants.CustomPropertyPrefix}MyCustomProp2"]);
+
+            Assert.Equal(scopeGuid.ToString(), telemetry.Context.Operation.Id);
+            Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
+
+            Assert.Equal("CustomMetric", telemetry.Name);
+            Assert.Equal(1.1, telemetry.Sum);
+            Assert.Equal(2, telemetry.Count);
+            Assert.Equal(3.3, telemetry.Min);
+            Assert.Equal(4.4, telemetry.Max);
+            Assert.Equal(5.5, telemetry.StandardDeviation);
+        }
+
+        [Fact]
+        public void LogMetric_AllProperties_Lowercase()
+        {
+            ILogger logger = CreateLogger(LogCategories.Function);
+            Guid scopeGuid = Guid.NewGuid();
+
+            using (logger.BeginFunctionScope(CreateFunctionInstance(scopeGuid)))
+            {
+                var props = new Dictionary<string, object>
+                {
+                    ["MyCustomProp1"] = "abc",
+                    ["MyCustomProp2"] = "def",
+                    ["count"] = 2,
+                    ["min"] = 3.3,
+                    ["max"] = 4.4,
+                    ["standardDeviation"] = 5.5
+                };
+                logger.LogMetric("CustomMetric", 1.1, props);
+            }
+
+            var telemetry = _channel.Telemetries.Single() as MetricTelemetry;
+
+            Assert.Equal(4, telemetry.Properties.Count);
+            Assert.Equal(LogCategories.Function, telemetry.Properties[LogConstants.CategoryNameKey]);
+            Assert.Equal(LogLevel.Information.ToString(), telemetry.Properties[LogConstants.LogLevelKey]);
+            Assert.Equal("abc", telemetry.Properties[$"{LogConstants.CustomPropertyPrefix}MyCustomProp1"]);
+            Assert.Equal("def", telemetry.Properties[$"{LogConstants.CustomPropertyPrefix}MyCustomProp2"]);
+
+            Assert.Equal(scopeGuid.ToString(), telemetry.Context.Operation.Id);
+            Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
+
+            Assert.Equal("CustomMetric", telemetry.Name);
+            Assert.Equal(1.1, telemetry.Sum);
+            Assert.Equal(2, telemetry.Count);
+            Assert.Equal(3.3, telemetry.Min);
+            Assert.Equal(4.4, telemetry.Max);
+            Assert.Equal(5.5, telemetry.StandardDeviation);
         }
 
         [Theory]

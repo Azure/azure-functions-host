@@ -242,7 +242,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "IFunctionInvocationFilter",
                 "InvocationFilterAttribute",
                 "InvokeFunctionFilterAttribute",
-                "AssemblyNameCache"
+                "AssemblyNameCache",
+                "LoggerExtensions"
             };
 
             AssertPublicTypes(expected, assembly);
