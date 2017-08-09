@@ -84,6 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // otherwise, the request level must exactly match the required level
             return requestAuthorizationLevel == levelToCheck;
         }
+#endif
 
         public static string GetHeaderValueOrDefault(this HttpRequestMessage request, string headerName)
         {

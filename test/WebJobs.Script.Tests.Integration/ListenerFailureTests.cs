@@ -17,9 +17,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ListenerError_LogsAndDoesNotStopHost()
         {
-            string queueName = "samples-input-nonexistent";
-            bool exists = await Fixture.NamespaceManager.QueueExistsAsync(queueName);
-            Assert.False(exists, $"This test expects the queue '{queueName}' to not exist, but it does.");
+            // TODO: FACAVAL
+            // string queueName = "samples-input-nonexistent";
+            // bool exists = await Fixture.NamespaceManager.QueueExistsAsync(queueName);
+            // Assert.False(exists, $"This test expects the queue '{queueName}' to not exist, but it does.");
 
             IList<string> logs = null;
 
