@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public override void Trace(TraceEvent traceEvent)
         {
-            Traces.Add(traceEvent);
+            // Traces.Add(traceEvent);
         }
 
         public override void Flush()

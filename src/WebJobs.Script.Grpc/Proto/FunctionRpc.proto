@@ -1,0 +1,255 @@
+syntax = "proto3";
+// protobuf vscode extension: https://marketplace.visualstudio.com/items?itemName=zxh404.vscode-proto3
+
+option java_multiple_files = true;
+option java_package = "com.microsoft.azure.webjobs.script.rpc.messages";
+option java_outer_classname = "FunctionRpc";
+option objc_class_prefix = "FunctionRpc";
+option csharp_namespace = "Microsoft.Azure.WebJobs.Script.Grpc.Messages";
+
+package FunctionRpc;
+
+import "google/protobuf/duration.proto";
+
+// Interface exported by the server.
+service FunctionRpc {
+ rpc EventStream (stream StreamingMessage) returns (stream StreamingMessage) {}
+}
+
+message StreamingMessage {
+  string request_id = 1;
+  oneof content {
+    StartStream start_stream = 20; 
+
+    // Host sends capabilities/init data to worker
+    WorkerInitRequest worker_init_request = 17;
+    // Worker responds after initializing with its capabilities & status
+    WorkerInitResponse worker_init_response = 16;
+
+    // Worker periodically sends empty heartbeat message to host
+    WorkerHeartbeat worker_heartbeat = 15;
+
+    // Host sends terminate message to worker.
+    // Worker terminates if it can, otherwise host terminates after a grace period
+    WorkerTerminate worker_terminate = 14;
+
+    // Add any worker relevant status to response
+    WorkerStatusRequest worker_status_request = 12;
+    WorkerStatusResponse worker_status_response = 13;
+
+    // On file change event, host sends notification to worker
+    FileChangeEventRequest file_change_event_request = 6;
+
+    // Worker requests a desired action (restart worker, reload function)
+    WorkerActionResponse worker_action_response = 7;
+    
+    // Host sends required metadata to worker to load function
+    FunctionLoadRequest function_load_request = 8;
+    // Worker responds after loading with the load result
+    FunctionLoadResponse function_load_response = 9;
+    
+    InvocationRequest invocation_request = 4;
+    InvocationResponse invocation_response = 5;
+    // Host sends cancel message to attempt to cancel an invocation. 
+    // If an invocation is cancelled, host will receive an invocation response with status cancelled.
+    InvocationCancel invocation_cancel = 21;
+
+    RpcLog rpc_log = 2;
+  }
+}
+
+// Process.Start required info
+//   connection details
+//   protocol type
+//   protocol version 
+
+message StartStream {
+  string worker_id = 2;
+}
+
+message WorkerInitRequest {
+  string host_version = 1;
+
+  // A map of host supported features/capabilities
+  map<string, string> capabilities = 2;
+
+  // inform worker of supported categories and their levels
+  // i.e. Worker = Verbose, Function.MyFunc = None
+  map<string, RpcLog.Level> log_categories = 3;
+}
+
+message WorkerInitResponse {
+  string worker_version = 1;
+  // A map of worker supported features/capabilities
+  map<string, string> capabilities = 2;
+  StatusResult result = 3;
+}
+
+message StatusResult {
+  enum Status {
+    Failure = 0;
+    Success = 1;
+    Cancelled = 2;
+  }
+  Status status = 4;
+  string result = 1;
+  RpcException exception = 2;
+  // Captured logs or relevant details can use the logs property
+  repeated RpcLog logs = 3;
+}
+
+// TODO: investigate grpc heartbeat - don't limit to grpc implemention
+// Message is empty by design - Will add more fields in future if needed
+message WorkerHeartbeat {}
+
+// Warning before killing the process after grace_period
+// Worker self terminates ..no response on this
+message WorkerTerminate {
+  google.protobuf.Duration grace_period = 1;
+}
+
+message FileChangeEventRequest {
+  // https://msdn.microsoft.com/en-us/library/t6xf43e0(v=vs.110).aspx
+  enum Type {
+	Unknown = 0;
+    Created = 1;
+    Deleted = 2;
+    Changed = 4;
+    Renamed = 8;
+    All = 15;
+  }
+
+  Type type = 1;
+  string full_path = 2;
+  string name = 3;
+}
+
+message WorkerActionResponse {
+  enum Action {
+    Restart = 0;
+    Reload = 1;
+  }
+  
+  Action action = 1;
+  string reason = 2;
+}
+
+message WorkerStatusRequest{
+}
+
+message WorkerStatusResponse {
+}
+
+message FunctionLoadRequest {
+  // unique function identifier (avoid name collisions, facilitate reload case)
+  string function_id = 1;
+  RpcFunctionMetadata metadata = 2;
+}
+
+message FunctionLoadResponse {
+  string function_id = 1;
+  StatusResult result = 2;
+  // TODO: return type expected?
+}
+
+message RpcFunctionMetadata {
+  // TODO: do we want the host's name - the language worker might do a better job of assignment than the host
+  string name = 4;
+
+  string directory = 1;
+  string script_file = 2;
+  string entry_point = 3;
+
+  map<string, BindingInfo> bindings = 6;
+
+  // not adding disabled or excluded as those (currently) are only relevant to host
+}
+
+message InvocationRequest {
+  string invocation_id = 1;
+  string function_id = 2;
+  repeated ParameterBinding input_data = 3;
+  map<string, TypedData> trigger_metadata = 4;
+}
+
+message InvocationCancel {
+  string invocation_id = 2;
+  google.protobuf.Duration grace_period = 1; // could also use absolute time
+}
+
+message InvocationResponse {
+  string invocation_id = 1;
+  repeated ParameterBinding output_data = 2;
+  TypedData return_value = 4;
+  StatusResult result = 3;
+}
+
+message TypedData {
+  oneof data {
+    string string = 1;
+    string json = 2;
+    bytes bytes = 3;
+    bytes stream = 4;
+    RpcHttp http = 5;
+	sint64 int = 6;
+    double double = 7;
+  }
+}
+
+message ParameterBinding {
+  string name = 1;
+  TypedData data = 2;
+}
+
+message BindingInfo {
+  string type = 2;
+  Direction direction = 3;
+
+  enum Direction {
+    in = 0;
+	out = 1;
+	inout = 2;
+  }
+}
+
+message RpcLog {
+  // Matching ILogger semantics
+  // https://github.com/aspnet/Logging/blob/9506ccc3f3491488fe88010ef8b9eb64594abf95/src/Microsoft.Extensions.Logging/Logger.cs
+  enum Level {
+    Trace = 0;
+    Debug = 1;
+    Information = 2;
+    Warning = 3;
+    Error = 4;
+    Critical = 5;
+    None = 6;
+  }
+
+  string invocation_id = 1;
+  string category = 2;
+  Level level = 3;
+  string message = 4;
+  string event_id = 5;
+  RpcException exception = 6;
+
+  // json serialized property bag, or could use a type scheme like map<string, TypedData>
+  string properties = 7;
+}
+
+message RpcException {
+  string source = 3;
+  string stack_trace = 1;
+  string message = 2;
+}
+
+// TODO - solidify this
+message RpcHttp {
+  string method = 1;
+  string url = 2; 
+  map<string,string> headers = 3;
+  TypedData body = 4;
+  map<string,string> params = 10;
+  string status_code = 12;
+  map<string,string> query = 15;
+  bool is_raw = 16;
+}

@@ -27,6 +27,7 @@ using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Dispatch;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.File;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -60,6 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ILogger _startupLogger;
         private FileWatcherEventSource _fileEventSource;
         private IDisposable _fileEventsSubscription;
+        private IFunctionDispatcher _functionDispatcher;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -208,6 +210,12 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         internal DateTime LastDebugNotify { get; set; }
+
+        internal IFunctionDispatcher FunctionDispatcher
+        {
+            get => _functionDispatcher;
+            set => _functionDispatcher = value;
+        }
 
         /// <summary>
         /// Returns true if the specified name is the name of a known function,
@@ -443,6 +451,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Disable core storage
                     hostConfig.StorageConnectionString = null;
                 }
+
+                _functionDispatcher = new FunctionDispatcher(ScriptConfig, EventManager, TraceWriter);
+                _functionDispatcher.InitializeAsync(null);
 
                 if (ScriptConfig.FileWatchingEnabled)
                 {
@@ -1298,22 +1309,25 @@ namespace Microsoft.Azure.WebJobs.Script
                     return ScriptType.FSharp;
                 case "dll":
                     return ScriptType.DotNetAssembly;
+                case "jar":
+                    return ScriptType.JavaArchive;
                 default:
                     return ScriptType.Unknown;
             }
         }
-
+         
         private Collection<FunctionDescriptor> GetFunctionDescriptors(Collection<FunctionMetadata> functions)
         {
             var descriptorProviders = new List<FunctionDescriptorProvider>()
                 {
                     new ScriptFunctionDescriptorProvider(this, ScriptConfig),
-#if FEATURE_NODE
                     new NodeFunctionDescriptorProvider(this, ScriptConfig),
-#endif
                     new DotNetFunctionDescriptorProvider(this, ScriptConfig),
 #if FEATURE_POWERSHELL
-                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
+                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig),
+#endif
+#if FEATURE_JAVA
+                new JavaFunctionDescriptorProvider(this, ScriptConfig)
 #endif
                 };
 
@@ -1822,6 +1836,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _fileEventSource?.Dispose();
                 _debugModeFileWatcher?.Dispose();
                 _blobLeaseManager?.Dispose();
+                _functionDispatcher?.Dispose();
 
                 foreach (var function in Functions)
                 {
