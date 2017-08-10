@@ -10,6 +10,8 @@
   <ItemGroup>
     <PackageReference Include="FSharp.Compiler.Service" Version="13.0.0" />
     <PackageReference Include="FSharp.Core" Version="4.2.1" />
+    <PackageReference Include="Google.Protobuf" Version="3.3.0" />
+    <PackageReference Include="Grpc.Core" Version="1.4.1" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.4.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.0.0-rtm-26423" />
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta1-10957" />
@@ -29,6 +31,10 @@
     <PackageReference Include="System.IO.Abstractions" Version="2.0.0.144" />
     <PackageReference Include="System.Reactive.Linq" Version="3.1.1" />
     <PackageReference Include="System.Reflection.Emit" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj" />
   </ItemGroup>
 
 </Project>

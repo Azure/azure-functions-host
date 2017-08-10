@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public override void Trace(TraceEvent traceEvent)
         {
+            // TODO: update to be thread safe
             Traces.Add(traceEvent);
         }
 
