@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private static XmlNamespaceManager _namespace = CreateNamespace();
 
-        [Fact]
+        [Fact(Skip = "Web.Config")]
         public void TestConfig()
         {
             XDocument config = GetWebConfig();

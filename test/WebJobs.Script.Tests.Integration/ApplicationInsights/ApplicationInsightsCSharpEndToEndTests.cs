@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
         {
         }
 
-        [Fact]
+        [Fact(Skip = "Application Insights compression issue")]
         public async Task ApplicationInsights_Succeeds()
         {
             await ApplicationInsights_SucceedsTest();
