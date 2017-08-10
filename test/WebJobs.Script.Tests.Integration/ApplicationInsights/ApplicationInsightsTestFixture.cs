@@ -9,9 +9,11 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using Microsoft.ApplicationInsights.Channel;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
+using Moq;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
@@ -68,6 +70,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
         {
             var builder = new TestLoggerFactoryBuilder();
             config.HostConfig.AddService<ILoggerFactoryBuilder>(builder);
+            var exceptionHandler = new Mock<IWebJobsExceptionHandler>();
+            config.HostConfig.AddService<IWebJobsExceptionHandler>(exceptionHandler.Object);
 
         public HttpClient HttpClient { get; private set; }
 

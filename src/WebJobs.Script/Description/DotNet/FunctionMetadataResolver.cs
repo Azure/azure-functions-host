@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "System.Runtime",
                 "System.Threading.Tasks",
                 "Microsoft.CSharp",
+                typeof(System.Runtime.CompilerServices.DynamicAttribute).Assembly.Location,
                 typeof(ILoggerFactory).Assembly.Location, /*Microsoft.Extensions.Logging.Abstractions*/
                 typeof(IAsyncCollector<>).Assembly.Location, /*Microsoft.Azure.WebJobs*/
                 typeof(JobHost).Assembly.Location, /*Microsoft.Azure.WebJobs.Host*/
