@@ -55,7 +55,7 @@ test_script:
 
     dotnet test .\test\WebJobs.Script.Scaling.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
 
-    dotnet test .\test\WebJobs.Script.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
+    # dotnet test .\test\WebJobs.Script.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
 
     # Skipping integration tests for initial build
     # dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
