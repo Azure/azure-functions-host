@@ -1,3 +1,15 @@
+In order to run:
+
+- Add `AzureWebJobsScriptRoot` environment variable pointing to the samples folder
+- Use Visual Studio 2017 Preview - current version 15.3.0 Preview 7.0
+- Add function name to `functions` array in samples folder `host.json` to enable loading by host
+- Set WebJobs.Script.WebHost to startup project
+
+Tests:
+
+- You may run into an issue with grpc dll not found when running integration tests. In that case, copy `%UserProfile%/.nuget/packages/grpc.core/<version>/runtimes` to the test output folder (bin/debug), current version 1.4.1
+
+
 ![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-functions-cli/master/src/Azure.Functions.Cli/npm/assets/azure-functions-logo-color-raster.png)
 
 |Branch|Status|
