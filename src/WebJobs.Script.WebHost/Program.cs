@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Hosting;
 
 namespace WebJobs.Script.WebHost.Core
@@ -19,7 +20,14 @@ namespace WebJobs.Script.WebHost.Core
         {
             if (args.Name.StartsWith("System.Diagnostics.DiagnosticSource", StringComparison.OrdinalIgnoreCase))
             {
-                return Assembly.LoadFrom(@"C:\Program Files\dotnet\shared\Microsoft.NETCore.App\2.0.0-preview2-25407-01\System.Diagnostics.DiagnosticSource.dll");
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    return Assembly.LoadFrom(@"C:\Program Files\dotnet\shared\Microsoft.NETCore.App\2.0.0-preview2-25407-01\System.Diagnostics.DiagnosticSource.dll");
+                }
+                else
+                {
+                    return Assembly.LoadFrom(@"/usr/local/share/dotnet/shared/Microsoft.NETCore.App/2.0.0-preview2-25407-01/System.Diagnostics.DiagnosticSource.dll");
+                }
             }
             return null;
         }
