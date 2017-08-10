@@ -71,12 +71,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fastLogger = new FunctionInstanceLogger(funcLookup, new MetricsLogger());
             config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
 
-            IProxyClientGenerator proxyClientGenerator = null;
+            IProxyClient proxyClient = null;
             if (FixtureId == "proxy")
             {
-                proxyClientGenerator = GetMockProxyClientGenerator();
+                proxyClient = GetMockProxyClient();
             }
-            Host = ScriptHost.Create(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager, proxyClientGenerator);
+            Host = ScriptHost.Create(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager, proxyClient);
             Host.Start();
         }
 
@@ -177,9 +177,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ServiceBusQueueClient = Microsoft.ServiceBus.Messaging.QueueClient.CreateFromConnectionString(connectionString, serviceBusQueueName);
         }
 
-        private IProxyClientGenerator GetMockProxyClientGenerator()
+        private IProxyClient GetMockProxyClient()
         {
-            var proxyClientGenerator = new Mock<IProxyClientGenerator>();
             var proxyClient = new Mock<IProxyClient>();
 
             ProxyData proxyData = new ProxyData();
@@ -212,9 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     return Task.CompletedTask;
                 });
 
-            proxyClientGenerator.Setup(p => p.CreateProxyClient(It.IsAny<string>(), It.IsAny<ILogger>())).Returns(proxyClient.Object);
-
-            return proxyClientGenerator.Object;
+            return proxyClient.Object;
         }
 
         public virtual void Dispose()

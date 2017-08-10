@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptHost _host;
         private readonly ScriptSettingsManager _settingsManager;
 
-        private readonly object _proxyClient;
+        private readonly IProxyClient _proxyClient;
         private readonly ScriptHostConfiguration _config;
         private Collection<FunctionMetadata> _metadataCollection;
 
@@ -37,16 +37,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new Mock<IScriptHostEnvironment>();
             var eventManager = new Mock<IScriptEventManager>();
 
-            IProxyClientGenerator proxyClientGenerator = GetMockProxyClientGenerator();
-
+            _proxyClient = GetMockProxyClient();
             _settingsManager = ScriptSettingsManager.Instance;
-            _host = ScriptHost.Create(environment.Object, eventManager.Object, _config, _settingsManager, proxyClientGenerator);
-            _metadataCollection = ScriptHost.ReadProxyMetadata(_config, out _proxyClient, proxyClientGenerator, _settingsManager);
+            _host = ScriptHost.Create(environment.Object, eventManager.Object, _config, _settingsManager, _proxyClient);
+            _metadataCollection = ScriptHost.ReadProxyMetadata(_config, _proxyClient, _settingsManager);
         }
 
-        private IProxyClientGenerator GetMockProxyClientGenerator()
+        private IProxyClient GetMockProxyClient()
         {
-            var proxyClientGenerator = new Mock<IProxyClientGenerator>();
             var proxyClient = new Mock<IProxyClient>();
 
             ProxyData proxyData = new ProxyData();
@@ -79,9 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     return Task.CompletedTask;
                 });
 
-            proxyClientGenerator.Setup(p => p.CreateProxyClient(It.IsAny<string>(), It.IsAny<ILogger>())).Returns(proxyClient.Object);
-
-            return proxyClientGenerator.Object;
+            return proxyClient.Object;
         }
 
         [Fact]

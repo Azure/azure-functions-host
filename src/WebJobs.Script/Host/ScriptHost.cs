@@ -18,6 +18,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
+using Microsoft.Azure.AppService.Proxy.Client.Contract;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
@@ -61,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ILogger _startupLogger;
         private FileWatcherEventSource _fileEventSource;
         private IDisposable _fileEventsSubscription;
-        private IProxyClientGenerator _proxyClientGenerator;
+        private IProxyClient _proxyClient;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -109,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IScriptEventManager eventManager,
             ScriptHostConfiguration scriptConfig = null,
             ScriptSettingsManager settingsManager = null,
-            IProxyClientGenerator proxyClientGenerator = null)
+            IProxyClient proxyClient = null)
             : base(scriptConfig.HostConfig)
         {
             scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
@@ -127,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script
             EventManager = eventManager;
 
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
-            _proxyClientGenerator = proxyClientGenerator;
+            _proxyClient = proxyClient;
         }
 
         public event EventHandler IsPrimaryChanged;
@@ -924,9 +925,9 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         public static ScriptHost Create(IScriptHostEnvironment environment, IScriptEventManager eventManager,
-            ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null, IProxyClientGenerator proxyClientGenerator = null)
+            ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null, IProxyClient proxyClient = null)
         {
-            ScriptHost scriptHost = new ScriptHost(environment, eventManager, scriptConfig, settingsManager, proxyClientGenerator);
+            ScriptHost scriptHost = new ScriptHost(environment, eventManager, scriptConfig, settingsManager, proxyClient);
             try
             {
                 scriptHost.Initialize();
@@ -1134,10 +1135,8 @@ namespace Microsoft.Azure.WebJobs.Script
             return functions;
         }
 
-        public static Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, out object proxyClient, IProxyClientGenerator proxyClientGenerator = null, ScriptSettingsManager settingsManager = null)
+        public static Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, IProxyClient proxyClient, ScriptSettingsManager settingsManager = null)
         {
-            proxyClient = null;
-
             // read the proxy config
             string proxyConfigPath = Path.Combine(config.RootScriptPath, ScriptConstants.ProxyMetadataFileName);
             if (!File.Exists(proxyConfigPath))
@@ -1158,30 +1157,27 @@ namespace Microsoft.Azure.WebJobs.Script
             var proxies = new Collection<FunctionMetadata>();
             string proxiesJson = File.ReadAllText(proxyConfigPath);
 
-            LoadProxyRoutes(config, proxies, out proxyClient, proxiesJson, proxyClientGenerator);
+            LoadProxyRoutes(config, proxies, proxyClient, proxiesJson);
 
             return proxies;
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        private static void LoadProxyRoutes(ScriptHostConfiguration config, Collection<FunctionMetadata> proxies, out object proxyClient, string proxiesJson, IProxyClientGenerator proxyClientGenerator)
+        private static void LoadProxyRoutes(ScriptHostConfiguration config, Collection<FunctionMetadata> proxies, IProxyClient proxyClient, string proxiesJson)
         {
             ILoggerFactory loggerFactory = config.HostConfig.LoggerFactory;
             ILogger proxyStartupLogger = loggerFactory.CreateLogger("Host.Proxies.Initialization");
 
-            if (proxyClientGenerator == null)
+            if (proxyClient == null)
             {
-                proxyClientGenerator = new ProxyClientGenerator();
+                proxyClient = ProxyClientFactory.Create(proxiesJson, proxyStartupLogger);
             }
-
-            proxyClient = proxyClientGenerator.CreateProxyClient(proxiesJson, proxyStartupLogger);
 
             if (proxyClient == null)
             {
                 return;
             }
 
-            var routes = ((AppService.Proxy.Client.Contract.IProxyClient)proxyClient).GetProxyData();
+            var routes = proxyClient.GetProxyData();
 
             foreach (var route in routes.Routes)
             {
@@ -1365,7 +1361,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private Collection<FunctionDescriptor> GetFunctionDescriptors(Collection<FunctionMetadata> functions)
         {
-            var proxies = ReadProxyMetadata(ScriptConfig, out object proxyClient, _proxyClientGenerator, _settingsManager);
+            var proxies = ReadProxyMetadata(ScriptConfig, _proxyClient, _settingsManager);
 
             var descriptorProviders = new List<FunctionDescriptorProvider>()
                 {
@@ -1385,7 +1381,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Proxy routes will take precedence over http trigger functions and http trigger routes so they will be added first to the list of function descriptors.
                 combinedFunctionMetadata = proxies.Concat(functions);
 
-                descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptConfig, proxyClient));
+                descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptConfig, _proxyClient));
             }
             else
             {
@@ -1441,12 +1437,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // prevent duplicate/conflicting routes
                 foreach (var pair in httpFunctions)
-            {
-                if (HttpRoutesConflict(httpTrigger, pair.Value))
                 {
-                    throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
+                    if (HttpRoutesConflict(httpTrigger, pair.Value))
+                    {
+                        throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
+                    }
                 }
-            }
 
                 httpFunctions.Add(function.Name, httpTrigger);
             }
