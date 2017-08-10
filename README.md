@@ -7,6 +7,7 @@ In order to run:
 
 Tests:
 
+- Most of the EndToEnd tests have not been ported to .net core
 - You may run into an issue with grpc dll not found when running integration tests. In that case, copy `%UserProfile%/.nuget/packages/grpc.core/<version>/runtimes` to the test output folder (bin/debug), current version 1.4.1
 
 
