@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 // TODO: FACAVAL - The call bellow is pretty fragile. This would cause issues
                 // if we invoke this with a JObject. Maintaining this to retain the original implementation
                 // but this should be revisited.
-                responseObject = JsonConvert.DeserializeObject<ExpandoObject>(stringContent);
+                responseObject = JsonConvert.DeserializeObject<ExpandoObject>(content.ToString());
             }
             else
             {
