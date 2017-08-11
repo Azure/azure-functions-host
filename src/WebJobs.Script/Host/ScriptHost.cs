@@ -1435,12 +1435,16 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 ValidateHttpFunction(function.Name, httpTrigger);
 
-                // prevent duplicate/conflicting routes
-                foreach (var pair in httpFunctions)
+                if (function.Metadata.ScriptType != ScriptType.Proxy)
                 {
-                    if (HttpRoutesConflict(httpTrigger, pair.Value))
+                    // prevent duplicate/conflicting routes for functions
+                    // proxy routes check is done in the proxy dll itself and proxies do not use routePrefix so should not check conflict with functions
+                    foreach (var pair in httpFunctions)
                     {
-                        throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
+                        if (HttpRoutesConflict(httpTrigger, pair.Value))
+                        {
+                            throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
+                        }
                     }
                 }
 
