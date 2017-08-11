@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
     {
         public NodeLanguageWorkerConfig()
         {
-            ExecutablePath = "node.exe";
+            ExecutablePath = "node";
             WorkerPath = Environment.GetEnvironmentVariable("NodeJSWorkerPath");
 
             SupportedScriptTypes = new List<ScriptType>()
