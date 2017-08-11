@@ -23,10 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
     // TODO: move to RPC project?
     internal class LanguageWorkerChannel : ILanguageWorkerChannel
     {
-        private readonly TimeSpan timeoutStart = TimeSpan.FromSeconds(5);
-        private readonly TimeSpan timeoutInit = TimeSpan.FromSeconds(2);
-        private readonly TimeSpan timeoutLoad = TimeSpan.FromSeconds(10);
-        private readonly TimeSpan timeoutInvoke = TimeSpan.FromMinutes(5);
+        private readonly TimeSpan timeoutStart = TimeSpan.FromSeconds(60);
+        private readonly TimeSpan timeoutInit = TimeSpan.FromSeconds(60);
+        private readonly TimeSpan timeoutLoad = TimeSpan.FromSeconds(60);
+        private readonly TimeSpan timeoutInvoke = TimeSpan.FromMinutes(60);
         private readonly ScriptHostConfiguration _scriptConfig;
         private readonly IScriptEventManager _eventManager;
         private readonly LanguageWorkerConfig _workerConfig;
@@ -210,9 +210,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             TaskCompletionSource<bool> tcs = new TaskCompletionSource<bool>();
             try
             {
-                var startInfo = new ProcessStartInfo
+                var startInfo = new ProcessStartInfo(config.ExecutablePath)
                 {
-                    FileName = config.ExecutablePath,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true,
