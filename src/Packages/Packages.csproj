@@ -35,12 +35,12 @@
     <None Include="..\..\tools\NuGetProj.settings.targets">
       <Link>NuGetProj.settings.targets</Link>
     </None>
-    <None Include="..\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.NuGet\WebJobs.Logging.ApplicationInsights.nuproj">
+    <NuGetProject Include="..\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.NuGet\WebJobs.Logging.ApplicationInsights.nuproj">
       <Link>WebJobs.Logging.ApplicationInsights\WebJobs.Logging.ApplicationInsights.nuproj</Link>
-    </None>
-    <None Include="..\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.NuGet\WebJobs.Logging.ApplicationInsights.nuspec">
+    </NuGetProject>
+    <NuGetSpec Include="..\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.NuGet\WebJobs.Logging.ApplicationInsights.nuspec">
       <Link>WebJobs.Logging.ApplicationInsights\WebJobs.Logging.ApplicationInsights.nuspec</Link>
-    </None>
+    </NuGetSpec>
     <NuGetProject Include="..\Microsoft.Azure.WebJobs.ServiceBus.NuGet\WebJobs.ServiceBus.nuproj">
       <Link>WebJobs.ServiceBus\WebJobs.ServiceBus.nuproj</Link>
     </NuGetProject>

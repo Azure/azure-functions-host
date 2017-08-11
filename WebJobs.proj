@@ -130,6 +130,30 @@
              BuildInParallel="$(BuildInParallel)"/>
   </Target>
 
+  <Target Name="FilterAssemblies">
+    <ItemGroup>
+      <Assemblies Include="%(Build.RootDir)%(Build.Directory)bin\$(Configuration)\Microsoft.Azure.%(Build.Filename).dll" Condition="%(Build.PublishType)=='Assembly' AND %(Build.Filename) != 'Dashboard'">
+        <Dest>bin\sign\Microsoft.Azure.%(Build.Filename).dll</Dest>
+      </Assemblies>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="GetBitsToSign" DependsOnTargets="FilterAssemblies;Build">
+    <RemoveDir Directories="bin\sign" />
+    <Delete Files="bin\tosign.zip" />
+    <Copy 
+      SourceFiles="@(Assemblies)"
+      DestinationFiles="%(Assemblies.Dest)"/>
+    <Exec Command="PowerShell -command Compress-Archive bin\sign\* bin\tosign.zip" />
+    <Exec Command="PowerShell tools\RunSigningJob.ps1" />
+  </Target>
+
+  <Target Name="ReplaceDlls" DependsOnTargets="FilterAssemblies">
+    <Copy
+      SourceFiles="%(Assemblies.Dest)"
+      DestinationFiles="%(Assemblies.Identity)"/>
+  </Target>
+
   <UsingTask TaskName="Xunit.Runner.MSBuild.xunit" AssemblyFile="packages\xunit.MSBuild.2.0.0.0\tools\xunit.runner.msbuild.dll"/>
 
   <Target Name="UnitTest" DependsOnTargets="CheckSkipStrongNames;Build">
