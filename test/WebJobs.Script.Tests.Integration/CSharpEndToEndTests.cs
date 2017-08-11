@@ -45,12 +45,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task CosmosDBTriggerToBlobTest()
-        {
-            await CosmosDBTriggerToBlobTestImpl();
-        }
-
-        [Fact]
         public async Task TwilioReferenceInvokeSucceeds()
         {
             await TwilioReferenceInvokeSucceedsImpl(isDotNet: true);
