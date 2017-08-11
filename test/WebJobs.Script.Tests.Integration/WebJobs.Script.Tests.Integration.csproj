@@ -387,8 +387,8 @@
     <Reference Include="xunit.execution.desktop, Version=2.1.0.3179, Culture=neutral, PublicKeyToken=8d05b1bb7a6fdb6c, processorArchitecture=MSIL">
       <HintPath>..\..\packages\xunit.extensibility.execution.2.1.0\lib\net45\xunit.execution.desktop.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Azure.AppService.Proxy.Client.Contract, Version=0.3.0.3, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.Client.Contract.0.3.0.3\lib\net46\Microsoft.Azure.AppService.Proxy.Client.Contract.dll</HintPath>
+    <Reference Include="Microsoft.Azure.AppService.Proxy.Client.Contract, Version=0.3.0.4, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.Client.Contract.0.3.0.4\lib\net46\Microsoft.Azure.AppService.Proxy.Client.Contract.dll</HintPath>
       <SpecificVersion>False</SpecificVersion>
     </Reference>
   </ItemGroup>

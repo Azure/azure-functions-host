@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "req", request },
             };
-            await Fixture.Host.CallAsync("localFunction_1002", arguments);
+            await Fixture.Host.CallAsync("localFunction", arguments);
 
             HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);

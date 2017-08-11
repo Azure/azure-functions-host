@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public class ProxyMetadata : FunctionMetadata
     {
-        public HttpMethod Method { get; set; }
+        public HttpMethod[] Methods { get; set; }
 
         public string UrlTemplate { get; set; }
     }

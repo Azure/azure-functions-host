@@ -184,16 +184,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ProxyData proxyData = new ProxyData();
             proxyData.Routes.Add(new Routes()
             {
-                Id = 1001,
-                Method = HttpMethod.Get,
+                Methods = new[] { HttpMethod.Get, HttpMethod.Post },
                 Name = "test",
                 UrlTemplate = "/myproxy"
             });
 
             proxyData.Routes.Add(new Routes()
             {
-                Id = 1002,
-                Method = HttpMethod.Get,
+                Methods = new[] { HttpMethod.Get },
                 Name = "localFunction",
                 UrlTemplate = "/mymockhttp"
             });

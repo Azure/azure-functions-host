@@ -4,7 +4,7 @@
       "matchCondition": {
         "route": "/myproxy",
         "methods": [
-          "GET"
+          "GET", "POST"
         ]
       },
       "backendUri": "http://localhost/api/httptrigger"

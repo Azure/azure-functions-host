@@ -1135,7 +1135,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functions;
         }
 
-        public static Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, IProxyClient proxyClient, ScriptSettingsManager settingsManager = null)
+        public Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, ScriptSettingsManager settingsManager = null)
         {
             // read the proxy config
             string proxyConfigPath = Path.Combine(config.RootScriptPath, ScriptConstants.ProxyMetadataFileName);
@@ -1157,27 +1157,27 @@ namespace Microsoft.Azure.WebJobs.Script
             var proxies = new Collection<FunctionMetadata>();
             string proxiesJson = File.ReadAllText(proxyConfigPath);
 
-            LoadProxyRoutes(config, proxies, proxyClient, proxiesJson);
+            LoadProxyRoutes(config, proxies, proxiesJson);
 
             return proxies;
         }
 
-        private static void LoadProxyRoutes(ScriptHostConfiguration config, Collection<FunctionMetadata> proxies, IProxyClient proxyClient, string proxiesJson)
+        private void LoadProxyRoutes(ScriptHostConfiguration config, Collection<FunctionMetadata> proxies, string proxiesJson)
         {
             ILoggerFactory loggerFactory = config.HostConfig.LoggerFactory;
             ILogger proxyStartupLogger = loggerFactory.CreateLogger("Host.Proxies.Initialization");
 
-            if (proxyClient == null)
+            if (_proxyClient == null)
             {
-                proxyClient = ProxyClientFactory.Create(proxiesJson, proxyStartupLogger);
+                _proxyClient = ProxyClientFactory.Create(proxiesJson, proxyStartupLogger);
             }
 
-            if (proxyClient == null)
+            if (_proxyClient == null)
             {
                 return;
             }
 
-            var routes = proxyClient.GetProxyData();
+            var routes = _proxyClient.GetProxyData();
 
             foreach (var route in routes.Routes)
             {
@@ -1188,10 +1188,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 proxyMetadata.Bindings.Add(bindingMetadata);
 
-                proxyMetadata.Name = route.Name + "_" + route.Id.ToString();
+                proxyMetadata.Name = route.Name;
                 proxyMetadata.ScriptType = ScriptType.Proxy;
 
-                proxyMetadata.Method = route.Method;
+                proxyMetadata.Methods = route.Methods;
                 proxyMetadata.UrlTemplate = route.UrlTemplate;
 
                 proxies.Add(proxyMetadata);
@@ -1361,7 +1361,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private Collection<FunctionDescriptor> GetFunctionDescriptors(Collection<FunctionMetadata> functions)
         {
-            var proxies = ReadProxyMetadata(ScriptConfig, _proxyClient, _settingsManager);
+            var proxies = ReadProxyMetadata(ScriptConfig, _settingsManager);
 
             var descriptorProviders = new List<FunctionDescriptorProvider>()
                 {

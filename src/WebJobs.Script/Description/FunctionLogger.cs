@@ -13,10 +13,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     // Static per-function logging information.
     public class FunctionLogger
     {
-        public FunctionLogger(ScriptHost host, string functionName)
+        public FunctionLogger(ScriptHost host, string functionName, ScriptType scriptType)
         {
             // Function file logging is only done conditionally
-            TraceWriter traceWriter = host.FunctionTraceWriterFactory.Create(functionName);
+            TraceWriter traceWriter = host.FunctionTraceWriterFactory.Create(functionName, scriptType);
             FileTraceWriter = traceWriter.Conditional(t => host.FileLoggingEnabled && (!(t.Properties?.ContainsKey(ScriptConstants.TracePropertyPrimaryHostKey) ?? false) || host.IsPrimary));
 
             // The global trace writer used by the invoker will write all traces to both

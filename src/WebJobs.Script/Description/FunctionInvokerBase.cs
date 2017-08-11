@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             Host = host;
             Metadata = functionMetadata;
-            LogInfo = new FunctionLogger(this.Host, functionMetadata.Name);
+            LogInfo = new FunctionLogger(this.Host, functionMetadata.Name, functionMetadata.ScriptType);
         }
 
         protected static IDictionary<string, object> PrimaryHostTraceProperties { get; }

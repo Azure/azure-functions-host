@@ -504,7 +504,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     var routeBuilder = routeFactoryContext.CreateBuilder(proxyMetadata.UrlTemplate.TrimStart('/'));
                     var constraints = routeBuilder.Constraints;
-                    constraints.Add("httpMethod", new HttpMethodConstraint(proxyMetadata.Method));
+                    constraints.Add("httpMethod", new HttpMethodConstraint(proxyMetadata.Methods));
 
                     var route = _httpRoutes.CreateRoute(routeBuilder.Template, routeBuilder.Defaults, constraints);
                     _httpRoutes.Add(function.Metadata.Name, route);

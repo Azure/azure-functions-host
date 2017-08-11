@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             logger.Log(LogLevel.Information, 0, new FormattedLogValues("Some Message"), null, (s, e) => s.ToString());
 
             Assert.Empty(trace.Traces);
-            factoryMock.Verify(f => f.Create(It.IsAny<string>()), Times.Never);
+            factoryMock.Verify(f => f.Create(It.IsAny<string>(), null), Times.Never);
         }
 
         [Fact]
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
             var factoryMock = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
             factoryMock
-                .Setup(f => f.Create("SomeFunction"))
+                .Setup(f => f.Create("SomeFunction", null))
                 .Returns(trace);
 
             var logger = new FileLogger("SomeCategory", factoryMock.Object, (c, l) => true);

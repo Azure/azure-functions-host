@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _proxyClient = GetMockProxyClient();
             _settingsManager = ScriptSettingsManager.Instance;
             _host = ScriptHost.Create(environment.Object, eventManager.Object, _config, _settingsManager, _proxyClient);
-            _metadataCollection = ScriptHost.ReadProxyMetadata(_config, _proxyClient, _settingsManager);
+            _metadataCollection = _host.ReadProxyMetadata(_config, _settingsManager);
         }
 
         private IProxyClient GetMockProxyClient()
@@ -50,16 +50,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ProxyData proxyData = new ProxyData();
             proxyData.Routes.Add(new Routes()
             {
-                Id = 1001,
-                Method = HttpMethod.Get,
+                Methods = new[] { HttpMethod.Get, HttpMethod.Post },
                 Name = "test",
                 UrlTemplate = "/myproxy"
             });
 
             proxyData.Routes.Add(new Routes()
             {
-                Id = 1002,
-                Method = HttpMethod.Get,
+                Methods = new[] { HttpMethod.Get },
                 Name = "localFunction",
                 UrlTemplate = "/mymockhttp"
             });
