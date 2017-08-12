@@ -21,7 +21,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
-    // In-memory executor. 
     internal class FunctionExecutor : IFunctionExecutor
     {
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
@@ -31,14 +30,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IAsyncCollector<FunctionInstanceLogEntry> _functionEventCollector;
         private readonly ILogger _logger;
         private readonly ILogger _resultsLogger;
-        private readonly IJobInvoker _jobInvoker;
+        private readonly IEnumerable<IFunctionFilter> _globalFunctionFilters;
 
         private HostOutputMessage _hostOutputMessage;
 
         public FunctionExecutor(IFunctionInstanceLogger functionInstanceLogger, IFunctionOutputLogger functionOutputLogger,
-                IWebJobsExceptionHandler exceptionHandler, TraceWriter trace, IJobInvoker jobInvoker,
+                IWebJobsExceptionHandler exceptionHandler, TraceWriter trace,
                 IAsyncCollector<FunctionInstanceLogEntry> functionEventCollector = null,
-                ILoggerFactory loggerFactory = null)
+                ILoggerFactory loggerFactory = null,
+                IEnumerable<IFunctionFilter> globalFunctionFilters = null)
         {
             if (functionInstanceLogger == null)
             {
@@ -64,10 +64,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             _functionOutputLogger = functionOutputLogger;
             _exceptionHandler = exceptionHandler;
             _trace = trace;
-            _jobInvoker = jobInvoker;
             _functionEventCollector = functionEventCollector;
             _logger = loggerFactory?.CreateLogger(LogCategories.Executor);
             _resultsLogger = loggerFactory?.CreateLogger(LogCategories.Results);
+            _globalFunctionFilters = globalFunctionFilters ?? Enumerable.Empty<IFunctionFilter>();
         }
 
         public HostOutputMessage HostOutputMessage
@@ -79,20 +79,21 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         public async Task<IDelayedException> TryExecuteAsync(IFunctionInstance functionInstance, CancellationToken cancellationToken)
         {
             FunctionStartedMessage functionStartedMessage = CreateStartedMessageWithoutArguments(functionInstance);
-            var parameterHelper = new ParameterHelper(functionInstance.Invoker.ParameterNames);
+            var parameterHelper = new ParameterHelper(functionInstance);
             FunctionCompletedMessage functionCompletedMessage = null;
             ExceptionDispatchInfo exceptionInfo = null;
             string functionStartedMessageId = null;
             TraceLevel functionTraceLevel = functionInstance.FunctionDescriptor.TraceLevel;
-
-            FunctionInstanceLogEntry fastItem = null;
+            FunctionInstanceLogEntry instanceLogEntry = null;
 
             using (_resultsLogger?.BeginFunctionScope(functionInstance))
+            using (parameterHelper)
             {
                 try
                 {
-                    fastItem = await NotifyPreBindAsync(functionStartedMessage);
-                    functionStartedMessageId = await ExecuteWithLoggingAsync(functionInstance, functionStartedMessage, fastItem, parameterHelper, functionTraceLevel, cancellationToken);
+                    instanceLogEntry = await NotifyPreBindAsync(functionStartedMessage);
+                    parameterHelper.Initialize();
+                    functionStartedMessageId = await ExecuteWithLoggingAsync(functionInstance, functionStartedMessage, instanceLogEntry, parameterHelper, functionTraceLevel, cancellationToken);
                     functionCompletedMessage = CreateCompletedMessage(functionStartedMessage);
                 }
                 catch (Exception exception)
@@ -110,6 +111,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     };
 
                     exceptionInfo = ExceptionDispatchInfo.Capture(exception);
+
+                    exceptionInfo = await InvokeExceptionFiltersAsync(parameterHelper.JobInstance, exceptionInfo, functionInstance, parameterHelper.FilterContextProperties, cancellationToken);
                 }
 
                 if (functionCompletedMessage != null)
@@ -130,8 +133,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     logCompletedCancellationToken = cancellationToken;
                 }
 
-                await NotifyCompleteAsync(fastItem, functionCompletedMessage.Arguments, exceptionInfo);
-                _resultsLogger?.LogFunctionResult(fastItem);
+                await NotifyCompleteAsync(instanceLogEntry, functionCompletedMessage.Arguments, exceptionInfo);
+                _resultsLogger?.LogFunctionResult(instanceLogEntry);
 
                 if (functionCompletedMessage != null &&
                     ((functionTraceLevel >= TraceLevel.Info) || (functionCompletedMessage.Failure != null && functionTraceLevel >= TraceLevel.Error)))
@@ -151,6 +154,32 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
 
             return exceptionInfo != null ? new ExceptionDispatchInfoDelayedException(exceptionInfo) : null;
+        }
+
+        private async Task<ExceptionDispatchInfo> InvokeExceptionFiltersAsync(object jobInstance, ExceptionDispatchInfo exceptionDispatchInfo, IFunctionInstance functionInstance, IDictionary<string, object> properties, CancellationToken cancellationToken)
+        {
+            var exceptionFilters = GetFilters<IFunctionExceptionFilter>(_globalFunctionFilters, functionInstance.FunctionDescriptor, jobInstance);
+            if (exceptionFilters.Any())
+            {
+                var exceptionContext = new FunctionExceptionContext(functionInstance.Id, functionInstance.FunctionDescriptor.ShortName, _logger, exceptionDispatchInfo, properties);
+                Exception exception = exceptionDispatchInfo.SourceException;
+                foreach (var exceptionFilter in exceptionFilters)
+                {
+                    try
+                    {
+                        await exceptionFilter.OnExceptionAsync(exceptionContext, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        // if a filter throws, we capture that error to pass to subsequent filters
+                        exception = ex;
+                        exceptionDispatchInfo = ExceptionDispatchInfo.Capture(exception);
+                        exceptionContext.ExceptionDispatchInfo = exceptionDispatchInfo;
+                    }
+                }
+            }
+
+            return exceptionDispatchInfo;
         }
 
         internal static async Task HandleExceptionAsync(TimeoutAttribute timeout, ExceptionDispatchInfo exceptionInfo, IWebJobsExceptionHandler exceptionHandler)
@@ -173,8 +202,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         }
 
         private async Task<string> ExecuteWithLoggingAsync(IFunctionInstance instance, FunctionStartedMessage message,
-            FunctionInstanceLogEntry fastItem,
-            ParameterHelper parameterHelper, TraceLevel functionTraceLevel, CancellationToken cancellationToken)
+            FunctionInstanceLogEntry instanceLogEntry, ParameterHelper parameterHelper, TraceLevel functionTraceLevel, CancellationToken cancellationToken)
         {
             IFunctionOutputDefinition outputDefinition = null;
             IFunctionOutput outputLog = null;
@@ -228,12 +256,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         if (_functionEventCollector != null)
                         {
                             // Log started
-                            await NotifyPostBindAsync(fastItem, message.Arguments);
+                            await NotifyPostBindAsync(instanceLogEntry, message.Arguments);
                         }
 
                         try
                         {
-                            await ExecuteWithLoggingAsync(instance, parameterHelper, traceWriter, _logger, outputDefinition, functionTraceLevel, functionCancellationTokenSource);
+                            await ExecuteWithLoggingAsync(instance, parameterHelper, traceWriter, outputDefinition, functionTraceLevel, functionCancellationTokenSource);
                         }
                         catch (Exception ex)
                         {
@@ -277,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     // console output even if the function fails or was canceled.
                     if (outputLog != null)
                     {
-                        await outputLog.SaveAndCloseAsync(fastItem, cancellationToken);
+                        await outputLog.SaveAndCloseAsync(instanceLogEntry, cancellationToken);
                     }
 
                     if (exceptionInfo != null)
@@ -430,7 +458,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private async Task ExecuteWithLoggingAsync(IFunctionInstance instance,
             ParameterHelper parameterHelper,
             TraceWriter trace,
-            ILogger logger,
             IFunctionOutputDefinition outputDefinition,
             TraceLevel functionTraceLevel,
             CancellationTokenSource functionCancellationTokenSource)
@@ -441,13 +468,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             if (functionTraceLevel >= TraceLevel.Info)
             {
                 var parameterWatchers = parameterHelper.CreateParameterWatchers();
-                IRecurrentCommand updateParameterLogCommand = outputDefinition.CreateParameterLogUpdateCommand(parameterWatchers, trace, logger);
+                IRecurrentCommand updateParameterLogCommand = outputDefinition.CreateParameterLogUpdateCommand(parameterWatchers, trace, _logger);
                 updateParameterLogTimer = StartParameterLogTimer(updateParameterLogCommand, _exceptionHandler);
             }
 
             try
             {
-                await ExecuteWithWatchersAsync(instance, parameterHelper, trace, logger, functionCancellationTokenSource, _jobInvoker);
+                await ExecuteWithWatchersAsync(instance, parameterHelper, trace, functionCancellationTokenSource);
 
                 if (updateParameterLogTimer != null)
                 {
@@ -469,15 +496,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        internal static async Task ExecuteWithWatchersAsync(IFunctionInstance instance,
+        internal async Task ExecuteWithWatchersAsync(IFunctionInstance instance,
             ParameterHelper parameterHelper,
             TraceWriter traceWriter,
-            ILogger logger,
-            CancellationTokenSource functionCancellationTokenSource,
-            IJobInvoker jobInvoker)
+            CancellationTokenSource functionCancellationTokenSource)
         {
             IFunctionInvoker invoker = instance.Invoker;
-
             IDelayedException delayedBindingException = await parameterHelper.PrepareParametersAsync();
 
             if (delayedBindingException != null)
@@ -494,34 +518,28 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 await singleton.AcquireAsync(functionCancellationTokenSource.Token);
             }
 
-            // Check to see if there are any filters
-            var jobInstance = invoker.CreateInstance();
-            parameterHelper.ObjectInstance = jobInstance;
-            using (jobInstance as IDisposable)
+            object jobInstance = parameterHelper.JobInstance;
+            using (CancellationTokenSource timeoutTokenSource = new CancellationTokenSource())
             {
-                List<IFunctionInvocationFilter> filters = GetFilters(instance.FunctionDescriptor, jobInstance);
-
-                // Create a source specifically for timeouts
-                using (CancellationTokenSource timeoutTokenSource = new CancellationTokenSource())
+                TimeoutAttribute timeoutAttribute = instance.FunctionDescriptor.TimeoutAttribute;
+                bool throwOnTimeout = timeoutAttribute == null ? false : timeoutAttribute.ThrowOnTimeout;
+                var timer = StartFunctionTimeout(instance, timeoutAttribute, timeoutTokenSource, traceWriter, _logger);
+                TimeSpan timerInterval = timer == null ? TimeSpan.MinValue : TimeSpan.FromMilliseconds(timer.Interval);
+                try
                 {
-                    TimeoutAttribute timeoutAttribute = instance.FunctionDescriptor.TimeoutAttribute;
-                    bool throwOnTimeout = timeoutAttribute == null ? false : timeoutAttribute.ThrowOnTimeout;
-                    var timer = StartFunctionTimeout(instance, timeoutAttribute, timeoutTokenSource, traceWriter, logger);
-                    TimeSpan timerInterval = timer == null ? TimeSpan.MinValue : TimeSpan.FromMilliseconds(timer.Interval);
-                    try
-                    {
-                        invoker = FunctionFilterInvoker.Create(invoker, filters, instance, parameterHelper, logger, jobInvoker);
+                    var filters = GetFilters<IFunctionInvocationFilter>(_globalFunctionFilters, instance.FunctionDescriptor, jobInstance);
 
-                        await InvokeAsync(invoker, parameterHelper, timeoutTokenSource, functionCancellationTokenSource,
-                            throwOnTimeout, timerInterval, instance);
-                    }
-                    finally
+                    invoker = FunctionInvocationFilterInvoker.Create(invoker, filters, instance, parameterHelper, _logger);
+
+                    await InvokeAsync(invoker, parameterHelper, timeoutTokenSource, functionCancellationTokenSource,
+                        throwOnTimeout, timerInterval, instance);
+                }
+                finally
+                {
+                    if (timer != null)
                     {
-                        if (timer != null)
-                        {
-                            timer.Stop();
-                            timer.Dispose();
-                        }
+                        timer.Stop();
+                        timer.Dispose();
                     }
                 }
             }
@@ -548,7 +566,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             //      b. If !throwOnTimeout, wait for the task to complete.
 
             // Start the invokeTask.
-            Task<object> invokeTask = invoker.InvokeAsync(parameterHelper.ObjectInstance, invokeParameters);
+            Task<object> invokeTask = invoker.InvokeAsync(parameterHelper.JobInstance, invokeParameters);
 
             // Combine #1 and #2 with a timeout task (handled by this method).
             // functionCancellationTokenSource.Token is passed to each function that requests it, so we need to call Cancel() on it
@@ -567,26 +585,40 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             parameterHelper.SetReturnValue(returnValue);
         }
 
-        // Return a list of filters in order that they should be executed. 
-        private static List<IFunctionInvocationFilter> GetFilters(FunctionDescriptor functionDescriptor, object instance)
+        /// <summary>
+        /// Returns the list of filters in the order they should be executed in.
+        /// Filter order is decided by the scope at which the filter is declared.
+        /// The scopes (in order) are: Instance, Global, Class, Method.
+        /// The execution model is "Russian Doll" - Instance filters surround Global filters
+        /// which surround Class filters which surround Method filters. As a result of this nesting,
+        /// for filters with pre/post methods (e.g. <see cref="IFunctionInvocationFilter"/>) the executing portion
+        /// of the filters runs in the reverse order.
+        /// </summary>
+        private static List<TFilter> GetFilters<TFilter>(IEnumerable<IFunctionFilter> globalFunctionFilters, FunctionDescriptor functionDescriptor, object instance) where TFilter : class, IFunctionFilter
         {
-            List<IFunctionInvocationFilter> filters = new List<IFunctionInvocationFilter>();
+            var filters = new List<TFilter>();
 
-            if (instance is IFunctionInvocationFilter instanceFilter)
+            // If the job method is an instance method and the job class implements
+            // the filter interface, this filter runs first before all other filters
+            TFilter instanceFilter = instance as TFilter;
+            if (instanceFilter != null)
             {
                 filters.Add(instanceFilter);
             }
 
-            // Check for class filters
-            if (functionDescriptor.ClassLevelInvocationFilters != null)
+            // Add any global filters
+            filters.AddRange(globalFunctionFilters.OfType<TFilter>());
+
+            // Next, any class level filters are added
+            if (functionDescriptor.ClassLevelFilters != null)
             {
-                filters.AddRange(functionDescriptor.ClassLevelInvocationFilters);
+                filters.AddRange(functionDescriptor.ClassLevelFilters.OfType<TFilter>());
             }
 
-            // Check for method filters
-            if (functionDescriptor.MethodLevelInvocationFilters != null)
+            // Finally, any method level filters are added
+            if (functionDescriptor.MethodLevelFilters != null)
             {
-                filters.AddRange(functionDescriptor.MethodLevelInvocationFilters);
+                filters.AddRange(functionDescriptor.MethodLevelFilters.OfType<TFilter>());
             }
 
             return filters;
@@ -720,35 +752,35 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         }
 
         // Called after function completes. 
-        private Task NotifyCompleteAsync(FunctionInstanceLogEntry fastItem, IDictionary<string, string> arguments, ExceptionDispatchInfo exceptionInfo)
+        private Task NotifyCompleteAsync(FunctionInstanceLogEntry intanceLogEntry, IDictionary<string, string> arguments, ExceptionDispatchInfo exceptionInfo)
         {
-            fastItem.LiveTimer.Stop();
+            intanceLogEntry.LiveTimer.Stop();
 
 
             // log result            
-            fastItem.EndTime = DateTime.UtcNow;
-            fastItem.Duration = fastItem.LiveTimer.Elapsed;
-            fastItem.Arguments = arguments;
+            intanceLogEntry.EndTime = DateTime.UtcNow;
+            intanceLogEntry.Duration = intanceLogEntry.LiveTimer.Elapsed;
+            intanceLogEntry.Arguments = arguments;
 
-            Debug.Assert(fastItem.IsCompleted);
+            Debug.Assert(intanceLogEntry.IsCompleted);
 
             // Log completed
             if (exceptionInfo != null)
             {
                 var ex = exceptionInfo.SourceException;
-                fastItem.Exception = ex;
+                intanceLogEntry.Exception = ex;
                 if (ex.InnerException != null)
                 {
                     ex = ex.InnerException;
                 }
-                fastItem.ErrorDetails = ex.Message;
+                intanceLogEntry.ErrorDetails = ex.Message;
             }
 
             if (_functionEventCollector == null)
             {
                 return Task.CompletedTask;
             }
-            return _functionEventCollector.AddAsync(fastItem);
+            return _functionEventCollector.AddAsync(intanceLogEntry);
         }
 
         // Handle various phases of parameter building and logging.
@@ -758,6 +790,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         //  3. System.Object[]. which can be passed to the actual MethodInfo for execution 
         internal class ParameterHelper : IDisposable
         {
+            private readonly IFunctionInstance _functionInstance;
+
             // Logs, contain the result from invoking the IWatchers.
             private IDictionary<string, ParameterLog> _parameterLogCollector = new Dictionary<string, ParameterLog>();
 
@@ -771,24 +805,47 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             // ordered parameter names of the underlying physical MethodInfo that will be invoked. 
             // This litererally matches the ParameterInfo[] and does not include return value. 
             private IReadOnlyList<string> _parameterNames;
+            
+            // state bag passed to all function filters
+            private IDictionary<string, object> _filterContextProperties = new Dictionary<string, object>();
 
             // the return value of the function
             private object _returnValue;
 
-            public ParameterHelper(IReadOnlyList<string> parameterNames)
+            private bool _disposed;
+
+            // for mock testing
+            public ParameterHelper()
             {
-                this._parameterNames = parameterNames;
+            }
+
+            public ParameterHelper(IFunctionInstance functionInstance)
+            {
+                if (functionInstance == null)
+                {
+                    throw new ArgumentNullException(nameof(functionInstance));
+                }
+
+                _functionInstance = functionInstance;
+                this._parameterNames = functionInstance.Invoker.ParameterNames;
             }
 
             // Phsyical objects to pass to the underlying method Info. These will get updated for out-parameters. 
             // These are produced by executing the binders. 
             public object[] InvokeParameters { get; internal set; }
 
-            public object ObjectInstance { get; set; }
+            public object JobInstance { get; set; }
 
             public IDictionary<string, ParameterLog> ParameterLogCollector => _parameterLogCollector;
 
             public object ReturnValue => _returnValue;
+
+            public IDictionary<string, object> FilterContextProperties => _filterContextProperties;
+
+            public void Initialize()
+            {
+                this.JobInstance = _functionInstance.Invoker.CreateInstance();
+            }
 
             // Convert the parameters and their names to a dictionary
             public Dictionary<string, object> GetParametersAsDictionary()
@@ -1000,16 +1057,25 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 _returnValue = returnValue;
             }
-
-            // IDisposable on any of the IValueProviders in our parameter list.             
+           
             public void Dispose()
             {
-                if (_parameters != null)
+                if (!_disposed)
                 {
-                    foreach (var disposableItem in _parameters.Values.OfType<IDisposable>())
+                    if (_parameters != null)
                     {
-                        disposableItem.Dispose();
+                        foreach (var disposableItem in _parameters.Values.OfType<IDisposable>())
+                        {
+                            disposableItem.Dispose();
+                        }
                     }
+
+                    if (JobInstance is IDisposable)
+                    {
+                        ((IDisposable)JobInstance).Dispose();
+                    }
+
+                    _disposed = true;
                 }
             }
 
@@ -1048,32 +1114,30 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        private class FunctionFilterInvoker : IFunctionInvoker
+        private class FunctionInvocationFilterInvoker : IFunctionInvoker
         {
             private List<IFunctionInvocationFilter> _filters;
             private IFunctionInvoker _innerInvoker;
             private IFunctionInstance _functionInstance;
             private ParameterHelper _parameterHelper;
             private ILogger _logger;
-            private IJobInvoker _jobInvoker;
 
             public IReadOnlyList<string> ParameterNames => _innerInvoker.ParameterNames;
 
-            public static IFunctionInvoker Create(IFunctionInvoker innerInvoker, List<IFunctionInvocationFilter> filters, IFunctionInstance functionInstance, ParameterHelper parameterHelper, ILogger logger, IJobInvoker jobInvoker)
+            public static IFunctionInvoker Create(IFunctionInvoker innerInvoker, List<IFunctionInvocationFilter> filters, IFunctionInstance functionInstance, ParameterHelper parameterHelper, ILogger logger)
             {
                 if (filters.Count == 0)
                 {
                     return innerInvoker;
                 }
 
-                return new FunctionFilterInvoker
+                return new FunctionInvocationFilterInvoker
                 {
                     _innerInvoker = innerInvoker,
                     _filters = filters,
                     _functionInstance = functionInstance,
                     _parameterHelper = parameterHelper,
-                    _logger = logger,
-                    _jobInvoker = jobInvoker
+                    _logger = logger
                 };
             }
 
@@ -1093,10 +1157,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 int len = _filters.Count;
                 int highestSuccessfulFilter = -1;
 
-                // Create a dictionary that will pass the user properties from the Executing filter to the Executed filter
-                Dictionary<string, object> properties = new Dictionary<string, object>();
-
-                FunctionExecutingContext executingContext = CreateInvocationContext<FunctionExecutingContext>(_functionInstance, _parameterHelper, properties, _logger, _jobInvoker);
+                Exception exception = null;
+                var properties = _parameterHelper.FilterContextProperties;
+                FunctionExecutingContext executingContext = new FunctionExecutingContext(_parameterHelper.GetParametersAsDictionary(), properties, _functionInstance.Id, _functionInstance.FunctionDescriptor.ShortName, _logger);
                 try
                 {
                     for (int i = 0; i < len; i++)
@@ -1111,10 +1174,17 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     var result = await _innerInvoker.InvokeAsync(instance, arguments);
                     return result;
                 }
+                catch (Exception ex)
+                {
+                    exception = ex;
+                    throw;
+                }
                 finally
                 {
-                    Exception exception = null;
-                    FunctionExecutedContext executedContext = CreateInvocationContext<FunctionExecutedContext>(_functionInstance, _parameterHelper, properties, _logger, _jobInvoker);
+                    var functionResult = exception != null ?
+                        new FunctionResult(exception)
+                        : new FunctionResult(true);
+                    FunctionExecutedContext executedContext = new FunctionExecutedContext(_parameterHelper.GetParametersAsDictionary(), properties, _functionInstance.Id, _functionInstance.FunctionDescriptor.ShortName, _logger, functionResult);
 
                     // Run post filters in reverse order. 
                     // Only run the post if the corresponding pre executed successfully. 
@@ -1129,6 +1199,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         catch (Exception e)
                         {
                             exception = e;
+                            executedContext.FunctionResult = new FunctionResult(exception);
                         }
                     }
 
@@ -1140,26 +1211,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         throw exception;
                     }
                 }
-            }
-
-            // Helper to create a filter context object 
-            private static T CreateInvocationContext<T>(
-                IFunctionInstance instance,
-                ParameterHelper parameterHelper,
-                Dictionary<string, object> properties,
-                ILogger logger,
-                IJobInvoker jobInvoker)
-                where T : FunctionInvocationContext, new()
-            {
-                return new T
-                {
-                    FunctionInstanceId = instance.Id,
-                    FunctionName = instance.FunctionDescriptor.ShortName,
-                    Arguments = parameterHelper.GetParametersAsDictionary(),
-                    Properties = properties,
-                    Logger = logger,
-                    Invoker = jobInvoker
-                };
             }
         }
     }

@@ -10,7 +10,8 @@ namespace Microsoft.Azure.WebJobs.Host
     /// <summary>
     /// Base class for declarative function invocation filters.
     /// </summary>
-    public abstract class InvocationFilterAttribute : Attribute, IFunctionInvocationFilter
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+    public abstract class FunctionInvocationFilterAttribute : Attribute, IFunctionInvocationFilter
     {
         /// <inheritdoc/>
         public virtual Task OnExecutingAsync(FunctionExecutingContext executingContext, CancellationToken cancellationToken)

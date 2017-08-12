@@ -349,7 +349,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 
         private static FunctionExecutor.ParameterHelper NewArgs(object[] args)
         {
-            var parameters = new FunctionExecutor.ParameterHelper(null);
+            var parameters = new FunctionExecutor.ParameterHelper();
             parameters.InvokeParameters = args;
             return parameters;
         }

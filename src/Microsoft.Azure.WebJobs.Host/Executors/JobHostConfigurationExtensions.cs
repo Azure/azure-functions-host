@@ -251,7 +251,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (functionExecutor == null)
                 {
-                    functionExecutor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, exceptionHandler, trace, host, functionEventCollector, loggerFactory);
+                    var extensionRegistry = config.GetService<IExtensionRegistry>();
+                    var globalFunctionFilters = extensionRegistry.GetFunctionFilters();
+
+                    functionExecutor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, exceptionHandler, trace, functionEventCollector, loggerFactory, globalFunctionFilters);
                     services.AddService(functionExecutor);
                 }
 

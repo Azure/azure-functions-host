@@ -4,9 +4,9 @@
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
-    /// Context class for <see cref="IFunctionInvocationFilter.OnExecutingAsync/>>.
+    /// Base (marker) interface for all function filters.
     /// </summary>
-    public class FunctionExecutingContext : FunctionInvocationContext
+    public interface IFunctionFilter
     {
     }
 }
