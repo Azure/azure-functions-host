@@ -236,13 +236,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "ScopeKeys",
                 "IDistributedLockManager",
                 "IDistributedLock",
-                "FunctionInvocationContext",
-                "FunctionExecutingContext",
-                "FunctionExecutedContext",
-                "IFunctionInvocationFilter",
-                "InvocationFilterAttribute",
-                "InvokeFunctionFilterAttribute",
                 "AssemblyNameCache",
+                "FunctionExceptionContext",
+                "FunctionExceptionFilterAttribute",
+                "FunctionExecutedContext",
+                "FunctionExecutingContext",
+                "FunctionFilterContext",
+                "FunctionInvocationContext",
+                "FunctionInvocationFilterAttribute",
+                "IFunctionExceptionFilter",
+                "IFunctionFilter",
+                "IFunctionInvocationFilter",
                 "LoggerExtensions"
             };
 

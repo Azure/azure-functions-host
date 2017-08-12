@@ -68,14 +68,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             TestWorker<ConfigTestDefaultToMethodName>();
         }
 
-        public class ConfigTestDefaultToMethodName : IExtensionConfigProvider, ITest<ConfigTestDefaultToMethodName>
+        public class ConfigTestDefaultToMethodName : BindingPathAttribute.Extension, ITest<ConfigTestDefaultToMethodName>
         {
-            public void Initialize(ExtensionConfigContext context)
-            {
-                var rule = context.AddBindingRule<Test2Attribute>();
-                rule.BindToInput<string>(attr => attr.Path);               
-            }
-
             public void Test(TestJobHost<ConfigTestDefaultToMethodName> host)
             {
                 host.Call("Func", new { k = 1 });
@@ -90,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
 
             string _log;
 
-            public void Func([Test2(Path = "{k}*{sys.randGuid:N}*{sys.randGuid:B}*{sys.UtcNow:yyyy}")] string w)
+            public void Func([BindingPath(Path = "{k}*{sys.randGuid:N}*{sys.randGuid:B}*{sys.UtcNow:yyyy}")] string w)
             {
                 var parts = w.Split('*');
                 string k = parts[0];
@@ -112,14 +106,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             }
 
             // Missing path, will default to method name 
-            public void Func2([Test2] string w)
+            public void Func2([BindingPath] string w)
             {
                 _log = w;
             }
 
             // Missing path, will default to method name 
             [FunctionName("newname")]
-            public void FuncRename([Test2] string w)
+            public void FuncRename([BindingPath] string w)
             {
                 _log = w;
             }
@@ -620,14 +614,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Common
             }
 
             [AutoResolve]
-            public string Path { get; set; }
-        }
-
-        // A test attribute for binding.  
-        [Binding]
-        public class Test2Attribute : Attribute
-        {
-            [AutoResolve(Default = "{sys.methodname}")]
             public string Path { get; set; }
         }
 

@@ -105,14 +105,19 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         public static JobHostConfiguration NewConfig(
             params object[] services
-        )
+            )
         {
-            JobHostConfiguration config = new JobHostConfiguration()
+            var loggerFactory = new LoggerFactory();
+            ILoggerProvider loggerProvider = services.OfType<ILoggerProvider>().SingleOrDefault() ?? new TestLoggerProvider();
+            loggerFactory.AddProvider(loggerProvider);
+
+            var config = new JobHostConfiguration()
             {
                 // Pure in-memory, no storage. 
                 HostId = Guid.NewGuid().ToString("n"),
                 DashboardConnectionString = null,
-                StorageConnectionString = null
+                StorageConnectionString = null,
+                LoggerFactory = loggerFactory
             };
             config.AddServices(services);
             return config;
@@ -155,7 +160,8 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
             foreach (var obj in services)
             {
-                if (obj == null)
+                if (obj == null ||
+                    obj is ILoggerProvider)
                 {
                     continue;
                 }
@@ -180,6 +186,19 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                 if (extension != null)
                 {
                     extensions.RegisterExtension<IExtensionConfigProvider>(extension);
+                    continue;
+                }
+
+                // A function filter
+                if (obj is IFunctionInvocationFilter)
+                {
+                    extensions.RegisterExtension<IFunctionInvocationFilter>((IFunctionInvocationFilter)obj);
+                    continue;
+                }
+
+                if (obj is IFunctionExceptionFilter)
+                {
+                    extensions.RegisterExtension<IFunctionExceptionFilter>((IFunctionExceptionFilter)obj);
                     continue;
                 }
 

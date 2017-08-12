@@ -7,12 +7,13 @@ using System.Threading.Tasks;
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
-    /// Defines a filter that will be called as part of the function invocation pipeline.
+    /// Defines a filter that will be called as part of the function invocation pipeline
+    /// immediately before and after the job function is invoked.
     /// </summary>
-    public interface IFunctionInvocationFilter
+    public interface IFunctionInvocationFilter : IFunctionFilter
     {
         /// <summary>
-        /// Method invoked before the target function is called.
+        /// Called before the target job function is invoked.
         /// </summary>
         /// <param name="executingContext">The execution context.</param>
         /// <param name="cancellationToken">The cancellation token to use.</param>
@@ -20,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host
         Task OnExecutingAsync(FunctionExecutingContext executingContext, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Method invoked after the target function is called
+        /// Called after the target job function is invoked.
         /// </summary>
         /// <param name="executedContext">The execution context.</param>
         /// <param name="cancellationToken">The cancellation token to use.</param>

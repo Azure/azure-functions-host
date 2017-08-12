@@ -3,12 +3,12 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
-using Newtonsoft.Json;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.WebJobs.Protocols
 #else
+using Microsoft.Azure.WebJobs.Host;
+using Newtonsoft.Json;
 namespace Microsoft.Azure.WebJobs.Host.Protocols
 #endif
 {
@@ -69,16 +69,16 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         internal IEnumerable<SingletonAttribute> SingletonAttributes { get; set; }
 
         /// <summary>
-        /// Gets any <see cref="IFunctionInvocationFilter"/>s declared at the method level.
+        /// Gets any <see cref="IFunctionFilter"/>s declared at the method level.
         /// </summary>
         [JsonIgnore]
-        internal IEnumerable<IFunctionInvocationFilter> MethodLevelInvocationFilters { get; set; }
+        internal IEnumerable<IFunctionFilter> MethodLevelFilters { get; set; }
 
         /// <summary>
-        /// Gets any <see cref="IFunctionInvocationFilter"/>s declared at the class level.
+        /// Gets any <see cref="IFunctionFilter"/>s declared at the class level.
         /// </summary>
         [JsonIgnore]
-        internal IEnumerable<IFunctionInvocationFilter> ClassLevelInvocationFilters { get; set; }
+        internal IEnumerable<IFunctionFilter> ClassLevelFilters { get; set; }
 #endif
     }
 }

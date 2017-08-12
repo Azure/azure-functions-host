@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             IFunctionOutputLoggerProvider outputLoggerProvider = new NullFunctionOutputLoggerProvider();
             IFunctionOutputLogger outputLogger = outputLoggerProvider.GetAsync(CancellationToken.None).Result;
 
-            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, exceptionHandler, logger, new JobHost());
+            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, exceptionHandler, logger);
 
             return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor,
                 extensionRegistry, singletonManager, logger, loggerFactory);

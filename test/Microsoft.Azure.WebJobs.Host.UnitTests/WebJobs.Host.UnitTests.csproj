@@ -258,7 +258,8 @@
     <Compile Include="Blobs\UncompletedAsyncResult.cs" />
     <Compile Include="Blobs\CompletedAsyncResult.cs" />
     <Compile Include="Blobs\WatchableReadStreamTests.cs" />
-    <Compile Include="Executors\InvocationFilterTests.cs" />
+    <Compile Include="Common\BindingPathAttribute.cs" />
+    <Compile Include="Filters\FunctionFilterTests.cs" />
     <Compile Include="Executors\TriggeredFunctionExecutorTests.cs" />
     <Compile Include="ExtensionConfigContextTests.cs" />
     <Compile Include="Indexers\ReturnValueTests.cs" />

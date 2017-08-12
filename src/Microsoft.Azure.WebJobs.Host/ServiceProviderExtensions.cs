@@ -3,7 +3,6 @@
 
 using System;
 using System.Globalization;
-using Microsoft.Azure.WebJobs.Host.Executors;
 
 namespace Microsoft.Azure.WebJobs.Host
 {

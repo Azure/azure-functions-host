@@ -101,6 +101,26 @@ namespace Microsoft.Azure.WebJobs.Host
         }
 
         /// <summary>
+        /// Returns the collection of all registered <see cref="IFunctionFilter"/> types
+        /// or subtypes.
+        /// </summary>
+        /// <param name="registry">The registry instance.</param>
+        /// <returns>The collection of filters.</returns>
+        internal static IEnumerable<IFunctionFilter> GetFunctionFilters(this IExtensionRegistry registry)
+        {
+            if (registry == null)
+            {
+                throw new ArgumentNullException("registry");
+            }
+
+            // form a list of all filters of the specified type (including subclasses)
+            var filters = new List<IFunctionFilter>(registry.GetExtensions<IFunctionInvocationFilter>());
+            filters.AddRange(registry.GetExtensions<IFunctionExceptionFilter>());
+
+            return filters.Distinct();
+        }
+
+        /// <summary>
         /// Returns the set of assemblies that have registered extensions.
         /// </summary>
         /// <param name="registry">The registry instance.</param>
