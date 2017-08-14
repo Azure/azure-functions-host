@@ -463,8 +463,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     hostConfig.StorageConnectionString = null;
                 }
 
-                _functionDispatcher = new FunctionDispatcher(ScriptConfig, EventManager, TraceWriter);
-                _functionDispatcher.InitializeAsync(null);
+                _functionDispatcher = new FunctionDispatcher(ScriptConfig, EventManager, TraceWriter, new List<LanguageWorkerConfig>()
+                {
+                    new NodeLanguageWorkerConfig(),
+                    new JavaLanguageWorkerConfig()
+                });
 
                 if (ScriptConfig.FileWatchingEnabled)
                 {
@@ -1412,14 +1415,11 @@ namespace Microsoft.Azure.WebJobs.Script
             var descriptorProviders = new List<FunctionDescriptorProvider>()
                 {
                     new ScriptFunctionDescriptorProvider(this, ScriptConfig),
-                    new NodeFunctionDescriptorProvider(this, ScriptConfig),
                     new DotNetFunctionDescriptorProvider(this, ScriptConfig),
 #if FEATURE_POWERSHELL
                     new PowerShellFunctionDescriptorProvider(this, ScriptConfig),
 #endif
-#if FEATURE_JAVA
-                new JavaFunctionDescriptorProvider(this, ScriptConfig)
-#endif
+                    new WorkerFunctionDescriptorProvider(this, ScriptConfig),
                 };
 
             IEnumerable<FunctionMetadata> combinedFunctionMetadata = null;

@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         private readonly IScriptEventManager _eventManager;
         private readonly TraceWriter _logger;
 
-        // TODO: support user defined ScriptType definitions
+        private readonly List<LanguageWorkerConfig> _workerConfigs = new List<LanguageWorkerConfig>();
         private readonly IDictionary<ScriptType, WorkerPool> _workerMapping = new Dictionary<ScriptType, WorkerPool>();
         private ICollection<ILanguageWorkerChannel> _workers = new List<ILanguageWorkerChannel>();
 
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         private GrpcServer _server;
         private FunctionRpcImpl _serverImpl;
 
-        public FunctionDispatcher(ScriptHostConfiguration scriptConfig, IScriptEventManager manager, TraceWriter logger)
+        public FunctionDispatcher(ScriptHostConfiguration scriptConfig, IScriptEventManager manager, TraceWriter logger, List<LanguageWorkerConfig> defaultWorkers)
         {
             _scriptConfig = scriptConfig;
             _eventManager = manager;
@@ -42,35 +42,18 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
             _server.Start();
 
-            // TODO Add only if there are java script functions
-            AddWorkers(new List<LanguageWorkerConfig>()
+            AddWorkers(defaultWorkers);
+        }
+
+        public bool TryRegister(FunctionMetadata functionMetadata)
+        {
+            var worker = GetWorker(functionMetadata);
+            if (worker != null)
             {
-                new NodeLanguageWorkerConfig()
-            });
-        }
-
-        public Task InitializeAsync(IEnumerable<LanguageWorkerConfig> workers)
-        {
-             AddWorkers(workers);
-
-            // TODO: how to handle async subscriptions? post 'handlefileevent' completed back to event stream?
-             _eventManager.OfType<FileEvent>()
-                .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
-                .Subscribe(OnFileEventReceived);
-
-             var workerStartTasks = _workers.Select(worker => worker.StartAsync());
-             return Task.WhenAll(workerStartTasks);
-        }
-
-        public void OnFileEventReceived(FileEvent fileEvent)
-        {
-            var workerFileChangeTasks = _workers.Select(worker => worker.HandleFileEventAsync(fileEvent.FileChangeArguments));
-            Task.WhenAll(workerFileChangeTasks).GetAwaiter().GetResult();
-        }
-
-        public void Load(FunctionMetadata functionMetadata)
-        {
-            GetWorker(functionMetadata).LoadAsync(functionMetadata);
+                worker.StartAsync();
+                return true;
+            }
+            return false;
         }
 
         public Task<ScriptInvocationResult> InvokeAsync(FunctionMetadata functionMetadata, ScriptInvocationContext context)
@@ -91,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             {
                 foreach (var workerConfig in workerConfigs)
                 {
+                    _workerConfigs.Add(workerConfig);
                     var worker = new LanguageWorkerChannel(_scriptConfig, _eventManager, workerConfig, _logger, _server.BoundPort);
                     _workers.Add(worker);
 
@@ -111,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         private static ILanguageWorkerChannel SchedulingStrategy(WorkerPool pool)
         {
-            return pool.First();
+            return pool.FirstOrDefault();
         }
 
         public void Dispose()
