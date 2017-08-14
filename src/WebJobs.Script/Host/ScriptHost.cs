@@ -1181,7 +1181,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (var route in routes.Routes)
             {
-                var proxyMetadata = new ProxyMetadata();
+                var proxyMetadata = new FunctionMetadata();
 
                 // This is just to add a http trigger type for proxies so the pipeline doesn't break, the values are all ignored by Proxy.
                 var json = JObject.Parse("{\"authLevel\": \"anonymous\",\"name\": \"req\",\"type\": \"httptrigger\",\"direction\": \"in\"}");
@@ -1194,9 +1194,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 proxyMetadata.Name = route.Name;
                 proxyMetadata.ScriptType = ScriptType.Proxy;
-
-                proxyMetadata.Methods = route.Methods;
-                proxyMetadata.UrlTemplate = route.UrlTemplate;
 
                 proxies.Add(proxyMetadata);
             }

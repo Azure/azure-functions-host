@@ -464,7 +464,6 @@
     <Compile Include="Description\Binding\DataType.cs" />
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompiler.cs" />
     <Compile Include="Description\PackageRestoreResult.cs" />
-    <Compile Include="Description\ProxyMetadata.cs" />
     <Compile Include="Description\Proxy\ProxyFunctionDescriptorProvider.cs" />
     <Compile Include="Description\Proxy\ProxyFunctionInvoker.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />

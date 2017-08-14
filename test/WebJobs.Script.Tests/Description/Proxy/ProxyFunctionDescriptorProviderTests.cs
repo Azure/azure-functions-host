@@ -79,18 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void ReadProxyMetadata_Succeeds()
-        {
-            Assert.True(_metadataCollection.Count > 0);
-
-            var metadata = _metadataCollection[0] as ProxyMetadata;
-
-            Assert.NotNull(metadata);
-            Assert.Equal(metadata.ScriptType, ScriptType.Proxy);
-            Assert.Equal(metadata.UrlTemplate, "/myproxy");
-        }
-
-        [Fact]
         public void ValidateProxyFunctionDescriptor()
         {
             var proxy = _proxyClient as IProxyClient;
