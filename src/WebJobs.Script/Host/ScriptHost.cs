@@ -470,6 +470,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 var functionMetadata = ReadFunctionMetadata(ScriptConfig, TraceWriter, _startupLogger, FunctionErrors, _settingsManager);
                 var usedBindingTypes = DiscoverBindingTypes(functionMetadata);
 
+                if (!ScriptConfig.LazyLoadExtensions)
+                {
+                    usedBindingTypes = _builtinBindingTypes.Keys.Concat(_builtinScriptBindingTypes.Keys).ToArray();
+                }
+
                 var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfigObject, TraceWriter, _startupLogger, usedBindingTypes);
                 ScriptConfig.BindingProviders = bindingProviders;
 
@@ -1480,6 +1485,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         scriptConfig.FileLoggingMode = fileLoggingMode;
                     }
+                }
+            }
+
+            if (config.TryGetValue("lazyLoadExtensions", out value))
+            {
+                if (value.Type == JTokenType.Boolean)
+                {
+                    scriptConfig.LazyLoadExtensions = (bool)value;
                 }
             }
 

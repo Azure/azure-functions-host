@@ -106,6 +106,13 @@ namespace Microsoft.Azure.WebJobs.Script
         public bool IsSelfHost { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether we can lazy load the extensions.
+        /// If true, only load extensions that are explicitly referenced from function.json or method signatures.
+        /// Default to false
+        /// </summary>
+        public bool LazyLoadExtensions { get; set; }
+
+        /// <summary>
         /// Gets or sets the <see cref="LogCategoryFilter"/> to use when constructing providers for the
         /// registered <see cref="ILoggerFactory"/>.
         /// </summary>
