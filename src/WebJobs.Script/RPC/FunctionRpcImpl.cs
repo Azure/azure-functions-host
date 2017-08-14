@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,11 +28,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 string workerId = requestStream.Current.StartStream.WorkerId;
                 _eventManager.OfType<RpcEvent>()
                     .Where(evt => evt.Origin == RpcEvent.MessageOrigin.Host && evt.WorkerId == workerId)
-
-                    // TODO: correctly handle async writes?
+                    .ObserveOn(NewThreadScheduler.Default)
                     .Subscribe(evt =>
                     {
-                        responseStream.WriteAsync(evt.Message);
+                        // WriteAsync only allows one pending write at a time
+                        // For each responseStream subscription, observe as a blocking write, in series, on a new thread
+                        // Alternatives - could wrap responseStream.WriteAsync with a SemaphoreSlim to control concurrent access
+                        responseStream.WriteAsync(evt.Message).GetAwaiter().GetResult();
                     });
 
                 do
