@@ -78,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             { "twilioSms", "Microsoft.Azure.WebJobs.Script.Binding.TwilioScriptBindingProvider" },
             { "notificationHub", "Microsoft.Azure.WebJobs.Script.Binding.NotificationHubScriptBindingProvider" },
+            { "cosmosDBTrigger", "Microsoft.Azure.WebJobs.Script.Binding.DocumentDBScriptBindingProvider" },
             { "documentDB", "Microsoft.Azure.WebJobs.Script.Binding.DocumentDBScriptBindingProvider" },
             { "mobileTable", "Microsoft.Azure.WebJobs.Script.Binding.MobileAppsScriptBindingProvider" },
             { "apiHubFileTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ApiHubScriptBindingProvider" },
@@ -103,7 +104,9 @@ namespace Microsoft.Azure.WebJobs.Script
             { "Microsoft.Azure.Documents.Client" },
             { "Microsoft.Azure.WebJobs.Extensions.DocumentDB" },
             { "Microsoft.Azure.ApiHub.Sdk" },
-            { "Microsoft.Azure.WebJobs.Extensions.ApiHub" }
+            { "Microsoft.Azure.WebJobs.Extensions.ApiHub" },
+            { "Microsoft.ServiceBus" },
+            { "Sendgrid" },
         };
 
         protected internal ScriptHost(IScriptHostEnvironment environment,

@@ -568,30 +568,30 @@
     <Compile Include="Description\Node\NodeFunctionDescriptorProvider.cs" />
     <Compile Include="Description\Node\NodeFunctionInvoker.cs" />
     <Reference Include="EdgeJs, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Edge.js.6.5.1\lib\net40\EdgeJs.dll</HintPath>
+      <HintPath>..\..\packages\Edge.js.6.11.2\lib\net40\EdgeJs.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Content Include="..\..\packages\Edge.js.6.5.1\content\edge\x86\edge_nativeclr.node">
+    <Content Include="..\..\packages\Edge.js.6.11.2\content\edge\x86\edge_nativeclr.node">
       <Link>edge\x86\edge_nativeclr.node</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\packages\Edge.js.6.5.1\content\edge\x86\node.dll">
+    <Content Include="..\..\packages\Edge.js.6.11.2\content\edge\x86\node.dll">
       <Link>edge\x86\node.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\packages\Edge.js.6.5.1\content\edge\x64\edge_nativeclr.node">
+    <Content Include="..\..\packages\Edge.js.6.11.2\content\edge\x64\edge_nativeclr.node">
       <Link>edge\x64\edge_nativeclr.node</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\packages\Edge.js.6.5.1\content\edge\x64\node.dll">
+    <Content Include="..\..\packages\Edge.js.6.11.2\content\edge\x64\node.dll">
       <Link>edge\x64\node.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\packages\Edge.js.6.5.1\content\edge\double_edge.js">
+    <Content Include="..\..\packages\Edge.js.6.11.2\content\edge\double_edge.js">
       <Link>edge\double_edge.js</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\packages\Edge.js.6.5.1\content\edge\edge.js">
+    <Content Include="..\..\packages\Edge.js.6.11.2\content\edge\edge.js">
       <Link>edge\edge.js</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
