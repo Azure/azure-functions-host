@@ -8,16 +8,16 @@ using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal class NodeFunctionDescriptorProvider : FunctionDescriptorProvider
+    internal class WorkerFunctionDescriptorProvider : FunctionDescriptorProvider
     {
         private readonly ICompilationServiceFactory<ICompilationService<IJavaScriptCompilation>, FunctionMetadata> _compilationServiceFactory;
 
-        public NodeFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
+        public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
             : this(host, config, new JavaScriptCompilationServiceFactory(host))
         {
         }
 
-        public NodeFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config,
+        public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config,
             ICompilationServiceFactory<ICompilationService<IJavaScriptCompilation>, FunctionMetadata> compilationServiceFactory)
             : base(host, config)
         {
@@ -30,24 +30,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 throw new ArgumentNullException(nameof(functionMetadata));
             }
-
-            // We can only handle script types supported by the current compilation service factory
-            if (!_compilationServiceFactory.SupportedScriptTypes.Contains(functionMetadata.ScriptType))
-            {
-                functionDescriptor = null;
-                return false;
-            }
-
-            return base.TryCreate(functionMetadata, out functionDescriptor);
+            functionDescriptor = null;
+            return Host.FunctionDispatcher.TryRegister(functionMetadata)
+                && base.TryCreate(functionMetadata, out functionDescriptor);
         }
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            throw new NotSupportedException("Node invoker not currently supported");
-
-            // TODO: FACAVAL - This will be replaced with the new invoker
-            // ICompilationService<IJavaScriptCompilation> compilationService = _compilationServiceFactory.CreateService(functionMetadata.ScriptType, functionMetadata);
-            // return new NodeFunctionInvoker(Host, triggerMetadata, functionMetadata, inputBindings, outputBindings, compilationService);
+            return new WorkerLanguageInvoker(Host, triggerMetadata, functionMetadata, inputBindings, outputBindings);
         }
     }
 }

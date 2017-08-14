@@ -27,14 +27,14 @@ using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.Co
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // TODO: make this internal
-    public class NodeLanguageInvoker : FunctionInvokerBase
+    public class WorkerLanguageInvoker : FunctionInvokerBase
     {
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly BindingMetadata _trigger;
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
 
-        internal NodeLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
+        internal WorkerLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
             : base(host, functionMetadata)
         {
