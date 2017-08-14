@@ -486,45 +486,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             // we must initialize the route factory here AFTER full configuration
             // has been resolved so we apply any route prefix customizations
-            var httpRouteFactory = new HttpRouteFactory(httpConfig.RoutePrefix);
+            var functionHttpRouteFactory = new HttpRouteFactory(httpConfig.RoutePrefix);
+
+            // Proxies do not honor the route prefix defined in host.json
+            var proxyHttpRouteFactory = new HttpRouteFactory(string.Empty);
 
             _httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>();
             _httpRoutes = new HttpRouteCollection();
 
-            var constraintResolver = new DefaultInlineConstraintResolver();
-            List<HttpActionDescriptor> actionDescriptors = new List<HttpActionDescriptor>();
-            var routeFactoryContext = new DirectRouteFactoryContext(string.Empty, actionDescriptors, constraintResolver, false);
-
             foreach (var function in functions)
             {
-                if (function.Metadata is ProxyMetadata)
+                var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+                if (httpTrigger != null)
                 {
-                    // Function Proxy
-                    var proxyMetadata = (ProxyMetadata)function.Metadata;
-
-                    var routeBuilder = routeFactoryContext.CreateBuilder(proxyMetadata.UrlTemplate.TrimStart('/'));
-                    var constraints = routeBuilder.Constraints;
-                    constraints.Add("httpMethod", new HttpMethodConstraint(proxyMetadata.Methods));
-
-                    var route = _httpRoutes.CreateRoute(routeBuilder.Template, routeBuilder.Defaults, constraints);
-                    _httpRoutes.Add(function.Metadata.Name, route);
-                    _httpFunctions.Add(route, function);
-                }
-                else
-                {
-                    var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
-                    if (httpTrigger != null)
+                    IHttpRoute httpRoute = null;
+                    IEnumerable<HttpMethod> httpMethods = null;
+                    if (httpTrigger.Methods != null)
                     {
-                        IHttpRoute httpRoute = null;
-                        IEnumerable<HttpMethod> httpMethods = null;
-                        if (httpTrigger.Methods != null)
-                        {
-                            httpMethods = httpTrigger.Methods.Select(p => new HttpMethod(p)).ToArray();
-                        }
-                        if (httpRouteFactory.TryAddRoute(function.Metadata.Name, httpTrigger.Route, httpMethods, _httpRoutes, out httpRoute))
-                        {
-                            _httpFunctions.Add(httpRoute, function);
-                        }
+                        httpMethods = httpTrigger.Methods.Select(p => new HttpMethod(p)).ToArray();
+                    }
+                    var httpRouteFactory = function.Metadata is ProxyMetadata ? proxyHttpRouteFactory : functionHttpRouteFactory;
+                    if (httpRouteFactory.TryAddRoute(function.Metadata.Name, httpTrigger.Route, httpMethods, _httpRoutes, out httpRoute))
+                    {
+                        _httpFunctions.Add(httpRoute, function);
                     }
                 }
             }
