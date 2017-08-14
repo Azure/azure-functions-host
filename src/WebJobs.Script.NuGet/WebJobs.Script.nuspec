@@ -14,7 +14,7 @@
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <tags>Microsoft Azure WebJobs Jobs Script Node.js</tags>
     <dependencies>
-      <dependency id="Edge.js" version="6.5.1" />
+      <dependency id="Edge.js" version="6.11.2" />
       <dependency id="FSharp.Compiler.Service" version="9.0.1" />
       <dependency id="FSharp.Core" version="4.0.0.1" />
       <dependency id="Microsoft.Azure.WebJobs" version="2.1.0-beta1-10950" />

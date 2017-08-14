@@ -398,6 +398,9 @@
     <Compile Include="ApplicationInsights\ApplicationInsightsEndToEndTestsBase.cs" />
     <Compile Include="ApplicationInsights\ApplicationInsightsTestFixture.cs" />
     <Compile Include="ApplicationInsights\TelemetryPayload.cs" />
+    <Compile Include="CosmosDBTrigger\CosmosDBTriggerEndToEndTestsBase.cs" />
+    <Compile Include="CosmosDBTrigger\CosmosDBTriggerNodeEndToEndTests.cs" />
+    <Compile Include="CosmosDBTrigger\CosmosDBTriggerCSharpEndToEndTests.cs" />
     <Compile Include="DirectLoadEndToEndTests.cs" />
     <Compile Include="Controllers\ControllerDisabledAuthScenarioTestsFixture.cs" />
     <Compile Include="Controllers\Keys\DeleteFunctionKeysScenario.cs" />
