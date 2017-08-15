@@ -26,11 +26,6 @@ namespace Microsoft.Azure.WebJobs.Host
                 throw new ArgumentNullException(nameof(functionName));
             }
 
-            if (logger == null)
-            {
-                throw new ArgumentNullException(nameof(logger));
-            }
-
             if (properties == null)
             {
                 throw new ArgumentNullException(nameof(properties));

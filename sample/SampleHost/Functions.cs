@@ -4,9 +4,12 @@
 using System;
 using Microsoft.Azure.WebJobs;
 using Newtonsoft.Json.Linq;
+using SampleHost.Filters;
+using SampleHost.Models;
 
 namespace SampleHost
 {
+    [ErrorHandler]
     public static class Functions
     {
         public static void BlobTrigger(
@@ -24,10 +27,11 @@ namespace SampleHost
             Console.WriteLine($"Poison blob: {container}/{blobName}");
         }
 
-        public static void QueueTrigger(
-            [QueueTrigger("test")] string message)
+        [WorkItemValidator]
+        public static void ProcessWorkItem(
+            [QueueTrigger("test")] WorkItem workItem)
         {
-            Console.WriteLine("Processed message: " + message);
+            Console.WriteLine($"Processed work item {workItem.ID}");
         }
     }
 }
