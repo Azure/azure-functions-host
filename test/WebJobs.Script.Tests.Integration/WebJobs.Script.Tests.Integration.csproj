@@ -1080,16 +1080,16 @@
     <None Include="TestScripts\PowerShell\TimeoutSync\run.ps1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Proxy\host.json">
+    <None Include="TestScripts\Proxies\host.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Proxy\httptrigger\function.json">
+    <None Include="TestScripts\Proxies\httptrigger\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Proxy\httptrigger\run.csx">
+    <None Include="TestScripts\Proxies\httptrigger\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestScripts\Proxy\proxies.json">
+    <None Include="TestScripts\Proxies\proxies.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\Python\host.json">

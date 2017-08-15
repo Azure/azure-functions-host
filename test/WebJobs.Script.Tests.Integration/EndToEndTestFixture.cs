@@ -4,12 +4,8 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.AppService.Proxy.Client.Contract;
-using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -18,7 +14,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
-using Microsoft.Extensions.Logging;
 using Microsoft.ServiceBus;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -32,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly ScriptSettingsManager _settingsManager;
 
-        protected EndToEndTestFixture(string rootPath, string testId)
+        protected EndToEndTestFixture(string rootPath, string testId, IProxyClient proxyClient = null)
         {
             _settingsManager = ScriptSettingsManager.Instance;
             FixtureId = testId;
@@ -70,11 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fastLogger = new FunctionInstanceLogger(funcLookup, new MetricsLogger());
             config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
 
-            IProxyClient proxyClient = null;
-            if (FixtureId == "proxy")
-            {
-                proxyClient = GetMockProxyClient();
-            }
             Host = ScriptHost.Create(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager, proxyClient);
             Host.Start();
         }
@@ -172,41 +162,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             NamespaceManager.CreateQueue(serviceBusQueueName);
 
             ServiceBusQueueClient = Microsoft.ServiceBus.Messaging.QueueClient.CreateFromConnectionString(connectionString, serviceBusQueueName);
-        }
-
-        private IProxyClient GetMockProxyClient()
-        {
-            var proxyClient = new Mock<IProxyClient>();
-
-            ProxyData proxyData = new ProxyData();
-            proxyData.Routes.Add(new Routes()
-            {
-                Methods = new[] { HttpMethod.Get, HttpMethod.Post },
-                Name = "test",
-                UrlTemplate = "/myproxy"
-            });
-
-            proxyData.Routes.Add(new Routes()
-            {
-                Methods = new[] { HttpMethod.Get },
-                Name = "localFunction",
-                UrlTemplate = "/mymockhttp"
-            });
-
-            proxyClient.Setup(p => p.GetProxyData()).Returns(proxyData);
-
-            proxyClient.Setup(p => p.CallAsync(It.IsAny<object[]>(), It.IsAny<IFuncExecutor>(), It.IsAny<ILogger>())).Returns(
-                (object[] arguments, IFuncExecutor funcExecutor, ILogger logger) =>
-                {
-                    object requestObj = arguments != null && arguments.Length > 0 ? arguments[0] : null;
-                    var request = requestObj as HttpRequestMessage;
-                    var response = new HttpResponseMessage(HttpStatusCode.OK);
-                    response.Headers.Add("myversion", "123");
-                    request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
-                    return Task.CompletedTask;
-                });
-
-            return proxyClient.Object;
         }
 
         public virtual void Dispose()

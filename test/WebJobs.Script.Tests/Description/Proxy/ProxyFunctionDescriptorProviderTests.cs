@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public ProxyFunctionDescriptorProviderTests()
         {
-            string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Proxy");
+            string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Proxies");
             _config = new ScriptHostConfiguration
             {
                 RootScriptPath = rootPath
