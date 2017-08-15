@@ -470,7 +470,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 var functionMetadata = ReadFunctionMetadata(ScriptConfig, TraceWriter, _startupLogger, FunctionErrors, _settingsManager);
                 var usedBindingTypes = DiscoverBindingTypes(functionMetadata);
 
-                if (!ScriptConfig.LazyLoadExtensions)
+                bool useLazyLoad = false; // todo - https://github.com/Azure/azure-webjobs-sdk-script/issues/1637
+                if (!useLazyLoad)
                 {
                     usedBindingTypes = _builtinBindingTypes.Keys.Concat(_builtinScriptBindingTypes.Keys).ToArray();
                 }
@@ -1485,14 +1486,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         scriptConfig.FileLoggingMode = fileLoggingMode;
                     }
-                }
-            }
-
-            if (config.TryGetValue("lazyLoadExtensions", out value))
-            {
-                if (value.Type == JTokenType.Boolean)
-                {
-                    scriptConfig.LazyLoadExtensions = (bool)value;
                 }
             }
 
