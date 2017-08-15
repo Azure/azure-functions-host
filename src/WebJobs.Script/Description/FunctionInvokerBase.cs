@@ -24,10 +24,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private IDisposable _fileChangeSubscription;
 
         internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata)
+            : this(host, functionMetadata, new FunctionLogger(host, functionMetadata.Name))
+        {
+        }
+
+        internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, FunctionLogger logInfo)
         {
             Host = host;
             Metadata = functionMetadata;
-            LogInfo = new FunctionLogger(this.Host, functionMetadata.Name, functionMetadata.ScriptType);
+            LogInfo = logInfo;
         }
 
         protected static IDictionary<string, object> PrimaryHostTraceProperties { get; }

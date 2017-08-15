@@ -20,9 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script
             _scriptHostConfig = scriptHostConfig;
         }
 
-        public TraceWriter Create(string functionName, ScriptType? scriptType = null)
+        public TraceWriter Create(string functionName, string logDirName = null)
         {
-            string logDirName = (scriptType.HasValue && scriptType.Value == ScriptType.Proxy) ? "Proxy" : "Function";
+            logDirName = logDirName ?? "Function";
             if (_scriptHostConfig.FileLoggingMode != FileLoggingMode.Never)
             {
                 return _writerCache.GetOrAdd(functionName, f => CreateTraceWriter(_scriptHostConfig, f, logDirName));

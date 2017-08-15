@@ -15,7 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         FSharp,
         DotNetAssembly,
         TypeScript,
-        Unknown,
-        Proxy
+        Unknown
     }
 }

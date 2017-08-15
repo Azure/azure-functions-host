@@ -8,6 +8,6 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public interface IFunctionTraceWriterFactory
     {
-        TraceWriter Create(string functionName, ScriptType? scriptType = null);
+        TraceWriter Create(string functionName, string logDirName = null);
     }
 }

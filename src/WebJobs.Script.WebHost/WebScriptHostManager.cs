@@ -505,7 +505,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         httpMethods = httpTrigger.Methods.Select(p => new HttpMethod(p)).ToArray();
                     }
-                    var httpRouteFactory = function.Metadata.ScriptType == ScriptType.Proxy ? proxyHttpRouteFactory : functionHttpRouteFactory;
+                    var httpRouteFactory = function.Metadata.IsProxy ? proxyHttpRouteFactory : functionHttpRouteFactory;
                     if (httpRouteFactory.TryAddRoute(function.Metadata.Name, httpTrigger.Route, httpMethods, _httpRoutes, out httpRoute))
                     {
                         _httpFunctions.Add(httpRoute, function);

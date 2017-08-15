@@ -1186,17 +1186,23 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 var proxyMetadata = new FunctionMetadata();
 
-                // This is just to add a http trigger type for proxies so the pipeline doesn't break, the values are all ignored by Proxy.
-                var json = JObject.Parse("{\"authLevel\": \"anonymous\",\"name\": \"req\",\"type\": \"httptrigger\",\"direction\": \"in\"}");
+                var json = new JObject
+                {
+                    { "authLevel", "anonymous" },
+                    { "name", "req" },
+                    { "type", "httptrigger" },
+                    { "direction", "in" },
+                    { "Route", route.UrlTemplate.TrimStart('/') },
+                    { "Methods",  new JArray(route.Methods.Select(m => m.Method.ToString()).ToArray()) }
+                };
 
-                json.Add("Route", route.UrlTemplate.TrimStart('/'));
-                json.Add("Methods", new JArray(route.Methods.Select(m => m.Method.ToString()).ToArray()));
                 BindingMetadata bindingMetadata = BindingMetadata.Create(json);
 
                 proxyMetadata.Bindings.Add(bindingMetadata);
 
                 proxyMetadata.Name = route.Name;
-                proxyMetadata.ScriptType = ScriptType.Proxy;
+                proxyMetadata.ScriptType = ScriptType.Unknown;
+                proxyMetadata.IsProxy = true;
 
                 proxies.Add(proxyMetadata);
             }
@@ -1380,7 +1386,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 };
 
             IEnumerable<FunctionMetadata> combinedFunctionMetadata = null;
-            if (proxies != null && proxies.Count != 0)
+            if (proxies != null && proxies.Any())
             {
                 // Proxy routes will take precedence over http trigger functions and http trigger routes so they will be added first to the list of function descriptors.
                 combinedFunctionMetadata = proxies.Concat(functions);
@@ -1439,7 +1445,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 ValidateHttpFunction(function.Name, httpTrigger);
 
-                if (function.Metadata.ScriptType != ScriptType.Proxy)
+                if (function.Metadata.IsProxy)
                 {
                     // prevent duplicate/conflicting routes for functions
                     // proxy routes check is done in the proxy dll itself and proxies do not use routePrefix so should not check conflict with functions
