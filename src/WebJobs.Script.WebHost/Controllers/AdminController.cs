@@ -44,17 +44,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/functions/{name}")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel, AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
-        public HttpResponseMessage Invoke(string name, [FromBody] FunctionInvocation invocation)
+        public IActionResult Invoke(string name, [FromBody] FunctionInvocation invocation)
         {
             if (invocation == null)
             {
-                return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                return BadRequest();
             }
 
             FunctionDescriptor function = _scriptHostManager.Instance.GetFunctionOrNull(name);
             if (function == null)
             {
-                return new HttpResponseMessage(HttpStatusCode.NotFound);
+                return BadRequest();
             }
 
             ParameterDescriptor inputParameter = function.Parameters.First(p => p.IsTrigger);
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             };
             Task.Run(() => _scriptHostManager.Instance.CallAsync(function.Name, arguments));
 
-            return new HttpResponseMessage(HttpStatusCode.Accepted);
+            return Accepted();
         }
 
         [HttpGet]

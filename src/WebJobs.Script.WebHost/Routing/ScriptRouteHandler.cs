@@ -60,21 +60,18 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
 
             Dictionary<string, object> arguments = GetFunctionArguments(descriptor, context.Request);
 
-            using (var syncContextSuspensionScope = new SuspendedSynchronizationContextScope())
+            // Add the request to the logging scope. This allows the App Insights logger to
+            // record details about the request.
+            ILogger logger = _loggerFactory.CreateLogger(LogCategories.Function);
+            var scopeState = new Dictionary<string, object>()
             {
-                // Add the request to the logging scope. This allows the App Insights logger to
-                // record details about the request.
-                ILogger logger = _loggerFactory.CreateLogger(LogCategories.Function);
-                var scopeState = new Dictionary<string, object>()
-                {
-                    [ScriptConstants.LoggerHttpRequest] = context.Request
-                };
+                [ScriptConstants.LoggerHttpRequest] = context.Request
+            };
 
-                using (logger.BeginScope(scopeState))
-                {
-                    // TODO: Flow cancellation token from caller
-                    await host.CallAsync(descriptor.Name, arguments, CancellationToken.None);
-                }
+            using (logger.BeginScope(scopeState))
+            {
+                // TODO: Flow cancellation token from caller
+                await host.CallAsync(descriptor.Name, arguments, CancellationToken.None);
             }
 
             if (context.Items.TryGetValue(ScriptConstants.AzureFunctionsHttpResponseKey, out object result) && result is IActionResult actionResult)
@@ -92,21 +89,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
 
             if (triggerParameter.Type != typeof(HttpRequest))
             {
-                // TODO: FACAVAL Webhooks support
-                // var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
-                // if (httptrigger != null && !string.isnullorempty(httptrigger.webhooktype))
-                // {
-                //     webhookhandlercontext webhookcontext;
-                //     if (request.properties.trygetvalue(scriptconstants.azurefunctionswebhookcontextkey, out webhookcontext))
-                //     {
-                //         // for webhooks we want to use the webhook library conversion methods
-                //         // stuff the resolved data into the request context so the httptrigger binding
-                //         // can access it
-                //         var webhookdata = getwebhookdata(triggerparameter.type, webhookcontext);
-                //         request.properties.add(httpextensionconstants.azurewebjobswebhookdatakey, webhookdata);
-                //     }
-                // }
-
                 // see if the function defines a parameter to receive the HttpRequestMessage and
                 // if so, pass it along
                 ParameterDescriptor requestParameter = function.Parameters.FirstOrDefault(p => p.Type == typeof(HttpRequest));
