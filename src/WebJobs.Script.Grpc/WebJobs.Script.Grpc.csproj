@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+
+    <Ext Condition="'$(OS)' == 'Windows_NT'">bat</Ext>
+    <Ext Condition="'$(OS)' != 'Windows_NT'">sh</Ext>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,15 +15,8 @@
     </PackageReference>
   </ItemGroup>
 
-  <Target Condition="'$(OS)' == 'Windows_NT'" Name="GenerateProtoFiles" BeforeTargets="BeforeBuild">
-   <Exec Command="generate_protos.bat" />
-    <ItemGroup>
-      <Compile Include="**/*$(DefaultLanguageSourceExtension)" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);$(BaseIntermediateOutputPath)**;$(BaseOutputPath)**;@(Compile)" />
-    </ItemGroup>
-  </Target>
-
-  <Target Condition="'$(OS)' == 'OSX' Or '$(OS)' == 'Unix'" Name="GenerateProtoFiles" BeforeTargets="BeforeBuild">
-   <Exec Command="./generate_protos.sh" />
+  <Target Name="GenerateProtoFiles" BeforeTargets="BeforeBuild">
+    <Exec Command="./generate_protos.$(Ext)" />
     <ItemGroup>
       <Compile Include="**/*$(DefaultLanguageSourceExtension)" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);$(BaseIntermediateOutputPath)**;$(BaseOutputPath)**;@(Compile)" />
     </ItemGroup>
