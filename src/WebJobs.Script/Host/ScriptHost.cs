@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             { "bot", "Microsoft.Azure.WebJobs.Extensions.BotFramework.Config.BotFrameworkConfiguration, Microsoft.Azure.WebJobs.Extensions.BotFramework" },
             { "sendgrid", "Microsoft.Azure.WebJobs.Extensions.SendGrid.SendGridConfiguration, Microsoft.Azure.WebJobs.Extensions.SendGrid" },
-            { "eventGridTrigger", "Microsoft.Azure.WebJobs.Extensions.EventGrid.EventGridExtensionConfig, Microsoft.Azure.WebJobs.Extensions.EventGrid" }
+            { "eventGridTrigger", "Microsoft.Azure.WebJobs.Extensions.EventGrid.EventGridExtensionConfig, Microsoft.Azure.WebJobs.Extensions.EventGrid" },
         };
 
         private static IReadOnlyDictionary<string, string> _builtinScriptBindingTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -84,8 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script
             { "apiHubTable", "Microsoft.Azure.WebJobs.Script.Binding.ApiHubScriptBindingProvider" },
             { "serviceBusTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
             { "serviceBus", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
-            { "eventHubTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
-            { "eventHub", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
+            { "eventHubTrigger", "Microsoft.Azure.WebJobs.Script.Binding.EventHubsScriptBindingProvider" },
+            { "eventHub", "Microsoft.Azure.WebJobs.Script.Binding.EventHubsScriptBindingProvider" },
         };
 
         // For backwards compat, we support a #r directly to these assemblies.
@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script
             { "Microsoft.Azure.Documents.Client" },
             { "Microsoft.Azure.WebJobs.Extensions.DocumentDB" },
             { "Microsoft.Azure.ApiHub.Sdk" },
-            { "Microsoft.Azure.WebJobs.Extensions.ApiHub" }
+            { "Microsoft.Azure.WebJobs.Extensions.ApiHub" },
         };
 
         protected internal ScriptHost(IScriptHostEnvironment environment,
