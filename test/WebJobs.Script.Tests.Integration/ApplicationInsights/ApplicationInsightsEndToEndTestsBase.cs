@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // slightly out-of-order or on different threads
             TelemetryPayload[] telemetries = _fixture.TelemetryItems
                 .Where(t => t.Data.BaseType == "MessageData")
+                .Where(t => !t.Data.BaseData.Message.Contains("Loaded custom extension"))
                 .OrderBy(t => t.Data.BaseData.Message)
                 .ToArray();
 
