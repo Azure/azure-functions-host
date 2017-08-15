@@ -1138,7 +1138,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functions;
         }
 
-        public Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, ScriptSettingsManager settingsManager = null)
+        internal Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, ScriptSettingsManager settingsManager = null)
         {
             // read the proxy config
             string proxyConfigPath = Path.Combine(config.RootScriptPath, ScriptConstants.ProxyMetadataFileName);
@@ -1157,27 +1157,25 @@ namespace Microsoft.Azure.WebJobs.Script
                 return null;
             }
 
-            var proxies = new Collection<FunctionMetadata>();
             string proxiesJson = File.ReadAllText(proxyConfigPath);
 
-            LoadProxyRoutes(config, proxies, proxiesJson);
+            var proxies = LoadProxyRoutes(proxiesJson);
 
             return proxies;
         }
 
-        private void LoadProxyRoutes(ScriptHostConfiguration config, Collection<FunctionMetadata> proxies, string proxiesJson)
+        private Collection<FunctionMetadata> LoadProxyRoutes(string proxiesJson)
         {
-            ILoggerFactory loggerFactory = config.HostConfig.LoggerFactory;
-            ILogger proxyStartupLogger = loggerFactory.CreateLogger("Host.Proxies.Initialization");
+            var proxies = new Collection<FunctionMetadata>();
 
             if (_proxyClient == null)
             {
-                _proxyClient = ProxyClientFactory.Create(proxiesJson, proxyStartupLogger);
+                _proxyClient = ProxyClientFactory.Create(proxiesJson, _startupLogger);
             }
 
             if (_proxyClient == null)
             {
-                return;
+                return proxies;
             }
 
             var routes = _proxyClient.GetProxyData();
@@ -1206,6 +1204,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 proxies.Add(proxyMetadata);
             }
+
+            return proxies;
         }
 
         internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, TraceWriter traceWriter, ILogger logger, string scriptDirectory,

@@ -494,7 +494,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>();
             _httpRoutes = new HttpRouteCollection();
 
-            foreach (var function in functions)
+            // Proxy routes will take precedence over http trigger functions and http trigger
+            // routes so they will be added first to the list of http routes.
+            var orderdFunctions = functions.OrderBy(f => f.Metadata.IsProxy ? 0 : 1);
+
+            foreach (var function in orderdFunctions)
             {
                 var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
                 if (httpTrigger != null)
