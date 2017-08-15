@@ -16,13 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             var javaPath = Path.Combine(javaHome, @"..\jdk1.8.0_111\bin\java.exe");
             ExecutablePath = Path.GetFullPath(javaPath);
             WorkerPath = $"-jar {Environment.GetEnvironmentVariable("AzureWebJobsJavaWorkerPath")}";
-
-            // TODO set host and port
-            Arguments = "--host 127.0.0.1 --port 50051";
-            SupportedScriptTypes = new List<ScriptType>()
-            {
-                ScriptType.JavaArchive
-            };
+            ScriptType = ScriptType.JavaArchive;
+            Extension = ".jar";
         }
     }
 }

@@ -463,7 +463,12 @@ namespace Microsoft.Azure.WebJobs.Script
                     hostConfig.StorageConnectionString = null;
                 }
 
-                _functionDispatcher = new FunctionDispatcher(ScriptConfig, EventManager, TraceWriter, new List<LanguageWorkerConfig>()
+                Func<LanguageWorkerConfig, ILanguageWorkerChannel> channelFactory = (config) =>
+                {
+                    return new LanguageWorkerChannel(ScriptConfig, EventManager, config, Logger);
+                };
+
+                _functionDispatcher = new FunctionDispatcher(EventManager, channelFactory, new List<LanguageWorkerConfig>()
                 {
                     new NodeLanguageWorkerConfig(),
                     new JavaLanguageWorkerConfig()

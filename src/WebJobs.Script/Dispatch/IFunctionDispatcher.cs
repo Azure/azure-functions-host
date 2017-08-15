@@ -21,7 +21,5 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         // invoke a function
         // could use delay loading for start worker / load fucntion
         Task<ScriptInvocationResult> InvokeAsync(FunctionMetadata functionMetadata, ScriptInvocationContext context);
-
-        Task ShutdownAsync();
     }
 }
