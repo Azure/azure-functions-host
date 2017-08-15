@@ -9,7 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 { 
-    public class GrpcServer
+    public class GrpcServer : IDisposable
     {
         private Server _server;
 
@@ -27,5 +27,26 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public Task ShutdownAsync() => _server.ShutdownAsync();
 
         public int BoundPort => _server.Ports.First().BoundPort;
+
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _server.ShutdownAsync();
+                }
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+        #endregion
     }
 }

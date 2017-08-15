@@ -14,8 +14,12 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         public string Arguments { get; set; }
 
-        public IEnumerable<ScriptType> SupportedScriptTypes { get; set; }
+        public ScriptType ScriptType { get; set; } = ScriptType.Unknown;
 
-        public string ToArgumentString(int port, string workerId, string requestId) => $"{WorkerPath} {Arguments} --host 127.0.0.1 --port {port} --workerId {workerId} --requestId {requestId}";
+        public string Extension { get; set; }
+
+        internal int Port { get; set; }
+
+        internal string ToArgumentString(string workerId, string requestId) => $"{WorkerPath} {Arguments} --host 127.0.0.1 --port {Port} --workerId {workerId} --requestId {requestId}";
     }
 }
