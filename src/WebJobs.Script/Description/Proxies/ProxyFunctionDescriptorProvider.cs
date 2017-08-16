@@ -14,9 +14,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal sealed class ProxyFunctionDescriptorProvider : FunctionDescriptorProvider
     {
-        private IProxyClient _proxyClient;
+        private ProxyClientExecutor _proxyClient;
 
-        public ProxyFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config, IProxyClient proxyClient)
+        public ProxyFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config, ProxyClientExecutor proxyClient)
             : base(host, config)
         {
             _proxyClient = proxyClient;

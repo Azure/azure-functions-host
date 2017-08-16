@@ -11,6 +11,7 @@ using Microsoft.Azure.AppService.Proxy.Client.Contract;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -55,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             /// TestScripts\Proxies\proxies.json
             /// </summary>
             /// <returns>Mock IProxyClient object</returns>
-            private static IProxyClient GetMockProxyClient()
+            private static ProxyClientExecutor GetMockProxyClient()
             {
                 var proxyClient = new Mock<IProxyClient>();
 
@@ -90,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         return Task.CompletedTask;
                     });
 
-                return proxyClient.Object;
+                return new ProxyClientExecutor(proxyClient.Object);
             }
         }
     }

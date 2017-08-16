@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptHost _host;
         private readonly ScriptSettingsManager _settingsManager;
 
-        private readonly IProxyClient _proxyClient;
+        private readonly ProxyClientExecutor _proxyClient;
         private readonly ScriptHostConfiguration _config;
         private Collection<FunctionMetadata> _metadataCollection;
 
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _metadataCollection = _host.ReadProxyMetadata(_config, _settingsManager);
         }
 
-        private IProxyClient GetMockProxyClient()
+        private ProxyClientExecutor GetMockProxyClient()
         {
             var proxyClient = new Mock<IProxyClient>();
 
@@ -75,13 +75,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     return Task.CompletedTask;
                 });
 
-            return proxyClient.Object;
+            return new ProxyClientExecutor(proxyClient.Object);
         }
 
         [Fact]
         public void ValidateProxyFunctionDescriptor()
         {
-            var proxy = _proxyClient as IProxyClient;
+            var proxy = _proxyClient as ProxyClientExecutor;
             Assert.NotNull(proxy);
 
             var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_host, _config, proxy);

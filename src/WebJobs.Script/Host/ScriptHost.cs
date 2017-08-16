@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ILogger _startupLogger;
         private FileWatcherEventSource _fileEventSource;
         private IDisposable _fileEventsSubscription;
-        private IProxyClient _proxyClient;
+        private ProxyClientExecutor _proxyClient;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IScriptEventManager eventManager,
             ScriptHostConfiguration scriptConfig = null,
             ScriptSettingsManager settingsManager = null,
-            IProxyClient proxyClient = null)
+            ProxyClientExecutor proxyClient = null)
             : base(scriptConfig.HostConfig)
         {
             scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
@@ -928,7 +928,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         public static ScriptHost Create(IScriptHostEnvironment environment, IScriptEventManager eventManager,
-            ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null, IProxyClient proxyClient = null)
+            ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null, ProxyClientExecutor proxyClient = null)
         {
             ScriptHost scriptHost = new ScriptHost(environment, eventManager, scriptConfig, settingsManager, proxyClient);
             try
@@ -1170,8 +1170,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (_proxyClient == null)
             {
-                _proxyClient = ProxyClientFactory.Create(proxiesJson, _startupLogger);
-            }
+                var rawProxyClient = ProxyClientFactory.Create(proxiesJson, _startupLogger);
+                if (rawProxyClient != null)
+                {
+                    _proxyClient = new ProxyClientExecutor(rawProxyClient);
+                }
+             }
 
             if (_proxyClient == null)
             {

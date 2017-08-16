@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly ScriptSettingsManager _settingsManager;
 
-        protected EndToEndTestFixture(string rootPath, string testId, IProxyClient proxyClient = null)
+        protected EndToEndTestFixture(string rootPath, string testId, ProxyClientExecutor proxyClient = null)
         {
             _settingsManager = ScriptSettingsManager.Instance;
             FixtureId = testId;

@@ -14,9 +14,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal class ProxyFunctionInvoker : FunctionInvokerBase
     {
-        private IProxyClient _proxyClient;
+        private ProxyClientExecutor _proxyClient;
 
-        public ProxyFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata, IProxyClient proxyClient)
+        public ProxyFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata, ProxyClientExecutor proxyClient)
             : base(host, functionMetadata, new FunctionLogger(host, functionMetadata.Name, logDirName: "Proxy"))
         {
             _proxyClient = proxyClient;
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new Exception("Could not find parameter of type HttpRequestMessage while executing a Proxy Request");
             }
 
-            await _proxyClient.CallAsync(requestObj as HttpRequestMessage, context.Logger);
+            await _proxyClient.Execute(requestObj as HttpRequestMessage, context.Logger);
         }
     }
 }
