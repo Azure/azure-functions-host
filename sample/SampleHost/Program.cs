@@ -15,6 +15,7 @@ namespace SampleHost
             var config = new JobHostConfiguration();
             config.Queues.VisibilityTimeout = TimeSpan.FromSeconds(15);
             config.Queues.MaxDequeueCount = 3;
+            config.LoggerFactory = new LoggerFactory().AddConsole();
 
             if (config.IsDevelopment)
             {
