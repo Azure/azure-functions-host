@@ -123,7 +123,7 @@
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.1.0-beta1-10501\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.EventGrid, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.EventGrid.1.0.0-beta1-10002\lib\net46\Microsoft.Azure.WebJobs.Extensions.EventGrid.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.EventGrid.1.0.0-beta1-10006\lib\net46\Microsoft.Azure.WebJobs.Extensions.EventGrid.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.MobileApps, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.MobileApps.1.1.0-beta1-10467\lib\net45\Microsoft.Azure.WebJobs.Extensions.MobileApps.dll</HintPath>
