@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new Exception("Could not find parameter of type HttpRequestMessage while executing a Proxy Request");
             }
 
-            await ProxyClientExecutor.ExecuteProxyRequest(_proxyClient, requestObj as HttpRequestMessage, context.Logger);
+            await _proxyClient.CallAsync(requestObj as HttpRequestMessage, context.Logger);
         }
     }
 }

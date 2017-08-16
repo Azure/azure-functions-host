@@ -8,9 +8,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal static class ProxyClientExecutor
+    internal static class ProxyClientExtensions
     {
-        internal static async Task ExecuteProxyRequest(IProxyClient proxyClient, HttpRequestMessage request, ILogger logger)
+        internal static async Task CallAsync(this IProxyClient proxyClient, HttpRequestMessage request, ILogger logger)
         {
             await proxyClient.CallAsync(new object[] { request }, null, logger);
         }
