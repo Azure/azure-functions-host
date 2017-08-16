@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Security.Claims;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -106,6 +107,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // Add ExecutionContext to provide access to InvocationId, etc.
             parameters.Add(new ParameterDescriptor(ScriptConstants.SystemExecutionContextParameterName, typeof(ExecutionContext)));
+
+            // Add ClaimsIdentity to provide access to identity
+            parameters.Add(new ParameterDescriptor(ScriptConstants.SystemClaimsIdentityParameterName, typeof(ClaimsIdentity)));
 
             parameters.Add(new ParameterDescriptor(ScriptConstants.SystemLoggerParameterName, typeof(ILogger)));
 

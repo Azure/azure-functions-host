@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     string releaseModeSetting = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.CompilationReleaseMode);
                     bool releaseMode;
                     if (!bool.TryParse(releaseModeSetting, out releaseMode) &&
-                        ScriptSettingsManager.Instance.IsAzureEnvironment &&
+                        ScriptSettingsManager.Instance.IsAppServiceEnvironment &&
                         !ScriptSettingsManager.Instance.IsRemoteDebuggingEnabled)
                     {
                         // If the release mode setting is not set, we're running in Azure

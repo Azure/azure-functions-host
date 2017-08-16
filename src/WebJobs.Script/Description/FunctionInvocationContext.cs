@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Security.Claims;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 
@@ -9,6 +10,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public class FunctionInvocationContext
     {
+        public ClaimsIdentity Identity { get; set; }
+
         public ExecutionContext ExecutionContext { get; set; }
 
         public Binder Binder { get; set; }

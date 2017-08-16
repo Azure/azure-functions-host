@@ -8,6 +8,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
@@ -156,9 +157,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return input;
         }
 
-        protected virtual void InitializeEnvironmentVariables(Dictionary<string, string> environmentVariables, string functionInstanceOutputPath, object input, Collection<FunctionBinding> outputBindings, ExecutionContext executionContext)
+        protected virtual void InitializeEnvironmentVariables(Dictionary<string, string> environmentVariables, string functionInstanceOutputPath, object input, Collection<FunctionBinding> outputBindings, FunctionInvocationContext context)
         {
-            environmentVariables["InvocationId"] = executionContext.InvocationId.ToString();
+            environmentVariables["InvocationId"] = context.ExecutionContext.InvocationId.ToString();
 
             foreach (var outputBinding in outputBindings)
             {
@@ -170,6 +171,31 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 InitializeHttpRequestEnvironmentVariables(environmentVariables, request);
             }
+
+            InitializeIdentityEnvironmentVariables(environmentVariables, context.Identity);
+        }
+
+        internal static void InitializeIdentityEnvironmentVariables(Dictionary<string, string> environmentVariables, ClaimsIdentity identity)
+        {
+            environmentVariables["IDENTITY_AUTHENTICATION_TYPE"] = identity.AuthenticationType;
+
+            foreach (var claim in identity.Claims)
+            {
+                // some script environments have problems with special characters in
+                // environment variable names, so we trim to just the claim simple name
+                var claimType = GetClaimShortName(claim.Type);
+                environmentVariables[$"IDENTITY_CLAIMS_{claimType}"] = claim.Value;
+            }
+        }
+
+        internal static string GetClaimShortName(string claimType)
+        {
+            int idx = claimType.LastIndexOfAny(new char[] { ':', '/' });
+            if (idx > 0 && claimType.Length > (idx + 1))
+            {
+                claimType = claimType.Substring(idx + 1);
+            }
+            return claimType;
         }
 
         internal static void InitializeHttpRequestEnvironmentVariables(Dictionary<string, string> environmentVariables, HttpRequestMessage request)

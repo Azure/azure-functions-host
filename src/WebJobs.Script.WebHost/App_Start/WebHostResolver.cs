@@ -4,8 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -152,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static void InitializeFileSystem(string scriptPath)
         {
-            if (ScriptSettingsManager.Instance.IsAzureEnvironment)
+            if (ScriptSettingsManager.Instance.IsAppServiceEnvironment)
             {
                 // When running on Azure, we kick this off on the background
                 Task.Run(() =>

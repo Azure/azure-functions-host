@@ -35,10 +35,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             WebHostSettings settings = new WebHostSettings
             {
-                IsSelfHost = !settingsManager.IsAzureEnvironment
+                IsSelfHost = !settingsManager.IsAppServiceEnvironment
             };
 
-            if (settingsManager.IsAzureEnvironment)
+            if (settingsManager.IsAppServiceEnvironment)
             {
                 string home = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
                 settings.ScriptPath = Path.Combine(home, @"site\wwwroot");

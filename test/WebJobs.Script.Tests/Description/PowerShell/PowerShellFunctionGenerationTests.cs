@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -103,10 +104,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             Assert.Equal(FunctionName, method.Name);
             ParameterInfo[] parameters = method.GetParameters();
-            Assert.Equal(5, parameters.Length);
+            Assert.Equal(6, parameters.Length);
             Assert.Equal(typeof(Task), method.ReturnType);
 
-            // verify TextWriter parameter
+            // verify TraceWriter parameter
             ParameterInfo parameter = parameters[1];
             Assert.Equal("_log", parameter.Name);
             Assert.Equal(typeof(TraceWriter), parameter.ParameterType);
@@ -121,8 +122,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("_context", parameter.Name);
             Assert.Equal(typeof(ExecutionContext), parameter.ParameterType);
 
-            // verify ILogger parameter
+            // verify ClaimsIdentity parameter
             parameter = parameters[4];
+            Assert.Equal("_identity", parameter.Name);
+            Assert.Equal(typeof(ClaimsIdentity), parameter.ParameterType);
+
+            // verify ILogger parameter
+            parameter = parameters[5];
             Assert.Equal("_logger", parameter.Name);
             Assert.Equal(typeof(ILogger), parameter.ParameterType);
         }

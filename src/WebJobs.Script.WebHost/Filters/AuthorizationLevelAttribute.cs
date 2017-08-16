@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 var result = await GetAuthorizationResultAsync(request, secretManager, EvaluateKeyMatch, KeyName);
                 requestAuthorizationLevel = result.AuthorizationLevel;
                 request.SetAuthorizationLevel(result.AuthorizationLevel);
-                request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestKeyNameKey, result.KeyName);
+                request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestKeyIdKey, result.KeyId);
             }
 
             if (request.IsAuthDisabled() ||

@@ -5,14 +5,17 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using System.Web.Http.Dependencies;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -23,12 +26,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     public class FunctionsController : ApiController
     {
         private readonly WebScriptHostManager _scriptHostManager;
-        private WebHookReceiverManager _webHookReceiverManager;
+        private readonly WebHookReceiverManager _webHookReceiverManager;
+        private readonly ScriptSettingsManager _settingsManager;
 
-        public FunctionsController(WebScriptHostManager scriptHostManager, WebHookReceiverManager webHookReceiverManager)
+        public FunctionsController(WebScriptHostManager scriptHostManager, WebHookReceiverManager webHookReceiverManager, ScriptSettingsManager settingsManager)
         {
             _scriptHostManager = scriptHostManager;
             _webHookReceiverManager = webHookReceiverManager;
+            _settingsManager = settingsManager;
         }
 
         public override async Task<HttpResponseMessage> ExecuteAsync(HttpControllerContext controllerContext, CancellationToken cancellationToken)
@@ -42,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             request.SetProperty(ScriptConstants.AzureFunctionsHttpFunctionKey, function);
 
-            var authorizationLevel = await DetermineAuthorizationLevelAsync(request, function, controllerContext.Configuration.DependencyResolver);
+            var authorizationLevel = await DetermineAuthorizationLevelAsync(request, function, _settingsManager, controllerContext.Configuration.DependencyResolver);
             if (function.Metadata.IsExcluded ||
                (function.Metadata.IsDisabled && !(request.IsAuthDisabled() || authorizationLevel == AuthorizationLevel.Admin)))
             {
@@ -59,15 +64,56 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return await _scriptHostManager.HttpRequestManager.ProcessRequestAsync(request, processRequestHandler, cancellationToken);
         }
 
-        public static async Task<AuthorizationLevel> DetermineAuthorizationLevelAsync(HttpRequestMessage request, FunctionDescriptor function, IDependencyResolver resolver)
+        public static async Task<AuthorizationLevel> DetermineAuthorizationLevelAsync(HttpRequestMessage request, FunctionDescriptor function, ScriptSettingsManager settingsManager, IDependencyResolver resolver)
         {
+            // first check if we're authorized via key
             var secretManager = resolver.GetService<ISecretManager>();
             var authorizationResult = await AuthorizationLevelAttribute.GetAuthorizationResultAsync(request, secretManager, functionName: function.Name);
             var authorizationLevel = authorizationResult.AuthorizationLevel;
+
+            if (authorizationLevel > AuthorizationLevel.Anonymous)
+            {
+                // add a new identity to the principal representing
+                // the key authentication result
+                AddKeyAuthorizationIdentity(ClaimsPrincipal.Current, authorizationResult);
+            }
+
+            // See if we're we're authorized at the User level (EasyAuth)
+            // and apply the result (only if we're not also authorized already
+            // at a higher level)
+            if (authorizationLevel < AuthorizationLevel.User &&
+                HasEasyAuthIdentity(request, settingsManager))
+            {
+                authorizationLevel = AuthorizationLevel.User;
+            }
+
             request.SetAuthorizationLevel(authorizationLevel);
-            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestKeyNameKey, authorizationResult.KeyName);
+            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestKeyIdKey, authorizationResult.KeyId);
 
             return authorizationLevel;
+        }
+
+        internal static void AddKeyAuthorizationIdentity(ClaimsPrincipal principal, KeyAuthorizationResult result)
+        {
+            var identity = new ClaimsIdentity(ScriptConstants.AzureFunctionsKeyAuthenticationType);
+            identity.AddClaim(new Claim(ScriptConstants.AzureFunctionsAuthLevelClaimName, result.AuthorizationLevel.ToString()));
+            identity.AddClaim(new Claim(ScriptConstants.AzureFunctionsKeyIdClaimName, result.KeyId));
+
+            principal.AddIdentity(identity);
+        }
+
+        internal static bool HasEasyAuthIdentity(HttpRequestMessage request, ScriptSettingsManager settingsManager)
+        {
+            if (settingsManager.IsAppServiceEnvironment)
+            {
+                // Note: this special header IS NOT spoofable by external clients and is a secure
+                // indicator (when running in AppService) that the current request is EasyAuth
+                // authenticated. Only check this if we're running under AppService.
+                var easyAuthIdentityProvider = request.GetHeaderValueOrDefault(ScriptConstants.AntaresEasyAuthProviderHeaderName);
+                return !string.IsNullOrEmpty(easyAuthIdentityProvider);
+            }
+
+            return false;
         }
 
         private async Task<HttpResponseMessage> ProcessRequestAsync(HttpRequestMessage request, FunctionDescriptor function, CancellationToken cancellationToken)
