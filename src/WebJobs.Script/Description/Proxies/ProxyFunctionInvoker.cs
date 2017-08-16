@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Management.Automation;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.AppService.Proxy.Client.Contract;
@@ -22,7 +24,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
-            await _proxyClient.CallAsync(parameters, null, context.Logger);
+            object requestObj = (parameters != null && parameters.Any()) ? parameters[0] : null;
+
+            if (requestObj == null || !(requestObj is HttpRequestMessage))
+            {
+                throw new Exception("Could not find parameter of type HttpRequestMessage while executing a Proxy Request");
+            }
+
+            await ProxyClientExecutor.ExecuteProxyRequest(_proxyClient, requestObj as HttpRequestMessage, context.Logger);
         }
     }
 }
