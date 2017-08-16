@@ -17,7 +17,7 @@
       <dependency id="Edge.js" version="6.11.2" />
       <dependency id="FSharp.Compiler.Service" version="9.0.1" />
       <dependency id="FSharp.Core" version="4.0.0.1" />
-      <dependency id="Microsoft.Azure.WebJobs" version="2.1.0-beta1-10950" />
+      <dependency id="Microsoft.Azure.WebJobs" version="2.1.0-beta1-10976" />
       <dependency id="Microsoft.ApplicationInsights.WindowsServer" version="2.3.0" />
       <dependency id="Microsoft.Azure.ServiceBus.EventProcessorHost" version="2.2.10" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.ApiHub" version="1.0.0-beta4-10467" />
@@ -28,7 +28,7 @@
       <dependency id="Microsoft.Azure.WebJobs.Extensions.NotificationHubs" version="1.1.0-beta1-10467" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.SendGrid" version="2.1.0-beta1-10467" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.Twilio" version="1.1.0-beta1-10467" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.EventGrid" version="1.0.0-beta1-10002" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.EventGrid" version="1.0.0-beta1-10005" />
       <dependency id="Microsoft.Bot.Connector.DirectLine" version="3.0.0-beta" />
       <dependency id="Microsoft.CodeAnalysis.Analyzers" version="1.1.0" />
       <dependency id="Microsoft.CodeAnalysis.CSharp.Scripting" version="2.0.0" />
