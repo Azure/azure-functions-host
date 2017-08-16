@@ -8,10 +8,10 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.AppService.Proxy.Client.Contract;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
