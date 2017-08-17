@@ -1449,7 +1449,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 ValidateHttpFunction(function.Name, httpTrigger);
 
-                if (function.Metadata.IsProxy)
+                if (function.Metadata != null && !function.Metadata.IsProxy)
                 {
                     // prevent duplicate/conflicting routes for functions
                     // proxy routes check is done in the proxy dll itself and proxies do not use routePrefix so should not check conflict with functions
