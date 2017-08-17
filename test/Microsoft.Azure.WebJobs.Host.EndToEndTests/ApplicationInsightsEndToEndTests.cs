@@ -13,9 +13,7 @@ using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility.PerfCounterCollector.QuickPulse;
 using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
-using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
-using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Extensions.Logging;
@@ -76,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             ValidateTrace(telemetries[4], "Trace", LogCategories.Function, testName);
 
             // We should have 1 custom metric.
-            MetricTelemetry metric =_channel.Telemetries
+            MetricTelemetry metric = _channel.Telemetries
                 .OfType<MetricTelemetry>()
                 .Single();
             ValidateMetric(metric, testName);
@@ -125,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             ValidateTrace(telemetries[0], "Found the following functions:\r\n", LogCategories.Startup);
             ValidateTrace(telemetries[1], "Job host started", LogCategories.Startup);
-            ValidateTrace(telemetries[2], "Job host stopped", LogCategories.Startup);            
+            ValidateTrace(telemetries[2], "Job host stopped", LogCategories.Startup);
             ValidateTrace(telemetries[3], "Logger", LogCategories.Function, testName, hasCustomScope: true);
             ValidateTrace(telemetries[4], "Trace", LogCategories.Function, testName);
 
@@ -196,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 // The calculated RPS may off, so give some wiggle room. The important thing is that it's generating 
                 // RequestTelemetry and not being filtered.
                 double max = requests + 3;
-                double min = requests - 1;
+                double min = requests - 2;
                 Assert.True(sum > min && sum < max, $"Expected sum to be greater than {min} and less than {max}. DefaultLevel: {defaultLevel}. Actual: {sum}");
 
                 // These will be filtered based on the default filter.
@@ -494,7 +492,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             public double Value { get; set; }
 
             public int Weight { get; set; }
-        }        
+        }
 
         private class TestTelemetryClientFactory : DefaultTelemetryClientFactory
         {
