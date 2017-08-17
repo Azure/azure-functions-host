@@ -9,13 +9,10 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -28,7 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        [Fact(Skip ="Fails in AppVeyor")]
+        // https://github.com/Azure/azure-webjobs-sdk-script/issues/1787
+        // [Fact]
         public async Task Invoke()
         {
             // Verify the type is ls in the typelocator.

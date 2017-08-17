@@ -340,6 +340,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected virtual void OnInitializeConfig(ScriptHostConfiguration config)
         {
+            var loggingConnectionString = config.HostConfig.DashboardConnectionString;
+            if (string.IsNullOrEmpty(loggingConnectionString))
+            {
+                // if no Dashboard connection string is provided, set this to null
+                // to prevent host startup failure
+                config.HostConfig.DashboardConnectionString = null;
+            }
         }
 
         protected virtual void OnHostCreated()

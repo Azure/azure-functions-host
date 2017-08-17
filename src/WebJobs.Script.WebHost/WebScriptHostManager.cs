@@ -433,22 +433,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Add our WebHost specific services
             var hostConfig = config.HostConfig;
             hostConfig.AddService<IMetricsLogger>(_metricsLogger);
-
-            config.HostConfig.AddService<IWebHookProvider>(this._bindingWebHookProvider);
-
-            // Add our exception handler
+            hostConfig.AddService<IWebHookProvider>(this._bindingWebHookProvider);
             hostConfig.AddService<IWebJobsExceptionHandler>(_exceptionHandler);
 
-            // Register the new "FastLogger" for Dashboard support
-            var dashboardString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Dashboard);
+            // disable standard Dashboard logging (enabling Table logging below)
+            hostConfig.DashboardConnectionString = null;
 
-            // hostId may be missing in local test scenarios.
-            var hostId = config.HostConfig.HostId ?? "default";
+            // HostId may be missing in local test scenarios.
+            var hostId = hostConfig.HostId ?? "default";
             Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
-            var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, dashboardString, config.TraceWriter);
+            var loggingConnectionString = config.HostConfig.DashboardConnectionString;
+            var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, loggingConnectionString, config.TraceWriter);
             hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
-
-            hostConfig.DashboardConnectionString = null; // disable slow logging
         }
 
         protected override void OnHostCreated()
