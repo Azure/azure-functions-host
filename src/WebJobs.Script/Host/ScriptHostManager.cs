@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private readonly ScriptHostConfiguration _config;
         private readonly IScriptHostFactory _scriptHostFactory;
+        private readonly ILoggerFactoryBuilder _loggerFactoryBuilder;
         private readonly IScriptHostEnvironment _environment;
         private readonly IDisposable _fileEventSubscription;
         private readonly StructuredLogWriter _structuredLogWriter;
@@ -51,8 +52,12 @@ namespace Microsoft.Azure.WebJobs.Script
         private ScriptSettingsManager _settingsManager;
         private CancellationTokenSource _restartDelayTokenSource;
 
-        public ScriptHostManager(ScriptHostConfiguration config, IScriptEventManager eventManager = null, IScriptHostEnvironment environment = null)
-            : this(config, ScriptSettingsManager.Instance, new ScriptHostFactory(), eventManager, environment)
+        public ScriptHostManager(
+            ScriptHostConfiguration config,
+            IScriptEventManager eventManager = null,
+            IScriptHostEnvironment environment = null,
+            ILoggerFactoryBuilder loggerFactoryBuilder = null)
+            : this(config, ScriptSettingsManager.Instance, new ScriptHostFactory(), eventManager, environment, loggerFactoryBuilder)
         {
             if (config.FileWatchingEnabled)
             {
@@ -68,12 +73,14 @@ namespace Microsoft.Azure.WebJobs.Script
             ScriptSettingsManager settingsManager,
             IScriptHostFactory scriptHostFactory,
             IScriptEventManager eventManager = null,
-            IScriptHostEnvironment environment = null)
+            IScriptHostEnvironment environment = null,
+            ILoggerFactoryBuilder loggerFactoryBuilder = null)
         {
             _environment = environment ?? this;
             _config = config;
             _settingsManager = settingsManager;
             _scriptHostFactory = scriptHostFactory;
+            _loggerFactoryBuilder = loggerFactoryBuilder;
 
             EventManager = eventManager ?? new ScriptEventManager();
 
@@ -134,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         HostId = _config.HostConfig.HostId
                     };
                     OnInitializeConfig(_config);
-                    newInstance = _scriptHostFactory.Create(_environment, EventManager, _settingsManager, _config);
+                    newInstance = _scriptHostFactory.Create(_environment, EventManager, _settingsManager, _config, _loggerFactoryBuilder);
                     _traceWriter = newInstance.TraceWriter;
                     _logger = newInstance.Logger;
 

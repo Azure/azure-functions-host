@@ -63,6 +63,7 @@ namespace WebJobs.Script.WebHost.Core
             // Some of those services (or the way we register them) may need to change
             builder.RegisterType<DefaultSecretManagerFactory>().As<ISecretManagerFactory>().SingleInstance();
             builder.RegisterType<ScriptEventManager>().As<IScriptEventManager>().SingleInstance();
+            builder.RegisterType<DefaultLoggerFactoryBuilder>().As<ILoggerFactoryBuilder>().SingleInstance();
             builder.RegisterInstance(ScriptSettingsManager.Instance);
             builder.Register(c => WebHostSettings.CreateDefault(c.Resolve<ScriptSettingsManager>()));
             builder.RegisterType<WebHostResolver>().SingleInstance();

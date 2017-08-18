@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ISecretManagerFactory _secretManagerFactory;
         private readonly IScriptEventManager _eventManager;
         private readonly IWebJobsRouter _router;
+        private readonly ILoggerFactoryBuilder _loggerFactoryBuilder;
         private readonly WebHostSettings _settings;
         private ScriptHostConfiguration _standbyScriptHostConfig;
         private WebScriptHostManager _standbyHostManager;
@@ -37,12 +38,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static ScriptSettingsManager _settingsManager;
 
         public WebHostResolver(ScriptSettingsManager settingsManager, ISecretManagerFactory secretManagerFactory,
-            IScriptEventManager eventManager, WebHostSettings settings, IWebJobsRouter router)
+            IScriptEventManager eventManager, WebHostSettings settings, IWebJobsRouter router, ILoggerFactoryBuilder loggerFactoryBuilder)
         {
             _settingsManager = settingsManager;
             _secretManagerFactory = secretManagerFactory;
             _eventManager = eventManager;
             _router = router;
+            _loggerFactoryBuilder = loggerFactoryBuilder;
             _settings = settings;
         }
 
@@ -129,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
 
-                    _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager,  _settingsManager, settings, _router);
+                    _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager,  _settingsManager, settings, _router, _loggerFactoryBuilder);
 
                     // _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
 
@@ -150,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     _standbyScriptHostConfig = CreateScriptHostConfiguration(settings);
 
-                    _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings, _router);
+                    _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings, _router, _loggerFactoryBuilder);
 
                     // _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
                 }
