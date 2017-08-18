@@ -389,6 +389,10 @@
     <Reference Include="xunit.execution.desktop, Version=2.1.0.3179, Culture=neutral, PublicKeyToken=8d05b1bb7a6fdb6c, processorArchitecture=MSIL">
       <HintPath>..\..\packages\xunit.extensibility.execution.2.1.0\lib\net45\xunit.execution.desktop.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.Azure.AppService.Proxy.Client.Contract, Version=0.3.0.6, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.Client.Contract.0.3.0.6\lib\net46\Microsoft.Azure.AppService.Proxy.Client.Contract.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ApiHubTestHelper.cs" />
@@ -426,6 +430,7 @@
     <Compile Include="Controllers\Keys\PostHostFunctionKeyScenario.cs" />
     <Compile Include="Controllers\Keys\PutHostFunctionKeyScenario.cs" />
     <Compile Include="CSharpEndToEndTests.cs" />
+    <Compile Include="ProxyEndToEndTests.cs" />
     <Compile Include="RawAssemblyEndToEndTests.cs" />
     <Compile Include="EndToEndTestFixture.cs" />
     <Compile Include="EndToEndTestsBase.cs" />
@@ -1075,6 +1080,18 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\PowerShell\TimeoutSync\run.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Proxies\host.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Proxies\httptrigger\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Proxies\httptrigger\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\Proxies\proxies.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestScripts\Python\host.json">

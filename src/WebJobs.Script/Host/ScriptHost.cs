@@ -18,6 +18,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
+using Microsoft.Azure.AppService.Proxy.Client.Contract;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
@@ -61,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ILogger _startupLogger;
         private FileWatcherEventSource _fileEventSource;
         private IDisposable _fileEventsSubscription;
+        private ProxyClientExecutor _proxyClient;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -110,7 +112,8 @@ namespace Microsoft.Azure.WebJobs.Script
         protected internal ScriptHost(IScriptHostEnvironment environment,
             IScriptEventManager eventManager,
             ScriptHostConfiguration scriptConfig = null,
-            ScriptSettingsManager settingsManager = null)
+            ScriptSettingsManager settingsManager = null,
+            ProxyClientExecutor proxyClient = null)
             : base(scriptConfig.HostConfig)
         {
             scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
@@ -128,6 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script
             EventManager = eventManager;
 
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
+            _proxyClient = proxyClient;
         }
 
         public event EventHandler IsPrimaryChanged;
@@ -588,7 +592,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 var metadata = function.Metadata;
                 var scriptFile = metadata.ScriptFile;
-                if (scriptFile.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                if (scriptFile != null && scriptFile.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
                 {
                     bool isDirect = metadata.IsDirect;
                     bool prevIsDirect;
@@ -924,9 +928,9 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         public static ScriptHost Create(IScriptHostEnvironment environment, IScriptEventManager eventManager,
-            ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null)
+            ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null, ProxyClientExecutor proxyClient = null)
         {
-            ScriptHost scriptHost = new ScriptHost(environment, eventManager, scriptConfig, settingsManager);
+            ScriptHost scriptHost = new ScriptHost(environment, eventManager, scriptConfig, settingsManager, proxyClient);
             try
             {
                 scriptHost.Initialize();
@@ -1134,6 +1138,80 @@ namespace Microsoft.Azure.WebJobs.Script
             return functions;
         }
 
+        internal Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, ScriptSettingsManager settingsManager = null)
+        {
+            // read the proxy config
+            string proxyConfigPath = Path.Combine(config.RootScriptPath, ScriptConstants.ProxyMetadataFileName);
+            if (!File.Exists(proxyConfigPath))
+            {
+                return null;
+            }
+
+            settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
+
+            var proxyAppSettingValue = settingsManager.GetSetting(EnvironmentSettingNames.ProxySiteExtensionEnabledKey);
+
+            // This is for backward compatibility only, if the file is present but the value of proxy app setting(ROUTING_EXTENSION_VERSION) is explicitly set to 'disabled' we will ignore loading the proxies.
+            if (!string.IsNullOrWhiteSpace(proxyAppSettingValue) && proxyAppSettingValue.Equals("disabled", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            string proxiesJson = File.ReadAllText(proxyConfigPath);
+
+            var proxies = LoadProxyRoutes(proxiesJson);
+
+            return proxies;
+        }
+
+        private Collection<FunctionMetadata> LoadProxyRoutes(string proxiesJson)
+        {
+            var proxies = new Collection<FunctionMetadata>();
+
+            if (_proxyClient == null)
+            {
+                var rawProxyClient = ProxyClientFactory.Create(proxiesJson, _startupLogger);
+                if (rawProxyClient != null)
+                {
+                    _proxyClient = new ProxyClientExecutor(rawProxyClient);
+                }
+             }
+
+            if (_proxyClient == null)
+            {
+                return proxies;
+            }
+
+            var routes = _proxyClient.GetProxyData();
+
+            foreach (var route in routes.Routes)
+            {
+                var proxyMetadata = new FunctionMetadata();
+
+                var json = new JObject
+                {
+                    { "authLevel", "anonymous" },
+                    { "name", "req" },
+                    { "type", "httptrigger" },
+                    { "direction", "in" },
+                    { "Route", route.UrlTemplate.TrimStart('/') },
+                    { "Methods",  new JArray(route.Methods.Select(m => m.Method.ToString()).ToArray()) }
+                };
+
+                BindingMetadata bindingMetadata = BindingMetadata.Create(json);
+
+                proxyMetadata.Bindings.Add(bindingMetadata);
+
+                proxyMetadata.Name = route.Name;
+                proxyMetadata.ScriptType = ScriptType.Unknown;
+                proxyMetadata.IsProxy = true;
+
+                proxies.Add(proxyMetadata);
+            }
+
+            return proxies;
+        }
+
         internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, TraceWriter traceWriter, ILogger logger, string scriptDirectory,
         ScriptSettingsManager settingsManager, out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
         {
@@ -1297,6 +1375,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private Collection<FunctionDescriptor> GetFunctionDescriptors(Collection<FunctionMetadata> functions)
         {
+            var proxies = ReadProxyMetadata(ScriptConfig, _settingsManager);
+
             var descriptorProviders = new List<FunctionDescriptorProvider>()
                 {
                     new ScriptFunctionDescriptorProvider(this, ScriptConfig),
@@ -1309,7 +1389,20 @@ namespace Microsoft.Azure.WebJobs.Script
 #endif
                 };
 
-            return GetFunctionDescriptors(functions, descriptorProviders);
+            IEnumerable<FunctionMetadata> combinedFunctionMetadata = null;
+            if (proxies != null && proxies.Any())
+            {
+                // Proxy routes will take precedence over http trigger functions and http trigger routes so they will be added first to the list of function descriptors.
+                combinedFunctionMetadata = proxies.Concat(functions);
+
+                descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptConfig, _proxyClient));
+            }
+            else
+            {
+                combinedFunctionMetadata = functions;
+            }
+
+            return GetFunctionDescriptors(combinedFunctionMetadata, descriptorProviders);
         }
 
         internal Collection<FunctionDescriptor> GetFunctionDescriptors(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
@@ -1356,12 +1449,16 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 ValidateHttpFunction(function.Name, httpTrigger);
 
-                // prevent duplicate/conflicting routes
-                foreach (var pair in httpFunctions)
+                if (function.Metadata != null && !function.Metadata.IsProxy)
                 {
-                    if (HttpRoutesConflict(httpTrigger, pair.Value))
+                    // prevent duplicate/conflicting routes for functions
+                    // proxy routes check is done in the proxy dll itself and proxies do not use routePrefix so should not check conflict with functions
+                    foreach (var pair in httpFunctions)
                     {
-                        throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
+                        if (HttpRoutesConflict(httpTrigger, pair.Value))
+                        {
+                            throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
+                        }
                     }
                 }
 
@@ -1718,8 +1815,9 @@ namespace Microsoft.Azure.WebJobs.Script
             // A full host shutdown is performed when an assembly (.dll, .exe) in a watched directory is modified
             string fileName = Path.GetFileName(e.Name);
             if (isWatchedDirectory ||
-                ((string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
-                string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
+                (string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
+                 string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
+                 string.Compare(fileName, ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
                 !_directorySnapshot.SequenceEqual(Directory.EnumerateDirectories(ScriptConfig.RootScriptPath)))
             {
                 bool shutdown = false;

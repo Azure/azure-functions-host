@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Web.Http;
+using Microsoft.Azure.AppService.Proxy.Client.Contract;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly ScriptSettingsManager _settingsManager;
 
-        protected EndToEndTestFixture(string rootPath, string testId)
+        protected EndToEndTestFixture(string rootPath, string testId, ProxyClientExecutor proxyClient = null)
         {
             _settingsManager = ScriptSettingsManager.Instance;
             FixtureId = testId;
@@ -64,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fastLogger = new FunctionInstanceLogger(funcLookup, new MetricsLogger());
             config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
 
-            Host = ScriptHost.Create(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager);
+            Host = ScriptHost.Create(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager, proxyClient);
             Host.Start();
         }
 

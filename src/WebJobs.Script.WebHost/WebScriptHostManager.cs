@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Hosting;
 using System.Web.Http;
+using System.Web.Http.Controllers;
 using System.Web.Http.Routing;
 using Microsoft.AspNet.WebHooks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -481,12 +482,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             // we must initialize the route factory here AFTER full configuration
             // has been resolved so we apply any route prefix customizations
-            var httpRouteFactory = new HttpRouteFactory(httpConfig.RoutePrefix);
+            var functionHttpRouteFactory = new HttpRouteFactory(httpConfig.RoutePrefix);
+
+            // Proxies do not honor the route prefix defined in host.json
+            var proxyHttpRouteFactory = new HttpRouteFactory(string.Empty);
 
             _httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>();
             _httpRoutes = new HttpRouteCollection();
 
-            foreach (var function in functions)
+            // Proxy routes will take precedence over http trigger functions and http trigger
+            // routes so they will be added first to the list of http routes.
+            var orderdFunctions = functions.OrderBy(f => f.Metadata.IsProxy ? 0 : 1);
+
+            foreach (var function in orderdFunctions)
             {
                 var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
                 if (httpTrigger != null)
@@ -497,6 +505,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         httpMethods = httpTrigger.Methods.Select(p => new HttpMethod(p)).ToArray();
                     }
+                    var httpRouteFactory = function.Metadata.IsProxy ? proxyHttpRouteFactory : functionHttpRouteFactory;
                     if (httpRouteFactory.TryAddRoute(function.Metadata.Name, httpTrigger.Route, httpMethods, _httpRoutes, out httpRoute))
                     {
                         _httpFunctions.Add(httpRoute, function);

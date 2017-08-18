@@ -1,0 +1,25 @@
+{
+  "proxies": {
+    "test": {
+      "matchCondition": {
+        "route": "/myproxy",
+        "methods": [
+          "GET", "POST"
+        ]
+      },
+      "backendUri": "http://localhost/api/httptrigger"
+    },
+    "localFunction": {
+        "matchCondition": {
+          "route": "/mymockhttp",
+          "methods": [
+            "GET"
+          ]
+        },
+      "responseOverrides": {
+        "response.headers.myversion": "123",
+        "response.statusCode": "200"
+      }
+    }
+   }
+}

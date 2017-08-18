@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var funcDescriptors = new Collection<FunctionDescriptor>();
             funcDescriptors.Add(funcDescriptor);
             var eventManager = new Mock<IScriptEventManager>();
-            var hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { new NullScriptHostEnvironment(), eventManager.Object, config, null });
+            var hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { new NullScriptHostEnvironment(), eventManager.Object, config, null, null });
             hostMock.SetupGet(h => h.FunctionTraceWriterFactory).Returns(new FunctionTraceWriterFactory(config));
             hostMock.SetupGet(h => h.Functions).Returns(funcDescriptors);
             hostMock.Object.TraceWriter = _traceWriter;

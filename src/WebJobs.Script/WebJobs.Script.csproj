@@ -87,6 +87,10 @@
     <Reference Include="Microsoft.Azure.Documents.Client, Version=1.13.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.DocumentDB.1.13.2\lib\net45\Microsoft.Azure.Documents.Client.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.Azure.AppService.Proxy.Client.Contract, Version=0.3.0.6, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.Client.Contract.0.3.0.6\lib\net46\Microsoft.Azure.AppService.Proxy.Client.Contract.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
     <Reference Include="Microsoft.Azure.KeyVault.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.KeyVault.Core.1.0.0\lib\net40\Microsoft.Azure.KeyVault.Core.dll</HintPath>
     </Reference>
@@ -445,6 +449,9 @@
     <Compile Include="Description\Binding\DataType.cs" />
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompiler.cs" />
     <Compile Include="Description\PackageRestoreResult.cs" />
+    <Compile Include="Description\Proxies\ProxyClientExecutor.cs" />
+    <Compile Include="Description\Proxies\ProxyFunctionDescriptorProvider.cs" />
+    <Compile Include="Description\Proxies\ProxyFunctionInvoker.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Description\DotNet\Compilation\FSharp\FSharpCompilation.cs" />
     <Compile Include="Diagnostics\ApplicationPerformanceCounters.cs" />

@@ -59,6 +59,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public bool IsDirect { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether this function is a wrapper for Azure Function Proxy
+        /// </summary>
+        public bool IsProxy { get; set; }
+
         public Collection<BindingMetadata> Bindings { get; }
 
         public IEnumerable<BindingMetadata> InputBindings

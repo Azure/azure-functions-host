@@ -1280,18 +1280,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
             // first add an http function
-            var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test", null, null, null, null, null, null);
+            var metadata = new FunctionMetadata();
+            var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test", null, metadata, null, null, null, null);
             var attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get")
             {
                 Route = "products/{category}/{id?}"
             };
             function.Setup(p => p.GetTriggerAttributeOrNull<HttpTriggerAttribute>()).Returns(() => attribute);
+
             ScriptHost.ValidateFunction(function.Object, httpFunctions);
             Assert.Equal(1, httpFunctions.Count);
             Assert.True(httpFunctions.ContainsKey("test"));
 
             // add another for a completely different route
-            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test2", null, null, null, null, null, null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test2", null, metadata, null, null, null, null);
             attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get")
             {
                 Route = "/foo/bar/baz/"
@@ -1302,7 +1304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(httpFunctions.ContainsKey("test2"));
 
             // add another that varies from another only by http methods
-            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test3", null, null, null, null, null, null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test3", null, metadata, null, null, null, null);
             attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "put", "post")
             {
                 Route = "/foo/bar/baz/"
@@ -1314,7 +1316,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // now try to add a function for the same route
             // where the http methods overlap
-            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test4", null, null, null, null, null, null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test4", null, metadata, null, null, null, null);
             attribute = new HttpTriggerAttribute
             {
                 Route = "/foo/bar/baz/"
@@ -1328,7 +1330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(3, httpFunctions.Count);
 
             // try to add a route under reserved admin route
-            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test5", null, null, null, null, null, null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test5", null, metadata, null, null, null, null);
             attribute = new HttpTriggerAttribute
             {
                 Route = "admin/foo/bar"
@@ -1341,7 +1343,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("The specified route conflicts with one or more built in routes.", ex.Message);
 
             // verify that empty route is defaulted to function name
-            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test6", null, null, null, null, null, null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test6", null, metadata, null, null, null, null);
             attribute = new HttpTriggerAttribute();
             function.Setup(p => p.GetTriggerAttributeOrNull<HttpTriggerAttribute>()).Returns(() => attribute);
             ScriptHost.ValidateFunction(function.Object, httpFunctions);
@@ -1356,7 +1358,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Mock<IScriptHostEnvironment> mockEnvironment = new Mock<IScriptHostEnvironment>(MockBehavior.Strict);
             var config = new ScriptHostConfiguration();
             var eventManager = new Mock<IScriptEventManager>();
-            var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, eventManager.Object, config, null });
+            var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, eventManager.Object, config, null, null });
 
             var functions = new Collection<FunctionDescriptor>();
             var functionErrors = new Dictionary<string, Collection<string>>();

@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -19,20 +20,21 @@ namespace Microsoft.Azure.WebJobs.Script
             _scriptHostConfig = scriptHostConfig;
         }
 
-        public TraceWriter Create(string functionName)
+        public TraceWriter Create(string functionName, string logDirName = null)
         {
+            logDirName = logDirName ?? "Function";
             if (_scriptHostConfig.FileLoggingMode != FileLoggingMode.Never)
             {
-                return _writerCache.GetOrAdd(functionName, f => CreateTraceWriter(_scriptHostConfig, f));
+                return _writerCache.GetOrAdd(functionName, f => CreateTraceWriter(_scriptHostConfig, f, logDirName));
             }
 
             return NullTraceWriter.Instance;
         }
 
-        private TraceWriter CreateTraceWriter(ScriptHostConfiguration config, string functionName)
+        private TraceWriter CreateTraceWriter(ScriptHostConfiguration config, string functionName, string dirName)
         {
             TraceLevel functionTraceLevel = config.HostConfig.Tracing.ConsoleLevel;
-            string logFilePath = Path.Combine(config.RootLogPath, "Function", functionName);
+            string logFilePath = Path.Combine(config.RootLogPath, dirName, functionName);
 
             // Wrap the FileTraceWriter in a RemovableTraceWriter so we can remove it from the cache when it is disposed
             var innerTraceWriter = new FileTraceWriter(logFilePath, functionTraceLevel);

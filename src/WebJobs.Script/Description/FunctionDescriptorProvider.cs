@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Collection<FunctionBinding> outputBindings = FunctionBinding.GetBindings(Config, functionMetadata.OutputBindings, FileAccess.Write);
 
             BindingMetadata triggerMetadata = functionMetadata.InputBindings.FirstOrDefault(p => p.IsTrigger);
-            string scriptFilePath = Path.Combine(Config.RootScriptPath, functionMetadata.ScriptFile);
+            string scriptFilePath = Path.Combine(Config.RootScriptPath, functionMetadata.ScriptFile ?? string.Empty);
             functionDescriptor = null;
             IFunctionInvoker invoker = null;
 
