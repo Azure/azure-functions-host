@@ -61,8 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
             Assert.Equal(invocationCount, logs.Count(p => p.Contains(functionTrace)));
 
-            // Each invocation produces 5 telemetries. Then there are 6 created by the host.
-            Assert.Equal((5 * invocationCount) + 6, _fixture.Channel.Telemetries.Count);
+            // Each invocation produces 5 telemetries. Then there are 9 created by the host.
+            Assert.Equal((5 * invocationCount) + 9, _fixture.Channel.Telemetries.Count);
 
             // Validate the telemetry for a specific function. There should be 5 for each, and these should all
             // include the function name and invocation id. Pull out the function trace first and
@@ -118,7 +118,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTrace(telemetries[2], "Host configuration file read:", LogCategories.Startup);
             ValidateTrace(telemetries[3], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
             ValidateTrace(telemetries[4], "Job host started", LogCategories.Startup);
-            ValidateTrace(telemetries[5], "Reading host configuration file", LogCategories.Startup);
+            ValidateTrace(telemetries[5], "Loaded custom extension: BotFrameworkConfiguration from ''", LogCategories.Startup);
+            ValidateTrace(telemetries[6], "Loaded custom extension: EventGridExtensionConfig from ''", LogCategories.Startup);
+            ValidateTrace(telemetries[7], "Loaded custom extension: SendGridConfiguration from ''", LogCategories.Startup);
+            ValidateTrace(telemetries[8], "Reading host configuration file", LogCategories.Startup);
         }
 
         private static void ValidateMetric(MetricTelemetry telemetry, string expectedOperationName)
