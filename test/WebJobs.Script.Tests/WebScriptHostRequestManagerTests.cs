@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Scale;
 using Moq;
 using Xunit;
 
@@ -87,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, highLoadQueryCount);
             Assert.Equal(3, throttleMetricCount);
             var trace = _traceWriter.Traces.Last();
-            Assert.Equal("Thresholds for the following counters have been exceeded: Threads, Processes", trace.Message);
+            Assert.Equal("Thresholds for the following counters have been exceeded: [Threads, Processes]", trace.Message);
 
             await Task.Delay(1000);
             highLoad = false;

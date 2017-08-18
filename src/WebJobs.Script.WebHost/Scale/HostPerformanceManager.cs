@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Newtonsoft.Json;
 
-namespace Microsoft.Azure.WebJobs.Script.Diagnostics
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Scale
 {
     public class HostPerformanceManager
     {
@@ -14,9 +14,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         internal const float ThreadThreshold = 0.80F;
         internal const float ProcessesThreshold = 0.80F;
         internal const float NamedPipesThreshold = 0.80F;
+        internal const float SectionsThreshold = 0.80F;
 
         private readonly ScriptSettingsManager _settingsManager;
         private readonly TraceWriter _traceWriter;
+
+        // for mock testing
+        public HostPerformanceManager()
+        {
+        }
 
         public HostPerformanceManager(ScriptSettingsManager settingsManager, TraceWriter traceWriter)
         {
@@ -44,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             exceeded |= ThresholdExceeded("Threads", counters.Threads, counters.ThreadLimit, ThreadThreshold, exceededCounters);
             exceeded |= ThresholdExceeded("Processes", counters.Processes, counters.ProcessLimit, ProcessesThreshold, exceededCounters);
             exceeded |= ThresholdExceeded("NamedPipes", counters.NamedPipes, counters.NamedPipeLimit, NamedPipesThreshold, exceededCounters);
+            exceeded |= ThresholdExceeded("Sections", counters.Sections, counters.SectionLimit, SectionsThreshold, exceededCounters);
 
             return exceeded;
         }

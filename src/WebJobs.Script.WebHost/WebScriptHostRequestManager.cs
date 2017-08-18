@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Scale;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -42,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _lastPerformanceCheck = DateTime.UtcNow;
                 if (_rejectAllRequests)
                 {
-                    TraceWriter.Info($"Thresholds for the following counters have been exceeded: {string.Join(", ", exceededCounters)}");
+                    TraceWriter.Warning($"Thresholds for the following counters have been exceeded: [{string.Join(", ", exceededCounters)}]");
                 }
             }
 

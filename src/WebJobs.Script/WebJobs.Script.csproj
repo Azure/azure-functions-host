@@ -454,7 +454,6 @@
     <Compile Include="Description\Proxies\ProxyFunctionInvoker.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Description\DotNet\Compilation\FSharp\FSharpCompilation.cs" />
-    <Compile Include="Diagnostics\ApplicationPerformanceCounters.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />
     <Compile Include="Description\Binding\BindingMetadata.cs" />
@@ -480,7 +479,6 @@
     <Compile Include="Diagnostics\FileLoggingMode.cs" />
     <Compile Include="Diagnostics\FunctionStartedEvent.cs" />
     <Compile Include="Diagnostics\FunctionTraceWriterFactory.cs" />
-    <Compile Include="Diagnostics\HostPerformanceManager.cs" />
     <Compile Include="Diagnostics\DefaultLoggerFactoryBuilder.cs" />
     <Compile Include="Diagnostics\ILoggerFactoryBuilder.cs" />
     <Compile Include="Diagnostics\IMetricsLogger.cs" />

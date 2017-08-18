@@ -470,6 +470,7 @@
     <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\FunctionsController.cs" />
     <Compile Include="Controllers\KeysController.cs" />
+    <Compile Include="Filters\HostHealthInvocationFilter.cs" />
     <Compile Include="Filters\JwtAuthenticationAttribute.cs" />
     <Compile Include="Handlers\ExceptionProcessingHandler.cs" />
     <Compile Include="Controllers\SwaggerController.cs" />
@@ -496,7 +497,6 @@
     <Compile Include="Models\Swagger\HttpOperationInfo.cs" />
     <Compile Include="Models\Swagger\HttpOperationParameterInfo.cs" />
     <Compile Include="Models\Link.cs" />
-    <Compile Include="Models\LoadStatus.cs" />
     <Compile Include="Models\Swagger\SwaggerInfo.cs" />
     <Compile Include="OperationResult.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -506,6 +506,9 @@
     </Compile>
     <Compile Include="FunctionRequestInvoker.cs" />
     <Compile Include="ProxyFunctionExecutor.cs" />
+    <Compile Include="Scale\ApplicationPerformanceCounters.cs" />
+    <Compile Include="Scale\HostPerformanceManager.cs" />
+    <Compile Include="Scale\WorkerStatusProvider.cs" />
     <Compile Include="Security\BlobStorageSecretsRepository.cs" />
     <Compile Include="Security\DefaultSecretManagerFactory.cs" />
     <Compile Include="Security\DefaultSecretsRepositoryFactory.cs" />
@@ -594,6 +597,10 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\WebJobs.Script.Scaling\WebJobs.Script.Scaling.csproj">
+      <Project>{292a9038-5807-4095-b37f-9a77170d7402}</Project>
+      <Name>WebJobs.Script.Scaling</Name>
+    </ProjectReference>
     <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj">
       <Project>{1dc670cd-f42f-4d8f-97bd-0e1aa8221094}</Project>
       <Name>WebJobs.Script</Name>

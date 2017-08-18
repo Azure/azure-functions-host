@@ -125,6 +125,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         State = ScriptHostState.Default;
                     }
 
+                    OnHostStarting();
+
                     // Create a new host config, but keep the host id from existing one
                     _config.HostConfig = new JobHostConfiguration
                     {
@@ -355,6 +357,10 @@ namespace Microsoft.Azure.WebJobs.Script
         protected virtual void OnHostCreated()
         {
             State = ScriptHostState.Created;
+        }
+
+        protected virtual void OnHostStarting()
+        {
         }
 
         protected virtual void OnHostStarted()
