@@ -12,7 +12,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 {
-    public class ControllerScenarioTestFixture
+    public class ControllerScenarioTestFixture : IDisposable
     {
         private readonly ScriptSettingsManager _settingsManager;
         private HttpConfiguration _config;
