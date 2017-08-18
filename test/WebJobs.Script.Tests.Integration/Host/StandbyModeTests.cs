@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var routerMock = new Mock<IWebJobsRouter>();
 
             _webHostResolver = new WebHostResolver(_settingsManager, new TestSecretManagerFactory(false),
-                eventManagerMock.Object, WebHostSettings.CreateDefault(_settingsManager), routerMock.Object);
+                eventManagerMock.Object, WebHostSettings.CreateDefault(_settingsManager), routerMock.Object, new DefaultLoggerFactoryBuilder());
         }
 
         [Fact]

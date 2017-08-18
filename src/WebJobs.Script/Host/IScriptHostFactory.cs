@@ -8,6 +8,11 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public interface IScriptHostFactory
     {
-        ScriptHost Create(IScriptHostEnvironment environment, IScriptEventManager eventManager, ScriptSettingsManager settingsManager, ScriptHostConfiguration config);
+        ScriptHost Create(
+            IScriptHostEnvironment environment,
+            IScriptEventManager eventManager,
+            ScriptSettingsManager settingsManager,
+            ScriptHostConfiguration config,
+            ILoggerFactoryBuilder loggerFactoryBuilder);
     }
 }

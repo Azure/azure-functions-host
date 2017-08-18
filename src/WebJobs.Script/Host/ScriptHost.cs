@@ -43,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string GeneratedTypeNamespace = "Host";
         internal const string GeneratedTypeName = "Functions";
         private readonly IScriptHostEnvironment _scriptHostEnvironment;
+        private readonly ILoggerFactoryBuilder _loggerFactoryBuilder;
         private string _instanceId;
         private Func<Task> _restart;
         private Action _shutdown;
@@ -66,10 +67,12 @@ namespace Microsoft.Azure.WebJobs.Script
             IScriptEventManager eventManager,
             ScriptHostConfiguration scriptConfig = null,
             ScriptSettingsManager settingsManager = null,
+            ILoggerFactoryBuilder loggerFactoryBuilder = null
             ProxyClientExecutor proxyClient = null)
             : base(scriptConfig.HostConfig)
         {
             scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
+            _loggerFactoryBuilder = loggerFactoryBuilder ?? new DefaultLoggerFactoryBuilder();
             if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
             {
                 scriptConfig.RootScriptPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootScriptPath);
@@ -608,18 +611,19 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void ConfigureDefaultLoggerFactory()
         {
-            ConfigureLoggerFactory(ScriptConfig, FunctionTraceWriterFactory, _settingsManager, () => FileLoggingEnabled);
+            ConfigureLoggerFactory(ScriptConfig, FunctionTraceWriterFactory, _settingsManager, _loggerFactoryBuilder, () => FileLoggingEnabled);
         }
 
         internal static void ConfigureLoggerFactory(ScriptHostConfiguration scriptConfig, IFunctionTraceWriterFactory traceWriteFactory,
-            ScriptSettingsManager settingsManager, Func<bool> isFileLoggingEnabled)
+            ScriptSettingsManager settingsManager, ILoggerFactoryBuilder builder, Func<bool> isFileLoggingEnabled)
         {
             // Register a file logger that only logs user logs and only if file logging is enabled.
             // We don't allow this to be replaced; if you want to disable it, you can use host.json to do so.
             scriptConfig.HostConfig.LoggerFactory.AddProvider(new FileLoggerProvider(traceWriteFactory,
                 (category, level) => (category == LogCategories.Function) && isFileLoggingEnabled()));
 
-            scriptConfig.LoggerFactoryBuilder.AddLoggerProviders(scriptConfig.HostConfig.LoggerFactory, scriptConfig, settingsManager);
+            // Allow a way to plug in custom LoggerProviders.
+            builder.AddLoggerProviders(scriptConfig.HostConfig.LoggerFactory, scriptConfig, settingsManager);
         }
 
         private void TraceFileChangeRestart(string changeDescription, string changeType, string path, bool isShutdown)
@@ -761,9 +765,9 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         public static ScriptHost Create(IScriptHostEnvironment environment, IScriptEventManager eventManager,
-            ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null, ProxyClientExecutor proxyClient = null)
+            ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null, ILoggerFactoryBuilder loggerFactoryBuilder = null, ProxyClientExecutor proxyClient = null)
         {
-            ScriptHost scriptHost = new ScriptHost(environment, eventManager, scriptConfig, settingsManager, proxyClient);
+            ScriptHost scriptHost = new ScriptHost(environment, eventManager, scriptConfig, settingsManager, loggerFactoryBuilder, proxyClient);
             try
             {
                 scriptHost.Initialize();
