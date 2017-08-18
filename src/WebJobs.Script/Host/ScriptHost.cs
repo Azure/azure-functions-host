@@ -475,6 +475,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 var functionMetadata = ReadFunctionMetadata(ScriptConfig, TraceWriter, _startupLogger, FunctionErrors, _settingsManager);
                 var usedBindingTypes = DiscoverBindingTypes(functionMetadata);
 
+                bool useLazyLoad = false; // todo - https://github.com/Azure/azure-webjobs-sdk-script/issues/1637
+                if (!useLazyLoad)
+                {
+                    usedBindingTypes = _builtinBindingTypes.Keys.Concat(_builtinScriptBindingTypes.Keys).ToArray();
+                }
+
                 var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfigObject, TraceWriter, _startupLogger, usedBindingTypes);
                 ScriptConfig.BindingProviders = bindingProviders;
 

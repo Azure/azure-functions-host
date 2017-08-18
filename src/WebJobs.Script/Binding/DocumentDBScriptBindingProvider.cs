@@ -104,16 +104,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                 string databaseName = Context.GetMetadataValue<string>("databaseName");
                 string collectionName = Context.GetMetadataValue<string>("collectionName");
-                string connection = Context.GetMetadataValue<string>("connection");
 
                 if (Context.IsTrigger)
                 {
                     CosmosDBTriggerAttribute attributeTrigger = new CosmosDBTriggerAttribute(databaseName, collectionName);
-                    attributeTrigger.ConnectionStringSetting = connection;
 
+                    attributeTrigger.ConnectionStringSetting = Context.GetMetadataValue<string>("connectionStringSetting");
                     attributeTrigger.LeaseDatabaseName = Context.GetMetadataValue<string>("leaseDatabaseName");
                     attributeTrigger.LeaseCollectionName = Context.GetMetadataValue<string>("leaseCollectionName");
-                    attributeTrigger.LeaseConnectionStringSetting = Context.GetMetadataValue<string>("leaseConnection");
+                    attributeTrigger.LeaseConnectionStringSetting = Context.GetMetadataValue<string>("leaseConnectionStringSetting");
 
                     attributes.Add(attributeTrigger);
                 }
@@ -130,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     }
 
                     attribute.CreateIfNotExists = Context.GetMetadataValue<bool>("createIfNotExists");
-                    attribute.ConnectionStringSetting = connection;
+                    attribute.ConnectionStringSetting = Context.GetMetadataValue<string>("connection");
                     attribute.Id = Id;
                     attribute.PartitionKey = Context.GetMetadataValue<string>("partitionKey");
                     attribute.CollectionThroughput = Context.GetMetadataValue<int>("collectionThroughput");
