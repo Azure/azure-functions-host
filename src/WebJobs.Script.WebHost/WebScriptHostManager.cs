@@ -58,12 +58,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IWebJobsRouter router,
             IScriptHostFactory scriptHostFactory = null,
             ISecretsRepositoryFactory secretsRepositoryFactory = null,
+            ILoggerFactoryBuilder loggerFactoryBuilder = null,
             int hostTimeoutSeconds = 30,
             int hostPollingIntervalMilliseconds = 500)
-
-            // int hostTimeoutSeconds = WebScriptHostHandler.HostTimeoutSeconds,
-            // int hostPollingIntervalMilliseconds = WebScriptHostHandler.HostPollingIntervalMilliseconds)
-            : base(config, settingsManager, scriptHostFactory, eventManager)
+            : base(config, settingsManager, scriptHostFactory, eventManager, environment: null, loggerFactoryBuilder: loggerFactoryBuilder)
         {
             _config = config;
 
@@ -106,8 +104,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
             IWebJobsRouter router,
-            IScriptHostFactory scriptHostFactory)
-            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, scriptHostFactory, new DefaultSecretsRepositoryFactory())
+            IScriptHostFactory scriptHostFactory,
+            ILoggerFactoryBuilder loggerFactoryBuilder)
+            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, scriptHostFactory, new DefaultSecretsRepositoryFactory(), loggerFactoryBuilder)
         {
         }
 
@@ -116,8 +115,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IScriptEventManager eventManager,
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
-            IWebJobsRouter router)
-            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, new ScriptHostFactory())
+            IWebJobsRouter router,
+            ILoggerFactoryBuilder loggerFactoryBuilder)
+            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, new ScriptHostFactory(), loggerFactoryBuilder)
         {
         }
 
