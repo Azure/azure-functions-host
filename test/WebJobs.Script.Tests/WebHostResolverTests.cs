@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     SecretsPath = @"c:\secrets\path"
                 };
 
-                var resolver = new WebHostResolver(settingsManager, secretManagerFactoryMock.Object, eventManagerMock.Object, settings, routerMock.Object);
+                var resolver = new WebHostResolver(settingsManager, secretManagerFactoryMock.Object, eventManagerMock.Object, settings, routerMock.Object, new DefaultLoggerFactoryBuilder());
 
                 ScriptHostConfiguration configuration = resolver.GetScriptHostConfiguration(settings);
 
