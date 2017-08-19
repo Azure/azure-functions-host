@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
+using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -38,7 +39,27 @@ namespace Microsoft.Azure.WebJobs
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class.
         /// </summary>
         public JobHostConfiguration()
-            : this(null)
+            : this(null, null)
+        {
+        }
+        /// <summary>
+        /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using the
+        /// specified connection string for both reading and writing data as well as Dashboard logging.
+        /// </summary>
+        /// <param name="dashboardAndStorageConnectionString">The Azure Storage connection string to use.
+        /// </param>
+        public JobHostConfiguration(string dashboardAndStorageConnectionString)
+            : this(dashboardAndStorageConnectionString, null)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class.
+        /// </summary>
+        /// <param name="configuration">A configuration object that will be used as the source of application settings.</param>
+        /// </param>
+        public JobHostConfiguration(IConfiguration configuration)
+            : this(null, configuration)
         {
         }
 
@@ -47,9 +68,15 @@ namespace Microsoft.Azure.WebJobs
         /// specified connection string for both reading and writing data as well as Dashboard logging.
         /// </summary>
         /// <param name="dashboardAndStorageConnectionString">The Azure Storage connection string to use.
+        /// <param name="configuration">A configuration object that will be used as the source of application settings.</param>
         /// </param>
-        public JobHostConfiguration(string dashboardAndStorageConnectionString)
+        public JobHostConfiguration(string dashboardAndStorageConnectionString, IConfiguration configuration)
         {
+            if (configuration != null)
+            {
+                ConfigurationUtility.SetConfigurationFactory(() => configuration);
+            }
+
             if (!string.IsNullOrEmpty(dashboardAndStorageConnectionString))
             {
                 _storageAccountProvider = new DefaultStorageAccountProvider(this, dashboardAndStorageConnectionString);
@@ -80,7 +107,7 @@ namespace Microsoft.Azure.WebJobs
             AddService<IWebJobsExceptionHandler>(exceptionHandler);
             AddService<IFunctionResultAggregatorFactory>(new FunctionResultAggregatorFactory());
 
-            string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment(Host.Constants.EnvironmentSettingName);
+            string value = ConfigurationUtility.GetSetting(Host.Constants.EnvironmentSettingName);
             IsDevelopment = string.Compare(Host.Constants.DevelopmentEnvironmentValue, value, StringComparison.OrdinalIgnoreCase) == 0;
         }
 

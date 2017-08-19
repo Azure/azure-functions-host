@@ -2,18 +2,18 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Configuration;
 using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
     internal static class ConfigurationUtility
     {
-        private static Lazy<IConfigurationRoot> _configuration = new Lazy<IConfigurationRoot>(BuildConfiguration);
+        private static Func<IConfiguration> _configurationFactory = BuildConfiguration;
+        private static Lazy<IConfiguration> _configuration = new Lazy<IConfiguration>(BuildConfiguration);
 
-        private static IConfigurationRoot Configuration => _configuration.Value;
+        private static IConfiguration Configuration => _configuration.Value;
 
-        public static string GetSettingFromConfigOrEnvironment(string settingName)
+        public static string GetSetting(string settingName)
         {
             if (string.IsNullOrEmpty(settingName))
             {
@@ -24,9 +24,15 @@ namespace Microsoft.Azure.WebJobs.Host
         }
 
         // The fallback to reading the connection string from the configuration/app setting
-        // is here to maintain legacy behavior. Should we keep this?
-        public static string GetConnectionFromConfigOrEnvironment(string connectionName)
+        // is here to maintain legacy behavior.
+        public static string GetConnectionString(string connectionName)
             => Configuration.GetConnectionString(connectionName) ?? Configuration[connectionName];
+
+        public static void SetConfigurationFactory(Func<IConfiguration> configurationRootFactory)
+        {
+            _configurationFactory = configurationRootFactory;
+            Reset();
+        }
 
         private static IConfigurationRoot BuildConfiguration()
         {
@@ -39,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
         internal static void Reset()
         {
-            _configuration = new Lazy<IConfigurationRoot>(BuildConfiguration);
+            _configuration = new Lazy<IConfiguration>(_configurationFactory);
         }
     }
 }

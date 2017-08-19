@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             ConfigurationUtility.Reset();
 
-            string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment("DNE");
+            string value = ConfigurationUtility.GetSetting("DNE");
             Assert.Equal(null, value);
         }
 
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             ConfigurationUtility.Reset();
 
-            string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment(null);
+            string value = ConfigurationUtility.GetSetting(null);
             Assert.Equal(null, value);
         }
 
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             ConfigurationUtility.Reset();
 
-            string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment("DisableSetting0");
+            string value = ConfigurationUtility.GetSetting("DisableSetting0");
             Assert.Equal("0", value);
         }
 
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             Environment.SetEnvironmentVariable("EnvironmentSetting", "1");
 
-            string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment("EnvironmentSetting");
+            string value = ConfigurationUtility.GetSetting("EnvironmentSetting");
             Assert.Equal("1", value);
 
             Environment.SetEnvironmentVariable("EnvironmentSetting", null);
@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             Environment.SetEnvironmentVariable("DisableSetting0", "1");
 
-            string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment("DisableSetting0");
+            string value = ConfigurationUtility.GetSetting("DisableSetting0");
             Assert.Equal("0", value);
 
             Environment.SetEnvironmentVariable("DisableSetting0", null);

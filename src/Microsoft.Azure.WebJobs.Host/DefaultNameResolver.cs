@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs
         /// <returns>The token value from App Settings or environment variables. If the token is not found, null is returned.</returns>
         public virtual string Resolve(string name)
         {
-            return ConfigurationUtility.GetSettingFromConfigOrEnvironment(name);
+            return ConfigurationUtility.GetSetting(name);
         }
     }
 }

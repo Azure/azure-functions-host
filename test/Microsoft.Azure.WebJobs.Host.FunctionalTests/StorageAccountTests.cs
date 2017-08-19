@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Storage.IntegrationTests
         }
 
         private static string GetConnectionString(string connectionStringName)
-            => ConfigurationUtility.GetConnectionFromConfigOrEnvironment(connectionStringName);
+            => ConfigurationUtility.GetConnectionString(connectionStringName);
 
         private static string GetQueueName(string infix)
         {

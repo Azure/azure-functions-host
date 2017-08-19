@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 
             // check the target setting and return false (disabled) if the value exists
             // and is "falsey"
-            string value = ConfigurationUtility.GetSettingFromConfigOrEnvironment(settingName);
+            string value = ConfigurationUtility.GetSetting(settingName);
             if (!string.IsNullOrEmpty(value) &&
                 (string.Compare(value, "1", StringComparison.OrdinalIgnoreCase) == 0 ||
                  string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0))

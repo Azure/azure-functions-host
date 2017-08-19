@@ -35,12 +35,12 @@ namespace Microsoft.Azure.WebJobs.Host
         {
             // first try prefixing
             string prefixedConnectionStringName = GetPrefixedConnectionStringName(connectionStringName);
-            string connectionString = ConfigurationUtility.GetConnectionFromConfigOrEnvironment(prefixedConnectionStringName);
+            string connectionString = ConfigurationUtility.GetConnectionString(prefixedConnectionStringName);
 
             if (string.IsNullOrEmpty(connectionString))
             {
                 // next try a direct unprefixed lookup
-                connectionString = ConfigurationUtility.GetConnectionFromConfigOrEnvironment(connectionStringName);
+                connectionString = ConfigurationUtility.GetConnectionString(connectionStringName);
             }
 
             return connectionString;
