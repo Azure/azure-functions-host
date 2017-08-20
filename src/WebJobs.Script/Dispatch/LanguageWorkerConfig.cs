@@ -10,6 +10,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
     {
         public string ExecutablePath { get; set; }
 
+        public string Options { get; set; }
+
         public string WorkerPath { get; set; }
 
         public string Arguments { get; set; }
@@ -20,6 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         internal int Port { get; set; }
 
-        internal string ToArgumentString(string workerId, string requestId) => $"{WorkerPath} {Arguments} --host 127.0.0.1 --port {Port} --workerId {workerId} --requestId {requestId}";
+        internal string ToArgumentString(string workerId, string requestId) => $"{Options} {WorkerPath} {Arguments} --host 127.0.0.1 --port {Port} --workerId {workerId} --requestId {requestId}";
     }
 }
