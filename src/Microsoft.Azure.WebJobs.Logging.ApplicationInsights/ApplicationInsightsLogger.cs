@@ -3,8 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Linq;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
@@ -24,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
         private const string DefaultCategoryName = "Default";
         private const string DateTimeFormatString = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fffK";
         private const string OperationContext = "MS_OperationContext";
-                
+
         internal const string MetricCountKey = "count";
         internal const string MetricMinKey = "min";
         internal const string MetricMaxKey = "max";
@@ -105,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 
         private void LogMetric(IEnumerable<KeyValuePair<string, object>> values)
         {
-            MetricTelemetry telemetry = new MetricTelemetry();            
+            MetricTelemetry telemetry = new MetricTelemetry();
 
             foreach (var entry in values)
             {
@@ -132,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                 switch (entry.Key.ToLowerInvariant())
                 {
                     case MetricCountKey:
-                        telemetry.Count = Convert.ToInt32(entry.Value); 
+                        telemetry.Count = Convert.ToInt32(entry.Value);
                         break;
                     case MetricMinKey:
                         telemetry.Min = Convert.ToDouble(entry.Value);
@@ -147,13 +145,13 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                         // Otherwise, it's a custom property.
                         ApplyProperty(telemetry, entry, LogConstants.CustomPropertyPrefix);
                         break;
-                }       
+                }
             }
 
             ApplyCustomScopeProperties(telemetry);
 
             _telemetryClient.TrackMetric(telemetry);
-        }       
+        }
 
         // Applies custom scope properties; does not apply 'system' used properties
         private static void ApplyCustomScopeProperties(ISupportProperties telemetry)
@@ -237,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                 else
                 {
                     stringValue = property.Value.ToString();
-                }               
+                }
 
                 telemetry.Properties.Add($"{propertyPrefix}{property.Key}", stringValue);
             }
@@ -372,8 +370,8 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             {
                 switch (prop.Key)
                 {
-                    case LogConstants.NameKey:                        
-                    case LogConstants.InvocationIdKey:                                                
+                    case LogConstants.NameKey:
+                    case LogConstants.InvocationIdKey:
                     case LogConstants.StartTimeKey:
                     case LogConstants.DurationKey:
                         // These values are set by the calls to Start/Stop the telemetry. Other
@@ -402,35 +400,18 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                 throw new ArgumentNullException(nameof(state));
             }
 
-            var stateValues = state as IDictionary<string, object>;
-            if (stateValues == null)
-            {
-                var stateEnum = state as IEnumerable<KeyValuePair<string, object>>;
-                if (stateEnum != null)
-                {
-                    // Convert this to a dictionary as we have scenarios where we cannot have duplicates. In this
-                    // case, if there are dupes, the later entry wins.
-                    stateValues = new Dictionary<string, object>();
-                    foreach (var entry in stateEnum)
-                    {
-                        stateValues[entry.Key] = entry.Value;
-                    }
-                }
-            }
-            
-            if (stateValues == null)
-            {
-                // There's nothing we can do with other states.
-                return null;
-            }
+            StartTelemetryIfFunctionInvocation(state as IDictionary<string, object>);
 
-            StartTelemetryIfFunctionInvocation(stateValues);
-
-            return DictionaryLoggerScope.Push(new ReadOnlyDictionary<string, object>(stateValues));
+            return DictionaryLoggerScope.Push(state);
         }
 
         private void StartTelemetryIfFunctionInvocation(IDictionary<string, object> stateValues)
         {
+            if (stateValues == null)
+            {
+                return;
+            }
+
             string functionName = stateValues.GetValueOrDefault<string>(ScopeKeys.FunctionName);
             string functionInvocationId = stateValues.GetValueOrDefault<string>(ScopeKeys.FunctionInvocationId);
             string eventName = stateValues.GetValueOrDefault<string>(ScopeKeys.Event);
