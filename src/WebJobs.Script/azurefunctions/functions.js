@@ -107,6 +107,7 @@ function createFunction(f) {
 
 function getEntryPoint(f, context) {
     if (util.isObject(f)) {
+        var obj = f;
         if (context._entryPoint) {
             // the module exports multiple functions
             // and an explicit entry point was named
@@ -122,6 +123,12 @@ function getEntryPoint(f, context) {
             // finally, see if there is an exported function named
             // 'run' or 'index' by convention
             f = f.run || f.index;
+        }
+
+        if (util.isFunction(f)) {
+            return function () {
+                f.apply(obj, arguments);
+            }
         }
     }
 
