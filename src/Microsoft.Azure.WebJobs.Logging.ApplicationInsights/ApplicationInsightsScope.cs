@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading;
 
 namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
@@ -27,15 +28,34 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             {
                 return _value.Value;
             }
+
             set
             {
                 _value.Value = value;
             }
         }
 
-        public static IDisposable Push(IReadOnlyDictionary<string, object> state)
+        public static IDisposable Push(object state)
         {
-            Current = new DictionaryLoggerScope(state, Current);
+            IDictionary<string, object> stateValues;
+
+            if (state is IEnumerable<KeyValuePair<string, object>> stateEnum)
+            {
+                // Convert this to a dictionary as we have scenarios where we cannot have duplicates. In this
+                // case, if there are dupes, the later entry wins.
+                stateValues = new Dictionary<string, object>();
+                foreach (var entry in stateEnum)
+                {
+                    stateValues[entry.Key] = entry.Value;
+                }
+            }
+            else
+            {
+                // There's nothing we can do with other states.
+                return null;
+            }
+
+            Current = new DictionaryLoggerScope(new ReadOnlyDictionary<string, object>(stateValues), Current);
             return new DisposableScope();
         }
 
