@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
@@ -10,11 +11,18 @@ namespace Microsoft.Azure.WebJobs.Script.Config
     {
         private static ScriptSettingsManager _instance = new ScriptSettingsManager();
         private readonly ConcurrentDictionary<string, string> _settingsCache = new ConcurrentDictionary<string, string>();
+        private Func<IConfiguration> _configurationFactory = BuildConfiguration;
+        private Lazy<IConfiguration> _configuration = new Lazy<IConfiguration>(BuildConfiguration);
 
         // for testing
         public ScriptSettingsManager()
         {
         }
+
+        /// <summary>
+        /// Gets the underlying configuration object used by this instance of the <see cref="ScriptSettingsManager"/>.
+        /// </summary>
+        internal IConfiguration Configuration => _configuration.Value;
 
         public static ScriptSettingsManager Instance
         {
@@ -74,6 +82,12 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             set => UpdateSettingInCache(EnvironmentSettingNames.AppInsightsInstrumentationKey, value);
         }
 
+        public void SetConfigurationFactory(Func<IConfiguration> configurationRootFactory)
+        {
+            _configurationFactory = configurationRootFactory;
+            Reset();
+        }
+
         private string GetSettingFromCache(string settingKey)
         {
             if (string.IsNullOrEmpty(settingKey))
@@ -81,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 throw new ArgumentNullException(nameof(settingKey));
             }
 
-            return _settingsCache.GetOrAdd(settingKey, (key) => Utility.GetSettingFromConfigOrEnvironment(key));
+            return _settingsCache.GetOrAdd(settingKey, (key) => GetSetting(key));
         }
 
         private void UpdateSettingInCache(string settingKey, string settingValue)
@@ -96,18 +110,18 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public virtual void Reset()
         {
+            _configuration = new Lazy<IConfiguration>(_configurationFactory);
             _settingsCache.Clear();
         }
 
         public virtual string GetSetting(string settingKey)
         {
-            string settingValue = null;
-            if (!string.IsNullOrEmpty(settingKey))
+            if (string.IsNullOrEmpty(settingKey))
             {
-                settingValue = Environment.GetEnvironmentVariable(settingKey);
+                return null;
             }
 
-            return settingValue;
+            return Configuration[settingKey];
         }
 
         public virtual void SetSetting(string settingKey, string settingValue)
@@ -116,6 +130,15 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             {
                 Environment.SetEnvironmentVariable(settingKey, settingValue);
             }
+        }
+
+        private static IConfigurationRoot BuildConfiguration()
+        {
+            var configurationBuilder = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .AddJsonFile("appsettings.json", optional: true);
+
+            return configurationBuilder.Build();
         }
     }
 }
