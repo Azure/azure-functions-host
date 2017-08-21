@@ -24,7 +24,7 @@ namespace WebJobs.Script.WebHost.Core
         {
             services.AddWebJobsScriptHost();
 
-            return services.AddWebJobsScriptHostApplicationServices();
+            return services.AddWebJobsScriptHostApplicationServices(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
