@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -21,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IWebJobsRouter _router;
         private readonly ILoggerFactoryBuilder _loggerFactoryBuilder;
         private readonly WebHostSettings _settings;
+        private readonly IConfiguration _configuration;
         private ScriptHostConfiguration _standbyScriptHostConfig;
         private WebScriptHostManager _standbyHostManager;
 

@@ -7,6 +7,7 @@ using System.Configuration;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -21,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
             RootScriptPath = Environment.CurrentDirectory;
             RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
             LogFilter = new LogCategoryFilter();
-            RootExtensionsPath = Utility.GetSettingFromConfigOrEnvironment(EnvironmentSettingNames.AzureWebJobsExtensionsPath);
+            RootExtensionsPath = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebJobsExtensionsPath);
         }
 
         /// <summary>
