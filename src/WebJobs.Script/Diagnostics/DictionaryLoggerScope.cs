@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
@@ -13,27 +14,52 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     /// </summary>
     internal class DictionaryLoggerScope
     {
-        private readonly object _state;
-
         private static AsyncLocal<DictionaryLoggerScope> _value = new AsyncLocal<DictionaryLoggerScope>();
 
-        private DictionaryLoggerScope(object state, DictionaryLoggerScope parent)
+        private DictionaryLoggerScope(IReadOnlyDictionary<string, object> state, DictionaryLoggerScope parent)
         {
-            _state = state;
+            State = state;
             Parent = parent;
         }
+
+        internal IReadOnlyDictionary<string, object> State { get; private set; }
 
         internal DictionaryLoggerScope Parent { get; private set; }
 
         public static DictionaryLoggerScope Current
         {
-            get => _value.Value;
-            set => _value.Value = value;
+            get
+            {
+                return _value.Value;
+            }
+
+            set
+            {
+                _value.Value = value;
+            }
         }
 
         public static IDisposable Push(object state)
         {
-            Current = new DictionaryLoggerScope(state, Current);
+            IDictionary<string, object> stateValues;
+
+            if (state is IEnumerable<KeyValuePair<string, object>> stateEnum)
+            {
+                // Convert this to a dictionary as we have scenarios where we cannot have duplicates. In this
+                // case, if there are dupes, the later entry wins.
+                stateValues = new Dictionary<string, object>();
+                foreach (var entry in stateEnum)
+                {
+                    stateValues[entry.Key] = entry.Value;
+                }
+            }
+            else
+            {
+                // There's nothing we can do with other states.
+                return null;
+            }
+
+            Current = new DictionaryLoggerScope(new ReadOnlyDictionary<string, object>(stateValues), Current);
             return new DisposableScope();
         }
 
@@ -46,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             var current = Current;
             while (current != null)
             {
-                foreach (var entry in current.GetStateDictionary())
+                foreach (var entry in current.State)
                 {
                     // inner scopes win
                     if (!scopeInfo.Keys.Contains(entry.Key))
@@ -59,8 +85,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
             return scopeInfo;
         }
-
-        private IDictionary<string, object> GetStateDictionary() => _state as IDictionary<string, object>;
 
         private class DisposableScope : IDisposable
         {

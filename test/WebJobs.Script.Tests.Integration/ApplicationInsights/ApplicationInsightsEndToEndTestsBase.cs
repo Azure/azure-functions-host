@@ -19,11 +19,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
     public abstract class ApplicationInsightsEndToEndTestsBase<TTestFixture> :
         EndToEndTestsBase<TTestFixture> where TTestFixture : ApplicationInsightsTestFixture, new()
     {
-        private ApplicationInsightsTestFixture _fixture;
-
         public ApplicationInsightsEndToEndTestsBase(TTestFixture fixture) : base(fixture)
         {
-            _fixture = fixture;
         }
 
         protected async Task ApplicationInsights_SucceedsTest()
@@ -62,12 +59,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             Assert.Equal(invocationCount, logs.Count(p => p.Contains(functionTrace)));
 
             // Each invocation produces 5 telemetries. Then there are 9 created by the host.
-            Assert.Equal((5 * invocationCount) + 9, _fixture.Channel.Telemetries.Count);
+            Assert.Equal((5 * invocationCount) + 9, Fixture.Channel.Telemetries.Count);
 
             // Validate the telemetry for a specific function. There should be 5 for each, and these should all
             // include the function name and invocation id. Pull out the function trace first and
             // use the invocation id to find the related items.
-            var functionTraces = _fixture.Channel.Telemetries
+            var functionTraces = Fixture.Channel.Telemetries
                 .OfType<TraceTelemetry>()
                 .Where(t => t.Properties[LogConstants.CategoryNameKey] == LogCategories.Function);
 
@@ -79,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 string invocationId = logPayload["InvocationId"].ToString();
 
                 // Find all with this matching operation id. There should be 4.
-                ITelemetry[] relatedTelemetry = _fixture.Channel.Telemetries
+                ITelemetry[] relatedTelemetry = Fixture.Channel.Telemetries
                     .Where(t => t.Context.Operation.Id == invocationId)
                     .ToArray();
 
@@ -107,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
             // Validate the rest of the traces. Order by message string as the requests may come in
             // slightly out-of-order or on different threads
-            TraceTelemetry[] telemetries = _fixture.Channel.Telemetries
+            TraceTelemetry[] telemetries = Fixture.Channel.Telemetries
                 .OfType<TraceTelemetry>()
                 .Where(t => t.Context.Operation.Id == null)
                 .OrderBy(t => t.Message)
@@ -141,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateSdkVersion(telemetry);
         }
 
-        private static void ValidateTrace(TraceTelemetry telemetry, string expectedMessageContains,
+        protected static void ValidateTrace(TraceTelemetry telemetry, string expectedMessageContains,
             string expectedCategory, string expectedOperationName = null, string expectedOperationId = null)
         {
             Assert.Contains(expectedMessageContains, telemetry.Message);

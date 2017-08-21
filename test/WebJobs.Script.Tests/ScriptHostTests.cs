@@ -13,16 +13,18 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
-using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -1124,6 +1126,86 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(1, metricsLogger.LoggedEvents.Count);
             Assert.Equal(MetricEventNames.ApplicationInsightsEnabled, metricsLogger.LoggedEvents[0]);
+        }
+
+        [Fact]
+        public void DefaultLoggerFactory_BeginScope()
+        {
+            var trace = new TestTraceWriter(TraceLevel.Info);
+            var config = new ScriptHostConfiguration();
+            var mockTraceFactory = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
+            mockTraceFactory
+                .Setup(f => f.Create("Test", null))
+                .Returns(trace);
+
+            var channel = new TestTelemetryChannel();
+            var builder = new TestChannelLoggerFactoryBuilder(channel);
+
+            config.HostConfig.AddService<ILoggerFactoryBuilder>(builder);
+
+            config.HostConfig.LoggerFactory = new LoggerFactory();
+
+            var settingsManager = ScriptSettingsManager.Instance;
+            settingsManager.ApplicationInsightsInstrumentationKey = TestChannelLoggerFactoryBuilder.ApplicationInsightsKey;
+
+            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, () => true);
+
+            // Create a logger and try out the configured factory. We need to pretend that it is coming from a
+            // function, so set the function name and the category appropriately.
+            var logger = config.HostConfig.LoggerFactory.CreateLogger(LogCategories.Function);
+
+            using (logger.BeginScope(new Dictionary<string, object>
+            {
+                [ScriptConstants.LoggerFunctionNameKey] = "Test"
+            }))
+            {
+                // Now log as if from within a function.
+
+                // Test that both dictionaries and structured logs work as state
+                // and that nesting works as expected.
+                using (logger.BeginScope("{customKey1}", "customValue1"))
+                {
+                    logger.LogInformation("1");
+
+                    using (logger.BeginScope(new Dictionary<string, object>
+                    {
+                        ["customKey2"] = "customValue2"
+                    }))
+                    {
+                        logger.LogInformation("2");
+                    }
+
+                    logger.LogInformation("3");
+                }
+
+                using (logger.BeginScope("should not throw"))
+                {
+                    logger.LogInformation("4");
+                }
+            }
+
+            Assert.Equal(4, trace.Traces.Count);
+            Assert.Equal(4, channel.Telemetries.Count);
+
+            var traces = channel.Telemetries.Cast<TraceTelemetry>().OrderBy(t => t.Message).ToArray();
+
+            // Every telemetry will have {originalFormat}, Category, Level, but we validate those elsewhere.
+            // We're only interested in the custom properties.
+            Assert.Equal("1", traces[0].Message);
+            Assert.Equal(4, traces[0].Properties.Count);
+            Assert.Equal("customValue1", traces[0].Properties["prop__customKey1"]);
+
+            Assert.Equal("2", traces[1].Message);
+            Assert.Equal(5, traces[1].Properties.Count);
+            Assert.Equal("customValue1", traces[1].Properties["prop__customKey1"]);
+            Assert.Equal("customValue2", traces[1].Properties["prop__customKey2"]);
+
+            Assert.Equal("3", traces[2].Message);
+            Assert.Equal(4, traces[2].Properties.Count);
+            Assert.Equal("customValue1", traces[2].Properties["prop__customKey1"]);
+
+            Assert.Equal("4", traces[3].Message);
+            Assert.Equal(3, traces[3].Properties.Count);
         }
 
         [Fact]
