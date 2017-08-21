@@ -16,6 +16,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 namespace WebJobs.Script.WebHost.Core
 {
@@ -53,18 +54,22 @@ namespace WebJobs.Script.WebHost.Core
             return services.AddSingleton<IAuthorizationHandler, AuthLevelAuthorizationHandler>();
         }
 
-        public static IServiceProvider AddWebJobsScriptHostApplicationServices(this IServiceCollection services)
+        public static IServiceProvider AddWebJobsScriptHostApplicationServices(this IServiceCollection services, IConfiguration configuration)
         {
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WebJobsScriptHostService>());
 
-            var builder = new ContainerBuilder();
-
             // TODO: This is a direct port from the current model.
             // Some of those services (or the way we register them) may need to change
+            var builder = new ContainerBuilder();
+
+            // ScriptSettingsManager should be replaced. We're setting this here as a temporary step until
+            // broader configuaration changes are made:
+            ScriptSettingsManager.Instance.SetConfigurationFactory(() => configuration);
+            builder.RegisterInstance(ScriptSettingsManager.Instance);
+
             builder.RegisterType<DefaultSecretManagerFactory>().As<ISecretManagerFactory>().SingleInstance();
             builder.RegisterType<ScriptEventManager>().As<IScriptEventManager>().SingleInstance();
             builder.RegisterType<DefaultLoggerFactoryBuilder>().As<ILoggerFactoryBuilder>().SingleInstance();
-            builder.RegisterInstance(ScriptSettingsManager.Instance);
             builder.Register(c => WebHostSettings.CreateDefault(c.Resolve<ScriptSettingsManager>()));
             builder.RegisterType<WebHostResolver>().SingleInstance();
 
