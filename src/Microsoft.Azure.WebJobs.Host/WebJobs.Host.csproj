@@ -483,6 +483,7 @@
     <Compile Include="Bindings\Runtime\Binder.cs" />
     <Compile Include="Blobs\Listeners\IBlobScanInfoManager.cs" />
     <Compile Include="Blobs\Listeners\StorageBlobScanInfoManager.cs" />
+    <Compile Include="Blobs\ParameterizedBlobUrl.cs" />
     <Compile Include="Blobs\StorageBlobToCloudAppendBlobConverter.cs" />
     <Compile Include="Config\IWebhookProvider.cs" />
     <Compile Include="Config\FluentConverterRules.cs" />

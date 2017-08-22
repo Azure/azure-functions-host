@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
@@ -55,16 +56,30 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             return path;
         }
 
-        public static BlobPath Parse(string value, bool isContainerBinding)
+        // throws exception if failed
+        public static BlobPath ParseAbsUrl(string blobUrl)
         {
-            BlobPath path;
-
-            if (!TryParse(value, isContainerBinding, out path))
+            BlobPath returnV;
+            if (TryParseAbsUrl(blobUrl, out returnV))
             {
-                throw new FormatException($"Invalid blob path '{value}'. Paths must be in the format 'container/blob'.");
+                return returnV;
             }
+            throw new FormatException($"Invalid absolute blob url: {blobUrl}");
+        }
 
-            return path;
+        // similar to TryParse, but take in Url
+        // does not take argument isContainerBinding since Url is blob only
+        public static bool TryParseAbsUrl(string blobUrl, out BlobPath path)
+        {
+            Uri uri;
+            path = null;
+            if (Uri.TryCreate(blobUrl, UriKind.Absolute, out uri))
+            {
+                var blob = new CloudBlob(uri);
+                path = new BlobPath(blob.Container.Name, blob.Name); // use storage sdk to parse url
+                return true;
+            }
+            return false;
         }
 
         public static bool TryParse(string value, bool isContainerBinding, out BlobPath path)
