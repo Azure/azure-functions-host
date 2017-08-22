@@ -1149,7 +1149,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var settingsManager = ScriptSettingsManager.Instance;
             settingsManager.ApplicationInsightsInstrumentationKey = TestChannelLoggerFactoryBuilder.ApplicationInsightsKey;
 
-            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, () => true);
+            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, new DefaultLoggerFactoryBuilder(), () => true);
 
             // Create a logger and try out the configured factory. We need to pretend that it is coming from a
             // function, so set the function name and the category appropriately.
