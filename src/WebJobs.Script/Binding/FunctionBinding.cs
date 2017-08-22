@@ -37,13 +37,13 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public abstract Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType);
 
-        internal static Collection<FunctionBinding> GetBindings(ScriptHostConfiguration config, IEnumerable<BindingMetadata> bindingMetadatas, FileAccess fileAccess)
+        internal static Collection<FunctionBinding> GetBindings(ScriptHostConfiguration config, IEnumerable<BindingMetadata> bindingMetadataCollection, FileAccess fileAccess)
         {
             Collection<FunctionBinding> bindings = new Collection<FunctionBinding>();
 
             if (bindings != null)
             {
-                foreach (var bindingMetadata in bindingMetadatas)
+                foreach (var bindingMetadata in bindingMetadataCollection)
                 {
                     string type = bindingMetadata.Type.ToLowerInvariant();
                     switch (type)
