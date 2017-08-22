@@ -19,6 +19,10 @@
       "type": "string",
       "description": "Optional named entry point."
     },
+    "configurationSource": {
+      "enum": [ "attributes", "config" ],
+      "description": "For C# precompiled functions only. If set to 'attributes', use WebJobs attributes to specify bindings. Otherwise, use the 'bindings' property of this function.json."
+    },
     "bindings": {
       "type": "array",
       "description": "A list of function bindings.",
