@@ -34,6 +34,7 @@ using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Microsoft.Azure.AppService.Proxy.Client.Contract;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -112,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IScriptEventManager eventManager,
             ScriptHostConfiguration scriptConfig = null,
             ScriptSettingsManager settingsManager = null,
-            ILoggerFactoryBuilder loggerFactoryBuilder = null
+            ILoggerFactoryBuilder loggerFactoryBuilder = null,
             ProxyClientExecutor proxyClient = null)
             : base(scriptConfig.HostConfig)
         {

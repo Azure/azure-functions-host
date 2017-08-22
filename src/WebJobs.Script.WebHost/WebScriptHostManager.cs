@@ -344,11 +344,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // TODO: FACAVAL Metrics
             // HostId may be missing in local test scenarios.
-            var hostId = hostConfig.HostId ?? "default";
-            Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
-            var loggingConnectionString = config.HostConfig.DashboardConnectionString;
-            var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, loggingConnectionString, config.TraceWriter);
-            hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
+            //var hostId = hostConfig.HostId ?? "default";
+            //Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
+            //var loggingConnectionString = config.HostConfig.DashboardConnectionString;
+            //var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, loggingConnectionString, config.TraceWriter);
+            //hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
         }
 
         protected override void OnHostCreated()
@@ -377,21 +377,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions, HttpExtensionConfiguration httpConfig)
         {
-            
-            // TODO: PROXIES
-            // Proxies do not honor the route prefix defined in host.json
-            var proxyHttpRouteFactory = new HttpRouteFactory(string.Empty);
             _router.ClearRoutes();
 
             // TODO: FACAVAL Instantiation of the ScriptRouteHandler should be cleaned up
             ILoggerFactory loggerFactory = _config.HostConfig.LoggerFactory;
             WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, () => Instance), httpConfig.RoutePrefix);
 
-            // Proxy routes will take precedence over http trigger functions and http trigger
-            // routes so they will be added first to the list of http routes.
-            var orderdFunctions = functions.OrderBy(f => f.Metadata.IsProxy ? 0 : 1);
+            // Proxies do not honor the route prefix defined in host.json
+            WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, () => Instance), routePrefix: null);
 
-            foreach (var function in orderdFunctions)
+            foreach (var function in functions)
             {
                 var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
                 if (httpTrigger != null)
@@ -405,14 +400,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     string route = httpTrigger.Route;
 
                     if (string.IsNullOrEmpty(route))
-                    var httpRouteFactory = function.Metadata.IsProxy ? proxyHttpRouteFactory : functionHttpRouteFactory;
-                    if (httpRouteFactory.TryAddRoute(function.Metadata.Name, httpTrigger.Route, httpMethods, _httpRoutes, out httpRoute))
                     {
                         route = function.Name;
                     }
 
-                    routesBuilder.MapFunctionRoute(function.Metadata.Name, route, constraints, function.Metadata.Name);
+                    WebJobsRouteBuilder builder = function.Metadata.IsProxy ? proxiesRoutesBuilder : routesBuilder;
+                    builder.MapFunctionRoute(function.Metadata.Name, route, constraints, function.Metadata.Name);
                 }
+            }
+
+            // Proxy routes will take precedence over http trigger functions
+            // so they will be added first to the router.
+            if (proxiesRoutesBuilder.Count > 0)
+            {
+                _router.AddFunctionRoute(proxiesRoutesBuilder.Build());
             }
 
             if (routesBuilder.Count > 0)

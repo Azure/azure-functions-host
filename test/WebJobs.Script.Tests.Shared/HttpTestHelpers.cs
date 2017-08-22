@@ -18,9 +18,8 @@ namespace Microsoft.WebJobs.Script.Tests
             var requestFeature = request.HttpContext.Features.Get<IHttpRequestFeature>();
             requestFeature.Method = method;
             requestFeature.Scheme = uri.Scheme;
-            requestFeature.PathBase = uri.Host;
             requestFeature.Path = uri.GetComponents(UriComponents.KeepDelimiter | UriComponents.Path, UriFormat.Unescaped);
-            requestFeature.PathBase = "/";
+            requestFeature.PathBase = string.Empty;
             requestFeature.QueryString = uri.GetComponents(UriComponents.KeepDelimiter | UriComponents.Query, UriFormat.Unescaped);
 
             headers = headers ?? new HeaderDictionary();

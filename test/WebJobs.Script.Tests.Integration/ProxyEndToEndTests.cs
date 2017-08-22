@@ -12,6 +12,11 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.WebJobs.Script.Tests;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -24,13 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Proxy_Invoke_Succeeds()
         {
-            HttpRequestMessage request = new HttpRequestMessage
-            {
-                RequestUri = new Uri(string.Format("http://localhost/mymockhttp")),
-                Method = HttpMethod.Get,
-            };
-
-            request.SetConfiguration(Fixture.RequestConfiguration);
+            HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", "http://localhost/mymockhttp");
+            
+            //request.SetConfiguration(Fixture.RequestConfiguration);
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -38,9 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             await Fixture.Host.CallAsync("localFunction", arguments);
 
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal(response.Headers.GetValues("myversion").ToArray()[0], "123");
+            var response = (RawScriptResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
+            Assert.Equal(StatusCodes.Status200OK, response.StatusCode);
+            Assert.Equal("123", response.Headers["myversion"].ToString());
         }
 
         public class TestFixture : EndToEndTestFixture
@@ -81,12 +82,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     (object[] arguments, IFuncExecutor funcExecutor, ILogger logger) =>
                     {
                         object requestObj = arguments != null && arguments.Length > 0 ? arguments[0] : null;
-                        var request = requestObj as HttpRequestMessage;
-                        if (request.Method == HttpMethod.Get && request.RequestUri.OriginalString == "http://localhost/mymockhttp")
+                        var request = requestObj as HttpRequest;
+                        if (string.Equals(request.Method, "GET", StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(request.GetDisplayUrl(), "http://localhost/mymockhttp", StringComparison.OrdinalIgnoreCase))
                         {
-                            var response = new HttpResponseMessage(HttpStatusCode.OK);
-                            response.Headers.Add("myversion", "123");
-                            request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+                            var response = new RawScriptResult(StatusCodes.Status200OK, null)
+                            {
+                                Headers = new Dictionary<string, object>
+                                {
+                                    { "myversion", "123" }
+                                }
+                            };
+                            
+                            request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
                         }
                         return Task.CompletedTask;
                     });
