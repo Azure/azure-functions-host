@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 
             RequestTelemetry telemetry = _channel.Telemetries.Single() as RequestTelemetry;
 
-            Assert.Equal(_invocationId.ToString(), telemetry.Id);
+            Assert.Contains(_invocationId.ToString(), telemetry.Id);
             Assert.Equal(_invocationId.ToString(), telemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, telemetry.Name);
             Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             ExceptionTelemetry exceptionTelemetry = _channel.Telemetries.OfType<ExceptionTelemetry>().Single();
 
             Assert.Equal(2, _channel.Telemetries.Count);
-            Assert.Equal(_invocationId.ToString(), requestTelemetry.Id);
+            Assert.Contains(_invocationId.ToString(), requestTelemetry.Id);
             Assert.Equal(_invocationId.ToString(), requestTelemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, requestTelemetry.Name);
             Assert.Equal(_functionShortName, requestTelemetry.Context.Operation.Name);
@@ -200,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 
             RequestTelemetry telemetry = _channel.Telemetries.Single() as RequestTelemetry;
 
-            Assert.Equal(_invocationId.ToString(), telemetry.Id);
+            Assert.Contains(_invocationId.ToString(), telemetry.Id);
             Assert.Equal(_invocationId.ToString(), telemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, telemetry.Name);
             Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
@@ -249,7 +249,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             RequestTelemetry requestTelemetry = _channel.Telemetries.Where(t => t is RequestTelemetry).Single() as RequestTelemetry;
             ExceptionTelemetry exceptionTelemetry = _channel.Telemetries.Where(t => t is ExceptionTelemetry).Single() as ExceptionTelemetry;
 
-            Assert.Equal(_invocationId.ToString(), requestTelemetry.Id);
+            Assert.Contains(_invocationId.ToString(), requestTelemetry.Id);
             Assert.Equal(_invocationId.ToString(), requestTelemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, requestTelemetry.Name);
             Assert.Equal(_functionShortName, requestTelemetry.Context.Operation.Name);
@@ -402,7 +402,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                     ["Count"] = 2,
                     ["Min"] = 3.3,
                     ["Max"] = 4.4,
-                    ["StandardDeviation"] = 5.5                    
+                    ["StandardDeviation"] = 5.5
                 };
                 logger.LogMetric("CustomMetric", 1.1, props);
             }

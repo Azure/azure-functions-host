@@ -16,7 +16,7 @@
     <tags>Microsoft Azure WebJobs Jobs Logging Application Insights windowsazureofficial Web</tags>
     <dependencies>
       <dependency id="Microsoft.Azure.WebJobs" version="[$WebJobsPackageVersion$]" />
-      <dependency id="Microsoft.ApplicationInsights.WindowsServer" version="2.3.0" />
+      <dependency id="Microsoft.ApplicationInsights.WindowsServer" version="2.4.1" />
     </dependencies>
   </metadata>
 </package>
