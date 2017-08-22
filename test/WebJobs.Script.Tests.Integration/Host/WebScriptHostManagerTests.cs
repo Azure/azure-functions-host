@@ -237,11 +237,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             WebScriptHostManager.AddRouteDataToRequest(mockRouteData.Object, request);
 
+            Assert.True(request.Properties.ContainsKey(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey));
+
             var result = (IDictionary<string, object>)request.Properties[HttpExtensionConstants.AzureWebJobsHttpRouteDataKey];
             Assert.Equal(result["p1"], "abc");
             Assert.Equal(result["p2"], 123);
             Assert.Equal(result["p3"], null);
             Assert.Equal(result["p4"], null);
+        }
+
+        [Fact]
+        public void AddRouteDataToRequest_SecondTime()
+        {
+            var mockRouteData = new Mock<IHttpRouteData>(MockBehavior.Strict);
+            IDictionary<string, object> values = new Dictionary<string, object>
+            {
+                { "p1", "abc" },
+            };
+
+            mockRouteData.Setup(p => p.Values).Returns(values);
+            HttpRequestMessage request = new HttpRequestMessage();
+
+            WebScriptHostManager.AddRouteDataToRequest(mockRouteData.Object, request);
+
+            var result = (IDictionary<string, object>)request.Properties[HttpExtensionConstants.AzureWebJobsHttpRouteDataKey];
+            Assert.Equal(result["p1"], "abc");
+
+            mockRouteData = new Mock<IHttpRouteData>(MockBehavior.Strict);
+            values = new Dictionary<string, object>
+            {
+                { "p2", "def" },
+            };
+
+            mockRouteData.Setup(p => p.Values).Returns(values);
+
+            WebScriptHostManager.AddRouteDataToRequest(mockRouteData.Object, request);
+
+            result = (IDictionary<string, object>)request.Properties[HttpExtensionConstants.AzureWebJobsHttpRouteDataKey];
+            Assert.False(result.ContainsKey("p1"));
+            Assert.Equal(result["p2"], "def");
         }
 
         public void Dispose()

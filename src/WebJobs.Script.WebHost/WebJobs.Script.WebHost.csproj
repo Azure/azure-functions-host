@@ -504,6 +504,8 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="FunctionRequestInvoker.cs" />
+    <Compile Include="ProxyFunctionExecutor.cs" />
     <Compile Include="Security\BlobStorageSecretsRepository.cs" />
     <Compile Include="Security\DefaultSecretManagerFactory.cs" />
     <Compile Include="Security\DefaultSecretsRepositoryFactory.cs" />

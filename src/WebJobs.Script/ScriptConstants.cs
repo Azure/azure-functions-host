@@ -14,6 +14,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsHttpRequestAuthorizationDisabledKey = "MS_AzureFunctionsAuthorizationDisabled";
         public const string AzureFunctionsHttpFunctionKey = "MS_AzureFunctionsHttpFunction";
         public const string AzureFunctionsRequestIdKey = "MS_AzureFunctionsRequestID";
+        public const string AzureFunctionsHttpRequestKey = "MS_AzureFunctionsHttpRequest";
+        public const string AzureProxyFunctionExecutorKey = "MS_AzureProxyFunctionExecutor";
 
         public const string TracePropertyPrimaryHostKey = "MS_PrimaryHost";
         public const string TracePropertyFunctionNameKey = "MS_FunctionName";

@@ -316,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     routeDataValues.Add(pair.Key, value);
                 }
 
-                request.Properties.Add(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, routeDataValues);
+                request.Properties[HttpExtensionConstants.AzureWebJobsHttpRouteDataKey] = routeDataValues;
             }
         }
 
