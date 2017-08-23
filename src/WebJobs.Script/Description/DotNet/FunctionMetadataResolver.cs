@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "System.Runtime",
                 "System.Threading.Tasks",
                 "Microsoft.CSharp",
+                "System.Linq",
                 typeof(System.Runtime.CompilerServices.DynamicAttribute).Assembly.Location,
                 typeof(ILoggerFactory).Assembly.Location, /*Microsoft.Extensions.Logging.Abstractions*/
                 typeof(IAsyncCollector<>).Assembly.Location, /*Microsoft.Azure.WebJobs*/
@@ -57,6 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 typeof(AspNetCore.Http.HttpRequest).Assembly.Location,
                 typeof(AspNetCore.Mvc.IActionResult).Assembly.Location,
                 typeof(AspNetCore.Mvc.RedirectResult).Assembly.Location,
+                typeof(AspNetCore.Http.IQueryCollection).Assembly.Location,
+                typeof(Microsoft.Extensions.Primitives.StringValues).Assembly.Location,
 
                 // TODO: FACAVAL ??
                 typeof(System.Net.Http.HttpClientExtensions).Assembly.Location /*System.Net.Http.Formatting*/
