@@ -124,16 +124,22 @@ namespace WebJobs.Script.EndToEndTests
             Telemetry.TrackEvent("RuntimeUpdate", new Dictionary<string, string> { { "runtimeSource", Settings.RuntimeExtensionPackageUrl } });
 
             string extensionFilePath = Path.ChangeExtension(Path.GetTempFileName(), "zip");
-
-            using (var client = new HttpClient())
+            Uri packageUri = new Uri(Settings.RuntimeExtensionPackageUrl);
+            if (packageUri.IsFile)
             {
-                HttpResponseMessage response = await client.GetAsync(Settings.RuntimeExtensionPackageUrl);
-                response.EnsureSuccessStatusCode();
-
-
-                using (var fileStream = File.OpenWrite(extensionFilePath))
+                File.Copy(Settings.RuntimeExtensionPackageUrl, extensionFilePath);
+            }
+            else
+            {
+                using (var client = new HttpClient())
                 {
-                    await response.Content.CopyToAsync(fileStream);
+                    HttpResponseMessage response = await client.GetAsync(Settings.RuntimeExtensionPackageUrl);
+                    response.EnsureSuccessStatusCode();
+                    
+                    using (var fileStream = File.OpenWrite(extensionFilePath))
+                    {
+                        await response.Content.CopyToAsync(fileStream);
+                    }
                 }
             }
 

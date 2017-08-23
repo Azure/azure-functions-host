@@ -437,15 +437,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             hostConfig.AddService<IWebHookProvider>(this._bindingWebHookProvider);
             hostConfig.AddService<IWebJobsExceptionHandler>(_exceptionHandler);
 
-            // disable standard Dashboard logging (enabling Table logging below)
-            hostConfig.DashboardConnectionString = null;
-
             // HostId may be missing in local test scenarios.
             var hostId = hostConfig.HostId ?? "default";
             Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
             var loggingConnectionString = config.HostConfig.DashboardConnectionString;
             var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, loggingConnectionString, config.TraceWriter);
             hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
+
+            // disable standard Dashboard logging (enabling Table logging above)
+            hostConfig.DashboardConnectionString = null;
         }
 
         protected override void OnHostCreated()
