@@ -8,8 +8,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
@@ -17,7 +15,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
-    [Authorize(Policy = PolicyNames.AdminAuthLevel, AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+    [Authorize(Policy = PolicyNames.AdminAuthLevel)]
     public class KeysController : Controller
     {
         private const string MasterKeyName = "_master";

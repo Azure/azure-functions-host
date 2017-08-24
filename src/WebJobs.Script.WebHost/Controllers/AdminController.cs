@@ -5,9 +5,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -15,7 +12,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
@@ -43,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/functions/{name}")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevel, AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public IActionResult Invoke(string name, [FromBody] FunctionInvocation invocation)
         {
             if (invocation == null)
@@ -69,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("admin/functions/{name}/status")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevel, AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public IActionResult GetFunctionStatus(string name)
         {
             FunctionStatus status = new FunctionStatus();
@@ -96,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("admin/host/status")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal, AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         public IActionResult GetHostStatus()
         {
             var status = new HostStatus
@@ -138,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/host/log")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal, AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         public IActionResult Log(IEnumerable<HostLogEntry> logEntries)
         {
             foreach (var logEntry in logEntries)
@@ -163,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/host/debug")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevel, AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public IActionResult LaunchDebugger()
         {
             if (_webHostSettings.IsSelfHost)
