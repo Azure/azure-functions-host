@@ -8,7 +8,6 @@ using System.Net.Http;
 using System.Web;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
-using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
@@ -163,10 +162,12 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 
         private void LogException(LogLevel logLevel, IEnumerable<KeyValuePair<string, object>> values, Exception exception, string formattedMessage)
         {
-            ExceptionTelemetry telemetry = new ExceptionTelemetry(exception);
-            telemetry.Message = formattedMessage;
-            telemetry.SeverityLevel = GetSeverityLevel(logLevel);
-            telemetry.Timestamp = DateTimeOffset.UtcNow;
+            ExceptionTelemetry telemetry = new ExceptionTelemetry(exception)
+            {
+                Message = formattedMessage,
+                SeverityLevel = GetSeverityLevel(logLevel),
+                Timestamp = DateTimeOffset.UtcNow
+            };
             ApplyProperties(telemetry, values, LogConstants.CustomPropertyPrefix);
             ApplyCustomScopeProperties(telemetry);
             _telemetryClient.TrackException(telemetry);
@@ -174,9 +175,11 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 
         private void LogTrace(LogLevel logLevel, IEnumerable<KeyValuePair<string, object>> values, string formattedMessage)
         {
-            TraceTelemetry telemetry = new TraceTelemetry(formattedMessage);
-            telemetry.SeverityLevel = GetSeverityLevel(logLevel);
-            telemetry.Timestamp = DateTimeOffset.UtcNow;
+            TraceTelemetry telemetry = new TraceTelemetry(formattedMessage)
+            {
+                SeverityLevel = GetSeverityLevel(logLevel),
+                Timestamp = DateTimeOffset.UtcNow
+            };
             ApplyProperties(telemetry, values, LogConstants.CustomPropertyPrefix);
             ApplyCustomScopeProperties(telemetry);
             _telemetryClient.TrackTrace(telemetry);
@@ -285,15 +288,14 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
         {
             IDictionary<string, object> scopeProps = DictionaryLoggerScope.GetMergedStateDictionary() ?? new Dictionary<string, object>();
 
-            var operation = scopeProps.GetValueOrDefault<IOperationHolder<RequestTelemetry>>(OperationContext);
+            RequestTelemetry requestTelemetry = scopeProps.GetValueOrDefault<RequestTelemetry>(OperationContext);
 
             // We somehow never started the operation, so there's no way to complete it.
-            if (operation == null || operation.Telemetry == null)
+            if (requestTelemetry == null)
             {
                 throw new InvalidOperationException("No started telemetry was found.");
             }
 
-            RequestTelemetry requestTelemetry = operation.Telemetry;
             requestTelemetry.Success = exception == null;
             requestTelemetry.ResponseCode = "0";
 
@@ -303,8 +305,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             ApplyFunctionResultProperties(requestTelemetry, values);
 
             // Functions attaches the HttpRequest, which allows us to log richer request details.
-            object request;
-            if (scopeProps.TryGetValue(ApplicationInsightsScopeKeys.HttpRequest, out request))
+            if (scopeProps.TryGetValue(ApplicationInsightsScopeKeys.HttpRequest, out object request))
             {
                 ApplyHttpRequestProperties(requestTelemetry, request as HttpRequestMessage);
             }
@@ -315,9 +316,9 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                 LogException(logLevel, values, exception, null);
             }
 
-            // Note: we do not have to set Duration, StartTime, etc. These are handled by the call
-            // to StopOperation, which also tracks the telemetry.
-            _telemetryClient.StopOperation(operation);
+            // Note: we do not have to set Duration, StartTime, etc. These are handled by the call to Stop()
+            requestTelemetry.Stop();
+            _telemetryClient.TrackRequest(requestTelemetry);
         }
 
         private static void ApplyHttpRequestProperties(RequestTelemetry requestTelemetry, HttpRequestMessage request)
@@ -390,7 +391,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             return DictionaryLoggerScope.Push(state);
         }
 
-        private void StartTelemetryIfFunctionInvocation(IDictionary<string, object> stateValues)
+        private static void StartTelemetryIfFunctionInvocation(IDictionary<string, object> stateValues)
         {
             if (stateValues == null)
             {
@@ -414,15 +415,15 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                 };
 
                 // We'll need to store this operation context so we can stop it when the function completes
-                stateValues[OperationContext] = _telemetryClient.StartOperation(request);
+                request.Start();
+                stateValues[OperationContext] = request;
             }
         }
 
         internal static string GetIpAddress(HttpRequestMessage httpRequest)
         {
             // first check for X-Forwarded-For; used by load balancers
-            IEnumerable<string> headers;
-            if (httpRequest.Headers.TryGetValues(ApplicationInsightsScopeKeys.ForwardedForHeaderName, out headers))
+            if (httpRequest.Headers.TryGetValues(ApplicationInsightsScopeKeys.ForwardedForHeaderName, out IEnumerable<string> headers))
             {
                 string ip = headers.FirstOrDefault();
                 if (!string.IsNullOrWhiteSpace(ip))

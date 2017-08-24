@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 
             RequestTelemetry telemetry = _channel.Telemetries.Single() as RequestTelemetry;
 
-            Assert.Contains(_invocationId.ToString(), telemetry.Id);
+            Assert.Equal(_invocationId.ToString(), telemetry.Id);
             Assert.Equal(_invocationId.ToString(), telemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, telemetry.Name);
             Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             ExceptionTelemetry exceptionTelemetry = _channel.Telemetries.OfType<ExceptionTelemetry>().Single();
 
             Assert.Equal(2, _channel.Telemetries.Count);
-            Assert.Contains(_invocationId.ToString(), requestTelemetry.Id);
+            Assert.Equal(_invocationId.ToString(), requestTelemetry.Id);
             Assert.Equal(_invocationId.ToString(), requestTelemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, requestTelemetry.Name);
             Assert.Equal(_functionShortName, requestTelemetry.Context.Operation.Name);
@@ -199,8 +199,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             }
 
             RequestTelemetry telemetry = _channel.Telemetries.Single() as RequestTelemetry;
-
-            Assert.Contains(_invocationId.ToString(), telemetry.Id);
+            Assert.Equal(_invocationId.ToString(), telemetry.Id);
             Assert.Equal(_invocationId.ToString(), telemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, telemetry.Name);
             Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
@@ -211,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal("200", telemetry.ResponseCode);
             Assert.Equal(LogCategories.Results, telemetry.Properties[LogConstants.CategoryNameKey]);
             Assert.Equal(LogLevel.Information.ToString(), telemetry.Properties[LogConstants.LogLevelKey]);
-            // TODO: Beef up validation to include properties      
+            // TODO: Beef up validation to include properties
         }
 
         [Fact]
@@ -249,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             RequestTelemetry requestTelemetry = _channel.Telemetries.Where(t => t is RequestTelemetry).Single() as RequestTelemetry;
             ExceptionTelemetry exceptionTelemetry = _channel.Telemetries.Where(t => t is ExceptionTelemetry).Single() as ExceptionTelemetry;
 
-            Assert.Contains(_invocationId.ToString(), requestTelemetry.Id);
+            Assert.Equal(_invocationId.ToString(), requestTelemetry.Id);
             Assert.Equal(_invocationId.ToString(), requestTelemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, requestTelemetry.Name);
             Assert.Equal(_functionShortName, requestTelemetry.Context.Operation.Name);
@@ -290,8 +289,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(6, _channel.Telemetries.OfType<TraceTelemetry>().Count());
             foreach (var telemetry in _channel.Telemetries.Cast<TraceTelemetry>())
             {
-                LogLevel expectedLogLevel;
-                Enum.TryParse(telemetry.Message, out expectedLogLevel);
+                Enum.TryParse(telemetry.Message, out LogLevel expectedLogLevel);
                 Assert.Equal(expectedLogLevel.ToString(), telemetry.Properties[LogConstants.LogLevelKey]);
 
                 SeverityLevel expectedSeverityLevel;
