@@ -5,11 +5,12 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Grpc.Core;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 { 
-    public class GrpcServer : IDisposable
+    public class GrpcServer : IRpcServer, IDisposable
     {
         private Server _server;
 
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public Task ShutdownAsync() => _server.ShutdownAsync();
 
-        public int BoundPort => _server.Ports.First().BoundPort;
+        public Uri Uri => new Uri($"http://127.0.0.1:{_server.Ports.First().BoundPort}");
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls

@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Description.Script;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -19,36 +20,28 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
     {
         private IScriptEventManager _eventManager;
 
-        private List<LanguageWorkerConfig> _workerConfigs = new List<LanguageWorkerConfig>();
-        private IDictionary<FunctionMetadata, LanguageWorkerConfig> _workerMap = new Dictionary<FunctionMetadata, LanguageWorkerConfig>();
-        private ConcurrentDictionary<LanguageWorkerConfig, ILanguageWorkerChannel> _channelMap = new ConcurrentDictionary<LanguageWorkerConfig, ILanguageWorkerChannel>();
-        private Func<LanguageWorkerConfig, ILanguageWorkerChannel> _channelFactory;
+        private List<WorkerConfig> _workerConfigs = new List<WorkerConfig>();
+        private IDictionary<FunctionMetadata, WorkerConfig> _workerMap = new Dictionary<FunctionMetadata, WorkerConfig>();
+        private ConcurrentDictionary<WorkerConfig, ILanguageWorkerChannel> _channelMap = new ConcurrentDictionary<WorkerConfig, ILanguageWorkerChannel>();
+        private Func<WorkerConfig, ILanguageWorkerChannel> _channelFactory;
 
         // TODO: handle dead connections https://news.ycombinator.com/item?id=12345223
-        private GrpcServer _server;
-        private FunctionRpcImpl _serverImpl;
+        private IRpcServer _server;
 
         private bool disposedValue = false;
 
-        public FunctionDispatcher(IScriptEventManager manager, Func<LanguageWorkerConfig, ILanguageWorkerChannel> channelFactory, List<LanguageWorkerConfig> workers)
+        public FunctionDispatcher(IScriptEventManager manager, IRpcServer server, Func<WorkerConfig, ILanguageWorkerChannel> channelFactory, List<WorkerConfig> workers)
         {
             _eventManager = manager;
             _channelFactory = channelFactory;
             _workerConfigs = workers;
 
-            _serverImpl = new FunctionRpcImpl(_eventManager);
-            _server = new GrpcServer(_serverImpl);
-            _server.Start();
-
-            foreach (var config in _workerConfigs)
-            {
-                config.Port = _server.BoundPort;
-            }
+            _server = server;
         }
 
         public bool TryRegister(FunctionMetadata functionMetadata)
         {
-            LanguageWorkerConfig workerConfig = _workerConfigs.FirstOrDefault(config => config.ScriptType == functionMetadata.ScriptType && config.Extension == Path.GetExtension(functionMetadata.ScriptFile));
+            WorkerConfig workerConfig = _workerConfigs.FirstOrDefault(config => config.Extension == Path.GetExtension(functionMetadata.ScriptFile));
             if (workerConfig != null)
             {
                 _workerMap.Add(functionMetadata, workerConfig);
@@ -76,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                     {
                         var channel = pair.Value;
                         channel.Dispose();
+                        _server.ShutdownAsync().GetAwaiter().GetResult();
                     }
                 }
                 disposedValue = true;

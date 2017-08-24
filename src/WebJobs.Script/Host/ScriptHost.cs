@@ -36,6 +36,8 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Microsoft.Azure.AppService.Proxy.Client.Contract;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -463,12 +465,17 @@ namespace Microsoft.Azure.WebJobs.Script
                     hostConfig.StorageConnectionString = null;
                 }
 
-                Func<LanguageWorkerConfig, ILanguageWorkerChannel> channelFactory = (config) =>
+                var serverImpl = new FunctionRpcImpl(EventManager);
+                var server = new GrpcServer(serverImpl);
+                server.Start();
+                var processFactory = new DefaultWorkerProcessFactory();
+
+                Func<WorkerConfig, ILanguageWorkerChannel> channelFactory = (config) =>
                 {
-                    return new LanguageWorkerChannel(ScriptConfig, EventManager, config, Logger);
+                    return new LanguageWorkerChannel(ScriptConfig, EventManager, processFactory, config, server.Uri, Logger);
                 };
 
-                _functionDispatcher = new FunctionDispatcher(EventManager, channelFactory, new List<LanguageWorkerConfig>()
+                _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, new List<WorkerConfig>()
                 {
                     new NodeLanguageWorkerConfig(),
                     new JavaLanguageWorkerConfig()

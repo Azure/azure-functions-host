@@ -13,6 +13,7 @@
     <PackageReference Include="Grpc.Tools" Version="1.4.1">
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.0.0" />
   </ItemGroup>
 
   <Target Name="GenerateProtoFiles" BeforeTargets="BeforeBuild">

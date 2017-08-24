@@ -4,11 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
-    internal class JavaLanguageWorkerConfig : LanguageWorkerConfig
+    internal class JavaLanguageWorkerConfig : WorkerConfig
     {
         public JavaLanguageWorkerConfig()
         {
@@ -16,7 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             var javaPath = Path.Combine(javaHome, @"..\jdk1.8.0_111\bin\java.exe");
             ExecutablePath = Path.GetFullPath(javaPath);
             WorkerPath = $"-jar {Environment.GetEnvironmentVariable("AzureWebJobsJavaWorkerPath")}";
-            ScriptType = ScriptType.JavaArchive;
             Extension = ".jar";
         }
     }

@@ -2,22 +2,25 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Description;
+using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
-    internal class NodeLanguageWorkerConfig : LanguageWorkerConfig
+    internal class NodeLanguageWorkerConfig : WorkerConfig
     {
         public NodeLanguageWorkerConfig()
         {
             ExecutablePath = "node";
             string value = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebJobsEnvironment);
             if (string.Compare("Development", value, StringComparison.OrdinalIgnoreCase) == 0) {
-                Options = "--inspect";
+                ExecutableArguments = new Dictionary<string, string>()
+                {
+                    ["--inspect"] = string.Empty
+                };
             }
             WorkerPath = Environment.GetEnvironmentVariable("NodeJSWorkerPath");
-            ScriptType = ScriptType.Javascript;
             Extension = ".js";
         }
     }
