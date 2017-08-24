@@ -5,10 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
-using System.Web;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -84,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 
             RequestTelemetry telemetry = _channel.Telemetries.Single() as RequestTelemetry;
 
+            Assert.Equal(_invocationId.ToString(), telemetry.Id);
             Assert.Equal(_invocationId.ToString(), telemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, telemetry.Name);
             Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
@@ -94,9 +93,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal("my message", telemetry.Properties[$"{LogConstants.ParameterPrefix}queueMessage"]);
             Assert.Equal(_triggerReason, telemetry.Properties[LogConstants.TriggerReasonKey]);
             // TODO: Beef up validation to include properties
-
-            // Starting the telemetry prefixes/postfixes values to the request id, but the original guid is there
-            Assert.Contains(_invocationId.ToString(), telemetry.Id);
         }
 
         [Fact]
@@ -114,8 +110,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             // Errors log an associated Exception
             RequestTelemetry requestTelemetry = _channel.Telemetries.OfType<RequestTelemetry>().Single();
             ExceptionTelemetry exceptionTelemetry = _channel.Telemetries.OfType<ExceptionTelemetry>().Single();
-            
+
             Assert.Equal(2, _channel.Telemetries.Count);
+            Assert.Equal(_invocationId.ToString(), requestTelemetry.Id);
             Assert.Equal(_invocationId.ToString(), requestTelemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, requestTelemetry.Name);
             Assert.Equal(_functionShortName, requestTelemetry.Context.Operation.Name);
@@ -125,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             // TODO: Beef up validation to include properties
 
             // Starting the telemetry prefixes/postfixes values to the request id, but the original guid is there
-            Assert.Contains(_invocationId.ToString(), requestTelemetry.Id);
+            Assert.Equal(_invocationId.ToString(), requestTelemetry.Id);
 
             // Exception needs to have associated id
             Assert.Equal(_invocationId.ToString(), exceptionTelemetry.Context.Operation.Id);
@@ -191,8 +188,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             request.SetupGet(r => r.Host).Returns(new HostString("someuri"));
             request.SetupGet(r => r.Method).Returns("POST");
 
-            var headers = new HeaderDictionary();
-            headers.Add("User-Agent", "my custom user agent");
+            var headers = new HeaderDictionary
+            {
+                { "User-Agent", "my custom user agent" }
+            };
             request.SetupGet(r => r.Headers).Returns(headers);
 
             var response = new Mock<HttpResponse>();
@@ -214,7 +213,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             }
 
             RequestTelemetry telemetry = _channel.Telemetries.Single() as RequestTelemetry;
-            
+
+            Assert.Equal(_invocationId.ToString(), telemetry.Id);
             Assert.Equal(_invocationId.ToString(), telemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, telemetry.Name);
             Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
@@ -226,9 +226,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(LogCategories.Results, telemetry.Properties[LogConstants.CategoryNameKey]);
             Assert.Equal(LogLevel.Information.ToString(), telemetry.Properties[LogConstants.LogLevelKey]);
             // TODO: Beef up validation to include properties
-
-            // Starting the telemetry prefixes/postfixes values to the request id, but the original guid is there
-            Assert.Contains(_invocationId.ToString(), telemetry.Id);
         }
 
         [Fact]
@@ -246,8 +243,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             request.SetupGet(r => r.Host).Returns(new HostString("someuri"));
             request.SetupGet(r => r.Method).Returns("POST");
 
-            var headers = new HeaderDictionary();
-            headers.Add("User-Agent", "my custom user agent");
+            var headers = new HeaderDictionary
+            {
+                { "User-Agent", "my custom user agent" }
+            };
 
             request.SetupGet(r => r.Headers).Returns(headers);
 
@@ -274,6 +273,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             RequestTelemetry requestTelemetry = _channel.Telemetries.Where(t => t is RequestTelemetry).Single() as RequestTelemetry;
             ExceptionTelemetry exceptionTelemetry = _channel.Telemetries.Where(t => t is ExceptionTelemetry).Single() as ExceptionTelemetry;
 
+            Assert.Equal(_invocationId.ToString(), requestTelemetry.Id);
             Assert.Equal(_invocationId.ToString(), requestTelemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, requestTelemetry.Name);
             Assert.Equal(_functionShortName, requestTelemetry.Context.Operation.Name);
@@ -284,9 +284,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal("500", requestTelemetry.ResponseCode);
             Assert.Equal(LogCategories.Results, requestTelemetry.Properties[LogConstants.CategoryNameKey]);
             Assert.Equal(LogLevel.Error.ToString(), requestTelemetry.Properties[LogConstants.LogLevelKey]);
-
-            // Starting the telemetry prefixes/postfixes values to the request id, but the original guid is there
-            Assert.Contains(_invocationId.ToString(), requestTelemetry.Id);
 
             // Exception needs to have associated id
             Assert.Equal(_invocationId.ToString(), exceptionTelemetry.Context.Operation.Id);
@@ -317,8 +314,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal(6, _channel.Telemetries.OfType<TraceTelemetry>().Count());
             foreach (var telemetry in _channel.Telemetries.Cast<TraceTelemetry>())
             {
-                LogLevel expectedLogLevel;
-                Enum.TryParse(telemetry.Message, out expectedLogLevel);
+                Enum.TryParse(telemetry.Message, out LogLevel expectedLogLevel);
                 Assert.Equal(expectedLogLevel.ToString(), telemetry.Properties[LogConstants.LogLevelKey]);
 
                 SeverityLevel expectedSeverityLevel;
@@ -429,7 +425,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                     ["Count"] = 2,
                     ["Min"] = 3.3,
                     ["Max"] = 4.4,
-                    ["StandardDeviation"] = 5.5                    
+                    ["StandardDeviation"] = 5.5
                 };
                 logger.LogMetric("CustomMetric", 1.1, props);
             }
