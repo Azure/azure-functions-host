@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Autofac;
+using Autofac.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script;
@@ -11,12 +13,11 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Core;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Autofac;
-using Autofac.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 
 namespace WebJobs.Script.WebHost.Core
 {
@@ -44,7 +45,8 @@ namespace WebJobs.Script.WebHost.Core
         public static IServiceCollection AddWebJobsScriptHostAuth(this IServiceCollection services)
         {
             services.AddAuthentication()
-                .AddScriptAuthLevel();
+                .AddScriptAuthLevel()
+                .AddScriptJwtBearer();
 
             services.AddAuthorization(o =>
             {

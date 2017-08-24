@@ -4,8 +4,6 @@
 using System;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
