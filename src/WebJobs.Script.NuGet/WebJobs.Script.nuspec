@@ -17,17 +17,17 @@
       <dependency id="Edge.js" version="6.11.2" />
       <dependency id="FSharp.Compiler.Service" version="9.0.1" />
       <dependency id="FSharp.Core" version="4.0.0.1" />
-      <dependency id="Microsoft.Azure.WebJobs" version="2.1.0-beta1-11007" />
+      <dependency id="Microsoft.Azure.WebJobs" version="2.1.0-beta1-11008" />
       <dependency id="Microsoft.ApplicationInsights.WindowsServer" version="2.4.1" />
       <dependency id="Microsoft.Azure.ServiceBus.EventProcessorHost" version="2.2.10" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.ApiHub" version="1.0.0-beta4-10517" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.ApiHub" version="1.0.0-beta4-10521" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.BotFramework" version="1.0.15-beta" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.DocumentDB" version="1.1.0-beta1-10518" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.Http" version="1.0.0-beta1-10517" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.MobileApps" version="1.1.0-beta1-10517" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.NotificationHubs" version="1.1.0-beta1-10517" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.SendGrid" version="2.1.0-beta1-10517" />
-      <dependency id="Microsoft.Azure.WebJobs.Extensions.Twilio" version="1.1.0-beta1-10517" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.DocumentDB" version="1.1.0-beta1-10521" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.Http" version="1.0.0-beta1-10521" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.MobileApps" version="1.1.0-beta1-10521" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.NotificationHubs" version="1.1.0-beta1-10521" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.SendGrid" version="2.1.0-beta1-10521" />
+      <dependency id="Microsoft.Azure.WebJobs.Extensions.Twilio" version="1.1.0-beta1-10521" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.EventGrid" version="1.0.0-beta1-10006" />
       <dependency id="Microsoft.Bot.Connector.DirectLine" version="3.0.0-beta" />
       <dependency id="Microsoft.CodeAnalysis.Analyzers" version="1.1.0" />
