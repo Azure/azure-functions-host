@@ -113,6 +113,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     attributeTrigger.LeaseDatabaseName = Context.GetMetadataValue<string>("leaseDatabaseName");
                     attributeTrigger.LeaseCollectionName = Context.GetMetadataValue<string>("leaseCollectionName");
                     attributeTrigger.LeaseConnectionStringSetting = Context.GetMetadataValue<string>("leaseConnectionStringSetting");
+                    attributeTrigger.CreateLeaseCollectionIfNotExists = Context.GetMetadataValue<bool>("createLeaseCollectionIfNotExists", false);
+                    attributeTrigger.LeasesCollectionThroughput = Context.GetMetadataValue<int>("leaseCollectionThroughput", 0);
 
                     attributes.Add(attributeTrigger);
                 }
