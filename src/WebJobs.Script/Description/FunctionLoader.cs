@@ -6,7 +6,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -14,13 +13,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private readonly ReaderWriterLockSlim _functionValueLoaderLock = new ReaderWriterLockSlim();
         private readonly Func<CancellationToken, Task<T>> _valueFactory;
-        private AsyncLazy<T> _functionValueLoader;
+        private FunctionValueLoader<T> _functionValueLoader;
         private bool _disposed = false;
 
         public FunctionLoader(Func<CancellationToken, Task<T>> valueFactory)
         {
             _valueFactory = valueFactory;
-            _functionValueLoader = new AsyncLazy<T>(valueFactory, new CancellationTokenSource());
+            _functionValueLoader = new FunctionValueLoader<T>(valueFactory, new CancellationTokenSource());
         }
 
         public void Reset()
@@ -30,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 _functionValueLoader?.Dispose();
 
-                _functionValueLoader = new AsyncLazy<T>(_valueFactory, new CancellationTokenSource());
+                _functionValueLoader = new FunctionValueLoader<T>(_valueFactory, new CancellationTokenSource());
             }
             finally
             {
@@ -40,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public async Task<T> GetFunctionTargetAsync(int attemptCount = 0)
         {
-            AsyncLazy<T> currentValueLoader;
+            FunctionValueLoader<T> currentValueLoader;
             _functionValueLoaderLock.EnterReadLock();
             try
             {
@@ -78,5 +77,60 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         public void Dispose() => Dispose(true);
+
+        /// <summary>
+        /// Lazily loads the function value, guaranteeing single execution, and exposing
+        /// a <see cref="Task{T}"/> value that completes when the provided
+        /// factory completes the function creation.
+        /// </summary>
+        private sealed class FunctionValueLoader<U> : Lazy<Task<U>>, IDisposable
+        {
+            private readonly CancellationTokenSource _cts;
+            private bool _disposed = false;
+
+            internal FunctionValueLoader(Func<CancellationToken, Task<U>> valueFactory, CancellationTokenSource cts)
+                : base(() => valueFactory(cts.Token), LazyThreadSafetyMode.ExecutionAndPublication)
+            {
+                _cts = cts;
+                _cts.Token.Register(CancellationRequested, false);
+            }
+
+            private void CancellationRequested()
+            {
+                // We'll give the factory some time to process cancellation,
+                // then dispose of our token
+                Task.Delay(30000)
+                    .ContinueWith(t =>
+                    {
+                        try
+                        {
+                            _cts.Dispose();
+                        }
+                        catch
+                        {
+                        }
+                    }, TaskContinuationOptions.ExecuteSynchronously);
+            }
+
+            public TaskAwaiter<U> GetAwaiter()
+            {
+                return Value.GetAwaiter();
+            }
+
+            private void Dispose(bool disposing)
+            {
+                if (!_disposed)
+                {
+                    if (disposing)
+                    {
+                        _cts.Cancel();
+                    }
+
+                    _disposed = true;
+                }
+            }
+
+            public void Dispose() => Dispose(true);
+        }
     }
 }

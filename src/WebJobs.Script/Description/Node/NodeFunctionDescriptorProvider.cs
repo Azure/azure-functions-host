@@ -4,7 +4,6 @@
 using System;
 using System.Collections.ObjectModel;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {

@@ -9,7 +9,6 @@ using System.Dynamic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -408,60 +407,5 @@ namespace Microsoft.Azure.WebJobs.Script
                 serializer.Serialize(writer, filtered);
             }
         }
-    }
-
-    /// <summary>
-    /// Lazily loads the function value, guaranteeing single execution, and exposing
-    /// a <see cref="Task{T}"/> value that completes when the provided
-    /// factory completes the function creation.
-    /// </summary>
-    internal sealed class AsyncLazy<U> : Lazy<Task<U>>, IDisposable
-    {
-        private readonly CancellationTokenSource _cts;
-        private bool _disposed = false;
-
-        internal AsyncLazy(Func<CancellationToken, Task<U>> valueFactory, CancellationTokenSource cts)
-            : base(() => valueFactory(cts.Token), LazyThreadSafetyMode.ExecutionAndPublication)
-        {
-            _cts = cts;
-            _cts.Token.Register(CancellationRequested, false);
-        }
-
-        private void CancellationRequested()
-        {
-            // We'll give the factory some time to process cancellation,
-            // then dispose of our token
-            Task.Delay(30000)
-                .ContinueWith(t =>
-                {
-                    try
-                    {
-                        _cts.Dispose();
-                    }
-                    catch
-                    {
-                    }
-                }, TaskContinuationOptions.ExecuteSynchronously);
-        }
-
-        public TaskAwaiter<U> GetAwaiter()
-        {
-            return Value.GetAwaiter();
-        }
-
-        private void Dispose(bool disposing)
-        {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-                    _cts.Cancel();
-                }
-
-                _disposed = true;
-            }
-        }
-
-        public void Dispose() => Dispose(true);
     }
 }

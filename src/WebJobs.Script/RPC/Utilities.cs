@@ -15,50 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class Utilities
     {
-        public static bool IsTcpEndpointAvailable(string addressArgument, int portNumber, TraceWriter systemTraceWriter)
-        {
-            TcpClient tcpClient = null;
-            bool endPointAvailable = false;
-            try
-            {
-                // systemTraceWriter.Verbose($"Trying to connect to host:{addressArgument} on port:{portNumber}.");
-                tcpClient = new TcpClient();
-                tcpClient.ReceiveTimeout = tcpClient.SendTimeout = 2000;
-                IPAddress address;
-                if (IPAddress.TryParse(addressArgument, out address))
-                {
-                    systemTraceWriter.Verbose($"address {address} .");
-                    var endPoint = new IPEndPoint(address, portNumber);
-                    tcpClient.Connect(endPoint);
-                }
-                else
-                {
-                    tcpClient.Connect(addressArgument, portNumber);
-                }
-
-                systemTraceWriter.Verbose($"TCP connect succeeded. host:{addressArgument} on port:{portNumber}..");
-                endPointAvailable = true;
-            }
-            catch (Exception e)
-            {
-                systemTraceWriter.Verbose(e.StackTrace);
-
-                if (e is SocketException || e is TimeoutException)
-                {
-                    systemTraceWriter.Verbose($"Not listening on port {portNumber}.");
-                }
-            }
-            finally
-            {
-                if (tcpClient != null)
-                {
-                    tcpClient.Close();
-                }
-            }
-            systemTraceWriter.Verbose($"endPointAvailable: {endPointAvailable}");
-            return endPointAvailable;
-        }
-
         public static object ConvertFromHttpMessageToExpando(RpcHttp inputMessage)
         {
             if (inputMessage == null)
