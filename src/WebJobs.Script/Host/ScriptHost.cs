@@ -62,7 +62,52 @@ namespace Microsoft.Azure.WebJobs.Script
         private FileWatcherEventSource _fileEventSource;
         private IDisposable _fileEventsSubscription;
         private ProxyClientExecutor _proxyClient;
-        private ILoggerFactory _loggerFactory;
+
+        // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
+        // This is the set of bindings we shipped prior to binding extensibility.
+        // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
+        // TODO: Re-add built in providers
+        private static IReadOnlyDictionary<string, string> _builtinBindingTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            //{ "bot", "Microsoft.Azure.WebJobs.Extensions.BotFramework.Config.BotFrameworkConfiguration, Microsoft.Azure.WebJobs.Extensions.BotFramework" },
+            //{ "sendgrid", "Microsoft.Azure.WebJobs.Extensions.SendGrid.SendGridConfiguration, Microsoft.Azure.WebJobs.Extensions.SendGrid" },
+            //{ "eventGridTrigger", "Microsoft.Azure.WebJobs.Extensions.EventGrid.EventGridExtensionConfig, Microsoft.Azure.WebJobs.Extensions.EventGrid" }
+        };
+
+        private static IReadOnlyDictionary<string, string> _builtinScriptBindingTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "twilioSms", "Microsoft.Azure.WebJobs.Script.Binding.TwilioScriptBindingProvider" },
+            { "notificationHub", "Microsoft.Azure.WebJobs.Script.Binding.NotificationHubScriptBindingProvider" },
+            { "cosmosDBTrigger", "Microsoft.Azure.WebJobs.Script.Binding.DocumentDBScriptBindingProvider" },
+            { "documentDB", "Microsoft.Azure.WebJobs.Script.Binding.DocumentDBScriptBindingProvider" },
+            { "mobileTable", "Microsoft.Azure.WebJobs.Script.Binding.MobileAppsScriptBindingProvider" },
+            { "apiHubFileTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ApiHubScriptBindingProvider" },
+            { "apiHubFile", "Microsoft.Azure.WebJobs.Script.Binding.ApiHubScriptBindingProvider" },
+            { "apiHubTable", "Microsoft.Azure.WebJobs.Script.Binding.ApiHubScriptBindingProvider" },
+            { "serviceBusTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
+            { "serviceBus", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
+            { "eventHubTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
+            { "eventHub", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
+        };
+
+        // For backwards compat, we support a #r directly to these assemblies.
+        private static HashSet<string> _assemblyWhitelist = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Twilio.Api" },
+            { "Microsoft.Azure.WebJobs.Extensions.Twilio" },
+            { "Microsoft.Azure.NotificationHubs" },
+            { "Microsoft.WindowsAzure.Mobile" },
+            { "Microsoft.Azure.WebJobs.Extensions.MobileApps" },
+            { "Microsoft.Azure.WebJobs.Extensions.NotificationHubs" },
+            { "Microsoft.WindowsAzure.Mobile" },
+            { "Microsoft.Azure.WebJobs.Extensions.MobileApps" },
+            { "Microsoft.Azure.Documents.Client" },
+            { "Microsoft.Azure.WebJobs.Extensions.DocumentDB" },
+            { "Microsoft.Azure.ApiHub.Sdk" },
+            { "Microsoft.Azure.WebJobs.Extensions.ApiHub" },
+            { "Microsoft.ServiceBus" },
+            { "Sendgrid" },
+        };
 
         protected internal ScriptHost(IScriptHostEnvironment environment,
             IScriptEventManager eventManager,
