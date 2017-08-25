@@ -348,7 +348,7 @@ namespace Microsoft.Azure.WebJobs.Script
             matchedAssembly = null;
 
             var candidateAssembly = type.Assembly;
-            if (string.Compare(assemblyName, candidateAssembly.GetName().Name, StringComparison.OrdinalIgnoreCase) == 0)
+            if (string.Compare(assemblyName, AssemblyNameCache.GetName(candidateAssembly).Name, StringComparison.OrdinalIgnoreCase) == 0)
             {
                 matchedAssembly = candidateAssembly;
                 return true;
