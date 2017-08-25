@@ -30,6 +30,7 @@ namespace WebJobs.Script.WebHost.Core
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IApplicationLifetime applicationLifetime, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
+            app.UseDeveloperExceptionPage();
             app.UseWebJobsScriptHost(applicationLifetime);
         }
     }

@@ -23,7 +23,7 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.0-beta1-10516" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.0-beta1-11006" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.0-beta1-11006" />
-    <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="0.1.79-alpha" />
+    <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.88-alpha" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
