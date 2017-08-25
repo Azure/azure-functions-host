@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Reflection;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             assembly = null;
             Assembly providerAssembly = bindingProvider.GetType().Assembly;
 
-            if (string.Compare(assemblyName, providerAssembly.GetName().Name) == 0)
+            if (string.Compare(assemblyName, AssemblyNameCache.GetName(providerAssembly).Name) == 0)
             {
                 assembly = providerAssembly;
             }
