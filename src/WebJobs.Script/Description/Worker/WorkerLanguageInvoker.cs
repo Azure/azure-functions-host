@@ -4,22 +4,17 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Dynamic;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host;
+using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description.Script;
-using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
@@ -33,14 +28,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly BindingMetadata _trigger;
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
+        private readonly BufferBlock<ScriptInvocationContext> _invocationBuffer;
 
         internal WorkerLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
-            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, BufferBlock<ScriptInvocationContext> invocationBuffer)
             : base(host, functionMetadata)
         {
             _trigger = trigger;
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
+            _invocationBuffer = invocationBuffer;
 
             InitializeFileWatcherIfEnabled();
 
@@ -70,15 +67,21 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             ScriptInvocationContext invocationContext = new ScriptInvocationContext()
             {
+                FunctionMetadata = Metadata,
                 BindingData = context.Binder.BindingData,
                 ExecutionContext = context.ExecutionContext,
-                Inputs = inputs
+                Inputs = inputs,
+                ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
+
+                // TODO: link up cancellation token to parameter descriptors
+                CancellationToken = CancellationToken.None,
             };
 
             ScriptInvocationResult result;
             using (logSubscription)
             {
-                result = await Host.FunctionDispatcher.InvokeAsync(Metadata, invocationContext);
+                _invocationBuffer.Post(invocationContext);
+                result = await invocationContext.ResultSource.Task;
             }
 
             await BindOutputsAsync(triggerValue, context.Binder, result);

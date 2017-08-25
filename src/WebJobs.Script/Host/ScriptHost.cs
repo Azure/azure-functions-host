@@ -470,9 +470,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 server.Start();
                 var processFactory = new DefaultWorkerProcessFactory();
 
-                Func<WorkerConfig, ILanguageWorkerChannel> channelFactory = (config) =>
+                CreateChannel channelFactory = (config, registrations) =>
                 {
-                    return new LanguageWorkerChannel(ScriptConfig, EventManager, processFactory, config, server.Uri, Logger);
+                    return new LanguageWorkerChannel(ScriptConfig, EventManager, processFactory, registrations, config, server.Uri, Logger);
                 };
 
                 _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, new List<WorkerConfig>()
@@ -1431,7 +1431,7 @@ namespace Microsoft.Azure.WebJobs.Script
 #if FEATURE_POWERSHELL
                     new PowerShellFunctionDescriptorProvider(this, ScriptConfig),
 #endif
-                    new WorkerFunctionDescriptorProvider(this, ScriptConfig),
+                    new WorkerFunctionDescriptorProvider(this, ScriptConfig, FunctionDispatcher),
                 };
 
             IEnumerable<FunctionMetadata> combinedFunctionMetadata = null;

@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static async Task<TypedData> ToRpcAsync(this object value)
+        public static TypedData ToRpc(this object value)
         {
             TypedData typedData = new TypedData();
 
@@ -102,25 +102,25 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         case "application/json":
                             var jsonReader = new StreamReader(request.Body, Encoding.UTF8);
-                            rawBody = await jsonReader.ReadToEndAsync();
+                            rawBody = jsonReader.ReadToEnd();
                             body = JsonConvert.DeserializeObject(rawBody);
                             break;
 
                         case "application/octet-stream":
                             var length = Convert.ToInt32(request.ContentLength);
                             var bytes = new byte[length];
-                            await request.Body.ReadAsync(bytes, 0, length);
+                            request.Body.Read(bytes, 0, length);
                             body = bytes;
                             break;
 
                         default:
                             var reader = new StreamReader(request.Body, Encoding.UTF8);
-                            body = rawBody = await reader.ReadToEndAsync();
+                            body = rawBody = reader.ReadToEnd();
                             break;
                     }
                     request.Body.Position = 0;
 
-                    http.Body = await body.ToRpcAsync();
+                    http.Body = body.ToRpc();
                 }
             }
             else

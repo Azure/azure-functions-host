@@ -3,25 +3,21 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description.Script;
+using Microsoft.Azure.WebJobs.Script.Dispatch;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal class WorkerFunctionDescriptorProvider : FunctionDescriptorProvider
     {
-        private readonly ICompilationServiceFactory<ICompilationService<IJavaScriptCompilation>, FunctionMetadata> _compilationServiceFactory;
+        private IFunctionDispatcher _dispatcher;
 
-        public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
-            : this(host, config, new JavaScriptCompilationServiceFactory(host))
-        {
-        }
-
-        public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config,
-            ICompilationServiceFactory<ICompilationService<IJavaScriptCompilation>, FunctionMetadata> compilationServiceFactory)
+        public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config, IFunctionDispatcher dispatcher)
             : base(host, config)
         {
-            _compilationServiceFactory = compilationServiceFactory;
+            _dispatcher = dispatcher;
         }
 
         public override bool TryCreate(FunctionMetadata functionMetadata, out FunctionDescriptor functionDescriptor)
@@ -31,13 +27,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException(nameof(functionMetadata));
             }
             functionDescriptor = null;
-            return Host.FunctionDispatcher.TryRegister(functionMetadata)
+            return _dispatcher.IsSupported(functionMetadata)
                 && base.TryCreate(functionMetadata, out functionDescriptor);
         }
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            return new WorkerLanguageInvoker(Host, triggerMetadata, functionMetadata, inputBindings, outputBindings);
+            var inputBuffer = new BufferBlock<ScriptInvocationContext>();
+            _dispatcher.Register(new FunctionRegistrationContext
+            {
+                Metadata = functionMetadata,
+                InputBuffer = inputBuffer
+            });
+            return new WorkerLanguageInvoker(Host, triggerMetadata, functionMetadata, inputBindings, outputBindings, inputBuffer);
         }
     }
 }

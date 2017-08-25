@@ -13,5 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
     {
         public const string ScriptFiles = "ScriptFiles";
         public const string Rpc = "Rpc";
+        public const string Worker = "Worker";
     }
 }

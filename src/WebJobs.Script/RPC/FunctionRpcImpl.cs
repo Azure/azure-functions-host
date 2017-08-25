@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -26,8 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script
             if (await requestStream.MoveNext(CancellationToken.None))
             {
                 string workerId = requestStream.Current.StartStream.WorkerId;
-                _eventManager.OfType<RpcEvent>()
-                    .Where(evt => evt.Origin == RpcEvent.MessageOrigin.Host && evt.WorkerId == workerId)
+                _eventManager.OfType<OutboundEvent>()
+                    .Where(evt => evt.WorkerId == workerId)
                     .ObserveOn(NewThreadScheduler.Default)
                     .Subscribe(evt =>
                     {
@@ -39,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 do
                 {
-                    _eventManager.Publish(new RpcEvent(workerId, requestStream.Current, RpcEvent.MessageOrigin.Worker));
+                    _eventManager.Publish(new InboundEvent(workerId, requestStream.Current));
                 }
                 while (await requestStream.MoveNext(CancellationToken.None));
             }

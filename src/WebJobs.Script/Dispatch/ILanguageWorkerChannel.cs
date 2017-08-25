@@ -2,16 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Description.Script;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
+    internal delegate ILanguageWorkerChannel CreateChannel(WorkerConfig conf, IObservable<FunctionRegistrationContext> registrations);
+
     internal interface ILanguageWorkerChannel : IDisposable
     {
-        void Register(FunctionMetadata functionMetadata);
+        string Id { get; }
 
-        Task<ScriptInvocationResult> InvokeAsync(FunctionMetadata functionMetadata, ScriptInvocationContext invokeContext);
+        WorkerConfig Config { get; }
     }
 }

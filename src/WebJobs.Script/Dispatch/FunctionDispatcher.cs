@@ -7,56 +7,80 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Threading.Tasks;
+using System.Reactive.Subjects;
 using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Description.Script;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Grpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
     internal class FunctionDispatcher : IFunctionDispatcher
     {
         private IScriptEventManager _eventManager;
-
-        private List<WorkerConfig> _workerConfigs = new List<WorkerConfig>();
-        private IDictionary<FunctionMetadata, WorkerConfig> _workerMap = new Dictionary<FunctionMetadata, WorkerConfig>();
-        private ConcurrentDictionary<WorkerConfig, ILanguageWorkerChannel> _channelMap = new ConcurrentDictionary<WorkerConfig, ILanguageWorkerChannel>();
-        private Func<WorkerConfig, ILanguageWorkerChannel> _channelFactory;
-
-        // TODO: handle dead connections https://news.ycombinator.com/item?id=12345223
         private IRpcServer _server;
+        private CreateChannel _channelFactory;
+        private List<WorkerConfig> _workerConfigs;
 
+        private ConcurrentDictionary<WorkerConfig, WorkerState> _channelState = new ConcurrentDictionary<WorkerConfig, WorkerState>();
+
+        private IDisposable _workerErrorSubscription;
+        private List<ILanguageWorkerChannel> _erroredChannels = new List<ILanguageWorkerChannel>();
         private bool disposedValue = false;
 
-        public FunctionDispatcher(IScriptEventManager manager, IRpcServer server, Func<WorkerConfig, ILanguageWorkerChannel> channelFactory, List<WorkerConfig> workers)
+        public FunctionDispatcher(
+            IScriptEventManager manager,
+            IRpcServer server,
+            CreateChannel channelFactory,
+            List<WorkerConfig> workers)
         {
             _eventManager = manager;
-            _channelFactory = channelFactory;
-            _workerConfigs = workers;
-
             _server = server;
+            _channelFactory = channelFactory;
+            _workerConfigs = workers ?? new List<WorkerConfig>();
+
+            _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
+                .Subscribe(WorkerError);
         }
 
-        public bool TryRegister(FunctionMetadata functionMetadata)
+        public bool IsSupported(FunctionMetadata functionMetadata)
         {
-            WorkerConfig workerConfig = _workerConfigs.FirstOrDefault(config => config.Extension == Path.GetExtension(functionMetadata.ScriptFile));
-            if (workerConfig != null)
-            {
-                _workerMap.Add(functionMetadata, workerConfig);
-                ILanguageWorkerChannel channel = _channelMap.GetOrAdd(workerConfig, _channelFactory);
-                channel.Register(functionMetadata);
-                return true;
-            }
-            return false;
+            return _workerConfigs.Any(config => config.Extension == Path.GetExtension(functionMetadata.ScriptFile));
         }
 
-        public Task<ScriptInvocationResult> InvokeAsync(FunctionMetadata functionMetadata, ScriptInvocationContext context)
+        internal WorkerState CreateWorkerState(WorkerConfig config)
         {
-            var worker = _workerMap[functionMetadata];
-            var channel = _channelMap[worker];
-            return channel.InvokeAsync(functionMetadata, context);
+            var state = new WorkerState();
+            state.Channel = _channelFactory(config, state.Functions);
+            return state;
+        }
+
+        public void Register(FunctionRegistrationContext context)
+        {
+            WorkerConfig workerConfig = _workerConfigs.First(config => config.Extension == Path.GetExtension(context.Metadata.ScriptFile));
+            _channelState.AddOrUpdate(workerConfig,
+                CreateWorkerState,
+                (config, state) =>
+                {
+                    state.Functions.OnNext(context);
+                    return state;
+                });
+        }
+
+        public void WorkerError(WorkerErrorEvent workerError)
+        {
+            var worker = workerError.Worker as ILanguageWorkerChannel;
+            _channelState.AddOrUpdate(worker.Config,
+                CreateWorkerState,
+                (config, state) =>
+                {
+                    _erroredChannels.Add(state.Channel);
+                    if (state.CreateAttempts < 3)
+                    {
+                        state.CreateAttempts++;
+                        state.Channel = _channelFactory(config, state.Functions);
+                    }
+                    return state;
+                });
         }
 
         protected virtual void Dispose(bool disposing)
@@ -65,12 +89,17 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             {
                 if (disposing)
                 {
-                    foreach (var pair in _channelMap)
+                    _workerErrorSubscription.Dispose();
+                    foreach (var pair in _channelState)
                     {
-                        var channel = pair.Value;
-                        channel.Dispose();
-                        _server.ShutdownAsync().GetAwaiter().GetResult();
+                        pair.Value.Channel.Dispose();
+                        pair.Value.Functions.Dispose();
                     }
+                    foreach (var channel in _erroredChannels)
+                    {
+                        channel.Dispose();
+                    }
+                    _server.ShutdownAsync().GetAwaiter().GetResult();
                 }
                 disposedValue = true;
             }
@@ -79,6 +108,15 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         public void Dispose()
         {
             Dispose(true);
+        }
+
+        internal class WorkerState
+        {
+            internal ILanguageWorkerChannel Channel { get; set; }
+
+            internal int CreateAttempts { get; set; } = 1;
+
+            internal ReplaySubject<FunctionRegistrationContext> Functions { get; set; } = new ReplaySubject<FunctionRegistrationContext>();
         }
     }
 }
