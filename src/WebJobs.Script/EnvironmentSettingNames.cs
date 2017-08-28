@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsitePlaceholderMode = "WEBSITE_PLACEHOLDER_MODE";
         public const string AzureWebsiteHomePath = "HOME";
         public const string AzureWebJobsScriptRoot = "AzureWebJobsScriptRoot";
+        public const string AzureWebJobsEnvironment = "AzureWebJobsEnv";
         public const string CompilationReleaseMode = "AzureWebJobsDotNetReleaseCompilation";
         public const string AzureWebJobsDisableHomepage = "AzureWebJobsDisableHomepage";
         public const string TypeScriptCompilerPath = "AzureWebJobs_TypeScriptPath";

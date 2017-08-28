@@ -108,6 +108,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             IEnumerable values = null;
 
+            if (value is JArray jArray)
+            {
+                return jArray;
+            }
+
             if (value is Stream)
             {
                 // first deserialize the stream as a string
@@ -262,6 +267,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 else if (type == typeof(int))
                 {
                     bytes = BitConverter.GetBytes((int)value);
+                }
+                else if (type == typeof(long))
+                {
+                    int val = unchecked((int)((long)value));
+                    bytes = BitConverter.GetBytes(val);
                 }
                 else if (type == typeof(bool))
                 {
