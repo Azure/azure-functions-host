@@ -1,3 +1,4 @@
 ﻿{
-    "id": "function-tests-node"
+  "id": "function-tests-node",
+  "functions": [ "HttpTrigger-Scenarios" ]
 }

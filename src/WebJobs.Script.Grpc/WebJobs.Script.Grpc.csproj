@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+
+    <Ext Condition="'$(OS)' == 'Windows_NT'">bat</Ext>
+    <Ext Condition="'$(OS)' != 'Windows_NT'">sh</Ext>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.3.0" />
+    <PackageReference Include="Grpc.Core" Version="1.4.1" />
+    <PackageReference Include="Grpc.Tools" Version="1.4.1">
+      <PrivateAssets>All</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.0.0" />
+  </ItemGroup>
+
+  <Target Name="GenerateProtoFiles" BeforeTargets="BeforeBuild">
+    <Exec Command="./generate_protos.$(Ext)" />
+    <ItemGroup>
+      <Compile Include="**/*$(DefaultLanguageSourceExtension)" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);$(BaseIntermediateOutputPath)**;$(BaseOutputPath)**;@(Compile)" />
+    </ItemGroup>
+  </Target>
+</Project>

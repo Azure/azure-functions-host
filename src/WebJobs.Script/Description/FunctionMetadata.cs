@@ -59,6 +59,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public bool IsDirect { get; set; }
 
+        public string FunctionId { get; set; } = Guid.NewGuid().ToString();
+
         /// <summary>
         /// Gets or sets a value indicating whether this function is a wrapper for Azure Function Proxy
         /// </summary>
