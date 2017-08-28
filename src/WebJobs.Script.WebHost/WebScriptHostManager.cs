@@ -21,6 +21,8 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -30,8 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         // private static Lazy<MethodInfo> _getWebHookDataMethod = new Lazy<MethodInfo>(CreateGetWebHookDataMethodInfo);
         private static bool? _standbyMode;
 
-        // TODO: FACAVAL
-        //private readonly WebHostMetricsLogger _metricsLogger;
+        private readonly WebHostMetricsLogger _metricsLogger;
         private readonly ISecretManager _secretManager;
         private readonly HostPerformanceManager _performanceManager;
         private readonly WebHostSettings _webHostSettings;
@@ -67,24 +68,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             _config = config;
 
-            // TODO: FACAVAL
-            // _metricsLogger = new WebHostMetricsLogger();
+            _metricsLogger = new WebHostMetricsLogger();
             _exceptionHandler = new WebScriptHostExceptionHandler(this);
             _webHostSettings = webHostSettings;
             _hostTimeoutSeconds = hostTimeoutSeconds;
             _hostRunningPollIntervalMilliseconds = hostPollingIntervalMilliseconds;
             _router = router;
 
-            // var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
-            // var systemTraceWriter = new SystemTraceWriter(systemEventGenerator, settingsManager, TraceLevel.Verbose);
-            // if (config.TraceWriter != null)
-            // {
-            //     config.TraceWriter = new CompositeTraceWriter(new TraceWriter[] { config.TraceWriter, systemTraceWriter });
-            // }
-            // else
-            // {
-            //     config.TraceWriter = systemTraceWriter;
-            // }
+            var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
+            var systemTraceWriter = new SystemTraceWriter(systemEventGenerator, settingsManager, TraceLevel.Verbose);
+            if (config.TraceWriter != null)
+            {
+                config.TraceWriter = new CompositeTraceWriter(new TraceWriter[] { config.TraceWriter, systemTraceWriter });
+            }
+            else
+            {
+                config.TraceWriter = systemTraceWriter;
+            }
 
             config.IsSelfHost = webHostSettings.IsSelfHost;
 
@@ -263,9 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 (_secretManager as IDisposable)?.Dispose();
 
-                // TODO: FACAVAL
-                // _metricsLogger?.Dispose();
-                // _httpRoutes?.Dispose();
+                _metricsLogger?.Dispose();
             }
 
             base.Dispose(disposing);
@@ -300,25 +298,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         //     return getDataMethod.Invoke(null, new object[] { context });
         // }
 
-        internal static void AddRouteDataToRequest(RouteData routeData, HttpRequest request)
-        {
-            if (routeData.Values != null)
-            {
-                Dictionary<string, object> routeDataValues = new Dictionary<string, object>();
-                foreach (var pair in routeData.Values)
-                {
-                    // translate any unspecified optional parameters to null values
-                    // unspecified values still need to be included as part of binding data
-                    // for correct binding to occur
-                    // TODO: FACAVAL
-                    var value = pair.Value; //pair.Value != TemplatePart.CreateParameter( ? pair.Value : null;
-                    routeDataValues.Add(pair.Key, value);
-                }
-
-                request.HttpContext.Items.Add(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, routeDataValues);
-            }
-        }
-
         protected override void OnInitializeConfig(ScriptHostConfiguration config)
         {
             base.OnInitializeConfig(config);
@@ -331,8 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Add our WebHost specific services
             var hostConfig = config.HostConfig;
 
-            // TODO: FACAVAL
-            // hostConfig.AddService<IMetricsLogger>(_metricsLogger);
+            hostConfig.AddService<IMetricsLogger>(_metricsLogger);
 
             // config.HostConfig.AddService<IWebHookProvider>(this._bindingWebHookProvider);
 
@@ -342,13 +320,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // disable standard Dashboard logging (enabling Table logging below)
             hostConfig.DashboardConnectionString = null;
 
-            // TODO: FACAVAL Metrics
             // HostId may be missing in local test scenarios.
-            //var hostId = hostConfig.HostId ?? "default";
-            //Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
-            //var loggingConnectionString = config.HostConfig.DashboardConnectionString;
-            //var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, loggingConnectionString, config.TraceWriter);
-            //hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
+            var hostId = hostConfig.HostId ?? "default";
+            Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
+            var loggingConnectionString = config.HostConfig.DashboardConnectionString;
+            var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, loggingConnectionString, config.TraceWriter);
+            hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
         }
 
         protected override void OnHostCreated()
