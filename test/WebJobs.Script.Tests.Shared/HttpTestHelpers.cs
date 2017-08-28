@@ -11,7 +11,7 @@ namespace Microsoft.WebJobs.Script.Tests
 {
     public class HttpTestHelpers
     {
-        public static HttpRequest CreateHttpRequest(string method, string uriString, IHeaderDictionary headers = null, string body = null)
+        public static HttpRequest CreateHttpRequest(string method, string uriString, IHeaderDictionary headers = null, object body = null)
         {
             var uri = new Uri(uriString);
             var request = new DefaultHttpContext().Request;
@@ -31,7 +31,17 @@ namespace Microsoft.WebJobs.Script.Tests
 
             if (body != null)
             {
-                requestFeature.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+                byte[] bytes = null;
+                if (body is string bodyString)
+                {
+                    bytes = Encoding.UTF8.GetBytes(bodyString);
+                }
+                else if (body is byte[] bodyBytes)
+                {
+                    bytes = bodyBytes;
+                }
+
+                requestFeature.Body = new MemoryStream(bytes);
                 request.ContentLength = request.Body.Length;
                 headers.Add("Content-Length", request.Body.Length.ToString());
             }
