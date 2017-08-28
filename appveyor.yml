@@ -49,6 +49,8 @@ build_script:
     dotnet pack src\WebJobs.Script\WebJobs.Script.csproj -o ..\..\buildoutput --no-build --version-suffix "-$env:APPVEYOR_BUILD_NUMBER"
 
     dotnet pack src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o ..\..\buildoutput --no-build --version-suffix "-$env:APPVEYOR_BUILD_NUMBER"
+
+    dotnet pack src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj -o ..\..\buildoutput --no-build --version-suffix "-$env:APPVEYOR_BUILD_NUMBER"
 test_script:
 - ps: >-
     # dotnet test .\test\WebJobs.Script.Scaling.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
