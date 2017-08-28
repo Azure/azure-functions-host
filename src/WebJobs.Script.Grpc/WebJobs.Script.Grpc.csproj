@@ -1,8 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
+  <Import Project="..\..\build\common.props" />
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-
+    <PackageId>Microsoft.Azure.WebJobs.Script.Grpc</PackageId>
+    <PackageIconUrl>https://raw.githubusercontent.com/Azure/azure-webjobs-sdk/dev/webjobs.png</PackageIconUrl>
+    <AssemblyName>Microsoft.Azure.WebJobs.Script.Grpc</AssemblyName>
+    <RootNamespace>Microsoft.Azure.WebJobs.Script.Grpc</RootNamespace>
     <Ext Condition="'$(OS)' == 'Windows_NT'">bat</Ext>
     <Ext Condition="'$(OS)' != 'Windows_NT'">sh</Ext>
   </PropertyGroup>
