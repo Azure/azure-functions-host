@@ -1,18 +1,3 @@
- In order to run:
- 
- - Add `AzureWebJobsScriptRoot` environment variable pointing to the samples folder
- - Use Visual Studio 2017 Preview - current version 15.3.0 Preview 7.0
- - Add function name to `functions` array in samples folder `host.json` to enable loading by host
- - Set WebJobs.Script.WebHost to startup project
- - Grab the nodejs worker from https://github.com/Azure/azure-functions-nodejs-worker and run `npm run build`
- - Set `NodeJSWorkerPath` to `<path-to-node-worker-repo>/dist/nodeJsWorker.js`
- 
- Tests:
- 
- - Most of the EndToEnd tests have not been ported to .net core
- - You may run into an issue with grpc dll not found when running integration tests (https://github.com/xunit/xunit/issues/1363). In that case, copy `%UserProfile%/.nuget/packages/grpc.core/<version>/runtimes` to the test output folder (bin/debug), current version 1.4.1
- 
-
 ![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-functions-cli/master/src/Azure.Functions.Cli/npm/assets/azure-functions-logo-color-raster.png)
 
 |Branch|Status|
