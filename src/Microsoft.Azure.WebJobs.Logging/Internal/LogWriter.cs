@@ -174,7 +174,10 @@ namespace Microsoft.Azure.WebJobs.Logging
                 _container.Decrement(item.FunctionInstanceId);
                 _instanceLogger.Decrement(item.FunctionInstanceId);
 
-                _completedFunctions.Add(item.FunctionInstanceId);
+                lock (_lock)
+                {
+                    _completedFunctions.Add(item.FunctionInstanceId);
+                }
             }
             else
             {
