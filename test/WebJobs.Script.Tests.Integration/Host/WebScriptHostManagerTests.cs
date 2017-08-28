@@ -23,6 +23,7 @@ using Moq;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
 using Xunit;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -68,32 +69,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 hostTimeoutSeconds: 2,  hostPollingIntervalMilliseconds: 500, scriptHostFactory: _mockScriptHostFactory.Object);
         }
 
-        // TODO: FACAVAL - Event generator
-        //[Fact]
-        //public async Task FunctionInvoke_SystemTraceEventsAreEmitted()
-        //{
-        //    _fixture.EventGenerator.Events.Clear();
+        [Fact]
+        public async Task FunctionInvoke_SystemTraceEventsAreEmitted()
+        {
+            _fixture.EventGenerator.Events.Clear();
 
-        //    var host = _fixture.HostManager.Instance;
-        //    var input = Guid.NewGuid().ToString();
-        //    var parameters = new Dictionary<string, object>
-        //    {
-        //        { "input", input }
-        //    };
-        //    await host.CallAsync("ManualTrigger", parameters);
+            var host = _fixture.HostManager.Instance;
+            var input = Guid.NewGuid().ToString();
+            var parameters = new Dictionary<string, object>
+            {
+                { "input", input }
+            };
+            await host.CallAsync("ManualTrigger", parameters);
 
-        //    // it's possible that the TimerTrigger fires during this so filter them out.
+            // it's possible that the TimerTrigger fires during this so filter them out.
 
-        //  string[] events = _fixture.EventGenerator.Events.Where(e => !e.Contains("TimerTrigger")).ToArray();
-        //  Assert.True(events.Length == 4, $"Expected 4 events. Actual: {events.Length}. Actual events: {Environment.NewLine}{string.Join(Environment.NewLine, events)}");
-        //  Assert.StartsWith("Info ManualTrigger Function started (Id=", events[0]); // From fast-logger pre-bind notification, FunctionLogEntry.IsStart
-        //  Assert.StartsWith("Info WebJobs.Execution Executing 'Functions.ManualTrigger' (Reason='This function was programmatically called via the host APIs.', Id=", events[1]); // from TraceWriterFunctionInstanceLogger
-        //  Assert.StartsWith("Info ManualTrigger Function completed (Success, Id=", events[2]); // From fast-logger, FunctionLogEntry.IsComplete
-        //  Assert.StartsWith("Info WebJobs.Execution Executed 'Functions.ManualTrigger' (Succeeded, Id=", events[3]);
-        //
-        //    // make sure the user log wasn't traced
-        //    Assert.False(_fixture.EventGenerator.Events.Any(p => p.Contains("ManualTrigger function invoked!")));
-        //}
+            string[] events = _fixture.EventGenerator.Events.Where(e => !e.Contains("TimerTrigger")).ToArray();
+            Assert.True(events.Length == 4, $"Expected 4 events. Actual: {events.Length}. Actual events: {Environment.NewLine}{string.Join(Environment.NewLine, events)}");
+            Assert.StartsWith("Info ManualTrigger Function started (Id=", events[0]); // From fast-logger pre-bind notification, FunctionLogEntry.IsStart
+            Assert.StartsWith("Info WebJobs.Execution Executing 'Functions.ManualTrigger' (Reason='This function was programmatically called via the host APIs.', Id=", events[1]); // from TraceWriterFunctionInstanceLogger
+            Assert.StartsWith("Info ManualTrigger Function completed (Success, Id=", events[2]); // From fast-logger, FunctionLogEntry.IsComplete
+            Assert.StartsWith("Info WebJobs.Execution Executed 'Functions.ManualTrigger' (Succeeded, Id=", events[3]);
+
+            // make sure the user log wasn't traced
+            Assert.False(_fixture.EventGenerator.Events.Any(p => p.Contains("ManualTrigger function invoked!")));
+        }
 
         [Fact]
         public void FunctionLogFilesArePurgedOnStartup()
@@ -171,12 +171,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("Job host stopped", hostLogs);
         }
 
-#if SYSTEMTRACEWRITER
         [Fact]
         public async Task MultipleHostRestarts()
         {
             int count = 0;
-            _mockScriptHostFactory.Setup(p => p.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, _config)).Callback(() =>
+            _mockScriptHostFactory.Setup(p => p.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, _config, new DefaultLoggerFactoryBuilder())).Callback(() =>
             {
                 count++;
             }).Throws(new Exception("Kaboom!"));
@@ -196,7 +195,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // increasing on each restart
             Assert.Equal(typeof(SystemTraceWriter), _config.TraceWriter.GetType());
         }
-#endif
 
         // TODO: FACAVAL
         //[Fact]
@@ -305,8 +303,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public Fixture()
             {
-                // TODO: FACAVAL - EventGenerator
-                // EventGenerator = new TestSystemEventGenerator();
+                EventGenerator = new TestSystemEventGenerator();
                 _settingsManager = ScriptSettingsManager.Instance;
 
                 TestFunctionRoot = Path.Combine(TestHelpers.FunctionsTestDirectory, "Functions");
@@ -350,9 +347,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var hostConfig = config.HostConfig;
 
-                // TODO: FACAVAL
-                // var testEventGenerator = new TestSystemEventGenerator();
-                // hostConfig.AddService<IEventGenerator>(EventGenerator);
+                var testEventGenerator = new TestSystemEventGenerator();
+                hostConfig.AddService<IEventGenerator>(EventGenerator);
                 var mockEventManager = new Mock<IScriptEventManager>();
                 var mockRouter = new Mock<IWebJobsRouter>();
                 var mockHostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings, mockRouter.Object);
@@ -379,12 +375,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     "Error The following 1 functions are in error:"
                 };
 
-                // TODO: FACAVAL
-                //foreach (string pattern in expectedPatterns)
-                //{
-                //    Assert.True(EventGenerator.Events.Any(p => Regex.IsMatch(p, pattern)), $"Expected trace event {pattern} not found.");
-                //}
+                foreach (string pattern in expectedPatterns)
+                {
+                    Assert.True(EventGenerator.Events.Any(p => Regex.IsMatch(p, pattern)), $"Expected trace event {pattern} not found.");
+                }
             }
+
+            public TestSystemEventGenerator EventGenerator { get; private set; }
 
             public WebScriptHostManager HostManager { get; private set; }
 
@@ -429,48 +426,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 traceWriter.Flush();
             }
 
-            // TODO: FACAVAL
-            //public class TestSystemEventGenerator : IEventGenerator
-            //{
-            //    private readonly object _syncLock = new object();
+            public class TestSystemEventGenerator : IEventGenerator
+            {
+                private readonly object _syncLock = new object();
 
-            //    public TestSystemEventGenerator()
-            //    {
-            //        Events = new List<string>();
-            //    }
+                public TestSystemEventGenerator()
+                {
+                    Events = new List<string>();
+                }
 
-            //    public List<string> Events { get; private set; }
+                public List<string> Events { get; private set; }
 
-            //    public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, Exception exception = null)
-            //    {
-            //        var elements = new string[] { level.ToString(), subscriptionId, appName, functionName, eventName, source, summary, details };
-            //        string evt = string.Join(" ", elements.Where(p => !string.IsNullOrEmpty(p)));
-            //        lock (_syncLock)
-            //        {
-            //            Events.Add(evt);
-            //        }
-            //    }
+                public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, Exception exception = null)
+                {
+                    var elements = new string[] { level.ToString(), subscriptionId, appName, functionName, eventName, source, summary, details };
+                    string evt = string.Join(" ", elements.Where(p => !string.IsNullOrEmpty(p)));
+                    lock (_syncLock)
+                    {
+                        Events.Add(evt);
+                    }
+                }
 
-            //    public void LogFunctionMetricEvent(string subscriptionId, string appName, string functoinName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp)
-            //    {
-            //        throw new NotImplementedException();
-            //    }
+                public void LogFunctionMetricEvent(string subscriptionId, string appName, string functoinName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp)
+                {
+                    throw new NotImplementedException();
+                }
 
-            //    public void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success)
-            //    {
-            //        throw new NotImplementedException();
-            //    }
+                public void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success)
+                {
+                    throw new NotImplementedException();
+                }
 
-            //    public void LogFunctionDetailsEvent(string siteName, string functionName, string inputBindings, string outputBindings, string scriptType, bool isDisabled)
-            //    {
-            //        throw new NotImplementedException();
-            //    }
+                public void LogFunctionDetailsEvent(string siteName, string functionName, string inputBindings, string outputBindings, string scriptType, bool isDisabled)
+                {
+                    throw new NotImplementedException();
+                }
 
-            //    public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
-            //    {
-            //        throw new NotImplementedException();
-            //    }
-            //}
+                public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
+                {
+                    throw new NotImplementedException();
+                }
+            }
         }
     }
 }
