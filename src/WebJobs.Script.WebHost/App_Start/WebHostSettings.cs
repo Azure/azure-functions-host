@@ -31,6 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public TraceWriter TraceWriter { get; set; }
 
+        public ILoggerFactoryBuilder LoggerFactoryBuilder { get; set; } = new DefaultLoggerFactoryBuilder();
+
         internal static WebHostSettings CreateDefault(ScriptSettingsManager settingsManager)
         {
             WebHostSettings settings = new WebHostSettings

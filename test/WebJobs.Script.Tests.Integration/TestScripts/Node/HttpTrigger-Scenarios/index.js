@@ -2,7 +2,7 @@
 
 module.exports = function (context, req) {
     var scenario = (req.headers && req.headers.scenario) || req.body.scenario;
-    
+
     switch (scenario) {
         case "echo":
             context.res = req.body.value;
@@ -20,7 +20,7 @@ module.exports = function (context, req) {
                     'Content-Type': req.body.contenttype
                 },
                 isRaw: true
-            }
+            };
             break;
 
         case "rawresponsenocontenttype":
@@ -28,7 +28,7 @@ module.exports = function (context, req) {
                 status: 200,
                 body: req.body.value,
                 isRaw: true
-            }
+            };
             break;
 
         case "content":
@@ -49,6 +49,28 @@ module.exports = function (context, req) {
             context.res = { status: 204, body: null, headers: { 'content-type': 'application/json' } };
             break;
 
+        case "appInsights-Success":
+            logAppInsightsPayload(context, req.body.value);
+            context.res = {
+                status: 200,
+                body: context.invocationId,
+                isRaw: true
+            };
+            break;
+
+        case "appInsights-Failure":
+            logAppInsightsPayload(context, req.body.value);
+            context.res = {
+                status: 409,
+                body: context.invocationId,
+                isRaw: true
+            };
+            break;
+
+        case "appInsights-Throw":
+            logAppInsightsPayload(context, req.body.value);
+            throw new Error(context.invocationId);
+
         default:
             context.res = {
                 status: 400
@@ -57,4 +79,13 @@ module.exports = function (context, req) {
     }
 
     context.done();
+};
+
+function logAppInsightsPayload(context, functionTrace) {
+    var logPayload = {
+        invocationId: context.invocationId,
+        trace: functionTrace
+    };
+
+    context.log(logPayload);
 }

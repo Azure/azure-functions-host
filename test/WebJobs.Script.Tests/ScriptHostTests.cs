@@ -401,7 +401,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             TestLoggerProvider provider = new TestLoggerProvider();
-            scriptConfig.HostConfig.AddService<ILoggerFactoryBuilder>(new TestLoggerFactoryBuilder(provider));
+            scriptConfig.LoggerFactoryBuilder = new TestLoggerFactoryBuilder(provider);
 
             var environment = new Mock<IScriptHostEnvironment>();
             var eventManager = new Mock<IScriptEventManager>();
@@ -1019,7 +1019,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = rootPath
             };
 
-            config.HostConfig.AddService<ILoggerFactoryBuilder>(loggerFactoryHookMock.Object);
+            config.LoggerFactoryBuilder = loggerFactoryHookMock.Object;
 
             config.HostConfig.HostId = ID;
             var environment = new Mock<IScriptHostEnvironment>();
@@ -1060,7 +1060,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = rootPath
             };
 
-            config.HostConfig.AddService<ILoggerFactoryBuilder>(loggerFactoryHookMock.Object);
+            config.LoggerFactoryBuilder = loggerFactoryHookMock.Object;
 
             config.HostConfig.HostId = ID;
             var environment = new Mock<IScriptHostEnvironment>();
@@ -1141,8 +1141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var channel = new TestTelemetryChannel();
             var builder = new TestChannelLoggerFactoryBuilder(channel);
 
-            config.HostConfig.AddService<ILoggerFactoryBuilder>(builder);
-
+            config.LoggerFactoryBuilder = builder;
             config.HostConfig.LoggerFactory = new LoggerFactory();
 
             var settingsManager = ScriptSettingsManager.Instance;

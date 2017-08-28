@@ -791,10 +791,7 @@ namespace Microsoft.Azure.WebJobs.Script
             scriptConfig.HostConfig.LoggerFactory.AddProvider(new FileLoggerProvider(traceWriteFactory,
                 (category, level) => (category == LogCategories.Function) && isFileLoggingEnabled()));
 
-            // Allow a way to plug in custom LoggerProviders.
-            ILoggerFactoryBuilder builder = scriptConfig.HostConfig.GetService<ILoggerFactoryBuilder>() ??
-                new DefaultLoggerFactoryBuilder();
-            builder.AddLoggerProviders(scriptConfig.HostConfig.LoggerFactory, scriptConfig, settingsManager);
+            scriptConfig.LoggerFactoryBuilder.AddLoggerProviders(scriptConfig.HostConfig.LoggerFactory, scriptConfig, settingsManager);
         }
 
         private void TraceFileChangeRestart(string changeType, string path, bool isShutdown)

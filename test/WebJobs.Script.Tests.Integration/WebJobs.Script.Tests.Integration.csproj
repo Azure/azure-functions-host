@@ -603,6 +603,12 @@
     <None Include="TestScripts\CSharp\FunctionExecutionContext\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestScripts\CSharp\HttpTrigger-Scenarios\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestScripts\CSharp\HttpTrigger-Scenarios\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestScripts\CSharp\FunctionExecutionContext\run.csx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

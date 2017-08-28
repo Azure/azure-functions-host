@@ -23,8 +23,8 @@ public static void Run(ScenarioInput input, out string blob, TraceWriter trace, 
     {
         var logPayload = new
         {
-            InvocationId = context.InvocationId,
-            Trace = input.Value
+            invocationId = context.InvocationId,
+            trace = input.Value
         };
 
         logger.LogInformation(JObject.FromObject(logPayload).ToString(Formatting.None));

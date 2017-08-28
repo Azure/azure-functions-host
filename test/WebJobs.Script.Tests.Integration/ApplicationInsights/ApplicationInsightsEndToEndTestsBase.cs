@@ -4,129 +4,255 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 {
-    public abstract class ApplicationInsightsEndToEndTestsBase<TTestFixture> :
-        EndToEndTestsBase<TTestFixture> where TTestFixture : ApplicationInsightsTestFixture, new()
+    public abstract class ApplicationInsightsEndToEndTestsBase<TTestFixture>
+        : IClassFixture<TTestFixture> where TTestFixture : ApplicationInsightsTestFixture, new()
     {
-        public ApplicationInsightsEndToEndTestsBase(TTestFixture fixture) : base(fixture)
+        private ApplicationInsightsTestFixture _fixture;
+
+        public ApplicationInsightsEndToEndTestsBase(ApplicationInsightsTestFixture fixture)
         {
+            TestHelpers.ClearFunctionLogs("Scenarios");
+            TestHelpers.ClearFunctionLogs("Http-Scenarios");
+
+            _fixture = fixture;
         }
 
-        protected async Task ApplicationInsights_SucceedsTest()
+        [Fact]
+        public async Task Validate_Manual()
         {
             string functionName = "Scenarios";
-            TestHelpers.ClearFunctionLogs(functionName);
-
-            string functionTrace = $"Function trace: {Guid.NewGuid().ToString()}";
             int invocationCount = 5;
 
+            List<string> functionTraces = new List<string>();
+
+            // We want to invoke this multiple times specifically to make sure Node invocationIds
+            // are correctly being set. Invoke them all first, then come back and validate all.
             for (int i = 0; i < invocationCount; i++)
             {
-                ScenarioInput input = new ScenarioInput
+                HttpRequestMessage request = new HttpRequestMessage
                 {
-                    Scenario = "appInsights",
-                    Container = "scenarios-output",
-                    Value = functionTrace
+                    RequestUri = new Uri($"https://localhost/admin/functions/{functionName}"),
+                    Method = HttpMethod.Post,
                 };
 
-                Dictionary<string, object> arguments = new Dictionary<string, object>
-                {
-                    { "input", JsonConvert.SerializeObject(input) }
-                };
+                string functionTrace = $"Function trace: {Guid.NewGuid().ToString()}";
+                functionTraces.Add(functionTrace);
 
-                await Fixture.Host.CallAsync(functionName, arguments);
+                JObject input = new JObject()
+                {
+                    {
+                        "input", new JObject()
+                        {
+                            { "scenario", "appInsights" },
+                            { "container", "not-used" },
+                            { "value",  functionTrace }
+                        }.ToString()
+                    }
+                };
+                request.Content = new StringContent(input.ToString());
+                request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+                HttpResponseMessage response = await _fixture.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
             }
 
+            // Now validate each function invocation.
+            foreach (string functionTrace in functionTraces)
+            {
+                await WaitForFunctionTrace(functionName, functionTrace);
+
+                string invocationId = ValidateEndToEndTest(functionName, functionTrace, true);
+
+                // Do some additional metric validation
+                MetricTelemetry metric = _fixture.Channel.Telemetries
+                    .OfType<MetricTelemetry>()
+                    .Where(t => t.Context.Operation.Id == invocationId)
+                    .Single();
+                ValidateMetric(metric, invocationId, functionName);
+            }
+        }
+
+        [Fact]
+        public async Task Validate_Http_Success()
+        {
+            await RunHttpTest("HttpTrigger-Scenarios", "appInsights-Success", HttpStatusCode.OK, true);
+        }
+
+        [Fact]
+        public async Task Validate_Http_Failure()
+        {
+            await RunHttpTest("HttpTrigger-Scenarios", "appInsights-Failure", HttpStatusCode.Conflict, true);
+        }
+
+        [Fact]
+        public async Task Validate_Http_Throw()
+        {
+            await RunHttpTest("HttpTrigger-Scenarios", "appInsights-Throw", HttpStatusCode.InternalServerError, false);
+        }
+
+        private async Task RunHttpTest(string functionName, string scenario, HttpStatusCode expectedStatusCode, bool functionSuccess)
+        {
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"https://localhost/api/{functionName}"),
+                Method = HttpMethod.Post,
+            };
+
+            string functionTrace = $"Function trace: {Guid.NewGuid().ToString()}";
+
+            JObject input = new JObject()
+            {
+                { "scenario", scenario },
+                { "container", "not-used" },
+                { "value",  functionTrace },
+            };
+            request.Content = new StringContent(input.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(request);
+            Assert.Equal(expectedStatusCode, response.StatusCode);
+
+            string invocationId = ValidateEndToEndTest(functionName, functionTrace, functionSuccess);
+
+            // Perform some additional validation on HTTP properties
+            RequestTelemetry requestTelemetry = _fixture.Channel.Telemetries
+                .OfType<RequestTelemetry>()
+                .Where(t => t.Context.Operation.Id == invocationId)
+                .Single();
+
+            Assert.Equal(((int)expectedStatusCode).ToString(), requestTelemetry.ResponseCode);
+            Assert.Equal("POST", requestTelemetry.Properties["HttpMethod"]);
+            Assert.Equal(request.RequestUri, requestTelemetry.Url);
+            Assert.Equal(functionSuccess, requestTelemetry.Success);
+        }
+
+        private string ValidateEndToEndTest(string functionName, string functionTrace, bool functionSuccess)
+        {
+            // Look for the trace that matches the GUID we passed in. That's how we'll find the
+            // function's invocation id.
+            TraceTelemetry trace = _fixture.Channel.Telemetries
+                    .OfType<TraceTelemetry>()
+                    .Where(t => t.Message.Contains(functionTrace))
+                    .Single();
+
+            // functions need to log JSON that contains the invocationId and trace
+            JObject logPayload = JObject.Parse(trace.Message);
+            string logInvocationId = logPayload["invocationId"].ToString();
+
+            string invocationId = trace.Context.Operation.Id;
+
+            // make sure they match
+            Assert.Equal(logInvocationId, invocationId);
+
+            // Find the Info traces.
+            TraceTelemetry[] traces = _fixture.Channel.Telemetries
+                    .OfType<TraceTelemetry>()
+                    .Where(t => t.Context.Operation.Id == invocationId)
+                    .Where(t => !t.Message.StartsWith("Exception")) // we'll verify the exception message separately
+                    .Where(t => t.Properties[LogConstants.CategoryNameKey] == LogCategories.Executor)
+                    .OrderBy(t => t.Message)
+                    .ToArray();
+
+            string expectedMessage = functionSuccess ? "Function completed (Success, Id=" : "Function completed (Failure, Id=";
+            SeverityLevel expectedLevel = functionSuccess ? SeverityLevel.Information : SeverityLevel.Error;
+
+            ValidateTrace(traces[0], expectedMessage + invocationId, LogCategories.Executor, functionName, invocationId, expectedLevel);
+            ValidateTrace(traces[1], "Function started (Id=" + invocationId, LogCategories.Executor, functionName, invocationId);
+
+            if (!functionSuccess)
+            {
+                TraceTelemetry errorTrace = _fixture.Channel.Telemetries
+                    .OfType<TraceTelemetry>()
+                    .Where(t => t.Context.Operation.Id == invocationId)
+                    .Where(t => t.Message.StartsWith("Exception"))
+                    .Single();
+
+                ValidateTrace(errorTrace, $"Exception while executing function: Functions.{functionName}.", LogCategories.Executor, functionName, invocationId, SeverityLevel.Error);
+
+                ExceptionTelemetry[] exception = _fixture.Channel.Telemetries
+                    .OfType<ExceptionTelemetry>()
+                    .Where(t => t.Context.Operation.Id == invocationId)
+                    .OrderBy(t => t.Message)
+                    .ToArray();
+
+                // We should only be logging one Exception. Tracked by https://github.com/Azure/azure-webjobs-sdk-script/issues/1830
+                Assert.Equal(2, exception.Length);
+
+                ValidateException(exception[0], invocationId, functionName, LogCategories.Results);
+                ValidateException(exception[1], invocationId, functionName, ScriptConstants.LogCategoryHostGeneral);
+            }
+
+            RequestTelemetry requestTelemetry = _fixture.Channel.Telemetries
+                .OfType<RequestTelemetry>()
+                .Where(t => t.Context.Operation.Id == invocationId)
+                .Single();
+
+            ValidateRequest(requestTelemetry, invocationId, functionName, "req", functionSuccess);
+
+            return invocationId;
+        }
+
+        private async Task WaitForFunctionTrace(string functionName, string functionTrace)
+        {
             // make sure file logs have the info
             IList<string> logs = null;
             await TestHelpers.Await(() =>
             {
-                logs = TestHelpers.GetFunctionLogsAsync(functionName, throwOnNoLogs: false).Result;
-                return logs.Count > 0;
-            });
+                logs = TestHelpers.GetFunctionLogsAsync(functionName, throwOnNoLogs: false, waitForFlush: false).Result;
+                return logs.Count(p => p.Contains(functionTrace)) == 1;
+            }, pollingInterval: 100);
+        }
 
-            Assert.Equal(invocationCount, logs.Count(p => p.Contains(functionTrace)));
+        private void ValidateException(ExceptionTelemetry telemetry, string expectedOperationId, string expectedOperationName, string expectedCategory)
+        {
+            Assert.IsType<FunctionInvocationException>(telemetry.Exception);
+            ValidateTelemetry(telemetry, expectedOperationId, expectedOperationName, expectedCategory, SeverityLevel.Error);
+        }
 
-            // Each invocation produces 5 telemetries. Then there are 9 created by the host.
-            Assert.Equal((5 * invocationCount) + 9, Fixture.Channel.Telemetries.Count);
-
-            // Validate the telemetry for a specific function. There should be 5 for each, and these should all
-            // include the function name and invocation id. Pull out the function trace first and
-            // use the invocation id to find the related items.
-            var functionTraces = Fixture.Channel.Telemetries
-                .OfType<TraceTelemetry>()
-                .Where(t => t.Properties[LogConstants.CategoryNameKey] == LogCategories.Function);
-
-            Assert.Equal(invocationCount, functionTraces.Count());
-
-            foreach (var trace in functionTraces)
-            {
-                JObject logPayload = JObject.Parse(trace.Message);
-                string invocationId = logPayload["InvocationId"].ToString();
-
-                // Find all with this matching operation id. There should be 4.
-                ITelemetry[] relatedTelemetry = Fixture.Channel.Telemetries
-                    .Where(t => t.Context.Operation.Id == invocationId)
-                    .ToArray();
-
-                Assert.Equal(5, relatedTelemetry.Length);
-
-                TraceTelemetry[] traces = relatedTelemetry
-                    .OfType<TraceTelemetry>()
-                    .OrderBy(t => t.Message)
-                    .ToArray();
-
-                ValidateTrace(traces[0], functionTrace, LogCategories.Function, functionName, invocationId);
-                ValidateTrace(traces[1], "Function completed (Success, Id=" + invocationId, LogCategories.Executor, functionName, invocationId);
-                ValidateTrace(traces[2], "Function started (Id=" + invocationId, LogCategories.Executor, functionName, invocationId);
-
-                MetricTelemetry metric = relatedTelemetry
-                    .OfType<MetricTelemetry>()
-                    .Single();
-                ValidateMetric(metric, functionName);
-
-                RequestTelemetry request = relatedTelemetry
-                    .OfType<RequestTelemetry>()
-                    .Single();
-                ValidateRequest(request, "Scenarios", true);
-            }
-
-            // Validate the rest of the traces. Order by message string as the requests may come in
+        [Fact]
+        public async Task Validate_HostLogs()
+        {
+            // Validate the host startup traces. Order by message string as the requests may come in
             // slightly out-of-order or on different threads
-            TraceTelemetry[] telemetries = Fixture.Channel.Telemetries
+            TraceTelemetry[] traces = _fixture.Channel.Telemetries
                 .OfType<TraceTelemetry>()
                 .Where(t => t.Context.Operation.Id == null)
                 .OrderBy(t => t.Message)
                 .ToArray();
 
-            ValidateTrace(telemetries[0], "Found the following functions:\r\n", LogCategories.Startup);
-            ValidateTrace(telemetries[1], "Generating 1 job function(s)", LogCategories.Startup);
-            ValidateTrace(telemetries[2], "Host configuration file read:", LogCategories.Startup);
-            ValidateTrace(telemetries[3], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
-            ValidateTrace(telemetries[4], "Job host started", LogCategories.Startup);
-            ValidateTrace(telemetries[5], "Loaded custom extension: BotFrameworkConfiguration from ''", LogCategories.Startup);
-            ValidateTrace(telemetries[6], "Loaded custom extension: EventGridExtensionConfig from ''", LogCategories.Startup);
-            ValidateTrace(telemetries[7], "Loaded custom extension: SendGridConfiguration from ''", LogCategories.Startup);
-            ValidateTrace(telemetries[8], "Reading host configuration file", LogCategories.Startup);
+            Assert.Equal(10, traces.Length);
+
+            ValidateTrace(traces[0], "Found the following functions:\r\n", LogCategories.Startup);
+            ValidateTrace(traces[1], "Generating 2 job function(s)", LogCategories.Startup);
+            ValidateTrace(traces[2], "Host configuration file read:", LogCategories.Startup);
+            ValidateTrace(traces[3], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
+            ValidateTrace(traces[4], "Job host started", LogCategories.Startup);
+            ValidateTrace(traces[5], "Loaded custom extension: BotFrameworkConfiguration from ''", LogCategories.Startup);
+            ValidateTrace(traces[6], "Loaded custom extension: EventGridExtensionConfig from ''", LogCategories.Startup);
+            ValidateTrace(traces[7], "Loaded custom extension: SendGridConfiguration from ''", LogCategories.Startup);
+            ValidateTrace(traces[8], "Reading host configuration file", LogCategories.Startup);
+            ValidateTrace(traces[9], "Starting Host (HostId=function-tests-", ScriptConstants.LogCategoryHostGeneral);
+
+            await Task.CompletedTask;
         }
 
-        private static void ValidateMetric(MetricTelemetry telemetry, string expectedOperationName)
+        private static void ValidateMetric(MetricTelemetry telemetry, string expectedOperationId, string expectedOperationName)
         {
-            Assert.Equal(expectedOperationName, telemetry.Context.Operation.Name);
-            Assert.NotNull(telemetry.Context.Operation.Id);
-            Assert.Equal(LogCategories.Function, telemetry.Properties[LogConstants.CategoryNameKey]);
-            Assert.Equal(LogLevel.Information.ToString(), telemetry.Properties[LogConstants.LogLevelKey]);
+            ValidateTelemetry(telemetry, expectedOperationId, expectedOperationName, LogCategories.Function, SeverityLevel.Information);
 
             Assert.Equal("TestMetric", telemetry.Name);
             Assert.Equal(1234, telemetry.Sum);
@@ -139,20 +265,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
         }
 
         protected static void ValidateTrace(TraceTelemetry telemetry, string expectedMessageContains,
-            string expectedCategory, string expectedOperationName = null, string expectedOperationId = null)
+            string expectedCategory, string expectedOperationName = null, string expectedOperationId = null,
+            SeverityLevel expectedLevel = SeverityLevel.Information)
         {
             Assert.Contains(expectedMessageContains, telemetry.Message);
-            Assert.Equal(SeverityLevel.Information, telemetry.SeverityLevel);
+            Assert.Equal(expectedLevel, telemetry.SeverityLevel);
 
             Assert.Equal(expectedCategory, telemetry.Properties[LogConstants.CategoryNameKey]);
 
             if (expectedCategory == LogCategories.Function || expectedCategory == LogCategories.Executor)
             {
-                // These should have associated operation information
-                Assert.True(expectedOperationId == telemetry.Context.Operation.Id,
-                    $"Unexpected Operation Id. Expected: '{expectedOperationId}'; Actual: '{telemetry.Context.Operation.Id}'; Message: '{telemetry.Message}'");
-                Assert.True(expectedOperationName == telemetry.Context.Operation.Name,
-                    $"Unexpected Operation Name. Expected: '{expectedOperationName}'; Actual: '{telemetry.Context.Operation.Name}'; Message: '{telemetry.Message}'");
+                ValidateTelemetry(telemetry, expectedOperationId, expectedOperationName, expectedCategory, expectedLevel);
             }
             else
             {
@@ -163,15 +286,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateSdkVersion(telemetry);
         }
 
-        private static void ValidateRequest(RequestTelemetry telemetry, string operationName, bool success)
+        private static void ValidateTelemetry(ITelemetry telemetry, string expectedOperationId, string expectedOperationName,
+            string expectedCategory, SeverityLevel expectedLevel)
         {
-            Assert.NotNull(telemetry.Context.Operation.Id);
-            Assert.Equal(operationName, telemetry.Context.Operation.Name);
+            Assert.Equal(expectedOperationId, telemetry.Context.Operation.Id);
+            Assert.Equal(expectedOperationName, telemetry.Context.Operation.Name);
+
+            var properties = (ISupportProperties)telemetry;
+            Assert.Equal(expectedCategory, properties.Properties[LogConstants.CategoryNameKey]);
+            Assert.Equal(expectedLevel.ToString(), properties.Properties[LogConstants.LogLevelKey]);
+        }
+
+        private static void ValidateRequest(RequestTelemetry telemetry, string expectedOperationId, string expectedOperationName,
+            string inputParamName, bool success)
+        {
+            SeverityLevel expectedLevel = success ? SeverityLevel.Information : SeverityLevel.Error;
+
+            ValidateTelemetry(telemetry, expectedOperationId, expectedOperationName, LogCategories.Results, expectedLevel);
+
+            Assert.Equal(telemetry.Id, expectedOperationId);
             Assert.NotNull(telemetry.Duration);
             Assert.Equal(success, telemetry.Success);
 
-            AssertHasKey(telemetry.Properties, "param__input");
-            AssertHasKey(telemetry.Properties, "FullName", "Functions.Scenarios");
+            AssertHasKey(telemetry.Properties, "FullName", $"Functions.{expectedOperationName}");
             AssertHasKey(telemetry.Properties, "TriggerReason", "This function was programmatically called via the host APIs.");
 
             ValidateSdkVersion(telemetry);
@@ -179,8 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         private static void AssertHasKey(IDictionary<string, string> dict, string keyName, string expectedValue = null)
         {
-            string actualValue;
-            if (!dict.TryGetValue(keyName, out actualValue))
+            if (!dict.TryGetValue(keyName, out string actualValue))
             {
                 var msg = $"Missing key '{keyName}'. Keys = " + string.Join(", ", dict.Keys);
                 Assert.True(false, msg);

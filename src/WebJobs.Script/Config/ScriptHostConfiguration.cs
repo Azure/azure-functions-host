@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script
             RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
             LogFilter = new LogCategoryFilter();
             RootExtensionsPath = ConfigurationManager.AppSettings[EnvironmentSettingNames.AzureWebJobsExtensionsPath];
+            LoggerFactoryBuilder = new DefaultLoggerFactoryBuilder();
         }
 
         /// <summary>
@@ -116,6 +117,12 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Insights client-side sampling. If null, client-side sampling is disabled.
         /// </summary>
         public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
+
+        /// <summary>
+        /// Gets or sets the <see cref="ILoggerFactoryBuilder"/> used to register <see cref="ILoggerProvider"/>s with
+        /// the host's <see cref="ILoggerFactory"/>.
+        /// </summary>
+        public ILoggerFactoryBuilder LoggerFactoryBuilder { get; set; }
 
         /// <summary>
         /// Gets or sets a test hook for modifying the configuration after host.json has been processed.

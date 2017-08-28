@@ -55,8 +55,7 @@ var assert = require('assert');
         }
 
         // verify all binding data properties are camel cased
-        for (var key in context.bindingData)
-        {
+        for (var key in context.bindingData) {
             assert(isLowerCase(key[0]), "Expected lower case: " + key);
         }
 
@@ -88,11 +87,11 @@ var assert = require('assert');
     else if (scenario === 'appInsights') {
 
         var logPayload = {
-            InvocationId: context.executionContext.invocationId,
-            Trace: input.value
+            invocationId: context.executionContext.invocationId,
+            trace: input.value
         };
 
-        context.log(JSON.stringify(logPayload));
+        context.log(logPayload);
         context.log.metric("TestMetric", 1234, {
             count: 50,
             min: 10.4,
@@ -105,7 +104,7 @@ var assert = require('assert');
         // throw if the scenario didn't match
         throw new Error(util.format("The scenario '%s' did not match any known scenario.", scenario));
     }
-}
+};
 
 function isLowerCase(c) {
     return c.toLowerCase() === c;

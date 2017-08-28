@@ -7,6 +7,8 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -97,16 +99,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static async Task<IList<string>> GetFunctionLogsAsync(string functionName, bool throwOnNoLogs = true)
+        public static async Task<IList<string>> GetFunctionLogsAsync(string functionName, bool throwOnNoLogs = true, bool waitForFlush = true)
         {
-            await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+            if (waitForFlush)
+            {
+                await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+            }
 
             DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
             FileInfo lastLogFile = directory.GetFiles("*.log").OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
 
             if (lastLogFile != null)
             {
-                string[] logs = File.ReadAllLines(lastLogFile.FullName);
+                string[] logs = await ReadAllLinesSafeAsync(lastLogFile.FullName);
                 return new Collection<string>(logs.ToList());
             }
             else if (throwOnNoLogs)
@@ -172,6 +177,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             BindingMetadata bindingMetadata = BindingMetadata.Create(json);
             ScriptHostConfiguration config = new ScriptHostConfiguration();
             return new ExtensionBinding(config, scriptBinding, bindingMetadata);
+        }
+
+        private static async Task<string[]> ReadAllLinesSafeAsync(string logFile)
+        {
+            // ReadAllLines won't work if the file is being written to.
+            // So try a few more times.
+
+            int count = 0;
+            bool success = false;
+            string[] logs = null;
+
+            while (!success && count++ < 3)
+            {
+                try
+                {
+                    logs = File.ReadAllLines(logFile);
+                    success = true;
+                }
+                catch (IOException)
+                {
+                    await Task.Delay(500);
+                }
+            }
+
+            return logs;
+        }
+
+        /// <summary>
+        /// Waits until a request sent via the specified HttpClient returns OK or NoContent, indicating
+        /// that the host is ready to invoke functions.
+        /// </summary>
+        /// <param name="client">The HttpClient.</param>
+        public static void WaitForWebHost(HttpClient client)
+        {
+            TestHelpers.Await(() =>
+            {
+                return IsHostRunning(client);
+            }).Wait();
+        }
+
+        private static bool IsHostRunning(HttpClient client)
+        {
+            using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty))
+            {
+                using (HttpResponseMessage response = client.SendAsync(request).Result)
+                {
+                    return response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.OK;
+                }
+            }
         }
     }
 }

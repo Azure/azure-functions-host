@@ -3,7 +3,6 @@
 
 using System;
 using System.IO;
-using System.Net;
 using System.Net.Http;
 using System.Web.Http;
 using Autofac;
@@ -39,10 +38,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             WebApiConfig.Register(_config, _settingsManager, HostSettings, RegisterDependencies);
 
             HttpServer = new HttpServer(_config);
-            this.HttpClient = new HttpClient(HttpServer);
-            this.HttpClient.BaseAddress = new Uri("https://localhost/");
+            HttpClient = new HttpClient(HttpServer);
+            HttpClient.BaseAddress = new Uri("https://localhost/");
 
-            WaitForHost();
+            TestHelpers.WaitForWebHost(HttpClient);
         }
 
         public WebHostSettings HostSettings { get; private set; }
@@ -50,25 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         public HttpClient HttpClient { get; set; }
 
         public HttpServer HttpServer { get; set; }
-
-        private void WaitForHost()
-        {
-            TestHelpers.Await(() =>
-            {
-                return IsHostRunning();
-            }).Wait();
-        }
-
-        private bool IsHostRunning()
-        {
-            using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty))
-            {
-                using (HttpResponseMessage response = this.HttpClient.SendAsync(request).Result)
-                {
-                    return response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.OK;
-                }
-            }
-        }
 
         protected virtual void RegisterDependencies(ContainerBuilder builder, WebHostSettings settings)
         {

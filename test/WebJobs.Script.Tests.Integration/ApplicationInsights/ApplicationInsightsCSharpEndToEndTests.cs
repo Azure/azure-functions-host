@@ -12,12 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
         {
         }
 
-        [Fact]
-        public async Task ApplicationInsights_Succeeds()
-        {
-            await ApplicationInsights_SucceedsTest();
-        }
-
         public class TestFixture : ApplicationInsightsTestFixture
         {
             private const string ScriptRoot = @"TestScripts\CSharp";

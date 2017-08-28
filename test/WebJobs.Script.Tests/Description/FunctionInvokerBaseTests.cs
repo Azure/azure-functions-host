@@ -133,11 +133,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(2, completionEvents.Count);
             int invocation1Duration = (int.Parse(completionEvents[1].Groups["duration"].Value) / 100) * 100;
-            int invocation2Duration = (int.Parse(completionEvents[0].Groups["duration"].Value) / 100) * 100;
+
+            int invocation2RawDuration = int.Parse(completionEvents[0].Groups["duration"].Value); // save this for better output below.
+            int invocation2Duration = (invocation2RawDuration / 100) * 100;
 
             Assert.NotEqual(invocation1Duration, invocation2Duration);
             Assert.Equal(2000, invocation1Duration);
-            Assert.Equal(500, invocation2Duration);
+
+            Assert.True(invocation2Duration == 500, $"Expected 500. Actual: {invocation2Duration}. Raw value: {invocation2RawDuration}");
         }
 
         [Fact]
@@ -190,10 +193,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 FunctionInstanceLogEntry item = new FunctionInstanceLogEntry
                 {
-                     FunctionInstanceId = context.ExecutionContext.InvocationId,
-                     StartTime = DateTime.UtcNow,
-                     FunctionName = this.Metadata.Name,
-                     Properties = new Dictionary<string, object>()
+                    FunctionInstanceId = context.ExecutionContext.InvocationId,
+                    StartTime = DateTime.UtcNow,
+                    FunctionName = this.Metadata.Name,
+                    Properties = new Dictionary<string, object>()
                 };
                 await _fastLogger.AddAsync(item);
 

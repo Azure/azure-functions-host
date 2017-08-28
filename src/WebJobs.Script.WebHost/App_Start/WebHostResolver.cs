@@ -4,8 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -108,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
 
-                    _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager,  _settingsManager, settings);
+                    _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings);
                     _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
 
                     _standbyHostManager?.Dispose();
@@ -142,7 +140,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 RootLogPath = settings.LogPath,
                 FileLoggingMode = FileLoggingMode.DebugOnly,
                 TraceWriter = settings.TraceWriter,
-                IsSelfHost = settings.IsSelfHost
+                IsSelfHost = settings.IsSelfHost,
+                LoggerFactoryBuilder = settings.LoggerFactoryBuilder
             };
 
             scriptHostConfig.HostConfig.HostId = Utility.GetDefaultHostId(_settingsManager, scriptHostConfig);
