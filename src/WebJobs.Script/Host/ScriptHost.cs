@@ -363,10 +363,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Set up a host level TraceMonitor that will receive notification
                 // of ALL errors that occur. This allows us to inspect/log errors.
                 // TODO: FACAVAL
-                //var traceMonitor = new TraceMonitor()
-                //    .Filter(p => { return true; })
-                //    .Subscribe(HandleHostError);
-                //hostConfig.Tracing.Tracers.Add(traceMonitor);
+                var traceMonitor = new TraceMonitor()
+                    .Filter(p => { return true; })
+                    .Subscribe(HandleHostError);
+                hostConfig.Tracing.Tracers.Add(traceMonitor);
 
                 System.Diagnostics.TraceLevel hostTraceLevel = hostConfig.Tracing.ConsoleLevel;
                 if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
@@ -1140,29 +1140,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             return true;
         }
-
-        // A route is in conflict if the route matches any other existing
-        // route and there is intersection in the http methods of the two functions
-        //
-        // TODO: FACAVAL
-        // internal static bool HttpRoutesConflict(HttpTriggerAttribute httpTrigger, HttpTriggerAttribute otherHttpTrigger)
-        // {
-        //     if (string.Compare(httpTrigger.Route.Trim('/'), otherHttpTrigger.Route.Trim('/'), StringComparison.OrdinalIgnoreCase) != 0)
-        //     {
-        //         // routes differ, so no conflict
-        //         return false;
-        //     }
-        //
-        //     if (httpTrigger.Methods == null || httpTrigger.Methods.Length == 0 ||
-        //         otherHttpTrigger.Methods == null || otherHttpTrigger.Methods.Length == 0)
-        //     {
-        //         // if either methods collection is null or empty that means
-        //         // "all methods", which will intersect with any method collection
-        //         return true;
-        //     }
-        //
-        //     return httpTrigger.Methods.Intersect(otherHttpTrigger.Methods).Any();
-        // }
 
         internal static void ValidateFunctionName(string functionName)
         {

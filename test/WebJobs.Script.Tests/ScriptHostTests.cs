@@ -1077,58 +1077,56 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Unable to parse host.json file.", logger.LogMessages[2].Exception.Message);
         }
 
-        // TODO: Dependency on MetricsLogger
-        // [Fact]
-        // public void ConfigureLoggerFactory_Default()
-        // {
-        //     var config = new ScriptHostConfiguration();
-        //     var mockTraceFactory = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
-        //     var loggerFactory = new TestLoggerFactory();
-        //     config.HostConfig.LoggerFactory = loggerFactory;
-        //
-        //     // Make sure no App Insights is configured
-        //     var settingsManager = ScriptSettingsManager.Instance;
-        //     settingsManager.ApplicationInsightsInstrumentationKey = null;
-        //
-        //     var metricsLogger = new TestMetricsLogger();
-        //     config.HostConfig.AddService<IMetricsLogger>(metricsLogger);
-        //
-        //     ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, () => true);
-        //
-        //     Assert.IsType<FileLoggerProvider>(loggerFactory.Providers.Single());
-        //     Assert.Equal(1, metricsLogger.LoggedEvents.Count);
-        //     Assert.Equal(MetricEventNames.ApplicationInsightsDisabled, metricsLogger.LoggedEvents[0]);
-        // }
+        [Fact]
+        public void ConfigureLoggerFactory_Default()
+        {
+            var config = new ScriptHostConfiguration();
+            var mockTraceFactory = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
+            var loggerFactory = new TestLoggerFactory();
+            config.HostConfig.LoggerFactory = loggerFactory;
 
-        // TODO: Dependency on MetricsLogger
-        // [Fact]
-        // public void ConfigureLoggerFactory_ApplicationInsights()
-        // {
-        //     var config = new ScriptHostConfiguration();
-        //     var mockTraceFactory = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
-        //     var loggerFactory = new TestLoggerFactory();
-        //     config.HostConfig.LoggerFactory = loggerFactory;
-        //
-        //     // Make sure no App Insights is configured
-        //     var settingsManager = ScriptSettingsManager.Instance;
-        //     settingsManager.ApplicationInsightsInstrumentationKey = "Some_Instrumentation_Key";
-        //
-        //     var metricsLogger = new TestMetricsLogger();
-        //     config.HostConfig.AddService<IMetricsLogger>(metricsLogger);
-        //
-        //     ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, () => true);
-        //
-        //     Assert.Equal(2, loggerFactory.Providers.Count);
-        //
-        //     Assert.Equal(1, loggerFactory.Providers.OfType<FileLoggerProvider>().Count());
-        //
-        //     // The app insights logger is internal, so just check the name
-        //     ILoggerProvider appInsightsProvider = loggerFactory.Providers.Last();
-        //     Assert.Equal("ApplicationInsightsLoggerProvider", appInsightsProvider.GetType().Name);
-        //
-        //     Assert.Equal(1, metricsLogger.LoggedEvents.Count);
-        //     Assert.Equal(MetricEventNames.ApplicationInsightsEnabled, metricsLogger.LoggedEvents[0]);
-        // }
+            // Make sure no App Insights is configured
+            var settingsManager = ScriptSettingsManager.Instance;
+            settingsManager.ApplicationInsightsInstrumentationKey = null;
+
+            var metricsLogger = new TestMetricsLogger();
+            config.HostConfig.AddService<IMetricsLogger>(metricsLogger);
+
+            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, new DefaultLoggerFactoryBuilder(), () => true);
+
+            Assert.IsType<FileLoggerProvider>(loggerFactory.Providers.Single());
+            Assert.Equal(1, metricsLogger.LoggedEvents.Count);
+            Assert.Equal(MetricEventNames.ApplicationInsightsDisabled, metricsLogger.LoggedEvents[0]);
+        }
+
+        [Fact]
+        public void ConfigureLoggerFactory_ApplicationInsights()
+        {
+            var config = new ScriptHostConfiguration();
+            var mockTraceFactory = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
+            var loggerFactory = new TestLoggerFactory();
+            config.HostConfig.LoggerFactory = loggerFactory;
+
+            // Make sure no App Insights is configured
+            var settingsManager = ScriptSettingsManager.Instance;
+            settingsManager.ApplicationInsightsInstrumentationKey = "Some_Instrumentation_Key";
+
+            var metricsLogger = new TestMetricsLogger();
+            config.HostConfig.AddService<IMetricsLogger>(metricsLogger);
+
+            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, new DefaultLoggerFactoryBuilder(), () => true);
+
+            Assert.Equal(2, loggerFactory.Providers.Count);
+
+            Assert.Equal(1, loggerFactory.Providers.OfType<FileLoggerProvider>().Count());
+
+            // The app insights logger is internal, so just check the name
+            ILoggerProvider appInsightsProvider = loggerFactory.Providers.Last();
+            Assert.Equal("ApplicationInsightsLoggerProvider", appInsightsProvider.GetType().Name);
+
+            Assert.Equal(1, metricsLogger.LoggedEvents.Count);
+            Assert.Equal(MetricEventNames.ApplicationInsightsEnabled, metricsLogger.LoggedEvents[0]);
+        }
 
         [Fact]
         public void DefaultLoggerFactory_BeginScope()

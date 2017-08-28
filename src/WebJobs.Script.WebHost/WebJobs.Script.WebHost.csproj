@@ -8,6 +8,9 @@
     <PackageId>Microsoft.Azure.WebJobs.Script.WebHost</PackageId>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
 
   <ItemGroup>
     <Folder Include="Routing\" />
