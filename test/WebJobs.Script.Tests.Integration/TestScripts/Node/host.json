@@ -1,4 +1,4 @@
 ﻿{
   "id": "function-tests-node",
-  "functions": [ "HttpTrigger-Scenarios", "EventHubSender", "EventHubTrigger" ]
+  "functions": [ "HttpTrigger-Scenarios" ]
 }

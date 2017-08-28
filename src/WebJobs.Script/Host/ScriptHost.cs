@@ -91,8 +91,8 @@ namespace Microsoft.Azure.WebJobs.Script
             { "apiHubTable", "Microsoft.Azure.WebJobs.Script.Binding.ApiHubScriptBindingProvider" },
             { "serviceBusTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
             { "serviceBus", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
-            { "eventHubTrigger", "Microsoft.Azure.WebJobs.Script.Binding.EventHubsScriptBindingProvider" },
-            { "eventHub", "Microsoft.Azure.WebJobs.Script.Binding.EventHubsScriptBindingProvider" },
+            { "eventHubTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
+            { "eventHub", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
         };
 
         // For backwards compat, we support a #r directly to these assemblies.
