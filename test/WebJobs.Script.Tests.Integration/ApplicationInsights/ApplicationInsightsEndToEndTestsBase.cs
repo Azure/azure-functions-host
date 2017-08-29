@@ -146,32 +146,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // function's invocation id.
             TraceTelemetry trace = _fixture.Channel.Telemetries
                     .OfType<TraceTelemetry>()
-                    .Where(t => t.Message.Contains(functionTrace))
+                    .Where(t => t.Context.Operation.Id == invocationId)
+                    .Where(t => t.Message.StartsWith("Exception"))
                     .Single();
 
-            // functions need to log JSON that contains the invocationId and trace
-            JObject logPayload = JObject.Parse(trace.Message);
-            string logInvocationId = logPayload["invocationId"].ToString();
+                ValidateTrace(errorTrace, $"Exception while executing function: Functions.{functionName}.", LogCategories.Executor, functionName, invocationId, SeverityLevel.Error);
 
-            string invocationId = trace.Context.Operation.Id;
+                ExceptionTelemetry exception = _fixture.Channel.Telemetries
+                    .OfType<ExceptionTelemetry>()
+                    .Single(t => t.Context.Operation.Id == invocationId);
 
-            // make sure they match
-            Assert.Equal(logInvocationId, invocationId);
-
-            // Find the Info traces.
-            TraceTelemetry[] traces = _fixture.Channel.Telemetries
-                    .OfType<TraceTelemetry>()
-                    .Where(t => t.Context.Operation.Id == invocationId)
-                    .Where(t => !t.Message.StartsWith("Exception")) // we'll verify the exception message separately
-                    .Where(t => t.Properties[LogConstants.CategoryNameKey] == LogCategories.Executor)
-                    .OrderBy(t => t.Message)
-                    .ToArray();
-
-            string expectedMessage = functionSuccess ? "Function completed (Success, Id=" : "Function completed (Failure, Id=";
-            SeverityLevel expectedLevel = functionSuccess ? SeverityLevel.Information : SeverityLevel.Error;
-
-            ValidateTrace(traces[0], expectedMessage + invocationId, LogCategories.Executor, functionName, invocationId, expectedLevel);
-            ValidateTrace(traces[1], "Function started (Id=" + invocationId, LogCategories.Executor, functionName, invocationId);
+                ValidateException(exception, invocationId, functionName, LogCategories.Results);
+            }
 
             if (!functionSuccess)
             {
