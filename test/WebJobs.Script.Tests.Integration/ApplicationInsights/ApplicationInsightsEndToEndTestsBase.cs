@@ -183,17 +183,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
                 ValidateTrace(errorTrace, $"Exception while executing function: Functions.{functionName}.", LogCategories.Executor, functionName, invocationId, SeverityLevel.Error);
 
-                ExceptionTelemetry[] exception = _fixture.Channel.Telemetries
+                ExceptionTelemetry exception = _fixture.Channel.Telemetries
                     .OfType<ExceptionTelemetry>()
-                    .Where(t => t.Context.Operation.Id == invocationId)
-                    .OrderBy(t => t.Message)
-                    .ToArray();
+                    .Single(t => t.Context.Operation.Id == invocationId);
 
-                // We should only be logging one Exception. Tracked by https://github.com/Azure/azure-webjobs-sdk-script/issues/1830
-                Assert.Equal(2, exception.Length);
-
-                ValidateException(exception[0], invocationId, functionName, LogCategories.Results);
-                ValidateException(exception[1], invocationId, functionName, ScriptConstants.LogCategoryHostGeneral);
+                ValidateException(exception, invocationId, functionName, LogCategories.Results);
             }
 
             RequestTelemetry requestTelemetry = _fixture.Channel.Telemetries
