@@ -84,17 +84,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
                 TraceTelemetry[] traces = relatedTelemetry
                     .OfType<TraceTelemetry>()
-                    .OrderBy(t => t.Message)
-                    .ToArray();
-
-                ValidateTrace(traces[0], functionTrace, LogCategories.Function, functionName, invocationId);
-                ValidateTrace(traces[1], "Function completed (Success, Id=" + invocationId, LogCategories.Executor, functionName, invocationId);
-                ValidateTrace(traces[2], "Function started (Id=" + invocationId, LogCategories.Executor, functionName, invocationId);
-
-                MetricTelemetry metric = relatedTelemetry
-                    .OfType<MetricTelemetry>()
+                    .Where(t => t.Context.Operation.Id == invocationId)
+                    .Where(t => t.Message.StartsWith("Exception"))
                     .Single();
-                ValidateMetric(metric, functionName);
+
+                ValidateTrace(errorTrace, $"Exception while executing function: Functions.{functionName}.", LogCategories.Executor, functionName, invocationId, SeverityLevel.Error);
+
+                ExceptionTelemetry exception = _fixture.Channel.Telemetries
+                    .OfType<ExceptionTelemetry>()
+                    .Single(t => t.Context.Operation.Id == invocationId);
+
+                ValidateException(exception, invocationId, functionName, LogCategories.Results);
+            }
 
                 RequestTelemetry request = relatedTelemetry
                     .OfType<RequestTelemetry>()
