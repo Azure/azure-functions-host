@@ -25,8 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        // https://github.com/Azure/azure-webjobs-sdk-script/issues/1787
-        // [Fact]
+        [Fact]
         public async Task Invoke()
         {
             // Verify the type is ls in the typelocator.
