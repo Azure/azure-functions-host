@@ -57,13 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         public void Register(FunctionRegistrationContext context)
         {
             WorkerConfig workerConfig = _workerConfigs.First(config => config.Extension == Path.GetExtension(context.Metadata.ScriptFile));
-            _channelState.AddOrUpdate(workerConfig,
-                CreateWorkerState,
-                (config, state) =>
-                {
-                    state.Functions.OnNext(context);
-                    return state;
-                });
+            var state = _channelState.GetOrAdd(workerConfig, CreateWorkerState);
+            state.Functions.OnNext(context);
         }
 
         public void WorkerError(WorkerErrorEvent workerError)
