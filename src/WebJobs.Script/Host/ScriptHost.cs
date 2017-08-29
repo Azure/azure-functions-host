@@ -1246,7 +1246,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     _proxyClient = new ProxyClientExecutor(rawProxyClient);
                 }
-             }
+            }
 
             if (_proxyClient == null)
             {
@@ -1783,7 +1783,7 @@ namespace Microsoft.Azure.WebJobs.Script
             TraceWriter.Error(message, exception);
             TraceWriter.Flush();
 
-            Logger?.LogError(0, exception, message);
+            // Note: We do not log to ILogger here as any error has already been logged.
 
             if (exception is FunctionInvocationException)
             {
