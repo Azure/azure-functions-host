@@ -417,6 +417,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-TypeScript", "H
 		sample\HttpTrigger-TypeScript\index.ts = sample\HttpTrigger-TypeScript\index.ts
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Java", "HttpTrigger-Java", "{1DE0B190-660F-4601-AAC1-94C9BDF5BDD2}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-Java\azure-functions-java-sample-1.0-SNAPSHOT.jar = sample\HttpTrigger-Java\azure-functions-java-sample-1.0-SNAPSHOT.jar
+		sample\HttpTrigger-Java\function.json = sample\HttpTrigger-Java\function.json
+	EndProjectSection
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{BCFBE330-871A-44BE-9016-83845231230F}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Host", "src\WebJobs.Script.Host\WebJobs.Script.Host.csproj", "{180EF900-AF1F-4EAE-8EF0-50A3763BDE15}"
@@ -565,6 +571,7 @@ Global
 		{137FB7AA-B192-4766-B86A-C813D94B1995} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
 		{EDDDAED1-0E37-4ED7-A595-63F686DEE90A} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
 		{38920568-003E-448F-963B-41B739D1E01C} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
+		{1DE0B190-660F-4601-AAC1-94C9BDF5BDD2} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2BA60824-87AB-4B37-B472-4692C6F8A89B}
