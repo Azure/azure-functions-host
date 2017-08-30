@@ -19,7 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string CompilationReleaseMode = "AzureWebJobsDotNetReleaseCompilation";
         public const string AzureWebJobsDisableHomepage = "AzureWebJobsDisableHomepage";
         public const string TypeScriptCompilerPath = "AzureWebJobs_TypeScriptPath";
-        public const string AzureWebJobsExtensionsPath = "AzureWebJobs_ExtensionsPath";
         public const string AzureWebsiteAppCountersName = "WEBSITE_COUNTERS_APP";
         public const string AzureWebJobsSecretStorageType = "AzureWebJobsSecretStorageType";
         public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
