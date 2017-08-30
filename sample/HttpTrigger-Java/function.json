@@ -1,0 +1,17 @@
+{
+  "entryPoint": "com.microsoft.serverless.Calculator.add",
+  "bindings": [
+    {
+      "type": "httpTrigger",
+      "name": "req",
+      "direction": "in",
+      "authLevel": "anonymous",
+      "methods": [ "post" ]
+    },
+    {
+      "type": "http",
+      "name": "$return",
+      "direction": "out"
+    }
+  ]
+}

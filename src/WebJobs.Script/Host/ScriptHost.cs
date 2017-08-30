@@ -476,7 +476,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 CreateChannel channelFactory = (config, registrations) =>
                 {
-                    return new LanguageWorkerChannel(ScriptConfig, EventManager, processFactory, registrations, config, server.Uri, Logger);
+                    return new LanguageWorkerChannel(ScriptConfig, EventManager, processFactory, registrations, config, server.Uri, _startupLogger, TraceWriter);
                 };
 
                 _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, new List<WorkerConfig>()

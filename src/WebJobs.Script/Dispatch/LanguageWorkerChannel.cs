@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
+using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
@@ -41,6 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
 
+        private TraceWriter _trace;
+
         private bool disposedValue;
 
         public LanguageWorkerChannel(
@@ -50,7 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             IObservable<FunctionRegistrationContext> functionRegistrations,
             WorkerConfig workerConfig,
             Uri serverUri,
-            ILogger logger)
+            ILogger logger,
+            TraceWriter traceWriter)
         {
             _scriptConfig = scriptConfig;
             _eventManager = eventManager;
@@ -60,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             _serverUri = serverUri;
             _logger = logger;
             _workerId = Guid.NewGuid().ToString();
+            _trace = traceWriter;
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
@@ -161,7 +166,9 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             {
                 link.Dispose();
             }
-            _logger.LogError($"Worker {_workerId} encountered an error.", exc);
+            var msg = $"Worker {_workerId} encountered an error.";
+            _logger.LogError(msg, exc);
+            _trace.Error(msg, exc);
             _eventManager.Publish(new WorkerErrorEvent(this, exc));
         }
 
@@ -212,7 +219,9 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         {
             if (loadResponse.Result.IsFailure(out Exception e))
             {
-                _logger.LogError($"Function {loadResponse.FunctionId} failed to load", e);
+                var msg = $"Function {loadResponse.FunctionId} failed to load";
+                _logger.LogError(msg, e);
+                _trace.Error(msg, e);
 
                 // load retry?
             }
@@ -251,10 +260,12 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             process.ErrorDataReceived += (sender, e) =>
             {
                 _logger.LogError(e?.Data);
+                _trace.Error(e?.Data);
             };
             process.OutputDataReceived += (sender, e) =>
             {
                 _logger.LogInformation(e?.Data);
+                _trace.Info(e?.Data);
             };
             process.EnableRaisingEvents = true;
             process.Exited += (s, e) =>
