@@ -37,6 +37,7 @@ using Newtonsoft.Json.Linq;
 using Microsoft.Azure.AppService.Proxy.Client.Contract;
 using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Models;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -673,6 +674,139 @@ namespace Microsoft.Azure.WebJobs.Script
             return metricsLogger;
         }
 
+        private void LoadCustomExtensions()
+        {
+            string binPath = Path.Combine(ScriptConfig.RootScriptPath, "bin");
+            string metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
+            if (File.Exists(metadataFilePath))
+            {
+                var extensionMetadata = JObject.Parse(File.ReadAllText(metadataFilePath));
+
+                var extensionItems = extensionMetadata["extensions"]?.ToObject<List<ExtensionReference>>();
+                if (extensionItems == null)
+                {
+                    TraceWriter.Warning("Invalid extensions metadata file. Unable to load custom extensions");
+                    return;
+                }
+
+                foreach (var item in extensionItems)
+                {
+                    string extensionName = item.Name ?? item.TypeName;
+                    TraceWriter.Info($"Loading custom extension '{extensionName}'");
+
+                    Type extensionType = Type.GetType(item.TypeName,
+                        assemblyName =>
+                        {
+                            string path = item.HintPath;
+
+                            if (string.IsNullOrEmpty(path))
+                            {
+                                path = assemblyName + ".dll";
+                            }
+
+                            var hintUri = new Uri(path, UriKind.RelativeOrAbsolute);
+                            if (!hintUri.IsAbsoluteUri)
+                            {
+                                path = Path.Combine(binPath, path);
+                            }
+
+                            if (File.Exists(path))
+                            {
+                                return Assembly.LoadFrom(path);
+                            }
+
+                            return null;
+                        },
+                        (assembly, typeName, ignoreCase) =>
+                        {
+                            return assembly?.GetType(typeName, false, ignoreCase);
+                        }, false, true);
+
+                    if (extensionType == null ||
+                        !LoadIfExtensionType(extensionType, extensionType.Assembly.Location))
+                    {
+                        TraceWriter.Warning($"Unable to load custom extension type for extension '{extensionName}' (Type: `{item.TypeName}`)." +
+                                $"The type does not exist or is not a valid extension. Please validate the type and assembly names.");
+                    }
+                }
+            }
+
+            // Now all extensions have been loaded, the metadata is finalized.
+            // There's a single script binding instance that services all extensions.
+            // give that script binding the metadata for all loaded extensions so it can dispatch to them.
+            var generalProvider = ScriptConfig.BindingProviders.OfType<GeneralScriptBindingProvider>().First();
+            var metadataProvider = this.CreateMetadataProvider();
+            generalProvider.CompleteInitialization(metadataProvider);
+        }
+
+        // Load extensions that are directly references by the user types.
+        private void LoadDirectlyReferencesExtensions(IEnumerable<Type> userTypes)
+        {
+            var possibleExtensionAssemblies = UserTypeScanner.GetPossibleExtensionAssemblies(userTypes);
+
+            foreach (var kv in possibleExtensionAssemblies)
+            {
+                var assembly = kv.Key;
+                var locationHint = kv.Value;
+                LoadExtensions(assembly, locationHint);
+            }
+        }
+
+        private void LoadExtensions(Assembly assembly, string locationHint)
+        {
+            foreach (var type in assembly.ExportedTypes)
+            {
+                LoadIfExtensionType(type, locationHint);
+            }
+        }
+
+        private bool LoadIfExtensionType(Type extensionType, string locationHint)
+        {
+            if (!typeof(IExtensionConfigProvider).IsAssignableFrom(extensionType))
+            {
+                return false;
+            }
+
+            if (IsExtensionLoaded(extensionType))
+            {
+                return false;
+            }
+
+            IExtensionConfigProvider instance = (IExtensionConfigProvider)Activator.CreateInstance(extensionType);
+            LoadExtension(instance, locationHint);
+
+            return true;
+        }
+
+        private bool IsExtensionLoaded(Type type)
+        {
+            var registry = ScriptConfig.HostConfig.GetService<IExtensionRegistry>();
+            var extensions = registry.GetExtensions<IExtensionConfigProvider>();
+            foreach (var extension in extensions)
+            {
+                var loadedExtentionType = extension.GetType();
+                if (loadedExtentionType == type)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Load a single extension
+        private void LoadExtension(IExtensionConfigProvider instance, string locationHint = null)
+        {
+            JobHostConfiguration config = this.ScriptConfig.HostConfig;
+
+            var type = instance.GetType();
+            string name = type.Name;
+
+            string msg = $"Loaded custom extension: {name} from '{locationHint}'";
+            TraceWriter.Info(msg);
+            _startupLogger.LogInformation(msg);
+            config.AddExtension(instance);
+        }
+
         private void ConfigureDefaultLoggerFactory()
         {
             ConfigureLoggerFactory(ScriptConfig, FunctionTraceWriterFactory, _settingsManager, _loggerFactoryBuilder, () => FileLoggingEnabled);
@@ -793,9 +927,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 // not whether we've identified a valid function from that folder. This ensures
                 // that we don't delete logs/secrets for functions that transition into/out of
                 // invalid unparsable states.
-                var functionLookup = Directory.EnumerateDirectories(this.ScriptConfig.RootScriptPath).ToLookup(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase);
+                var functionLookup = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).ToLookup(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase);
 
-                string rootLogFilePath = Path.Combine(this.ScriptConfig.RootLogPath, "Function");
+                string rootLogFilePath = Path.Combine(ScriptConfig.RootLogPath, "Function");
                 if (!Directory.Exists(rootLogFilePath))
                 {
                     return;
@@ -848,6 +982,18 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return scriptHost;
+        }
+
+        // Get the ScriptBindingProviderType for a given binding type.
+        // Null if no match.
+        private static Type GetScriptBindingProvider(string bindingType)
+        {
+            if (_builtinScriptBindingTypes.TryGetValue(bindingType, out string assemblyQualifiedTypeName))
+            {
+                var type = Type.GetType(assemblyQualifiedTypeName);
+                return type;
+            }
+            return null;
         }
 
         private static Collection<ScriptBindingProvider> LoadBindingProviders(ScriptHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter, ILogger logger, IEnumerable<string> usedBindingTypes)
@@ -1684,7 +1830,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private void OnFileChanged(FileSystemEventArgs e)
         {
             string directory = GetRelativeDirectory(e.FullPath, ScriptConfig.RootScriptPath);
-            bool isWatchedDirectory = ScriptConfig.WatchDirectories.Contains(directory);
+            bool isWatchedDirectory = ScriptConfig.WatchDirectories.Contains(directory) ||
+                string.Equals("bin", directory, StringComparison.OrdinalIgnoreCase);
 
             // We will perform a host restart in the following cases:
             // - the file change was under one of the configured watched directories (e.g. node_modules, shared code directories, etc.)

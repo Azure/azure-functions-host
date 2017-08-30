@@ -18,6 +18,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
+using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 
 namespace WebJobs.Script.WebHost.Core
 {
@@ -75,6 +76,13 @@ namespace WebJobs.Script.WebHost.Core
             builder.RegisterType<DefaultLoggerFactoryBuilder>().As<ILoggerFactoryBuilder>().SingleInstance();
             builder.Register(c => WebHostSettings.CreateDefault(c.Resolve<ScriptSettingsManager>()));
             builder.RegisterType<WebHostResolver>().SingleInstance();
+
+            // Temporary - This should be replaced with a simple type registration.
+            builder.Register<IExtensionsManager>(c =>
+            {
+                var hostInstance = c.Resolve<WebScriptHostManager>().Instance;
+                return new ExtensionsManager(hostInstance.ScriptConfig.RootScriptPath, hostInstance.TraceWriter, hostInstance.Logger);
+            });
 
             // The services below need to be scoped to a pseudo-tenant (warm/specialized environment)
             builder.Register<WebScriptHostManager>(c => c.Resolve<WebHostResolver>().GetWebScriptHostManager()).ExternallyOwned();
