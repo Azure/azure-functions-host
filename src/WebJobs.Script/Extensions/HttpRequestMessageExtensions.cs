@@ -60,19 +60,21 @@ namespace Microsoft.Azure.WebJobs.Script
         /// the specified level.
         /// </summary>
         /// <param name="request">The request.</param>
-        /// <param name="level">The level to check.</param>
+        /// <param name="levelToCheck">The level to check.</param>
         /// <param name="keyName">Optional key name if key based auth is being used</param>
         /// <returns>True if the request is authorized at the specified level,
         /// false otherwise.</returns>
-        public static bool HasAuthorizationLevel(this HttpRequestMessage request, AuthorizationLevel level, string keyName = null)
+        public static bool HasAuthorizationLevel(this HttpRequestMessage request, AuthorizationLevel levelToCheck, string keyName = null)
         {
-            if (request.IsAuthDisabled())
+            if (request.IsAuthDisabled() || levelToCheck == AuthorizationLevel.Anonymous)
             {
+                // when auth is disabled or the required level is Anonymous
+                // the request is authorized
                 return true;
             }
 
-            var authorizationLevel = request.GetAuthorizationLevel();
-            if (authorizationLevel == AuthorizationLevel.Admin)
+            var requestAuthorizationLevel = request.GetAuthorizationLevel();
+            if (requestAuthorizationLevel == AuthorizationLevel.Admin)
             {
                 // requests authorized at admin level are always allowed
                 return true;
@@ -89,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // otherwise, the request level must exactly match the required level
-            return authorizationLevel == level;
+            return requestAuthorizationLevel == levelToCheck;
         }
 
         public static string GetHeaderValueOrDefault(this HttpRequestMessage request, string headerName)
