@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
 {
@@ -16,5 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
         public string WorkerPath { get; set; }
 
         public string Extension { get; set; }
+
+        protected string Location => Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
     }
 }
