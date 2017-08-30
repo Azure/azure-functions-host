@@ -38,6 +38,7 @@ using Newtonsoft.Json.Linq;
 using Microsoft.Azure.AppService.Proxy.Client.Contract;
 using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Models;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -706,12 +707,58 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void LoadCustomExtensions()
         {
-            string extensionsPath = ScriptConfig.RootExtensionsPath;
-            if (!string.IsNullOrWhiteSpace(extensionsPath))
+            string binPath = Path.Combine(ScriptConfig.RootScriptPath, "bin");
+            string metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
+            if (File.Exists(metadataFilePath))
             {
-                foreach (var dir in Directory.EnumerateDirectories(extensionsPath))
+                var extensionMetadata = JObject.Parse(File.ReadAllText(metadataFilePath));
+
+                var extensionItems = extensionMetadata["extensions"]?.ToObject<List<ExtensionReference>>();
+                if (extensionItems == null)
                 {
-                    LoadCustomExtensions(dir);
+                    TraceWriter.Warning("Invalid extensions metadata file. Unable to load custom extensions");
+                    return;
+                }
+
+                foreach (var item in extensionItems)
+                {
+                    string extensionName = item.Name ?? item.TypeName;
+                    TraceWriter.Info($"Loading custom extension '{extensionName}'");
+
+                    Type extensionType = Type.GetType(item.TypeName,
+                        assemblyName =>
+                        {
+                            string path = item.HintPath;
+
+                            if (string.IsNullOrEmpty(path))
+                            {
+                                path = assemblyName + ".dll";
+                            }
+
+                            var hintUri = new Uri(path, UriKind.RelativeOrAbsolute);
+                            if (!hintUri.IsAbsoluteUri)
+                            {
+                                path = Path.Combine(binPath, path);
+                            }
+
+                            if (File.Exists(path))
+                            {
+                                return Assembly.LoadFrom(path);
+                            }
+
+                            return null;
+                        },
+                        (assembly, typeName, ignoreCase) =>
+                        {
+                            return assembly?.GetType(typeName, false, ignoreCase);
+                        }, false, true);
+
+                    if (extensionType == null ||
+                        !LoadIfExtensionType(extensionType, extensionType.Assembly.Location))
+                    {
+                        TraceWriter.Warning($"Unable to load custom extension type for extension '{extensionName}' (Type: `{item.TypeName}`)." +
+                                $"The type does not exist or is not a valid extension. Please validate the type and assembly names.");
+                    }
                 }
             }
 
@@ -721,34 +768,6 @@ namespace Microsoft.Azure.WebJobs.Script
             var generalProvider = ScriptConfig.BindingProviders.OfType<GeneralScriptBindingProvider>().First();
             var metadataProvider = this.CreateMetadataProvider();
             generalProvider.CompleteInitialization(metadataProvider);
-        }
-
-        private void LoadCustomExtensions(string extensionsPath)
-        {
-            foreach (var path in Directory.EnumerateFiles(extensionsPath, "*.dll"))
-            {
-                // We don't want to load and reflect over every dll.
-                // By convention, restrict to based on filenames.
-                var filename = Path.GetFileName(path);
-                if (!filename.ToLowerInvariant().Contains("extension"))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    // See GetNugetPackagesPath() for details
-                    // Script runtime is already setup with assembly resolution hooks, so use LoadFrom
-                    Assembly assembly = Assembly.LoadFrom(path);
-                    LoadExtensions(assembly, path);
-                }
-                catch (Exception e)
-                {
-                    string msg = $"Failed to load custom extension from '{path}'.";
-                    TraceWriter.Error(msg, e);
-                    _startupLogger.LogError(0, e, msg);
-                }
-            }
         }
 
         // Load extensions that are directly references by the user types.
@@ -768,19 +787,26 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             foreach (var type in assembly.ExportedTypes)
             {
-                if (!typeof(IExtensionConfigProvider).IsAssignableFrom(type))
-                {
-                    continue;
-                }
-
-                if (IsExtensionLoaded(type))
-                {
-                    continue;
-                }
-
-                IExtensionConfigProvider instance = (IExtensionConfigProvider)Activator.CreateInstance(type);
-                LoadExtension(instance, locationHint);
+                LoadIfExtensionType(type, locationHint);
             }
+        }
+
+        private bool LoadIfExtensionType(Type extensionType, string locationHint)
+        {
+            if (!typeof(IExtensionConfigProvider).IsAssignableFrom(extensionType))
+            {
+                return false;
+            }
+
+            if (IsExtensionLoaded(extensionType))
+            {
+                return false;
+            }
+
+            IExtensionConfigProvider instance = (IExtensionConfigProvider)Activator.CreateInstance(extensionType);
+            LoadExtension(instance, locationHint);
+
+            return true;
         }
 
         private bool IsExtensionLoaded(Type type)
@@ -932,9 +958,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 // not whether we've identified a valid function from that folder. This ensures
                 // that we don't delete logs/secrets for functions that transition into/out of
                 // invalid unparsable states.
-                var functionLookup = Directory.EnumerateDirectories(this.ScriptConfig.RootScriptPath).ToLookup(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase);
+                var functionLookup = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).ToLookup(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase);
 
-                string rootLogFilePath = Path.Combine(this.ScriptConfig.RootLogPath, "Function");
+                string rootLogFilePath = Path.Combine(ScriptConfig.RootLogPath, "Function");
                 if (!Directory.Exists(rootLogFilePath))
                 {
                     return;
@@ -993,8 +1019,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // Null if no match.
         private static Type GetScriptBindingProvider(string bindingType)
         {
-            string assemblyQualifiedTypeName;
-            if (_builtinScriptBindingTypes.TryGetValue(bindingType, out assemblyQualifiedTypeName))
+            if (_builtinScriptBindingTypes.TryGetValue(bindingType, out string assemblyQualifiedTypeName))
             {
                 var type = Type.GetType(assemblyQualifiedTypeName);
                 return type;
