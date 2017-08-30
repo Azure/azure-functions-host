@@ -50,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HostMetadataFileName = "host.json";
         public const string FunctionMetadataFileName = "function.json";
         public const string ProxyMetadataFileName = "proxies.json";
+        public const string ExtensionsMetadataFileName = "extensions.json";
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
 
@@ -75,5 +76,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const int MaximumHostIdLength = 32;
         public const int DynamicSkuConnectionLimit = 250;
+
+        public const string ExtensionsProjectFileName = "Extensions.csproj";
+        public const string ExtensionsPackageId = "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator";
+        public const string PackageReferenceElementName = "PackageReference";
+        public const string PackageReferenceVersionElementName = "Version";
     }
 }

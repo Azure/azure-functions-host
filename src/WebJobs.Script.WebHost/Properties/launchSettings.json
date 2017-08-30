@@ -16,7 +16,7 @@
       }
     },
     "WebJobs.Script.WebHost.Core": {
-      "commandName": "Project",
+      "commandName": "IISExpress",
       "launchBrowser": true,
       "launchUrl": "api/values",
       "environmentVariables": {
