@@ -24,6 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
                 Arguments = GetArguments(context),
             };
 
+            context.Logger.LogInformation($"Exe: {context.WorkerConfig.ExecutablePath}");
+            context.Logger.LogInformation($"Args: {startInfo.Arguments}");
+
             return new Process { StartInfo = startInfo };
         }
 
