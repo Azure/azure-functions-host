@@ -7,7 +7,7 @@ using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
-    internal class JavaLanguageWorkerConfig : WorkerConfig
+    public class JavaLanguageWorkerConfig : WorkerConfig
     {
         public JavaLanguageWorkerConfig()
         {
