@@ -36,6 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 metricsLogger?.LogEvent(MetricEventNames.ApplicationInsightsDisabled);
             }
+
+            factory.AddConsole(scriptConfig.LogFilter.DefaultLevel, true);
         }
     }
 }
