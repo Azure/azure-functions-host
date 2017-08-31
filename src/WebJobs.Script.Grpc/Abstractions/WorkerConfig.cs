@@ -19,6 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
 
         public string Extension { get; set; }
 
-        protected string Location => Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        protected string Location => Path.GetDirectoryName(typeof(WorkerConfig).Assembly.CodeBase).Substring(6);
     }
 }
