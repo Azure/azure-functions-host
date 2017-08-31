@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -19,6 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
 
         public string Extension { get; set; }
 
-        protected string Location => Path.GetDirectoryName(typeof(WorkerConfig).Assembly.CodeBase).Substring(6);
+        protected string Location => Path.GetDirectoryName(new Uri(typeof(WorkerConfig).Assembly.CodeBase).LocalPath);
     }
 }
