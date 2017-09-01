@@ -5,9 +5,11 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Description.Script;
@@ -18,7 +20,6 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
-using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
@@ -42,8 +43,6 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
 
-        private TraceWriter _trace;
-
         private bool disposedValue;
 
         public LanguageWorkerChannel(
@@ -53,18 +52,19 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             IObservable<FunctionRegistrationContext> functionRegistrations,
             WorkerConfig workerConfig,
             Uri serverUri,
-            ILogger logger,
-            TraceWriter traceWriter)
+            ILoggerFactory loggerFactory)
         {
+            _workerId = Guid.NewGuid().ToString();
+
             _scriptConfig = scriptConfig;
             _eventManager = eventManager;
             _processFactory = processFactory;
             _functionRegistrations = functionRegistrations;
             _workerConfig = workerConfig;
             _serverUri = serverUri;
-            _logger = logger;
-            _workerId = Guid.NewGuid().ToString();
-            _trace = traceWriter;
+
+            var lang = Path.GetFileName(workerConfig.ExecutablePath);
+            _logger = loggerFactory.CreateLogger($"Worker.{lang}.{_workerId}");
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
@@ -166,9 +166,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             {
                 link.Dispose();
             }
-            var msg = $"Worker {_workerId} encountered an error.";
-            _logger.LogError(msg, exc);
-            _trace.Error(msg, exc);
+
+            _logger.LogError($"Worker encountered an error.", exc);
             _eventManager.Publish(new WorkerErrorEvent(this, exc));
         }
 
@@ -219,9 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         {
             if (loadResponse.Result.IsFailure(out Exception e))
             {
-                var msg = $"Function {loadResponse.FunctionId} failed to load";
-                _logger.LogError(msg, e);
-                _trace.Error(msg, e);
+                _logger.LogError($"Function {loadResponse.FunctionId} failed to load", e);
 
                 // load retry?
             }
@@ -259,13 +256,13 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         {
             process.ErrorDataReceived += (sender, e) =>
             {
-                _logger.LogError(e?.Data);
-                _trace.Error(e?.Data);
+                // Java logs to stderr by default
+                // TODO: per language stdout/err parser?
+                _logger.LogInformation(e?.Data);
             };
             process.OutputDataReceived += (sender, e) =>
             {
                 _logger.LogInformation(e?.Data);
-                _trace.Info(e?.Data);
             };
             process.EnableRaisingEvents = true;
             process.Exited += (s, e) =>
