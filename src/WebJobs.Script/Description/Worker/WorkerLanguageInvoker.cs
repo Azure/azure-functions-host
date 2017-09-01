@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
-            var logHandler = CreateLogHandler(context.Logger);
+            var logHandler = CreateLogHandler(context);
             string invocationId = context.ExecutionContext.InvocationId.ToString();
             var logSubscription = Host.EventManager
                 .OfType<RpcEvent>()
@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private static Action<RpcEvent> CreateLogHandler(ILogger logger)
+        private static Action<RpcEvent> CreateLogHandler(FunctionInvocationContext context)
         {
             return (rpcEvent) =>
             {
@@ -173,7 +173,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 if (logMessage.Message != null)
                 {
                     LogLevel logLevel = (LogLevel)logMessage.Level;
-                    logger.Log(logLevel, new EventId(0, logMessage.EventId), logMessage.Message, null, null);
+
+                    // logger.Log(logLevel, new EventId(0, logMessage.EventId), logMessage.Message, null, (state, exc) => state);
+                    context.TraceWriter.Info(logMessage.Message);
                 }
             };
         }
