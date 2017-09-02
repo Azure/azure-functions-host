@@ -12,12 +12,12 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         public JavaLanguageWorkerConfig()
         {
             var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME") ?? string.Empty;
-            var javaPath = Path.Combine(javaHome, @"bin", @"java");
+            var javaPath = Path.Combine(javaHome, "bin", "java");
             ExecutablePath = Path.GetFullPath(javaPath);
             var workerJar = Environment.GetEnvironmentVariable("AzureWebJobsJavaWorkerPath");
             if (string.IsNullOrEmpty(workerJar))
             {
-                workerJar = Path.Combine(Location, @"workers\java\azure-functions-java-worker.jar");
+                workerJar = Path.Combine(Location, "workers", "java", "azure-functions-java-worker.jar");
             }
 
             // Load the JVM starting parameters to support attach to debugging.

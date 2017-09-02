@@ -69,6 +69,15 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
 
+            // TODO: use scope to attach worker info, map message category if exists
+            _eventSubscriptions.Add(_inboundWorkerEvents
+                .Where(msg => msg.MessageType == MsgType.RpcLog && msg.Message.RpcLog.InvocationId == null)
+                .Subscribe(msg =>
+                {
+                    var logMessage = msg.Message.RpcLog;
+                    _logger.Log((LogLevel)logMessage.Level, new EventId(0, logMessage.EventId), logMessage.Message, null, (state, exc) => state);
+                }));
+
             StartWorker();
         }
 
