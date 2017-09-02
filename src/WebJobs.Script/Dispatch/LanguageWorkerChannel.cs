@@ -258,11 +258,17 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             {
                 // Java logs to stderr by default
                 // TODO: per language stdout/err parser?
-                _logger.LogInformation(e?.Data);
+                if (e.Data != null)
+                {
+                    _logger.LogInformation(e.Data);
+                }
             };
             process.OutputDataReceived += (sender, e) =>
             {
-                _logger.LogInformation(e?.Data);
+                if (e.Data != null)
+                {
+                    _logger.LogInformation(e.Data);
+                }
             };
             process.EnableRaisingEvents = true;
             process.Exited += (s, e) =>
@@ -274,6 +280,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                 process.WaitForExit();
                 process.Close();
             };
+
+            _logger.LogInformation($"Start Process: {process.StartInfo.FileName} {process.StartInfo.Arguments}");
 
             process.Start();
             process.BeginErrorReadLine();
