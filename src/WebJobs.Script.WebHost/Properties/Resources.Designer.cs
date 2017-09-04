@@ -102,7 +102,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         ///                        &quot;null&quot;
         ///                    ]
         ///                },
-        ///              [rest of string was truncated]&quot;;.
+        ///                &quot;encrypted&quot;: {
+        ///   [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string FunctionSecretsSchemaV1 {
             get {
@@ -158,7 +159,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         ///                        &quot;null&quot;
         ///                    ]
         ///                },
-        ///              [rest of string was truncated]&quot;;.
+        ///                &quot;encrypted&quot;: {
+        ///   [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string HostSecretsSchemaV1 {
             get {
