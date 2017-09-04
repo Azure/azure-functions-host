@@ -11,6 +11,9 @@ using System.Reactive.Subjects;
 using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Description.Script;
+using System.Threading.Tasks.Dataflow;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
@@ -19,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         private IScriptEventManager _eventManager;
         private IRpcServer _server;
         private CreateChannel _channelFactory;
+        private TraceWriter _traceWriter;
         private List<WorkerConfig> _workerConfigs;
 
         private ConcurrentDictionary<WorkerConfig, WorkerState> _channelState = new ConcurrentDictionary<WorkerConfig, WorkerState>();
@@ -31,11 +35,13 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             IScriptEventManager manager,
             IRpcServer server,
             CreateChannel channelFactory,
+            TraceWriter traceWriter,
             List<WorkerConfig> workers)
         {
             _eventManager = manager;
             _server = server;
             _channelFactory = channelFactory;
+            _traceWriter = traceWriter;
             _workerConfigs = workers ?? new List<WorkerConfig>();
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
@@ -63,19 +69,30 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         public void WorkerError(WorkerErrorEvent workerError)
         {
-            var worker = workerError.Worker as ILanguageWorkerChannel;
-            _channelState.AddOrUpdate(worker.Config,
-                CreateWorkerState,
-                (config, state) =>
-                {
-                    _erroredChannels.Add(state.Channel);
-                    if (state.CreateAttempts < 3)
+            if (workerError.Worker is ILanguageWorkerChannel worker)
+            {
+                var channelState = _channelState.AddOrUpdate(worker.Config,
+                    CreateWorkerState,
+                    (config, state) =>
                     {
-                        state.CreateAttempts++;
-                        state.Channel = _channelFactory(config, state.Functions);
-                    }
-                    return state;
-                });
+                        _erroredChannels.Add(state.Channel);
+                        if (state.CreateAttempts < 3)
+                        {
+                            state.CreateAttempts++;
+                            state.Channel = _channelFactory(config, state.Functions);
+                        }
+                        return state;
+                    });
+                if (channelState.CreateAttempts >= 3)
+                {
+                    _eventManager.Publish(new WorkerErrorEvent(this, workerError.Exception));
+                    var errorBlock = new ActionBlock<ScriptInvocationContext>(ctx =>
+                    {
+                        ctx.ResultSource.TrySetException(workerError.Exception);
+                    });
+                    channelState.Functions.Subscribe(reg => reg.InputBuffer.LinkTo(errorBlock));
+                }
+            }
         }
 
         protected virtual void Dispose(bool disposing)

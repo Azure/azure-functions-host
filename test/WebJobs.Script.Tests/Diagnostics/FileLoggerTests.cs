@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             // we should never call this
             var factoryMock = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
 
-            var logger = new FileLogger("SomeCategory", factoryMock.Object, (c, l) => true);
+            var logger = new FunctionLogger("SomeCategory", factoryMock.Object, (c, l) => true);
 
             // FunctionName comes from scope -- call with no scope values
             logger.Log(LogLevel.Information, 0, new FormattedLogValues("Some Message"), null, (s, e) => s.ToString());
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 .Setup(f => f.Create("SomeFunction", null))
                 .Returns(trace);
 
-            var logger = new FileLogger("SomeCategory", factoryMock.Object, (c, l) => true);
+            var logger = new FunctionLogger("SomeCategory", factoryMock.Object, (c, l) => true);
 
             // FunctionName comes from scope
             using (logger.BeginScope(new Dictionary<string, object>
