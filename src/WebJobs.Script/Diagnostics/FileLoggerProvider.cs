@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Extensions.Logging;
+using Microsoft.Azure.WebJobs.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
@@ -17,7 +18,19 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             _filter = filter;
         }
 
-        public ILogger CreateLogger(string categoryName) => new FileLogger(categoryName, _traceWriterFactory, _filter);
+        public ILogger CreateLogger(string categoryName)
+        {
+            switch (categoryName)
+            {
+                case string cat when WorkerLogger.Regex.IsMatch(cat):
+                    return new WorkerLogger(cat, _traceWriterFactory, _filter);
+                case string cat when cat == LogCategories.Function:
+                    return new FunctionLogger(cat, _traceWriterFactory, _filter);
+                default:
+                    // essentially a void logger
+                    return new FunctionLogger(categoryName, _traceWriterFactory, (cat, lvl) => false);
+            }
+        }
 
         public void Dispose()
         {

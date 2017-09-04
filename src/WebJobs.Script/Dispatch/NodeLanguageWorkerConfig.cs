@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 using Microsoft.Azure.WebJobs.Script.Config;
+using System.IO;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
@@ -21,6 +22,10 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                 };
             }
             WorkerPath = Environment.GetEnvironmentVariable("NodeJSWorkerPath");
+            if (string.IsNullOrEmpty(WorkerPath))
+            {
+                WorkerPath = Path.Combine(Location, "workers", "node", "dist", "src", "nodejsWorker.js");
+            }
             Extension = ".js";
         }
     }

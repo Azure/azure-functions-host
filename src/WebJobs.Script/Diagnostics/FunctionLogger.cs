@@ -14,13 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     /// A wrapper class to allow ILoggers from functions to write to the existing FileTraceWriter. This allows
     /// logs to show up in the log files and stream in the portal.
     /// </summary>
-    internal class FileLogger : ILogger
+    internal class FunctionLogger : ILogger
     {
         private readonly Func<string, LogLevel, bool> _filter;
         private readonly string _categoryName;
         private readonly IFunctionTraceWriterFactory _traceWriterFactory;
 
-        public FileLogger(string categoryName, IFunctionTraceWriterFactory traceWriterFactory, Func<string, LogLevel, bool> filter)
+        public FunctionLogger(string categoryName, IFunctionTraceWriterFactory traceWriterFactory, Func<string, LogLevel, bool> filter)
         {
             _categoryName = categoryName;
             _filter = filter;
