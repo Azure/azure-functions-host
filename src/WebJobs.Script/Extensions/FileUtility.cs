@@ -109,5 +109,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
             return relativePath;
         }
+
+        public static void CopyDirectory(string sourcePath, string targetPath)
+        {
+            foreach (string dirPath in Directory.GetDirectories(sourcePath, "*", SearchOption.AllDirectories))
+            {
+                Directory.CreateDirectory(dirPath.Replace(sourcePath, targetPath));
+            }
+
+            foreach (string filePath in Directory.GetFiles(sourcePath, "*.*", SearchOption.AllDirectories))
+            {
+                File.Copy(filePath, filePath.Replace(sourcePath, targetPath), true);
+            }
+        }
     }
 }
