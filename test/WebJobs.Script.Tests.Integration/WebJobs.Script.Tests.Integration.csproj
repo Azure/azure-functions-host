@@ -37,6 +37,14 @@
     </None>
   </ItemGroup>
 
+  <!--see https://github.com/grpc/grpc/issues/12154#issuecomment-327006312 -->
+  <Target Name="SetProbingToPackagePath" AfterTargets="_CopyFilesMarkedCopyLocal">
+    <ItemGroup>
+      <GrpcCoreLibs Include="$(OutputPath)Grpc.Core.*" />
+    </ItemGroup>
+    <Delete Files="@(GrpcCoreLibs)" ContinueOnError="true" />
+  </Target>
+
   <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
 
 </Project>

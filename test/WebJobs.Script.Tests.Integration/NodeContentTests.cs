@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestFixture Fixture { get; set; }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact]
         public async Task StringTextPlainResponse()
         {
             var str = "asdf";
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task StringTextPlainReturn()
         {
             var str = "asdf";
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact]
         public async Task StringTextPlainRaw()
         {
             var str = "asdf";
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact]
         public async Task ByteArrayTextPlainResponse()
         {
             var str = "asdf";
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         // consider supporting text/plain formatting for byte[] type
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ByteArrayTextPlainReturn()
         {
             var str = "asdf";
@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("\"" + base64 + "\"", content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact]
         public async Task ByteArrayTextPlainRaw()
         {
             var str = "asdf";
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ObjectTextPlainResponse()
         {
             var obj = new { a = 1 };
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         // consider supporting text/plain conversion for expandoobject type
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ObjectTextPlainReturn()
         {
             var obj = new { a = 1 };
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, Regex.Replace(content, @"\s+", string.Empty));
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ObjectTextPlainRaw()
         {
             var obj = new { a = 1 };
@@ -115,28 +115,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, Regex.Replace(content, @"\s+", string.Empty));
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task StringJsonResponse()
         {
             var content = await Response("asdf", "application/json; charset=utf-8");
             Assert.Equal("\"asdf\"", content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task StringJsonReturn()
         {
             var content = await Return("asdf", "application/json; charset=utf-8");
             Assert.Equal("\"asdf\"", content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact]
         public async Task StringJsonRaw()
         {
             var content = await Raw("asdf", "application/json; charset=utf-8");
             Assert.Equal("asdf", content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ByteArrayJsonResponse()
         {
             var str = "asdf";
@@ -146,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("\"" + base64 + "\"", content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ByteArrayJsonReturn()
         {
             var str = "asdf";
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("\"" + base64 + "\"", content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact]
         public async Task ByteArrayJsonRaw()
         {
             var str = "asdf";
@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("asdf", content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ObjectJsonResponse()
         {
             var obj = new { a = 1 };
@@ -176,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ObjectJsonReturn()
         {
             var obj = new { a = 1 };
@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ObjectJsonRaw()
         {
             var obj = new { a = 1 };
@@ -196,28 +196,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task StringXmlResponse()
         {
             var content = await Response("asdf", "application/xml; charset=utf-8");
             Assert.Equal("<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">asdf</string>", content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task StringXmlReturn()
         {
             var content = await Return("asdf", "application/xml; charset=utf-8");
             Assert.Equal("<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">asdf</string>", content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact]
         public async Task StringXmlRaw()
         {
             var content = await Raw("asdf", "application/xml; charset=utf-8");
             Assert.Equal("asdf", content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ByteArrayXmlResponse()
         {
             var str = "asdf";
@@ -227,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("<base64Binary xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">YXNkZg==</base64Binary>", content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ByteArrayXmlReturn()
         {
             var str = "asdf";
@@ -237,7 +237,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("<base64Binary xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">YXNkZg==</base64Binary>", content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact]
         public async Task ByteArrayXmlRaw()
         {
             var str = "asdf";
@@ -247,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("asdf", content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ObjectXmlResponse()
         {
             var obj = new { a = 1 };
@@ -259,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ObjectXmlReturn()
         {
             var obj = new { a = 1 };
@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
-        [Fact( Skip = "Not currently supported")]
+        [Fact( Skip = "unsupported" )]
         public async Task ObjectXmlRaw()
         {
             var obj = new { a = 1 };
