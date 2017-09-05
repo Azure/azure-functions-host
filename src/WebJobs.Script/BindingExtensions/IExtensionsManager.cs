@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 {
     public interface IExtensionsManager
     {
-        Task<IList<ExtensionPackageReference>> GetExtensions();
+        Task<IEnumerable<ExtensionPackageReference>> GetExtensions();
 
         Task AddExtensions(params ExtensionPackageReference[] reference);
 
