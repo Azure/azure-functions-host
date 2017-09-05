@@ -322,9 +322,8 @@
       <HintPath>..\..\packages\System.IO.FileSystem.Primitives.4.3.0\lib\net46\System.IO.FileSystem.Primitives.dll</HintPath>
     </Reference>
     <Reference Include="System.Net" />
-    <Reference Include="System.Net.Http, Version=4.1.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Net.Http.4.3.0\lib\net46\System.Net.Http.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="System.Net.Http, Version=4.1.1.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Net.Http.4.3.2\lib\net46\System.Net.Http.dll</HintPath>
     </Reference>
     <Reference Include="System.Net.Http.Extensions, Version=2.2.29.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Net.Http.2.2.29\lib\net45\System.Net.Http.Extensions.dll</HintPath>
@@ -630,6 +629,7 @@
     <Error Condition="!Exists('..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets'))" />
     <Error Condition="!Exists('..\..\packages\xunit.runner.visualstudio.2.1.0\build\net20\xunit.runner.visualstudio.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\xunit.runner.visualstudio.2.1.0\build\net20\xunit.runner.visualstudio.props'))" />
     <Error Condition="!Exists('..\..\packages\Microsoft.Azure.DocumentDB.1.13.2\build\Microsoft.Azure.DocumentDB.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Microsoft.Azure.DocumentDB.1.13.2\build\Microsoft.Azure.DocumentDB.targets'))" />
+    <Error Condition="!Exists('..\..\packages\NETStandard.Library.2.0.0\build\NETStandard.Library.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\NETStandard.Library.2.0.0\build\NETStandard.Library.targets'))" />
   </Target>
   <Import Project="..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets" Condition="Exists('..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets')" />
   <Target Name="BeforeBuild">
@@ -640,6 +640,7 @@
     <PostBuildEvent>xcopy "$(ProjectDir)..\WebJobs.Script.Tests.Integration\TestScripts" "$(TargetDir)TestScripts\" /S /Y /I</PostBuildEvent>
   </PropertyGroup>
   <Import Project="..\..\packages\Microsoft.Azure.DocumentDB.1.13.2\build\Microsoft.Azure.DocumentDB.targets" Condition="Exists('..\..\packages\Microsoft.Azure.DocumentDB.1.13.2\build\Microsoft.Azure.DocumentDB.targets')" />
+  <Import Project="..\..\packages\NETStandard.Library.2.0.0\build\NETStandard.Library.targets" Condition="Exists('..\..\packages\NETStandard.Library.2.0.0\build\NETStandard.Library.targets')" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="AfterBuild">
