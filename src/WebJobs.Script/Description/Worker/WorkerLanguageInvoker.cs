@@ -12,12 +12,14 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description.Script;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
+using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -175,7 +177,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     LogLevel logLevel = (LogLevel)logMessage.Level;
 
                     // logger.Log(logLevel, new EventId(0, logMessage.EventId), logMessage.Message, null, (state, exc) => state);
-                    context.TraceWriter.Info(logMessage.Message);
+                    var trace = new TraceEvent(logLevel.ToTraceLevel(), logMessage.Message);
+                    context.TraceWriter.Trace(trace);
                 }
             };
         }

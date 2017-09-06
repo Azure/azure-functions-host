@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IDisposable outboundEventSubscription = null;
             try
             {
-                context.CancellationToken.Register(() => cancelSource.SetResult(false));
+                context.CancellationToken.Register(() => cancelSource.TrySetResult(false));
 
                 Func<Task<bool>> messageAvailable = async () =>
                 {
