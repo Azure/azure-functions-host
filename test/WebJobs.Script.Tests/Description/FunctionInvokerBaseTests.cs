@@ -51,6 +51,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void TraceOnPrimaryHost_WritesExpectedLogs()
+        {
+            _traceWriter.Traces.Clear();
+
+            _invoker.TraceOnPrimaryHost("Test message", TraceLevel.Info, "TestSource");
+
+            Assert.Equal(1, _traceWriter.Traces.Count);
+            var trace = _traceWriter.Traces[0];
+            Assert.Equal("Test message", trace.Message);
+            Assert.Equal(TraceLevel.Info, trace.Level);
+            Assert.Equal("TestSource", trace.Source);
+        }
+
+        [Fact]
         public void LogInvocationMetrics_EmitsExpectedEvents()
         {
             var metrics = new TestMetricsLogger();
