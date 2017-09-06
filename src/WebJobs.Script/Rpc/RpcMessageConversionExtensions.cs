@@ -16,7 +16,7 @@ using Microsoft.AspNetCore.Http;
 using System.IO;
 using System.Text;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public static class RpcMessageConversionExtensions
     {
@@ -62,9 +62,9 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 typedData.Json = jobj.ToString();
             }
-            else if (value.GetType().IsGenericType && value.GetType().GetGenericTypeDefinition() == typeof(Dictionary<,>))
+            else if (value is string str)
             {
-                typedData.Json = JObject.FromObject(value).ToString();
+                typedData.String = str;
             }
             else if (value is HttpRequest request)
             {
@@ -85,13 +85,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     http.Headers.Add(pair.Key.ToLowerInvariant(), pair.Value.ToString());
                 }
 
-                //if (request.Properties.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out IDictionary<string, object> parameters))
-                //{
-                //    foreach (var pair in parameters)
-                //    {
-                //        http.Params.Add(pair.Key, pair.Value.ToString());
-                //    }
-                //}
+                if (request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out object routeData))
+                {
+                    Dictionary<string, object> parameters = (Dictionary<string, object>)routeData;
+                    foreach (var pair in parameters)
+                    {
+                        http.Params.Add(pair.Key, pair.Value.ToString());
+                    }
+                }
 
                 if (request.Body != null && request.ContentLength > 0)
                 {
@@ -125,7 +126,15 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                typedData.String = value.ToString();
+                // attempt POCO
+                try
+                {
+                    typedData.Json = JObject.FromObject(value).ToString();
+                }
+                catch
+                {
+                    typedData.String = value.ToString();
+                }
             }
             return typedData;
         }
