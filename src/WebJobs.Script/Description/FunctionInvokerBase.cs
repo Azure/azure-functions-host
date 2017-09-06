@@ -138,9 +138,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
         }
 
-        protected void TraceOnPrimaryHost(string message, TraceLevel level, string source = null,  Exception exception = null)
+        protected internal void TraceOnPrimaryHost(string message, TraceLevel level, string source = null,  Exception exception = null)
         {
-            TraceWriter.Trace(message, level, PrimaryHostTraceProperties);
             var traceEvent = new TraceEvent(level, message, source, exception);
             foreach (var item in PrimaryHostTraceProperties)
             {
