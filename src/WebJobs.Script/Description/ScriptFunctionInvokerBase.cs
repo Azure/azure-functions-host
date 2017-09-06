@@ -79,6 +79,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                             Value = stream
                         };
                         await inputBinding.BindAsync(bindingContext);
+
+                        if (bindingContext.Value is string)
+                        {
+                            using (StreamWriter sw = new StreamWriter(stream))
+                            {
+                                await sw.WriteAsync((string)bindingContext.Value);
+                            }
+                        }
                     }
                 }
 
