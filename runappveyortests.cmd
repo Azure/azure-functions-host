@@ -28,5 +28,7 @@ vstest.console.exe "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests.Integratio
 IF %ERRORLEVEL% NEQ 0 (set /a exitCode=1)
 vstest.console.exe "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests.Integration\bin\Release\Microsoft.Azure.WebJobs.Script.Tests.Integration.dll" "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests\bin\Release\xunit.runner.visualstudio.testadapter.dll" /logger:Appveyor /TestAdapterPath:"%APPVEYOR_BUILD_FOLDER%" /TestCaseFilter:"E2E=SamplesEndToEndTests"
 IF %ERRORLEVEL% NEQ 0 (set /a exitCode=1)
+vstest.console.exe "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests.Integration\bin\Release\Microsoft.Azure.WebJobs.Script.Tests.Integration.dll" "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests\bin\Release\xunit.runner.visualstudio.testadapter.dll" /logger:Appveyor /TestAdapterPath:"%APPVEYOR_BUILD_FOLDER%" /TestCaseFilter:"E2E=NodeEndToEndTests" /Platform:x64
+IF %ERRORLEVEL% NEQ 0 (set /a exitCode=1)
 
 EXIT /B %exitCode%
