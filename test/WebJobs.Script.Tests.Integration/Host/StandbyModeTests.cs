@@ -2,9 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class StandbyModeTests : IDisposable
     {
         private readonly WebHostResolver _webHostResolver;
-
+        private readonly TestTraceWriter _traceWriter;
         private readonly ScriptSettingsManager _settingsManager;
 
         public StandbyModeTests()
@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var eventManagerMock = new Mock<IScriptEventManager>();
 
             _webHostResolver = new WebHostResolver(_settingsManager, new TestSecretManagerFactory(false), eventManagerMock.Object);
+            _traceWriter = new TestTraceWriter(TraceLevel.Info);
         }
 
         [Fact]
@@ -95,6 +96,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 T next = default(T);
                 try
                 {
+                    _traceWriter.Traces.Clear();
+
                     _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
                     var settings = GetWebHostSettings();
@@ -105,6 +108,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     current = func(settings);
                     Assert.NotNull(current);
                     Assert.NotSame(prev, current);
+
+                    var traces = _traceWriter.Traces.ToArray();
+                    var traceEvent = traces.Last();
+                    Assert.Equal("Host has been specialized", traceEvent.Message);
+                    Assert.Equal(TraceLevel.Info, traceEvent.Level);
 
                     // test only set one way
                     _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
@@ -121,25 +129,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact]
-        public async Task Warmup_Succeeds()
-        {
-            using (new TestEnvironment())
-            {
-                var settings = GetWebHostSettings();
-                var eventManagerMock = new Mock<IScriptEventManager>();
-                await WebScriptHostManager.WarmUp(settings, eventManagerMock.Object);
-
-                var hostLogPath = Path.Combine(settings.LogPath, @"host");
-                var hostLogFile = Directory.GetFiles(hostLogPath).First();
-                var content = File.ReadAllText(hostLogFile);
-
-                Assert.Contains("Warm up started", content);
-                Assert.Contains("Executed 'Functions.Test-CSharp' (Succeeded, Id=", content);
-                Assert.Contains("Warm up succeeded", content);
-            }
-        }
-
         private WebHostSettings GetWebHostSettings()
         {
             var home = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
@@ -148,7 +137,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(home, @"site\wwwroot"),
                 LogPath = Path.Combine(home, @"LogFiles\Application\Functions"),
-                SecretsPath = Path.Combine(home, @"data\Functions\secrets")
+                SecretsPath = Path.Combine(home, @"data\Functions\secrets"),
+                TraceWriter = _traceWriter
             };
         }
 
@@ -162,11 +152,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             private readonly ScriptSettingsManager _settingsManager;
             private string _home;
             private string _prevHome;
+            private string _prevPlaceholderMode;
+            private string _prevInstanceId;
 
             public TestEnvironment()
             {
                 _settingsManager = ScriptSettingsManager.Instance;
                 _prevHome = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
+                _prevPlaceholderMode = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode);
+                _prevInstanceId = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId);
 
                 _home = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
                 Directory.CreateDirectory(_home);
@@ -180,6 +174,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Reset();
 
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHomePath, _prevHome);
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId, _prevInstanceId);
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, _prevPlaceholderMode);
                 try
                 {
                     Directory.Delete(_home, recursive: true);

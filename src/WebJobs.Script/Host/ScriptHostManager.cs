@@ -399,6 +399,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public virtual void RestartHost()
         {
             _restartHostEvent.Set();
+
+            // we reset the state immediately here to ensure that
+            // any external calls to CanInvoke will return false
+            // immediately after the restart has been initiated
+            State = ScriptHostState.Default;
         }
 
         public virtual void Shutdown()

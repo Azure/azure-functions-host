@@ -97,21 +97,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void EnsureInitialized(WebHostSettings settings)
         {
-            // standby mode can only change from true to false
-            // When standby mode changes, we reset all instances
-            var standbyMode = WebScriptHostManager.InStandbyMode;
-            if (!standbyMode)
+            if (!WebScriptHostManager.InStandbyMode)
             {
+                // standby mode can only change from true to false
+                // When standby mode changes, we reset all instances
                 if (_activeHostManager == null)
                 {
                     _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
-
                     _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings);
                     _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
+                    InitializeFileSystem();
+
+                    // here we're undergoing the one and only one
+                    // standby mode specialization
+                    _activeScriptHostConfig.TraceWriter.Info("Host has been specialized");
 
                     _standbyHostManager?.Dispose();
                     _standbyReceiverManager?.Dispose();
-
                     _standbyScriptHostConfig = null;
                     _standbyHostManager = null;
                     _standbyReceiverManager = null;
@@ -122,19 +124,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (_standbyHostManager == null)
                 {
-                    _standbyScriptHostConfig = CreateScriptHostConfiguration(settings);
-
+                    _standbyScriptHostConfig = CreateStandbyScriptHostConfiguration(settings);
+                    StandbyManager.Initialize(_standbyScriptHostConfig);
                     _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings);
                     _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
+                    InitializeFileSystem();
                 }
             }
         }
 
+        internal static ScriptHostConfiguration CreateStandbyScriptHostConfiguration(WebHostSettings settings)
+        {
+            var scriptHostConfig = CreateScriptHostConfiguration(settings);
+
+            scriptHostConfig.FileLoggingMode = FileLoggingMode.Always;
+            scriptHostConfig.HostConfig.StorageConnectionString = null;
+            scriptHostConfig.HostConfig.DashboardConnectionString = null;
+            scriptHostConfig.RootScriptPath = Path.Combine(Path.GetTempPath(), "Functions", "Standby");
+
+            return scriptHostConfig;
+        }
+
         internal static ScriptHostConfiguration CreateScriptHostConfiguration(WebHostSettings settings)
         {
-            InitializeFileSystem(settings.ScriptPath);
-
-            var scriptHostConfig = new ScriptHostConfiguration()
+            var scriptHostConfig = new ScriptHostConfiguration
             {
                 RootScriptPath = settings.ScriptPath,
                 RootLogPath = settings.LogPath,
@@ -149,18 +162,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return scriptHostConfig;
         }
 
-        private static void InitializeFileSystem(string scriptPath)
+        private static void InitializeFileSystem()
         {
             if (ScriptSettingsManager.Instance.IsAzureEnvironment)
             {
-                // When running on Azure, we kick this off on the background
                 Task.Run(() =>
                 {
                     string home = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
                     if (!string.IsNullOrEmpty(home))
                     {
                         // Delete hostingstart.html if any. Azure creates that in all sites by default
-                        string hostingStart = Path.Combine(scriptPath, "hostingstart.html");
+                        string siteRootPath = Path.Combine(home, @"site\wwwroot");
+                        string hostingStart = Path.Combine(siteRootPath, "hostingstart.html");
                         if (File.Exists(hostingStart))
                         {
                             File.Delete(hostingStart);
@@ -185,11 +198,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
                     }
                 });
-            }
-            else
-            {
-                // Ensure we have our scripts directory in non-Azure scenarios
-                Directory.CreateDirectory(scriptPath);
             }
         }
 

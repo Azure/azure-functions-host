@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -13,7 +12,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Hosting;
 using System.Web.Http;
-using System.Web.Http.Controllers;
 using System.Web.Http.Routing;
 using Microsoft.AspNet.WebHooks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -48,7 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly int _hostRunningPollIntervalMilliseconds;
         private readonly WebJobsSdkExtensionHookProvider _bindingWebHookProvider;
 
-        private bool _warmupComplete = false;
         private bool _hostStarted = false;
         private IDictionary<IHttpRoute, FunctionDescriptor> _httpFunctions;
         private HttpRouteCollection _httpRoutes;
@@ -127,14 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             get
             {
-                if (InStandbyMode)
-                {
-                    return _warmupComplete;
-                }
-                else
-                {
-                    return _hostStarted;
-                }
+                return _hostStarted;
             }
         }
 
@@ -209,23 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             lock (_syncLock)
             {
-                if (InStandbyMode)
-                {
-                    if (!_warmupComplete)
-                    {
-                        if (!_webHostSettings.IsSelfHost)
-                        {
-                            HostingEnvironment.QueueBackgroundWorkItem((ct) => WarmUp(_webHostSettings, EventManager));
-                        }
-                        else
-                        {
-                            Task.Run(() => WarmUp(_webHostSettings, EventManager));
-                        }
-
-                        _warmupComplete = true;
-                    }
-                }
-                else if (!_hostStarted)
+                if (!_hostStarted)
                 {
                     if (!_webHostSettings.IsSelfHost)
                     {
@@ -238,72 +212,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     _hostStarted = true;
                 }
-            }
-        }
-
-        public static async Task WarmUp(WebHostSettings settings, IScriptEventManager eventManager)
-        {
-            var traceWriter = new FileTraceWriter(Path.Combine(settings.LogPath, "Host"), TraceLevel.Info);
-            ScriptHost host = null;
-            try
-            {
-                traceWriter.Info("Warm up started");
-
-                string rootPath = settings.ScriptPath;
-                if (Directory.Exists(rootPath))
-                {
-                    Directory.Delete(rootPath, true);
-                }
-                Directory.CreateDirectory(rootPath);
-
-                string content = ReadResourceString("Functions.host.json");
-                File.WriteAllText(Path.Combine(rootPath, "host.json"), content);
-
-                // read in the C# function
-                string functionPath = Path.Combine(rootPath, "Test-CSharp");
-                Directory.CreateDirectory(functionPath);
-                content = ReadResourceString("Functions.Test_CSharp.function.json");
-                File.WriteAllText(Path.Combine(functionPath, "function.json"), content);
-                content = ReadResourceString("Functions.Test_CSharp.run.csx");
-                File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
-
-                traceWriter.Info("Warm up functions deployed");
-
-                ScriptHostConfiguration config = new ScriptHostConfiguration
-                {
-                    RootScriptPath = rootPath,
-                    FileLoggingMode = FileLoggingMode.Never,
-                    RootLogPath = settings.LogPath,
-                    TraceWriter = traceWriter,
-                    FileWatchingEnabled = false
-                };
-                config.HostConfig.StorageConnectionString = null;
-                config.HostConfig.DashboardConnectionString = null;
-
-                host = ScriptHost.Create(new NullScriptHostEnvironment(), eventManager, config, ScriptSettingsManager.Instance);
-                traceWriter.Info(string.Format("Starting Host (Id={0})", host.ScriptConfig.HostConfig.HostId));
-
-                host.Start();
-
-                var arguments = new Dictionary<string, object>
-                {
-                    { "input", "{}" }
-                };
-                host.CallAsync("Test-CSharp", arguments).Wait();
-                host.Stop();
-
-                await NodeFunctionInvoker.InitializeAsync();
-
-                traceWriter.Info("Warm up succeeded");
-            }
-            catch (Exception ex)
-            {
-                traceWriter.Error(string.Format("Warm up failed: {0}", ex));
-            }
-            finally
-            {
-                host?.Dispose();
-                traceWriter.Dispose();
             }
         }
 
@@ -363,16 +271,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             arguments.Add(triggerParameter.Name, request);
 
             return arguments;
-        }
-
-        private static string ReadResourceString(string fileName)
-        {
-            string resourcePath = string.Format("Microsoft.Azure.WebJobs.Script.WebHost.Resources.{0}", fileName);
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream(resourcePath)))
-            {
-                return reader.ReadToEnd();
-            }
         }
 
         private static object GetWebHookData(Type dataType, WebHookHandlerContext context)
@@ -450,6 +348,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         protected override void OnHostCreated()
         {
+            if (InStandbyMode)
+            {
+                Instance?.TraceWriter.Info("Host is in standby mode");
+            }
+
             InitializeHttp();
 
             base.OnHostCreated();
@@ -457,8 +360,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         protected override void OnHostStarted()
         {
-            // Purge any old Function secrets
-            _secretManager.PurgeOldSecretsAsync(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter, Instance.Logger);
+            if (!InStandbyMode)
+            {
+                // Purge any old Function secrets
+                _secretManager.PurgeOldSecretsAsync(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter, Instance.Logger);
+            }
 
             base.OnHostStarted();
         }

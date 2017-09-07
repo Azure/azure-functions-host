@@ -467,6 +467,7 @@
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="App_Start\WebHostResolver.cs" />
     <Compile Include="App_Start\WebHostSettings.cs" />
+    <Compile Include="StandbyManager.cs" />
     <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\FunctionsController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
@@ -577,8 +578,8 @@
     <None Include="App_Data\secrets\WebHook-Generic.json" />
     <None Include="Properties\PublishProfiles\FileSystem.pubxml" />
     <EmbeddedResource Include="Resources\Functions\host.json" />
-    <EmbeddedResource Include="Resources\Functions\Test-CSharp\function.json" />
-    <EmbeddedResource Include="Resources\Functions\Test-CSharp\run.csx" />
+    <EmbeddedResource Include="Resources\Functions\WarmUp\function.json" />
+    <EmbeddedResource Include="Resources\Functions\WarmUp\run.csx" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

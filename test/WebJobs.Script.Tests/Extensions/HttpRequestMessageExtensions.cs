@@ -11,6 +11,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class HttpRequestMessageExtensions
     {
+        [Theory]
+        [InlineData("http://azure.com/api/test", "api/test", true)]
+        [InlineData("http://azure.com/API/TEST", "api/test", true)]
+        [InlineData("http://azure.com/API/TEST", "API/TEST", true)]
+        [InlineData("http://azure.com/api/test/", "/api/test/", true)]
+        [InlineData("http://azure.com/api/test?a=123", "api/test", true)]
+        [InlineData("http://azure.com/api/test/?a=123", "api/test", true)]
+        [InlineData("http://azure.com/api/test", "api/bar", false)]
+        [InlineData("http://azure.com/api/test?a=123", "test", false)]
+        public void MatchRoute_ReturnsExpectedResult(string uri, string route, bool expected)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            Assert.Equal(expected, request.MatchRoute(route));
+        }
+
         [Fact]
         public void GetHeaderValueOrDefault_ReturnsExpectedResult()
         {

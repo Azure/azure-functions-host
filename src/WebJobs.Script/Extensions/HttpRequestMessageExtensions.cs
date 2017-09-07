@@ -12,6 +12,11 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class HttpRequestMessageExtensions
     {
+        public static bool MatchRoute(this HttpRequestMessage request, string route)
+        {
+            return request.RequestUri.LocalPath.Trim('/').ToLowerInvariant().Equals(route.Trim('/').ToLowerInvariant());
+        }
+
         public static AuthorizationLevel GetAuthorizationLevel(this HttpRequestMessage request)
         {
             return request.GetRequestPropertyOrDefault<AuthorizationLevel>(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey);

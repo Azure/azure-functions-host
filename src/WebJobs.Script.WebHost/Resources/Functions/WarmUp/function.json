@@ -1,0 +1,17 @@
+﻿{
+    "bindings": [
+        {
+            "type": "httpTrigger",
+            "authLevel": "anonymous",
+            "name": "req",
+            "direction": "in",
+            "methods": [ "get", "post" ],
+            "route": "{x:regex(^(warmup|csharphttpwarmup)$)}"
+        },
+        {
+            "type": "http",
+            "name": "$return",
+            "direction": "out"
+        }
+    ]
+}

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -40,6 +41,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 Assert.Equal("testsite", configuration.HostConfig.HostId);
             }
+        }
+
+        [Fact]
+        public void CreateStandbyScriptHostConfiguration_StandbyMode_ReturnsExpectedConfiguration()
+        {
+            var settings = new WebHostSettings();
+
+            var config = WebHostResolver.CreateStandbyScriptHostConfiguration(settings);
+
+            Assert.Equal(FileLoggingMode.Always, config.FileLoggingMode);
+            Assert.Null(config.HostConfig.StorageConnectionString);
+            Assert.Null(config.HostConfig.DashboardConnectionString);
+            Assert.Equal(Path.Combine(Path.GetTempPath(), "Functions", "Standby"), config.RootScriptPath);
         }
     }
 }
