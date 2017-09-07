@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
+using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
@@ -12,6 +13,11 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         public JavaLanguageWorkerConfig()
         {
             var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME") ?? string.Empty;
+            if (ScriptSettingsManager.Instance.IsAzureEnvironment)
+            {
+                // on azure, force latest jdk
+                javaHome = Path.Combine(javaHome, "..", "jdk1.8.0_111");
+            }
             var javaPath = Path.Combine(javaHome, "bin", "java");
             ExecutablePath = Path.GetFullPath(javaPath);
             var workerJar = Environment.GetEnvironmentVariable("AzureWebJobsJavaWorkerPath");
