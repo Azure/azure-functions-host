@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             var workerJar = Environment.GetEnvironmentVariable("AzureWebJobsJavaWorkerPath");
             if (string.IsNullOrEmpty(workerJar))
             {
-                workerJar = Path.Combine(Location, @"workers\java\azure-functions-java-worker.jar");
+                workerJar = Path.Combine(Location, "workers", "java", "azure-functions-java-worker.jar");
             }
 
             // Load the JVM starting parameters to support attach to debugging.

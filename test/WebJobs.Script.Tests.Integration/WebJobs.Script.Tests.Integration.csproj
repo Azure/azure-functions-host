@@ -11,8 +11,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.3" />
-    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client.Contract" Version="0.3.0.6" />
+    <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.3">
+      <NoWarn>NU1701</NoWarn>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client.Contract" Version="0.3.0.6">
+      <NoWarn>NU1701</NoWarn>
+    </PackageReference>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0-preview-20170810-02" />
     <PackageReference Include="Moq" Version="4.7.99" />
     <PackageReference Include="xunit" Version="2.3.0-beta3-build3705" />
@@ -25,14 +29,21 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" />
-    <ProjectReference Include="..\..\src\WebJobs.Script\WebJobs.Script.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="TestScripts\**\*">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <!--see https://github.com/grpc/grpc/issues/12154#issuecomment-327006312 -->
+  <Target Name="SetProbingToPackagePath" AfterTargets="_CopyFilesMarkedCopyLocal">
+    <ItemGroup>
+      <GrpcCoreLibs Include="$(OutputPath)Grpc.Core.*" />
+    </ItemGroup>
+    <Delete Files="@(GrpcCoreLibs)" ContinueOnError="true" />
+  </Target>
 
   <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
 
