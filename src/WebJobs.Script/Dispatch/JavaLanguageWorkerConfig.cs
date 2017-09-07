@@ -11,8 +11,11 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
     {
         public JavaLanguageWorkerConfig()
         {
-            var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME") ?? string.Empty;
-            var javaPath = Path.Combine(javaHome, "bin", "java");
+            var javaHome = Environment.GetEnvironmentVariable("APPSETTING_JAVA_HOME") ?? string.Empty;
+            if (javaHome == string.Empty) {
+                javaHome = Environment.GetEnvironmentVariable("JAVA_HOME") ?? string.Empty;
+            }
+            var javaPath = Path.Combine(javaHome, @"bin", @"java");
             ExecutablePath = Path.GetFullPath(javaPath);
             var workerJar = Environment.GetEnvironmentVariable("AzureWebJobsJavaWorkerPath");
             if (string.IsNullOrEmpty(workerJar))
