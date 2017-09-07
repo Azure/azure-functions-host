@@ -100,6 +100,66 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void HttpBinding_StripsFunctionsFromExpando()
+        {
+            // {
+            //    func: () => { },
+            //    nested:
+            //            {
+            //                func: () => { }
+            //    },
+            //    array: [
+            //        { func: () => { } }
+            //    ],
+            //    value: "value"
+            // };
+
+            Action f = () => { };
+            dynamic val = new ExpandoObject();
+            val.func = f;
+            val.nested = new ExpandoObject() as dynamic;
+            val.nested.func = f;
+            dynamic arrExpando = new ExpandoObject();
+            arrExpando.func = f;
+            val.array = new ExpandoObject[1] { arrExpando as ExpandoObject };
+            val.value = "value";
+
+            HttpBinding.StripExpandoFunctions(val);
+
+            // {
+            //    nested: { },
+            //    array: [{ }],
+            //    value: "value"
+            // };
+            Assert.Equal(3, ((IDictionary<string, object>)val).Count);
+            Assert.Equal(0, ((IDictionary<string, object>)val.nested).Count);
+            Assert.Equal(0, ((IDictionary<string, object>)val.nested).Count);
+            Assert.False(((IDictionary<string, object>)val).ContainsKey("func"));
+            Assert.True(((IDictionary<string, object>)val).ContainsKey("value"));
+        }
+
+        [Fact]
+        public async Task CreateResponse_StripsFunctions()
+        {
+            IDictionary<string, object> inputHeaders = new Dictionary<string, object>()
+            {
+                { "content-type", "text/plain" }
+            };
+
+            dynamic responseObject = new ExpandoObject();
+            dynamic body = new ExpandoObject();
+            body.Func = (Action)(() => { });
+            body.Str = "Test Body";
+            responseObject.Body = body;
+            responseObject.Headers = inputHeaders;
+            var req = new HttpRequestMessage();
+            req.SetConfiguration(new HttpConfiguration());
+            HttpResponseMessage response = HttpBinding.CreateResponse(req, responseObject);
+
+            Assert.Equal("{\"Str\":\"Test Body\"}", await response.Content.ReadAsStringAsync());
+        }
+
+        [Fact]
         public void ParseResponseObject_StatusWithNullBody_ReturnsExpectedResult()
         {
             dynamic responseObject = new ExpandoObject();

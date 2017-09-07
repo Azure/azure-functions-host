@@ -73,10 +73,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 responseObject = JsonConvert.DeserializeObject<ExpandoObject>(stringContent);
             }
-            else
+            else if (content is ExpandoObject expando)
             {
-                // Handle ExpandoObjects
-                responseObject = content as ExpandoObject;
+                StripExpandoFunctions(expando);
+                responseObject = expando;
             }
 
             HttpStatusCode statusCode = HttpStatusCode.OK;
@@ -285,6 +285,39 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public bool CanProcessResult(object result)
         {
             return result != null;
+        }
+
+        internal static void StripExpandoFunctions(object obj)
+        {
+            switch (obj)
+            {
+                case IEnumerable<ExpandoObject> expandoArray:
+                    foreach (var expando in expandoArray)
+                    {
+                        StripExpandoFunctions(expando);
+                    }
+                    break;
+
+                case ExpandoObject expando:
+                    var toRemove = new List<string>();
+
+                    foreach (var pair in expando)
+                    {
+                        if (pair.Value is Delegate)
+                        {
+                            toRemove.Add(pair.Key);
+                        }
+                        else
+                        {
+                            StripExpandoFunctions(pair.Value);
+                        }
+                    }
+                    foreach (var key in toRemove)
+                    {
+                        ((IDictionary<string, object>)expando).Remove(key);
+                    }
+                    break;
+            }
         }
 
         internal static void AddResponseHeader(HttpResponseMessage response, KeyValuePair<string, object> header)
