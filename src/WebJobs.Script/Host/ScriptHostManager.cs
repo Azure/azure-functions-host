@@ -174,6 +174,9 @@ namespace Microsoft.Azure.WebJobs.Script
                         _stopEvent
                     });
 
+                    // Immediately set the state to Default, which causes CanInvoke() to return false.
+                    State = ScriptHostState.Default;
+
                     // Orphan the current host instance. We're stopping it, so it won't listen for any new functions
                     // it will finish any currently executing functions and then clean itself up.
                     // Spin around and create a new host instance.
