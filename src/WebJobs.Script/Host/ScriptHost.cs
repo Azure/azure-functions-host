@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ILogger _startupLogger;
         private FileWatcherEventSource _fileEventSource;
         private IDisposable _fileEventsSubscription;
+        private IDisposable _workerErrorSubscription;
         private ProxyClientExecutor _proxyClient;
         private IFunctionDispatcher _functionDispatcher;
 
@@ -223,12 +224,6 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         internal DateTime LastDebugNotify { get; set; }
-
-        internal IFunctionDispatcher FunctionDispatcher
-        {
-            get => _functionDispatcher;
-            set => _functionDispatcher = value;
-        }
 
         /// <summary>
         /// Returns true if the specified name is the name of a known function,
@@ -475,11 +470,18 @@ namespace Microsoft.Azure.WebJobs.Script
                     return new LanguageWorkerChannel(ScriptConfig, EventManager, processFactory, registrations, config, server.Uri, hostConfig.LoggerFactory);
                 };
 
-                _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, new List<WorkerConfig>()
+                _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, TraceWriter, new List<WorkerConfig>()
                 {
                     new NodeLanguageWorkerConfig(),
                     new JavaLanguageWorkerConfig()
                 });
+
+                _workerErrorSubscription = EventManager.OfType<WorkerErrorEvent>()
+                    .Where(evt => evt.Worker is IFunctionDispatcher)
+                    .Subscribe(evt =>
+                    {
+                        HandleHostError(evt.Exception);
+                    });
 
                 if (ScriptConfig.FileWatchingEnabled)
                 {
@@ -822,7 +824,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // Register a file logger that only logs user logs and only if file logging is enabled.
             // We don't allow this to be replaced; if you want to disable it, you can use host.json to do so.
             scriptConfig.HostConfig.LoggerFactory.AddProvider(new FileLoggerProvider(traceWriteFactory,
-                (category, level) => (category == LogCategories.Function) && isFileLoggingEnabled()));
+                (category, level) => isFileLoggingEnabled()));
 
             // Allow a way to plug in custom LoggerProviders.
             builder.AddLoggerProviders(scriptConfig.HostConfig.LoggerFactory, scriptConfig, settingsManager);
@@ -1408,7 +1410,7 @@ namespace Microsoft.Azure.WebJobs.Script
 #if FEATURE_POWERSHELL
                     new PowerShellFunctionDescriptorProvider(this, ScriptConfig),
 #endif
-                    new WorkerFunctionDescriptorProvider(this, ScriptConfig, FunctionDispatcher),
+                    new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher),
                 };
 
             IEnumerable<FunctionMetadata> combinedFunctionMetadata = null;
@@ -1793,7 +1795,10 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static bool TryGetFunctionFromException(Collection<FunctionDescriptor> functions, Exception exception, out FunctionDescriptor function)
         {
             function = null;
-
+            if (functions == null)
+            {
+                return false;
+            }
             string errorStack = exception.ToString().ToLowerInvariant();
             foreach (var currFunction in functions)
             {
@@ -1923,10 +1928,8 @@ namespace Microsoft.Azure.WebJobs.Script
             if (disposing)
             {
                 (TraceWriter as IDisposable)?.Dispose();
-#if FEATURE_NODE
-                NodeFunctionInvoker.UnhandledException -= OnUnhandledException;
-#endif
                 _fileEventsSubscription?.Dispose();
+                _workerErrorSubscription?.Dispose();
                 _fileEventSource?.Dispose();
                 _debugModeFileWatcher?.Dispose();
                 _blobLeaseManager?.Dispose();
