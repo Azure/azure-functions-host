@@ -10,4 +10,5 @@
   <PropertyGroup />
   <Import Project="WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\CodeSharing\Microsoft.CodeSharing.CSharp.targets" />
+    <Import Project="..\..\tools\Clean.targets"/>
 </Project>

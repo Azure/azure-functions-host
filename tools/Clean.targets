@@ -1,0 +1,7 @@
+  <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+       <Target Name="FullCleanBinObj" AfterTargets="Clean"> <!-- common vars https://msdn.microsoft.com/en-us/library/c02as0cs.aspx?f=255&MSPPError=-2147217396 -->
+            <RemoveDir Directories="$(TargetDir)" /> <!-- bin -->
+            <!-- <RemoveDir Directories="$(SolutionDir).vs" />  .vs  -->
+            <RemoveDir Directories="$(ProjectDir)$(BaseIntermediateOutputPath)" /> <!-- obj -->
+       </Target>
+  </Project>
