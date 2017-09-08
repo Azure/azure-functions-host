@@ -28,8 +28,9 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
             // Load the JVM starting parameters to support attach to debugging.
             var javaOpts = Environment.GetEnvironmentVariable("JAVA_OPTS") ?? string.Empty;
-            WorkerPath = $"-jar {javaOpts} {workerJar}";
+            WorkerPath = $"-jar {javaOpts} \"{workerJar}\"";
             Extension = ".jar";
+            Language = "Java";
         }
     }
 }

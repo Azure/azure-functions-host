@@ -3,9 +3,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 using Microsoft.Azure.WebJobs.Script.Config;
-using System.IO;
 
 namespace Microsoft.Azure.WebJobs.Script.Dispatch
 {
@@ -26,7 +26,9 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             {
                 WorkerPath = Path.Combine(Location, "workers", "node", "dist", "src", "nodejsWorker.js");
             }
+            WorkerPath = "\"" + WorkerPath + "\"";
             Extension = ".js";
+            Language = "Node";
         }
     }
 }
