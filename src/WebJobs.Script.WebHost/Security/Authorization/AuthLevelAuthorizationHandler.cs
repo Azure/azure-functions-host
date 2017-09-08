@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
+using static Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.AuthUtility;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
 {
@@ -15,9 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
     {
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, AuthLevelRequirement requirement)
         {
-            if (context.User.HasClaim(c => string.Equals(c.Type, SecurityConstants.AuthLevelClaimType, StringComparison.Ordinal) &&
-            Enum.TryParse<AuthorizationLevel>(c.Value, out AuthorizationLevel level) &&
-            level == requirement.Level))
+            if (PrincipalHasAuthLevelClaim(context.User, requirement.Level))
             {
                 context.Succeed(requirement);
             }
