@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
             // TODO: use scope to attach worker info, map message category if exists
             _eventSubscriptions.Add(_inboundWorkerEvents
-                .Where(msg => msg.MessageType == MsgType.RpcLog && msg.Message.RpcLog.InvocationId == null)
+                .Where(msg => msg.MessageType == MsgType.RpcLog && string.IsNullOrEmpty(msg.Message.RpcLog.InvocationId))
                 .Subscribe(msg =>
                 {
                     var logMessage = msg.Message.RpcLog;
