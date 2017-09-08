@@ -15,6 +15,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.Azure.WebJobs.Script.WebHost.Features;
+using System;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
 {
@@ -57,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             }
         }
 
-        internal static async Task<AuthorizationLevel> GetAuthorizationLevelAsync(HttpRequest request, ISecretManager secretManager, string functionName = null)
+        internal static async Task<AuthorizationLevel> GetAuthorizationLevelAsync(HttpRequest request, ISecretManager secretManager)
         {
             // first see if a key value is specified via headers or query string (header takes precedence)
             string keyValue = null;
@@ -91,10 +93,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
                     return AuthorizationLevel.Function;
                 }
 
-                // if there is a function specific key specified try to match against that
-                if (functionName != null)
+                // If there is a function specific key specified try to match against that
+                IFunctionExecutionFeature executionFeature = request.HttpContext.Features.Get<IFunctionExecutionFeature>();
+                if (executionFeature != null)
                 {
-                    IDictionary<string, string> functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
+                    IDictionary<string, string> functionSecrets = await secretManager.GetFunctionSecretsAsync(executionFeature.Descriptor.Name);
                     if (HasMatchingKey(functionSecrets, keyValue))
                     {
                         return AuthorizationLevel.Function;
@@ -105,6 +108,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             return AuthorizationLevel.Anonymous;
         }
 
-        private static bool HasMatchingKey(IDictionary<string, string> secrets, string keyValue) => secrets != null && secrets.Values.Any(s => Key.SecretValueEquals(s, keyValue));
+        private static bool HasMatchingKey(IDictionary<string, string> secrets, string keyValue, string keyName = null)
+            => secrets != null && secrets.Any(s => Key.SecretValueEquals(s.Value, keyValue) &&
+                (keyName == null || string.Equals(s.Key, keyName, StringComparison.OrdinalIgnoreCase)));
     }
 }

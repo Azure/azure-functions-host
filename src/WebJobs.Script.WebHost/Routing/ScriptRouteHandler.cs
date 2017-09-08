@@ -4,15 +4,18 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Features;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Extensions.Http
@@ -58,6 +61,15 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
                 return new NotFoundResult();
             }
 
+            context.Features.Set<IFunctionExecutionFeature>(new FunctionExecutionFeature { Descriptor = descriptor });
+
+            bool authorized = await AuthenticateAndAuthorizeAsync(context, descriptor);
+
+            if (!authorized)
+            {
+                return new UnauthorizedResult();
+            }
+
             Dictionary<string, object> arguments = GetFunctionArguments(descriptor, context.Request);
 
             // Add the request to the logging scope. This allows the App Insights logger to
@@ -80,6 +92,20 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
             }
 
             return new NotFoundResult();
+        }
+
+        private async Task<bool> AuthenticateAndAuthorizeAsync(HttpContext context, FunctionDescriptor descriptor)
+        {
+            var policyEvaluator = context.RequestServices.GetRequiredService<IPolicyEvaluator>();
+            AuthorizationPolicy policy = AuthUtility.CreateFunctionPolicy();
+
+            // Authenticate the request
+            var authenticateResult = await policyEvaluator.AuthenticateAsync(policy, context);
+
+            // Authorize using the function policy and resource
+            var authorizeResult = await policyEvaluator.AuthorizeAsync(policy, authenticateResult, context, descriptor);
+
+            return authorizeResult.Succeeded;
         }
 
         private static Dictionary<string, object> GetFunctionArguments(FunctionDescriptor function, HttpRequest request)

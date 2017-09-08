@@ -53,7 +53,8 @@ namespace WebJobs.Script.WebHost.Core
                 o.AddScriptPolicies();
             });
 
-            return services.AddSingleton<IAuthorizationHandler, AuthLevelAuthorizationHandler>();
+            services.AddSingleton<IAuthorizationHandler, AuthLevelAuthorizationHandler>();
+            return services.AddSingleton<IAuthorizationHandler, FunctionAuthorizationHandler>();
         }
 
         public static IServiceProvider AddWebJobsScriptHostApplicationServices(this IServiceCollection services, IConfiguration configuration)
