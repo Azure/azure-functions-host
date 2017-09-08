@@ -63,8 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private bool _shutdownScheduled;
         private ILogger _startupLogger;
         private FileWatcherEventSource _fileEventSource;
-        private IDisposable _fileEventsSubscription;
-        private IDisposable _workerErrorSubscription;
+        private IList<IDisposable> _subscriptions = new List<IDisposable>();
         private ProxyClientExecutor _proxyClient;
         private IFunctionDispatcher _functionDispatcher;
 
@@ -480,20 +479,20 @@ namespace Microsoft.Azure.WebJobs.Script
                     new JavaLanguageWorkerConfig()
                 });
 
-                _workerErrorSubscription = EventManager.OfType<WorkerErrorEvent>()
+                _subscriptions.Add(EventManager.OfType<WorkerErrorEvent>()
                     .Where(evt => evt.Worker is IFunctionDispatcher)
                     .Subscribe(evt =>
                     {
                         HandleHostError(evt.Exception);
-                    });
+                    }));
 
                 if (ScriptConfig.FileWatchingEnabled)
                 {
                     _fileEventSource = new FileWatcherEventSource(EventManager, EventSources.ScriptFiles, ScriptConfig.RootScriptPath);
 
-                    _fileEventsSubscription = EventManager.OfType<FileEvent>()
+                    _subscriptions.Add(EventManager.OfType<FileEvent>()
                         .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
-                        .Subscribe(e => OnFileChanged(e.FileChangeArguments));
+                        .Subscribe(e => OnFileChanged(e.FileChangeArguments)));
                 }
 
                 // If a file change should result in a restart, we debounce the event to
@@ -1802,8 +1801,10 @@ namespace Microsoft.Azure.WebJobs.Script
             if (disposing)
             {
                 (TraceWriter as IDisposable)?.Dispose();
-                _fileEventsSubscription?.Dispose();
-                _workerErrorSubscription?.Dispose();
+                foreach (var subscription in _subscriptions)
+                {
+                    subscription.Dispose();
+                }
                 _fileEventSource?.Dispose();
                 _debugModeFileWatcher?.Dispose();
                 _blobLeaseManager?.Dispose();

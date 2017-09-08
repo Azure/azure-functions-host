@@ -12,14 +12,8 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description.Script;
-using Microsoft.Azure.WebJobs.Script.Extensions;
-using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.CodeAnalysis;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
-
-using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
-using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -55,12 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
-            var logHandler = CreateLogHandler(context);
             string invocationId = context.ExecutionContext.InvocationId.ToString();
-            var logSubscription = Host.EventManager
-                .OfType<RpcEvent>()
-                .Where(evt => evt.MessageType == MsgType.RpcLog && evt.Message.RpcLog.InvocationId == invocationId)
-                .Subscribe(logHandler);
 
             // TODO: fix extensions and remove
             object triggerValue = TransformInput(parameters[0], context.Binder.BindingData);
@@ -77,14 +66,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 // TODO: link up cancellation token to parameter descriptors
                 CancellationToken = CancellationToken.None,
+                TraceWriter = context.TraceWriter,
+                Logger = context.Logger
             };
 
             ScriptInvocationResult result;
-            using (logSubscription)
-            {
-                _invocationBuffer.Post(invocationContext);
-                result = await invocationContext.ResultSource.Task;
-            }
+            _invocationBuffer.Post(invocationContext);
+            result = await invocationContext.ResultSource.Task;
 
             await BindOutputsAsync(triggerValue, context.Binder, result);
         }
@@ -165,22 +153,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     result.Outputs[pair.Key] = pair.Value.ToObject<object>();
                 }
             }
-        }
-
-        private static Action<RpcEvent> CreateLogHandler(FunctionInvocationContext context)
-        {
-            return (rpcEvent) =>
-            {
-                var logMessage = rpcEvent.Message.RpcLog;
-                if (logMessage.Message != null)
-                {
-                    LogLevel logLevel = (LogLevel)logMessage.Level;
-
-                    // logger.Log(logLevel, new EventId(0, logMessage.EventId), logMessage.Message, null, (state, exc) => state);
-                    var trace = new TraceEvent(logLevel.ToTraceLevel(), logMessage.Message);
-                    context.TraceWriter.Trace(trace);
-                }
-            };
         }
     }
 }
