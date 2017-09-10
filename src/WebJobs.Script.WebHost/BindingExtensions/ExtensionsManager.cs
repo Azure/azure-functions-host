@@ -51,8 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         {
             project.Save();
             await ProcessExtensionsProject();
-
-            // TODO: We'll need to update a sentinel file in order to notify other workers...
         }
 
         public async Task DeleteExtensions(params string[] extensionIds)
