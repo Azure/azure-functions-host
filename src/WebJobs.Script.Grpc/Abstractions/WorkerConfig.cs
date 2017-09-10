@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
 {
@@ -19,6 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
         public string WorkerPath { get; set; }
 
         public string Extension { get; set; }
+
+        public string Language { get; set; }
 
         protected string Location => Path.GetDirectoryName(new Uri(typeof(WorkerConfig).Assembly.CodeBase).LocalPath);
     }

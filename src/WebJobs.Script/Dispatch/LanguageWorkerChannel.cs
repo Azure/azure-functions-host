@@ -19,6 +19,8 @@ using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 
@@ -39,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         private Process _process;
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new Dictionary<string, BufferBlock<ScriptInvocationContext>>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
+
         private IObservable<InboundEvent> _inboundWorkerEvents;
 
         private List<IDisposable> _inputLinks = new List<IDisposable>();
@@ -64,8 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             _workerConfig = workerConfig;
             _serverUri = serverUri;
 
-            var lang = Path.GetFileName(workerConfig.ExecutablePath);
-            _logger = loggerFactory.CreateLogger($"Worker.{lang}.{_workerId}");
+            _logger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
@@ -102,6 +104,28 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                         _logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
                     }
                 }));
+
+            if (scriptConfig.LogFilter.Filter("Worker", LogLevel.Trace))
+            {
+                var serializerSettings = new JsonSerializerSettings()
+                {
+                    Formatting = Formatting.Indented,
+                    NullValueHandling = NullValueHandling.Ignore,
+                    Converters = new List<JsonConverter>()
+                        {
+                            new StringEnumConverter()
+                        }
+                };
+                _eventSubscriptions.Add(_eventManager.OfType<RpcEvent>()
+                    .Where(msg => msg.WorkerId == _workerId)
+                    .Subscribe(msg =>
+                    {
+                        var jsonMsg = JsonConvert.SerializeObject(msg, serializerSettings);
+
+                        // TODO: change to trace when ILogger & TraceWriter merge (issues with file trace writer)
+                        _logger.LogInformation(jsonMsg);
+                    }));
+            }
 
             StartWorker();
         }

@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     {
         private readonly Func<string, LogLevel, bool> _filter;
         private readonly string _categoryName;
-        private readonly string _workerType;
+        private readonly string _language;
         private readonly string _workerId;
         private readonly IFunctionTraceWriterFactory _traceWriterFactory;
 
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             _filter = filter;
             _traceWriterFactory = traceWriterFactory;
             var parts = categoryName.Split('.');
-            _workerType = parts[1];
+            _language = parts[1];
             _workerId = parts[2];
         }
 
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
             TraceEvent traceEvent = new TraceEvent(logLevel.ToTraceLevel(), formattedMessage, _categoryName, exception);
 
-            TraceWriter traceWriter = _traceWriterFactory.Create(_workerType, "Worker");
+            TraceWriter traceWriter = _traceWriterFactory.Create(_language, "Worker");
             traceWriter.Trace(traceEvent);
         }
     }
