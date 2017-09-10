@@ -127,6 +127,11 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                     }));
             }
 
+            _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
+                .Where(msg => Path.GetExtension(msg.FileChangeArguments.FullPath) == Config.Extension)
+                .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
+                .Subscribe(msg => _eventManager.Publish(new RestartHostEvent())));
+
             StartWorker();
         }
 
