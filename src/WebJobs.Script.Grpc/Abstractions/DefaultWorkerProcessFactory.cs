@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
         {
             var config = context.WorkerConfig;
             var argumentsBuilder = config.ExecutableArguments.Aggregate(new StringBuilder(), MergeArguments);
-            argumentsBuilder.Append("\"" + config.WorkerPath + "\"");
+            argumentsBuilder.Append(config.WorkerPath);
             config.WorkerArguments.Aggregate(argumentsBuilder, MergeArguments);
             argumentsBuilder.AppendFormat(" --host {0} --port {1} --workerId {2} --requestId {3}",
                 context.ServerUri.Host, context.ServerUri.Port, context.WorkerId, context.RequestId);

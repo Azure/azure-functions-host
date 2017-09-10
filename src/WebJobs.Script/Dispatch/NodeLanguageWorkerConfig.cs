@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             {
                 WorkerPath = Path.Combine(Location, "workers", "node", "dist", "src", "nodejsWorker.js");
             }
+            WorkerPath = "\"" + WorkerPath + "\"";
             Extension = ".js";
         }
     }
