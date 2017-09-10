@@ -22,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using WebJobs.Script.WebHost.Core;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -406,8 +407,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             Stop();
 
-            // TODO: FACAVAL
-            // HostingEnvironment.InitiateShutdown();
+            Program.InitiateShutdown();
         }
     }
 }
