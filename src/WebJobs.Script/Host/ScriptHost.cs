@@ -1825,7 +1825,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private void OnFileChanged(FileSystemEventArgs e)
         {
             string directory = GetRelativeDirectory(e.FullPath, ScriptConfig.RootScriptPath);
-            bool isWatchedDirectory = ScriptConfig.WatchDirectories.Contains(directory);
+            bool isWatchedDirectory = ScriptConfig.WatchDirectories.Contains(directory) ||
+                string.Equals("bin", directory, StringComparison.OrdinalIgnoreCase);
 
             // We will perform a host restart in the following cases:
             // - the file change was under one of the configured watched directories (e.g. node_modules, shared code directories, etc.)
