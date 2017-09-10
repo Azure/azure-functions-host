@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 .ContinueWith(t => ProcessJobTaskResult(t, job.Id));
 
             var apiModel = ApiModelUtility.CreateApiModel(job, Request, $"jobs/{job.Id}");
-            string action = $"{Request.Scheme}://{Request.Host.ToUriComponent()}/{Url.Action(nameof(GetJobs), "Extensions", new { id = job.Id })}";
+            string action = $"{Request.Scheme}://{Request.Host.ToUriComponent()}{Url.Action(nameof(GetJobs), "Extensions", new { id = job.Id })}{Request.QueryString}";
             return Accepted(action, apiModel);
         }
 
@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 .ContinueWith(t => ProcessJobTaskResult(t, jobId));
 
             var apiModel = ApiModelUtility.CreateApiModel(job, Request, $"jobs/{job.Id}");
-            string action = $"{Request.Scheme}://{Request.Host.ToUriComponent()}/{Url.Action(nameof(GetJobs), "Extensions", new { id = job.Id })}";
+            string action = $"{Request.Scheme}://{Request.Host.ToUriComponent()}{Url.Action(nameof(GetJobs), "Extensions", new { id = job.Id })}{Request.QueryString}";
             return Accepted(action, apiModel);
         }
 
