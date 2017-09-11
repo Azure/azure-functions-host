@@ -7,7 +7,7 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing.Rpc
 {
     public class RpcEvent : ScriptEvent
     {
-        public RpcEvent(string workerId, StreamingMessage message, MessageOrigin origin = MessageOrigin.Host)
+        internal RpcEvent(string workerId, StreamingMessage message, MessageOrigin origin = MessageOrigin.Host)
             : base(message.ContentCase.ToString(), EventSources.Rpc)
         {
             Message = message;
