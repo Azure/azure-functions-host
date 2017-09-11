@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Routing;
 
 namespace Microsoft.Azure.WebJobs.Extensions.Http
 {
@@ -60,6 +61,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
             {
                 return new NotFoundResult();
             }
+
+            var routingFeature = context.Features.Get<IRoutingFeature>();
+
+            // Add rounte data to request info
+            // TODO: Keeping this here for now as other code depend on this property, but this can be done in the HTTP binding.
+            context.Items.Add(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, new Dictionary<string,object>(routingFeature.RouteData.Values));
 
             context.Features.Set<IFunctionExecutionFeature>(new FunctionExecutionFeature { Descriptor = descriptor });
 
