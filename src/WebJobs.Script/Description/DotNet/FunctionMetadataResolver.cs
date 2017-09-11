@@ -39,27 +39,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private static readonly string[] DefaultAssemblyReferences =
            {
-                "netstandard",
-                "System",
-                "System.Core",
-                "System.Configuration",
-                "System.Xml",
-                "System.Net.Http",
-                "System.Net.Primitives",
-                "System.Runtime",
-                "System.Threading.Tasks",
-                "Microsoft.CSharp",
-                "System.Linq",
-                typeof(System.Runtime.CompilerServices.DynamicAttribute).Assembly.Location,
                 typeof(ILoggerFactory).Assembly.Location, /*Microsoft.Extensions.Logging.Abstractions*/
                 typeof(IAsyncCollector<>).Assembly.Location, /*Microsoft.Azure.WebJobs*/
                 typeof(JobHost).Assembly.Location, /*Microsoft.Azure.WebJobs.Host*/
                 typeof(CoreJobHostConfigurationExtensions).Assembly.Location, /*Microsoft.Azure.WebJobs.Extensions*/
-                typeof(AspNetCore.Http.HttpRequest).Assembly.Location,
-                typeof(AspNetCore.Mvc.IActionResult).Assembly.Location,
-                typeof(AspNetCore.Mvc.RedirectResult).Assembly.Location,
-                typeof(AspNetCore.Http.IQueryCollection).Assembly.Location,
-                typeof(Microsoft.Extensions.Primitives.StringValues).Assembly.Location,
+                typeof(AspNetCore.Http.HttpRequest).Assembly.Location, /*Microsoft.AspNetCore.Http.Abstractions*/
+                typeof(AspNetCore.Mvc.IActionResult).Assembly.Location, /*Microsoft.AspNetCore.Mvc.Abstractions*/
+                typeof(AspNetCore.Mvc.RedirectResult).Assembly.Location, /*Microsoft.AspNetCore.Mvc.Core*/
+                typeof(AspNetCore.Http.IQueryCollection).Assembly.Location, /*Microsoft.AspNetCore.Http.Features*/
+                typeof(Microsoft.Extensions.Primitives.StringValues).Assembly.Location, /*Microsoft.Extensions.Primitives*/
 
                 // TODO: FACAVAL ??
                 typeof(System.Net.Http.HttpClientExtensions).Assembly.Location /*System.Net.Http.Formatting*/
@@ -137,7 +125,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public IReadOnlyCollection<string> GetCompilationReferences()
         {
             // Combine our default references with package references
-            var combinedReferences = DefaultAssemblyReferences
+            var combinedReferences = DotNetConstants.FrameworkReferences
+                .Union(DefaultAssemblyReferences)
                 .Union(_packageAssemblyResolver.AssemblyReferences);
 
             return new ReadOnlyCollection<string>(combinedReferences.ToList());
