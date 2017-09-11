@@ -69,29 +69,33 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         public void WorkerError(WorkerErrorEvent workerError)
         {
-            if (workerError.Worker is ILanguageWorkerChannel worker)
-            {
-                var channelState = _channelState.AddOrUpdate(worker.Config,
-                    CreateWorkerState,
-                    (config, state) =>
-                    {
-                        _erroredChannels.Add(state.Channel);
-                        if (state.CreateAttempts < 3)
-                        {
-                            state.CreateAttempts++;
-                            state.Channel = _channelFactory(config, state.Functions);
-                        }
-                        return state;
-                    });
-                if (channelState.CreateAttempts >= 3)
+            Exception hostException = null;
+
+            var channelState = _channelState.AddOrUpdate(workerError.Worker.Config,
+                CreateWorkerState,
+                (config, state) =>
                 {
-                    _eventManager.Publish(new WorkerErrorEvent(this, workerError.Exception));
-                    var errorBlock = new ActionBlock<ScriptInvocationContext>(ctx =>
+                    _erroredChannels.Add(state.Channel);
+                    state.Errors.Add(workerError.Exception);
+                    if (state.Errors.Count < 3)
                     {
-                        ctx.ResultSource.TrySetException(workerError.Exception);
-                    });
-                    channelState.Functions.Subscribe(reg => reg.InputBuffer.LinkTo(errorBlock));
-                }
+                        state.Channel = _channelFactory(config, state.Functions);
+                    }
+                    else
+                    {
+                        hostException = new AggregateException(state.Errors.ToList());
+                    }
+                    return state;
+                });
+
+            if (hostException != null)
+            {
+                _eventManager.Publish(new HostErrorEvent(hostException));
+                var errorBlock = new ActionBlock<ScriptInvocationContext>(ctx =>
+                {
+                    ctx.ResultSource.TrySetException(workerError.Exception);
+                });
+                channelState.Functions.Subscribe(reg => reg.InputBuffer.LinkTo(errorBlock));
             }
         }
 
@@ -126,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         {
             internal ILanguageWorkerChannel Channel { get; set; }
 
-            internal int CreateAttempts { get; set; } = 1;
+            internal List<Exception> Errors { get; set; } = new List<Exception>();
 
             internal ReplaySubject<FunctionRegistrationContext> Functions { get; set; } = new ReplaySubject<FunctionRegistrationContext>();
         }

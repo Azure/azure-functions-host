@@ -46,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
+        private IDisposable _startSubscription;
 
         private bool disposedValue;
 
@@ -130,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
                 .Where(msg => Path.GetExtension(msg.FileChangeArguments.FullPath) == Config.Extension)
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
-                .Subscribe(msg => _eventManager.Publish(new RestartHostEvent())));
+                .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 
             StartWorker();
         }
@@ -224,6 +225,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         internal void HandleWorkerError(Exception exc)
         {
+            _startSubscription?.Dispose();
+
             // unlink function inputs
             foreach (var link in _inputLinks)
             {
@@ -296,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         internal void StartWorker()
         {
-            _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
+            _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(timeoutStart)
                 .Take(1)
                 .Subscribe(InitWorker, HandleWorkerError);

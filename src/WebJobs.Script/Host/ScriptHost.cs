@@ -487,7 +487,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         HandleHostError(evt.Exception);
                     }));
 
-                _subscriptions.Add(EventManager.OfType<RestartHostEvent>()
+                _subscriptions.Add(EventManager.OfType<HostRestartEvent>()
                     .Subscribe((msg) => ScheduleRestartAsync(false)));
 
                 if (ScriptConfig.FileWatchingEnabled)

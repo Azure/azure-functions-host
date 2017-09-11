@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script
             catch (Exception exc)
             {
                 // TODO: do this properly so it can be associated with workerid, if possible
-                _eventManager.Publish(new WorkerErrorEvent(this, exc));
+                _eventManager.Publish(new WorkerErrorEvent(null, exc));
             }
             finally
             {

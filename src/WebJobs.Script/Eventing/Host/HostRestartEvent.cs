@@ -3,10 +3,10 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
-    public class RestartHostEvent : ScriptEvent
+    public class HostRestartEvent : ScriptEvent
     {
-        public RestartHostEvent()
-            : base(nameof(RestartHostEvent), EventSources.Worker)
+        public HostRestartEvent()
+            : base(nameof(HostRestartEvent), EventSources.Worker)
         {
         }
     }
