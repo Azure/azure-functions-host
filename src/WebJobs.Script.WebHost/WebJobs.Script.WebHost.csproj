@@ -55,18 +55,26 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
   </ItemGroup>
-
-  <ItemGroup>
-    <Content Update="web.config">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
   <ItemGroup>
     <EmbeddedResource Update="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
+  
+  <ItemGroup>
+    <Content Update="web.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!--This target copies the contract assemblies we need to reference as part of function compilation-->
+  <!-- Temporarily commented out since we're not using contract assemblies -->
+  <!--<Target Name="CopyCompilationReferenceFiles" AfterTargets="Build">
+    <ItemGroup>
+      <RefSourceFiles Include="$(UserProfile)/.nuget/packages/netstandard.library/2.0.0/build/netstandard2.0/ref/*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(RefSourceFiles)" DestinationFiles="@(RefSourceFiles->'$(OutDir)/compilationrefs/%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>-->
 
 </Project>
