@@ -388,6 +388,8 @@
   <ItemGroup>
     <Compile Include="Binding\ApiHubScriptBindingProvider.cs" />
     <Compile Include="Binding\BindingContext.cs" />
+    <Compile Include="Binding\BuiltinExtensionBindingProvider.cs" />
+    <Compile Include="Binding\ExtensionLoader.cs" />
     <Compile Include="Binding\FunctionTraceBinderProvider.cs" />
     <Compile Include="Binding\Extensibility\ScriptBinding.cs" />
     <Compile Include="Binding\Extensibility\ScriptBindingContext.cs" />
@@ -658,5 +660,5 @@
   <Target Name="AfterBuild">
   </Target>
   -->
-  <Import Project="..\..\tools\Clean.targets"/>
+  <Import Project="..\..\tools\Clean.targets" />
 </Project>

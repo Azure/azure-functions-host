@@ -21,7 +21,6 @@ using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 using Microsoft.Azure.AppService.Proxy.Client.Contract;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
@@ -63,51 +62,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private FileWatcherEventSource _fileEventSource;
         private IDisposable _fileEventsSubscription;
         private ProxyClientExecutor _proxyClient;
-
-        // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
-        // This is the set of bindings we shipped prior to binding extensibility.
-        // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
-        private static IReadOnlyDictionary<string, string> _builtinBindingTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "bot", "Microsoft.Azure.WebJobs.Extensions.BotFramework.Config.BotFrameworkConfiguration, Microsoft.Azure.WebJobs.Extensions.BotFramework" },
-            { "sendgrid", "Microsoft.Azure.WebJobs.Extensions.SendGrid.SendGridConfiguration, Microsoft.Azure.WebJobs.Extensions.SendGrid" },
-            { "eventGridTrigger", "Microsoft.Azure.WebJobs.Extensions.EventGrid.EventGridExtensionConfig, Microsoft.Azure.WebJobs.Extensions.EventGrid" }
-        };
-
-        private static IReadOnlyDictionary<string, string> _builtinScriptBindingTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "twilioSms", "Microsoft.Azure.WebJobs.Script.Binding.TwilioScriptBindingProvider" },
-            { "notificationHub", "Microsoft.Azure.WebJobs.Script.Binding.NotificationHubScriptBindingProvider" },
-            { "cosmosDBTrigger", "Microsoft.Azure.WebJobs.Script.Binding.DocumentDBScriptBindingProvider" },
-            { "documentDB", "Microsoft.Azure.WebJobs.Script.Binding.DocumentDBScriptBindingProvider" },
-            { "mobileTable", "Microsoft.Azure.WebJobs.Script.Binding.MobileAppsScriptBindingProvider" },
-            { "apiHubFileTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ApiHubScriptBindingProvider" },
-            { "apiHubFile", "Microsoft.Azure.WebJobs.Script.Binding.ApiHubScriptBindingProvider" },
-            { "apiHubTable", "Microsoft.Azure.WebJobs.Script.Binding.ApiHubScriptBindingProvider" },
-            { "serviceBusTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
-            { "serviceBus", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
-            { "eventHubTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
-            { "eventHub", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
-        };
-
-        // For backwards compat, we support a #r directly to these assemblies.
-        private static HashSet<string> _assemblyWhitelist = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "Twilio.Api" },
-            { "Microsoft.Azure.WebJobs.Extensions.Twilio" },
-            { "Microsoft.Azure.NotificationHubs" },
-            { "Microsoft.WindowsAzure.Mobile" },
-            { "Microsoft.Azure.WebJobs.Extensions.MobileApps" },
-            { "Microsoft.Azure.WebJobs.Extensions.NotificationHubs" },
-            { "Microsoft.WindowsAzure.Mobile" },
-            { "Microsoft.Azure.WebJobs.Extensions.MobileApps" },
-            { "Microsoft.Azure.Documents.Client" },
-            { "Microsoft.Azure.WebJobs.Extensions.DocumentDB" },
-            { "Microsoft.Azure.ApiHub.Sdk" },
-            { "Microsoft.Azure.WebJobs.Extensions.ApiHub" },
-            { "Microsoft.ServiceBus" },
-            { "Sendgrid" },
-        };
 
         protected internal ScriptHost(IScriptHostEnvironment environment,
             IScriptEventManager eventManager,
@@ -471,15 +425,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 // take a snapshot so we can detect function additions/removals
                 _directorySnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).ToImmutableArray();
 
-                // Scan the function.json early to determine the requirements.
+                // Scan the function.json early to determine the binding extensions used
                 var functionMetadata = ReadFunctionMetadata(ScriptConfig, TraceWriter, _startupLogger, FunctionErrors, _settingsManager);
-                var usedBindingTypes = DiscoverBindingTypes(functionMetadata);
-
-                bool useLazyLoad = false; // todo - https://github.com/Azure/azure-webjobs-sdk-script/issues/1637
-                if (!useLazyLoad)
-                {
-                    usedBindingTypes = _builtinBindingTypes.Keys.Concat(_builtinScriptBindingTypes.Keys).ToArray();
-                }
+                var extensionLoader = new ExtensionLoader(ScriptConfig, TraceWriter, _startupLogger);
+                var usedBindingTypes = extensionLoader.DiscoverBindingTypes(functionMetadata);
 
                 var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfigObject, TraceWriter, _startupLogger, usedBindingTypes);
                 ScriptConfig.BindingProviders = bindingProviders;
@@ -503,13 +452,18 @@ namespace Microsoft.Azure.WebJobs.Script
                         _startupLogger?.LogError(0, ex, errorMsg);
                     }
                 }
-                LoadBuiltinBindings(usedBindingTypes);
+                extensionLoader.LoadBuiltinExtensions(usedBindingTypes);
 
                 var directTypes = GetDirectTypes(functionMetadata);
+                extensionLoader.LoadDirectlyReferencedExtensions(directTypes);
+                extensionLoader.LoadCustomExtensions();
 
-                LoadDirectlyReferencesExtensions(directTypes);
-
-                LoadCustomExtensions();
+                // Now all extensions have been loaded, the metadata is finalized.
+                // There's a single script binding instance that services all extensions.
+                // give that script binding the metadata for all loaded extensions so it can dispatch to them.
+                var generalProvider = ScriptConfig.BindingProviders.OfType<GeneralScriptBindingProvider>().First();
+                var metadataProvider = this.CreateMetadataProvider();
+                generalProvider.CompleteInitialization(metadataProvider);
 
                 // Do this after we've loaded the custom extensions. That gives an extension an opportunity to plug in their own implementations.
                 if (storageString != null)
@@ -549,43 +503,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     PurgeOldLogDirectories();
                 }
             }
-        }
-
-        private void LoadBuiltinBindings(IEnumerable<string> bindingTypes)
-        {
-            foreach (var bindingType in bindingTypes)
-            {
-                string assemblyQualifiedTypeName;
-                if (_builtinBindingTypes.TryGetValue(bindingType, out assemblyQualifiedTypeName))
-                {
-                    Type typeExtension = Type.GetType(assemblyQualifiedTypeName);
-                    if (typeExtension == null)
-                    {
-                        string errorMsg = $"Can't find builtin provider '{assemblyQualifiedTypeName}' for '{bindingType}'";
-                        TraceWriter.Error(errorMsg);
-                        _startupLogger?.LogError(errorMsg);
-                    }
-                    else
-                    {
-                        IExtensionConfigProvider extension = (IExtensionConfigProvider)Activator.CreateInstance(typeExtension);
-                        LoadExtension(extension);
-                    }
-                }
-            }
-        }
-
-        private static IEnumerable<string> DiscoverBindingTypes(IEnumerable<FunctionMetadata> functions)
-        {
-            HashSet<string> bindingTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var function in functions)
-            {
-                foreach (var binding in function.InputBindings.Concat(function.OutputBindings))
-                {
-                    string bindingType = binding.Type;
-                    bindingTypes.Add(bindingType);
-                }
-            }
-            return bindingTypes;
         }
 
         // Validate that for any precompiled assembly, all functions have the same configuration precedence.
@@ -635,8 +552,10 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        // Get the set of types that should be directly loaded. These have the "configurationSource" : "attributes" set.
-        // They will be indexed and invoked directly by the WebJobs SDK and skip the IL generator and invoker paths.
+        /// <summary>
+        /// Get the set of types that should be directly loaded. These have the "configurationSource" : "attributes" set.
+        /// They will be indexed and invoked directly by the WebJobs SDK and skip the IL generator and invoker paths.
+        /// </summary>
         private static IEnumerable<Type> GetDirectTypes(IEnumerable<FunctionMetadata> functionMetadataList)
         {
             HashSet<Type> visitedTypes = new HashSet<Type>();
@@ -668,114 +587,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScriptConfig.HostConfig.AddService<IMetricsLogger>(metricsLogger);
             }
             return metricsLogger;
-        }
-
-        private void LoadCustomExtensions()
-        {
-            string extensionsPath = ScriptConfig.RootExtensionsPath;
-            if (!string.IsNullOrWhiteSpace(extensionsPath))
-            {
-                foreach (var dir in Directory.EnumerateDirectories(extensionsPath))
-                {
-                    LoadCustomExtensions(dir);
-                }
-            }
-
-            // Now all extensions have been loaded, the metadata is finalized.
-            // There's a single script binding instance that services all extensions.
-            // give that script binding the metadata for all loaded extensions so it can dispatch to them.
-            var generalProvider = ScriptConfig.BindingProviders.OfType<GeneralScriptBindingProvider>().First();
-            var metadataProvider = this.CreateMetadataProvider();
-            generalProvider.CompleteInitialization(metadataProvider);
-        }
-
-        private void LoadCustomExtensions(string extensionsPath)
-        {
-            foreach (var path in Directory.EnumerateFiles(extensionsPath, "*.dll"))
-            {
-                // We don't want to load and reflect over every dll.
-                // By convention, restrict to based on filenames.
-                var filename = Path.GetFileName(path);
-                if (!filename.ToLowerInvariant().Contains("extension"))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    // See GetNugetPackagesPath() for details
-                    // Script runtime is already setup with assembly resolution hooks, so use LoadFrom
-                    Assembly assembly = Assembly.LoadFrom(path);
-                    LoadExtensions(assembly, path);
-                }
-                catch (Exception e)
-                {
-                    string msg = $"Failed to load custom extension from '{path}'.";
-                    TraceWriter.Error(msg, e);
-                    _startupLogger.LogError(0, e, msg);
-                }
-            }
-        }
-
-        // Load extensions that are directly references by the user types.
-        private void LoadDirectlyReferencesExtensions(IEnumerable<Type> userTypes)
-        {
-            var possibleExtensionAssemblies = UserTypeScanner.GetPossibleExtensionAssemblies(userTypes);
-
-            foreach (var kv in possibleExtensionAssemblies)
-            {
-                var assembly = kv.Key;
-                var locationHint = kv.Value;
-                LoadExtensions(assembly, locationHint);
-            }
-        }
-
-        private void LoadExtensions(Assembly assembly, string locationHint)
-        {
-            foreach (var type in assembly.ExportedTypes)
-            {
-                if (!typeof(IExtensionConfigProvider).IsAssignableFrom(type))
-                {
-                    continue;
-                }
-
-                if (IsExtensionLoaded(type))
-                {
-                    continue;
-                }
-
-                IExtensionConfigProvider instance = (IExtensionConfigProvider)Activator.CreateInstance(type);
-                LoadExtension(instance, locationHint);
-            }
-        }
-
-        private bool IsExtensionLoaded(Type type)
-        {
-            var registry = ScriptConfig.HostConfig.GetService<IExtensionRegistry>();
-            var extensions = registry.GetExtensions<IExtensionConfigProvider>();
-            foreach (var extension in extensions)
-            {
-                var loadedExtentionType = extension.GetType();
-                if (loadedExtentionType == type)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        // Load a single extension
-        private void LoadExtension(IExtensionConfigProvider instance, string locationHint = null)
-        {
-            JobHostConfiguration config = this.ScriptConfig.HostConfig;
-
-            var type = instance.GetType();
-            string name = type.Name;
-
-            string msg = $"Loaded custom extension: {name} from '{locationHint}'";
-            TraceWriter.Info(msg);
-            _startupLogger.LogInformation(msg);
-            config.AddExtension(instance);
         }
 
         private void ConfigureDefaultLoggerFactory()
@@ -952,19 +763,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return scriptHost;
         }
 
-        // Get the ScriptBindingProviderType for a given binding type.
-        // Null if no match.
-        private static Type GetScriptBindingProvider(string bindingType)
-        {
-            string assemblyQualifiedTypeName;
-            if (_builtinScriptBindingTypes.TryGetValue(bindingType, out assemblyQualifiedTypeName))
-            {
-                var type = Type.GetType(assemblyQualifiedTypeName);
-                return type;
-            }
-            return null;
-        }
-
         private static Collection<ScriptBindingProvider> LoadBindingProviders(ScriptHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter, ILogger logger, IEnumerable<string> usedBindingTypes)
         {
             JobHostConfiguration hostConfig = config.HostConfig;
@@ -984,18 +782,15 @@ namespace Microsoft.Azure.WebJobs.Script
             // Add custom providers for any other types being used from function.json
             foreach (var usedType in usedBindingTypes)
             {
-                var type = GetScriptBindingProvider(usedType);
+                var type = ExtensionLoader.GetScriptBindingProvider(usedType);
                 if (type != null && existingTypes.Add(type))
                 {
                     bindingProviderTypes.Add(type);
                 }
             }
 
-            // General purpose binder that works directly against SDK.
-            // This should eventually replace all other ScriptBindingProvider
             bindingProviderTypes.Add(typeof(GeneralScriptBindingProvider));
-
-            bindingProviderTypes.Add(typeof(DllWhitelistBindingProvider));
+            bindingProviderTypes.Add(typeof(BuiltinExtensionBindingProvider));
 
             // Create the binding providers
             var bindingProviders = new Collection<ScriptBindingProvider>();
@@ -1918,33 +1713,6 @@ namespace Microsoft.Azure.WebJobs.Script
             // dispose base last to ensure that errors there don't
             // cause us to not dispose ourselves
             base.Dispose(disposing);
-        }
-
-        // We have a backwards compat requirement to whitelist #r references to certain "builtin" dlls.
-        // Hook into #r resolution pipeline and apply the whitelist.
-        private class DllWhitelistBindingProvider : ScriptBindingProvider
-        {
-            public DllWhitelistBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
-                : base(config, hostMetadata, traceWriter)
-            {
-            }
-
-            public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
-            {
-                binding = null;
-                return false;
-            }
-
-            public override bool TryResolveAssembly(string assemblyName, out Assembly assembly)
-            {
-                if (_assemblyWhitelist.Contains(assemblyName))
-                {
-                    assembly = Assembly.Load(assemblyName);
-                    return true;
-                }
-
-                return base.TryResolveAssembly(assemblyName, out assembly);
-            }
         }
     }
 }

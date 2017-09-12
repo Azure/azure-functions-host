@@ -13,7 +13,10 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    // This single binder can service all SDK extensions by leveraging the SDK metadata provider.
+    /// <summary>
+    /// This general purpose binder can service all SDK extensions by leveraging the SDK metadata provider.
+    /// This should eventually replace all other ScriptBindingProviders.
+    /// </summary>
     internal class GeneralScriptBindingProvider : ScriptBindingProvider
     {
         private IJobHostMetadataProvider _metadataProvider;

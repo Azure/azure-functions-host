@@ -235,9 +235,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTrace(traces[2], "Host configuration file read:", LogCategories.Startup);
             ValidateTrace(traces[3], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
             ValidateTrace(traces[4], "Job host started", LogCategories.Startup);
-            ValidateTrace(traces[5], "Loaded custom extension: BotFrameworkConfiguration from ''", LogCategories.Startup);
-            ValidateTrace(traces[6], "Loaded custom extension: EventGridExtensionConfig from ''", LogCategories.Startup);
-            ValidateTrace(traces[7], "Loaded custom extension: SendGridConfiguration from ''", LogCategories.Startup);
+            ValidateTrace(traces[5], "Loaded custom extension 'BotFrameworkConfiguration'", LogCategories.Startup);
+            ValidateTrace(traces[6], "Loaded custom extension 'EventGridExtensionConfig'", LogCategories.Startup);
+            ValidateTrace(traces[7], "Loaded custom extension 'SendGridConfiguration'", LogCategories.Startup);
             ValidateTrace(traces[8], "Reading host configuration file", LogCategories.Startup);
             ValidateTrace(traces[9], "Starting Host (HostId=function-tests-", ScriptConstants.LogCategoryHostGeneral);
 

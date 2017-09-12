@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DefaultProductionSlotName = "production";
 
         public const string FeatureFlagDisableShadowCopy = "DisableShadowCopy";
+        public const string FeatureFlagsEnableDynamicExtensionLoading = "EnableDynamicExtensionLoading";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
