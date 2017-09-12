@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                     Failures = e.Count(f => f.ErrorDetails != null),
                     MinDuration = e.Min(f => f.Duration),
                     MaxDuration = e.Max(f => f.Duration),
-                    AverageDuration = new TimeSpan((long)e.Average(f => f.Duration.Ticks))
+                    TotalDuration = new TimeSpan(e.Sum(f => f.Duration.Ticks))
                 });
 
             return metrics;

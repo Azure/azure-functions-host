@@ -16,12 +16,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 
         public ApplicationInsightsLoggerProvider(ITelemetryClientFactory clientFactory)
         {
-            if (clientFactory == null)
-            {
-                throw new ArgumentNullException(nameof(clientFactory));
-            }
-
-            _clientFactory = clientFactory;
+            _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _client = _clientFactory.Create();
         }
 

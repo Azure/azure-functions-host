@@ -11,27 +11,23 @@ namespace Microsoft.Azure.WebJobs.Logging
     {
         public string Name { get; set; }
         public DateTimeOffset Timestamp { get; set; }
-        public TimeSpan AverageDuration { get; set; }
+        public TimeSpan TotalDuration { get; set; }
         public TimeSpan MaxDuration { get; set; }
         public TimeSpan MinDuration { get; set; }
         public int Successes { get; set; }
         public int Failures { get; set; }
-        public int Count => Successes + Failures;
-        public double SuccessRate => Math.Round((Successes / (double)Count) * 100, 2);
 
         public IReadOnlyDictionary<string, object> ToReadOnlyDictionary()
         {
             return new ReadOnlyDictionary<string, object>(new Dictionary<string, object>
             {
                 [LogConstants.NameKey] = Name,
-                [LogConstants.CountKey] = Count,
                 [LogConstants.TimestampKey] = Timestamp,
-                [LogConstants.AverageDurationKey] = AverageDuration,
-                [LogConstants.MaxDurationKey] = MaxDuration,
-                [LogConstants.MinDurationKey] = MinDuration,
+                [LogConstants.TotalDurationKey] = TotalDuration.TotalMilliseconds,
+                [LogConstants.MaxDurationKey] = MaxDuration.TotalMilliseconds,
+                [LogConstants.MinDurationKey] = MinDuration.TotalMilliseconds,
                 [LogConstants.SuccessesKey] = Successes,
                 [LogConstants.FailuresKey] = Failures,
-                [LogConstants.SuccessRateKey] = SuccessRate
             });
         }
     }

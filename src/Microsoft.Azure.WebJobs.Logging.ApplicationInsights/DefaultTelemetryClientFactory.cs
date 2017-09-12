@@ -109,8 +109,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             ITelemetryChannel channel = CreateTelemetryChannel();
 
             // call Initialize if available
-            ITelemetryModule module = channel as ITelemetryModule;
-            if (module != null)
+            if (channel is ITelemetryModule module)
             {
                 module.Initialize(config);
             }

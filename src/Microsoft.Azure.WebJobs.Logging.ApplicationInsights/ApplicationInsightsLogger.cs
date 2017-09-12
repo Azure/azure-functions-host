@@ -21,6 +21,9 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
         private const string DateTimeFormatString = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fffK";
         private const string OperationContext = "MS_OperationContext";
 
+        internal const string CountMetricName = "Count";
+        internal const string SuccessRateMetricName = "Success Rate";
+
         internal const string MetricCountKey = "count";
         internal const string MetricMinKey = "min";
         internal const string MetricMaxKey = "max";
@@ -245,11 +248,13 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
 
         private void LogFunctionResultAggregate(IEnumerable<KeyValuePair<string, object>> values)
         {
-            // Metric names will be created like "{FunctionName} {MetricName}"
-            IDictionary<string, double> metrics = new Dictionary<string, double>();
             string functionName = LoggingConstants.Unknown;
+            double totalDuration = 0;
+            double maxDuration = 0;
+            double minDuration = 0;
+            int successCount = 0;
+            int failureCount = 0;
 
-            // build up the collection of metrics to send
             foreach (KeyValuePair<string, object> value in values)
             {
                 switch (value.Key)
@@ -257,31 +262,65 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                     case LogConstants.NameKey:
                         functionName = value.Value.ToString();
                         break;
+                    case LogConstants.TotalDurationKey:
+                        totalDuration = ConvertToDouble(value.Value);
+                        break;
+                    case LogConstants.MaxDurationKey:
+                        maxDuration = ConvertToDouble(value.Value);
+                        break;
+                    case LogConstants.MinDurationKey:
+                        minDuration = ConvertToDouble(value.Value);
+                        break;
+                    case LogConstants.SuccessesKey:
+                        successCount = ConvertToInt(value.Value);
+                        break;
+                    case LogConstants.FailuresKey:
+                        failureCount = ConvertToInt(value.Value);
+                        break;
                     case LogConstants.TimestampKey:
                     case LogConstants.OriginalFormatKey:
                         // Timestamp is created automatically
                         // We won't use the format string here
                         break;
                     default:
-                        if (value.Value is TimeSpan)
-                        {
-                            // if it's a TimeSpan, log the milliseconds
-                            metrics.Add(value.Key, ((TimeSpan)value.Value).TotalMilliseconds);
-                        }
-                        else if (value.Value is double || value.Value is int)
-                        {
-                            metrics.Add(value.Key, Convert.ToDouble(value.Value));
-                        }
-
                         // do nothing otherwise
                         break;
                 }
             }
 
-            foreach (KeyValuePair<string, double> metric in metrics)
+            int count = failureCount + successCount;
+            double successRate = Math.Round((successCount / (double)count) * 100, 2);
+
+            // Metric names will be created like "{FunctionName} {MetricName}"
+            _telemetryClient.TrackMetric(new MetricTelemetry($"{functionName} {LogConstants.DurationKey}", totalDuration) { Count = count, Min = minDuration, Max = maxDuration });
+            _telemetryClient.TrackMetric(new MetricTelemetry($"{functionName} {CountMetricName}", count));
+            _telemetryClient.TrackMetric(new MetricTelemetry($"{functionName} {LogConstants.SuccessesKey}", successCount));
+            _telemetryClient.TrackMetric(new MetricTelemetry($"{functionName} {LogConstants.FailuresKey}", failureCount));
+            _telemetryClient.TrackMetric(new MetricTelemetry($"{functionName} {SuccessRateMetricName}", successRate));
+        }
+
+        private static double ConvertToDouble(object value)
+        {
+            double convertedValue = 0;
+
+            if (value is int || value is double)
             {
-                _telemetryClient.TrackMetric($"{functionName} {metric.Key}", metric.Value);
+                return Convert.ToDouble(value);
             }
+
+            return convertedValue;
+        }
+
+        private static int ConvertToInt(object value)
+        {
+            int convertedValue = 0;
+
+            if (value is int)
+            {
+                return Convert.ToInt32(value);
+            }
+
+            return convertedValue;
         }
 
         private void LogFunctionResult(IEnumerable<KeyValuePair<string, object>> values, LogLevel logLevel, Exception exception)

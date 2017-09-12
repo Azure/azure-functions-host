@@ -98,16 +98,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 // nothing logged
                 Assert.Null(f(payload, ex));
 
-                Assert.Equal(9, payload.Count);
+                Assert.Equal(7, payload.Count);
                 Assert.Equal(_functionShortName, payload[LogConstants.NameKey]);
                 Assert.Equal(4, payload[LogConstants.FailuresKey]);
                 Assert.Equal(116, payload[LogConstants.SuccessesKey]);
-                Assert.Equal(TimeSpan.FromMilliseconds(200), (TimeSpan)payload[LogConstants.MinDurationKey]);
-                Assert.Equal(TimeSpan.FromMilliseconds(2180), (TimeSpan)payload[LogConstants.MaxDurationKey]);
-                Assert.Equal(TimeSpan.FromMilliseconds(340), (TimeSpan)payload[LogConstants.AverageDurationKey]);
+                Assert.Equal(200, (double)payload[LogConstants.MinDurationKey]);
+                Assert.Equal(2180, (double)payload[LogConstants.MaxDurationKey]);
+                Assert.Equal(40800, (double)payload[LogConstants.TotalDurationKey]);
                 Assert.Equal(now, payload[LogConstants.TimestampKey]);
-                Assert.Equal(120, payload[LogConstants.CountKey]);
-                Assert.Equal(96.67, payload[LogConstants.SuccessRateKey]);
             });
 
             var resultAggregate = new FunctionResultAggregate
@@ -117,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 Successes = 116,
                 MinDuration = TimeSpan.FromMilliseconds(200),
                 MaxDuration = TimeSpan.FromMilliseconds(2180),
-                AverageDuration = TimeSpan.FromMilliseconds(340),
+                TotalDuration = TimeSpan.FromMilliseconds(40800),
                 Timestamp = now
             };
 

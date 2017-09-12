@@ -21,11 +21,6 @@ namespace Microsoft.Azure.WebJobs.Logging
         public const string NameKey = "Name";
 
         /// <summary>
-        /// Gets the name of the key used to store the number of invocations.
-        /// </summary>
-        public const string CountKey = "Count";
-
-        /// <summary>
         /// Gets the name of the key used to store the success count.
         /// </summary>
         public const string SuccessesKey = "Successes";
@@ -36,14 +31,9 @@ namespace Microsoft.Azure.WebJobs.Logging
         public const string FailuresKey = "Failures";
 
         /// <summary>
-        /// Gets the name of the key used to store the success rate.
+        /// Gets the name of the key used to store the total duration in milliseconds.
         /// </summary>
-        public const string SuccessRateKey = "SuccessRate";
-
-        /// <summary>
-        /// Gets the name of the key used to store the average duration in milliseconds.
-        /// </summary>
-        public const string AverageDurationKey = "AvgDurationMs";
+        public const string TotalDurationKey = "TotalDurationMs";
 
         /// <summary>
         /// Gets the name of the key used to store the maximum duration in milliseconds.
@@ -128,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// <summary>
         /// Gets the function start event name.
         /// </summary>
-        public const string FunctionStartEvent = "FunctionStart";        
+        public const string FunctionStartEvent = "FunctionStart";
 
         /// <summary>
         /// Gets the event id for a metric event.

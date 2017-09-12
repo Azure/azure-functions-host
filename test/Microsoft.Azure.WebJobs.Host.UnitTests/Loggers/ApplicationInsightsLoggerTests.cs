@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 Successes = 116,
                 MinDuration = TimeSpan.FromMilliseconds(200),
                 MaxDuration = TimeSpan.FromMilliseconds(2180),
-                AverageDuration = TimeSpan.FromMilliseconds(340),
+                TotalDuration = TimeSpan.FromMilliseconds(40800),
                 Timestamp = now
             };
 
@@ -152,21 +152,25 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             // turn them into a dictionary so we can easily validate
             IDictionary<string, MetricTelemetry> metricDict = metrics.ToDictionary(m => m.Name, m => m);
 
-            Assert.Equal(7, metricDict.Count);
+            Assert.Equal(5, metricDict.Count);
 
             ValidateMetric(metricDict[$"{_functionFullName} {LogConstants.FailuresKey}"], 4, LogLevel.Information);
             ValidateMetric(metricDict[$"{_functionFullName} {LogConstants.SuccessesKey}"], 116, LogLevel.Information);
-            ValidateMetric(metricDict[$"{_functionFullName} {LogConstants.MinDurationKey}"], 200, LogLevel.Information);
-            ValidateMetric(metricDict[$"{_functionFullName} {LogConstants.MaxDurationKey}"], 2180, LogLevel.Information);
-            ValidateMetric(metricDict[$"{_functionFullName} {LogConstants.AverageDurationKey}"], 340, LogLevel.Information);
-            ValidateMetric(metricDict[$"{_functionFullName} {LogConstants.SuccessRateKey}"], 96.67, LogLevel.Information);
-            ValidateMetric(metricDict[$"{_functionFullName} {LogConstants.CountKey}"], 120, LogLevel.Information);
+            ValidateMetric(metricDict[$"{_functionFullName} {LogConstants.DurationKey}"], 40800, LogLevel.Information, expectedCount: 120, expectedMin: 200, expectedMax: 2180);
+            ValidateMetric(metricDict[$"{_functionFullName} {ApplicationInsightsLogger.SuccessRateMetricName}"], 96.67, LogLevel.Information);
+            ValidateMetric(metricDict[$"{_functionFullName} {ApplicationInsightsLogger.CountMetricName}"], 120, LogLevel.Information);
         }
 
-        private static void ValidateMetric(MetricTelemetry metric, double expectedValue, LogLevel expectedLevel, string expectedCategory = LogCategories.Aggregator)
+        private static void ValidateMetric(MetricTelemetry metric, double expectedValue, LogLevel expectedLevel, string expectedCategory = LogCategories.Aggregator,
+            int? expectedCount = 1, double? expectedMin = null, double? expectedMax = null)
         {
             Assert.Equal(expectedValue, metric.Value);
+            Assert.Equal(expectedValue, metric.Sum);
             Assert.Equal(2, metric.Properties.Count);
+            Assert.Equal(expectedCount, metric.Count);
+            Assert.Equal(expectedMin, metric.Min);
+            Assert.Equal(expectedMax, metric.Max);
+            Assert.Null(metric.StandardDeviation);
             Assert.Equal(expectedCategory, metric.Properties[LogConstants.CategoryNameKey]);
             Assert.Equal(expectedLevel.ToString(), metric.Properties[LogConstants.LogLevelKey]);
         }
