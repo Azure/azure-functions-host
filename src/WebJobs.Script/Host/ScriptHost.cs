@@ -62,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private FileWatcherEventSource _fileEventSource;
         private IDisposable _fileEventsSubscription;
         private ProxyClientExecutor _proxyClient;
+        private ILoggerFactory _loggerFactory;
 
         protected internal ScriptHost(IScriptHostEnvironment environment,
             IScriptEventManager eventManager,
@@ -288,12 +289,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (hostConfig.LoggerFactory == null)
                 {
                     hostConfig.LoggerFactory = new LoggerFactory();
+
+                    // If we've created the LoggerFactory, then we are responsible for
+                    // disposing. Store this locally for disposal later. We can't rely
+                    // on accessing this directly from ScriptConfig.HostConfig as the
+                    // ScriptConfig is re-used for every host.
+                    _loggerFactory = hostConfig.LoggerFactory;
                 }
 
-                {
-                    Func<string, FunctionDescriptor> funcLookup = (name) => this.GetFunctionOrNull(name);
-                    hostConfig.AddService(funcLookup);
-                }
+                Func<string, FunctionDescriptor> funcLookup = (name) => this.GetFunctionOrNull(name);
+                hostConfig.AddService(funcLookup);
 
                 // Set up a host level TraceMonitor that will receive notification
                 // of ALL errors that occur. This allows us to inspect/log errors.
@@ -1709,6 +1714,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     (function.Invoker as IDisposable)?.Dispose();
                 }
+
+                _loggerFactory?.Dispose();
             }
 
             // dispose base last to ensure that errors there don't
