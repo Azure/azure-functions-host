@@ -135,12 +135,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal static ScriptHostConfiguration CreateStandbyScriptHostConfiguration(WebHostSettings settings)
         {
+            settings.ScriptPath = Path.Combine(Path.GetTempPath(), "Functions", "Standby");
+
             var scriptHostConfig = CreateScriptHostConfiguration(settings);
 
             scriptHostConfig.FileLoggingMode = FileLoggingMode.Always;
             scriptHostConfig.HostConfig.StorageConnectionString = null;
             scriptHostConfig.HostConfig.DashboardConnectionString = null;
-            scriptHostConfig.RootScriptPath = Path.Combine(Path.GetTempPath(), "Functions", "Standby");
 
             return scriptHostConfig;
         }
