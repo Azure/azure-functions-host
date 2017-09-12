@@ -235,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             internal static readonly FunctionsEventSource Instance = new FunctionsEventSource();
 
-            [Event(57907, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
+            [Event(57907, Level = EventLevel.Informational, Channel = EventChannel.Operational, Keywords = FunctionsKeywords.DefaultMetricsKeyword)]
             public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, ulong executionTimeInMs, ulong functionStartedCount, ulong functionCompletedCount, ulong functionFailedCount)
             {
                 if (IsEnabled())
@@ -244,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            [Event(57908, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
+            [Event(57908, Level = EventLevel.Informational, Channel = EventChannel.Operational, Keywords = FunctionsKeywords.DefaultMetricsKeyword)]
             public void LogFunctionDetailsEvent(string siteName, string functionName, string inputBindings, string outputBindings, string scriptType, bool isDisabled)
             {
                 if (IsEnabled())
@@ -253,13 +253,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            [Event(57909, Level = EventLevel.Informational, Channel = EventChannel.Operational)]
+            [Event(57909, Level = EventLevel.Informational, Channel = EventChannel.Operational, Keywords = FunctionsKeywords.DefaultMetricsKeyword)]
             public void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, ulong executionTimeSpan, bool success)
             {
                 if (IsEnabled())
                 {
                     WriteEvent(57909, executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success);
                 }
+            }
+
+            public class FunctionsKeywords
+            {
+                public const EventKeywords DefaultMetricsKeyword = unchecked((EventKeywords)0x8000000000000000);
             }
         }
 
