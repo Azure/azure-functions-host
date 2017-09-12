@@ -5,7 +5,8 @@
         "name": "input",
         "direction": "in",
         "databaseName": "ItemDb",
-        "collectionName": "ItemCollection"
+        "collectionName": "ItemCollection",
+        "createLeaseCollectionIfNotExists": true
       },
       {
         "type": "blob",
