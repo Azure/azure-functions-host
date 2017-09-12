@@ -69,9 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         public void WorkerError(WorkerErrorEvent workerError)
         {
-            Exception hostException = null;
-
-            var channelState = _channelState.AddOrUpdate(workerError.Worker.Config,
+            _channelState.AddOrUpdate(workerError.Worker.Config,
                 CreateWorkerState,
                 (config, state) =>
                 {
@@ -83,20 +81,15 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                     }
                     else
                     {
-                        hostException = new AggregateException(state.Errors.ToList());
+                        var exception = new AggregateException(state.Errors.ToList());
+                        var errorBlock = new ActionBlock<ScriptInvocationContext>(ctx =>
+                        {
+                            ctx.ResultSource.TrySetException(exception);
+                        });
+                        state.Functions.Subscribe(reg => reg.InputBuffer.LinkTo(errorBlock));
                     }
                     return state;
                 });
-
-            if (hostException != null)
-            {
-                _eventManager.Publish(new HostErrorEvent(hostException));
-                var errorBlock = new ActionBlock<ScriptInvocationContext>(ctx =>
-                {
-                    ctx.ResultSource.TrySetException(workerError.Exception);
-                });
-                channelState.Functions.Subscribe(reg => reg.InputBuffer.LinkTo(errorBlock));
-            }
         }
 
         protected virtual void Dispose(bool disposing)

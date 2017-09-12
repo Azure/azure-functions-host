@@ -49,8 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private TraceWriter _traceWriter;
         private ILogger _logger;
 
-        private Exception _eventError;
-
         private ScriptSettingsManager _settingsManager;
         private CancellationTokenSource _restartDelayTokenSource;
 
@@ -85,13 +83,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _loggerFactoryBuilder = loggerFactoryBuilder;
 
             EventManager = eventManager ?? new ScriptEventManager();
-
-            EventManager.OfType<HostErrorEvent>()
-                .Subscribe(msg =>
-                {
-                    _eventError = msg.Exception;
-                    RestartHost();
-                });
 
             _structuredLogWriter = new StructuredLogWriter(EventManager, config.RootLogPath);
         }
@@ -179,6 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // state to Running
                     State = ScriptHostState.Running;
                     LastError = null;
+                    consecutiveErrorCount = 0;
                     _restartDelayTokenSource = null;
 
                     // Wait for a restart signal. This event will automatically reset.
@@ -192,14 +184,6 @@ namespace Microsoft.Azure.WebJobs.Script
                         _restartHostEvent,
                         _stopEvent
                     });
-
-                    var err = _eventError;
-                    if (err != null)
-                    {
-                        _eventError = null;
-                        throw err;
-                    }
-                    consecutiveErrorCount = 0;
 
                     // Orphan the current host instance. We're stopping it, so it won't listen for any new functions
                     // it will finish any currently executing functions and then clean itself up.
