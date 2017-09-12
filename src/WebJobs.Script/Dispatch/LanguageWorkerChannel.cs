@@ -339,12 +339,19 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             process.EnableRaisingEvents = true;
             process.Exited += (s, e) =>
             {
-                if (process.ExitCode != 0)
+                try
                 {
-                    HandleWorkerError(new Exception($"Worker process with pid {process.Id} exited with code {process.ExitCode}"));
+                    if (process.ExitCode != 0)
+                    {
+                        HandleWorkerError(new Exception($"Worker process with pid {process.Id} exited with code {process.ExitCode}"));
+                    }
+                    process.WaitForExit();
+                    process.Close();
                 }
-                process.WaitForExit();
-                process.Close();
+                catch
+                {
+                    HandleWorkerError(new Exception("Worker process is not attached"));
+                }
             };
 
             _logger.LogInformation($"Start Process: {process.StartInfo.FileName} {process.StartInfo.Arguments}");
@@ -365,8 +372,16 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             {
                 if (disposing)
                 {
-                    _process?.Kill();
-                    _process?.Dispose();
+                    // best effort process disposal
+                    try
+                    {
+                        _process?.Kill();
+                        _process?.Dispose();
+                    }
+                    catch
+                    {
+                    }
+
                     foreach (var sub in _eventSubscriptions)
                     {
                         sub.Dispose();

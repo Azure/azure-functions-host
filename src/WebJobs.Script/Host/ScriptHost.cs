@@ -481,7 +481,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 });
 
                 _subscriptions.Add(EventManager.OfType<WorkerErrorEvent>()
-                    .Where(evt => evt.Worker is IFunctionDispatcher)
                     .Subscribe(evt =>
                     {
                         HandleHostError(evt.Exception);
