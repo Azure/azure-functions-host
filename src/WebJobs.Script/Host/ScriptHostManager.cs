@@ -49,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private TraceWriter _traceWriter;
         private ILogger _logger;
 
-        private object _errorLock = new object();
         private Exception _eventError;
 
         private ScriptSettingsManager _settingsManager;
@@ -90,10 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script
             EventManager.OfType<HostErrorEvent>()
                 .Subscribe(msg =>
                 {
-                    lock (_errorLock)
-                    {
-                        _eventError = msg.Exception;
-                    }
+                    _eventError = msg.Exception;
                     RestartHost();
                 });
 
@@ -197,14 +193,11 @@ namespace Microsoft.Azure.WebJobs.Script
                         _stopEvent
                     });
 
-                    lock (_errorLock)
+                    var err = _eventError;
+                    if (err != null)
                     {
-                        if (_eventError != null)
-                        {
-                            var err = _eventError;
-                            _eventError = null;
-                            throw err;
-                        }
+                        _eventError = null;
+                        throw err;
                     }
                     consecutiveErrorCount = 0;
 
