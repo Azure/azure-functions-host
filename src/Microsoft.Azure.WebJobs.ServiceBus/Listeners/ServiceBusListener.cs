@@ -5,7 +5,6 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.ServiceBus.Messaging;
@@ -43,38 +42,26 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
                 throw new InvalidOperationException("The listener has already been started.");
             }
 
-            return StartAsyncCore(cancellationToken);
-        }
-
-        private Task StartAsyncCore(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
             _receiver = _messagingProvider.CreateMessageReceiver(_messagingFactory, _entityPath);
             _receiver.OnMessageAsync(ProcessMessageAsync, _messageProcessor.MessageOptions);
 
-            return Task.FromResult(0);
+            return Task.CompletedTask;
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
 
             if (_receiver == null)
             {
-                throw new InvalidOperationException(
-                    "The listener has not yet been started or has already been stopped.");
+                throw new InvalidOperationException("The listener has not yet been started or has already been stopped.");
             }
 
-            // Signal ProcessMessage to shut down gracefully
+            // cancel our token source to signal any in progress
+            // ProcessMessageAsync invocations to cancel
             _cancellationTokenSource.Cancel();
 
-            return StopAsyncCore(cancellationToken);
-        }
-
-        private async Task StopAsyncCore(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
+            // stop the message receiver so no new work is started
             await _receiver.CloseAsync();
             _receiver = null;
         }
