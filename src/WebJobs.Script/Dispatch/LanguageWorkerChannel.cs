@@ -350,7 +350,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                 }
                 catch
                 {
-                    HandleWorkerError(new Exception("Worker process is not attached");
+                    HandleWorkerError(new Exception("Worker process is not attached"));
                 }
             };
 
