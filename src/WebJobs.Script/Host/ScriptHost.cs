@@ -734,7 +734,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                             if (string.IsNullOrEmpty(path))
                             {
-                                path = assemblyName + ".dll";
+                                path = assemblyName.Name + ".dll";
                             }
 
                             var hintUri = new Uri(path, UriKind.RelativeOrAbsolute);
