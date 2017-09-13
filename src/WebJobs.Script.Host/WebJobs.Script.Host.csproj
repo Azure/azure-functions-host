@@ -55,10 +55,10 @@
     <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>
-    <Content Include="..\..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.sigdata">
+    <Content Include="..\..\packages\FSharp.Core.4.2.3\lib\net45\FSharp.Core.sigdata">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.optdata">
+    <Content Include="..\..\packages\FSharp.Core.4.2.3\lib\net45\FSharp.Core.optdata">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -247,9 +247,8 @@
       <HintPath>..\..\packages\System.IO.FileSystem.Primitives.4.3.0\lib\net46\System.IO.FileSystem.Primitives.dll</HintPath>
     </Reference>
     <Reference Include="System.Net" />
-    <Reference Include="System.Net.Http, Version=4.1.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Net.Http.4.3.0\lib\net46\System.Net.Http.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="System.Net.Http, Version=4.1.1.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Net.Http.4.3.2\lib\net46\System.Net.Http.dll</HintPath>
     </Reference>
     <Reference Include="System.Net.Http.Extensions, Version=2.2.29.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Net.Http.2.2.29\lib\net45\System.Net.Http.Extensions.dll</HintPath>
@@ -336,6 +335,7 @@
     </PropertyGroup>
     <Error Condition="!Exists('..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets'))" />
     <Error Condition="!Exists('..\..\packages\Microsoft.Azure.DocumentDB.1.13.2\build\Microsoft.Azure.DocumentDB.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Microsoft.Azure.DocumentDB.1.13.2\build\Microsoft.Azure.DocumentDB.targets'))" />
+    <Error Condition="!Exists('..\..\packages\NETStandard.Library.2.0.0\build\NETStandard.Library.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\NETStandard.Library.2.0.0\build\NETStandard.Library.targets'))" />
   </Target>
   <Import Project="..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets" Condition="Exists('..\..\packages\Microsoft.Bcl.Build.1.0.21\build\Microsoft.Bcl.Build.targets')" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
@@ -343,9 +343,10 @@
   <Target Name="BeforeBuild">
   </Target>
   <Target Name="AfterBuild">
-    <Copy SourceFiles="..\..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.sigdata" DestinationFolder="$(OutputPath)" />
-    <Copy SourceFiles="..\..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.optdata" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="..\..\packages\FSharp.Core.4.2.3\lib\net45\FSharp.Core.sigdata" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="..\..\packages\FSharp.Core.4.2.3\lib\net45\FSharp.Core.optdata" DestinationFolder="$(OutputPath)" />
   </Target>
   <Import Project="..\..\packages\Microsoft.Azure.DocumentDB.1.13.2\build\Microsoft.Azure.DocumentDB.targets" Condition="Exists('..\..\packages\Microsoft.Azure.DocumentDB.1.13.2\build\Microsoft.Azure.DocumentDB.targets')" />
-  <Import Project="..\..\tools\Clean.targets"/>
+  <Import Project="..\..\tools\Clean.targets" />
+  <Import Project="..\..\packages\NETStandard.Library.2.0.0\build\NETStandard.Library.targets" Condition="Exists('..\..\packages\NETStandard.Library.2.0.0\build\NETStandard.Library.targets')" />
 </Project>
