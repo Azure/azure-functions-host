@@ -16,10 +16,11 @@ using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 {
-    public abstract class ApplicationInsightsTestFixture
+    public abstract class ApplicationInsightsTestFixture : IDisposable
     {
         private readonly ScriptSettingsManager _settingsManager;
         private readonly HttpConfiguration _config = new HttpConfiguration();
+        private readonly HttpServer _httpServer;
 
         public ApplicationInsightsTestFixture(string scriptRoot, string testId)
         {
@@ -43,8 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
             InitializeConfig(hostConfig);
 
-            var httpServer = new HttpServer(_config);
-            HttpClient = new HttpClient(httpServer)
+            _httpServer = new HttpServer(_config);
+            HttpClient = new HttpClient(_httpServer)
             {
                 BaseAddress = new Uri("https://localhost/")
             };
@@ -68,6 +69,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 // Overwrite the generated function whitelist to only include two functions.
                 c.Functions = new[] { "Scenarios", "HttpTrigger-Scenarios" };
             };
+        }
+
+        public void Dispose()
+        {
+            _httpServer?.Dispose();
+            HttpClient?.Dispose();
         }
 
         private class TestLoggerFactoryBuilder : DefaultLoggerFactoryBuilder
