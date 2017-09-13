@@ -8,12 +8,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 {
     public abstract class ApplicationInsightsTestFixture : IDisposable
     {
-        static ApplicationInsightsTestFixture()
-        {
-            // We need to set this to something in order to trigger App Insights integration. But since
-            // we're hitting a local HttpListener, it can be anything.
-            ScriptSettingsManager.Instance.ApplicationInsightsInstrumentationKey = TestChannelLoggerFactoryBuilder.ApplicationInsightsKey;
-        }
+        private readonly ScriptSettingsManager _settingsManager;
+        private readonly HttpConfiguration _config = new HttpConfiguration();
+        private readonly HttpServer _httpServer;
 
         public ApplicationInsightsTestFixture(string scriptRoot, string testId)
         {
