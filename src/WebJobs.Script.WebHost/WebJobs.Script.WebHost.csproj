@@ -586,10 +586,10 @@
     <None Include="Web.Release.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
-    <Content Include="..\..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.sigdata">
+    <Content Include="..\..\packages\FSharp.Core.4.2.3\lib\net45\FSharp.Core.sigdata">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\packages\FSharp.Core.4.0.0.1\lib\net40\FSharp.Core.optdata">
+    <Content Include="..\..\packages\FSharp.Core.4.2.3\lib\net45\FSharp.Core.optdata">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
