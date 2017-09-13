@@ -57,9 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
         private async Task SaveAndProcessProjectAsync(ProjectRootElement project)
         {
-            string baseFolder = ScriptSettingsManager.Instance.IsAzureEnvironment
-                ? Path.Combine(ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath), "data")
-                : Path.GetTempPath();
+            string baseFolder = Path.GetTempPath();
 
             var tempFolder = Path.Combine(baseFolder, "Functions", "Extensions", Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempFolder);
@@ -126,6 +124,12 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                     WorkingDirectory = projectFolder,
                     Arguments = $"build \"{ExtensionsProjectFileName}\" -o bin --force --no-incremental"
                 };
+
+                string nugetPath = Path.Combine(Path.GetDirectoryName(ProjectPath), "nuget.config");
+                if (File.Exists(nugetPath))
+                {
+                    startInfo.Arguments += $" --configfile \"{nugetPath}\"";
+                }
 
                 SetupProcessEnvironment(startInfo);
 
