@@ -222,13 +222,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
         {
             // Validate the host startup traces. Order by message string as the requests may come in
             // slightly out-of-order or on different threads
-            TraceTelemetry[] traces = _fixture.Channel.Telemetries
-                .OfType<TraceTelemetry>()
-                .Where(t => t.Context.Operation.Id == null)
-                .OrderBy(t => t.Message)
-                .ToArray();
+            TraceTelemetry[] traces = null;
 
-            Assert.Equal(10, traces.Length);
+            await TestHelpers.Await(() =>
+            {
+                traces = _fixture.Channel.Telemetries
+                    .OfType<TraceTelemetry>()
+                    .Where(t => t.Context.Operation.Id == null)
+                    .OrderBy(t => t.Message)
+                    .ToArray();
+
+                return traces.Length >= 10;
+            });
+
+            Assert.True(traces.Length == 10, $"Expected 10 messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
             ValidateTrace(traces[0], "Found the following functions:\r\n", LogCategories.Startup);
             ValidateTrace(traces[1], "Generating 2 job function(s)", LogCategories.Startup);
