@@ -1624,6 +1624,16 @@ namespace Microsoft.Azure.WebJobs.Script
                  string.Compare(fileName, ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
                 !_directorySnapshot.SequenceEqual(Directory.EnumerateDirectories(ScriptConfig.RootScriptPath)))
             {
+                // CRI ICM: 46695121
+                // Do not allow the host to restart if this notification is for the hostingstart.html file in the root
+                if (string.Compare(directory, "hostingstart.html", StringComparison.OrdinalIgnoreCase) == 0)
+                {
+                    string hostingWarning = string.Format(CultureInfo.InvariantCulture, "Unexpected file change event detected for '{0}' which evaluated to a host restart. Suppressing restart.", e.FullPath);
+                    TraceWriter.Warning(hostingWarning);
+                    Logger?.LogWarning(hostingWarning);
+                    return;
+                }
+
                 bool shutdown = false;
                 string fileExtension = Path.GetExtension(fileName);
                 if (!string.IsNullOrEmpty(fileExtension) && ScriptConstants.AssemblyFileTypes.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
