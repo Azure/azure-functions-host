@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Xunit;
 
@@ -55,6 +56,111 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify our custom invoker was called
             Assert.Equal(1, invoker.InvokeCount);
+        }
+
+        [Theory]
+        [InlineData("User1", typeof(Task<string>), "User1")]
+        [InlineData("User2", typeof(Task<string>), "User2")]
+        [InlineData("User3", typeof(Task), null)]
+        [InlineData("User4", typeof(Task), null)]
+        public async Task Generate_WithReturnValue(string userFuncName, Type generatedMethodReturnType, string expectedResult)
+        {
+            var userFunc = this.GetType().GetMethod(userFuncName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
+            string functionName = "FunctionWithStrReturn";
+            Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
+
+            var userRetType = userFunc.ReturnType;
+            ParameterDescriptor returnParameter;
+            if (DotNetFunctionDescriptorProvider.TryCreateReturnValueParameterDescriptor(userRetType, new Binding.FunctionBinding[0], out returnParameter))
+            {
+                parameters.Add(returnParameter);
+            }
+
+            FunctionMetadata metadata = new FunctionMetadata();
+            var invoker = new RealInvoker(userFunc);
+            FunctionDescriptor function = new FunctionDescriptor(functionName, invoker, metadata, parameters, null, null, null);
+            Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
+            functions.Add(function);
+
+            // generate the Type
+            Type functionType = FunctionGenerator.Generate("TestScriptHost", "TestFunctions", null, functions);
+
+            // verify the generated function
+            MethodInfo method = functionType.GetMethod(functionName);
+            IEnumerable<Attribute> attributes = functionType.GetCustomAttributes();
+            Assert.Empty(attributes);
+            ParameterInfo[] functionParams = method.GetParameters();
+
+            // One input parameter
+            Assert.Equal(0, functionParams.Length);
+
+            // The final generated function is always Task
+            Assert.Equal(generatedMethodReturnType, method.ReturnType);
+
+            // Verify that the method is invocable
+            var result = method.Invoke(null, new object[] { });
+
+            Task<object> taskResult = Unwrap(result);
+            var realResult = await taskResult;
+
+            Assert.Equal(expectedResult, realResult);
+        }
+
+        internal static async Task<object> Unwrap(object result)
+        {
+            // unwrap the task
+            if (result is Task)
+            {
+                result = await ((Task)result).ContinueWith(t => DotNetFunctionInvoker.GetTaskResult(t), TaskContinuationOptions.ExecuteSynchronously);
+            }
+
+            return result;
+        }
+
+        // Sample user functions for various return signatures.
+        public static void User4()
+        {
+        }
+
+        public static Task User3()
+        {
+            return Task.FromResult<string>(null);
+        }
+
+        public static Task<string> User2()
+        {
+            return Task.FromResult<string>("User2");
+        }
+
+        public static string User1()
+        {
+            return "User1";
+        }
+
+        // An IFunctionInvoker that invokes the methodInfo.
+        // This simulates how DotNetInvoker wraps a user's C# method.
+        public class RealInvoker : IFunctionInvoker
+        {
+            private readonly MethodInfo _innerMethod;
+
+            public RealInvoker(MethodInfo innerMethod)
+            {
+                _innerMethod = innerMethod;
+            }
+
+            public FunctionLogger LogInfo => throw new NotImplementedException();
+
+            public Task<object> Invoke(object[] parameters)
+            {
+                var obj = _innerMethod.Invoke(null, new object[0]);
+                return Unwrap(obj);
+            }
+
+            public void OnError(Exception ex)
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
         }
 
-        protected override Task InvokeCore(object[] parameters, FunctionInvocationContext context)
+        protected override Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
             throw new NotImplementedException();
         }
