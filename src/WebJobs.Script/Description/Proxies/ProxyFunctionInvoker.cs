@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _proxyClient = proxyClient;
         }
 
-        protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
+        protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
             HttpRequest requestObj = parameters?.FirstOrDefault() as HttpRequest;
 
@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             await _proxyClient.Execute(requestObj, context.Logger);
+            return null;
         }
     }
 }

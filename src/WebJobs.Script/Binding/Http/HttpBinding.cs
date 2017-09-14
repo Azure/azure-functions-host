@@ -21,7 +21,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    public class HttpBinding : FunctionBinding, IResultProcessingBinding
+    public class HttpBinding : FunctionBinding
     {
         public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access)
             : base(config, metadata, access)
@@ -188,54 +188,25 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return result;
         }
 
-        public void ProcessResult(IDictionary<string, object> functionArguments, object[] systemArguments, string triggerInputName, object result)
-        {
-            if (result == null)
-            {
-                return;
-            }
-
-            HttpRequest request = (HttpRequest)functionArguments.Values.Union(systemArguments).FirstOrDefault(p => p is HttpRequest);
-            if (request != null)
-            {
-                IActionResult actionResult = result as IActionResult;
-                if (actionResult == null)
-                {
-                    var objectResult = new ObjectResult(result);
-
-                    if (result is System.Net.Http.HttpResponseMessage)
-                    {
-                        // To maintain backwards compatibility, if the type returned is an
-                        // instance of an HttpResponseMessage, add the appropriate formatter to
-                        // handle the response
-                        objectResult.Formatters.Add(new HttpResponseMessageOutputFormatter());
-                    }
-
-                    actionResult = objectResult;
-                }
-
-                request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = actionResult;
-            }
-        }
-
         internal static void SetResponse(HttpRequest request, object result)
         {
-            if (result == null)
+            IActionResult actionResult = result as IActionResult;
+            if (actionResult == null)
             {
-                return;
-            }
-            var response = result as IActionResult;
-            if (response == null)
-            {
-                response = CreateResult(request, result);
+                var objectResult = new ObjectResult(result);
+
+                if (result is System.Net.Http.HttpResponseMessage)
+                {
+                    // To maintain backwards compatibility, if the type returned is an
+                    // instance of an HttpResponseMessage, add the appropriate formatter to
+                    // handle the response
+                    objectResult.Formatters.Add(new HttpResponseMessageOutputFormatter());
+                }
+
+                actionResult = objectResult;
             }
 
-            request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
-        }
-
-        public bool CanProcessResult(object result)
-        {
-            return result != null;
+            request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = actionResult;
         }
     }
 }

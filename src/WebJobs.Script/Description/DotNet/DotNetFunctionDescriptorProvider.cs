@@ -157,13 +157,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     descriptors.Add(new ParameterDescriptor(ScriptConstants.SystemExecutionContextParameterName, typeof(ExecutionContext)));
                 }
 
-                // If we have an HTTP trigger binding but no parameter binds to the raw HttpRequest,
-                // add it as a system parameter so it is accessible later in the pipeline.
-                if (string.Compare(triggerMetadata.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0 &&
-                    !descriptors.Any(p => p.Type == typeof(HttpRequest)))
-                {
-                    descriptors.Add(new ParameterDescriptor(ScriptConstants.SystemTriggerParameterName, typeof(HttpRequest)));
-                }
 
                 if (TryCreateReturnValueParameterDescriptor(functionTarget.ReturnType, bindings, out descriptor))
                 {
@@ -195,22 +188,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         internal static bool TryCreateReturnValueParameterDescriptor(Type functionReturnType, IEnumerable<FunctionBinding> bindings, out ParameterDescriptor descriptor)
         {
             descriptor = null;
-
-            var returnBinding = bindings.SingleOrDefault(p => p.Metadata.IsReturn);
-            if (returnBinding == null)
+            if (functionReturnType == typeof(Microsoft.FSharp.Core.Unit) ||
+                functionReturnType == typeof(Task<Microsoft.FSharp.Core.Unit>))
             {
                 return false;
             }
-            var resultBinding = returnBinding as IResultProcessingBinding;
-            if (resultBinding != null)
+            if (functionReturnType == typeof(void) || functionReturnType == typeof(Task))
             {
-                if (resultBinding.CanProcessResult(true))
-                {
-                    // The trigger binding (ie, httpTrigger) will handle the return.
                     return false;
                 }
-            }
 
+            // Task<T>
             if (typeof(Task).IsAssignableFrom(functionReturnType))
             {
                 if (!(functionReturnType.IsGenericType && functionReturnType.GetGenericTypeDefinition() == typeof(Task<>)))
@@ -224,6 +212,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             descriptor = new ParameterDescriptor(ScriptConstants.SystemReturnParameterName, byRefType);
             descriptor.Attributes |= ParameterAttributes.Out;
 
+            var returnBinding = bindings.SingleOrDefault(p => p.Metadata.IsReturn);
+            if (returnBinding != null)
+            {
             Collection<CustomAttributeBuilder> customAttributes = returnBinding.GetCustomAttributes(byRefType);
             if (customAttributes != null)
             {
@@ -231,6 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     descriptor.CustomAttributes.Add(customAttribute);
                 }
+            }
             }
 
             return true;
