@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
             return new AuthorizationPolicy(requirements, schemes);
         }
 
-        public static bool PrincipalHasAuthLevelClaim(ClaimsPrincipal principal, AuthorizationLevel requiredLevel)
+        public static bool PrincipalHasAuthLevelClaim(ClaimsPrincipal principal, AuthorizationLevel requiredLevel, string keyName = null)
         {
             // If the required auth level is anonymous, the requirement is met
             if (requiredLevel == AuthorizationLevel.Anonymous)
@@ -35,11 +35,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
                 return true;
             }
 
-            if (principal.HasClaim(c => string.Equals(c.Type, SecurityConstants.AuthLevelClaimType, StringComparison.Ordinal) &&
-                Enum.TryParse(c.Value, out AuthorizationLevel level) &&
-                (level == AuthorizationLevel.Admin || level == requiredLevel)))
+            AuthorizationLevel level = AuthorizationLevel.Anonymous;
+            if (Enum.TryParse(principal.FindFirstValue(SecurityConstants.AuthLevelClaimType), out level))
             {
-                return true;
+                // True if the identity is authenticated with Admin level, regardless of whether a name is required.
+                if (level == AuthorizationLevel.Admin)
+                {
+                    return true;
+                }
+
+                // Ensure we match the expected level and key name, if one is required
+                if (level == requiredLevel &&
+                    (keyName == null || string.Equals(principal.FindFirstValue(SecurityConstants.AuthLevelKeyNameClaimType), keyName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
             }
 
             return false;
