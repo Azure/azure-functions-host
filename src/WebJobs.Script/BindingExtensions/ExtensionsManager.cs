@@ -238,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
             root.AddItemGroup()
                 .AddItem(PackageReferenceElementName, ExtensionsPackageId)
-                .AddMetadata(PackageReferenceVersionElementName, "1.0.0-beta1000032", true);
+                .AddMetadata(PackageReferenceVersionElementName, "1.0.0-beta2", true);
 
             return root;
         }
