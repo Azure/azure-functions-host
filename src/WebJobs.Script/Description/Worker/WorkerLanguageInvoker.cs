@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
+        protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
             string invocationId = context.ExecutionContext.InvocationId.ToString();
 
@@ -75,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             result = await invocationContext.ResultSource.Task;
 
             await BindOutputsAsync(triggerValue, context.Binder, result);
+            return null;
         }
 
         private async Task<(string name, DataType type, object value)[]> BindInputsAsync(Binder binder)

@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return _supportedScriptTypes.Contains(scriptType);
         }
 
-        protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
+        protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
             string scriptHostArguments;
             switch (Metadata.ScriptType)
@@ -64,6 +64,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     await ExecuteScriptAsync(bashPath, scriptHostArguments, parameters, context);
                     break;
             }
+
+            return null;
         }
 
         internal async Task ExecuteScriptAsync(string path, string arguments, object[] invocationParameters, FunctionInvocationContext context)

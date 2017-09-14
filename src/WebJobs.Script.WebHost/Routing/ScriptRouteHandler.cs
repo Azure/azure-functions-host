@@ -120,17 +120,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
             ParameterDescriptor triggerParameter = function.Parameters.First(p => p.IsTrigger);
             Dictionary<string, object> arguments = new Dictionary<string, object>();
 
-            if (triggerParameter.Type != typeof(HttpRequest))
-            {
-                // see if the function defines a parameter to receive the HttpRequestMessage and
-                // if so, pass it along
-                ParameterDescriptor requestParameter = function.Parameters.FirstOrDefault(p => p.Type == typeof(HttpRequest));
-                if (requestParameter != null)
-                {
-                    arguments.Add(requestParameter.Name, request);
-                }
-            }
-
             arguments.Add(triggerParameter.Name, request);
 
             return arguments;

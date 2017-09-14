@@ -102,22 +102,18 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return typeof(object);
         }
 
-        private class GeneralScriptBinding : ScriptBinding, IResultProcessingBinding
+        private class GeneralScriptBinding : ScriptBinding
         {
             private readonly Attribute _attribute;
             private readonly IJobHostMetadataProvider _metadataProvider;
 
             private Type _defaultType;
 
-            private MethodInfo _applyReturn; // Action<object,object>
-
             public GeneralScriptBinding(IJobHostMetadataProvider metadataProvider, Attribute attribute, ScriptBindingContext context)
                 : base(context)
             {
                 _metadataProvider = metadataProvider;
                 _attribute = attribute;
-
-                _applyReturn = attribute.GetType().GetMethod("ApplyReturn", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             }
 
             // This should only be called in script scenarios (not C#).
@@ -132,29 +128,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         _defaultType = _metadataProvider.GetDefaultType(_attribute, this.Context.Access, requestedType);
                     }
                     return _defaultType;
-                }
-            }
-
-            public bool CanProcessResult(object result)
-            {
-                return _applyReturn != null;
-            }
-
-            public void ProcessResult(
-                IDictionary<string, object> functionArguments,
-                object[] systemArguments,
-                string triggerInputName,
-                object result)
-            {
-                if (result == null)
-                {
-                    return;
-                }
-
-                object context;
-                if (functionArguments.TryGetValue(triggerInputName, out context))
-                {
-                    _applyReturn.Invoke(null, new object[] { context, result });
                 }
             }
 

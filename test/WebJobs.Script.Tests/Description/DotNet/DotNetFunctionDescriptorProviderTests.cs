@@ -41,11 +41,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(typeof(string).MakeByRefType(), descriptor.Type);
             Assert.Equal(1, descriptor.CustomAttributes.Count);
 
-            var ex = Assert.Throws<InvalidOperationException>(() =>
-            {
-                DotNetFunctionDescriptorProvider.TryCreateReturnValueParameterDescriptor(typeof(Task), bindings, out descriptor);
-            });
-            Assert.Equal($"{ScriptConstants.SystemReturnParameterBindingName} cannot be bound to return type {typeof(Task).Name}.", ex.Message);
+            // return type task means no return value
+            result = DotNetFunctionDescriptorProvider.TryCreateReturnValueParameterDescriptor(typeof(Task), bindings, out descriptor);
+            Assert.False(result);
         }
 
         [Fact]
@@ -62,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FunctionBinding[] bindings = new FunctionBinding[] { functionBinding };
 
             ParameterDescriptor descriptor = null;
-            var result = DotNetFunctionDescriptorProvider.TryCreateReturnValueParameterDescriptor(typeof(string), bindings, out descriptor);
+            var result = DotNetFunctionDescriptorProvider.TryCreateReturnValueParameterDescriptor(typeof(void), bindings, out descriptor);
             Assert.False(result);
         }
     }
