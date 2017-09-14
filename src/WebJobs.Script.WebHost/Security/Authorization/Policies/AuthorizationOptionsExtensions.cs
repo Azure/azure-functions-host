@@ -22,6 +22,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
                 p.AddRequirements(new AuthLevelRequirement(AuthorizationLevel.Admin));
             });
 
+            options.AddPolicy(PolicyNames.SystemAuthLevel, p =>
+            {
+                p.AddScriptAuthenticationSchemes();
+                p.AddRequirements(new AuthLevelRequirement(AuthorizationLevel.System));
+            });
+
             options.AddPolicy(PolicyNames.AdminAuthLevelOrInternal, p =>
             {
                 p.AddScriptAuthenticationSchemes();
