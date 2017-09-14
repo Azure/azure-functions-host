@@ -5,13 +5,17 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
@@ -29,12 +33,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly WebHostSettings _webHostSettings;
         private readonly ILogger _logger;
+        private readonly IAuthorizationService _authorizationService;
 
-        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory)
+        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory, IAuthorizationService authorizationService)
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryAdminController);
+            _authorizationService = authorizationService;
         }
 
         [HttpPost]
@@ -188,11 +194,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             base.OnActionExecuting(context);
         }
 
-        [Route("admin/extensions/{name}/{*extra}")]
         [HttpGet]
         [HttpPost]
-        [AllowAnonymous]
-        public async Task<HttpResponseMessage> ExtensionWebHookHandler(string name, CancellationToken token)
+        [Authorize(AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+        [Route("webhookextensions/handler/{name}/{*extra}")]
+        public async Task<IActionResult> ExtensionWebHookHandler(string name, CancellationToken token)
         {
             var provider = _scriptHostManager.BindingWebHookProvider;
 
@@ -200,15 +206,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             if (handler != null)
             {
                 string keyName = WebJobsSdkExtensionHookProvider.GetKeyName(name);
-                if (!this.Request.HasAuthorizationLevel(AuthorizationLevel.System, keyName))
+                var authResult = await _authorizationService.AuthorizeAsync(User, keyName, PolicyNames.SystemAuthLevel);
+                if (!authResult.Succeeded)
                 {
-                    return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+                    return Unauthorized();
                 }
 
-                return await handler.ConvertAsync(this.Request, token);
+                var requestMessage = new HttpRequestMessageFeature(this.HttpContext).HttpRequestMessage;
+                HttpResponseMessage response = await handler.ConvertAsync(requestMessage, token);
+                var result = new ObjectResult(response);
+                result.Formatters.Add(new HttpResponseMessageOutputFormatter());
             }
 
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
+            return NotFound();
         }
     }
 }
