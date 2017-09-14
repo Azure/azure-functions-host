@@ -7,6 +7,7 @@ using Autofac.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -17,8 +18,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
-using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 
 namespace WebJobs.Script.WebHost.Core
 {
@@ -55,6 +54,7 @@ namespace WebJobs.Script.WebHost.Core
             });
 
             services.AddSingleton<IAuthorizationHandler, AuthLevelAuthorizationHandler>();
+            services.AddSingleton<IAuthorizationHandler, NamedAuthLevelAuthorizationHandler>();
             return services.AddSingleton<IAuthorizationHandler, FunctionAuthorizationHandler>();
         }
 

@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var handler = extension as HttpHandler;
             if (handler == null)
             {
-                throw new InvalidOperationException($"Extension must implemnent IAsyncConverter<HttpRequestMessage, HttpResponseMessage> in order to receive hooks");
+                throw new InvalidOperationException($"Extension must implement IAsyncConverter<HttpRequestMessage, HttpResponseMessage> in order to receive webhooks");
             }
 
             string name = extensionType.Name;
