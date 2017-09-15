@@ -216,8 +216,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
                 var requestMessage = new HttpRequestMessageFeature(this.HttpContext).HttpRequestMessage;
                 HttpResponseMessage response = await handler.ConvertAsync(requestMessage, token);
+
                 var result = new ObjectResult(response);
                 result.Formatters.Add(new HttpResponseMessageOutputFormatter());
+                return result;
             }
 
             return NotFound();
