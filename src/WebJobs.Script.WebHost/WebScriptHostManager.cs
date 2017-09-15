@@ -299,8 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var hostConfig = config.HostConfig;
 
             hostConfig.AddService<IMetricsLogger>(_metricsLogger);
-
-            // config.HostConfig.AddService<IWebHookProvider>(this._bindingWebHookProvider);
+            hostConfig.AddService<IWebHookProvider>(_bindingWebHookProvider);
 
             // Add our exception handler
             hostConfig.AddService<IWebJobsExceptionHandler>(_exceptionHandler);
