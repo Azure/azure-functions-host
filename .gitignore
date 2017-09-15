@@ -19,6 +19,4 @@ msbuild.log
 /tools/NuGet.exe
 /node_modules
 /.output
-
-# ignore generated grpc code from core branch
-src/WebJobs.Script.Grpc/Messages
+/buildoutput
