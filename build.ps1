@@ -36,9 +36,9 @@ Remove-Item -Recurse -Force "$privateSiteExtensionPath\runtimes\linux" -ErrorAct
 Remove-Item -Recurse -Force "$privateSiteExtensionPath\runtimes\osx" -ErrorAction SilentlyContinue
 
 # Create site extension packages
-ZipContent $publishTarget "$buildoutput\Functions.Private.$extensionVersion.zip"
+ZipContent $publishTarget "$buildoutput\Functions.Private.$extensionVersion-alpha.zip"
 
 #Build site extension
-Rename-Item "$privateSiteExtensionPath" "$siteExtensionPath\$extensionVersion"
+Rename-Item "$privateSiteExtensionPath" "$siteExtensionPath\$extensionVersion-alpha"
 Copy-Item .\src\WebJobs.Script.WebHost\extension.xml "$siteExtensionPath"
-ZipContent $siteExtensionPath "$buildoutput\Functions.$extensionVersion.zip"
+ZipContent $siteExtensionPath "$buildoutput\Functions.$extensionVersion-alpha.zip"
