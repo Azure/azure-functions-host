@@ -39,18 +39,9 @@ install:
     [System.IO.Compression.ZipFile]::ExtractToDirectory("c:\tools\php\php.zip", "c:\tools\php")
 
     Install-Product node 6.5.0 x86
-cache: '%USERPROFILE%\.nuget\packages'
 build_script:
 - ps: >
-    dotnet --version
-
-    dotnet build .\WebJobs.Script.sln -v q
-
-    dotnet pack src\WebJobs.Script\WebJobs.Script.csproj -o ..\..\buildoutput --no-build --version-suffix "-$env:APPVEYOR_BUILD_NUMBER"
-
-    dotnet pack src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o ..\..\buildoutput --no-build --version-suffix "-$env:APPVEYOR_BUILD_NUMBER"
-
-    dotnet pack src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj -o ..\..\buildoutput --no-build --version-suffix "-$env:APPVEYOR_BUILD_NUMBER"
+    .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER"
 test_script:
 - ps: >-
     # dotnet test .\test\WebJobs.Script.Scaling.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
@@ -62,3 +53,5 @@ test_script:
 artifacts:
 - path: buildoutput\*.nupkg
   name: Binaries
+- path: buildoutput\*.zip
+  name: Runtime
