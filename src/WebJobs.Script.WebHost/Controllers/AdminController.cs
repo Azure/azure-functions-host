@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -105,6 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 State = _scriptHostManager.State.ToString(),
                 Version = ScriptHost.Version,
+                VersionDetails = Utility.GetInformationalVersion(typeof(ScriptHost)),
                 Id = _scriptHostManager.Instance?.ScriptConfig.HostConfig.HostId
             };
 
