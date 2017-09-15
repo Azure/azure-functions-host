@@ -44,13 +44,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void CreateStandbyScriptHostConfiguration_StandbyMode_ReturnsExpectedConfiguration()
+        public void CreateScriptHostConfiguration_StandbyMode_ReturnsExpectedConfiguration()
         {
-            var settings = new WebHostSettings();
+            var settings = new WebHostSettings
+            {
+                IsSelfHost = true
+            };
 
-            var config = WebHostResolver.CreateStandbyScriptHostConfiguration(settings);
+            var config = WebHostResolver.CreateScriptHostConfiguration(settings, true);
 
-            Assert.Equal(FileLoggingMode.Always, config.FileLoggingMode);
+            Assert.Equal(FileLoggingMode.DebugOnly, config.FileLoggingMode);
             Assert.Null(config.HostConfig.StorageConnectionString);
             Assert.Null(config.HostConfig.DashboardConnectionString);
             Assert.Equal(Path.Combine(Path.GetTempPath(), "Functions", "Standby"), config.RootScriptPath);

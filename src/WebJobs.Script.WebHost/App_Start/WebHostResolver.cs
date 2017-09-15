@@ -124,29 +124,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (_standbyHostManager == null)
                 {
-                    _standbyScriptHostConfig = CreateStandbyScriptHostConfiguration(settings);
-                    StandbyManager.Initialize(_standbyScriptHostConfig);
+                    _standbyScriptHostConfig = CreateScriptHostConfiguration(settings, true);
                     _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings);
                     _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
+
                     InitializeFileSystem();
+                    StandbyManager.Initialize(_standbyScriptHostConfig);
                 }
             }
         }
 
-        internal static ScriptHostConfiguration CreateStandbyScriptHostConfiguration(WebHostSettings settings)
-        {
-            settings.ScriptPath = Path.Combine(Path.GetTempPath(), "Functions", "Standby");
-
-            var scriptHostConfig = CreateScriptHostConfiguration(settings);
-
-            scriptHostConfig.FileLoggingMode = FileLoggingMode.Always;
-            scriptHostConfig.HostConfig.StorageConnectionString = null;
-            scriptHostConfig.HostConfig.DashboardConnectionString = null;
-
-            return scriptHostConfig;
-        }
-
-        internal static ScriptHostConfiguration CreateScriptHostConfiguration(WebHostSettings settings)
+        internal static ScriptHostConfiguration CreateScriptHostConfiguration(WebHostSettings settings, bool inStandbyMode = false)
         {
             var scriptHostConfig = new ScriptHostConfiguration
             {
@@ -157,6 +145,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 IsSelfHost = settings.IsSelfHost,
                 LoggerFactoryBuilder = settings.LoggerFactoryBuilder
             };
+
+            if (inStandbyMode)
+            {
+                scriptHostConfig.RootScriptPath = Path.Combine(Path.GetTempPath(), "Functions", "Standby");
+                scriptHostConfig.FileLoggingMode = FileLoggingMode.DebugOnly;
+                scriptHostConfig.HostConfig.StorageConnectionString = null;
+                scriptHostConfig.HostConfig.DashboardConnectionString = null;
+            }
 
             scriptHostConfig.HostConfig.HostId = Utility.GetDefaultHostId(_settingsManager, scriptHostConfig);
 
