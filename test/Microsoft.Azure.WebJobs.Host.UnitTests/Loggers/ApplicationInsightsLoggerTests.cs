@@ -214,6 +214,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Equal("200", telemetry.ResponseCode);
             Assert.Equal(LogCategories.Results, telemetry.Properties[LogConstants.CategoryNameKey]);
             Assert.Equal(LogLevel.Information.ToString(), telemetry.Properties[LogConstants.LogLevelKey]);
+
+            // We should not have the request logged.
+            Assert.False(telemetry.Properties.TryGetValue(LogConstants.CustomPropertyPrefix + ApplicationInsightsScopeKeys.HttpRequest, out string unused));
+
             // TODO: Beef up validation to include properties
         }
 
@@ -281,12 +285,16 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             ILogger logger = CreateLogger(LogCategories.Function);
             using (logger.BeginFunctionScope(CreateFunctionInstance(scopeGuid)))
             {
-                logger.LogInformation("Information");
-                logger.LogCritical("Critical");
-                logger.LogDebug("Debug");
-                logger.LogError("Error");
-                logger.LogTrace("Trace");
-                logger.LogWarning("Warning");
+                // Make sure we drop HTTP Request details
+                using (logger.BeginScope(CreateHttpScopeDictionary()))
+                {
+                    logger.LogInformation("Information");
+                    logger.LogCritical("Critical");
+                    logger.LogDebug("Debug");
+                    logger.LogError("Error");
+                    logger.LogTrace("Trace");
+                    logger.LogWarning("Warning");
+                }
             }
 
             Assert.Equal(6, _channel.Telemetries.Count);
@@ -311,6 +319,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
                 Assert.Equal(telemetry.Message, telemetry.Properties[LogConstants.CustomPropertyPrefix + LogConstants.OriginalFormatKey]);
                 Assert.Equal(scopeGuid.ToString(), telemetry.Context.Operation.Id);
                 Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
+
+                // We should not have the request logged.
+                Assert.False(telemetry.Properties.TryGetValue(LogConstants.CustomPropertyPrefix + ApplicationInsightsScopeKeys.HttpRequest, out string request));
             }
         }
 
@@ -343,7 +354,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 
             using (logger.BeginFunctionScope(CreateFunctionInstance(scopeGuid)))
             {
-                logger.LogError(0, ex, "Error with customer: {customer}.", "John Doe");
+                // Make sure we drop HTTP Request details
+                using (logger.BeginScope(CreateHttpScopeDictionary()))
+                {
+                    logger.LogError(0, ex, "Error with customer: {customer}.", "John Doe");
+                }
             }
 
             var telemetry = _channel.Telemetries.Single() as ExceptionTelemetry;
@@ -359,6 +374,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Same(ex, telemetry.Exception);
             Assert.Equal(scopeGuid.ToString(), telemetry.Context.Operation.Id);
             Assert.Equal(_functionShortName, telemetry.Context.Operation.Name);
+
+            // We should not have the request logged.
+            Assert.False(telemetry.Properties.TryGetValue(LogConstants.CustomPropertyPrefix + ApplicationInsightsScopeKeys.HttpRequest, out string request));
         }
 
         [Fact]
@@ -369,7 +387,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 
             using (logger.BeginFunctionScope(CreateFunctionInstance(scopeGuid)))
             {
-                logger.LogMetric("CustomMetric", 44.9);
+                // Make sure we drop HTTP Request details
+                using (logger.BeginScope(CreateHttpScopeDictionary()))
+                {
+                    logger.LogMetric("CustomMetric", 44.9);
+                }
             }
 
             var telemetry = _channel.Telemetries.Single() as MetricTelemetry;
@@ -387,6 +409,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             Assert.Null(telemetry.Max);
             Assert.Equal(1, telemetry.Count);
             Assert.Null(telemetry.StandardDeviation);
+
+            // We should not have the request logged.
+            Assert.False(telemetry.Properties.TryGetValue(LogConstants.CustomPropertyPrefix + ApplicationInsightsScopeKeys.HttpRequest, out string request));
         }
 
         [Fact]
@@ -627,6 +652,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             {
                 [ScopeKeys.FunctionInvocationId] = invocationId,
                 [ScopeKeys.FunctionName] = functionName
+            };
+        }
+
+        private static IDictionary<string, object> CreateHttpScopeDictionary()
+        {
+            return new Dictionary<string, object>
+            {
+                [ApplicationInsightsScopeKeys.HttpRequest] = new HttpRequestMessage(HttpMethod.Post, "http://someuri/api/path")
             };
         }
 

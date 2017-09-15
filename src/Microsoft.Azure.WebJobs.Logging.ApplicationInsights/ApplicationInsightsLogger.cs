@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
                 ScopeKeys.Event,
                 ScopeKeys.FunctionInvocationId,
                 ScopeKeys.FunctionName,
+                ApplicationInsightsScopeKeys.HttpRequest,
                 OperationContext
             };
 
@@ -154,9 +155,10 @@ namespace Microsoft.Azure.WebJobs.Logging.ApplicationInsights
             _telemetryClient.TrackMetric(telemetry);
         }
 
-        // Applies custom scope properties; does not apply 'system' used properties
         private static void ApplyCustomScopeProperties(ISupportProperties telemetry)
         {
+            // Strip out the scope properties used internally by the host as these
+            // details are already set in the telemetry itself
             var scopeProperties = DictionaryLoggerScope.GetMergedStateDictionary()
                 .Where(p => !SystemScopeKeys.Contains(p.Key, StringComparer.Ordinal));
 
