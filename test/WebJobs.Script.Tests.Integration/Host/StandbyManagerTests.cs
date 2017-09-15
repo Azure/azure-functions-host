@@ -116,10 +116,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 await Task.Delay(2000);
 
-                // verify host logs
-                string hostLogDirectory = Path.Combine(webHostSettings.LogPath, "Host");
-                string hostLogFilePath = Directory.EnumerateFiles(hostLogDirectory).First();
-                string[] logLines = File.ReadAllLines(hostLogFilePath);
+                // verify logs
+                string[] logLines = traceWriter.Traces.Select(p => p.Message).ToArray();
                 Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Stopping Host")));
                 Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
