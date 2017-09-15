@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var scheme = isLocalhost ? "http" : "https";
             string keyValue = GetOrCreateExtensionKey(extensionName).GetAwaiter().GetResult();
 
-            return new Uri($"{scheme}://{hostName}/admin/extensions/{extensionName}?code={keyValue}");
+            return new Uri($"{scheme}://{hostName}/webhookextensions/handler/{extensionName}?code={keyValue}");
         }
 
         private async Task<string> GetOrCreateExtensionKey(string extensionName)
