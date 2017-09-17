@@ -1,7 +1,16 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net.Http;
+using System.Web.Http;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
@@ -22,13 +31,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 ScriptPath = Path.Combine(Environment.CurrentDirectory, scriptRoot),
                 LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
                 SecretsPath = Environment.CurrentDirectory, // not used
-                LoggerFactoryBuilder = new TestLoggerFactoryBuilder(Channel),
                 IsAuthDisabled = true
             };
-            WebApiConfig.Register(_config, _settingsManager, HostSettings);
+          //  WebApiConfig.Register(_config, _settingsManager, HostSettings);
 
             var resolver = _config.DependencyResolver;
-            var hostConfig = resolver.GetService<WebHostResolver>().GetScriptHostConfiguration(HostSettings);
+            var hostConfig = (resolver.GetService(typeof(WebHostResolver)) as WebHostResolver).GetScriptHostConfiguration(HostSettings);
 
             _settingsManager.ApplicationInsightsInstrumentationKey = TestChannelLoggerFactoryBuilder.ApplicationInsightsKey;
 
@@ -45,10 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public TestTelemetryChannel Channel { get; private set; } = new TestTelemetryChannel();
 
-        protected override void InitializeConfig(ScriptHostConfiguration config)
-        {
-            var builder = new TestChannelLoggerFactoryBuilder(Channel);
-            config.HostConfig.AddService<ILoggerFactoryBuilder>(builder);
+        public WebHostSettings HostSettings { get; private set; }
 
         public HttpClient HttpClient { get; private set; }
 
@@ -116,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             private TestTelemetryChannel _channel;
 
             public TestTelemetryClientFactory(Func<string, LogLevel, bool> filter, TestTelemetryChannel channel)
-                : base(TestChannelLoggerFactoryBuilder.ApplicationInsightsKey, new SamplingPercentageEstimatorSettings(), filter)
+                : base(TestChannelLoggerFactoryBuilder.ApplicationInsightsKey, filter)
             {
                 _channel = channel;
             }
