@@ -146,18 +146,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // function's invocation id.
             TraceTelemetry trace = _fixture.Channel.Telemetries
                     .OfType<TraceTelemetry>()
-                    .Where(t => t.Context.Operation.Id == invocationId)
-                    .Where(t => t.Message.StartsWith("Exception"))
+                    .Where(t => t.Message.Contains(functionTrace))
                     .Single();
 
-                ValidateTrace(errorTrace, $"Exception while executing function: Functions.{functionName}.", LogCategories.Executor, functionName, invocationId, SeverityLevel.Error);
+            // functions need to log JSON that contains the invocationId and trace
+            JObject logPayload = JObject.Parse(trace.Message);
+            string logInvocationId = logPayload["invocationId"].ToString();
 
-                ExceptionTelemetry exception = _fixture.Channel.Telemetries
-                    .OfType<ExceptionTelemetry>()
-                    .Single(t => t.Context.Operation.Id == invocationId);
+            string invocationId = trace.Context.Operation.Id;
 
-                ValidateException(exception, invocationId, functionName, LogCategories.Results);
-            }
+            // make sure they match
+            Assert.Equal(logInvocationId, invocationId);
+
+            // Find the Info traces.
+            TraceTelemetry[] traces = _fixture.Channel.Telemetries
+                    .OfType<TraceTelemetry>()
+                    .Where(t => t.Context.Operation.Id == invocationId)
+                    .Where(t => !t.Message.StartsWith("Exception")) // we'll verify the exception message separately
+                    .Where(t => t.Properties[LogConstants.CategoryNameKey] == LogCategories.Executor)
+                    .OrderBy(t => t.Message)
+                    .ToArray();
+
+            string expectedMessage = functionSuccess ? "Function completed (Success, Id=" : "Function completed (Failure, Id=";
+            SeverityLevel expectedLevel = functionSuccess ? SeverityLevel.Information : SeverityLevel.Error;
+
+            ValidateTrace(traces[0], expectedMessage + invocationId, LogCategories.Executor, functionName, invocationId, expectedLevel);
+            ValidateTrace(traces[1], "Function started (Id=" + invocationId, LogCategories.Executor, functionName, invocationId);
 
             if (!functionSuccess)
             {
@@ -192,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             IList<string> logs = null;
             await TestHelpers.Await(() =>
             {
-                logs = TestHelpers.GetFunctionLogsAsync(functionName, throwOnNoLogs: false, waitForFlush: false).Result;
+                logs = TestHelpers.GetFunctionLogsAsync(functionName, throwOnNoLogs: false).Result;
                 return logs.Count(p => p.Contains(functionTrace)) == 1;
             }, pollingInterval: 100);
         }
