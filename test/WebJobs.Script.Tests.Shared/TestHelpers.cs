@@ -7,6 +7,8 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -79,6 +81,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 foreach (var file in directory.GetFiles())
                 {
                     file.Delete();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Waits until a request sent via the specified HttpClient returns OK or NoContent, indicating
+        /// that the host is ready to invoke functions.
+        /// </summary>
+        /// <param name="client">The HttpClient.</param>
+        public static void WaitForWebHost(HttpClient client)
+        {
+            TestHelpers.Await(() =>
+            {
+                return IsHostRunning(client);
+            }).Wait();
+        }
+
+        private static bool IsHostRunning(HttpClient client)
+        {
+            using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty))
+            {
+                using (HttpResponseMessage response = client.SendAsync(request).Result)
+                {
+                    return response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.OK;
                 }
             }
         }
