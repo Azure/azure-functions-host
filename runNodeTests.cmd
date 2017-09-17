@@ -1,1 +1,0 @@
-msbuild Webjobs.Script.proj /t:MochaTest
