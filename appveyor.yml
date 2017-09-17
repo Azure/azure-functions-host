@@ -10,46 +10,29 @@ image: Visual Studio 2017
 clone_folder: c:\azure-webjobs-sdk-script
 install:
 - ps: >-
-    # Download .NET Core 2.0 SDK and add to PATH
-
-    $urlCurrent = "https://download.microsoft.com/download/1/B/4/1B4DE605-8378-47A5-B01B-2C79D6C55519/dotnet-sdk-2.0.0-win-x64.zip"
-
-    $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = "true"
-
-    $env:DOTNET_CLI_TELEMETRY_OPTOUT = "true"
-
-    $env:DOTNET_INSTALL_DIR = "$pwd\.dotnetsdk"
-
-    mkdir $env:DOTNET_INSTALL_DIR -Force | Out-Null
-
-    $tempFileCurrent = [System.IO.Path]::GetTempFileName()
-
-    (New-Object System.Net.WebClient).DownloadFile($urlCurrent, $tempFileCurrent)
-
-    Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory($tempFileCurrent, $env:DOTNET_INSTALL_DIR)
-
-    $env:Path = "$env:DOTNET_INSTALL_DIR;$env:Path"
-
     $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
 
     mkdir c:\tools\php | out-null
 
     Invoke-WebRequest https://azfunc.blob.core.windows.net/public/php-7.1.3-Win32-VC14-x86.zip -OutFile c:\tools\php\php.zip
 
+    Add-Type -AssemblyName System.IO.Compression.FileSystem;
+
     [System.IO.Compression.ZipFile]::ExtractToDirectory("c:\tools\php\php.zip", "c:\tools\php")
 
-    Install-Product node 6.5.0 x86
+    Install-Product node 8.4.0 x86
 build_script:
 - ps: >
     .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER"
 test_script:
-- ps: >-
-    # dotnet test .\test\WebJobs.Script.Scaling.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
-
-    # dotnet test .\test\WebJobs.Script.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
-
-    # Skipping integration tests for initial build
-    # dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
+- ps: >
+  $success = $true;
+  # dotnet test .\test\WebJobs.Script.Scaling.Tests\ -v q --no-build -p:ParallelizeTestCollections=false;
+  # dotnet test .\test\WebJobs.Script.Tests\ -v q --no-build -p:ParallelizeTestCollections=false;
+  dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build --filter Tests.NodeEndToEndTests;
+  $success = $success -and $?;
+  # Skipping integration tests for initial build # dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build;
+  if (-not $success) { exit 1 }
 artifacts:
 - path: buildoutput\*.nupkg
   name: Binaries
