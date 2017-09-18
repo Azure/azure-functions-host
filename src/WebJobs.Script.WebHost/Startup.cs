@@ -22,9 +22,10 @@ namespace WebJobs.Script.WebHost.Core
         // This method gets called by the runtime. Use this method to add services to the container.
         public IServiceProvider ConfigureServices(IServiceCollection services)
         {
-            services.AddWebJobsScriptHost();
+            services.AddWebJobsScriptHostAuthentication();
+            services.AddWebJobsScriptHostAuthorization();
 
-            return services.AddWebJobsScriptHostApplicationServices(Configuration);
+            return services.AddWebJobsScriptHost(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
