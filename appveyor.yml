@@ -26,12 +26,20 @@ build_script:
     .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER"
 test_script:
 - ps: >
-    $success = $true;
-    # dotnet test .\test\WebJobs.Script.Scaling.Tests\ -v q --no-build -p:ParallelizeTestCollections=false;
-    # dotnet test .\test\WebJobs.Script.Tests\ -v q --no-build -p:ParallelizeTestCollections=false;
-    dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build --filter Tests.NodeEndToEndTests;
-    $success = $success -and $?;
-    # Skipping integration tests for initial build # dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build;
+    $success = $true
+
+    # dotnet test .\test\WebJobs.Script.Scaling.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
+
+    # dotnet test .\test\WebJobs.Script.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
+
+    # see results in app insights 'Functions-CI-Reporting'
+
+    dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build --filter Tests.NodeEndToEndTests -l appinsights
+
+    $success = $success -and $?
+
+    # Skipping integration tests for initial build # dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
+
     if (-not $success) { exit 1 }
 artifacts:
 - path: buildoutput\*.nupkg
