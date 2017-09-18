@@ -4,6 +4,7 @@
 using System;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script;
@@ -23,17 +24,6 @@ namespace WebJobs.Script.WebHost.Core
 {
     public static class WebJobsServiceCollectionExtensions
     {
-        public static IServiceCollection AddWebJobsScriptHost(this IServiceCollection services)
-        {
-            services.AddWebJobsScriptHostAuth();
-            services.AddWebJobsScriptHostRouting();
-
-            services.AddMvc()
-                .AddXmlDataContractSerializerFormatters();
-
-            return services;
-        }
-
         public static IServiceCollection AddWebJobsScriptHostRouting(this IServiceCollection services)
         {
             // Add our script route handler
@@ -42,11 +32,17 @@ namespace WebJobs.Script.WebHost.Core
             return services.AddHttpBindingRouting();
         }
 
-        public static IServiceCollection AddWebJobsScriptHostAuth(this IServiceCollection services)
+        public static IServiceCollection AddWebJobsScriptHostAuthentication(this IServiceCollection services)
         {
             services.AddAuthentication()
                 .AddScriptAuthLevel()
                 .AddScriptJwtBearer();
+
+            return services;
+        }
+
+        public static IServiceCollection AddWebJobsScriptHostAuthorization(this IServiceCollection services)
+        {
 
             services.AddAuthorization(o =>
             {
@@ -58,8 +54,12 @@ namespace WebJobs.Script.WebHost.Core
             return services.AddSingleton<IAuthorizationHandler, FunctionAuthorizationHandler>();
         }
 
-        public static IServiceProvider AddWebJobsScriptHostApplicationServices(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceProvider AddWebJobsScriptHost(this IServiceCollection services, IConfiguration configuration)
         {
+            services.AddWebJobsScriptHostRouting();
+            services.AddMvc()
+                .AddXmlDataContractSerializerFormatters();
+
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WebJobsScriptHostService>());
 
             // TODO: This is a direct port from the current model.
