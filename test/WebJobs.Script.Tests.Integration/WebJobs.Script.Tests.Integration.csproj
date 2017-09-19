@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.3">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
