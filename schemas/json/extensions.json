@@ -1,0 +1,33 @@
+{
+  "title": "JSON schema for Azure Functions extensions.json files",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+
+  "type": "object",
+
+  "properties": {
+    "extensions": {
+      "type": "array",
+      "description": "The list of installed extensions.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "The short extension name.",
+            "type": "string",
+            "minLength": 0
+          },
+
+          "typeName": {
+            "description": "The type assembly qualified name.",
+            "type": "string"
+          },
+
+          "hintPath": {
+            "description": "An optional file path hint to the assembly containing the type.",
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
