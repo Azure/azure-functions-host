@@ -32,7 +32,7 @@ test_script:
 
     # dotnet test .\test\WebJobs.Script.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
 
-    # see results in app insights 'Functions-CI-Reporting'
+    # see results in app insights AntaresDemo 'functionse2eai'
 
     dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build --filter Tests.NodeEndToEndTests -l appinsights
 
