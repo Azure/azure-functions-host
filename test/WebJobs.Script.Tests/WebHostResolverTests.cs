@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Moq;
 using Xunit;
+using System.IO;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
