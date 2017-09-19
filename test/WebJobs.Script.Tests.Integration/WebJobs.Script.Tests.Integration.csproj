@@ -14,7 +14,7 @@
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.3">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client.Contract" Version="0.3.0.6">
+    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client.Contract" Version="0.3.1.1">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
     <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="1.0.0-beta1-10001" />
