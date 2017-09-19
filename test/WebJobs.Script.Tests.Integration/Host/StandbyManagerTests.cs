@@ -69,8 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
                 var httpConfig = new HttpConfiguration();
-                httpConfig.Formatters.Add(new PlaintextMediaTypeFormatter());
-
+                
                 var settingsManager = ScriptSettingsManager.Instance;
                 var testRootPath = Path.Combine(Path.GetTempPath(), "StandbyModeTest");
                 if (Directory.Exists(testRootPath))
@@ -85,8 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     SecretsPath = Path.Combine(testRootPath, "Secrets"),
                     TraceWriter = traceWriter
                 };
-                WebApiConfig.Register(httpConfig, _settingsManager, webHostSettings);
-
+                
                 var httpServer = new HttpServer(httpConfig);
                 var httpClient = new HttpClient(httpServer);
                 httpClient.BaseAddress = new Uri("https://localhost/");

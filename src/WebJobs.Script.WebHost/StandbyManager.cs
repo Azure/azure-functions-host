@@ -21,20 +21,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private const string WarmUpAlternateRoute = "CSharpHttpWarmup";
         private static object _syncLock = new object();
 
-        public static async Task<HttpResponseMessage> WarmUp(HttpRequestMessage request, WebScriptHostManager scriptHostManager)
-        {
-            var queryParams = request.GetQueryParameterDictionary();
-            string value = null;
-            if (queryParams.TryGetValue("restart", out value) && string.Compare("1", value) == 0)
-            {
-                scriptHostManager.RestartHost();
-                await scriptHostManager.DelayUntilHostReady();
-            }
 
-            await StandbyManager.WarmUp(scriptHostManager.Instance);
+        // TODO: FACAVAL - Move from HttpRequestMessage
+        //public static async Task<HttpResponseMessage> WarmUp(HttpRequestMessage request, WebScriptHostManager scriptHostManager)
+        //{
+        //    var queryParams = request.GetQueryParameterDictionary();
+        //    string value = null;
+        //    if (queryParams.TryGetValue("restart", out value) && string.Compare("1", value) == 0)
+        //    {
+        //        scriptHostManager.RestartHost();
+        //        await scriptHostManager.DelayUntilHostReady();
+        //    }
 
-            return new HttpResponseMessage(HttpStatusCode.OK);
-        }
+        //    return new HttpResponseMessage(HttpStatusCode.OK);
+        //}
 
         public static bool IsWarmUpRequest(HttpRequestMessage request)
         {
@@ -42,12 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 WebScriptHostManager.InStandbyMode &&
                 request.IsAntaresInternalRequest() &&
                 (request.MatchRoute($"api/{WarmUpFunctionName}") || request.MatchRoute($"api/{WarmUpAlternateRoute}"));
-        }
-
-        public static async Task WarmUp(ScriptHost host)
-        {
-            // exercise the Node pipeline
-            await NodeFunctionInvoker.InitializeAsync();
         }
 
         public static void Initialize(ScriptHostConfiguration config)

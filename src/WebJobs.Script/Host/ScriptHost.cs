@@ -19,6 +19,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
@@ -67,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private IList<IDisposable> _subscriptions = new List<IDisposable>();
         private ProxyClientExecutor _proxyClient;
         private IFunctionDispatcher _functionDispatcher;
+        private ILoggerFactory _loggerFactory;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -512,10 +514,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 // take a snapshot so we can detect function additions/removals
                 _directorySnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).ToImmutableArray();
 
-                // Scan the function.json early to determine the binding extensions used
+                // Scan the function.json early to determine the requirements.
                 var functionMetadata = ReadFunctionMetadata(ScriptConfig, TraceWriter, _startupLogger, FunctionErrors, _settingsManager);
-                var extensionLoader = new ExtensionLoader(ScriptConfig, TraceWriter, _startupLogger);
-                var usedBindingTypes = extensionLoader.DiscoverBindingTypes(functionMetadata);
+                var usedBindingTypes = DiscoverBindingTypes(functionMetadata);
+
+                bool useLazyLoad = false; // todo - https://github.com/Azure/azure-webjobs-sdk-script/issues/1637
+                if (!useLazyLoad)
+                {
+                    usedBindingTypes = _builtinBindingTypes.Keys.Concat(_builtinScriptBindingTypes.Keys).ToArray();
+                }
 
                 var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfigObject, TraceWriter, _startupLogger, usedBindingTypes);
                 ScriptConfig.BindingProviders = bindingProviders;
@@ -539,18 +546,13 @@ namespace Microsoft.Azure.WebJobs.Script
                         _startupLogger?.LogError(0, ex, errorMsg);
                     }
                 }
-                extensionLoader.LoadBuiltinExtensions(usedBindingTypes);
+                LoadBuiltinBindings(usedBindingTypes);
 
                 var directTypes = GetDirectTypes(functionMetadata);
-                extensionLoader.LoadDirectlyReferencedExtensions(directTypes);
-                extensionLoader.LoadCustomExtensions();
 
-                // Now all extensions have been loaded, the metadata is finalized.
-                // There's a single script binding instance that services all extensions.
-                // give that script binding the metadata for all loaded extensions so it can dispatch to them.
-                var generalProvider = ScriptConfig.BindingProviders.OfType<GeneralScriptBindingProvider>().First();
-                var metadataProvider = this.CreateMetadataProvider();
-                generalProvider.CompleteInitialization(metadataProvider);
+                LoadDirectlyReferencesExtensions(directTypes);
+
+                LoadCustomExtensions();
 
                 // Do this after we've loaded the custom extensions. That gives an extension an opportunity to plug in their own implementations.
                 if (storageString != null)
@@ -590,6 +592,43 @@ namespace Microsoft.Azure.WebJobs.Script
                     PurgeOldLogDirectories();
                 }
             }
+        }
+
+        private void LoadBuiltinBindings(IEnumerable<string> bindingTypes)
+        {
+            foreach (var bindingType in bindingTypes)
+            {
+                string assemblyQualifiedTypeName;
+                if (_builtinBindingTypes.TryGetValue(bindingType, out assemblyQualifiedTypeName))
+                {
+                    Type typeExtension = Type.GetType(assemblyQualifiedTypeName);
+                    if (typeExtension == null)
+                    {
+                        string errorMsg = $"Can't find builtin provider '{assemblyQualifiedTypeName}' for '{bindingType}'";
+                        TraceWriter.Error(errorMsg);
+                        _startupLogger?.LogError(errorMsg);
+                    }
+                    else
+                    {
+                        IExtensionConfigProvider extension = (IExtensionConfigProvider)Activator.CreateInstance(typeExtension);
+                        LoadExtension(extension);
+                    }
+                }
+            }
+        }
+
+        private static IEnumerable<string> DiscoverBindingTypes(IEnumerable<FunctionMetadata> functions)
+        {
+            HashSet<string> bindingTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var function in functions)
+            {
+                foreach (var binding in function.InputBindings.Concat(function.OutputBindings))
+                {
+                    string bindingType = binding.Type;
+                    bindingTypes.Add(bindingType);
+                }
+            }
+            return bindingTypes;
         }
 
         // Validate that for any precompiled assembly, all functions have the same configuration precedence.
@@ -1030,14 +1069,17 @@ namespace Microsoft.Azure.WebJobs.Script
             // Add custom providers for any other types being used from function.json
             foreach (var usedType in usedBindingTypes)
             {
-                var type = ExtensionLoader.GetScriptBindingProvider(usedType);
+                var type = GetScriptBindingProvider(usedType);
                 if (type != null && existingTypes.Add(type))
                 {
                     bindingProviderTypes.Add(type);
                 }
             }
 
+            // General purpose binder that works directly against SDK.
+            // This should eventually replace all other ScriptBindingProvider
             bindingProviderTypes.Add(typeof(GeneralScriptBindingProvider));
+
             bindingProviderTypes.Add(typeof(BuiltinExtensionBindingProvider));
 
             // Create the binding providers
@@ -1399,7 +1441,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     return ScriptType.Unknown;
             }
         }
-         
+
         private Collection<FunctionDescriptor> GetFunctionDescriptors(Collection<FunctionMetadata> functions)
         {
             var proxies = ReadProxyMetadata(ScriptConfig, _settingsManager);

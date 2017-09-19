@@ -13,15 +13,14 @@ using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-
-using Microsoft.Extensions.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
-using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Extensions.Logging;
 using WebJobs.Script.WebHost.Core;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -161,87 +160,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             lock (_syncLock)
             {
-                if (InStandbyMode)
-                {
-                    if (!_warmupComplete)
-                    {
-                        WarmUp(_webHostSettings, EventManager);
-
-                        _warmupComplete = true;
-                    }
-                }
-                else if (!_hostStarted)
+                if (!_hostStarted)
                 {
                     RunAndBlock(cancellationToken);
 
                     _hostStarted = true;
                 }
-            }
-        }
-
-        public static void WarmUp(WebHostSettings settings, IScriptEventManager eventManager)
-        {
-            var traceWriter = new FileTraceWriter(Path.Combine(settings.LogPath, "Host"), TraceLevel.Info);
-            ScriptHost host = null;
-            try
-            {
-                traceWriter.Info("Warm up started");
-
-                string rootPath = settings.ScriptPath;
-                if (Directory.Exists(rootPath))
-                {
-                    Directory.Delete(rootPath, true);
-                }
-                Directory.CreateDirectory(rootPath);
-
-                string content = ReadResourceString("Functions.host.json");
-                File.WriteAllText(Path.Combine(rootPath, "host.json"), content);
-
-                // read in the C# function
-                string functionPath = Path.Combine(rootPath, "Test-CSharp");
-                Directory.CreateDirectory(functionPath);
-                content = ReadResourceString("Functions.Test_CSharp.function.json");
-                File.WriteAllText(Path.Combine(functionPath, "function.json"), content);
-                content = ReadResourceString("Functions.Test_CSharp.run.csx");
-                File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
-
-                traceWriter.Info("Warm up functions deployed");
-
-                ScriptHostConfiguration config = new ScriptHostConfiguration
-                {
-                    RootScriptPath = rootPath,
-                    FileLoggingMode = FileLoggingMode.Never,
-                    RootLogPath = settings.LogPath,
-                    TraceWriter = traceWriter,
-                    FileWatchingEnabled = false
-                };
-                config.HostConfig.StorageConnectionString = null;
-                config.HostConfig.DashboardConnectionString = null;
-
-                host = ScriptHost.Create(new NullScriptHostEnvironment(), eventManager, config, ScriptSettingsManager.Instance);
-                traceWriter.Info(string.Format("Starting Host (Id={0})", host.ScriptConfig.HostConfig.HostId));
-
-                host.Start();
-
-                var arguments = new Dictionary<string, object>
-                {
-                    { "input", "{}" }
-                };
-                host.CallAsync("Test-CSharp", arguments).Wait();
-                host.Stop();
-#if NODE
-                await NodeFunctionInvoker.InitializeAsync();
-#endif
-                traceWriter.Info("Warm up succeeded");
-            }
-            catch (Exception ex)
-            {
-                traceWriter.Error(string.Format("Warm up failed: {0}", ex));
-            }
-            finally
-            {
-                host?.Dispose();
-                traceWriter.Dispose();
             }
         }
 
@@ -261,16 +185,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         internal static void ResetStandbyMode()
         {
             _standbyMode = null;
-        }
-
-        private static string ReadResourceString(string fileName)
-        {
-            string resourcePath = string.Format("Microsoft.Azure.WebJobs.Script.WebHost.Resources.{0}", fileName);
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream(resourcePath)))
-            {
-                return reader.ReadToEnd();
-            }
         }
 
         // TODO: FACAVAL (WEBHOOKS SDK)
