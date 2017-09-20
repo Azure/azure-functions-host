@@ -190,8 +190,13 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         internal static void SetResponse(HttpRequest request, object result)
         {
-            IActionResult actionResult = result as IActionResult;
-            if (actionResult == null)
+            // use the existing response if already set (IBinder model)
+            if (request.HttpContext.Items.TryGetValue(ScriptConstants.AzureFunctionsHttpResponseKey, out object existing))
+            {
+                result = existing;
+            }
+
+            if (!(result is IActionResult))
             {
                 var objectResult = new ObjectResult(result);
 
@@ -203,10 +208,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     objectResult.Formatters.Add(new HttpResponseMessageOutputFormatter());
                 }
 
-                actionResult = objectResult;
+                request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = objectResult;
             }
-
-            request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = actionResult;
         }
     }
 }
