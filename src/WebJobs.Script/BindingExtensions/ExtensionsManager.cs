@@ -131,7 +131,9 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                     startInfo.Arguments += $" --configfile \"{nugetPath}\"";
                 }
 
-                if (ScriptSettingsManager.Instance.IsAzureEnvironment)
+                // If we're running on Azure, on a consumption plan, make sure we cache packages under home
+                // to avoid running out of local disk space.
+                if (ScriptSettingsManager.Instance.IsAzureEnvironment && ScriptSettingsManager.Instance.IsDynamicSku)
                 {
                     string nugetCacheLocation = Path.Combine(ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath), ".nuget");
 

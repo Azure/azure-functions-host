@@ -5,10 +5,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using WebJobs.Script.Tests;
 using Xunit;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -19,11 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var testDir = new TempDirectory())
             {
-                var manager = new ExtensionsManager(testDir.Path);
+                var manager = new ExtensionsManager(testDir.Path, NullTraceWriter.Instance, NullLogger.Instance);
 
                 var extensions = await manager.GetExtensions();
 
-                Assert.Equal(0, extensions.Count);
+                Assert.Equal(0, extensions.Count());
             }
         }
 
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var testDir = new TempDirectory())
             {
-                var manager = new ExtensionsManager(testDir.Path);
+                var manager = new ExtensionsManager(testDir.Path, NullTraceWriter.Instance, NullLogger.Instance);
 
                 var extension = new ExtensionPackageReference
                 {
@@ -45,11 +46,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.True(File.Exists(manager.ProjectPath));
 
                 // Create a new manager pointing to the same path:
-                manager = new ExtensionsManager(testDir.Path);
+                manager = new ExtensionsManager(testDir.Path, NullTraceWriter.Instance, NullLogger.Instance);
 
                 var extensions = await manager.GetExtensions();
 
-                Assert.Equal(1, extensions.Count);
+                Assert.Equal(1, extensions.Count());
 
                 var reference = extensions.FirstOrDefault(p => string.Equals(p.Id, extensions.First().Id));
                 Assert.NotNull(reference);
@@ -62,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var testDir = new TempDirectory())
             {
-                var manager = new ExtensionsManager(testDir.Path);
+                var manager = new ExtensionsManager(testDir.Path, NullTraceWriter.Instance, NullLogger.Instance);
 
                 var extension = new ExtensionPackageReference
                 {
@@ -72,9 +73,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 await manager.AddExtensions(extension);
 
-                IList<ExtensionPackageReference> extensions = await manager.GetExtensions();
+                IEnumerable<ExtensionPackageReference> extensions = await manager.GetExtensions();
 
-                Assert.Equal(1, extensions.Count);
+                Assert.Equal(1, extensions.Count());
 
                 var reference = extensions.FirstOrDefault(p => string.Equals(p.Id, extensions.First().Id));
                 Assert.NotNull(reference);
@@ -87,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var testDir = new TempDirectory())
             {
-                var manager = new ExtensionsManager(testDir.Path);
+                var manager = new ExtensionsManager(testDir.Path, NullTraceWriter.Instance, NullLogger.Instance);
 
                 var extensions = new[]
                 {
@@ -107,9 +108,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 await manager.DeleteExtensions(extensions[1].Id);
 
-                IList<ExtensionPackageReference> result = await manager.GetExtensions();
+                IEnumerable<ExtensionPackageReference> result = await manager.GetExtensions();
 
-                Assert.Equal(1, result.Count);
+                Assert.Equal(1, result.Count());
 
                 var reference = result.FirstOrDefault(p => string.Equals(p.Id, extensions.First().Id));
                 Assert.NotNull(reference);
