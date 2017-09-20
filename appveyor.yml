@@ -36,6 +36,10 @@ test_script:
 
     dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build --filter Tests.NodeEndToEndTests -l appinsights
 
+    $success = $success -and $?    
+
+    dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build --filter NodeContentTests -l appinsights
+
     $success = $success -and $?
 
     # Skipping integration tests for initial build # dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build

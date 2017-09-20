@@ -7,9 +7,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
+using Moq.Protected;
 using WebJobs.Script.Tests;
 using Xunit;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -20,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var testDir = new TempDirectory())
             {
-                var manager = new ExtensionsManager(testDir.Path, NullTraceWriter.Instance, NullLogger.Instance);
+                var manager = GetExtensionsManager(testDir.Path);
 
                 var extensions = await manager.GetExtensions();
 
@@ -29,11 +31,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetExtensions_ReturnsPackges()
+        public async Task GetExtensions_ReturnsPackages()
         {
             using (var testDir = new TempDirectory())
             {
-                var manager = new ExtensionsManager(testDir.Path, NullTraceWriter.Instance, NullLogger.Instance);
+                var manager = GetExtensionsManager(testDir.Path);
 
                 var extension = new ExtensionPackageReference
                 {
@@ -46,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.True(File.Exists(manager.ProjectPath));
 
                 // Create a new manager pointing to the same path:
-                manager = new ExtensionsManager(testDir.Path, NullTraceWriter.Instance, NullLogger.Instance);
+                manager = GetExtensionsManager(testDir.Path);
 
                 var extensions = await manager.GetExtensions();
 
@@ -63,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var testDir = new TempDirectory())
             {
-                var manager = new ExtensionsManager(testDir.Path, NullTraceWriter.Instance, NullLogger.Instance);
+                var manager = GetExtensionsManager(testDir.Path);
 
                 var extension = new ExtensionPackageReference
                 {
@@ -88,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var testDir = new TempDirectory())
             {
-                var manager = new ExtensionsManager(testDir.Path, NullTraceWriter.Instance, NullLogger.Instance);
+                var manager = GetExtensionsManager(testDir.Path);
 
                 var extensions = new[]
                 {
@@ -116,6 +118,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.NotNull(reference);
                 Assert.Equal(extensions.First().Version, reference.Version);
             }
+        }
+
+        private ExtensionsManager GetExtensionsManager(string rootPath)
+        {
+            var manager = new Mock<ExtensionsManager>(rootPath, NullTraceWriter.Instance, NullLogger.Instance);
+            manager.Setup(m => m.ProcessExtensionsProject(It.IsAny<string>()))
+                .Returns<string>(a =>
+                {
+                    File.Copy(Path.Combine(a, ScriptConstants.ExtensionsProjectFileName), Path.Combine(rootPath, ScriptConstants.ExtensionsProjectFileName), true);
+                    return Task.CompletedTask;
+                });
+
+            return manager.Object;
         }
     }
 }

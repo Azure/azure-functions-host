@@ -24,6 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var settingsManager = ScriptSettingsManager.Instance;
 
+            settingsManager.Reset();
+
             var variables = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsiteName, siteName },
