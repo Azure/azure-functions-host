@@ -111,6 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         public virtual void Reset()
         {
             _configuration = new Lazy<IConfiguration>(_configurationFactory);
+
             _settingsCache.Clear();
         }
 
@@ -129,6 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             if (!string.IsNullOrEmpty(settingKey))
             {
                 Environment.SetEnvironmentVariable(settingKey, settingValue);
+                Reset();
             }
         }
 

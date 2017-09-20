@@ -131,9 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                     startInfo.Arguments += $" --configfile \"{nugetPath}\"";
                 }
 
-                // If we're running on Azure, on a consumption plan, make sure we cache packages under home
-                // to avoid running out of local disk space.
-                if (ScriptSettingsManager.Instance.IsAzureEnvironment && ScriptSettingsManager.Instance.IsDynamicSku)
+                if (ScriptSettingsManager.Instance.IsAzureEnvironment)
                 {
                     string nugetCacheLocation = Path.Combine(ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath), ".nuget");
 
@@ -229,11 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                 var reader = XmlTextReader.Create(new StringReader(File.ReadAllText(path)));
                 root = ProjectRootElement.Create(reader);
             }
-            else
-            {
-                root = CreateDefaultProject(path);
-            }
-
+           
             return root ?? CreateDefaultProject(path);
         }
 
