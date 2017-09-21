@@ -227,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                 var reader = XmlTextReader.Create(new StringReader(File.ReadAllText(path)));
                 root = ProjectRootElement.Create(reader);
             }
-           
+
             return root ?? CreateDefaultProject(path);
         }
 
