@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
         private readonly ScriptHostConfiguration _scriptConfig;
         private readonly IScriptEventManager _eventManager;
         private readonly IWorkerProcessFactory _processFactory;
+        private readonly IProcessRegistry _processRegistry;
         private readonly IObservable<FunctionRegistrationContext> _functionRegistrations;
         private readonly WorkerConfig _workerConfig;
         private readonly Uri _serverUri;
@@ -54,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             ScriptHostConfiguration scriptConfig,
             IScriptEventManager eventManager,
             IWorkerProcessFactory processFactory,
+            IProcessRegistry processRegistry,
             IObservable<FunctionRegistrationContext> functionRegistrations,
             WorkerConfig workerConfig,
             Uri serverUri,
@@ -64,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             _scriptConfig = scriptConfig;
             _eventManager = eventManager;
             _processFactory = processFactory;
+            _processRegistry = processRegistry;
             _functionRegistrations = functionRegistrations;
             _workerConfig = workerConfig;
             _serverUri = serverUri;
@@ -239,6 +242,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
 
         internal void WorkerReady(RpcEvent initEvent)
         {
+            _processRegistry?.Register(_process);
+
             var initMessage = initEvent.Message.WorkerInitResponse;
             if (initMessage.Result.IsFailure(out Exception exc))
             {

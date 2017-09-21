@@ -11,9 +11,9 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
     {
         public string ExecutablePath { get; set; }
 
-        public IDictionary<string, string> ExecutableArguments { get; set; } = new Dictionary<string, string>();
+        public List<string> ExecutableArguments { get; set; } = new List<string>();
 
-        public IDictionary<string, string> WorkerArguments { get; set; } = new Dictionary<string, string>();
+        public List<string> WorkerArguments { get; set; } = new List<string>();
 
         public string WorkerPath { get; set; }
 
