@@ -1251,9 +1251,11 @@ namespace Microsoft.Azure.WebJobs.Script
             var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
             if (httpTrigger != null)
             {
-                ValidateHttpFunction(function.Name, httpTrigger);
+                bool isProxy = function.Metadata != null && function.Metadata.IsProxy;
 
-                if (function.Metadata != null && !function.Metadata.IsProxy)
+                ValidateHttpFunction(function.Name, httpTrigger, isProxy);
+
+                if (!isProxy)
                 {
                     // prevent duplicate/conflicting routes for functions
                     // proxy routes check is done in the proxy dll itself and proxies do not use routePrefix so should not check conflict with functions
@@ -1270,9 +1272,9 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal static void ValidateHttpFunction(string functionName, HttpTriggerAttribute httpTrigger)
+        internal static void ValidateHttpFunction(string functionName, HttpTriggerAttribute httpTrigger, bool isProxy = false)
         {
-            if (string.IsNullOrWhiteSpace(httpTrigger.Route))
+            if (string.IsNullOrWhiteSpace(httpTrigger.Route) && !isProxy)
             {
                 // if no explicit route is provided, default to the function name
                 httpTrigger.Route = functionName;

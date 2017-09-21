@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
@@ -13,6 +14,7 @@ using System.Web.Http.Dependencies;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -31,15 +33,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _webHookReceiverManager = webHookReceiverManager;
         }
 
+        private static bool IsHomepageDisabled
+        {
+            get
+            {
+                return string.Equals(Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsDisableHomepage),
+                    bool.TrueString, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         public override async Task<HttpResponseMessage> ExecuteAsync(HttpControllerContext controllerContext, CancellationToken cancellationToken)
         {
             var request = controllerContext.Request;
             var function = _scriptHostManager.GetHttpFunctionOrNull(request);
             if (function == null)
             {
+                if (request.RequestUri.AbsolutePath == "/")
+                {
+                    // if the request is to the root and we can't find any matching FunctionDescriptors which might have been setup by proxies
+                    // then homepage logic will be applied.
+                    return IsHomepageDisabled
+                        ? new HttpResponseMessage(HttpStatusCode.NoContent)
+                        : new HttpResponseMessage(HttpStatusCode.OK)
+                        {
+                            Content = new StringContent(Resources.Homepage, Encoding.UTF8, "text/html")
+                        };
+                }
+
                 // request does not map to an HTTP function
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
+
             request.SetProperty(ScriptConstants.AzureFunctionsHttpFunctionKey, function);
 
             var authorizationLevel = await DetermineAuthorizationLevelAsync(request, function, controllerContext.Configuration.DependencyResolver);
