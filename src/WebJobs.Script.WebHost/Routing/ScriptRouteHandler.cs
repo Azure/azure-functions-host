@@ -98,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
                 return actionResult;
             }
 
-            return new NotFoundResult();
+            return new OkResult();
         }
 
         private async Task<bool> AuthenticateAndAuthorizeAsync(HttpContext context, FunctionDescriptor descriptor)
