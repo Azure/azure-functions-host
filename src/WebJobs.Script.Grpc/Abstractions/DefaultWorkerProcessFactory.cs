@@ -27,17 +27,13 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
             return new Process { StartInfo = startInfo };
         }
 
-        private StringBuilder MergeArguments(StringBuilder builder, KeyValuePair<string, string> pair)
-        {
-            builder.AppendFormat("{0} {1} ", pair.Key, pair.Value);
-            return builder;
-        }
+        private StringBuilder MergeArguments(StringBuilder builder, string arg) => builder.AppendFormat(" {0}", arg);
 
         public string GetArguments(WorkerCreateContext context)
         {
             var config = context.WorkerConfig;
             var argumentsBuilder = config.ExecutableArguments.Aggregate(new StringBuilder(), MergeArguments);
-            argumentsBuilder.Append(config.WorkerPath);
+            argumentsBuilder.AppendFormat(" \"{0}\"", config.WorkerPath);
             config.WorkerArguments.Aggregate(argumentsBuilder, MergeArguments);
             argumentsBuilder.AppendFormat(" --host {0} --port {1} --workerId {2} --requestId {3}",
                 context.ServerUri.Host, context.ServerUri.Port, context.WorkerId, context.RequestId);

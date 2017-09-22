@@ -11,8 +11,11 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
     public class JavaLanguageWorkerConfig : WorkerConfig
     {
         public JavaLanguageWorkerConfig()
+            : base()
         {
-            var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME") ?? string.Empty;
+            Extension = ".jar";
+            Language = "Java";
+            var javaHome = ScriptSettingsManager.Instance.Configuration.GetSection("JAVA_HOME").Value ?? string.Empty;
             if (ScriptSettingsManager.Instance.IsAzureEnvironment)
             {
                 // on azure, force latest jdk
@@ -20,17 +23,38 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             }
             var javaPath = Path.Combine(javaHome, "bin", "java");
             ExecutablePath = Path.GetFullPath(javaPath);
-            var workerJar = Environment.GetEnvironmentVariable("AzureWebJobsJavaWorkerPath");
-            if (string.IsNullOrEmpty(workerJar))
+
+            var settingsManager = ScriptSettingsManager.Instance;
+            var javaSection = settingsManager.Configuration
+                .GetSection("workers")
+                .GetSection(Language);
+
+            WorkerPath = javaSection.GetSection("path").Value ?? settingsManager.GetSetting("AzureWebJobsJavaWorkerPath");
+            if (string.IsNullOrEmpty(WorkerPath))
             {
-                workerJar = Path.Combine(Location, "workers", "java", "azure-functions-java-worker.jar");
+                WorkerPath = Path.Combine(Location, "workers", "java", "azure-functions-java-worker.jar");
+            }
+            ExecutableArguments.Add("-jar");
+
+            var javaOpts = settingsManager.GetSetting("JAVA_OPTS");
+            if (!string.IsNullOrEmpty(javaOpts))
+            {
+                ExecutableArguments.Add(javaOpts);
             }
 
-            // Load the JVM starting parameters to support attach to debugging.
-            var javaOpts = Environment.GetEnvironmentVariable("JAVA_OPTS") ?? string.Empty;
-            WorkerPath = $"-jar {javaOpts} \"{workerJar}\"";
-            Extension = ".jar";
-            Language = "Java";
+            var debugPortConfig = javaSection.GetSection("debug").Value;
+            if (debugPortConfig != null)
+            {
+                int port = 5005;
+                try
+                {
+                    port = Convert.ToInt32(debugPortConfig);
+                }
+                catch
+                {
+                }
+                ExecutableArguments.Add($"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address={port}");
+            }
         }
     }
 }
