@@ -5,8 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
-using System.Configuration;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.IO.Abstractions;
@@ -17,12 +15,14 @@ using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.AppService.Proxy.Client.Contract;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -31,14 +31,12 @@ using Microsoft.Azure.WebJobs.Script.Dispatch;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.File;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.IO;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Microsoft.Azure.AppService.Proxy.Client.Contract;
-using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
-using Microsoft.Azure.WebJobs.Script.Grpc;
-using Microsoft.Azure.WebJobs.Script.Models;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -69,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ProxyClientExecutor _proxyClient;
         private IFunctionDispatcher _functionDispatcher;
         private ILoggerFactory _loggerFactory;
+        private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -471,9 +470,26 @@ namespace Microsoft.Azure.WebJobs.Script
                 server.Start();
                 var processFactory = new DefaultWorkerProcessFactory();
 
+                try
+                {
+                    _processRegistry = ProcessRegistryFactory.Create();
+                }
+                catch (Exception e)
+                {
+                    _startupLogger.LogWarning(e, "Unable to create process registry");
+                }
+
                 CreateChannel channelFactory = (config, registrations) =>
                 {
-                    return new LanguageWorkerChannel(ScriptConfig, EventManager, processFactory, registrations, config, server.Uri, hostConfig.LoggerFactory);
+                    return new LanguageWorkerChannel(
+                        ScriptConfig,
+                        EventManager,
+                        processFactory,
+                        _processRegistry,
+                        registrations,
+                        config,
+                        server.Uri,
+                        hostConfig.LoggerFactory);
                 };
 
                 _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, TraceWriter, new List<WorkerConfig>()
@@ -1986,6 +2002,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _debugModeFileWatcher?.Dispose();
                 _blobLeaseManager?.Dispose();
                 _functionDispatcher?.Dispose();
+                (_processRegistry as IDisposable)?.Dispose();
 
                 foreach (var function in Functions)
                 {
