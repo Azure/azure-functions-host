@@ -171,21 +171,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 // the function hasn't indicated that it wants to write the raw response
                 return new RawScriptResult(statusCode, content) { Headers = headers };
             }
-
-            var result = new ObjectResult(content)
+            else
             {
-                StatusCode = statusCode
-            };
-
-            string contentType = null;
-            if (content != null &&
-                (headers?.TryGetValue("content-type", out contentType, ignoreCase: true) ?? false) &&
-                MediaTypeHeaderValue.TryParse(contentType, out MediaTypeHeaderValue mediaType))
-            {
-                result.ContentTypes.Add(mediaType);
+                return new ScriptObjectResult(content, headers) { StatusCode = statusCode };
             }
-
-            return result;
         }
 
         internal static void SetResponse(HttpRequest request, object result)
