@@ -113,12 +113,6 @@ namespace Microsoft.Azure.WebJobs.Script
         // public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
 
         /// <summary>
-        /// Gets or sets the <see cref="ILoggerFactoryBuilder"/> used to register <see cref="ILoggerProvider"/>s with
-        /// the host's <see cref="ILoggerFactory"/>.
-        /// </summary>
-        public ILoggerFactoryBuilder LoggerFactoryBuilder { get; set; }
-
-        /// <summary>
         /// Gets or sets a test hook for modifying the configuration after host.json has been processed.
         /// </summary>
         internal Action<ScriptHostConfiguration> OnConfigurationApplied { get; set; }
