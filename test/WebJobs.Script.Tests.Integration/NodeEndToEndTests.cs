@@ -16,6 +16,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 using Microsoft.WebJobs.Script.Tests;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -363,6 +366,62 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains(logs, log => log.Contains("Exports: IsObject=true, Count=1"));
         }
 
+        [Theory]
+        [InlineData("httptrigger")]
+        [InlineData("httptriggershared")]
+        public async Task HttpTrigger_Get(string functionName)
+        {
+            string userAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36";
+            string accept = "text/html, application/xhtml+xml, application/xml; q=0.9, */*; q=0.8";
+            string customHeader = "foo,bar,baz";
+            var request = HttpTestHelpers.CreateHttpRequest(
+                "GET",
+                $"http://localhost/api/{functionName}?name=Mathew%20Charles&location=Seattle",
+                new HeaderDictionary()
+                {
+                    ["test-header"] = "Test Request Header",
+                    ["user-agent"] = userAgent,
+                    ["accept"] = accept,
+                    ["custom-1"] = customHeader
+
+                });
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "request", request }
+            };
+            await Fixture.Host.CallAsync("HttpTrigger", arguments);
+
+            var result = (IActionResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
+
+            Assert.IsType<ScriptObjectResult>(result);
+
+            var objResult = result as ScriptObjectResult;
+
+            Assert.Equal(200, objResult.StatusCode);
+
+            Assert.Equal("Test Response Header", objResult.Headers["test-header"]);
+            Assert.Equal("application/json; charset=utf-8", objResult.ContentTypes.First());
+
+            Assert.IsType<JObject>(objResult.Value);
+            var resultObject = objResult.Value as JObject;
+            Assert.Equal("undefined", (string)resultObject["reqBodyType"]);
+            Assert.Null((string)resultObject["reqBody"]);
+            Assert.Equal("undefined", (string)resultObject["reqRawBodyType"]);
+            Assert.Null((string)resultObject["reqRawBody"]);
+
+            // verify binding data was populated from query parameters
+            Assert.Equal("Mathew Charles", (string)resultObject["bindingData"]["name"]);
+            Assert.Equal("Seattle", (string)resultObject["bindingData"]["location"]);
+
+            // validate input headers
+            JObject reqHeaders = (JObject)resultObject["reqHeaders"];
+            Assert.Equal("Test Request Header", reqHeaders["test-header"]);
+            Assert.Equal(userAgent, reqHeaders["user-agent"]);
+            Assert.Equal(accept, reqHeaders["accept"]);
+            Assert.Equal(customHeader, reqHeaders["custom-1"]);
+        }
+
 #if HTTP_TESTS
         [Fact]
         public async Task HttpTrigger_Post_ByteArray()
@@ -392,56 +451,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             JObject testResult = await GetFunctionTestResult("HttpTriggerByteArray");
             Assert.True((bool)testResult["isBuffer"]);
             Assert.Equal(5, (int)testResult["length"]);
-        }
-
-        [Theory]
-        [InlineData("httptrigger")]
-        [InlineData("httptriggershared")]
-        public async Task HttpTrigger_Get(string functionName)
-        {
-            HttpRequestMessage request = new HttpRequestMessage
-            {
-                RequestUri = new Uri($"http://localhost/api/{functionName}?name=Mathew%20Charles&location=Seattle"),
-                Method = HttpMethod.Get,
-            };
-            request.SetConfiguration(Fixture.RequestConfiguration);
-            request.Headers.Add("test-header", "Test Request Header");
-            string userAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36";
-            request.Headers.Add("user-agent", userAgent);
-            string accept = "text/html, application/xhtml+xml, application/xml; q=0.9, */*; q=0.8";
-            request.Headers.Add("accept", accept);
-            string customHeader = "foo,bar,baz";
-            request.Headers.Add("custom-1", customHeader);
-
-            Dictionary<string, object> arguments = new Dictionary<string, object>
-            {
-                { "request", request }
-            };
-            await Fixture.Host.CallAsync("HttpTrigger", arguments);
-
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-            Assert.Equal("Test Response Header", response.Headers.GetValues("test-header").SingleOrDefault());
-            Assert.Equal(MediaTypeHeaderValue.Parse("application/json; charset=utf-8"), response.Content.Headers.ContentType);
-
-            string body = await response.Content.ReadAsStringAsync();
-            JObject resultObject = JObject.Parse(body);
-            Assert.Equal("undefined", (string)resultObject["reqBodyType"]);
-            Assert.Null((string)resultObject["reqBody"]);
-            Assert.Equal("undefined", (string)resultObject["reqRawBodyType"]);
-            Assert.Null((string)resultObject["reqRawBody"]);
-
-            // verify binding data was populated from query parameters
-            Assert.Equal("Mathew Charles", (string)resultObject["bindingData"]["name"]);
-            Assert.Equal("Seattle", (string)resultObject["bindingData"]["location"]);
-
-            // validate input headers
-            JObject reqHeaders = (JObject)resultObject["reqHeaders"];
-            Assert.Equal("Test Request Header", reqHeaders["test-header"]);
-            Assert.Equal(userAgent, reqHeaders["user-agent"]);
-            Assert.Equal(accept, reqHeaders["accept"]);
-            Assert.Equal(customHeader, reqHeaders["custom-1"]);
         }
 
         [Fact]
