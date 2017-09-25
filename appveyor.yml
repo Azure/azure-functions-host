@@ -34,12 +34,16 @@ test_script:
 
     # see results in app insights AntaresDemo 'functionse2eai'
 
+    dotnet test .\test\WebJobs.Script.Tests -v q --no-build -l appinsights
+
+    $success = $success -and $?
+
     dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build --filter Tests.NodeEndToEndTests -l appinsights
 
     $success = $success -and $?    
 
     dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build --filter NodeContentTests -l appinsights
-
+    
     $success = $success -and $?
 
     # Skipping integration tests for initial build # dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build

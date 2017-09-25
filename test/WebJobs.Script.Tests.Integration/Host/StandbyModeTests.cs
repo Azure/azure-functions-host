@@ -67,13 +67,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestGetter(_webHostResolver.GetSecretManager);
         }
 
-        // TODO: FACAVAL Swagger
-        //[Fact]
-        //public void GetSwaggerDocumentManager_ReturnsExpectedValue()
-        //{
-        //    TestGetter(_webHostResolver.GetSwaggerDocumentManager);
-        //}
-
         [Fact]
         public void GetPerformanceManager_ReturnsExpectedValue()
         {

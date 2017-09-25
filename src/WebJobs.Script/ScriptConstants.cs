@@ -27,14 +27,12 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TraceSourceSecretManagement = "SecretManagement";
         public const string TraceSourceHostAdmin = "HostAdmin";
         public const string TraceSourceFileWatcher = "FileWatcher";
-        public const string TraceSourceSwagger = "SwaggerDocumentation";
         public const string TraceSourceHttpHandler = "HttpRequestTraceHandler";
 
         public const string LoggerFunctionNameKey = "MS_FunctionName";
         public const string LoggerHttpRequest = "MS_HttpRequest";
 
         public const string LogCategoryAdminController = "Host.Controllers.Admin";
-        public const string LogCategorySwaggerController = "Host.Controllers.Swagger";
         public const string LogCategoryKeysController = "Host.Controllers.Keys";
         public const string LogCategoryHostGeneral = "Host.General";
 
@@ -67,14 +65,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
 
-        public const string SwaggerFileName = "swagger.json";
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
-        public const string SwaggerDirectoryName = "swagger";
-        public const string DocumentationResourceName = ".azurefunctions.swagger";
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public const string HttpMethodConstraintName = "httpMethod";
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
-        public const string SwaggerDocumentationKey = "swaggerdocumentationkey";
 
         public const int MaximumHostIdLength = 32;
         public const int DynamicSkuConnectionLimit = 250;

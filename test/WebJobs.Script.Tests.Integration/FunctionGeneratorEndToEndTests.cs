@@ -21,6 +21,10 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
+using Microsoft.AspNetCore.Builder.Internal;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -84,87 +88,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // verify our custom invoker was called
             Assert.True(invoker.InvokeCount >= 2);
         }
-
-        // TODO: FACAVAL - Dependency on the previous HTTP Function lookup/invocation
-        //[Fact]
-        //public async Task GeneratedMethods_WithOutParams_DoNotCauseDeadlocks_CSharp()
-        //{
-        //    await GeneratedMethods_WithOutParams_DoNotCauseDeadlocks("csharp");
-        //}
-
-        //[Fact]
-        //public async Task GeneratedMethods_WithOutParams_DoNotCauseDeadlocks_FSharp()
-        //{
-        //    await GeneratedMethods_WithOutParams_DoNotCauseDeadlocks("fsharp");
-        //}
-
-        //internal async Task GeneratedMethods_WithOutParams_DoNotCauseDeadlocks(string fixture)
-        //{
-        //    var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-
-        //    ScriptHostConfiguration config = new ScriptHostConfiguration()
-        //    {
-        //        RootScriptPath = @"TestScripts\FunctionGeneration",
-        //        TraceWriter = traceWriter
-        //    };
-
-        //    string secretsPath = Path.Combine(Path.GetTempPath(), @"FunctionTests\Secrets");
-        //    ISecretsRepository repository = new FileSystemSecretsRepository(secretsPath);
-        //    WebHostSettings webHostSettings = new WebHostSettings();
-        //    webHostSettings.SecretsPath = secretsPath;
-        //    var eventManagerMock = new Mock<IScriptEventManager>();
-        //    var routerMock = new Mock<IWebJobsRouter>();
-        //    var secretManager = new SecretManager(SettingsManager, repository, null);
-
-        //    using (var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), eventManagerMock.Object, SettingsManager, webHostSettings, routerMock.Object))
-        //    {
-        //        Thread runLoopThread = new Thread(_ =>
-        //        {
-        //            manager.RunAndBlock(CancellationToken.None);
-        //        });
-        //        runLoopThread.IsBackground = true;
-        //        runLoopThread.Start();
-
-        //        await TestHelpers.Await(() =>
-        //        {
-        //            return manager.State == ScriptHostState.Running;
-        //        });
-
-        //        var request = new HttpRequestMessage(HttpMethod.Get, string.Format("http://localhost/api/httptrigger-{0}", fixture));
-        //        FunctionDescriptor function = manager.GetHttpFunctionOrNull(request);
-
-        //        SynchronizationContext currentContext = SynchronizationContext.Current;
-        //        var resetEvent = new ManualResetEventSlim();
-
-        //        try
-        //        {
-        //            var requestThread = new Thread(() =>
-        //            {
-        //                var context = new SingleThreadedSynchronizationContext();
-        //                SynchronizationContext.SetSynchronizationContext(context);
-
-        //                manager.HandleRequestAsync(function, request, CancellationToken.None)
-        //                .ContinueWith(task => resetEvent.Set());
-
-        //                Thread.Sleep(500);
-        //                context.Run();
-        //            });
-
-        //            requestThread.IsBackground = true;
-        //            requestThread.Start();
-
-        //            bool threadSignaled = resetEvent.Wait(TimeSpan.FromSeconds(10));
-
-        //            requestThread.Abort();
-
-        //            Assert.True(threadSignaled, "Thread execution did not complete");
-        //        }
-        //        finally
-        //        {
-        //            SynchronizationContext.SetSynchronizationContext(currentContext);
-        //            manager.Stop();
-        //        }
-        //    }
-        //}
     }
 }

@@ -401,14 +401,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             TestLoggerProvider provider = new TestLoggerProvider();
-            scriptConfig.LoggerFactoryBuilder = new TestLoggerFactoryBuilder(provider);
+            var builder = new TestLoggerFactoryBuilder(provider);
 
             var environment = new Mock<IScriptHostEnvironment>();
             var eventManager = new Mock<IScriptEventManager>();
 
             var ex = Assert.Throws<ArgumentOutOfRangeException>(() =>
             {
-                ScriptHost.Create(environment.Object, eventManager.Object, scriptConfig, _settingsManager);
+                ScriptHost.Create(environment.Object, eventManager.Object, scriptConfig, _settingsManager, builder);
             });
 
             string msg = "ScriptHost initialization failed";
@@ -609,41 +609,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(33, scriptConfig.HostConfig.Singleton.ListenerLockRecoveryPollingInterval.TotalSeconds);
             Assert.Equal(5, scriptConfig.HostConfig.Singleton.LockAcquisitionTimeout.TotalMinutes);
             Assert.Equal(8, scriptConfig.HostConfig.Singleton.LockAcquisitionPollingInterval.TotalSeconds);
-        }
-
-        // with swagger with setting name with value
-        // with swagger with setting name with wrong value set
-        [Fact]
-        public void ApplyConfiguration_Swagger()
-        {
-            JObject config = new JObject();
-            config["id"] = ID;
-            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-
-            // no swagger section
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
-            Assert.False(scriptConfig.SwaggerEnabled);
-
-            // empty swagger section
-            JObject swagger = new JObject();
-            config["swagger"] = swagger;
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
-            Assert.False(scriptConfig.SwaggerEnabled);
-
-            // swagger section present, with swagger mode set to null
-            swagger["enabled"] = string.Empty;
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
-            Assert.False(scriptConfig.SwaggerEnabled);
-
-            // swagger section present, with swagger mode set to true
-            swagger["enabled"] = true;
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
-            Assert.True(scriptConfig.SwaggerEnabled);
-
-            // swagger section present, with swagger mode set to invalid
-            swagger["enabled"] = "invalid";
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
-            Assert.False(scriptConfig.SwaggerEnabled);
         }
 
         [Fact]
@@ -1019,13 +984,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = rootPath
             };
 
-            config.LoggerFactoryBuilder = loggerFactoryHookMock.Object;
-
             config.HostConfig.HostId = ID;
             var environment = new Mock<IScriptHostEnvironment>();
             var eventManager = new Mock<IScriptEventManager>();
 
-            var host = ScriptHost.Create(environment.Object, eventManager.Object, config);
+            var host = ScriptHost.Create(environment.Object, eventManager.Object, config, null, loggerFactoryHookMock.Object);
 
             // We shouldn't have any log messages
             foreach (var logger in loggerProvider.CreatedLoggers)
@@ -1060,13 +1023,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = rootPath
             };
 
-            config.LoggerFactoryBuilder = loggerFactoryHookMock.Object;
-
             config.HostConfig.HostId = ID;
             var environment = new Mock<IScriptHostEnvironment>();
             var eventManager = new Mock<IScriptEventManager>();
 
-            Assert.Throws<FormatException>(() => ScriptHost.Create(environment.Object, eventManager.Object, config));
+            Assert.Throws<FormatException>(() => ScriptHost.Create(environment.Object, eventManager.Object, config, null, loggerFactoryHookMock.Object, null));
 
             // We should have gotten sone messages.
             var logger = loggerProvider.CreatedLoggers.Single();
@@ -1094,7 +1055,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, new DefaultLoggerFactoryBuilder(), () => true);
 
-            Assert.IsType<FileLoggerProvider>(loggerFactory.Providers.Single());
+            Assert.Contains(loggerFactory.Providers, p => p is FileLoggerProvider);
             Assert.Equal(1, metricsLogger.LoggedEvents.Count);
             Assert.Equal(MetricEventNames.ApplicationInsightsDisabled, metricsLogger.LoggedEvents[0]);
         }
@@ -1116,13 +1077,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, new DefaultLoggerFactoryBuilder(), () => true);
 
-            Assert.Equal(2, loggerFactory.Providers.Count);
+            Assert.Equal(3, loggerFactory.Providers.Count);
 
             Assert.Equal(1, loggerFactory.Providers.OfType<FileLoggerProvider>().Count());
 
             // The app insights logger is internal, so just check the name
-            ILoggerProvider appInsightsProvider = loggerFactory.Providers.Last();
-            Assert.Equal("ApplicationInsightsLoggerProvider", appInsightsProvider.GetType().Name);
+            Assert.Contains(loggerFactory.Providers, p => string.Equals(p.GetType().Name, "ApplicationInsightsLoggerProvider"));
 
             Assert.Equal(1, metricsLogger.LoggedEvents.Count);
             Assert.Equal(MetricEventNames.ApplicationInsightsEnabled, metricsLogger.LoggedEvents[0]);
@@ -1141,13 +1101,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var channel = new TestTelemetryChannel();
             var builder = new TestChannelLoggerFactoryBuilder(channel);
 
-            config.LoggerFactoryBuilder = builder;
             config.HostConfig.LoggerFactory = new LoggerFactory();
 
             var settingsManager = ScriptSettingsManager.Instance;
             settingsManager.ApplicationInsightsInstrumentationKey = TestChannelLoggerFactoryBuilder.ApplicationInsightsKey;
 
-            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, new DefaultLoggerFactoryBuilder(), () => true);
+            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, builder, () => true);
 
             // Create a logger and try out the configured factory. We need to pretend that it is coming from a
             // function, so set the function name and the category appropriately.
@@ -1441,7 +1400,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Mock<IScriptHostEnvironment> mockEnvironment = new Mock<IScriptHostEnvironment>(MockBehavior.Strict);
             var config = new ScriptHostConfiguration();
             var eventManager = new Mock<IScriptEventManager>();
-            var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, eventManager.Object, config, null, null });
+            var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, eventManager.Object, config, null, null, null });
 
             var functions = new Collection<FunctionDescriptor>();
             var functionErrors = new Dictionary<string, Collection<string>>();
