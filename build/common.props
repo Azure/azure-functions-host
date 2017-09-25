@@ -18,10 +18,11 @@
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <PackageLicenseUrl>http://www.microsoft.com/web/webpi/eula/aspnetcomponent_rtw_enu.htm</PackageLicenseUrl>
     <PackageIconUrl>https://raw.githubusercontent.com/Azure/azure-webjobs-sdk/dev/webjobs.png</PackageIconUrl>
-    <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src\src.ruleset</CodeAnalysisRuleSet>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="$(SolutionDir)\stylecop.json" Link="stylecop.json" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)..\stylecop.json" Link="stylecop.json" />
   </ItemGroup>
 </Project>

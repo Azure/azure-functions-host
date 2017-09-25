@@ -166,8 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 RootLogPath = settings.LogPath,
                 FileLoggingMode = FileLoggingMode.DebugOnly,
                 TraceWriter = settings.TraceWriter,
-                IsSelfHost = settings.IsSelfHost,
-                LoggerFactoryBuilder = settings.LoggerFactoryBuilder
+                IsSelfHost = settings.IsSelfHost
             };
 
             if (inStandbyMode)

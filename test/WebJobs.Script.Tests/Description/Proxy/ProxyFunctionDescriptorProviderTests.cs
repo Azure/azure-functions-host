@@ -14,6 +14,9 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using Microsoft.WebJobs.Script.Tests;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -58,10 +61,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 (object[] arguments, IFuncExecutor funcExecutor, ILogger logger) =>
                 {
                     object requestObj = arguments != null && arguments.Length > 0 ? arguments[0] : null;
-                    var request = requestObj as HttpRequestMessage;
-                    var response = new HttpResponseMessage(HttpStatusCode.OK);
-                    response.Headers.Add("myversion", "123");
-                    request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+                    var request = requestObj as HttpRequest;
+                    var response = new StatusCodeResult(StatusCodes.Status200OK);
+                    request.HttpContext.Response.Headers.Add("myversion", "123");
+                    request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
                     return Task.CompletedTask;
                 });
 
@@ -92,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var proxyInvoker = functionDescriptor.Invoker as ProxyFunctionInvoker;
 
-            var req = new HttpRequestMessage(HttpMethod.Get, "http://localhost/myproxy");
+            var req = HttpTestHelpers.CreateHttpRequest("GET", "http://localhost/myproxy");
 
             var executionContext = new ExecutionContext
             {
@@ -102,9 +105,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await proxyInvoker.Invoke(parameters);
 
-            Assert.NotNull(req.Properties[ScriptConstants.AzureFunctionsHttpResponseKey]);
+            Assert.NotNull(req.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey]);
 
-            var response = req.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] as HttpResponseMessage;
+            var response = req.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] as IActionResult;
 
             Assert.NotNull(response);
         }
