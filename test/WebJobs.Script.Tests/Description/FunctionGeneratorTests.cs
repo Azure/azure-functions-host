@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -72,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var userRetType = userFunc.ReturnType;
             ParameterDescriptor returnParameter;
-            if (DotNetFunctionDescriptorProvider.TryCreateReturnValueParameterDescriptor(userRetType, new Binding.FunctionBinding[0], out returnParameter))
+            if (DotNetFunctionDescriptorProvider.TryCreateReturnValueParameterDescriptor(userRetType, new FunctionBinding[0], out returnParameter))
             {
                 parameters.Add(returnParameter);
             }
