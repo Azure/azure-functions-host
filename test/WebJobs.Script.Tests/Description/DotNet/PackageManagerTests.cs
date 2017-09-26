@@ -17,7 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(@"ProjectWithLockMatch", false)]
         [InlineData(@"FunctionWithNoProject", false)]
-        [InlineData(@"ProjectWithMismatchedLock\MismatchedGroupFrameworkDependencies", true)]
         [InlineData(@"ProjectWithMismatchedLock\MismatchedPackageVersions", true)]
         [InlineData(@"ProjectWithMismatchedLock\MismatchedProjectDependencies", true)]
         [InlineData(@"ProjectWithoutLock", true)]
@@ -38,45 +37,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             else
             {
                 Assert.False(result, message);
-            }
-        }
-
-        [Fact]
-        public void ResolveNuGetPath_WithNoEnvironmentHint_AndNoLocalFile_ReturnsExpectedResult()
-        {
-            using (var variables = new TestScopedSettings(SettingsManager, "AzureWebJobs_NuGetPath", null))
-            {
-                string result = PackageManager.ResolveNuGetPath();
-
-                Assert.Equal("nuget.exe", result);
-            }
-        }
-
-        [Fact]
-        public void ResolveNuGetPath_Local_WithNoEnvironmentHint_ReturnsExpectedResult()
-        {
-            using (var variables = new TestScopedSettings(SettingsManager, "AzureWebJobs_NuGetPath", null))
-            using (var nugetDirectory = new TempDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin\\tools\\")))
-            {
-                string nugetPath = Path.Combine(nugetDirectory.Path, "nuget.exe");
-                File.WriteAllText(nugetPath, string.Empty);
-
-                string result = PackageManager.ResolveNuGetPath();
-
-                Assert.Equal(nugetPath, result);
-            }
-        }
-
-        [Fact]
-        public void ResolveNuGetPath_Local_WithEnvironmentHint_ReturnsExpectedResult()
-        {
-            string path = @"c:\some\path\to\nuget.exe";
-
-            using (var variables = new TestScopedSettings(SettingsManager, "AzureWebJobs_NuGetPath", path))
-            {
-                string result = PackageManager.ResolveNuGetPath();
-
-                Assert.Equal(path, result);
             }
         }
     }

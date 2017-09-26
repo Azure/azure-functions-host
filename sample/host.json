@@ -22,5 +22,6 @@
         "prefetchCount": 1000,
         "batchCheckpointFrequency": 1
     },
-    "functionTimeout": "00:05:00"
+    "functionTimeout": "00:05:00",
+    "functions": ["HttpTrigger-CSharp"]
 }

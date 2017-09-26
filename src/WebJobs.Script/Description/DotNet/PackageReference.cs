@@ -16,17 +16,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             Name = name;
             Version = version;
-            Assemblies = new Dictionary<AssemblyName, string>(new AssemblyNameEqualityComparer());
+            CompileTimeAssemblies = new Dictionary<AssemblyName, string>(new AssemblyNameEqualityComparer());
             FrameworkAssemblies = new Dictionary<AssemblyName, string>(new AssemblyNameEqualityComparer());
+            RuntimeAssemblies = new Dictionary<AssemblyName, string>(new AssemblyNameEqualityComparer());
         }
 
-        public Dictionary<AssemblyName, string> Assemblies { get; private set; }
+        public Dictionary<AssemblyName, string> CompileTimeAssemblies { get; }
 
-        public Dictionary<AssemblyName, string> FrameworkAssemblies { get; private set; }
+        public Dictionary<AssemblyName, string> RuntimeAssemblies { get; }
 
-        public string Name { get; private set; }
+        public Dictionary<AssemblyName, string> FrameworkAssemblies { get; }
 
-        public string Version { get; private set; }
+        public string Name { get; }
+
+        public string Version { get; }
 
         private class AssemblyNameEqualityComparer : IEqualityComparer<AssemblyName>
         {

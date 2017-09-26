@@ -8,18 +8,22 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description.DotNet;
+using Microsoft.Build.Construction;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using NuGet.Frameworks;
 using NuGet.LibraryModel;
+using NuGet.ProjectModel;
 using NuGet.Versioning;
+using static Microsoft.Azure.WebJobs.Script.ScriptConstants;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -28,9 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// </summary>
     internal sealed class PackageManager
     {
-        private const string NugetPathEnvironmentKey = "AzureWebJobs_NuGetPath";
-        private const string NuGetFileName = "nuget.exe";
-
         private readonly string _functionDirectory;
         private readonly TraceWriter _traceWriter;
         private readonly ILogger _logger;
@@ -57,6 +58,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 nugetFilePath = ResolveNuGetPath();
                 currentLockFileHash = GetCurrentLockFileHash(_functionDirectory);
 
+                // Copy the file to a temporary location, which is where we'll be performing our restore from:
+                string tempRestoreLocation = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                string restoreProjectPath = Path.Combine(tempRestoreLocation, Path.GetFileName(projectPath));
+                Directory.CreateDirectory(tempRestoreLocation);
+                File.Copy(projectPath, restoreProjectPath);
+
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = nugetFilePath,
@@ -66,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     UseShellExecute = false,
                     ErrorDialog = false,
                     WorkingDirectory = _functionDirectory,
-                    Arguments = string.Format(CultureInfo.InvariantCulture, "restore \"{0}\" -PackagesDirectory \"{1}\"", projectPath, nugetHome)
+                    Arguments = string.Format(CultureInfo.InvariantCulture, "restore \"{0}\" --packages \"{1}\"", restoreProjectPath, nugetHome)
                 };
 
                 var process = new Process { StartInfo = startInfo };
@@ -76,6 +83,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 process.Exited += (s, e) =>
                 {
+                    string lockFileLocation = Path.Combine(tempRestoreLocation, "obj", DotNetConstants.ProjectLockFileName);
+                    if (process.ExitCode == 0 && File.Exists(lockFileLocation))
+                    {
+                        File.Copy(lockFileLocation, Path.Combine(_functionDirectory, DotNetConstants.ProjectLockFileName), true);
+                    }
+
                     string newLockFileHash = GetCurrentLockFileHash(_functionDirectory);
                     var result = new PackageRestoreResult
                     {
@@ -87,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     process.Close();
                 };
 
-                string message = "Starting NuGet restore";
+                string message = "Starting packages restore";
                 _traceWriter.Info(message);
                 _logger?.LogInformation(message);
 
@@ -98,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (Exception exc)
             {
-                string message = $@"NuGet restore failed with message: '{exc.Message}'
+                string message = $@"Package restore failed with message: '{exc.Message}'
 Function directory: {_functionDirectory}
 Project path: {projectPath}
 Packages path: {nugetHome}
@@ -136,25 +149,7 @@ Lock file hash: {currentLockFileHash}";
             }
         }
 
-        public static string ResolveNuGetPath()
-        {
-            // Check if we have the path in the well known environment variable
-            string path = ScriptSettingsManager.Instance.GetSetting(NugetPathEnvironmentKey);
-
-            //// If we don't have the path, get the runtime's copy of NuGet
-            if (string.IsNullOrEmpty(path))
-            {
-                string runtimeNugetPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin", "tools", NuGetFileName);
-
-                if (File.Exists(runtimeNugetPath))
-                {
-                    path = runtimeNugetPath;
-                }
-            }
-
-            // Return the resolved value or expect NuGet.exe to be present in the path.
-            return path ?? NuGetFileName;
-        }
+        public static string ResolveNuGetPath() => DotNetMuxer.MuxerPathOrDefault();
 
         public static bool RequiresPackageRestore(string functionPath)
         {
@@ -162,7 +157,7 @@ Lock file hash: {currentLockFileHash}";
 
             if (!File.Exists(projectFilePath))
             {
-                // If there's no project.json, we can just return from here
+                // If there's no project file, we can just return from here
                 // as there's nothing to restore
                 return false;
             }
@@ -176,7 +171,7 @@ Lock file hash: {currentLockFileHash}";
                 return true;
             }
 
-            // This mimics the logic used by Nuget to validate a lock file against a given project.json file.
+            // This mimics the logic used by Nuget to validate a lock file against a given project file.
             // In order to determine whether we have a match, we:
             //  - Read the project frameworks and their dependencies,
             //      extracting the appropriate version range using the lock file format
@@ -184,116 +179,48 @@ Lock file hash: {currentLockFileHash}";
             //  - Ensure that each project dependency matches a dependency in the lock file for the
             //      appropriate group matching the framework (including non-framework specific/project wide dependencies)
 
-            var projectFrameworks = GetProjectDependencies(projectFilePath);
-            var dependencyGroups = GetDependencyGroups(lockFilePath);
-
-            foreach (var dependencyGroup in dependencyGroups)
+            LockFile lockFile = null;
+            try
             {
-                IOrderedEnumerable<string> projectDependencies;
-                projectDependencies = projectFrameworks
-                    .FirstOrDefault(f => Equals(dependencyGroup.Framework, f.Framework))
-                    ?.Dependencies?.OrderBy(d => d, StringComparer.OrdinalIgnoreCase);
-
-                if (!projectDependencies?.SequenceEqual(dependencyGroup.Dependencies.OrderBy(d => d, StringComparer.OrdinalIgnoreCase)) ?? false)
-                {
-                    return true;
-                }
+                var reader = new LockFileFormat();
+                lockFile = reader.Read(lockFilePath);
+            }
+            catch (FileFormatException)
+            {
+                return true;
             }
 
-            return false;
+            var projectDependencies = GetProjectDependencies(projectFilePath)
+                .Select(d => d.ToLockFileDependencyGroupString())
+                .OrderBy(d => d, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var dependencyGroups = lockFile.ProjectFileDependencyGroups
+                .Where(d => string.Equals(d.FrameworkName, FrameworkConstants.CommonFrameworks.NetStandard20.DotNetFrameworkName, StringComparison.OrdinalIgnoreCase))
+                .Aggregate(new List<string>(), (a, d) =>
+                {
+                    a.AddRange(d.Dependencies.Where(name => !name.StartsWith("NETStandard.Library", StringComparison.OrdinalIgnoreCase)));
+                    return a;
+                });
+
+            return !projectDependencies.SequenceEqual(dependencyGroups.OrderBy(d => d, StringComparer.OrdinalIgnoreCase));
         }
 
-        private static IList<FrameworkInfo> GetProjectDependencies(string projectFilePath)
+        private static IList<LibraryRange> GetProjectDependencies(string projectFilePath)
         {
-            var frameworks = new List<FrameworkInfo>();
-
-            var jobject = JObject.Parse(File.ReadAllText(projectFilePath));
-            var targetFrameworks = jobject.Value<JToken>("frameworks") as JObject;
-            var projectDependenciesToken = jobject.Value<JToken>("dependencies") as JObject;
-
-            if (projectDependenciesToken != null)
+            using (var reader = XmlTextReader.Create(new StringReader(File.ReadAllText(projectFilePath))))
             {
-                IList<string> dependencies = ReadDependencies(projectDependenciesToken);
-                frameworks.Add(new FrameworkInfo(null, dependencies));
+                var root = ProjectRootElement.Create(reader);
+
+                return root.Items
+                   .Where(i => PackageReferenceElementName.Equals(i.ItemType, StringComparison.Ordinal))
+                   .Select(i => new LibraryRange
+                   {
+                       Name = i.Include,
+                       VersionRange = VersionRange.Parse(i.Metadata.First(m => PackageReferenceVersionElementName.Equals(m.Name, StringComparison.Ordinal)).Value)
+                   })
+                   .ToList();
             }
-
-            if (targetFrameworks != null)
-            {
-                foreach (var item in targetFrameworks)
-                {
-                    var dependenciesToken = item.Value.SelectToken("dependencies") as JObject;
-
-                    var framework = NuGetFramework.Parse(item.Key);
-                    IList<string> dependencies = ReadDependencies(dependenciesToken);
-
-                    frameworks.Add(new FrameworkInfo(framework, dependencies));
-                }
-            }
-
-            return frameworks;
-        }
-
-        private static IList<string> ReadDependencies(JObject dependenciesToken)
-        {
-            var dependencies = new List<string>();
-
-            if (dependenciesToken != null)
-            {
-                foreach (var dependency in dependenciesToken)
-                {
-                    string name = dependency.Key;
-                    string version = null;
-
-                    if (dependency.Value.Type == JTokenType.Object)
-                    {
-                        // { "PackageName" : { "version" :"1.0" ... }
-                        version = dependency.Value.Value<string>("version");
-                    }
-                    else if (dependency.Value.Type == JTokenType.String)
-                    {
-                        // { "PackageName" : "1.0" }
-                        version = dependency.Value.Value<string>();
-                    }
-                    else
-                    {
-                        throw new FormatException($"Unable to parse project.json file. Dependency '{name}' is not correctly formatted.");
-                    }
-
-                    var libraryRange = new LibraryRange
-                    {
-                        Name = name,
-                        VersionRange = VersionRange.Parse(version)
-                    };
-
-                    dependencies.Add(libraryRange.ToLockFileDependencyGroupString());
-                }
-            }
-
-            return dependencies;
-        }
-
-        private static IList<FrameworkInfo> GetDependencyGroups(string projectLockFilePath)
-        {
-            var dependencyGroups = new List<FrameworkInfo>();
-
-            var jobject = JObject.Parse(File.ReadAllText(projectLockFilePath));
-            var targetFrameworks = jobject.Value<JToken>("projectFileDependencyGroups") as JObject;
-
-            foreach (var dependencyGroup in targetFrameworks)
-            {
-                NuGetFramework framework = null;
-                if (!string.IsNullOrEmpty(dependencyGroup.Key))
-                {
-                    framework = NuGetFramework.Parse(dependencyGroup.Key);
-                }
-
-                IList<string> dependencies = dependencyGroup.Value.ToObject<List<string>>();
-                var frameworkInfo = new FrameworkInfo(framework, dependencies);
-
-                dependencyGroups.Add(frameworkInfo);
-            }
-
-            return dependencyGroups;
         }
 
         internal static string GetNugetPackagesPath()
@@ -321,19 +248,6 @@ Lock file hash: {currentLockFileHash}";
             string message = e.Data ?? string.Empty;
             _traceWriter.Info(message);
             _logger?.LogInformation(message);
-        }
-
-        private class FrameworkInfo
-        {
-            public FrameworkInfo(NuGetFramework framework, IList<string> dependencies)
-            {
-                Framework = framework;
-                Dependencies = new ReadOnlyCollection<string>(dependencies);
-            }
-
-            public ReadOnlyCollection<string> Dependencies { get; }
-
-            public NuGetFramework Framework { get; }
         }
     }
 }

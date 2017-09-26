@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             package = _packageAssemblyResolver.Packages.FirstOrDefault(p =>
                 string.Compare(referenceName, p.Name, StringComparison.OrdinalIgnoreCase) == 0 ||
-                p.Assemblies.Keys.Any(a => string.Compare(a.Name, referenceName) == 0));
+                p.CompileTimeAssemblies.Keys.Any(a => string.Compare(a.Name, referenceName) == 0));
 
             return package != null;
         }
