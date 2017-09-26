@@ -8,7 +8,10 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json.Linq;
+using NuGet.Frameworks;
+using NuGet.ProjectModel;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -18,7 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public sealed class PackageAssemblyResolver
     {
         private const string EmptyFolderFileMarker = "_._";
-        private const string FrameworkTargetName = ".NETFramework,Version=v4.6";
 
         private readonly ImmutableArray<PackageReference> _packages;
 
@@ -41,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 return _packages.Aggregate(new List<string>(), (assemblies, p) =>
                 {
-                    assemblies.AddRange(p.Assemblies.Values);
+                    assemblies.AddRange(p.CompileTimeAssemblies.Values);
                     assemblies.AddRange(p.FrameworkAssemblies.Values);
                     return assemblies;
                 }).Distinct();
@@ -55,58 +57,55 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (File.Exists(fileName))
             {
-                var jobject = JObject.Parse(File.ReadAllText(fileName));
-
-                var target = jobject.SelectTokens(string.Format(CultureInfo.InvariantCulture, "$.targets['{0}']", FrameworkTargetName)).FirstOrDefault();
-
-                if (target != null)
+                LockFile lockFile = null;
+                try
                 {
-                    string nugetHome = PackageManager.GetNugetPackagesPath();
+                    var reader = new LockFileFormat();
+                    lockFile = reader.Read(fileName);
 
-                    foreach (JProperty token in target)
+                    var target = lockFile.Targets
+                        .FirstOrDefault(t => string.Equals(t.TargetFramework.DotNetFrameworkName, FrameworkConstants.CommonFrameworks.NetStandard20.DotNetFrameworkName));
+
+                    if (target != null)
                     {
-                        var referenceNameParts = token.Name.Split('/');
-                        if (referenceNameParts.Length != 2)
+                        string nugetCachePath = PackageManager.GetNugetPackagesPath();
+
+                        // Get all the referenced libraries for the target, excluding the framework references we add by default
+                        var libraries = target.Libraries.Where(s => !DotNetConstants.FrameworkReferences.Contains(s.Name));
+                        foreach (var library in libraries)
                         {
-                            throw new FormatException(string.Format(CultureInfo.InvariantCulture, "The package name '{0}' is not correctly formatted.", token.Name));
+                            var package = new PackageReference(library.Name, library.Version.ToFullString());
+
+                            var assemblies = GetAssembliesList(library.CompileTimeAssemblies, nugetCachePath, package);
+
+                            package.CompileTimeAssemblies.AddRange(assemblies);
+
+                            assemblies = GetAssembliesList(library.RuntimeAssemblies, nugetCachePath, package);
+
+                            package.RuntimeAssemblies.AddRange(assemblies);
+
+                            var frameworkAssemblies = library.FrameworkAssemblies.ToDictionary(a => new AssemblyName(a));
+                            package.FrameworkAssemblies.AddRange(frameworkAssemblies);
+
+                            builder.Add(package);
                         }
-
-                        var package = new PackageReference(referenceNameParts[0], referenceNameParts[1]);
-
-                        var references = token.SelectTokens("$..compile").FirstOrDefault();
-                        if (references != null)
-                        {
-                            foreach (JProperty reference in references)
-                            {
-                                if (!reference.Name.EndsWith(EmptyFolderFileMarker, StringComparison.Ordinal))
-                                {
-                                    string path = Path.Combine(nugetHome, token.Name, reference.Name);
-                                    path = path.Replace('/', '\\');
-
-                                    if (File.Exists(path))
-                                    {
-                                        package.Assemblies.Add(AssemblyName.GetAssemblyName(path), path);
-                                    }
-                                }
-                            }
-                        }
-
-                        var frameworkAssemblies = token.SelectTokens("$..frameworkAssemblies").FirstOrDefault();
-                        if (frameworkAssemblies != null)
-                        {
-                            foreach (var assembly in frameworkAssemblies)
-                            {
-                                string assemblyName = assembly.ToString();
-                                package.FrameworkAssemblies.Add(new AssemblyName(assemblyName), assemblyName);
-                            }
-                        }
-
-                        builder.Add(package);
                     }
+                }
+                catch (FileFormatException)
+                {
+                    return ImmutableArray<PackageReference>.Empty;
                 }
             }
 
             return builder.ToImmutableArray();
+        }
+
+        private static IReadOnlyDictionary<AssemblyName, string> GetAssembliesList(IList<LockFileItem> compileTimeAssemblies, string nugetCachePath, PackageReference package)
+        {
+            string packagePath = Path.Combine(nugetCachePath, package.Name, package.Version.ToString());
+            return compileTimeAssemblies.Select(i => Path.Combine(packagePath, i.Path))
+                                .Where(p => !p.EndsWith(EmptyFolderFileMarker) && File.Exists(p))
+                                .ToDictionary(p => AssemblyName.GetAssemblyName(p), p => new Uri(p).LocalPath);
         }
 
         public bool TryResolveAssembly(string name, out string path)
@@ -116,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             foreach (var package in _packages)
             {
-                if (package.Assemblies.TryGetValue(assemblyName, out path) ||
+                if (package.RuntimeAssemblies.TryGetValue(assemblyName, out path) ||
                     package.FrameworkAssemblies.TryGetValue(assemblyName, out path))
                 {
                     break;

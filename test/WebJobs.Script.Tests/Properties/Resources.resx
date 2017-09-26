@@ -122,7 +122,7 @@
   "locked": false,
   "version": 1,
   "targets": {{
-    ".NETFramework,Version=v4.6": {{
+    ".NETStandard,Version=v2.0": {{
       "Test.Package/1.0.0": {{
         "dependencies": {{
         }},
@@ -142,7 +142,7 @@
   }},
   "projectFileDependencyGroups": {{
     "": [],
-    ".NETFramework,Version=v4.6": [
+    ".NETStandard,Version=v2.0": [
       "Test.Package &gt;= 1.0.0"
     ]
   }}

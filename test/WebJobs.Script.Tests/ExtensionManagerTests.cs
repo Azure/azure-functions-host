@@ -12,6 +12,7 @@ using Moq;
 using Moq.Protected;
 using WebJobs.Script.Tests;
 using Xunit;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {

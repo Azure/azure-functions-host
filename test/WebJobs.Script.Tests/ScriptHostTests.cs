@@ -1442,6 +1442,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 config.HostConfig.HostId = ID;
                 var environment = new Mock<IScriptHostEnvironment>();
                 var eventManager = new Mock<IScriptEventManager>();
+
+                ScriptSettingsManager.Instance.Reset();
                 Host = ScriptHost.Create(environment.Object, eventManager.Object, config);
             }
 

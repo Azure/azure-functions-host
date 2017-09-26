@@ -7,8 +7,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         public const string PrivateAssembliesFolderName = "bin";
         public const string CompilationReferenceAssembliesFolderName = "compilationrefs";
-        public const string ProjectFileName = "project.json";
-        public const string ProjectLockFileName = "project.lock.json";
+        public const string ProjectFileName = "function.proj";
+        public const string ProjectLockFileName = "project.assets.json";
 
         public const string MissingFunctionEntryPointCompilationCode = "AF001";
         public const string AmbiguousFunctionEntryPointsCompilationCode = "AF002";
