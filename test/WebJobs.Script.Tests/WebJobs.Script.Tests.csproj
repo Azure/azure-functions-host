@@ -111,8 +111,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.AppService.Proxy.Client.Contract, Version=0.3.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.Client.Contract.0.3.1.1\lib\net46\Microsoft.Azure.AppService.Proxy.Client.Contract.dll</HintPath>
-      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.Client.Contract.0.3.2.5\lib\net46\Microsoft.Azure.AppService.Proxy.Client.Contract.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.Documents.ChangeFeedProcessor, Version=1.14.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.DocumentDB.ChangeFeedProcessor.1.0.0\lib\net45\Microsoft.Azure.Documents.ChangeFeedProcessor.dll</HintPath>
