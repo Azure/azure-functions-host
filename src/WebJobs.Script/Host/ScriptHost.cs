@@ -562,7 +562,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Get the set of types that should be directly loaded. These have the "configurationSource" : "attributes" set.
         /// They will be indexed and invoked directly by the WebJobs SDK and skip the IL generator and invoker paths.
         /// </summary>
-        private static IEnumerable<Type> GetDirectTypes(IEnumerable<FunctionMetadata> functionMetadataList)
+        private IEnumerable<Type> GetDirectTypes(IEnumerable<FunctionMetadata> functionMetadataList)
         {
             HashSet<Type> visitedTypes = new HashSet<Type>();
 
@@ -578,8 +578,17 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 Assembly assembly = Assembly.LoadFrom(path);
                 var type = assembly.GetType(typeName);
-
-                visitedTypes.Add(type);
+                if (type != null)
+                {
+                    visitedTypes.Add(type);
+                }
+                else
+                {
+                    // This likely means the function.json and dlls are out of sync. Perhaps a badly generated function.json?
+                    string msg = $"Failed to load type '{typeName}' from '{path}'";
+                    TraceWriter.Warning(msg);
+                    _startupLogger?.LogWarning(msg);
+                }
             }
             return visitedTypes;
         }
