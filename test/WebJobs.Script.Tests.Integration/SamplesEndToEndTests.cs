@@ -211,6 +211,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task Home_Get_InAzureEnvironment_AsInternalRequest_ReturnsNoContent()
+        {
+            // Pings to the site root should not return the homepage content if they are internal requests.
+            // This test sets a website instance Id which means that we'll go down the IsAzureEnvironment = true codepath
+            // but the sent request does NOT include an X-ARR-LOG-ID header. This indicates the request was internal.
+
+            using (new TestScopedSettings(_settingsManager, EnvironmentSettingNames.AzureWebsiteInstanceId, "123"))
+            {
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
+
+                HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+            }
+        }
+
+        [Fact]
         public async Task HttpTrigger_CSharp_Poco_Post_Succeeds()
         {
             string uri = "api/httptrigger-csharp-poco?code=zlnu496ve212kk1p84ncrtdvmtpembduqp25ajjc";

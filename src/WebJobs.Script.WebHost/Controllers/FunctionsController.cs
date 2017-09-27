@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 {
                     // if the request is to the root and we can't find any matching FunctionDescriptors which might have been setup by proxies
                     // then homepage logic will be applied.
-                    return IsHomepageDisabled
+                    return (IsHomepageDisabled || request.IsAntaresInternalRequest())
                         ? new HttpResponseMessage(HttpStatusCode.NoContent)
                         : new HttpResponseMessage(HttpStatusCode.OK)
                         {
