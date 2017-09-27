@@ -1,19 +1,17 @@
-﻿using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
 {
     public class DefaultWorkerProcessFactory : IWorkerProcessFactory
     {
-
         public virtual Process CreateWorkerProcess(WorkerCreateContext context)
         {
-            var startInfo = new ProcessStartInfo(context.WorkerConfig.ExecutablePath)
+            var startInfo = new ProcessStartInfo(context.Arguments.ExecutablePath)
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -31,10 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
 
         public string GetArguments(WorkerCreateContext context)
         {
-            var config = context.WorkerConfig;
-            var argumentsBuilder = config.ExecutableArguments.Aggregate(new StringBuilder(), MergeArguments);
-            argumentsBuilder.AppendFormat(" \"{0}\"", config.WorkerPath);
-            config.WorkerArguments.Aggregate(argumentsBuilder, MergeArguments);
+            var argumentsBuilder = context.Arguments.ExecutableArguments.Aggregate(new StringBuilder(), MergeArguments);
+            argumentsBuilder.AppendFormat(" \"{0}\"", context.Arguments.WorkerPath);
+            context.Arguments.WorkerArguments.Aggregate(argumentsBuilder, MergeArguments);
             argumentsBuilder.AppendFormat(" --host {0} --port {1} --workerId {2} --requestId {3}",
                 context.ServerUri.Host, context.ServerUri.Port, context.WorkerId, context.RequestId);
             return argumentsBuilder.ToString();

@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
+using Microsoft.Azure.WebJobs.Script.Dispatch;
 
 namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
@@ -19,6 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
 
         public IDictionary<string, string> Capabilities { get; set; }
 
-        public WorkerConfig Config { get; set; }
+        internal WorkerConfig Config { get; set; }
     }
 }

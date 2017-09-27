@@ -449,11 +449,14 @@ namespace Microsoft.Azure.WebJobs.Script
                         hostConfig.LoggerFactory);
                 };
 
-                _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, TraceWriter, new List<WorkerConfig>()
+                var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
+                var workerConfigs = configFactory.GetConfigs(new List<IWorkerProvider>()
                 {
-                    new NodeLanguageWorkerConfig(),
-                    new JavaLanguageWorkerConfig()
+                    new NodeWorkerProvider(),
+                    new JavaWorkerProvider()
                 });
+
+                _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, TraceWriter, workerConfigs);
 
                 _eventSubscriptions.Add(EventManager.OfType<WorkerErrorEvent>()
                     .Subscribe(evt =>
