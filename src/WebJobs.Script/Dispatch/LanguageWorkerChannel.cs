@@ -313,9 +313,8 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             {
                 RequestId = Guid.NewGuid().ToString(),
                 WorkerId = _workerId,
-                WorkerConfig = _workerConfig,
+                Arguments = _workerConfig.Arguments,
                 WorkingDirectory = _scriptConfig.RootScriptPath,
-                Logger = _logger,
                 ServerUri = _serverUri,
             };
 

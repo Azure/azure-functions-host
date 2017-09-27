@@ -36,13 +36,13 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             IRpcServer server,
             CreateChannel channelFactory,
             TraceWriter traceWriter,
-            List<WorkerConfig> workers)
+            IEnumerable<WorkerConfig> workers)
         {
             _eventManager = manager;
             _server = server;
             _channelFactory = channelFactory;
             _traceWriter = traceWriter;
-            _workerConfigs = workers ?? new List<WorkerConfig>();
+            _workerConfigs = workers?.ToList() ?? new List<WorkerConfig>();
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                 .Subscribe(WorkerError);
