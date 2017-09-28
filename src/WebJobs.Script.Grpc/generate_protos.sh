@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Copyright 2016, Google Inc.
 # All rights reserved.
 #
@@ -34,7 +36,7 @@
 if [[ $OSTYPE == "darwin"* ]]; then
      PLATFORM="macosx_x86"
 elif [[ $OSTYPE == "linux"* ]];then
-    PLATFORM="linux_x86"
+    PLATFORM="linux_x64"
 fi
 
 NUGET_PATH=$HOME/.nuget/packages/grpc.tools/1.4.1/tools/$PLATFORM
