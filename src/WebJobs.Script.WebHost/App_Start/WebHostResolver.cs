@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -95,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private void EnsureInitialized(WebHostSettings settings)
+        internal void EnsureInitialized(WebHostSettings settings)
         {
             if (!WebScriptHostManager.InStandbyMode)
             {
@@ -108,9 +109,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
                     InitializeFileSystem();
 
-                    // here we're undergoing the one and only one
-                    // standby mode specialization
-                    _activeScriptHostConfig.TraceWriter.Info("Host has been specialized");
+                    if (_standbyHostManager != null)
+                    {
+                        // we're undergoing the one and only one
+                        // standby mode specialization
+                        _activeScriptHostConfig.TraceWriter.Info(Resources.HostSpecializationTrace);
+                    }
 
                     _standbyHostManager?.Dispose();
                     _standbyReceiverManager?.Dispose();
