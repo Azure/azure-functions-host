@@ -148,71 +148,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string serviceBusQueueName = string.Format("test-input-{0}", FixtureId);
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
-
-            // TODO: FACAVAL - SB Support
-            //var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
-
-            //namespaceManager.DeleteQueue(serviceBusQueueName);
-            //namespaceManager.CreateQueue(serviceBusQueueName);
-
-            //ServiceBusQueueClient = Microsoft.ServiceBus.Messaging.QueueClient.CreateFromConnectionString(connectionString, serviceBusQueueName);
         }
 
         public virtual void Dispose()
         {
             Host.Stop();
             Host.Dispose();
-
-            // TODO: FACAVAL - SB AND DOCUMENTDB
-            //ServiceBusQueueClient.Close();
-            //DocumentClient?.Dispose();
         }
-
-        //public async Task InitializeDocumentClient()
-        //{
-        //    if (DocumentClient == null)
-        //    {
-        //        var builder = new System.Data.Common.DbConnectionStringBuilder();
-        //        builder.ConnectionString = AmbientConnectionStringProvider.Instance.GetConnectionString("AzureWebJobsDocumentDBConnectionString");
-        //        var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
-
-        //        DocumentClient = new DocumentClient(serviceUri, builder["AccountKey"].ToString());
-        //        await DocumentClient.OpenAsync();
-        //    }
-        //}
-
-        //public async Task<bool> CreateDocumentCollections()
-        //{
-        //    bool willCreateCollection = false;
-        //    Documents.Database db = new Documents.Database() { Id = "ItemDb" };
-        //    await DocumentClient.CreateDatabaseIfNotExistsAsync(db);
-        //    Uri dbUri = UriFactory.CreateDatabaseUri(db.Id);
-
-        //    Documents.DocumentCollection collection = new Documents.DocumentCollection() { Id = "ItemCollection" };
-        //    willCreateCollection = !DocumentClient.CreateDocumentCollectionQuery(dbUri).Where(x => x.Id == collection.Id).ToList().Any();
-        //    await DocumentClient.CreateDocumentCollectionIfNotExistsAsync(dbUri, collection,
-        //        new RequestOptions()
-        //        {
-        //            OfferThroughput = 400
-        //        });
-
-        //    Documents.DocumentCollection leasesCollection = new Documents.DocumentCollection() { Id = "leases" };
-        //    await DocumentClient.CreateDocumentCollectionIfNotExistsAsync(dbUri, leasesCollection,
-        //        new RequestOptions()
-        //        {
-        //            OfferThroughput = 400
-        //        });
-
-        //    return willCreateCollection;
-        //}
-
-        //public async Task DeleteDocumentCollections()
-        //{
-        //    Uri collectionsUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection");
-        //    Uri leasesCollectionsUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "leases");
-        //    await DocumentClient.DeleteDocumentCollectionAsync(collectionsUri);
-        //    await DocumentClient.DeleteDocumentCollectionAsync(leasesCollectionsUri);
-        //}
 
         public async Task DeleteEntities(CloudTable table, string partition = null)
         {

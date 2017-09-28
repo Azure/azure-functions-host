@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             FunctionDescriptor function = _scriptHostManager.Instance.GetFunctionOrNull(name);
             if (function == null)
             {
-                return BadRequest();
+                return NotFound();
             }
 
             ParameterDescriptor inputParameter = function.Parameters.First(p => p.IsTrigger);
@@ -134,7 +134,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/host/ping")]
-        [AllowAnonymous]
         public IActionResult Ping()
         {
             return Ok();
@@ -199,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [HttpPost]
         [Authorize(AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
-        [Route("webhookextensions/handler/{name}/{*extra}")]
+        [Route("runtime/webhooks/{name}/{*extra}")]
         public async Task<IActionResult> ExtensionWebHookHandler(string name, CancellationToken token)
         {
             var provider = _scriptHostManager.BindingWebHookProvider;

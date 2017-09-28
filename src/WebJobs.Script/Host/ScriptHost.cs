@@ -1677,19 +1677,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 scriptConfig.FunctionTimeout = DefaultFunctionTimeout;
             }
 
-            // apply swagger configuration
-            scriptConfig.SwaggerEnabled = false;
-
-            configSection = (JObject)config["swagger"];
-            JToken swaggerEnabled;
-
-            if (configSection != null &&
-                configSection.TryGetValue("enabled", out swaggerEnabled) &&
-                swaggerEnabled.Type == JTokenType.Boolean)
-            {
-                scriptConfig.SwaggerEnabled = (bool)swaggerEnabled;
-            }
-
             ApplyLoggerConfig(config, scriptConfig);
             ApplyApplicationInsightsConfig(config, scriptConfig);
         }

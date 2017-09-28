@@ -7,12 +7,25 @@ using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.Models
 {
+    /// <summary>
+    /// Represents a binding extension reference.
+    /// </summary>
     public class ExtensionReference
     {
+        /// <summary>
+        /// Gets or sets the extension name.
+        /// </summary>
         public string Name { get; set; }
 
+        /// <summary>
+        /// Gets or sets the assembly-qualified name of the type.
+        /// </summary>
         public string TypeName { get; set; }
 
+        /// <summary>
+        /// Gets or sets a hit path that may be used when loading the assembly containing the extension
+        /// implementation.
+        /// </summary>
         public string HintPath { get; set; }
     }
 }

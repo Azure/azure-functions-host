@@ -39,8 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly ScriptHostConfiguration _config;
 
-        // TODO: FACAVAL
-        //private readonly ISwaggerDocumentManager _swaggerDocumentManager;
         private readonly object _syncLock = new object();
         private readonly int _hostTimeoutSeconds;
         private readonly int _hostRunningPollIntervalMilliseconds;
@@ -86,9 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _performanceManager = new HostPerformanceManager(settingsManager, config.TraceWriter);
 
-            // TODO: FACAVAL
-            // _swaggerDocumentManager = new SwaggerDocumentManager(config);
-
+            secretsRepositoryFactory = secretsRepositoryFactory ?? new DefaultSecretsRepositoryFactory();
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
             _secretManager = secretManagerFactory.Create(settingsManager, config.HostConfig.LoggerFactory, secretsRepository);
 
@@ -123,9 +119,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public ISecretManager SecretManager => _secretManager;
 
         public HostPerformanceManager PerformanceManager => _performanceManager;
-
-        // TODO: FACAVAL
-        // public ISwaggerDocumentManager SwaggerDocumentManager => _swaggerDocumentManager;
 
         public virtual bool Initialized
         {
