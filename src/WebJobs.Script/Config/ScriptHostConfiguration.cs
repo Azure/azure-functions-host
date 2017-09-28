@@ -87,11 +87,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public TimeSpan? FunctionTimeout { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether the swagger endpoint is enabled or disabled. If true swagger is enabled, otherwise it is disabled
-        /// </summary>
-        public bool SwaggerEnabled { get; set; }
-
-        /// <summary>
         /// Gets or sets a value indicating whether the host is running
         /// outside of the normal Azure hosting environment. E.g. when running
         /// locally or via CLI.

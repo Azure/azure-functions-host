@@ -42,62 +42,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task ServiceBusQueueTriggerToBlobTest()
-        {
-            await ServiceBusQueueTriggerToBlobTestImpl();
-        }
-
-
-        [Fact]
         public async Task TwilioReferenceInvokeSucceeds()
         {
             await TwilioReferenceInvokeSucceedsImpl(isDotNet: true);
         }
-
-        [Fact]
-        public async Task MobileTables()
-        {
-            await MobileTablesTest(isDotNet: true);
-        }
-
-        [Fact]
-        public async Task DocumentDB()
-        {
-            await DocumentDBTest();
-        }
-
-        [Fact]
-        public async Task NotificationHub()
-        {
-            await NotificationHubTest("NotificationHubOut");
-        }
-
-        [Fact]
-        public async Task NotificationHub_Out_Notification()
-        {
-            await NotificationHubTest("NotificationHubOutNotification");
-        }
-
-        [Fact]
-        public async Task NotificationHubNative()
-        {
-            await NotificationHubTest("NotificationHubNative");
-        }
-
-        [Fact]
-        public async Task MobileTablesTable()
-        {
-            var id = Guid.NewGuid().ToString();
-            Dictionary<string, object> arguments = new Dictionary<string, object>()
-            {
-                { "input",  id }
-            };
-
-            await Fixture.Host.CallAsync("MobileTableTable", arguments);
-
-            await WaitForMobileTableRecordAsync("Item", id);
-        }
-
+        
         [Fact]
         public async Task FileLogging_Succeeds()
         {
@@ -172,80 +121,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(functionName, context.FunctionName);
             Assert.Equal(Path.Combine(Fixture.Host.ScriptConfig.RootScriptPath, functionName), context.FunctionDirectory);
         }
-
-        [Fact]
-        public async Task ApiHub()
-        {
-            await ApiHubTest();
-        }
-
-        // TODO: FACAVAL
-        //[Fact]
-        //public async Task ApiHubTableClientBindingTest()
-        //{
-        //    var textArgValue = ApiHubTestHelper.NewRandomString();
-
-        //    // Ensure the test entity exists.
-        //    await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId1);
-
-        //    // Test table client binding.
-        //    await Fixture.Host.CallAsync("ApiHubTableClient",
-        //        new Dictionary<string, object>()
-        //        {
-        //            { ApiHubTestHelper.TextArg, textArgValue }
-        //        });
-
-        //    await ApiHubTestHelper.AssertTextUpdatedAsync(
-        //        textArgValue, ApiHubTestHelper.EntityId1);
-        //}
-
-        //[Fact]
-        //public async Task ApiHubTableBindingTest()
-        //{
-        //    var textArgValue = ApiHubTestHelper.NewRandomString();
-
-        //    // Ensure the test entity exists.
-        //    await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId2);
-
-        //    // Test table binding.
-        //    TestInput input = new TestInput
-        //    {
-        //        Id = ApiHubTestHelper.EntityId2,
-        //        Value = textArgValue
-        //    };
-        //    await Fixture.Host.CallAsync("ApiHubTable",
-        //        new Dictionary<string, object>()
-        //        {
-        //            { "input", JsonConvert.SerializeObject(input) }
-        //        });
-
-        //    await ApiHubTestHelper.AssertTextUpdatedAsync(
-        //        textArgValue, ApiHubTestHelper.EntityId2);
-        //}
-
-        //[Fact]
-        //public async Task ApiHubTableEntityBindingTest()
-        //{
-        //    var textArgValue = ApiHubTestHelper.NewRandomString();
-
-        //    // Ensure the test entity exists.
-        //    await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId3);
-
-        //    // Test table entity binding.
-        //    TestInput input = new TestInput
-        //    {
-        //        Id = ApiHubTestHelper.EntityId3,
-        //        Value = textArgValue
-        //    };
-        //    await Fixture.Host.CallAsync("ApiHubTableEntity",
-        //        new Dictionary<string, object>()
-        //        {
-        //            { "input", JsonConvert.SerializeObject(input) }
-        //        });
-
-        //    await ApiHubTestHelper.AssertTextUpdatedAsync(
-        //        textArgValue, ApiHubTestHelper.EntityId3);
-        //}
 
         [Fact]
         public async Task SharedAssemblyDependenciesAreLoaded()

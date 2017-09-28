@@ -102,8 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         ///                        &quot;null&quot;
         ///                    ]
         ///                },
-        ///                &quot;encrypted&quot;: {
-        ///   [rest of string was truncated]&quot;;.
+        ///              [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string FunctionSecretsSchemaV1 {
             get {
@@ -159,48 +158,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         ///                        &quot;null&quot;
         ///                    ]
         ///                },
-        ///                &quot;encrypted&quot;: {
-        ///   [rest of string was truncated]&quot;;.
+        ///              [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string HostSecretsSchemaV1 {
             get {
                 return ResourceManager.GetString("HostSecretsSchemaV1", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Error deleting Swagger document.
-        /// </summary>
-        internal static string SwaggerFileDeleteError {
-            get {
-                return ResourceManager.GetString("SwaggerFileDeleteError", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Error reading Swagger document.
-        /// </summary>
-        internal static string SwaggerFileReadError {
-            get {
-                return ResourceManager.GetString("SwaggerFileReadError", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Error updating Swagger document.
-        /// </summary>
-        internal static string SwaggerFileUpdateError {
-            get {
-                return ResourceManager.GetString("SwaggerFileUpdateError", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Generating Swagger document....
-        /// </summary>
-        internal static string SwaggerGenerateDocument {
-            get {
-                return ResourceManager.GetString("SwaggerGenerateDocument", resourceCulture);
             }
         }
         

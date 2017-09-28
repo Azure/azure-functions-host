@@ -44,15 +44,13 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                 return;
             }
 
-            await Task.Run(async () =>
+            var project = await GetOrCreateProjectAsync(ProjectPath);
+            foreach (var extensionReference in references)
             {
-                var project = GetOrCreateProject(ProjectPath);
-                foreach (var extensionReference in references)
-                {
-                    project.AddPackageReference(extensionReference.Id, extensionReference.Version);
-                }
-                await SaveAndProcessProjectAsync(project);
-            });
+                project.AddPackageReference(extensionReference.Id, extensionReference.Version);
+            }
+
+            await SaveAndProcessProjectAsync(project);
         }
 
         private async Task SaveAndProcessProjectAsync(ProjectRootElement project)
@@ -74,32 +72,27 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                 return;
             }
 
-            await Task.Run(async () =>
+            var project = await GetOrCreateProjectAsync(ProjectPath);
+            foreach (var id in extensionIds)
             {
-                var project = GetOrCreateProject(ProjectPath);
-                foreach (var id in extensionIds)
-                {
-                    project.RemovePackageReference(id);
-                }
-                await SaveAndProcessProjectAsync(project);
-            });
+                project.RemovePackageReference(id);
+            }
+
+            await SaveAndProcessProjectAsync(project);
         }
 
         public async Task<IEnumerable<ExtensionPackageReference>> GetExtensions()
         {
-            return await Task.Run(() =>
-            {
-                var project = GetOrCreateProject(ProjectPath);
+            var project = await GetOrCreateProjectAsync(ProjectPath);
 
-                return project.Items
-                    .Where(i => PackageReferenceElementName.Equals(i.ItemType, StringComparison.Ordinal) && !ExtensionsPackageId.Equals(i.Include, StringComparison.Ordinal))
-                    .Select(i => new ExtensionPackageReference
-                    {
-                        Id = i.Include,
-                        Version = i.Metadata.FirstOrDefault(m => PackageReferenceVersionElementName.Equals(m.Name, StringComparison.Ordinal))?.Value
-                    })
-                    .ToList();
-            });
+            return project.Items
+                .Where(i => PackageReferenceElementName.Equals(i.ItemType, StringComparison.Ordinal) && !ExtensionsPackageId.Equals(i.Include, StringComparison.Ordinal))
+                .Select(i => new ExtensionPackageReference
+                {
+                    Id = i.Include,
+                    Version = i.Metadata.FirstOrDefault(m => PackageReferenceVersionElementName.Equals(m.Name, StringComparison.Ordinal))?.Value
+                })
+                .ToList();
         }
 
         internal virtual Task ProcessExtensionsProject(string projectFolder)
@@ -219,16 +212,19 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             File.Copy(Path.Combine(tempFolder, ExtensionsProjectFileName), ProjectPath, true);
         }
 
-        private ProjectRootElement GetOrCreateProject(string path)
+        private Task<ProjectRootElement> GetOrCreateProjectAsync(string path)
         {
-            ProjectRootElement root = null;
-            if (File.Exists(path))
+            return Task.Run(() =>
             {
-                var reader = XmlTextReader.Create(new StringReader(File.ReadAllText(path)));
-                root = ProjectRootElement.Create(reader);
-            }
+                ProjectRootElement root = null;
+                if (File.Exists(path))
+                {
+                    var reader = XmlTextReader.Create(new StringReader(File.ReadAllText(path)));
+                    root = ProjectRootElement.Create(reader);
+                }
 
-            return root ?? CreateDefaultProject(path);
+                return root ?? CreateDefaultProject(path);
+            });
         }
 
         private ProjectRootElement CreateDefaultProject(string path)

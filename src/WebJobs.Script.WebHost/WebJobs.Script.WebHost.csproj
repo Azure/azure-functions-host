@@ -2,7 +2,6 @@
   <Import Project="..\..\build\common.props" />
   <PropertyGroup>
     <TargetFramework>netcoreapp2.0</TargetFramework>
-    <UserSecretsId>aspnet-WebJobs.Script.WebHost.Core-EB4F8A52-5ACD-4FCB-BFF3-323317520345</UserSecretsId>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.WebHost</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.WebHost</RootNamespace>
     <PackageId>Microsoft.Azure.WebJobs.Script.WebHost</PackageId>
@@ -25,7 +24,6 @@
 
   <ItemGroup>
     <Folder Include="Routing\" />
-    <Folder Include="wwwroot\" />
   </ItemGroup>
 
   <ItemGroup>
