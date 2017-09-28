@@ -47,11 +47,9 @@
     <DefineConstants>$(DefineConstants);WINDOWS;FEATURE_NODE;FEATURE_POWERSHELL</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="FSharp.Compiler.Service, Version=9.0.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\FSharp.Compiler.Service.9.0.1\lib\net45\FSharp.Compiler.Service.dll</HintPath>
-    </Reference>
-    <Reference Include="FSharp.Compiler.Service.MSBuild.v12, Version=9.0.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\FSharp.Compiler.Service.9.0.1\lib\net45\FSharp.Compiler.Service.MSBuild.v12.dll</HintPath>
+    <Reference Include="FSharp.Compiler.Service">
+      <HintPath>..\..\packages\FSharp.Compiler.Service.14.0.2\lib\net45\FSharp.Compiler.Service.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="FSharp.Core">
       <HintPath>..\..\packages\FSharp.Core.4.2.3\lib\net45\FSharp.Core.dll</HintPath>

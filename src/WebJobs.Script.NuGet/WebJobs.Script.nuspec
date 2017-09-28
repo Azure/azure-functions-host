@@ -15,7 +15,7 @@
     <tags>Microsoft Azure WebJobs Jobs Script Node.js</tags>
     <dependencies>
       <dependency id="Edge.js" version="6.11.3" />
-      <dependency id="FSharp.Compiler.Service" version="9.0.1" />
+      <dependency id="FSharp.Compiler.Service" version="14.0.2" />
       <dependency id="FSharp.Core" version="4.2.3" />
       <dependency id="Microsoft.Azure.WebJobs" version="2.1.0-beta1-11031" />
       <dependency id="Microsoft.ApplicationInsights.WindowsServer" version="2.4.1" />

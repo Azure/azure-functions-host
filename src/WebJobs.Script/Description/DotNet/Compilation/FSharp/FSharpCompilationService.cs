@@ -17,8 +17,8 @@ using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.CodeAnalysis.Scripting.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.FSharp.Compiler;
-using Microsoft.FSharp.Compiler.SimpleSourceCodeServices;
 using Microsoft.FSharp.Compiler.SourceCodeServices;
+using Microsoft.FSharp.Control;
 using Microsoft.FSharp.Core;
 using static Microsoft.Azure.WebJobs.Script.FileUtility;
 
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         async Task<object> ICompilationService.GetFunctionCompilationAsync(FunctionMetadata functionMetadata)
             => await GetFunctionCompilationAsync(functionMetadata);
 
-        public Task<IDotNetCompilation> GetFunctionCompilationAsync(FunctionMetadata functionMetadata)
+        public async Task<IDotNetCompilation> GetFunctionCompilationAsync(FunctionMetadata functionMetadata)
         {
             // First use the C# compiler to resolve references, to get consistency with the C# Azure Functions programming model
             // Add the #r statements from the .fsx file to the resolver source
@@ -78,8 +78,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var resolverSource = resolverSourceBuilder.ToString();
 
             Script<object> script = CodeAnalysis.CSharp.Scripting.CSharpScript.Create(resolverSource, options: _metadataResolver.CreateScriptOptions(), assemblyLoader: AssemblyLoader.Value);
-
-            var compiler = new SimpleSourceCodeServices(msbuildEnabled: FSharpOption<bool>.Some(false));
 
             FSharpErrorInfo[] errors = null;
             FSharpOption<Assembly> assemblyOption = null;
@@ -155,10 +153,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 otherFlags.Add("--out:" + assemblyFileName);
 
                 // Get the #load closure
-                FSharpChecker checker = FSharpChecker.Create(null, null, null, msbuildEnabled: FSharpOption<bool>.Some(false));
-                var loadFileOptionsAsync = checker.GetProjectOptionsFromScript(functionMetadata.ScriptFile, scriptSource, null, null, null);
-                var loadFileOptions = FSharp.Control.FSharpAsync.RunSynchronously(loadFileOptionsAsync, null, null);
-                foreach (var loadedFileName in loadFileOptions.ProjectFileNames)
+                FSharpChecker checker = FSharpChecker.Create(null, null, null, null);
+                var loadFileOptionsAsync = checker.GetProjectOptionsFromScript(functionMetadata.ScriptFile, scriptSource, null, null, null, null, null, null, null);
+                var loadFileOptions = await FSharpAsync.StartAsTask(loadFileOptionsAsync, null, null);
+                foreach (var loadedFileName in loadFileOptions.Item1.SourceFiles)
                 {
                     if (Path.GetFileName(loadedFileName) != Path.GetFileName(functionMetadata.ScriptFile))
                     {
@@ -170,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 otherFlags.Add(scriptFilePath);
 
                 // Compile the script to a static assembly
-                var result = compiler.Compile(otherFlags.ToArray());
+                var result = await FSharpAsync.StartAsTask(checker.Compile(otherFlags.ToArray(), null), null, null);
                 errors = result.Item1;
                 var code = result.Item2;
 
@@ -194,18 +192,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             finally
             {
-                DeleteDirectoryAsync(scriptPath, recursive: true)
-                .ContinueWith(
-                    t => t.Exception.Handle(e =>
-                {
-                    string message = $"Unable to delete F# compilation file: {e.ToString()}";
-                    _traceWriter.Warning(message);
-                    _logger?.LogWarning(message);
-                    return true;
-                }), TaskContinuationOptions.OnlyOnFaulted);
+                var cleanupTask = DeleteDirectoryAsync(scriptPath, recursive: true)
+                    .ContinueWith(t => t.Exception.Handle(e =>
+                    {
+                        string message = $"Unable to delete F# compilation file: {e.ToString()}";
+                        _traceWriter.Warning(message);
+                        _logger?.LogWarning(message);
+                        return true;
+                    }), TaskContinuationOptions.OnlyOnFaulted);
             }
 
-            return Task.FromResult<IDotNetCompilation>(new FSharpCompilation(errors, assemblyOption));
+            return new FSharpCompilation(errors, assemblyOption);
         }
 
         private static string GetFunctionSource(FunctionMetadata functionMetadata)
