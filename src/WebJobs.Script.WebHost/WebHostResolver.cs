@@ -180,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     if (!string.IsNullOrEmpty(home))
                     {
                         // Delete hostingstart.html if any. Azure creates that in all sites by default
-                        string siteRootPath = Path.Combine(home, @"site\wwwroot");
+                        string siteRootPath = Path.Combine(home, "site", "wwwroot");
                         string hostingStart = Path.Combine(siteRootPath, "hostingstart.html");
                         if (File.Exists(hostingStart))
                         {
@@ -188,11 +188,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
 
                         // Create the tools folder if it doesn't exist
-                        string toolsPath = Path.Combine(home, @"site\tools");
+                        string toolsPath = Path.Combine(home, "site", "tools");
                         Directory.CreateDirectory(toolsPath);
 
                         var folders = new List<string>();
-                        folders.Add(Path.Combine(home, @"site\tools"));
+                        folders.Add(Path.Combine(home, @"site", "tools"));
 
                         string path = Environment.GetEnvironmentVariable("PATH");
                         string additionalPaths = string.Join(";", folders);
