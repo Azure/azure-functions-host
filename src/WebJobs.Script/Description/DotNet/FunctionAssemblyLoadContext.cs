@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 if (_functionBaseUri == null)
                 {
-                    _functionBaseUri = new Uri(Path.GetDirectoryName(Metadata.ScriptFile) + "\\", UriKind.RelativeOrAbsolute);
+                    _functionBaseUri = new Uri(Path.GetDirectoryName(Metadata.ScriptFile) + Path.DirectorySeparatorChar, UriKind.RelativeOrAbsolute);
                 }
 
                 return _functionBaseUri;

@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 home = Path.Combine(Path.GetTempPath(), "AzureFunctions");
             }
 
-            return Path.Combine(home, $@"data\Functions\CompilationOutput\{Language}\{functionName}\.output");
+            return Path.Combine(home, "data", "Functions", "CompilationOutput", Language, functionName, ".output");
         }
 
         private class JavaScriptCompilation : IJavaScriptCompilation

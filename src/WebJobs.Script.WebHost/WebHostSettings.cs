@@ -44,9 +44,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (settingsManager.IsAzureEnvironment)
             {
                 string home = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
-                settings.ScriptPath = Path.Combine(home, @"site\wwwroot");
-                settings.LogPath = Path.Combine(home, @"LogFiles\Application\Functions");
-                settings.SecretsPath = Path.Combine(home, @"data\Functions\secrets");
+                settings.ScriptPath = Path.Combine(home, "site", "wwwroot");
+                settings.LogPath = Path.Combine(home, "LogFiles", "Application", "Functions");
+                settings.SecretsPath = Path.Combine(home, @"data", "Functions", "secrets");
             }
             else
             {

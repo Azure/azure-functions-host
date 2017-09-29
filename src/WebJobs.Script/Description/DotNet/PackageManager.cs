@@ -144,7 +144,7 @@ Lock file hash: {currentLockFileHash}";
             //// If we don't have the path, get the runtime's copy of NuGet
             if (string.IsNullOrEmpty(path))
             {
-                string runtimeNugetPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin\\tools", NuGetFileName);
+                string runtimeNugetPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin", "tools", NuGetFileName);
 
                 if (File.Exists(runtimeNugetPath))
                 {
@@ -305,12 +305,12 @@ Lock file hash: {currentLockFileHash}";
                 // We're hosted in Azure
                 // Set the NuGet path to %home%\data\Functions\packages\nuget
                 // (i.e. d:\home\data\Functions\packages\nuget)
-                nugetHome = Path.Combine(home, "data\\Functions\\packages\\nuget");
+                nugetHome = Path.Combine(home, "data", "Functions", "packages", "nuget");
             }
             else
             {
                 string userProfile = Environment.ExpandEnvironmentVariables("%userprofile%");
-                nugetHome = Path.Combine(userProfile, ".nuget\\packages");
+                nugetHome = Path.Combine(userProfile, ".nuget", "packages");
             }
 
             return nugetHome;
