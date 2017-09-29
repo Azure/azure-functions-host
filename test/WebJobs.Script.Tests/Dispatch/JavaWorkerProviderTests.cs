@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Dispatch
             var result = provider.TryConfigureArguments(args, config, new TestLogger("test"));
 
             Assert.True(result);
-            var exePath = Path.GetFullPath("d:/java/jdk1.8.0_111/bin/java");
+            var exePath = Path.GetFullPath("d:/java/zulu8.23.0.3-jdk8.0.144-win_x64/bin/java");
             Assert.Equal(exePath, args.ExecutablePath);
         }
     }

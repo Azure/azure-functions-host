@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
             {
                 if (IsAzureEnvironment)
                 {
-                    return Path.Combine(JAVA_HOME, "..", "jdk1.8.0_111");
+                    return Path.Combine(JAVA_HOME, "..", "zulu8.23.0.3-jdk8.0.144-win_x64");
                 }
                 else
                 {
