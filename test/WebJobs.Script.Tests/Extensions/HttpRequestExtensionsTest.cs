@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
+using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
 {
@@ -27,6 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
+                ScriptSettingsManager.Instance.Reset();
+
                 // with header
                 var headers = new HeaderDictionary();
                 headers.Add(ScriptConstants.AntaresLogIdHeaderName, "123");
