@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.Node.Compilation
 {
     public class ConditionalCompilationServiceTests
     {
-        [Fact]
+        [Fact(Skip = "node compilation unsupported")]
         public async Task GetCompilationResultAsync_WithPositivePredicate_ExecutesServiceCompilation()
         {
             var settingsManager = new ScriptSettingsManager();
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.Node.Compilation
             innerCompilationServiceMock.Verify();
         }
 
-        [Fact]
+        [Fact(Skip = "node compilation unsupported")]
         public async Task GetCompilationResultAsync_WithNegativePredicate_WaitsForCachedCompilation()
         {
             var negativeTestData = CreateTestData(() => false);

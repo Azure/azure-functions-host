@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Dispatch
                 var workerPath = languageSection.GetSection("path").Value;
                 if (string.IsNullOrEmpty(workerPath) && !string.IsNullOrEmpty(description.DefaultWorkerPath))
                 {
-                    workerPath = Path.Combine(_assemblyDir, "workers", description.Language, description.DefaultWorkerPath);
+                    workerPath = Path.Combine(_assemblyDir, "workers", description.Language.ToLower(), description.DefaultWorkerPath);
                 }
 
                 var arguments = new ArgumentsDescription()

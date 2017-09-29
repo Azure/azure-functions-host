@@ -24,6 +24,11 @@ install:
 build_script:
 - ps: >
     .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER"
+after_build:
+- ps: >
+    Get-ChildItem buildoutput\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
+
+    Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
 test_script:
 - ps: >
     $success = $true
@@ -49,8 +54,3 @@ test_script:
     # Skipping integration tests for initial build # dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
 
     if (-not $success) { exit 1 }
-artifacts:
-- path: buildoutput\*.nupkg
-  name: Binaries
-- path: buildoutput\*.zip
-  name: Runtime
