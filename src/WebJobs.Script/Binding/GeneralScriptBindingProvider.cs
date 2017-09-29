@@ -47,9 +47,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return false;
             }
 
-            var attr = this._metadataProvider.GetAttribute(attrType, context.Metadata);
+            try
+            {
+                var attr = this._metadataProvider.GetAttribute(attrType, context.Metadata);
+                binding = new GeneralScriptBinding(this._metadataProvider, attr, context);
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"Unabled to configure binding '{context.Name}' of type '{name}'. This may indicate invalid function.json properties", e);
+            }
 
-            binding = new GeneralScriptBinding(this._metadataProvider, attr, context);
             return true;
         }
 
