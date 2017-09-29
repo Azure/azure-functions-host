@@ -5,10 +5,9 @@ using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 
-namespace WebJobs.Script.WebHost.Core
+namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public static class WebJobsApplicationBuilderExtension
     {

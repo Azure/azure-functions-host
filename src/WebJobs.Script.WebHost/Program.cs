@@ -5,7 +5,7 @@ using System;
 using System.Threading;
 using Microsoft.AspNetCore.Hosting;
 
-namespace WebJobs.Script.WebHost.Core
+namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class Program
     {

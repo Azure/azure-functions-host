@@ -13,6 +13,7 @@ using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Xunit;
+using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -30,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void IsWarmUpRequest_ReturnsExpectedValue()
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, "http://azure.com/api/warmup");
+            var request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
             Assert.False(StandbyManager.IsWarmUpRequest(request));
 
             var vars = new Dictionary<string, string>
@@ -46,14 +47,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId, "12345");
                 Assert.True(StandbyManager.IsWarmUpRequest(request));
 
-                request = new HttpRequestMessage(HttpMethod.Post, "http://azure.com/api/csharphttpwarmup");
+                request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/csharphttpwarmup");
                 Assert.True(StandbyManager.IsWarmUpRequest(request));
 
-                request = new HttpRequestMessage(HttpMethod.Post, "http://azure.com/api/warmup");
+                request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
                 request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, "xyz123");
                 Assert.False(StandbyManager.IsWarmUpRequest(request));
 
-                request = new HttpRequestMessage(HttpMethod.Post, "http://azure.com/api/foo");
+                request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/foo");
                 Assert.False(StandbyManager.IsWarmUpRequest(request));
             }
         }

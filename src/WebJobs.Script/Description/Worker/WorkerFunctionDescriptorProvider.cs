@@ -5,8 +5,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Description.Script;
 using Microsoft.Azure.WebJobs.Script.Dispatch;
+using Microsoft.Azure.WebJobs.Script.Description.Script;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {

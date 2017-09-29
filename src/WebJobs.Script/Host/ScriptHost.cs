@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private bool _shutdownScheduled;
         private ILogger _startupLogger;
         private FileWatcherEventSource _fileEventSource;
-        private IList<IDisposable> _subscriptions = new List<IDisposable>();
+        private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private ProxyClientExecutor _proxyClient;
         private IFunctionDispatcher _functionDispatcher;
         private ILoggerFactory _loggerFactory;
@@ -72,48 +72,6 @@ namespace Microsoft.Azure.WebJobs.Script
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
         // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
-        // TODO: Re-add built in providers
-        private static IReadOnlyDictionary<string, string> _builtinBindingTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            //{ "bot", "Microsoft.Azure.WebJobs.Extensions.BotFramework.Config.BotFrameworkConfiguration, Microsoft.Azure.WebJobs.Extensions.BotFramework" },
-            //{ "sendgrid", "Microsoft.Azure.WebJobs.Extensions.SendGrid.SendGridConfiguration, Microsoft.Azure.WebJobs.Extensions.SendGrid" },
-            //{ "eventGridTrigger", "Microsoft.Azure.WebJobs.Extensions.EventGrid.EventGridExtensionConfig, Microsoft.Azure.WebJobs.Extensions.EventGrid" }
-        };
-
-        private static IReadOnlyDictionary<string, string> _builtinScriptBindingTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "twilioSms", "Microsoft.Azure.WebJobs.Script.Binding.TwilioScriptBindingProvider" },
-            { "notificationHub", "Microsoft.Azure.WebJobs.Script.Binding.NotificationHubScriptBindingProvider" },
-            { "cosmosDBTrigger", "Microsoft.Azure.WebJobs.Script.Binding.DocumentDBScriptBindingProvider" },
-            { "documentDB", "Microsoft.Azure.WebJobs.Script.Binding.DocumentDBScriptBindingProvider" },
-            { "mobileTable", "Microsoft.Azure.WebJobs.Script.Binding.MobileAppsScriptBindingProvider" },
-            { "apiHubFileTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ApiHubScriptBindingProvider" },
-            { "apiHubFile", "Microsoft.Azure.WebJobs.Script.Binding.ApiHubScriptBindingProvider" },
-            { "apiHubTable", "Microsoft.Azure.WebJobs.Script.Binding.ApiHubScriptBindingProvider" },
-            { "serviceBusTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
-            { "serviceBus", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
-            { "eventHubTrigger", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
-            { "eventHub", "Microsoft.Azure.WebJobs.Script.Binding.ServiceBusScriptBindingProvider" },
-        };
-
-        // For backwards compat, we support a #r directly to these assemblies.
-        private static HashSet<string> _assemblyWhitelist = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "Twilio.Api" },
-            { "Microsoft.Azure.WebJobs.Extensions.Twilio" },
-            { "Microsoft.Azure.NotificationHubs" },
-            { "Microsoft.WindowsAzure.Mobile" },
-            { "Microsoft.Azure.WebJobs.Extensions.MobileApps" },
-            { "Microsoft.Azure.WebJobs.Extensions.NotificationHubs" },
-            { "Microsoft.WindowsAzure.Mobile" },
-            { "Microsoft.Azure.WebJobs.Extensions.MobileApps" },
-            { "Microsoft.Azure.Documents.Client" },
-            { "Microsoft.Azure.WebJobs.Extensions.DocumentDB" },
-            { "Microsoft.Azure.ApiHub.Sdk" },
-            { "Microsoft.Azure.WebJobs.Extensions.ApiHub" },
-            { "Microsoft.ServiceBus" },
-            { "Sendgrid" },
-        };
 
         protected internal ScriptHost(IScriptHostEnvironment environment,
             IScriptEventManager eventManager,
@@ -358,7 +316,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Set up a host level TraceMonitor that will receive notification
                 // of ALL errors that occur. This allows us to inspect/log errors.
-                // TODO: FACAVAL
                 var traceMonitor = new TraceMonitor()
                     .Filter(p => { return true; })
                     .Subscribe(HandleHostError);
@@ -498,20 +455,20 @@ namespace Microsoft.Azure.WebJobs.Script
                     new JavaLanguageWorkerConfig()
                 });
 
-                _subscriptions.Add(EventManager.OfType<WorkerErrorEvent>()
+                _eventSubscriptions.Add(EventManager.OfType<WorkerErrorEvent>()
                     .Subscribe(evt =>
                     {
                         HandleHostError(evt.Exception);
                     }));
 
-                _subscriptions.Add(EventManager.OfType<HostRestartEvent>()
+                _eventSubscriptions.Add(EventManager.OfType<HostRestartEvent>()
                     .Subscribe((msg) => ScheduleRestartAsync(false)));
 
                 if (ScriptConfig.FileWatchingEnabled)
                 {
                     _fileEventSource = new FileWatcherEventSource(EventManager, EventSources.ScriptFiles, ScriptConfig.RootScriptPath);
 
-                    _subscriptions.Add(EventManager.OfType<FileEvent>()
+                    _eventSubscriptions.Add(EventManager.OfType<FileEvent>()
                         .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
                         .Subscribe(e => OnFileChanged(e.FileChangeArguments)));
                 }
@@ -533,12 +490,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Scan the function.json early to determine the requirements.
                 var functionMetadata = ReadFunctionMetadata(ScriptConfig, TraceWriter, _startupLogger, FunctionErrors, _settingsManager);
                 var usedBindingTypes = DiscoverBindingTypes(functionMetadata);
-
-                bool useLazyLoad = false; // todo - https://github.com/Azure/azure-webjobs-sdk-script/issues/1637
-                if (!useLazyLoad)
-                {
-                    usedBindingTypes = _builtinBindingTypes.Keys.Concat(_builtinScriptBindingTypes.Keys).ToArray();
-                }
 
                 var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfigObject, TraceWriter, _startupLogger, usedBindingTypes);
                 ScriptConfig.BindingProviders = bindingProviders;
@@ -562,7 +513,6 @@ namespace Microsoft.Azure.WebJobs.Script
                         _startupLogger?.LogError(0, ex, errorMsg);
                     }
                 }
-                LoadBuiltinBindings(usedBindingTypes);
 
                 var directTypes = GetDirectTypes(functionMetadata);
 
@@ -606,29 +556,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
                 {
                     PurgeOldLogDirectories();
-                }
-            }
-        }
-
-        private void LoadBuiltinBindings(IEnumerable<string> bindingTypes)
-        {
-            foreach (var bindingType in bindingTypes)
-            {
-                string assemblyQualifiedTypeName;
-                if (_builtinBindingTypes.TryGetValue(bindingType, out assemblyQualifiedTypeName))
-                {
-                    Type typeExtension = Type.GetType(assemblyQualifiedTypeName);
-                    if (typeExtension == null)
-                    {
-                        string errorMsg = $"Can't find builtin provider '{assemblyQualifiedTypeName}' for '{bindingType}'";
-                        TraceWriter.Error(errorMsg);
-                        _startupLogger?.LogError(errorMsg);
-                    }
-                    else
-                    {
-                        IExtensionConfigProvider extension = (IExtensionConfigProvider)Activator.CreateInstance(typeExtension);
-                        LoadExtension(extension);
-                    }
                 }
             }
         }
@@ -1041,18 +968,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return scriptHost;
         }
 
-        // Get the ScriptBindingProviderType for a given binding type.
-        // Null if no match.
-        private static Type GetScriptBindingProvider(string bindingType)
-        {
-            if (_builtinScriptBindingTypes.TryGetValue(bindingType, out string assemblyQualifiedTypeName))
-            {
-                var type = Type.GetType(assemblyQualifiedTypeName);
-                return type;
-            }
-            return null;
-        }
-
         private static Collection<ScriptBindingProvider> LoadBindingProviders(ScriptHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter, ILogger logger, IEnumerable<string> usedBindingTypes)
         {
             JobHostConfiguration hostConfig = config.HostConfig;
@@ -1063,25 +978,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 // binding providers defined in this assembly
                 typeof(WebJobsCoreScriptBindingProvider),
 
-                // TODO: FACAVAL
-                // typeof(ServiceBusScriptBindingProvider),
-
                 // binding providers defined in known extension assemblies
-                // TODO: FACAVAL - These will be re-enabled as we migrate the extensions
                 typeof(CoreExtensionsScriptBindingProvider),
             };
 
             HashSet<Type> existingTypes = new HashSet<Type>();
-
-            // Add custom providers for any other types being used from function.json
-            foreach (var usedType in usedBindingTypes)
-            {
-                var type = GetScriptBindingProvider(usedType);
-                if (type != null && existingTypes.Add(type))
-                {
-                    bindingProviderTypes.Add(type);
-                }
-            }
 
             // General purpose binder that works directly against SDK.
             // This should eventually replace all other ScriptBindingProvider
@@ -1427,17 +1328,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     return ScriptType.Javascript;
                 case "ts":
                     return ScriptType.TypeScript;
-                case "ps1":
-                    return ScriptType.PowerShell;
-                case "cmd":
-                case "bat":
-                    return ScriptType.WindowsBatch;
-                case "py":
-                    return ScriptType.Python;
-                case "php":
-                    return ScriptType.PHP;
-                case "sh":
-                    return ScriptType.Bash;
                 case "fsx":
                     return ScriptType.FSharp;
                 case "dll":
@@ -1455,18 +1345,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
             var descriptorProviders = new List<FunctionDescriptorProvider>()
                 {
-                    new ScriptFunctionDescriptorProvider(this, ScriptConfig),
                     new DotNetFunctionDescriptorProvider(this, ScriptConfig),
-#if FEATURE_POWERSHELL
-                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig),
-#endif
                     new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher),
                 };
 
             IEnumerable<FunctionMetadata> combinedFunctionMetadata = null;
             if (proxies != null && proxies.Any())
             {
-                // Proxy routes will take precedence over http trigger functions and http trigger routes so they will be added first to the list of function descriptors.
                 combinedFunctionMetadata = proxies.Concat(functions);
 
                 descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptConfig, _proxyClient));
@@ -1482,6 +1367,7 @@ namespace Microsoft.Azure.WebJobs.Script
         internal Collection<FunctionDescriptor> GetFunctionDescriptors(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
+            var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
             foreach (FunctionMetadata metadata in functions)
             {
@@ -1496,8 +1382,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                     }
 
-                    // TODO: FACAVAL
-                    // ValidateFunction(descriptor, httpFunctions);
+                    ValidateFunction(descriptor, httpFunctions);
 
                     if (descriptor != null)
                     {
@@ -1516,48 +1401,68 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionDescriptors;
         }
 
-        // TODO: FACAVAL
-        //internal static void ValidateFunction(FunctionDescriptor function, Dictionary<string, HttpTriggerAttribute> httpFunctions)
-        //{
-        //    var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
-        //    if (httpTrigger != null)
-        //    {
-        //        bool isProxy = function.Metadata != null && function.Metadata.IsProxy;
+        internal static void ValidateFunction(FunctionDescriptor function, Dictionary<string, HttpTriggerAttribute> httpFunctions)
+        {
+            var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+            if (httpTrigger != null)
+            {
+                bool isProxy = function.Metadata != null && function.Metadata.IsProxy;
 
-        //        ValidateHttpFunction(function.Name, httpTrigger, isProxy);
+                ValidateHttpFunction(function.Name, httpTrigger, isProxy);
 
-        //        if (!isProxy)
-        //        {
-        //            // prevent duplicate/conflicting routes for functions
-        //            // proxy routes check is done in the proxy dll itself and proxies do not use routePrefix so should not check conflict with functions
-        //            foreach (var pair in httpFunctions)
-        //            {
-        //                if (HttpRoutesConflict(httpTrigger, pair.Value))
-        //                {
-        //                    throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
-        //                }
-        //            }
-        //        }
+                if (!isProxy)
+                {
+                    // prevent duplicate/conflicting routes for functions
+                    // proxy routes check is done in the proxy dll itself and proxies do not use routePrefix so should not check conflict with functions
+                    foreach (var pair in httpFunctions)
+                    {
+                        if (HttpRoutesConflict(httpTrigger, pair.Value))
+                        {
+                            throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
+                        }
+                    }
+                }
 
-        //        httpFunctions.Add(function.Name, httpTrigger);
-        //    }
-        //}
+                httpFunctions.Add(function.Name, httpTrigger);
+            }
+        }
 
-        //internal static void ValidateHttpFunction(string functionName, HttpTriggerAttribute httpTrigger, bool isProxy = false)
-        //{
-        //    if (string.IsNullOrWhiteSpace(httpTrigger.Route) && !isProxy)
-        //    {
-        //        // if no explicit route is provided, default to the function name
-        //        httpTrigger.Route = functionName;
-        //    }
+        internal static void ValidateHttpFunction(string functionName, HttpTriggerAttribute httpTrigger, bool isProxy = false)
+        {
+            if (string.IsNullOrWhiteSpace(httpTrigger.Route) && !isProxy)
+            {
+                // if no explicit route is provided, default to the function name
+                httpTrigger.Route = functionName;
+            }
 
-        //    // disallow custom routes in our own reserved route space
-        //    string httpRoute = httpTrigger.Route.Trim('/').ToLowerInvariant();
-        //    if (httpRoute.StartsWith("admin"))
-        //    {
-        //        throw new InvalidOperationException("The specified route conflicts with one or more built in routes.");
-        //    }
-        //}
+            // disallow custom routes in our own reserved route space
+            string httpRoute = httpTrigger.Route.Trim('/').ToLowerInvariant();
+            if (httpRoute.StartsWith("admin"))
+            {
+                throw new InvalidOperationException("The specified route conflicts with one or more built in routes.");
+            }
+        }
+
+        // A route is in conflict if the route matches any other existing
+        // route and there is intersection in the http methods of the two functions
+        internal static bool HttpRoutesConflict(HttpTriggerAttribute httpTrigger, HttpTriggerAttribute otherHttpTrigger)
+        {
+            if (string.Compare(httpTrigger.Route.Trim('/'), otherHttpTrigger.Route.Trim('/'), StringComparison.OrdinalIgnoreCase) != 0)
+            {
+                // routes differ, so no conflict
+                return false;
+            }
+
+            if (httpTrigger.Methods == null || httpTrigger.Methods.Length == 0 ||
+                otherHttpTrigger.Methods == null || otherHttpTrigger.Methods.Length == 0)
+            {
+                // if either methods collection is null or empty that means
+                // "all methods", which will intersect with any method collection
+                return true;
+            }
+
+            return httpTrigger.Methods.Intersect(otherHttpTrigger.Methods).Any();
+        }
 
         internal static void ApplyConfiguration(JObject config, ScriptHostConfiguration scriptConfig)
         {
@@ -1678,7 +1583,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             ApplyLoggerConfig(config, scriptConfig);
-            ApplyApplicationInsightsConfig(config, scriptConfig);
         }
 
         internal static void ApplyLoggerConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
@@ -1728,45 +1632,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
             }
-        }
-
-        internal static void ApplyApplicationInsightsConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
-        {
-            // TODO: SamplingPercentageEstimatorSettings is not currently available.
-            // Working with the team/brettsam to find an alternative
-            // There's also an internal out-of-band option if needed.
-#if false
-            scriptConfig.ApplicationInsightsSamplingSettings = new SamplingPercentageEstimatorSettings();
-            JObject configSection = (JObject)configJson["applicationInsights"];
-            JToken value;
-            if (configSection != null)
-            {
-                JObject samplingSection = (JObject)configSection["sampling"];
-                if (samplingSection != null)
-                {
-                    if (samplingSection.TryGetValue("isEnabled", out value))
-                    {
-                        bool isEnabled;
-                        if (bool.TryParse(value.ToString(), out isEnabled) && !isEnabled)
-                        {
-                            scriptConfig.ApplicationInsightsSamplingSettings = null;
-                        }
-                    }
-
-                    if (scriptConfig.ApplicationInsightsSamplingSettings != null)
-                    {
-                        if (samplingSection.TryGetValue("maxTelemetryItemsPerSecond", out value))
-                        {
-                            double itemsPerSecond;
-                            if (double.TryParse(value.ToString(), out itemsPerSecond))
-                            {
-                                scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond = itemsPerSecond;
-                            }
-                        }
-                    }
-                }
-            }
-#endif
         }
 
         private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -1981,7 +1846,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (disposing)
             {
                 (TraceWriter as IDisposable)?.Dispose();
-                foreach (var subscription in _subscriptions)
+                foreach (var subscription in _eventSubscriptions)
                 {
                     subscription.Dispose();
                 }
