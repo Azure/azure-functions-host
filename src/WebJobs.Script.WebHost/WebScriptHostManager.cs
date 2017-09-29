@@ -5,9 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -21,14 +19,11 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
-using WebJobs.Script.WebHost.Core;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class WebScriptHostManager : ScriptHostManager
     {
-        // TODO: FACAVAL (WEBHOOKS SDK)
-        // private static Lazy<MethodInfo> _getWebHookDataMethod = new Lazy<MethodInfo>(CreateGetWebHookDataMethodInfo);
         private static bool? _standbyMode;
 
         private readonly WebHostMetricsLogger _metricsLogger;

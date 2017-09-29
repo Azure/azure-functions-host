@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
-    public enum ExtensionRestoreStatus
+    public enum ExtensionsRestoreStatus
     {
         Started,
         Succeeded,

@@ -13,13 +13,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public ExtensionsRestoreJob()
         {
             Id = Guid.NewGuid().ToString();
-            Status = ExtensionRestoreStatus.Started;
+            Status = ExtensionsRestoreStatus.Started;
             StartTime = DateTimeOffset.Now;
         }
 
         public string Id { get; set; }
 
-        public ExtensionRestoreStatus Status { get; set; }
+        public ExtensionsRestoreStatus Status { get; set; }
 
         public DateTimeOffset StartTime { get; set; }
 

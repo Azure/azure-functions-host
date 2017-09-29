@@ -123,12 +123,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             if (jobTask.IsFaulted)
             {
-                job.Status = ExtensionRestoreStatus.Failed;
+                job.Status = ExtensionsRestoreStatus.Failed;
                 job.Error = jobTask.Exception.InnerException?.Message;
             }
             else
             {
-                job.Status = ExtensionRestoreStatus.Succeeded;
+                job.Status = ExtensionsRestoreStatus.Succeeded;
             }
 
             job.EndTime = DateTimeOffset.Now;

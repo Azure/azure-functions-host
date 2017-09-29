@@ -6,9 +6,12 @@ using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Extensions.Primitives;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -21,27 +24,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private const string WarmUpAlternateRoute = "CSharpHttpWarmup";
         private static object _syncLock = new object();
 
+        public static async Task<HttpResponseMessage> WarmUp(HttpRequest request, WebScriptHostManager scriptHostManager)
+        {
+            if (request.Query.TryGetValue("restart", out StringValues value) && string.Compare("1", value) == 0)
+            {
+                scriptHostManager.RestartHost();
+                await scriptHostManager.DelayUntilHostReady();
+            }
 
-        // TODO: FACAVAL - Move from HttpRequestMessage
-        //public static async Task<HttpResponseMessage> WarmUp(HttpRequestMessage request, WebScriptHostManager scriptHostManager)
-        //{
-        //    var queryParams = request.GetQueryParameterDictionary();
-        //    string value = null;
-        //    if (queryParams.TryGetValue("restart", out value) && string.Compare("1", value) == 0)
-        //    {
-        //        scriptHostManager.RestartHost();
-        //        await scriptHostManager.DelayUntilHostReady();
-        //    }
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        }
 
-        //    return new HttpResponseMessage(HttpStatusCode.OK);
-        //}
-
-        public static bool IsWarmUpRequest(HttpRequestMessage request)
+        public static bool IsWarmUpRequest(HttpRequest request)
         {
             return ScriptSettingsManager.Instance.IsAzureEnvironment &&
                 WebScriptHostManager.InStandbyMode &&
                 request.IsAntaresInternalRequest() &&
-                (request.MatchRoute($"api/{WarmUpFunctionName}") || request.MatchRoute($"api/{WarmUpAlternateRoute}"));
+                (request.Path.StartsWithSegments(new PathString($"/api/{WarmUpFunctionName}")) ||
+                request.Path.StartsWithSegments(new PathString($"/api/{WarmUpAlternateRoute}")));
         }
 
         public static void Initialize(ScriptHostConfiguration config)

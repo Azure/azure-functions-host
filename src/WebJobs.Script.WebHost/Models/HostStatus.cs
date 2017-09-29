@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public string Version { get; set; }
 
         /// <summary>
-        /// Gets or sets the host version.
+        /// Gets or sets the host version details. This provides the host informational version.
         /// </summary>
         [JsonProperty(PropertyName = "versionDetails", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public string VersionDetails { get; set; }

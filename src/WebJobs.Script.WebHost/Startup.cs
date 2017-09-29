@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace WebJobs.Script.WebHost.Core
+namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class Startup
     {
