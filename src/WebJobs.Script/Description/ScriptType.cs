@@ -7,11 +7,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         Javascript,
         CSharp,
-        PowerShell,
-        WindowsBatch,
-        Python,
-        PHP,
-        Bash,
         FSharp,
         DotNetAssembly,
         TypeScript,

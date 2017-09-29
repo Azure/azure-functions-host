@@ -62,22 +62,17 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
                 return new NotFoundResult();
             }
 
-            var routingFeature = context.Features.Get<IRoutingFeature>();
-
             // Add rounte data to request info
             // TODO: Keeping this here for now as other code depend on this property, but this can be done in the HTTP binding.
+            var routingFeature = context.Features.Get<IRoutingFeature>();
             context.Items.Add(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, new Dictionary<string,object>(routingFeature.RouteData.Values));
-
             context.Features.Set<IFunctionExecutionFeature>(new FunctionExecutionFeature { Descriptor = descriptor });
 
             bool authorized = await AuthenticateAndAuthorizeAsync(context, descriptor);
-
             if (!authorized)
             {
                 return new UnauthorizedResult();
             }
-
-            Dictionary<string, object> arguments = GetFunctionArguments(descriptor, context.Request);
 
             // Add the request to the logging scope. This allows the App Insights logger to
             // record details about the request.
@@ -89,6 +84,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
 
             using (logger.BeginScope(scopeState))
             {
+                Dictionary<string, object> arguments = GetFunctionArguments(descriptor, context.Request);
+
                 // TODO: Flow cancellation token from caller
                 await host.CallAsync(descriptor.Name, arguments, CancellationToken.None);
             }
