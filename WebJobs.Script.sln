@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26730.3
+VisualStudioVersion = 15.0.26730.16
 MinimumVisualStudioVersion = 15.0.0.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}"
 EndProject
@@ -28,36 +28,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TimerTrigger", "TimerTrigge
 		sample\TimerTrigger\index.js = sample\TimerTrigger\index.js
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-Batch", "QueueTrigger-Batch", "{639CC8E5-E9C1-4AB5-A171-7DD12046390D}"
-	ProjectSection(SolutionItems) = preProject
-		sample\QueueTrigger-Batch\function.json = sample\QueueTrigger-Batch\function.json
-		sample\QueueTrigger-Batch\queueTrigger.bat = sample\QueueTrigger-Batch\queueTrigger.bat
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-Powershell", "QueueTrigger-Powershell", "{D397B63C-6877-4D00-B384-FB6FD928CF46}"
-	ProjectSection(SolutionItems) = preProject
-		sample\QueueTrigger-Powershell\function.json = sample\QueueTrigger-Powershell\function.json
-		sample\QueueTrigger-Powershell\queueTrigger.ps1 = sample\QueueTrigger-Powershell\queueTrigger.ps1
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-Python", "QueueTrigger-Python", "{C9E1FA6F-B62F-4CC6-B4AB-B1E3D46EF23A}"
-	ProjectSection(SolutionItems) = preProject
-		sample\QueueTrigger-Python\function.json = sample\QueueTrigger-Python\function.json
-		sample\QueueTrigger-Python\queueTrigger.py = sample\QueueTrigger-Python\queueTrigger.py
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-Php", "QueueTrigger-Php", "{A36EED66-E934-4A43-864D-DF89A6A6ED0D}"
-	ProjectSection(SolutionItems) = preProject
-		sample\QueueTrigger-Php\function.json = sample\QueueTrigger-Php\function.json
-		sample\QueueTrigger-Php\run.php = sample\QueueTrigger-Php\run.php
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-Bash", "QueueTrigger-Bash", "{2EC32A23-907C-40E1-A3E4-BDB425653873}"
-	ProjectSection(SolutionItems) = preProject
-		sample\QueueTrigger-Bash\function.json = sample\QueueTrigger-Bash\function.json
-		sample\QueueTrigger-Bash\run.sh = sample\QueueTrigger-Bash\run.sh
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ResizeImage", "ResizeImage", "{1B6E0EA1-DB38-431C-864A-2A553DACB8DA}"
 	ProjectSection(SolutionItems) = preProject
 		sample\ResizeImage\function.json = sample\ResizeImage\function.json
@@ -80,12 +50,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger", "HttpTrigger"
 	ProjectSection(SolutionItems) = preProject
 		sample\HttpTrigger\function.json = sample\HttpTrigger\function.json
 		sample\HttpTrigger\index.js = sample\HttpTrigger\index.js
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Batch", "HttpTrigger-Batch", "{A7F93CF8-01D8-483E-A04C-A46026DEA1E6}"
-	ProjectSection(SolutionItems) = preProject
-		sample\HttpTrigger-Batch\function.json = sample\HttpTrigger-Batch\function.json
-		sample\HttpTrigger-Batch\run.bat = sample\HttpTrigger-Batch\run.bat
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Generic", "WebHook-Generic", "{08F97FA9-3D24-4C3D-AE6B-18C5132549AB}"
@@ -146,12 +110,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EventHubTrigger", "EventHub
 	ProjectSection(SolutionItems) = preProject
 		sample\EventHubTrigger\function.json = sample\EventHubTrigger\function.json
 		sample\EventHubTrigger\index.js = sample\EventHubTrigger\index.js
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BlobTrigger-Batch", "BlobTrigger-Batch", "{C23BB3D1-6921-4FCF-8E45-09540E1F986E}"
-	ProjectSection(SolutionItems) = preProject
-		sample\BlobTrigger-Batch\function.json = sample\BlobTrigger-Batch\function.json
-		sample\BlobTrigger-Batch\run.bat = sample\BlobTrigger-Batch\run.bat
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MobileTable-Node", "MobileTable-Node", "{87E44645-EA02-4F12-8C3E-820B5710292D}"
@@ -238,12 +196,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubFileTrigger-FSharp", 
 		sample\ApiHubFileTrigger-FSharp\run.fsx = sample\ApiHubFileTrigger-FSharp\run.fsx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubFileTrigger-Batch", "ApiHubFileTrigger-Batch", "{6F2A5DC3-EE0F-476F-A79B-31D4ED8C7DEB}"
-	ProjectSection(SolutionItems) = preProject
-		sample\ApiHubFileTrigger-Batch\function.json = sample\ApiHubFileTrigger-Batch\function.json
-		sample\ApiHubFileTrigger-Batch\run.bat = sample\ApiHubFileTrigger-Batch\run.bat
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubFileTrigger", "ApiHubFileTrigger", "{5FBF4581-318C-4320-81AA-6B2F02AF34EC}"
 	ProjectSection(SolutionItems) = preProject
 		sample\ApiHubFileTrigger\function.json = sample\ApiHubFileTrigger\function.json
@@ -280,25 +232,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Azure-CSharp", "Web
 		sample\WebHook-Azure-CSharp\run.csx = sample\WebHook-Azure-CSharp\run.csx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Powershell", "HttpTrigger-Powershell", "{BCB7AB10-FDDB-4920-ADB0-E1FE2584CEBF}"
-	ProjectSection(SolutionItems) = preProject
-		sample\HttpTrigger-Powershell\function.json = sample\HttpTrigger-Powershell\function.json
-		sample\HttpTrigger-Powershell\run.ps1 = sample\HttpTrigger-Powershell\run.ps1
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Powershell-Modules", "HttpTrigger-Powershell-Modules", "{CDF316B9-AB36-42CB-859B-FCDB56E083B0}"
-	ProjectSection(SolutionItems) = preProject
-		sample\HttpTrigger-Powershell-Modules\function.json = sample\HttpTrigger-Powershell-Modules\function.json
-		sample\HttpTrigger-Powershell-Modules\run.ps1 = sample\HttpTrigger-Powershell-Modules\run.ps1
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "modules", "modules", "{A751A732-ACCE-4B1F-8244-8DD161619483}"
-	ProjectSection(SolutionItems) = preProject
-		sample\HttpTrigger-Powershell-Modules\modules\Get-DateToday.psm1 = sample\HttpTrigger-Powershell-Modules\modules\Get-DateToday.psm1
-		sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psd1 = sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psd1
-		sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psm1 = sample\HttpTrigger-Powershell-Modules\modules\Show-Calendar.psm1
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SendGrid", "SendGrid", "{23E6C413-FCFB-4727-8F4A-5AFEA63090A7}"
 	ProjectSection(SolutionItems) = preProject
 		sample\SendGrid\function.json = sample\SendGrid\function.json
@@ -309,12 +242,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SendGrid-CSharp", "SendGrid
 	ProjectSection(SolutionItems) = preProject
 		sample\SendGrid-CSharp\function.json = sample\SendGrid-CSharp\function.json
 		sample\SendGrid-CSharp\run.csx = sample\SendGrid-CSharp\run.csx
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SendGrid-PowerShell", "SendGrid-PowerShell", "{5C25CC30-5E4B-4E17-A0CB-AB0E72B70D8E}"
-	ProjectSection(SolutionItems) = preProject
-		sample\SendGrid-PowerShell\function.json = sample\SendGrid-PowerShell\function.json
-		sample\SendGrid-PowerShell\run.ps1 = sample\SendGrid-PowerShell\run.ps1
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CSharp-Poco", "HttpTrigger-CSharp-Poco", "{49A40362-2EB9-424C-B605-6BEE16A1C8B6}"
@@ -498,16 +425,10 @@ Global
 		{46A0C17F-80F3-4621-B12D-918D5DADA039} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{BBC61846-A33D-4D82-9749-D381D176EE67} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{8706290C-D46A-4D44-AD4C-5F51FA928D1A} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{639CC8E5-E9C1-4AB5-A171-7DD12046390D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{D397B63C-6877-4D00-B384-FB6FD928CF46} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{C9E1FA6F-B62F-4CC6-B4AB-B1E3D46EF23A} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{A36EED66-E934-4A43-864D-DF89A6A6ED0D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{2EC32A23-907C-40E1-A3E4-BDB425653873} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{1B6E0EA1-DB38-431C-864A-2A553DACB8DA} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5C458CC0-F3EC-463E-9091-2B08955C4375} = {1B6E0EA1-DB38-431C-864A-2A553DACB8DA}
 		{5C89A41E-D179-4D2F-B66E-0F77BF1DE53E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{7091449A-ADE8-47FE-985C-E9FADCCC49C4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{A7F93CF8-01D8-483E-A04C-A46026DEA1E6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{08F97FA9-3D24-4C3D-AE6B-18C5132549AB} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5A089F10-FC0E-4FA6-AC5C-1A76FC468359} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{844FBB84-D62F-49D4-A28B-BB900DA3C32B} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
@@ -518,7 +439,6 @@ Global
 		{15BA01AE-580C-4FBB-A117-F3B112B4BD02} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{15BA01AE-580C-4FBB-A117-F3B112B4BD03} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B80C88CF-68EE-4400-A68D-216F1F85179C} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{C23BB3D1-6921-4FCF-8E45-09540E1F986E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{87E44645-EA02-4F12-8C3E-820B5710292D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{437EB182-8CB9-42BD-9019-E5F6E69D1DB3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{437EB182-8CB9-42BD-9019-E5F6E69D1DB4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
@@ -533,19 +453,14 @@ Global
 		{97B9DB7D-8014-46A0-9E51-6C02A99E4D38} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{A308340E-16AC-47DA-9402-A279F681D5F3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{A308340E-16AC-47DA-9402-A279F681D5F4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{6F2A5DC3-EE0F-476F-A79B-31D4ED8C7DEB} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5FBF4581-318C-4320-81AA-6B2F02AF34EC} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{75DF7C02-CE61-4D1F-83F9-BFBD38AAAF0E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{75DF7C02-CE61-4D1F-83F9-BFBD38AAAF0F} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C963B824-334A-4905-9AC7-2F373E5BC9CA} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C963B824-334A-4905-9AC7-2F373E5BC9CB} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{94B16BEB-70BD-4357-A21A-D1E70C8CDDF0} = {94B16BEB-70BD-4357-A21A-D1E70C8CDDF1}
-		{BCB7AB10-FDDB-4920-ADB0-E1FE2584CEBF} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{CDF316B9-AB36-42CB-859B-FCDB56E083B0} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{A751A732-ACCE-4B1F-8244-8DD161619483} = {CDF316B9-AB36-42CB-859B-FCDB56E083B0}
 		{23E6C413-FCFB-4727-8F4A-5AFEA63090A7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B69D3A0B-829B-4721-B034-8ECECB264458} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{5C25CC30-5E4B-4E17-A0CB-AB0E72B70D8E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{49A40362-2EB9-424C-B605-6BEE16A1C8B6} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{94B16BEB-70BD-4357-A21A-D1E70C8CDDF1} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C9FCBCFD-0AD1-44B0-A15B-EE2F5219A345} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
@@ -563,6 +478,7 @@ Global
 		{7D50E081-A161-4E83-A6D4-F8529E518613} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{DCC9EBEB-5F60-4117-95D2-26507F9DE9A6} = {7D50E081-A161-4E83-A6D4-F8529E518613}
 		{62489417-341D-42AD-9E84-E97EB8236979} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{1DE0B190-660F-4601-AAC1-94C9BDF5BDD2} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{BCFBE330-871A-44BE-9016-83845231230F} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{180EF900-AF1F-4EAE-8EF0-50A3763BDE15} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{EDDEF4E8-1619-459B-A33C-153FB429D2A5} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
@@ -572,10 +488,6 @@ Global
 		{137FB7AA-B192-4766-B86A-C813D94B1995} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
 		{EDDDAED1-0E37-4ED7-A595-63F686DEE90A} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
 		{38920568-003E-448F-963B-41B739D1E01C} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
-		{1DE0B190-660F-4601-AAC1-94C9BDF5BDD2} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {2BA60824-87AB-4B37-B472-4692C6F8A89B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}
