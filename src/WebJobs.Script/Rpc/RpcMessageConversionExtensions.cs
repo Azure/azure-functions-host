@@ -126,10 +126,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             else
             {
-                // attempt POCO
+                // attempt POCO / array of pocos
                 try
                 {
-                    typedData.Json = JObject.FromObject(value).ToString();
+                    typedData.Json = JsonConvert.SerializeObject(value);
                 }
                 catch
                 {
