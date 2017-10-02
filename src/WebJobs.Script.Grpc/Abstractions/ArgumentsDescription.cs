@@ -3,7 +3,7 @@
 
 using System.Collections.Generic;
 
-namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Abstractions
 {
     public class ArgumentsDescription
     {

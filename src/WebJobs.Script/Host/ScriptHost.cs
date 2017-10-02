@@ -22,12 +22,12 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Dispatch;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.File;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private FileWatcherEventSource _fileEventSource;
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private ProxyClientExecutor _proxyClient;
-        private IFunctionDispatcher _functionDispatcher;
+        private IFunctionRegistry _functionDispatcher;
         private ILoggerFactory _loggerFactory;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
 
@@ -422,9 +422,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     hostConfig.StorageConnectionString = null;
                 }
 
-                var serverImpl = new FunctionRpcImpl(EventManager);
+                var serverImpl = new FunctionRpcService(EventManager);
                 var server = new GrpcServer(serverImpl);
-                server.Start();
+
+                // TODO: async initialization of script host - hook into startasync method?
+                server.StartAsync().GetAwaiter().GetResult();
                 var processFactory = new DefaultWorkerProcessFactory();
 
                 try
@@ -456,7 +458,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     new JavaWorkerProvider()
                 });
 
-                _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, TraceWriter, workerConfigs);
+                _functionDispatcher = new FunctionRegistry(EventManager, server, channelFactory, TraceWriter, workerConfigs);
 
                 _eventSubscriptions.Add(EventManager.OfType<WorkerErrorEvent>()
                     .Subscribe(evt =>

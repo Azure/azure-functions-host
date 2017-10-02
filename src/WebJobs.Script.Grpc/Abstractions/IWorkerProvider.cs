@@ -4,7 +4,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.Abstractions.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Abstractions
 {
     /// <summary>
     /// Enables a language worker implementor to specify how to create and configure the language worker process.
