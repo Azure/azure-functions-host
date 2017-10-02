@@ -5,7 +5,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Grpc.Core;
-using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
@@ -23,7 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             };
         }
 
-        public void Start() => _server.Start();
+        public Task StartAsync() {
+            _server.Start();
+            return Task.CompletedTask;
+        }
 
         public Task ShutdownAsync() => _server.ShutdownAsync();
 
