@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -12,11 +13,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         ImmutableArray<Diagnostic> GetDiagnostics();
 
-        object Emit(CancellationToken cancellationToken);
+        Task<object> EmitAsync(CancellationToken cancellationToken);
     }
 
     public interface ICompilation<TOutput> : ICompilation
     {
-        new TOutput Emit(CancellationToken cancellationToken);
+        new Task<TOutput> EmitAsync(CancellationToken cancellationToken);
     }
 }

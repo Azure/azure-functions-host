@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.CodeAnalysis.Text;
@@ -81,13 +82,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return RefKind.None;
         }
 
-        object ICompilation.Emit(CancellationToken cancellationToken) => Emit(cancellationToken);
+        async Task<object> ICompilation.EmitAsync(CancellationToken cancellationToken) => await EmitAsync(cancellationToken);
 
-        public Assembly Emit(CancellationToken cancellationToken)
+        public Task<Assembly> EmitAsync(CancellationToken cancellationToken)
         {
             EnsureAssemblyOption();
 
-            return _assemblyOption.Value;
+            return Task.FromResult(_assemblyOption.Value);
         }
 
         private void EnsureAssemblyOption(bool includeDiagnostics = true)

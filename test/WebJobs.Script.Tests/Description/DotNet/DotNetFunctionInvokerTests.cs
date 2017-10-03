@@ -48,8 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             RunDependencies dependencies = CreateDependencies();
             dependencies.Compilation.Setup(c => c.GetEntryPointSignature(It.IsAny<IFunctionEntryPointResolver>()))
                 .Throws(exception);
-            dependencies.Compilation.Setup(c => c.Emit(It.IsAny<CancellationToken>()))
-                .Returns(typeof(object).Assembly);
+            dependencies.Compilation.Setup(c => c.EmitAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(typeof(object).Assembly);
 
             string functionName = Guid.NewGuid().ToString();
             string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), functionName);

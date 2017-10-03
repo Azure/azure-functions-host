@@ -15,12 +15,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.Node.Compilation.Raw
     public class RawJavascriptCompilationTests
     {
         [Fact]
-        public void Emit_ReturnsScriptPath()
+        public async Task Emit_ReturnsScriptPath()
         {
             string path = @"c:\root\test\index.js";
             var compilation = new RawJavaScriptCompilation(path);
 
-            string result = compilation.Emit(CancellationToken.None);
+            string result = await compilation.EmitAsync(CancellationToken.None);
 
             Assert.Equal(path, result);
         }

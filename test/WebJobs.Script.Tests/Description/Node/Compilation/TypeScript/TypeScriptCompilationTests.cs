@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Node.TypeScript
             string inputFile = @"c:\root\directory\functionname\inputfile.ts";
             var compilation = await TypeScriptCompilation.CompileAsync(inputFile, options, new TestCompiler());
 
-            string result = compilation.Emit(CancellationToken.None);
+            string result = await compilation.EmitAsync(CancellationToken.None);
 
             Assert.Equal(@"c:\root\directory\functionname\outdir\functionname\inputfile.js", result);
         }

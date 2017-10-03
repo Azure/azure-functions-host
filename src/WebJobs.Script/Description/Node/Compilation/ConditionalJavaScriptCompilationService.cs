@@ -42,7 +42,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     IJavaScriptCompilation compilation = await _compilationService.GetFunctionCompilationAsync(functionMetadata);
 
-                    await PersistCompilationResult(functionMetadata, compilation.Emit(CancellationToken.None), compilation.GetDiagnostics());
+                    string emitResult = await compilation.EmitAsync(CancellationToken.None);
+
+                    await PersistCompilationResult(functionMetadata, emitResult, compilation.GetDiagnostics());
 
                     return compilation;
                 }
@@ -150,9 +152,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             public ImmutableArray<Diagnostic> GetDiagnostics() => Diagnostics?.ToImmutableArray() ?? ImmutableArray<Diagnostic>.Empty;
 
-            public string Emit(CancellationToken cancellationToken) => EmitResult;
+            public Task<string> EmitAsync(CancellationToken cancellationToken) => Task.FromResult(EmitResult);
 
-            object ICompilation.Emit(CancellationToken cancellationToken) => Emit(cancellationToken);
+            async Task<object> ICompilation.EmitAsync(CancellationToken cancellationToken) => await EmitAsync(cancellationToken);
         }
     }
 }

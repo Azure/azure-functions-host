@@ -301,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     IDotNetCompilation compilation = await _compilationService.GetFunctionCompilationAsync(Metadata);
 
-                    Assembly assembly = compilation.Emit(cancellationToken);
+                    Assembly assembly = await compilation.EmitAsync(cancellationToken);
                     _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter, Host.ScriptConfig.HostConfig.LoggerFactory);
 
                     FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);

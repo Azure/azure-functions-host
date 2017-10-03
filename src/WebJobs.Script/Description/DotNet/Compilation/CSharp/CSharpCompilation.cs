@@ -9,6 +9,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description.DotNet.CSharp.Analyzers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -87,9 +88,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 && namedTypeSymbol.TypeArguments.Any(t => IsOrUsesAssemblyType(t, assemblySymbol));
         }
 
-        object ICompilation.Emit(CancellationToken cancellationToken) => Emit(cancellationToken);
+        async Task<object> ICompilation.EmitAsync(CancellationToken cancellationToken) => await EmitAsync(cancellationToken);
 
-        public Assembly Emit(CancellationToken cancellationToken)
+        public async Task<Assembly> EmitAsync(CancellationToken cancellationToken)
         {
             try
             {
@@ -97,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 using (var pdbStream = new MemoryStream())
                 {
                     var compilationWithAnalyzers = _compilation.WithAnalyzers(GetAnalyzers());
-                    var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
+                    var diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
                     var emitOptions = new EmitOptions().WithDebugInformationFormat(PlatformHelper.IsMono ? DebugInformationFormat.PortablePdb : DebugInformationFormat.Pdb);
                     var emitResult = compilationWithAnalyzers.Compilation.Emit(assemblyStream, pdbStream, options: emitOptions, cancellationToken: cancellationToken);
 
