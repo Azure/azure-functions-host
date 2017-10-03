@@ -258,14 +258,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         request.Properties.Add(HttpExtensionConstants.AzureWebJobsWebHookDataKey, webHookData);
                     }
                 }
-
-                // see if the function defines a parameter to receive the HttpRequestMessage and
-                // if so, pass it along
-                ParameterDescriptor requestParameter = function.Parameters.FirstOrDefault(p => p.Type == typeof(HttpRequestMessage));
-                if (requestParameter != null)
-                {
-                    arguments.Add(requestParameter.Name, request);
-                }
             }
 
             arguments.Add(triggerParameter.Name, request);

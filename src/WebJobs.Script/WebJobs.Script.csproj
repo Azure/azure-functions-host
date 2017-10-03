@@ -398,7 +398,6 @@
     <Compile Include="Binding\ExtensionBinding.cs" />
     <Compile Include="Binding\FunctionBinding.cs" />
     <Compile Include="Binding\HttpBinding.cs" />
-    <Compile Include="Binding\IResultProcessingBinding.cs" />
     <Compile Include="Binding\Manual\ManualTriggerAttribute.cs" />
     <Compile Include="Binding\Manual\ManualTriggerAttributeBindingProvider.cs" />
     <Compile Include="Binding\MobileAppsScriptBindingProvider.cs" />

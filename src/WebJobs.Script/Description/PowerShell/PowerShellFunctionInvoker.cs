@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _outputBindings = outputBindings;
         }
 
-        protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
+        protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
             object input = parameters[0];
             string invocationId = context.ExecutionContext.InvocationId.ToString();
@@ -70,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 throw new RuntimeException("PowerShell script error", error.Exception, error);
             }
+            return null;
         }
 
         private async Task<PSDataCollection<ErrorRecord>> InvokePowerShellScript(Dictionary<string, string> envVars, TraceWriter traceWriter)

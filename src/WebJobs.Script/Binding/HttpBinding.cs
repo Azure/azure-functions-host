@@ -21,7 +21,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    public class HttpBinding : FunctionBinding, IResultProcessingBinding
+    public class HttpBinding : FunctionBinding
     {
         public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access)
             : base(config, metadata, access)
@@ -253,20 +253,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return result;
         }
 
-        public void ProcessResult(IDictionary<string, object> functionArguments, object[] systemArguments, string triggerInputName, object result)
-        {
-            if (result == null)
-            {
-                return;
-            }
-
-            HttpRequestMessage request = (HttpRequestMessage)functionArguments.Values.Union(systemArguments).FirstOrDefault(p => p is HttpRequestMessage);
-            if (request != null)
-            {
-                SetResponse(request, result);
-            }
-        }
-
         internal static void SetResponse(HttpRequestMessage request, object result)
         {
             if (result == null)
@@ -280,11 +266,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
-        }
-
-        public bool CanProcessResult(object result)
-        {
-            return result != null;
         }
 
         internal static void AddResponseHeader(HttpResponseMessage response, KeyValuePair<string, object> header)

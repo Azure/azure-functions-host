@@ -203,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     metrics);
             }
 
-            protected override async Task InvokeCore(object[] parameters, FunctionInvocationContext context)
+            protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
             {
                 FunctionInstanceLogEntry item = new FunctionInstanceLogEntry
                 {
@@ -226,6 +226,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                     await Task.Delay(invocation.Delay);
                     error = null; // success
+                    return null;
                 }
                 finally
                 {

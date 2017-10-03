@@ -89,10 +89,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return false;
         }
 
-        public async Task Invoke(object[] parameters)
+        public async Task<object> Invoke(object[] parameters)
         {
             FunctionInvocationContext context = GetContextFromParameters(parameters, Metadata);
-            await InvokeCore(parameters, context);
+            return await InvokeCore(parameters, context);
         }
 
         private static FunctionInvocationContext GetContextFromParameters(object[] parameters, FunctionMetadata metadata)
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return metrics.BeginEvent(MetricEventNames.FunctionInvokeLatency, metadata.Name);
         }
 
-        protected abstract Task InvokeCore(object[] parameters, FunctionInvocationContext context);
+        protected abstract Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context);
 
         protected virtual void OnScriptFileChanged(FileSystemEventArgs e)
         {
