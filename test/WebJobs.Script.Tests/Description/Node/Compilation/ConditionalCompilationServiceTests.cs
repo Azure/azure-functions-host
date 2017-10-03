@@ -33,7 +33,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.Node.Compilation
             IJavaScriptCompilation compilation = await compilationService.GetFunctionCompilationAsync(functionMetadata);
 
             Assert.NotNull(compilation);
-            Assert.Equal("test", compilation.Emit(CancellationToken.None));
+
+            string result = await compilation.EmitAsync(CancellationToken.None);
+            Assert.Equal("test", result);
 
             innerCompilationServiceMock.Verify();
         }
@@ -75,8 +77,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.Node.Compilation
 
             Assert.NotNull(compilation);
             Assert.NotNull(cachedCompilation);
-            Assert.Equal("positiveresult", compilation.Emit(CancellationToken.None));
-            Assert.Equal("positiveresult", cachedCompilation.Emit(CancellationToken.None));
+            Assert.Equal("positiveresult", compilation.EmitAsync(CancellationToken.None).Result);
+            Assert.Equal("positiveresult", cachedCompilation.EmitAsync(CancellationToken.None).Result);
 
             negativeTestData.CompilationServiceMock.Verify(c => c.GetFunctionCompilationAsync(It.IsAny<FunctionMetadata>()), Times.Never());
             positiveTestData.CompilationServiceMock.Verify(c => c.GetFunctionCompilationAsync(It.IsAny<FunctionMetadata>()));
@@ -104,11 +106,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.Node.Compilation
 
             public bool SupportsDiagnostics => true;
 
-            public string Emit(CancellationToken cancellationToken) => _emitResult;
+            public Task<string> EmitAsync(CancellationToken cancellationToken) => Task.FromResult(_emitResult);
 
             public ImmutableArray<Diagnostic> GetDiagnostics() => _diagnostics;
 
-            object ICompilation.Emit(CancellationToken cancellationToken) => Emit(cancellationToken);
+            async Task<object> ICompilation.EmitAsync(CancellationToken cancellationToken) => await EmitAsync(cancellationToken);
         }
     }
 }

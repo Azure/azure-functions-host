@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 IJavaScriptCompilation compilation = await CompileAndTraceAsync(LogTargets.System, suppressCompilationSummary: true);
 
-                string functionScriptPath = compilation.Emit(cancellationToken);
+                string functionScriptPath = await compilation.EmitAsync(cancellationToken);
                 string script = string.Format(CultureInfo.InvariantCulture, _functionTemplate, functionScriptPath.Replace('\\', '/'));
 
                 return Edge.Func(script);

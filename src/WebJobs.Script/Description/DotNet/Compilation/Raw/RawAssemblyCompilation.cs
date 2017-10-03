@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -26,11 +27,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public Assembly FunctionAssembly => _functionAssembly ?? (_functionAssembly = Assembly.LoadFrom(_assemblyFilePath));
 
-        object ICompilation.Emit(CancellationToken cancellationToken) => Emit(cancellationToken);
+        async Task<object> ICompilation.EmitAsync(CancellationToken cancellationToken) => await EmitAsync(cancellationToken);
 
-        public Assembly Emit(CancellationToken cancellationToken)
+        public Task<Assembly> EmitAsync(CancellationToken cancellationToken)
         {
-            return FunctionAssembly;
+            return Task.FromResult(FunctionAssembly);
         }
 
         public ImmutableArray<Diagnostic> GetDiagnostics() => ImmutableArray<Diagnostic>.Empty;

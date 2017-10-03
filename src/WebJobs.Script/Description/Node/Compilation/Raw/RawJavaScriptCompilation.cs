@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -21,8 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public ImmutableArray<Diagnostic> GetDiagnostics() => ImmutableArray<Diagnostic>.Empty;
 
-        object ICompilation.Emit(CancellationToken cancellationToken) => Emit(cancellationToken);
+        async Task<object> ICompilation.EmitAsync(CancellationToken cancellationToken) => await EmitAsync(cancellationToken);
 
-        public string Emit(CancellationToken cancellationToken) => _scriptFilePath;
+        public Task<string> EmitAsync(CancellationToken cancellationToken) => Task.FromResult(_scriptFilePath);
     }
 }

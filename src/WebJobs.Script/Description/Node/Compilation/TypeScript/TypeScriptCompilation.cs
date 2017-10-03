@@ -44,14 +44,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Node.TypeScript
 
         public ImmutableArray<Diagnostic> GetDiagnostics() => ImmutableArray.Create(_diagnostics.ToArray());
 
-        object ICompilation.Emit(CancellationToken cancellationToken) => Emit(cancellationToken);
+        async Task<object> ICompilation.EmitAsync(CancellationToken cancellationToken) => await EmitAsync(cancellationToken);
 
-        public string Emit(CancellationToken cancellationToken)
+        public Task<string> EmitAsync(CancellationToken cancellationToken)
         {
             string relativeInputFilePath = FileUtility.GetRelativePath(_options.RootDir, _inputFilePath);
             string outputFileName = Path.ChangeExtension(relativeInputFilePath, ".js");
 
-            return Path.Combine(Path.GetDirectoryName(_inputFilePath), _options.OutDir, outputFileName);
+            string scriptPath = Path.Combine(Path.GetDirectoryName(_inputFilePath), _options.OutDir, outputFileName);
+
+            return Task.FromResult(scriptPath);
         }
     }
 }
