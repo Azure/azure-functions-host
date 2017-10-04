@@ -91,6 +91,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\WebJobs.Script.Tests.Shared\TestScopedEnvironmentVariable.cs">
+      <Link>TestScopedEnvironmentVariable.cs</Link>
+    </Compile>
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -149,5 +152,5 @@
   <Target Name="AfterBuild">
   </Target>
   -->
-    <Import Project="..\..\tools\Clean.targets"/>
+  <Import Project="..\..\tools\Clean.targets" />
 </Project>
