@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             AppServiceSettings.WorkerName = "127.0.0.1";
             AppServiceSettings.HomeStampName = "waws-prod-home-stamp";
             AppServiceSettings.CurrentStampName = "waws-prod-slave-stamp";
+            AppServiceSettings.RuntimeEncryptionKey = ScaleUtilsTests.GenerateEncryptionKey();
             try
             {
                 AppServiceScaleHandler.HttpMessageHandler = mockHttpMessageHandler;
@@ -84,6 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             AppServiceSettings.WorkerName = "127.0.0.1";
             AppServiceSettings.HomeStampName = "waws-prod-home-stamp";
             AppServiceSettings.CurrentStampName = "waws-prod-slave-stamp";
+            AppServiceSettings.RuntimeEncryptionKey = ScaleUtilsTests.GenerateEncryptionKey();
             try
             {
                 AppServiceScaleHandler.HttpMessageHandler = mockHttpMessageHandler;
@@ -145,6 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             AppServiceSettings.WorkerName = "127.0.0.1";
             AppServiceSettings.HomeStampName = "waws-prod-home-stamp";
             AppServiceSettings.CurrentStampName = "waws-prod-slave-stamp";
+            AppServiceSettings.RuntimeEncryptionKey = ScaleUtilsTests.GenerateEncryptionKey();
             try
             {
                 AppServiceScaleHandler.HttpMessageHandler = mockHttpMessageHandler;
@@ -198,6 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             AppServiceSettings.WorkerName = null;
             AppServiceSettings.HomeStampName = null;
             AppServiceSettings.CurrentStampName = null;
+            AppServiceSettings.RuntimeEncryptionKey = null;
         }
     }
 }

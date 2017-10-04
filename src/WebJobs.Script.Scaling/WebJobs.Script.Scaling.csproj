@@ -72,6 +72,7 @@
     <Reference Include="System.Web" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
@@ -114,5 +115,5 @@
   <Target Name="AfterBuild">
   </Target>
   -->
-  <Import Project="..\..\tools\Clean.targets"/>
+  <Import Project="..\..\tools\Clean.targets" />
 </Project>

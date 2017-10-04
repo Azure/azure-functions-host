@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         private static string _sku;
         private static string _lockHandleId;
         private static bool? _validateCertificates;
+        private static byte[] _runtimeEncryptionKey;
 
         /// <summary>
         /// Gets or sets a value indicating whether runtime scaling enabled
@@ -246,6 +247,40 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
             set
             {
                 _lockHandleId = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a runtime encryption key
+        /// </summary>
+        public static byte[] RuntimeEncryptionKey
+        {
+            get
+            {
+                if (_runtimeEncryptionKey == null)
+                {
+                    var value = Environment.GetEnvironmentVariable("WEBSITE_ENCRYPTION_KEY");
+                    if (string.IsNullOrEmpty(value))
+                    {
+                        throw new InvalidOperationException("MIssing WEBSITE_ENCRYPTION_KEY environment variable");
+                    }
+
+                    try
+                    {
+                        _runtimeEncryptionKey = Convert.FromBase64String(value);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException(string.Format("Invalid base64 WEBSITE_ENCRYPTION_KEY environment variable '{0}'.", value), ex);
+                    }
+                }
+
+                return _runtimeEncryptionKey;
+            }
+
+            set
+            {
+                _runtimeEncryptionKey = value;
             }
         }
 

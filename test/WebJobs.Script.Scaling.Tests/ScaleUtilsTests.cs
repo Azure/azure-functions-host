@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using Microsoft.Azure.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
@@ -115,20 +117,24 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
         [Theory, MemberData("GetAndValidateTokenData")]
         public void GetAndValidateTokenTests(DateTime expiredUtc, bool expected)
         {
-            var token = ScaleUtils.GetToken(expiredUtc);
-
-            if (expected)
+            var encryptionKey = GenerateEncryptionKey();
+            using (new TestScopedEnvironmentVariable("WEBSITE_ENCRYPTION_KEY", Convert.ToBase64String(encryptionKey)))
             {
-                // test
-                ScaleUtils.ValidateToken(token);
-            }
-            else
-            {
-                // test
-                var exception = Assert.Throws<InvalidOperationException>(() => ScaleUtils.ValidateToken(token));
+                var token = ScaleUtils.GetToken(expiredUtc);
 
-                // Assert
-                Assert.Contains("expired", exception.Message);
+                if (expected)
+                {
+                    // test
+                    ScaleUtils.ValidateToken(token);
+                }
+                else
+                {
+                    // test
+                    var exception = Assert.Throws<InvalidOperationException>(() => ScaleUtils.ValidateToken(token));
+
+                    // Assert
+                    Assert.Contains("expired", exception.Message);
+                }
             }
         }
 
@@ -139,6 +145,16 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
                 yield return new object[] { DateTime.UtcNow, true };
                 yield return new object[] { DateTime.UtcNow.AddMinutes(-4), true };
                 yield return new object[] { DateTime.UtcNow.AddMinutes(-6), false };
+            }
+        }
+
+        public static byte[] GenerateEncryptionKey()
+        {
+            byte[] key = new byte[32];
+            using (var rng = new RNGCryptoServiceProvider())
+            {
+                rng.GetBytes(key);
+                return key;
             }
         }
     }
