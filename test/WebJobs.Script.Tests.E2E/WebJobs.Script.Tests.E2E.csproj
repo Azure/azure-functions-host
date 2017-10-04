@@ -99,6 +99,7 @@
     <Compile Include="GeneralEndToEndTests.cs" />
     <Compile Include="KuduClient.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ProxyEndToEndTests.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="TelemetryContext.cs" />
     <Compile Include="TraceAttribute.cs" />
@@ -106,6 +107,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="Functions\wwwroot\proxies.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="Functions\wwwroot\ServiceBusNode\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
