@@ -152,6 +152,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [AllowAnonymous]
         public IHttpActionResult Log(IEnumerable<HostLogEntry> logEntries)
         {
+            if (logEntries == null)
+            {
+                return BadRequest("An array of log entry objects is expected.");
+            }
+
             var authorizationLevel = Request.GetAuthorizationLevel();
             if (Request.IsAuthDisabled() ||
                 authorizationLevel == AuthorizationLevel.Admin ||

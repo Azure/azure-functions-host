@@ -1000,10 +1000,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var request = new HttpRequestMessage(HttpMethod.Post, "admin/host/log");
             request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, "xyz");
+            request.Content = new StringContent("[]");
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
             var response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
             request = new HttpRequestMessage(HttpMethod.Post, "admin/host/log");
+            request.Content = new StringContent("[]");
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
             response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
@@ -1058,6 +1062,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Assert.Equal(1, hostLogs.Count(p => p.Contains(expectedLog)));
             }
+        }
+
+        [Fact]
+        public async Task HostLog_SingletonLog_ReturnsBadRequest()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "admin/host/log");
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, MasterKey);
+            var log = new HostLogEntry
+            {
+                Level = TraceLevel.Verbose,
+                Source = "ScaleController",
+                Message = string.Format("Test Verbose log {0}", Guid.NewGuid().ToString())
+            };
+            request.Content = new StringContent(log.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            var response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var error = await response.Content.ReadAsAsync<HttpError>();
+            Assert.Equal("An array of log entry objects is expected.", error.Message);
         }
 
         [Fact]
