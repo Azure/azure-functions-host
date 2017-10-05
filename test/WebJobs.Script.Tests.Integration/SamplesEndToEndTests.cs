@@ -1015,6 +1015,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task HostLog_AdminLevel_Succeeds()
         {
+            TestHelpers.ClearHostLogs();
+
             var request = new HttpRequestMessage(HttpMethod.Post, "admin/host/log");
             request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, MasterKey);
             var logs = new HostLogEntry[]

@@ -13,6 +13,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class TraceWriterExtensionsTests
     {
         [Fact]
+        public void WithSource_AppliesDefaultSource()
+        {
+            TestTraceWriter testTraceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            var wrappedTraceWriter = testTraceWriter.WithSource("TestDefault");
+
+            wrappedTraceWriter.Info("Test1");
+            wrappedTraceWriter.Info("Test2", "CustomSource");
+            wrappedTraceWriter.Info("Test3", string.Empty);
+
+            Assert.Equal(3, testTraceWriter.Traces.Count);
+
+            Assert.Equal("Test1", testTraceWriter.Traces[0].Message);
+            Assert.Equal("TestDefault", testTraceWriter.Traces[0].Source);
+
+            Assert.Equal("Test2", testTraceWriter.Traces[1].Message);
+            Assert.Equal("CustomSource", testTraceWriter.Traces[1].Source);
+
+            Assert.Equal("Test3", testTraceWriter.Traces[2].Message);
+            Assert.Equal("TestDefault", testTraceWriter.Traces[2].Source);
+        }
+
+        [Fact]
         public void Apply_CreatesInterceptingTraceWriter()
         {
             TestTraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
