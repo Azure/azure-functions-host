@@ -37,7 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string LoggerHttpRequest = "MS_HttpRequest";
 
-        public const string LogCategoryAdminController = "Host.Controllers.Admin";
+        public const string LogCategoryHostController = "Host.Controllers.Host";
+        public const string LogCategoryFunctionsController = "Host.Controllers.Functions";
         public const string LogCategoryKeysController = "Host.Controllers.Keys";
         public const string LogCategoryHostGeneral = "Host.General";
         public const string LogCategoryHostMetrics = "Host.Metrics";

@@ -13,6 +13,8 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Configuration;
@@ -97,6 +99,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // The services below need to be scoped to a pseudo-tenant (warm/specialized environment)
             builder.Register<WebScriptHostManager>(c => c.Resolve<WebHostResolver>().GetWebScriptHostManager()).ExternallyOwned();
             builder.Register<ISecretManager>(c => c.Resolve<WebHostResolver>().GetSecretManager()).ExternallyOwned();
+            builder.RegisterType<WebFunctionsManager>().As<IWebFunctionsManager>().SingleInstance();
+            builder.RegisterType<VirtualFileSystem>();
+            builder.RegisterType<VirtualFileSystemMiddleware>();
 
             // Populate the container builder with registered services.
             // Doing this here will cause any services registered in the service collection to

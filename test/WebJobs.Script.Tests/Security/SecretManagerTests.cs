@@ -614,7 +614,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                         Task.Run(async () =>
                         {
                             // Lock the file
-                            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Write))
+                            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Write, FileShare.None))
                             {
                                 await Task.Delay(500);
                             }
@@ -636,7 +636,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                             Task.Run(async () =>
                             {
                                 // Lock the file
-                                using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Write))
+                                using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Write, FileShare.None))
                                 {
                                     await Task.Delay(3000);
                                 }
@@ -683,7 +683,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                         Task.Run(async () =>
                         {
                             // Lock the file
-                            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Write))
+                            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Write, FileShare.None))
                             {
                                 await Task.Delay(500);
                             }
@@ -705,7 +705,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                             Task.Run(async () =>
                             {
                                 // Lock the file
-                                using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Write))
+                                using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Write, FileShare.None))
                                 {
                                     await Task.Delay(3000);
                                 }

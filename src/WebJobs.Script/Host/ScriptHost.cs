@@ -543,7 +543,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionMetadata> functionMetadata;
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupReadFunctionMetadataLatency))
             {
-                functionMetadata = ReadFunctionMetadata(_directorySnapshot, _startupLogger, FunctionErrors, _settingsManager, ScriptConfig.Functions);
+                functionMetadata = ReadFunctionsMetadata(_directorySnapshot, _startupLogger, FunctionErrors, _settingsManager, ScriptConfig.Functions);
                 _startupLogger.LogTrace("Function metadata read.");
             }
 
@@ -1044,7 +1044,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionMetadata;
         }
 
-        public static Collection<FunctionMetadata> ReadFunctionMetadata(IEnumerable<string> functionDirectories, ILogger logger, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null)
+        public static Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<string> functionDirectories, ILogger logger, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null)
         {
             var functions = new Collection<FunctionMetadata>();
             settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
@@ -1056,58 +1056,69 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (var scriptDir in functionDirectories)
             {
-                string functionName = null;
-
-                try
+                var function = ReadFunctionMetadata(scriptDir, logger, functionErrors, settingsManager, functionWhitelist);
+                if (function != null)
                 {
-                    // read the function config
-                    string functionConfigPath = Path.Combine(scriptDir, ScriptConstants.FunctionMetadataFileName);
-                    string json = null;
-                    try
-                    {
-                        json = File.ReadAllText(functionConfigPath);
-                    }
-                    catch (FileNotFoundException)
-                    {
-                        // not a function directory
-                        continue;
-                    }
-
-                    functionName = Path.GetFileName(scriptDir);
-                    if (functionWhitelist != null &&
-                        !functionWhitelist.Contains(functionName, StringComparer.OrdinalIgnoreCase))
-                    {
-                        // a functions filter has been specified and the current function is
-                        // not in the filter list
-                        continue;
-                    }
-
-                    ValidateName(functionName);
-
-                    JObject functionConfig = JObject.Parse(json);
-
-                    string functionError = null;
-                    FunctionMetadata functionMetadata = null;
-                    if (!TryParseFunctionMetadata(functionName, functionConfig, logger, scriptDir, settingsManager, out functionMetadata, out functionError))
-                    {
-                        // for functions in error, log the error and don't
-                        // add to the functions collection
-                        AddFunctionError(functionErrors, functionName, functionError);
-                        continue;
-                    }
-                    else if (functionMetadata != null)
-                    {
-                        functions.Add(functionMetadata);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // log any unhandled exceptions and continue
-                    AddFunctionError(functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
+                    functions.Add(function);
                 }
             }
 
             return functions;
+        }
+
+        public static FunctionMetadata ReadFunctionMetadata(string scriptDir, ILogger logger, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null)
+        {
+            string functionName = null;
+
+            try
+            {
+                // read the function config
+                // read the function config
+                string functionConfigPath = Path.Combine(scriptDir, ScriptConstants.FunctionMetadataFileName);
+                string json = null;
+                try
+                {
+                    json = File.ReadAllText(functionConfigPath);
+                }
+                catch (FileNotFoundException)
+                {
+                    // not a function directory
+                    return null;
+                }
+
+                functionName = Path.GetFileName(scriptDir);
+                if (functionWhitelist != null &&
+                    !functionWhitelist.Contains(functionName, StringComparer.OrdinalIgnoreCase))
+                {
+                    // a functions filter has been specified and the current function is
+                    // not in the filter list
+                    return null;
+                }
+
+                ValidateName(functionName);
+
+                JObject functionConfig = JObject.Parse(json);
+
+                string functionError = null;
+                FunctionMetadata functionMetadata = null;
+                if (!TryParseFunctionMetadata(functionName, functionConfig, logger, scriptDir, settingsManager, out functionMetadata, out functionError))
+                {
+                    // for functions in error, log the error and don't
+                    // add to the functions collection
+                    AddFunctionError(functionErrors, functionName, functionError);
+                    return null;
+                }
+                else if (functionMetadata != null)
+                {
+                    return functionMetadata;
+                }
+            }
+            catch (Exception ex)
+            {
+                // log any unhandled exceptions and continue
+                AddFunctionError(functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
+            }
+            return null;
         }
 
         internal Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, ScriptSettingsManager settingsManager = null)

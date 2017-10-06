@@ -14,6 +14,8 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
+using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -30,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private Mock<ScriptHost> hostMock;
         private Mock<WebScriptHostManager> managerMock;
         private Collection<FunctionDescriptor> testFunctions;
-        private AdminController testController;
+        private FunctionsController testController;
         private Mock<ISecretManager> secretsManagerMock;
 
         public AdminControllerTests()
@@ -42,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new NullScriptHostEnvironment();
             var eventManager = new Mock<IScriptEventManager>();
             var mockRouter = new Mock<IWebJobsRouter>();
+            var mockWebFunctionManager = new Mock<IWebFunctionsManager>();
             hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, eventManager.Object, config, null, null, null });
             hostMock.Setup(p => p.Functions).Returns(testFunctions);
 
@@ -51,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(secretsManagerMock.Object), eventManager.Object, _settingsManager, settings, mockRouter.Object, NullLoggerFactory.Instance });
             managerMock.SetupGet(p => p.Instance).Returns(hostMock.Object);
 
-            testController = new AdminController(managerMock.Object, settings, new LoggerFactory(), null);
+            testController = new FunctionsController(mockWebFunctionManager.Object, managerMock.Object, new LoggerFactory());
         }
 
         [Fact]
