@@ -33,7 +33,10 @@
         ],
         "route": "/myhttptrigger"
       },
-      "backendUri": "https://localhost/api/Ping"
+      "backendUri": "https://localhost/api/Ping",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
     },
     "LongRoute": {
       "matchCondition": {
