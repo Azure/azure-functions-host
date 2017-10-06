@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString();
                 hostId = $"{sanitizedMachineName}-{Math.Abs(GetStableHash(scriptConfig.RootScriptPath))}";
             }
-            else if (!string.IsNullOrEmpty(settingsManager.AzureWebsiteUniqueSlotName))
+            else if (!string.IsNullOrEmpty(settingsManager?.AzureWebsiteUniqueSlotName))
             {
                 // If running on Azure Web App, derive the host ID from unique site slot name
                 hostId = settingsManager.AzureWebsiteUniqueSlotName;

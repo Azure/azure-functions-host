@@ -1,10 +1,13 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +17,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
@@ -25,21 +29,21 @@ using Newtonsoft.Json;
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
     /// <summary>
-    /// Controller responsible for handling all administrative requests, for
-    /// example enqueueing function invocations, etc.
+    /// Controller responsible for handling all administrative requests for host operations
+    /// example host status, ping, log, etc
     /// </summary>
-    public class AdminController : Controller
+    public class HostController : Controller
     {
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly WebHostSettings _webHostSettings;
         private readonly ILogger _logger;
         private readonly IAuthorizationService _authorizationService;
 
-        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory, IAuthorizationService authorizationService)
+        public HostController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory, IAuthorizationService authorizationService)
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryAdminController);
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostController);
             _authorizationService = authorizationService;
         }
 

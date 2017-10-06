@@ -23,6 +23,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public string SecretsPath { get; set; }
 
         /// <summary>
+        /// Gets or sets the path for storing test data
+        /// This is used for function management operations where the client (portal)
+        /// saves the last invocation test data for a given function
+        /// </summary>
+        public string TestDataPath { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether authentication/authorization
         /// should be disabled. Useful for local debugging or CLI scenarios.
         /// </summary>
@@ -40,12 +47,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 string home = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
                 settings.ScriptPath = Path.Combine(home, "site", "wwwroot");
                 settings.LogPath = Path.Combine(home, "LogFiles", "Application", "Functions");
-                settings.SecretsPath = Path.Combine(home, @"data", "Functions", "secrets");
+                settings.SecretsPath = Path.Combine(home, "data", "Functions", "secrets");
+                settings.TestDataPath = Path.Combine(home, "data", "Functions", "sampledata");
             }
             else
             {
                 settings.ScriptPath = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebJobsScriptRoot);
                 settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
+                settings.TestDataPath = Path.Combine(Path.GetTempPath(), @"FunctionsData");
 
                 // TODO: Revisit. We'll likely have to take an instance of an IHostingEnvironment here
                 settings.SecretsPath = Path.Combine(AppContext.BaseDirectory, "Secrets");

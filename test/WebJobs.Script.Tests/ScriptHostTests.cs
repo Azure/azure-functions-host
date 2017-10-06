@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var functionErrors = new Dictionary<string, Collection<string>>();
             var functionDirectories = Directory.EnumerateDirectories(config.RootScriptPath);
-            var metadata = ScriptHost.ReadFunctionMetadata(functionDirectories, null, functionErrors);
+            var metadata = ScriptHost.ReadFunctionsMetadata(functionDirectories, null, functionErrors);
             Assert.Equal(40, metadata.Count);
         }
 
@@ -841,7 +841,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
              {
                  'healthMonitor': {
                      'enabled': false
-                 }   
+                 }
              }");
             scriptConfig = new ScriptHostConfiguration();
             ScriptHost.ApplyConfiguration(config, scriptConfig);
@@ -857,7 +857,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                      'healthCheckThreshold': 77,
                      'counterThreshold': 0.77
                  }
-                 
+
              }");
             scriptConfig = new ScriptHostConfiguration();
             ScriptHost.ApplyConfiguration(config, scriptConfig);

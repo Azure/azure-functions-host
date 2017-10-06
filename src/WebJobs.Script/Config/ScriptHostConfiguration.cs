@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script
             FileLoggingMode = FileLoggingMode.Never;
             RootScriptPath = Environment.CurrentDirectory;
             RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
+            TestDataPath = Path.Combine(Path.GetTempPath(), "FunctionsData");
             LogFilter = new LogCategoryFilter();
             HostHealthMonitor = new HostHealthMonitorConfiguration();
         }
@@ -37,6 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets the root path for log files.
         /// </summary>
         public string RootLogPath { get; set; }
+
+        /// <summary>
+        /// Gets or sets the root path for sample test data.
+        /// </summary>
+        public string TestDataPath { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the <see cref="ScriptHost"/> should
