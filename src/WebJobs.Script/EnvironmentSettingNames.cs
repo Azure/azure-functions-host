@@ -23,5 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebJobsSecretStorageType = "AzureWebJobsSecretStorageType";
         public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
         public const string ProxySiteExtensionEnabledKey = "ROUTING_EXTENSION_VERSION";
+        public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
     }
 }

@@ -143,8 +143,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     OnHostCreated();
 
-                    string message = string.Format("Starting Host (HostId={0}, Version={1}, ProcessId={2}, Debug={3}, Attempt={4})",
-                        newInstance.ScriptConfig.HostConfig.HostId, ScriptHost.Version, Process.GetCurrentProcess().Id, newInstance.InDebugMode.ToString(), consecutiveErrorCount);
+                    string message = string.Format("Starting Host (HostId={0}, Version={1}, ProcessId={2}, Debug={3}, Attempt={4}, FunctionsExtensionVersion={5})",
+                        newInstance.ScriptConfig.HostConfig.HostId, ScriptHost.Version, Process.GetCurrentProcess().Id, newInstance.InDebugMode.ToString(), consecutiveErrorCount,
+                        _settingsManager.GetSetting(EnvironmentSettingNames.FunctionsExtensionVersion));
                     _traceWriter?.Info(message);
                     _logger?.LogInformation(message);
 
