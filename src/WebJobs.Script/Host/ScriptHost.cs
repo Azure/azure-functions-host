@@ -1631,8 +1631,7 @@ namespace Microsoft.Azure.WebJobs.Script
             string directory = GetRelativeDirectory(e.FullPath, ScriptConfig.RootScriptPath);
             string fileName = Path.GetFileName(e.Name);
 
-            if (ScriptConfig.WatchDirectories.Contains(directory) ||
-                string.Equals("bin", directory, StringComparison.OrdinalIgnoreCase))
+            if (ScriptConfig.WatchDirectories.Contains(directory))
             {
                 changeDescription = "Watched directory";
             }
@@ -1642,7 +1641,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 changeDescription = "File";
             }
-            else if ((e.ChangeType == WatcherChangeTypes.Deleted || (e.ChangeType == WatcherChangeTypes.All) || Directory.Exists(e.FullPath))
+            else if ((e.ChangeType == WatcherChangeTypes.Deleted || Directory.Exists(e.FullPath))
                 && !_directorySnapshot.SequenceEqual(Directory.EnumerateDirectories(ScriptConfig.RootScriptPath)))
             {
                 // Check directory spashot only if "Deleted" change or if directory changed
