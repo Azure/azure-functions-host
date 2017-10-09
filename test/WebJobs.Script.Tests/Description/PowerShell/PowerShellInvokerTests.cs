@@ -20,13 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void GetScript()
-        {
-            string result = PowerShellFunctionInvoker.GetScript(_fixture.TestScriptPath);
-            Assert.Equal(_fixture.TestScriptContent, result.Trim(), StringComparer.OrdinalIgnoreCase);
-        }
-
-        [Fact]
         public void GetModuleFilePaths()
         {
             List<string> modulesPath = PowerShellFunctionInvoker.GetModuleFilePaths(_fixture.TestRootScriptPath, _fixture.TestFunctionName);
