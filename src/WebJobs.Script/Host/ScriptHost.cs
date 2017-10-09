@@ -620,9 +620,9 @@ namespace Microsoft.Azure.WebJobs.Script
             scriptConfig.LoggerFactoryBuilder.AddLoggerProviders(scriptConfig.HostConfig.LoggerFactory, scriptConfig, settingsManager);
         }
 
-        private void TraceFileChangeRestart(string changeType, string path, bool isShutdown)
+        private void TraceFileChangeRestart(string changeDescription, string changeType, string path, bool isShutdown)
         {
-            string fileChangeMsg = string.Format(CultureInfo.InvariantCulture, "File change of type '{0}' detected for '{1}'", changeType, path);
+            string fileChangeMsg = string.Format(CultureInfo.InvariantCulture, "{0} change of type '{1}' detected for '{2}'", changeDescription, changeType, path);
             TraceWriter.Info(fileChangeMsg);
             Logger?.LogInformation(fileChangeMsg);
 
@@ -1619,32 +1619,37 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void OnFileChanged(FileSystemEventArgs e)
         {
-            string directory = GetRelativeDirectory(e.FullPath, ScriptConfig.RootScriptPath);
-            bool isWatchedDirectory = ScriptConfig.WatchDirectories.Contains(directory);
-
             // We will perform a host restart in the following cases:
             // - the file change was under one of the configured watched directories (e.g. node_modules, shared code directories, etc.)
             // - the host.json file was changed
             // - a function.json file was changed
+            // - a proxies.json file was changed
             // - a function directory was added/removed/renamed
             // A full host shutdown is performed when an assembly (.dll, .exe) in a watched directory is modified
-            string fileName = Path.GetFileName(e.Name);
-            if (isWatchedDirectory ||
-                (string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
-                 string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
-                 string.Compare(fileName, ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0) ||
-                !_directorySnapshot.SequenceEqual(Directory.EnumerateDirectories(ScriptConfig.RootScriptPath)))
-            {
-                // CRI ICM: 46695121
-                // Do not allow the host to restart if this notification is for the hostingstart.html file in the root
-                if (string.Compare(directory, "hostingstart.html", StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    string hostingWarning = string.Format(CultureInfo.InvariantCulture, "Unexpected file change event detected for '{0}' which evaluated to a host restart. Suppressing restart.", e.FullPath);
-                    TraceWriter.Warning(hostingWarning);
-                    Logger?.LogWarning(hostingWarning);
-                    return;
-                }
 
+            string changeDescription = string.Empty;
+            string directory = GetRelativeDirectory(e.FullPath, ScriptConfig.RootScriptPath);
+            string fileName = Path.GetFileName(e.Name);
+
+            if (ScriptConfig.WatchDirectories.Contains(directory))
+            {
+                changeDescription = "Watched directory";
+            }
+            else if (string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
+                string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
+                string.Compare(fileName, ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                changeDescription = "File";
+            }
+            else if ((e.ChangeType == WatcherChangeTypes.Deleted || Directory.Exists(e.FullPath))
+                && !_directorySnapshot.SequenceEqual(Directory.EnumerateDirectories(ScriptConfig.RootScriptPath)))
+            {
+                // Check directory spashot only if "Deleted" change or if directory changed
+                changeDescription = "Directory";
+            }
+
+            if (!string.IsNullOrEmpty(changeDescription))
+            {
                 bool shutdown = false;
                 string fileExtension = Path.GetExtension(fileName);
                 if (!string.IsNullOrEmpty(fileExtension) && ScriptConstants.AssemblyFileTypes.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
@@ -1652,7 +1657,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     shutdown = true;
                 }
 
-                TraceFileChangeRestart(e.ChangeType.ToString(), e.FullPath, shutdown);
+                TraceFileChangeRestart(changeDescription, e.ChangeType.ToString(), e.FullPath, shutdown);
                 ScheduleRestartAsync(shutdown).ContinueWith(t => TraceWriter.Error($"Error restarting host (full shutdown: {shutdown})", t.Exception),
                     TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
             }
