@@ -100,14 +100,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public LogCategoryFilter LogFilter { get; set; }
 
         /// <summary>
-        /// Gets or sets the <see cref="SamplingPercentageEstimatorSettings"/> to be used for Application
-        /// Insights client-side sampling. If null, client-side sampling is disabled.
-        /// </summary>
-        // TODO: FACAVAL
-        // Need AI support to re-enable this
-        // public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
-
-        /// <summary>
         /// Gets or sets a test hook for modifying the configuration after host.json has been processed.
         /// </summary>
         internal Action<ScriptHostConfiguration> OnConfigurationApplied { get; set; }

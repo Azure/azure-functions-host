@@ -175,19 +175,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _standbyMode = null;
         }
 
-        // TODO: FACAVAL (WEBHOOKS SDK)
-        // private static MethodInfo CreateGetWebHookDataMethodInfo()
-        // {
-        //     return typeof(WebHookHandlerContextExtensions).GetMethod("GetDataOrDefault", BindingFlags.Public | BindingFlags.Static);
-        // }
-
-        // TODO: FACAVAL (WEBHOOKS SDK)
-        // private static object GetWebHookData(Type dataType, WebHookHandlerContext context)
-        // {
-        //     MethodInfo getDataMethod = _getWebHookDataMethod.Value.MakeGenericMethod(dataType);
-        //     return getDataMethod.Invoke(null, new object[] { context });
-        // }
-
         protected override void OnInitializeConfig(ScriptHostConfiguration config)
         {
             base.OnInitializeConfig(config);

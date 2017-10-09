@@ -74,11 +74,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public CloudBlobClient BlobClient { get; private set; }
 
-        // TODO: FACAVAL
-        // public Microsoft.ServiceBus.Messaging.QueueClient ServiceBusQueueClient { get; private set; }
-
-        // public NamespaceManager NamespaceManager { get; private set; }
-
         public CloudQueue TestQueue { get; private set; }
 
         public CloudQueue MobileTablesQueue { get; private set; }

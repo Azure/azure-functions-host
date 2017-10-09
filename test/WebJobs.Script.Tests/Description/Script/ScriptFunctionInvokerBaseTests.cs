@@ -32,7 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.Script
             };
             request.HttpContext.Items.Add(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, routeData);
 
-            // TODO: FACAVAL
             ScriptFunctionInvokerBase.InitializeHttpRequestEnvironmentVariables(environmentVariables, request);
             Assert.Equal(11, environmentVariables.Count);
 

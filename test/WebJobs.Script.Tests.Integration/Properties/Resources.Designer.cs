@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Properties {
+namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Properties {
     using System;
     
     
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Properties {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Microsoft.Azure.WebJobs.Script.Tests.Properties.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Microsoft.Azure.WebJobs.Script.Tests.Integration.Properties.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -111,24 +111,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Properties {
         
         /// <summary>
         ///   Looks up a localized string similar to using System.Net;
-        ///using System.Net.Http;
-        ///using System.Threading.Tasks;
-        ///using Microsoft.Azure.WebJobs.Host;
+        ///using Microsoft.AspNetCore.Mvc;
         ///
         ///namespace TestFunction
         ///{
         ///    public class Function
         ///    {
-        ///        public static Task&lt;HttpResponseMessage&gt; Run(HttpRequestMessage req, TraceWriter log)
+        ///        public static Task&lt;IActionResult&gt; Run(HttpRequest req, ILogger log)
         ///        {
         ///            log.Info(&quot;Test&quot;);
         ///
-        ///            var res = new HttpResponseMessage(HttpStatusCode.OK)
-        ///            {
-        ///                Content = new StringContent(&quot;Hello from .NET&quot;)
-        ///            };
+        ///            return Task.FromResult&lt;IActionResult&gt;(new OkObjectResult(&quot;Hello from .NET&quot;));        
+        ///        }
         ///
-        ///            return Task.FromResult(re [rest of string was truncated]&quot;;.
+        ///        public string OtherMethod()
+        ///        {
+        ///            return &quot;Hello&quot;;
+        ///        }
+        ///
+        ///        private string PrivateMethod()
+        ///        {
+        ///            return &quot;Hel [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string DotNetFunctionSource {
             get {

@@ -169,24 +169,17 @@
   </data>
   <data name="DotNetFunctionSource" xml:space="preserve">
     <value>using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
+using Microsoft.AspNetCore.Mvc;
 
 namespace TestFunction
 {
     public class Function
     {
-        public static Task&lt;HttpResponseMessage&gt; Run(HttpRequestMessage req, TraceWriter log)
+        public static Task&lt;IActionResult&gt; Run(HttpRequest req, ILogger log)
         {
             log.Info("Test");
 
-            var res = new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent("Hello from .NET")
-            };
-
-            return Task.FromResult(res);
+            return Task.FromResult&lt;IActionResult&gt;(new OkObjectResult("Hello from .NET"));        
         }
 
         public string OtherMethod()
@@ -205,7 +198,7 @@ namespace Test.Function1
 {
     public class TestFunction
     {
-        public static string TestMethod(HttpRequestMessage req) =&gt; "Function1";
+        public static string TestMethod(HttpRequest req) =&gt; "Function1";
     }
 }
 
@@ -213,7 +206,7 @@ namespace Test.Function2
 {
     public class TestFunction
     {
-        public static string TestMethod(HttpRequestMessage req) =&gt; "Function2";
+        public static string TestMethod(HttpRequest req) =&gt; "Function2";
     }
 }</value>
   </data>

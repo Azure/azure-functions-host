@@ -9,9 +9,8 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
-using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
+using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {

@@ -7,6 +7,9 @@
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Scaling.Tests</RootNamespace>
     <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\WebJobs.Script.Tests.Shared\TestScopedEnvironmentVariable.cs" Link="Properties\TestScopedEnvironmentVariable.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="appinsights.testlogger" Version="1.0.0" />

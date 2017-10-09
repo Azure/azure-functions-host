@@ -11,10 +11,10 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Xunit;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Properties;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {

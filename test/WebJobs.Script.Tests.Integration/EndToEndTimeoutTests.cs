@@ -23,36 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
 
         [Fact]
-        public async Task TimeoutTest_SyncFunction_Node()
-        {
-            await TimeoutTest_SyncFunction("Node");
-        }
-
-        [Fact]
-        public async Task TimeoutTest_SyncFunction_Bash()
-        {
-            await TimeoutTest_SyncFunction("Bash");
-        }
-
-        [Fact]
-        public async Task TimeoutTest_SyncFunction_Batch()
-        {
-            await TimeoutTest_SyncFunction("WindowsBatch");
-        }
-
-        [Fact]
-        public async Task TimeoutTest_SyncFunction_Python()
-        {
-            await TimeoutTest_SyncFunction("Python");
-        }
-
-        [Fact]
-        public async Task TimeoutTest_SyncFunction_Powershell()
-        {
-            await TimeoutTest_SyncFunction("PowerShell");
-        }
-
-        [Fact]
         public async Task TimeoutTest_SyncFunction_CSharp()
         {
             await TimeoutTest_SyncFunction("CSharp");

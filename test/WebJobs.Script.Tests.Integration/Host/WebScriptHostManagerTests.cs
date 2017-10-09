@@ -24,6 +24,7 @@ using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
 using Xunit;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -33,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly TempDirectory _secretsDirectory = new TempDirectory();
         private readonly WebScriptHostManager _hostManager;
         private readonly Mock<IScriptHostFactory> _mockScriptHostFactory;
-        private readonly Mock<IWebJobsRouter> _mockRouter;
         private ScriptHostConfiguration _config;
         private WebScriptHostManagerTests.Fixture _fixture;
 
@@ -63,15 +63,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var mockEventManager = new Mock<IScriptEventManager>();
             _mockScriptHostFactory = new Mock<IScriptHostFactory>();
-            _mockRouter = new Mock<IWebJobsRouter>();
+            IWebJobsRouter router = fixture.CreateRouter();
             _hostManager = new WebScriptHostManager(_config, new TestSecretManagerFactory(secretManager), mockEventManager.Object,
-                _settingsManager, webHostSettings, _mockRouter.Object, secretsRepositoryFactory: new DefaultSecretsRepositoryFactory(),
+                _settingsManager, webHostSettings, router, secretsRepositoryFactory: new DefaultSecretsRepositoryFactory(),
                 hostTimeoutSeconds: 2,  hostPollingIntervalMilliseconds: 500, scriptHostFactory: _mockScriptHostFactory.Object);
         }
 
         [Fact]
         public async Task FunctionInvoke_SystemTraceEventsAreEmitted()
         {
+            await _fixture.InitializationTask;
             _fixture.EventGenerator.Events.Clear();
 
             var host = _fixture.HostManager.Instance;
@@ -96,8 +97,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void FunctionLogFilesArePurgedOnStartup()
+        public async Task FunctionLogFilesArePurgedOnStartup()
         {
+            await _fixture.InitializationTask;
             var logDirs = Directory.EnumerateDirectories(_fixture.FunctionsLogDir).Select(p => Path.GetFileName(p).ToLowerInvariant()).ToArray();
 
             // Even if a function is invalid an not part of the active
@@ -110,8 +112,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void SecretFilesArePurgedOnStartup()
+        public async Task SecretFilesArePurgedOnStartup()
         {
+            await _fixture.InitializationTask;
             var secretFiles = Directory.EnumerateFiles(_fixture.SecretsPath).Select(p => Path.GetFileName(p)).OrderBy(p => p).ToArray();
             Assert.Equal(4, secretFiles.Length);
 
@@ -124,6 +127,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task EmptyHost_StartsSuccessfully()
         {
+            await _fixture.InitializationTask;
+
             string functionTestDir = Path.Combine(_fixture.TestFunctionRoot, Guid.NewGuid().ToString());
             Directory.CreateDirectory(functionTestDir);
 
@@ -149,8 +154,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             WebHostSettings webHostSettings = new WebHostSettings();
             webHostSettings.SecretsPath = _secretsDirectory.Path;
             var mockEventManager = new Mock<IScriptEventManager>();
-            var mockRouter = new Mock<IWebJobsRouter>();
-            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings, mockRouter.Object);
+            IWebJobsRouter router = _fixture.CreateRouter();
+            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings, router);
 
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
 
@@ -175,10 +180,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task MultipleHostRestarts()
         {
             int count = 0;
-            _mockScriptHostFactory.Setup(p => p.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, _config, new DefaultLoggerFactoryBuilder())).Callback(() =>
-            {
-                count++;
-            }).Throws(new Exception("Kaboom!"));
+            _mockScriptHostFactory
+                .Setup(p => p.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, _config, It.IsAny<ILoggerFactoryBuilder>()))
+                .Callback(() =>
+                {
+                    count++;
+                })
+                .Throws(new Exception("Kaboom!"));
 
             Task runTask = Task.Run(() => _hostManager.RunAndBlock());
 
@@ -196,101 +204,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(typeof(SystemTraceWriter), _config.TraceWriter.GetType());
         }
 
-        // TODO: FACAVAL
-        //[Fact]
-        //public async Task HandleRequestAsync_HostNotReady_Throws()
-        //{
-        //    Assert.False(_hostManager.CanInvoke());
-
-        //    // TODO: FACAVAL
-        //    //var ex = await Assert.ThrowsAsync<HttpResponseException>(async () =>
-        //    //{
-
-        //    //    //await _hostManager.HandleRequestAsync(null, new HttpRequestMessage(), CancellationToken.None);
-        //    //});
-
-        //    Assert.Equal(HttpStatusCode.ServiceUnavailable, ex.Response.StatusCode);
-        //    var message = await ex.Response.Content.ReadAsStringAsync();
-        //    Assert.Equal("Function host is not running.", message);
-        //}
-
-        [Fact]
-        public void AddRouteDataToRequest_DoesNotAddRequestProperty_WhenRouteDataNull()
-        {
-            // Arrange
-            var requestItems = new Dictionary<object, object>();
-            var mockRouteData = new Mock<RouteData>(MockBehavior.Strict);
-            RouteValueDictionary values = null;
-            mockRouteData.Setup(p => p.Values).Returns(values);
-
-            var httpContext = new Mock<HttpContext>();
-            httpContext.SetupGet(c => c.Items).Returns(requestItems);
-
-            var request = new Mock<HttpRequest>();
-            request.SetupGet(r => r.HttpContext).Returns(httpContext.Object);
-
-            // Act
-            WebScriptHostManager.AddRouteDataToRequest(mockRouteData.Object, request.Object);
-
-            // Assert
-            Assert.False(requestItems.ContainsKey(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey));
-        }
-
-        [Fact]
-        public void AddRouteDataToRequest_AddsRequestProperty_WhenRouteDataNotNull()
-        {
-            var mockRouteData = new Mock<IHttpRouteData>(MockBehavior.Strict);
-            IDictionary<string, object> values = new Dictionary<string, object>
-            {
-                { "p1", "abc" },
-                { "p2", 123 },
-                { "p3", null },
-                { "p4", RouteParameter.Optional }
-            };
-            mockRouteData.Setup(p => p.Values).Returns(values);
-            HttpRequestMessage request = new HttpRequestMessage();
-
-            Assert.True(request.Properties.ContainsKey(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey));
-
-            var result = (IDictionary<string, object>)request.Properties[HttpExtensionConstants.AzureWebJobsHttpRouteDataKey];
-            Assert.Equal(result["p1"], "abc");
-            Assert.Equal(result["p2"], 123);
-            Assert.Equal(result["p3"], null);
-            Assert.Equal(result["p4"], null);
-        }
-
-        [Fact]
-        public void AddRouteDataToRequest_SecondTime()
-        {
-            var mockRouteData = new Mock<IHttpRouteData>(MockBehavior.Strict);
-            IDictionary<string, object> values = new Dictionary<string, object>
-            {
-                { "p1", "abc" },
-            };
-
-            mockRouteData.Setup(p => p.Values).Returns(values);
-            HttpRequestMessage request = new HttpRequestMessage();
-
-            WebScriptHostManager.AddRouteDataToRequest(mockRouteData.Object, request);
-
-            var result = (IDictionary<string, object>)request.Properties[HttpExtensionConstants.AzureWebJobsHttpRouteDataKey];
-            Assert.Equal(result["p1"], "abc");
-
-            mockRouteData = new Mock<IHttpRouteData>(MockBehavior.Strict);
-            values = new Dictionary<string, object>
-            {
-                { "p2", "def" },
-            };
-
-            mockRouteData.Setup(p => p.Values).Returns(values);
-
-            WebScriptHostManager.AddRouteDataToRequest(mockRouteData.Object, request);
-
-            result = (IDictionary<string, object>)request.Properties[HttpExtensionConstants.AzureWebJobsHttpRouteDataKey];
-            Assert.False(result.ContainsKey("p1"));
-            Assert.Equal(result["p2"], "def");
-        }
-
         public void Dispose()
         {
             _secretsDirectory.Dispose();
@@ -300,6 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             private readonly ScriptSettingsManager _settingsManager;
             private readonly TempDirectory _secretsDirectory = new TempDirectory();
+            private readonly Task _initializationTask;
 
             public Fixture()
             {
@@ -350,15 +264,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testEventGenerator = new TestSystemEventGenerator();
                 hostConfig.AddService<IEventGenerator>(EventGenerator);
                 var mockEventManager = new Mock<IScriptEventManager>();
-                var mockRouter = new Mock<IWebJobsRouter>();
-                var mockHostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings, mockRouter.Object);
+                var mockRouter = CreateRouter();
+                var mockHostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings, mockRouter, new DefaultLoggerFactoryBuilder());
                 HostManager = mockHostManager;
-                Task task = Task.Run(() => { HostManager.RunAndBlock(); });
 
-                TestHelpers.Await(() =>
-                {
-                    return HostManager.State == ScriptHostState.Running;
-                }).GetAwaiter().GetResult();
+                _initializationTask = EnsureInitialized();
+                
+            }
+
+            internal Task InitializationTask => _initializationTask;
+
+            private async Task EnsureInitialized()
+            {
+                SynchronizationContext.SetSynchronizationContext(null);
+                await Task.Run(() => HostManager.RunAndBlock()).ConfigureAwait(false);
+
+                await TestHelpers.Await(() => HostManager.State == ScriptHostState.Running, timeout: 30000).ConfigureAwait(false);
 
                 // verify startup system trace logs
                 string[] expectedPatterns = new string[]
@@ -394,6 +315,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public string TestLogsRoot { get; private set; }
 
             public string TestSecretsRoot { get; private set; }
+
+            internal IWebJobsRouter CreateRouter()
+            {
+                var mockRouter = new Mock<IWebJobsRouter>();
+
+                IInlineConstraintResolver resolver = new Mock<IInlineConstraintResolver>().Object;
+                var builder = new WebJobsRouteBuilder(resolver, new Mock<IWebJobsRouteHandler>().Object, string.Empty);
+                mockRouter.Setup(r => r.CreateBuilder(It.IsAny<IWebJobsRouteHandler>(), It.IsAny<string>()))
+                    .Returns(builder);
+
+                return mockRouter.Object;
+            }
 
             public void Dispose()
             {

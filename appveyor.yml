@@ -43,12 +43,12 @@ test_script:
 
     $success = $success -and $?
 
-    dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build --filter Tests.NodeEndToEndTests
+    dotnet test .\test\WebJobs.Script.Scaling.Tests -v q --no-build
 
-    $success = $success -and $?    
+    $success = $success -and $?
 
-    dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build --filter NodeContentTests
-    
+    dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build --filter "(FullyQualifiedName~Tests.NodeEndToEndTests|FullyQualifiedName~NodeContentTests|FullyQualifiedName~Tests.SecretsRepositoryTests|FullyQualifiedName~StandbyModeTests)"
+
     $success = $success -and $?
 
     # Skipping integration tests for initial build # dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build

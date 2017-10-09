@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 using Xunit;
+using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -22,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        [Fact]
+        [Fact(Skip = "Fix dependency compilation")]
         public async Task ManualTrigger_Invoke_Succeeds()
         {
             await ManualTrigger_Invoke_SucceedsTest();
@@ -33,130 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             await QueueTriggerToBlobTest();
         }
-
-        // TODO: FACAVAL
-        //[Fact]
-        //public async Task ServiceBusQueueTriggerToBlobTest()
-        //{
-        //    await ServiceBusQueueTriggerToBlobTestImpl();
-        //}
-
-        //[Fact]
-        //public async Task TwilioReferenceInvokeSucceeds()
-        //{
-        //    await TwilioReferenceInvokeSucceedsImpl(isDotNet: true);
-        //}
-
-        //[Fact]
-        //public async Task DocumentDB()
-        //{
-        //    await DocumentDBTest();
-        //}
-
-        //[Fact]
-        //public async Task NotificationHub()
-        //{
-        //    await NotificationHubTest("NotificationHubOut");
-        //}
-
-        //[Fact]
-        //public async Task NotificationHub_Out_Notification()
-        //{
-        //    await NotificationHubTest("NotificationHubOutNotification");
-        //}
-
-        //[Fact]
-        //public async Task NotificationHubNative()
-        //{
-        //    await NotificationHubTest("NotificationHubNative");
-        //}
-
-        //[Fact]
-        //public async Task MobileTablesTable()
-        //{
-        //    var id = Guid.NewGuid().ToString();
-        //    Dictionary<string, object> arguments = new Dictionary<string, object>()
-        //    {
-        //        { "input",  id }
-        //    };
-
-        //    await Fixture.Host.CallAsync("MobileTableTable", arguments);
-
-        //    await WaitForMobileTableRecordAsync("Item", id);
-        //}
-
-        //[Fact]
-        //public async Task ApiHub()
-        //{
-        //    await ApiHubTest();
-        //}
-
-        //[Fact]
-        //public async Task ApiHubTableClientBindingTest()
-        //{
-        //    var textArgValue = ApiHubTestHelper.NewRandomString();
-
-        //    // Ensure the test entity exists.
-        //    await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId1);
-
-        //    // Test table client binding.
-        //    await Fixture.Host.CallAsync("ApiHubTableClient",
-        //        new Dictionary<string, object>()
-        //        {
-        //            { ApiHubTestHelper.TextArg, textArgValue }
-        //        });
-
-        //    await ApiHubTestHelper.AssertTextUpdatedAsync(
-        //        textArgValue, ApiHubTestHelper.EntityId1);
-        //}
-
-        //[Fact]
-        //public async Task ApiHubTableBindingTest()
-        //{
-        //    var textArgValue = ApiHubTestHelper.NewRandomString();
-
-        //    // Ensure the test entity exists.
-        //    await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId2);
-
-        //    // Test table binding.
-        //    TestInput input = new TestInput
-        //    {
-        //        Id = ApiHubTestHelper.EntityId2,
-        //        Value = textArgValue
-        //    };
-        //    await Fixture.Host.CallAsync("ApiHubTable",
-        //        new Dictionary<string, object>()
-        //        {
-        //            { "input", JsonConvert.SerializeObject(input) }
-        //        });
-
-        //    await ApiHubTestHelper.AssertTextUpdatedAsync(
-        //        textArgValue, ApiHubTestHelper.EntityId2);
-        //}
-
-        //[Fact]
-        //public async Task ApiHubTableEntityBindingTest()
-        //{
-        //    var textArgValue = ApiHubTestHelper.NewRandomString();
-
-        //    // Ensure the test entity exists.
-        //    await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId3);
-
-        //    // Test table entity binding.
-        //    TestInput input = new TestInput
-        //    {
-        //        Id = ApiHubTestHelper.EntityId3,
-        //        Value = textArgValue
-        //    };
-        //    await Fixture.Host.CallAsync("ApiHubTableEntity",
-        //        new Dictionary<string, object>()
-        //        {
-        //            { "input", JsonConvert.SerializeObject(input) }
-        //        });
-
-        //    await ApiHubTestHelper.AssertTextUpdatedAsync(
-        //        textArgValue, ApiHubTestHelper.EntityId3);
-        //}
 
         [Fact]
         public async Task ScriptReference_LoadsScript()
@@ -178,10 +55,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await FileLogging_SucceedsTest();
         }
 
-        [Fact]
+        [Fact(Skip = "Migrate fixture to build the host")]
         public async Task SharedAssemblyDependenciesAreLoaded()
         {
-            var request = new System.Net.Http.HttpRequestMessage();
+            var request = HttpTestHelpers.CreateHttpRequest("POST", "http://some.server.com");
             Dictionary<string, object> arguments = new Dictionary<string, object>()
             {
                 { "req", request }
@@ -189,13 +66,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await Fixture.Host.CallAsync("AssembliesFromSharedLocation", arguments);
 
-            Assert.Equal("secondary type value", request.Properties["DependencyOutput"]);
+            Assert.Equal("secondary type value", request.HttpContext.Items["DependencyOutput"]);
         }
 
-        [Fact]
+        [Fact(Skip = "Migrate fixture to build the host")]
         public async Task PrivateAssemblyDependenciesAreLoaded()
         {
-            var request = new System.Net.Http.HttpRequestMessage();
+            var request = HttpTestHelpers.CreateHttpRequest("POST", "http://some.server.com");
             Dictionary<string, object> arguments = new Dictionary<string, object>()
             {
                 { "req", request }
@@ -203,10 +80,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await Fixture.Host.CallAsync("PrivateAssemblyReference", arguments);
 
-            Assert.Equal("Test result", request.Properties["DependencyOutput"]);
+            Assert.Equal("Test result", request.HttpContext.Items["DependencyOutput"]);
         }
 
-        [Fact]
+        [Fact(Skip = "Migrate fixture to build the host")]
         public async Task Scenario_RandGuidBinding_GeneratesRandomIDs()
         {
             var container = Fixture.BlobClient.GetContainerReference("scenarios-output");
