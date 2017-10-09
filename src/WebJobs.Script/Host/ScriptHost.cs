@@ -1627,44 +1627,30 @@ namespace Microsoft.Azure.WebJobs.Script
             // - a function directory was added/removed/renamed
             // A full host shutdown is performed when an assembly (.dll, .exe) in a watched directory is modified
 
-            string changeDesciprtioin = string.Empty;
+            string changeDescription = string.Empty;
             string directory = GetRelativeDirectory(e.FullPath, ScriptConfig.RootScriptPath);
             string fileName = Path.GetFileName(e.Name);
 
             if (ScriptConfig.WatchDirectories.Contains(directory) ||
                 string.Equals("bin", directory, StringComparison.OrdinalIgnoreCase))
             {
-                changeDesciprtioin = "Watched directory";
+                changeDescription = "Watched directory";
             }
-            else
+            else if (string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
+                string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
+                string.Compare(fileName, ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0)
             {
-                if (string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
-                    string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
-                    string.Compare(fileName, ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    changeDesciprtioin = "File";
-                }
-                else
-                {
-                    if (!_directorySnapshot.SequenceEqual(Directory.EnumerateDirectories(ScriptConfig.RootScriptPath)))
-                    {
-                        changeDesciprtioin = "Directory";
-                    }
-                }
+                changeDescription = "File";
+            }
+            else if ((e.ChangeType == WatcherChangeTypes.Deleted || (e.ChangeType == WatcherChangeTypes.All) || Directory.Exists(e.FullPath))
+                && !_directorySnapshot.SequenceEqual(Directory.EnumerateDirectories(ScriptConfig.RootScriptPath)))
+            {
+                // Check directory spashot only if "Deleted" change or if directory changed
+                changeDescription = "Directory";
             }
 
-            if (!string.IsNullOrEmpty(changeDesciprtioin))
+            if (!string.IsNullOrEmpty(changeDescription))
             {
-                // CRI ICM: 46695121
-                // Do not allow the host to restart if this notification is for the hostingstart.html file in the root
-                if (string.Compare(directory, "hostingstart.html", StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    string hostingWarning = string.Format(CultureInfo.InvariantCulture, "Unexpected file change event detected for '{0}' which evaluated to a host restart. Suppressing restart.", e.FullPath);
-                    TraceWriter.Warning(hostingWarning);
-                    Logger?.LogWarning(hostingWarning);
-                    return;
-                }
-
                 bool shutdown = false;
                 string fileExtension = Path.GetExtension(fileName);
                 if (!string.IsNullOrEmpty(fileExtension) && ScriptConstants.AssemblyFileTypes.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
@@ -1672,7 +1658,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     shutdown = true;
                 }
 
-                TraceFileChangeRestart(changeDesciprtioin, e.ChangeType.ToString(), e.FullPath, shutdown);
+                TraceFileChangeRestart(changeDescription, e.ChangeType.ToString(), e.FullPath, shutdown);
                 ScheduleRestartAsync(shutdown).ContinueWith(t => TraceWriter.Error($"Error restarting host (full shutdown: {shutdown})", t.Exception),
                     TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
             }
