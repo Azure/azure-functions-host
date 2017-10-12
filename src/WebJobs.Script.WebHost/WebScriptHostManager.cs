@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -40,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IWebJobsRouter _router;
         private readonly WebJobsSdkExtensionHookProvider _bindingWebHookProvider;
 
+        private Task _runTask = Task.CompletedTask;
         private bool _hostStarted = false;
 
         public WebScriptHostManager(ScriptHostConfiguration config,
@@ -144,17 +146,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public void Initialize(CancellationToken cancellationToken)
+        public Task RunAsync(CancellationToken cancellationToken)
         {
             lock (_syncLock)
             {
                 if (!_hostStarted)
                 {
-                    RunAndBlock(cancellationToken);
+                    _runTask = Task.Run(() => RunAndBlock(cancellationToken));
 
                     _hostStarted = true;
                 }
             }
+
+            return _runTask;
         }
 
         protected override void Dispose(bool disposing)

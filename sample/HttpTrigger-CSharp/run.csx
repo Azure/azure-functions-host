@@ -1,7 +1,6 @@
 ﻿using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
-using Twilio;
 
 public static IActionResult Run(HttpRequest req, TraceWriter log)
 {

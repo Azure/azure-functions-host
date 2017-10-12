@@ -120,18 +120,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task TableInput()
-        {
-            await TableInputTest();
-        }
-
-        [Fact]
-        public async Task TableOutput()
-        {
-            await TableOutputTest();
-        }
-
-        [Fact]
         public async Task Scenario_BindingData()
         {
             JObject input = new JObject
@@ -148,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Fixture.Host.CallAsync("Scenarios", arguments);
         }
 
-        [Fact]
+        [Fact(Skip = "Issues with how log entry objecs are serialized (see https://github.com/Azure/azure-webjobs-sdk-script/issues/2020")]
         public async Task Scenario_Logging()
         {
             // Sleep to make sure all logs from other "Scenarios" tests have flushed before

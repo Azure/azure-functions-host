@@ -15,6 +15,9 @@ using Microsoft.WindowsAzure.Storage.Table;
 using Moq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -55,7 +58,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("ListenerStartupException");
 
             InitializeConfig(config);
-
+            Func<string, FunctionDescriptor> funcLookup = (name) => this.Host.GetFunctionOrNull(name);
+            var fastLogger = new FunctionInstanceLogger(funcLookup, new MetricsLogger());
+            config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
+            _settingsManager.Reset();
             Host = ScriptHost.Create(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager, proxyClient: proxyClient);
             Host.Start();
         }

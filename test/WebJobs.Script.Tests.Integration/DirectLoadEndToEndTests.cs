@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        [Fact]
+        [Fact(Skip = "Fix fixture compilation issue (tracked by https://github.com/Azure/azure-webjobs-sdk-script/issues/2023)")]
         public async Task Invoke()
         {
             // Verify the type is ls in the typelocator.

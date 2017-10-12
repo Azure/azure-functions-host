@@ -26,13 +26,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        [Fact]
+        [Fact(Skip = "Fix fixture compilation issue (tracked by https://github.com/Azure/azure-webjobs-sdk-script/issues/2023)")]
         public async Task Invoking_DotNetFunction()
         {
             await InvokeDotNetFunction("DotNetFunction", "Hello from .NET");
         }
 
-        [Fact]
+        [Fact(Skip = "Fix fixture compilation issue (tracked by https://github.com/Azure/azure-webjobs-sdk-script/issues/2023)")]
         public async Task Invoking_DotNetFunctionShared()
         {
             await InvokeDotNetFunction("DotNetFunctionShared", "Hello from .NET");
@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expectedResult, await response.Content.ReadAsStringAsync());
         }
 
-        [Fact]
+        [Fact(Skip = "Fix fixture compilation issue (tracked by https://github.com/Azure/azure-webjobs-sdk-script/issues/2023)")]
         public void AssemblyChange_TriggersEnvironmentShutdown()
         {
             var manualResetEvent = new ManualResetEvent(false);
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(eventSet, "Shutdown was not called when assembly changes were made.");
         }
 
-        [Fact]
+        [Fact(Skip = "Fix fixture compilation issue (tracked by https://github.com/Azure/azure-webjobs-sdk-script/issues/2023)")]
         public async Task Invoke_WithSameTypeNames_InvokesExpectedMethod()
         {
             await InvokeDotNetFunction("Function1", "Function1");

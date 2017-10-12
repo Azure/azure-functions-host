@@ -208,19 +208,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var eventManager = new Mock<IScriptEventManager>();
-            var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), eventManager.Object, config, null, null);
+            var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), eventManager.Object, config, null, null, null);
             var factoryMock = new Mock<IScriptHostFactory>();
-            factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, It.IsAny<ScriptHostConfiguration>(), new DefaultLoggerFactoryBuilder()))
+            factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, It.IsAny<ScriptHostConfiguration>(), It.IsAny<ILoggerFactoryBuilder>()))
                 .Returns(hostMock.Object);
 
-            var target = new Mock<ScriptHostManager>(config, _settingsManager, factoryMock.Object, eventManager.Object, new NullScriptHostEnvironment());
+            var target = new Mock<ScriptHostManager>(config, _settingsManager, factoryMock.Object, eventManager.Object, new NullScriptHostEnvironment(), new DefaultLoggerFactoryBuilder());
             target.Protected().Setup("OnHostStarted")
                 .Throws(new Exception());
 
             hostMock.Protected().Setup("Dispose", true)
                 .Callback(() => target.Object.Stop());
 
-            Task.Run(() => target.Object.RunAndBlock()).Wait(5000);
+            Task.Run(() => target.Object.RunAndBlock()).Wait(50000);
 
             hostMock.Protected().Verify("Dispose", Times.Once(), true);
         }

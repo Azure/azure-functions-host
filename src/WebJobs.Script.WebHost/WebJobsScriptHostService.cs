@@ -31,12 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _hostTask = Task.Run(() =>
-            {
-                _logger.LogDebug("Initializing WebScriptHostManager.");
-                _scriptHostManager.Initialize(_cancellationTokenSource.Token);
-                _logger.LogDebug("WebScriptHostManager initialized.");
-            });
+            _logger.LogInformation("Initializing WebScriptHostManager.");
+            _hostTask = _scriptHostManager.RunAsync(_cancellationTokenSource.Token);
 
             return Task.CompletedTask;
         }
@@ -50,6 +46,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (result != _hostTask)
             {
                 _logger.LogWarning("Script host manager did not shutdown within its allotted time.");
+            }
+            else
+            {
+                _logger.LogInformation("Script host manager shutdown completed.");
             }
         }
 
