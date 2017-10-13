@@ -5,9 +5,7 @@ branches:
   only:
   - dev
   - master
-  - fsharp
-  - next
-  - core
+  - v1.x
 max_jobs: 1
 image: Visual Studio 2017
 clone_folder: c:\projects\azure-webjobs-sdk-script
