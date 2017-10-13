@@ -4,6 +4,7 @@
 |---|---|
 |master|[![Build status](https://ci.appveyor.com/api/projects/status/a6j46j1tawdfs3js?svg=true&branch=master)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-script-y8o14?branch=master)|
 |dev|[![Build status](https://ci.appveyor.com/api/projects/status/a6j46j1tawdfs3js?svg=true&branch=dev)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-script-y8o14?branch=dev)|
+|v1.x|[![Build status](https://ci.appveyor.com/api/projects/status/a6j46j1tawdfs3js?svg=true&branch=v1.x)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-script-y8o14?branch=v1.x)|
 
 WebJobs.Script
 ===
