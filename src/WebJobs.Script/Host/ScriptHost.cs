@@ -1119,7 +1119,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         continue;
                     }
 
-                    ValidateFunctionName(functionName);
+                    ValidateName(functionName);
 
                     string json = File.ReadAllText(functionConfigPath);
                     JObject functionConfig = JObject.Parse(json);
@@ -1196,27 +1196,38 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (var route in routes.Routes)
             {
-                var proxyMetadata = new FunctionMetadata();
-
-                var json = new JObject
+                try
                 {
-                    { "authLevel", "anonymous" },
-                    { "name", "req" },
-                    { "type", "httptrigger" },
-                    { "direction", "in" },
-                    { "Route", route.UrlTemplate.TrimStart('/') },
-                    { "Methods",  new JArray(route.Methods.Select(m => m.Method.ToString()).ToArray()) }
-                };
+                    // Proxy names should follow the same naming restrictions as in function names.
+                    ValidateName(route.Name, true);
 
-                BindingMetadata bindingMetadata = BindingMetadata.Create(json);
+                    var proxyMetadata = new FunctionMetadata();
 
-                proxyMetadata.Bindings.Add(bindingMetadata);
+                    var json = new JObject
+                    {
+                        { "authLevel", "anonymous" },
+                        { "name", "req" },
+                        { "type", "httptrigger" },
+                        { "direction", "in" },
+                        { "Route", route.UrlTemplate.TrimStart('/') },
+                        { "Methods",  new JArray(route.Methods.Select(m => m.Method.ToString()).ToArray()) }
+                    };
 
-                proxyMetadata.Name = route.Name;
-                proxyMetadata.ScriptType = ScriptType.Unknown;
-                proxyMetadata.IsProxy = true;
+                    BindingMetadata bindingMetadata = BindingMetadata.Create(json);
 
-                proxies.Add(proxyMetadata);
+                    proxyMetadata.Bindings.Add(bindingMetadata);
+
+                    proxyMetadata.Name = route.Name;
+                    proxyMetadata.ScriptType = ScriptType.Unknown;
+                    proxyMetadata.IsProxy = true;
+
+                    proxies.Add(proxyMetadata);
+                }
+                catch (Exception ex)
+                {
+                    // log any unhandled exceptions and continue
+                    AddFunctionError(FunctionErrors, route.Name, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
+                }
             }
 
             return proxies;
@@ -1263,11 +1274,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        internal static void ValidateFunctionName(string functionName)
+        internal static void ValidateName(string name, bool isProxy = false)
         {
-            if (!FunctionNameValidationRegex.IsMatch(functionName))
+            if (!FunctionNameValidationRegex.IsMatch(name))
             {
-                throw new InvalidOperationException(string.Format("'{0}' is not a valid function name.", functionName));
+                throw new InvalidOperationException(string.Format("'{0}' is not a valid {1} name.", name, isProxy ? "proxy" : "function"));
             }
         }
 
@@ -1435,6 +1446,11 @@ namespace Microsoft.Azure.WebJobs.Script
                             throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
                         }
                     }
+                }
+
+                if (httpFunctions.ContainsKey(function.Name))
+                {
+                    throw new InvalidOperationException($"The function or proxy name '{function.Name}' must be unique within the function app.");
                 }
 
                 httpFunctions.Add(function.Name, httpTrigger);

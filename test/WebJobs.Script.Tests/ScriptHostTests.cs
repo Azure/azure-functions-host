@@ -1230,10 +1230,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                ScriptHost.ValidateFunctionName(functionName);
+                ScriptHost.ValidateName(functionName);
             });
 
             Assert.Equal(string.Format("'{0}' is not a valid function name.", functionName), ex.Message);
+        }
+
+        [Theory]
+        [InlineData("bing.com")]
+        [InlineData("http://bing.com")]
+        public void ValidateProxyName_ThrowsOnInvalidName(string proxyName)
+        {
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                ScriptHost.ValidateName(proxyName, true);
+            });
+
+            Assert.Equal(string.Format("'{0}' is not a valid proxy name.", proxyName), ex.Message);
         }
 
         [Theory]
@@ -1246,7 +1259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             try
             {
-                ScriptHost.ValidateFunctionName(functionName);
+                ScriptHost.ValidateName(functionName);
             }
             catch (InvalidOperationException)
             {
@@ -1393,6 +1406,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("test6", attribute.Route);
         }
 #endif
+
+        [Fact]
+        public void ValidateFunction_ThrowsOnDuplicateName()
+        {
+            var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
+            var name = "test";
+
+            // first add an http function
+            var metadata = new FunctionMetadata();
+            var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, name, null, metadata, null, null, null, null);
+            var attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get");
+            function.Setup(p => p.GetTriggerAttributeOrNull<HttpTriggerAttribute>()).Returns(() => attribute);
+
+            ScriptHost.ValidateFunction(function.Object, httpFunctions);
+
+            // add a proxy with same name
+            metadata = new FunctionMetadata()
+            {
+                IsProxy = true
+            };
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, name, null, metadata, null, null, null, null);
+            attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get")
+            {
+                Route = "proxyRoute"
+            };
+            function.Setup(p => p.GetTriggerAttributeOrNull<HttpTriggerAttribute>()).Returns(() => attribute);
+
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                ScriptHost.ValidateFunction(function.Object, httpFunctions);
+            });
+
+            Assert.Equal(string.Format($"The function or proxy name '{name}' must be unique within the function app.", name), ex.Message);
+        }
 
         [Fact]
         public void IsFunction_ReturnsExpectedResult()
