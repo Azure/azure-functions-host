@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "WebJobs.Script.Host": {
+      "commandName": "Project",
+      "commandLineArgs": "D:\\Home",
+      "environmentVariables": {
+        "WEBSITE_SITE_NAME": "FuntionApp1",
+        "AzureWebJobsSqlTracer": "Server=<Server>;Database=<Database>;User=<User>;Password=<Password>;",
+        "AzureWebJobsLease": "Server=<Server>;Database=<Database>;User=<User>;Password=<Password>;"
+      }
+    }
+  }
+}
