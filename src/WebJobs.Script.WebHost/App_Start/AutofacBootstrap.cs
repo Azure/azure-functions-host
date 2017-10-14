@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.Register<ISwaggerDocumentManager>(ct => ct.Resolve<WebHostResolver>().GetSwaggerDocumentManager(settings)).ExternallyOwned();
             builder.Register<WebScriptHostManager>(ct => ct.Resolve<WebHostResolver>().GetWebScriptHostManager(settings)).ExternallyOwned();
             builder.Register<WebHookReceiverManager>(ct => ct.Resolve<WebHostResolver>().GetWebHookReceiverManager(settings)).ExternallyOwned();
-            builder.Register<ILoggerFactory>(ct => ct.Resolve<WebHostResolver>().GetScriptHostConfiguration(settings).HostConfig.LoggerFactory).ExternallyOwned();
+            builder.Register<ILoggerFactory>(ct => ct.Resolve<WebHostResolver>().GetLoggerFactory(settings)).ExternallyOwned();
         }
     }
 }

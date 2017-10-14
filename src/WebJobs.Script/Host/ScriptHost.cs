@@ -1780,8 +1780,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     (function.Invoker as IDisposable)?.Dispose();
                 }
 
-                _loggerFactory?.Dispose();
-
                 if (_traceMonitor != null)
                 {
                     _hostConfig.Tracing.Tracers.Remove(_traceMonitor);
@@ -1796,9 +1794,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            // dispose base last to ensure that errors there don't
+            // dispose base here to ensure that errors there don't
             // cause us to not dispose ourselves
             base.Dispose(disposing);
+
+            if (disposing)
+            {
+                // The LoggerFactory can be used by the host up until it's disposed,
+                // so make sure that it's disposed last.
+                _loggerFactory?.Dispose();
+            }
         }
     }
 }

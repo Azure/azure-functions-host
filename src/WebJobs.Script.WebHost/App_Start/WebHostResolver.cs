@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -28,11 +29,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static ScriptSettingsManager _settingsManager;
 
+        private static ILoggerFactory _emptyLoggerFactory = new LoggerFactory();
+
         public WebHostResolver(ScriptSettingsManager settingsManager, ISecretManagerFactory secretManagerFactory, IScriptEventManager eventManager)
         {
             _settingsManager = settingsManager;
             _secretManagerFactory = secretManagerFactory;
             _eventManager = eventManager;
+        }
+
+        public ILoggerFactory GetLoggerFactory(WebHostSettings settings)
+        {
+            WebScriptHostManager manager = GetWebScriptHostManager(settings);
+
+            if (!manager.CanInvoke())
+            {
+                // The host is still starting and the LoggerFactory cannot be used. Return
+                // an empty LoggerFactory rather than waiting. This will mostly affect
+                // calls to /admin/host/status, which do not block on CanInvoke. It allows this
+                // API to remain fast with the side effect of occassional missed logs.
+                return _emptyLoggerFactory;
+            }
+
+            return GetScriptHostConfiguration(settings).HostConfig.LoggerFactory;
         }
 
         public ISwaggerDocumentManager GetSwaggerDocumentManager(WebHostSettings settings)
