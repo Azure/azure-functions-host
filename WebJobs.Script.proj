@@ -75,7 +75,7 @@
 
   <Target Name="RestorePackages" DependsOnTargets="DownloadNuGet">
     <Message Text="Restoring NuGet packages..." Importance="High" />
-    <Exec Command='"$(NuGetExe)" restore WebJobs.Script.sln -PackagesDirectory packages -NonInteractive -Verbosity quiet -ConfigFile .nuget\NuGet.Config' />
+    <Exec Command='"$(NuGetExe)" restore WebJobs.Script.sln -PackagesDirectory packages -NonInteractive -Verbosity quiet -ConfigFile $(MSBuildThisFileDirectory).nuget\NuGet.Config' />
   </Target>
 
   <Target Name="GetBinplace">
@@ -163,6 +163,7 @@
 
   <Target Name="TestBuild" DependsOnTargets="CheckSkipStrongNames;Build">
     <ItemGroup>
+      <UnitTestProjects Include="test\WebJobs.Script.Tests.Common\WebJobs.Script.Tests.Common.csproj"/>
       <UnitTestProjects Include="test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj"/>
       <UnitTestProjects Include="test\WebJobs.Script.Scaling.Tests\WebJobs.Script.Scaling.Tests.csproj"/>
       <IntegrationTestProjects Include="test\WebJobs.Script.Tests.Integration\WebJobs.Script.Tests.Integration.csproj"/>

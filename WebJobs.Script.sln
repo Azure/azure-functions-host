@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26730.3
+VisualStudioVersion = 15.0.26730.16
 MinimumVisualStudioVersion = 15.0.0.0
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{1DC670CD-F42F-4D8F-97BD-0E1AA8221094}"
 EndProject
@@ -453,6 +453,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Scaling", "s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Scaling.Tests", "test\WebJobs.Script.Scaling.Tests\WebJobs.Script.Scaling.Tests.csproj", "{8088DC08-4BB1-442D-8CD4-571FC9330D54}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Tests.Common", "test\WebJobs.Script.Tests.Common\WebJobs.Script.Tests.Common.csproj", "{2953536F-FD26-4C1C-B29A-EB451A918287}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35a2025d-f68a-4b57-83a2-ed4eb9c3894d}*SharedItemsImports = 4
@@ -496,6 +498,10 @@ Global
 		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2953536F-FD26-4C1C-B29A-EB451A918287}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2953536F-FD26-4C1C-B29A-EB451A918287}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2953536F-FD26-4C1C-B29A-EB451A918287}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2953536F-FD26-4C1C-B29A-EB451A918287}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -579,6 +585,7 @@ Global
 		{62489417-341D-42AD-9E84-E97EB8236979} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{292A9038-5807-4095-B37F-9A77170D7402} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{8088DC08-4BB1-442D-8CD4-571FC9330D54} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
+		{2953536F-FD26-4C1C-B29A-EB451A918287} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}
