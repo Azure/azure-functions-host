@@ -25,7 +25,7 @@ install:
 build_script:
 - cmd: msbuild "WebJobs.Script.proj" /target:EnableSkipStrongNames;PackageScriptHost;PackageWebHost;TestBuild /verbosity:normal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /property:Buildnumber=%APPVEYOR_BUILD_NUMBER%;Configuration=Release
 test_script:
-- cmd: runappveyortests.cmd
+- ps: .\runappveyortests.ps1
 artifacts:
   - path: bin\Packages\*.zip
     name: Runtime

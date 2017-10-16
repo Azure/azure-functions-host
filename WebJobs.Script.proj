@@ -75,7 +75,7 @@
 
   <Target Name="RestorePackages" DependsOnTargets="DownloadNuGet">
     <Message Text="Restoring NuGet packages..." Importance="High" />
-    <Exec Command='"$(NuGetExe)" restore WebJobs.Script.sln -PackagesDirectory packages -NonInteractive -Verbosity quiet -ConfigFile .nuget\NuGet.Config' />
+    <Exec Command='"$(NuGetExe)" restore WebJobs.Script.sln -PackagesDirectory packages -NonInteractive -Verbosity quiet -ConfigFile $(MSBuildThisFileDirectory).nuget\NuGet.Config' />
   </Target>
 
   <Target Name="GetBinplace">
