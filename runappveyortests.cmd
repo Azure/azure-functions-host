@@ -1,6 +1,6 @@
 @echo off
 set /a exitCode=0
-vstest.console.exe "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests\bin\Release\Microsoft.Azure.WebJobs.Script.Tests.dll" "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests\bin\Release\xunit.runner.visualstudio.testadapter.dll" /logger:Appveyor /TestAdapterPath:"%APPVEYOR_BUILD_FOLDER%"
+vstest.console.exe "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests\bin\Release\Microsoft.Azure.WebJobs.Script.Tests.dll" "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests\bin\Release\xunit.runner.visualstudio.testadapter.dll" /logger:Appveyor /TestAdapterPath:"%APPVEYOR_BUILD_FOLDER%" /Framework:Framework45
 IF %ERRORLEVEL% NEQ 0 (set /a exitCode=1)
 vstest.console.exe "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Scaling.Tests\bin\Release\Microsoft.Azure.WebJobs.Script.Scaling.Tests.dll" "%APPVEYOR_BUILD_FOLDER%\test\WebJobs.Script.Tests\bin\Release\xunit.runner.visualstudio.testadapter.dll" /logger:Appveyor /TestAdapterPath:"%APPVEYOR_BUILD_FOLDER%"
 IF %ERRORLEVEL% NEQ 0 (set /a exitCode=1)
