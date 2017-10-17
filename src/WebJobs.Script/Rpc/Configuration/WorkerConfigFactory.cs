@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             foreach (var provider in providers)
             {
                 var description = provider.GetDescription();
-                var languageSection = _config.GetSection(description.Language);
+                var languageSection = _config.GetSection($"workers:{description.Language}");
 
                 // get explicit worker path from config, or build relative path from default
                 var workerPath = languageSection.GetSection("path").Value;
