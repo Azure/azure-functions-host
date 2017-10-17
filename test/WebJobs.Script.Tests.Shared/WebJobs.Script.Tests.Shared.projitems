@@ -23,5 +23,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)TestSecretManager.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestSecretManagerFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestTraceWriter.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestWorkerProvider.cs" />
   </ItemGroup>
 </Project>
