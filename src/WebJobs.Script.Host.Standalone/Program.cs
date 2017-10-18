@@ -33,6 +33,7 @@ namespace WebJobs.Script.Host.Standalone
 
             var config = new ScriptHostConfiguration()
             {
+                FileLoggingMode = FileLoggingMode.Always,
                 RootScriptPath = rootPath,
                 RootLogPath = rootLogPath,
                 IsSelfHost = true
