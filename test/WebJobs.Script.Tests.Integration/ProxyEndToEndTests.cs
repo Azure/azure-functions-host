@@ -7,7 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.Azure.AppService.Proxy.Client.Contract;
+using Microsoft.Azure.AppService.Proxy.Client;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -47,41 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             private const string ScriptRoot = @"TestScripts\Proxies";
 
-            public TestFixture() : base(ScriptRoot, "proxy", GetMockProxyClient())
+            public TestFixture() : base(ScriptRoot, "proxy")
             {
-            }
-
-            /// <summary>
-            /// This method creates a mock proxy client that emulates the behaviour of Azure Function Proxies for
-            /// TestScripts\Proxies\proxies.json
-            /// </summary>
-            /// <returns>Mock IProxyClient object</returns>
-            private static ProxyClientExecutor GetMockProxyClient()
-            {
-                var proxyClient = new Mock<IProxyClient>();
-
-                ProxyData proxyData = new ProxyData();
-                proxyData.Routes.Add(new Routes("/myproxy", "test", new[] { HttpMethod.Get, HttpMethod.Post }));
-
-                proxyData.Routes.Add(new Routes("/mymockhttp", "localFunction", new[] { HttpMethod.Get }));
-
-                proxyClient.Setup(p => p.GetProxyData()).Returns(proxyData);
-
-                proxyClient.Setup(p => p.CallAsync(It.IsAny<object[]>(), It.IsAny<IFuncExecutor>(), It.IsAny<ILogger>())).Returns(
-                    (object[] arguments, IFuncExecutor funcExecutor, ILogger logger) =>
-                    {
-                        object requestObj = arguments != null && arguments.Length > 0 ? arguments[0] : null;
-                        var request = requestObj as HttpRequestMessage;
-                        if (request.Method == HttpMethod.Get && request.RequestUri.OriginalString == "http://localhost/mymockhttp")
-                        {
-                            var response = new HttpResponseMessage(HttpStatusCode.OK);
-                            response.Headers.Add("myversion", "123");
-                            request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
-                        }
-                        return Task.CompletedTask;
-                    });
-
-                return new ProxyClientExecutor(proxyClient.Object);
             }
         }
     }
