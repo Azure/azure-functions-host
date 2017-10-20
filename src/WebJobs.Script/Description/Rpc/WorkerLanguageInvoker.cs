@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             result = await invocationContext.ResultSource.Task;
 
             await BindOutputsAsync(triggerValue, context.Binder, result);
-            return null;
+            return result.Return;
         }
 
         private async Task<(string name, DataType type, object value)[]> BindInputsAsync(Binder binder)

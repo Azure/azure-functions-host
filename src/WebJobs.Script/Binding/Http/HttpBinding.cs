@@ -3,54 +3,21 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Dynamic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Net;
-using System.Reflection.Emit;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    public class HttpBinding : FunctionBinding
+    public class HttpBinding
     {
-        public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access)
-            : base(config, metadata, access)
-        {
-        }
-
-        public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)
-        {
-            return null;
-        }
-
-        public override Task BindAsync(BindingContext context)
-        {
-            HttpRequest request = (HttpRequest)context.TriggerValue;
-
-            object content = context.Value;
-            if (content is Stream)
-            {
-                // for script language functions (e.g. PowerShell, BAT, etc.) the value
-                // will be a Stream which we need to convert to string
-                ConvertStreamToValue((Stream)content, DataType.String, ref content);
-            }
-
-            IActionResult response = CreateResult(request, content);
-            request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
-
-            return Task.CompletedTask;
-        }
-
         internal static IActionResult CreateResult(HttpRequest request, object content)
         {
             string stringContent = content as string;
@@ -188,17 +155,31 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             IActionResult actionResult = result as IActionResult;
             if (actionResult == null)
             {
-                var objectResult = new ObjectResult(result);
-
-                if (result is System.Net.Http.HttpResponseMessage)
+                if (result is Stream)
                 {
-                    // To maintain backwards compatibility, if the type returned is an
-                    // instance of an HttpResponseMessage, add the appropriate formatter to
-                    // handle the response
-                    objectResult.Formatters.Add(new HttpResponseMessageOutputFormatter());
+                    // for script language functions (e.g. PowerShell, BAT, etc.) the value
+                    // will be a Stream which we need to convert to string
+                    FunctionBinding.ConvertStreamToValue((Stream)result, DataType.String, ref result);
+                    actionResult = CreateResult(request, result);
                 }
+                else if (result is JObject)
+                {
+                    actionResult = CreateResult(request, result);
+                }
+                else
+                {
+                    var objectResult = new ObjectResult(result);
 
-                actionResult = objectResult;
+                    if (result is System.Net.Http.HttpResponseMessage)
+                    {
+                        // To maintain backwards compatibility, if the type returned is an
+                        // instance of an HttpResponseMessage, add the appropriate formatter to
+                        // handle the response
+                        objectResult.Formatters.Add(new HttpResponseMessageOutputFormatter());
+                    }
+
+                    actionResult = objectResult;
+                }
             }
 
             request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = actionResult;
