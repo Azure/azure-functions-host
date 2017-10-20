@@ -82,8 +82,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static void AddMessageHandlers(HttpConfiguration config)
         {
-            config.MessageHandlers.Add(new WebScriptHostHandler(config));
             config.MessageHandlers.Add(new SystemTraceHandler(config));
+            config.MessageHandlers.Add(new WebScriptHostHandler(config));
         }
     }
 }
