@@ -203,7 +203,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void SetTimerInterval(TimeSpan interval, TimeSpan? dueTimeout = null)
         {
-            _timer.Change(dueTimeout ?? interval, interval);
+            if (!_disposed)
+            {
+                _timer.Change(dueTimeout ?? interval, interval);
+            }
         }
 
         private void TryReleaseLeaseIfOwned()

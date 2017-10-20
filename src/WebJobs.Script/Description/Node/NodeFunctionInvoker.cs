@@ -336,6 +336,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+
+            if (disposing)
+            {
+                _functionLoader.Dispose();
+            }
+        }
+
         private async Task<Dictionary<string, object>> CreateScriptExecutionContextAsync(object input, DataType dataType, TraceWriter traceWriter, FunctionInvocationContext invocationContext)
         {
             // create a TraceWriter wrapper that can be exposed to Node.js
