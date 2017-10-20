@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Host;
@@ -11,8 +12,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // Each function can get its own log stream.
     // Static per-function logging information.
-    public class FunctionLogger
+    public class FunctionLogger : IDisposable
     {
+        private bool _disposed = false;
+
         public FunctionLogger(ScriptHost host, string functionName, string logDirName = null)
         {
             // Function file logging is only done conditionally
@@ -81,6 +84,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             TraceWriter.Trace(message, traceWriterLevel, null);
             Logger?.Log(logLevel, new EventId(0), message, null, (s, e) => s);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    (FileTraceWriter as IDisposable)?.Dispose();
+                    (TraceWriter as IDisposable)?.Dispose();
+                }
+
+                _disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }

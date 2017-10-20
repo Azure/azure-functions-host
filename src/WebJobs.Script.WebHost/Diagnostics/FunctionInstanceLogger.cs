@@ -79,8 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         // This exception will cause the function to not get executed.
                         throw new InvalidOperationException($"Missing function.json for '{shortName}'.");
                     }
-                    FunctionLogger logInfo = descr.Invoker.LogInfo;
-                    state = new FunctionInstanceMonitor(descr.Metadata, _metrics, item.FunctionInstanceId, logInfo);
+                    state = new FunctionInstanceMonitor(descr.Metadata, _metrics, item.FunctionInstanceId, descr.Invoker.FunctionLogger);
 
                     item.Properties[Key] = state;
 

@@ -63,6 +63,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private IDisposable _fileEventsSubscription;
         private ProxyClientExecutor _proxyClient;
         private ILoggerFactory _loggerFactory;
+        private TraceMonitor _traceMonitor;
+        private JobHostConfiguration _hostConfig;
+        private List<FunctionDescriptorProvider> _descriptorProviders;
 
         protected internal ScriptHost(IScriptHostEnvironment environment,
             IScriptEventManager eventManager,
@@ -72,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script
             : base(scriptConfig.HostConfig)
         {
             scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
+            _hostConfig = scriptConfig.HostConfig;
             if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
             {
                 scriptConfig.RootScriptPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootScriptPath);
@@ -277,37 +281,36 @@ namespace Microsoft.Azure.WebJobs.Script
                     File.WriteAllText(hostConfigFilePath, "{}");
                 }
 
-                var hostConfig = ScriptConfig.HostConfig;
-                if (hostConfig.IsDevelopment || InDebugMode)
+                if (_hostConfig.IsDevelopment || InDebugMode)
                 {
                     // If we're in debug/development mode, use optimal debug settings
-                    hostConfig.UseDevelopmentSettings();
+                    _hostConfig.UseDevelopmentSettings();
                 }
 
                 // Ensure we always have an ILoggerFactory,
                 // regardless of whether AppInsights is registered or not
-                if (hostConfig.LoggerFactory == null)
+                if (_hostConfig.LoggerFactory == null)
                 {
-                    hostConfig.LoggerFactory = new LoggerFactory();
+                    _hostConfig.LoggerFactory = new LoggerFactory();
 
                     // If we've created the LoggerFactory, then we are responsible for
                     // disposing. Store this locally for disposal later. We can't rely
                     // on accessing this directly from ScriptConfig.HostConfig as the
                     // ScriptConfig is re-used for every host.
-                    _loggerFactory = hostConfig.LoggerFactory;
+                    _loggerFactory = _hostConfig.LoggerFactory;
                 }
 
                 Func<string, FunctionDescriptor> funcLookup = (name) => this.GetFunctionOrNull(name);
-                hostConfig.AddService(funcLookup);
+                _hostConfig.AddService(funcLookup);
 
                 // Set up a host level TraceMonitor that will receive notification
                 // of ALL errors that occur. This allows us to inspect/log errors.
-                var traceMonitor = new TraceMonitor()
+                _traceMonitor = new TraceMonitor()
                     .Filter(p => { return true; })
                     .Subscribe(HandleHostError);
-                hostConfig.Tracing.Tracers.Add(traceMonitor);
+                _hostConfig.Tracing.Tracers.Add(_traceMonitor);
 
-                TraceLevel hostTraceLevel = hostConfig.Tracing.ConsoleLevel;
+                TraceLevel hostTraceLevel = _hostConfig.Tracing.ConsoleLevel;
                 if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
                 {
                     // Host file logging is only done conditionally
@@ -327,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (TraceWriter != null)
                 {
-                    hostConfig.Tracing.Tracers.Add(TraceWriter);
+                    _hostConfig.Tracing.Tracers.Add(TraceWriter);
                 }
                 else
                 {
@@ -354,7 +357,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // discoverable in Application Insights. There's no filter, but that's okay since we cannot parse host.json to
                     // determine how to build the filtler.
                     ConfigureDefaultLoggerFactory();
-                    ILogger startupErrorLogger = hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
+                    ILogger startupErrorLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
                     startupErrorLogger.LogInformation(readingFileMessage);
                     startupErrorLogger.LogInformation(readFileMessage);
 
@@ -380,18 +383,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Use the startupLogger in this class as it is concerned with startup. The public Logger is used
                 // for all other logging after startup.
-                _startupLogger = hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
-                Logger = hostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+                _startupLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
+                Logger = _hostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
 
                 // Do not log these until after all the configuration is done so the proper filters are applied.
                 _startupLogger.LogInformation(readingFileMessage);
                 _startupLogger.LogInformation(readFileMessage);
 
-                if (string.IsNullOrEmpty(hostConfig.HostId))
+                if (string.IsNullOrEmpty(_hostConfig.HostId))
                 {
-                    hostConfig.HostId = Utility.GetDefaultHostId(_settingsManager, ScriptConfig);
+                    _hostConfig.HostId = Utility.GetDefaultHostId(_settingsManager, ScriptConfig);
                 }
-                if (string.IsNullOrEmpty(hostConfig.HostId))
+                if (string.IsNullOrEmpty(_hostConfig.HostId))
                 {
                     throw new InvalidOperationException("An 'id' must be specified in the host configuration.");
                 }
@@ -405,7 +408,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (storageString == null)
                 {
                     // Disable core storage
-                    hostConfig.StorageConnectionString = null;
+                    _hostConfig.StorageConnectionString = null;
                 }
 
                 if (ScriptConfig.FileWatchingEnabled)
@@ -475,7 +478,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (storageString != null)
                 {
                     var lockManager = (IDistributedLockManager)Services.GetService(typeof(IDistributedLockManager));
-                    _blobLeaseManager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostConfig.HostId, InstanceId, TraceWriter, hostConfig.LoggerFactory);
+                    _blobLeaseManager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), _hostConfig.HostId, InstanceId, TraceWriter, _hostConfig.LoggerFactory);
                 }
 
                 // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal
@@ -484,6 +487,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     _blobLeaseManager.HasLeaseChanged += BlobLeaseManagerHasLeaseChanged;
                 }
+
+                _descriptorProviders = new List<FunctionDescriptorProvider>()
+                {
+                    new ScriptFunctionDescriptorProvider(this, ScriptConfig),
+#if FEATURE_NODE
+                    new NodeFunctionDescriptorProvider(this, ScriptConfig),
+#endif
+                    new DotNetFunctionDescriptorProvider(this, ScriptConfig),
+#if FEATURE_POWERSHELL
+                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
+#endif
+                };
 
                 // read all script functions and apply to JobHostConfiguration
                 Collection<FunctionDescriptor> functions = GetFunctionDescriptors(functionMetadata);
@@ -500,7 +515,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 types.AddRange(directTypes);
 
-                hostConfig.TypeLocator = new TypeLocator(types);
+                _hostConfig.TypeLocator = new TypeLocator(types);
 
                 Functions = functions;
 
@@ -1189,33 +1204,19 @@ namespace Microsoft.Azure.WebJobs.Script
         private Collection<FunctionDescriptor> GetFunctionDescriptors(Collection<FunctionMetadata> functions)
         {
             var proxies = ReadProxyMetadata(ScriptConfig, _settingsManager);
-
-            var descriptorProviders = new List<FunctionDescriptorProvider>()
-                {
-                    new ScriptFunctionDescriptorProvider(this, ScriptConfig),
-#if FEATURE_NODE
-                    new NodeFunctionDescriptorProvider(this, ScriptConfig),
-#endif
-                    new DotNetFunctionDescriptorProvider(this, ScriptConfig),
-#if FEATURE_POWERSHELL
-                    new PowerShellFunctionDescriptorProvider(this, ScriptConfig)
-#endif
-                };
-
             IEnumerable<FunctionMetadata> combinedFunctionMetadata = null;
             if (proxies != null && proxies.Any())
             {
                 // Proxy routes will take precedence over http trigger functions and http trigger routes so they will be added first to the list of function descriptors.
                 combinedFunctionMetadata = proxies.Concat(functions);
-
-                descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptConfig, _proxyClient));
+                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptConfig, _proxyClient));
             }
             else
             {
                 combinedFunctionMetadata = functions;
             }
 
-            return GetFunctionDescriptors(combinedFunctionMetadata, descriptorProviders);
+            return GetFunctionDescriptors(combinedFunctionMetadata, _descriptorProviders);
         }
 
         internal Collection<FunctionDescriptor> GetFunctionDescriptors(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
@@ -1733,8 +1734,18 @@ namespace Microsoft.Azure.WebJobs.Script
 #endif
                 _fileEventsSubscription?.Dispose();
                 _fileEventSource?.Dispose();
-                _debugModeFileWatcher?.Dispose();
-                _blobLeaseManager?.Dispose();
+
+                if (_debugModeFileWatcher != null)
+                {
+                    _debugModeFileWatcher.Changed -= OnDebugModeFileChanged;
+                    _debugModeFileWatcher.Dispose();
+                }
+
+                if (_blobLeaseManager != null)
+                {
+                    _blobLeaseManager.HasLeaseChanged -= BlobLeaseManagerHasLeaseChanged;
+                    _blobLeaseManager.Dispose();
+                }
 
                 foreach (var function in Functions)
                 {
@@ -1742,6 +1753,19 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 _loggerFactory?.Dispose();
+
+                if (_traceMonitor != null)
+                {
+                    _hostConfig.Tracing.Tracers.Remove(_traceMonitor);
+                }
+
+                if (_descriptorProviders != null)
+                {
+                    foreach (var provider in _descriptorProviders)
+                    {
+                        (provider as IDisposable)?.Dispose();
+                    }
+                }
             }
 
             // dispose base last to ensure that errors there don't

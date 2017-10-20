@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IDisposable _fileEventSubscription;
         private readonly StructuredLogWriter _structuredLogWriter;
         private ScriptHost _currentInstance;
+        private int _hostStartCount;
 
         // ScriptHosts are not thread safe, so be clear that only 1 thread at a time operates on each instance.
         // List of all outstanding ScriptHost instances. Only 1 of these (specified by _currentInstance)
@@ -139,13 +140,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     lock (_liveInstances)
                     {
                         _liveInstances.Add(newInstance);
+                        _hostStartCount++;
                     }
 
                     OnHostCreated();
 
-                    string message = string.Format("Starting Host (HostId={0}, Version={1}, ProcessId={2}, Debug={3}, Attempt={4}, FunctionsExtensionVersion={5})",
-                        newInstance.ScriptConfig.HostConfig.HostId, ScriptHost.Version, Process.GetCurrentProcess().Id, newInstance.InDebugMode.ToString(), consecutiveErrorCount,
-                        _settingsManager.GetSetting(EnvironmentSettingNames.FunctionsExtensionVersion));
+                    string extensionVersion = _settingsManager.GetSetting(EnvironmentSettingNames.FunctionsExtensionVersion);
+                    string hostId = newInstance.ScriptConfig.HostConfig.HostId;
+                    string message = $"Starting Host (HostId={hostId}, Version={ScriptHost.Version}, ProcessId={Process.GetCurrentProcess().Id}, Debug={newInstance.InDebugMode}, ConsecutiveErrors={consecutiveErrorCount}, StartupCount={_hostStartCount}, FunctionsExtensionVersion={extensionVersion})";
                     _traceWriter?.Info(message);
                     _logger?.LogInformation(message);
 
@@ -181,9 +183,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Orphan the current host instance. We're stopping it, so it won't listen for any new functions
                     // it will finish any currently executing functions and then clean itself up.
                     // Spin around and create a new host instance.
-#pragma warning disable 4014
-                    Orphan(newInstance);
-#pragma warning restore 4014
+                    Task.Run(() => Orphan(newInstance)
+                        .ContinueWith(t =>
+                        {
+                            if (t.IsFaulted)
+                            {
+                                t.Exception.Handle(e => true);
+                            }
+                        }, TaskContinuationOptions.ExecuteSynchronously));
                 }
                 catch (Exception ex)
                 {
@@ -201,14 +208,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Orphan and cleanup that instance.
                     if (newInstance != null)
                     {
-                        Orphan(newInstance, forceStop: true)
+                        Task.Run(() => Orphan(newInstance, forceStop: true)
                             .ContinueWith(t =>
                             {
                                 if (t.IsFaulted)
                                 {
                                     t.Exception.Handle(e => true);
                                 }
-                            }, TaskContinuationOptions.ExecuteSynchronously);
+                            }, TaskContinuationOptions.ExecuteSynchronously));
                     }
 
                     // attempt restarts using an exponential backoff strategy

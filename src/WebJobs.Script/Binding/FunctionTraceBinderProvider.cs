@@ -24,9 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             IBindingProvider inner = (IBindingProvider)Activator.CreateInstance(traceBinderType, loggerFactory);
 
             Func<string, FunctionDescriptor> funcLookup = context.Config.GetService<Func<string, FunctionDescriptor>>();
-
-            // Func<string, FunctionDescriptor> funcLookup = null;
-
             if (funcLookup != null && inner != null)
             {
                 IBindingProvider wrapper = new Wrapper(inner, funcLookup);
@@ -86,10 +83,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     {
                         var shortName = context.FunctionContext.MethodName;
                         FunctionDescriptor descr = _parent._funcLookup(shortName);
-                        var logInfo = descr.Invoker.LogInfo;
+                        var functionLogger = descr.Invoker.FunctionLogger;
 
                         // This is the critical call
-                        trace = logInfo.CreateUserTraceWriter(trace);
+                        trace = functionLogger.CreateUserTraceWriter(trace);
 
                         return new SimpleValueProvider(typeof(TraceWriter), trace, result.ToInvokeString());
                     }
