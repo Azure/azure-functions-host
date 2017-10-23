@@ -288,10 +288,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var eventManagerMock = new Mock<IScriptEventManager>();
             ScriptHostManager hostManager = new ScriptHostManager(config, eventManagerMock.Object);
 
+            // start the host and wait for it to be running
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
-
             await TestHelpers.Await(() => hostManager.State == ScriptHostState.Running, timeout: 10000);
 
+            // exercise restart
+            hostManager.RestartHost();
+            Assert.Equal(ScriptHostState.Default, hostManager.State);
+            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Running, timeout: 10000);
+
+            // stop the host fully
             hostManager.Stop();
             Assert.Equal(ScriptHostState.Default, hostManager.State);
 
