@@ -9,10 +9,11 @@ using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
-{ 
+{
     public class GrpcServer : IRpcServer, IDisposable
     {
         private Server _server;
+        private bool _disposed = false;
 
         public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl)
         {
@@ -23,27 +24,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             };
         }
 
-        public Task StartAsync() {
+        public Uri Uri => new Uri($"http://127.0.0.1:{_server.Ports.First().BoundPort}");
+
+        public Task StartAsync()
+        {
             _server.Start();
             return Task.CompletedTask;
         }
 
         public Task ShutdownAsync() => _server.ShutdownAsync();
 
-        public Uri Uri => new Uri($"http://127.0.0.1:{_server.Ports.First().BoundPort}");
-
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!_disposed)
             {
                 if (disposing)
                 {
                     _server.ShutdownAsync();
                 }
-                disposedValue = true;
+                _disposed = true;
             }
         }
 
@@ -51,6 +50,5 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             Dispose(true);
         }
-        #endregion
     }
 }

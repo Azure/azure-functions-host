@@ -3,13 +3,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Extensions.Logging;
-using Microsoft.Azure.WebJobs.Script.Extensions;
-using System.IO;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {

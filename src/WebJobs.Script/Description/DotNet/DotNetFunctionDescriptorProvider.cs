@@ -157,7 +157,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     descriptors.Add(new ParameterDescriptor(ScriptConstants.SystemExecutionContextParameterName, typeof(ExecutionContext)));
                 }
 
-
                 if (TryCreateReturnValueParameterDescriptor(functionTarget.ReturnType, bindings, out descriptor))
                 {
                     // If a return value binding has been specified, set up an output

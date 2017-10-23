@@ -1,17 +1,17 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+// Licensed under the MIT License. See License.txt in the project root for license information.
 
 namespace Microsoft.Azure.WebJobs.Script.Abstractions
 {
     public class DefaultWorkerOptions
     {
         /// <summary>
-        /// The path to the worker
+        /// Gets or sets the path to the worker
         /// </summary>
         public string Path { get; set; } = string.Empty;
 
         /// <summary>
-        /// The debugging port
+        /// Gets or sets the debugging port
         /// </summary>
         public string Debug { get; set; } = string.Empty;
 

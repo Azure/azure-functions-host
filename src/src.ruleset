@@ -51,5 +51,17 @@
   </Rules>
   <Rules AnalyzerId="xunit.analyzers" RuleNamespace="xunit.analyzers">
     <Rule Id="xUnit1004" Action="None" />
+    <Rule Id="xUnit2013" Action="Hidden" />
+    <Rule Id="xUnit2009" Action="Hidden" />
+    <Rule Id="xUnit2004" Action="Hidden" />
+    <Rule Id="xUnit1013" Action="None" />
+    <Rule Id="xUnit2015" Action="None" />
+    <Rule Id="xUnit2000" Action="None" />
+    <Rule Id="xUnit2018" Action="None" />
+    <Rule Id="xUnit2003" Action="None" />
+    <Rule Id="xUnit2017" Action="Hidden" />
+    <Rule Id="xUnit2002" Action="None" />
+    <Rule Id="xUnit2005" Action="None" />
+    <Rule Id="xUnit2012" Action="None" />
   </Rules>
 </RuleSet>

@@ -13,31 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class JavaWorkerProvider : IWorkerProvider
     {
-        private class JavaEnvironment
-        {
-            public string JAVA_HOME { get; set; } = string.Empty;
-
-            public string JAVA_OPTS { get; set; } = string.Empty;
-
-            public string WEBSITE_INSTANCE_ID { get; set; } = string.Empty;
-
-            public bool IsAzureEnvironment => !string.IsNullOrEmpty(WEBSITE_INSTANCE_ID);
-
-            public bool HasJavaOpts => !string.IsNullOrEmpty(JAVA_OPTS);
-
-            public string ResolveJavaHome()
-            {
-                if (IsAzureEnvironment)
-                {
-                    return Path.Combine(JAVA_HOME, "..", "zulu8.23.0.3-jdk8.0.144-win_x64");
-                }
-                else
-                {
-                    return JAVA_HOME;
-                }
-            }
-        }
-
         public WorkerDescription GetDescription() => new WorkerDescription
         {
             Language = "Java",
@@ -78,6 +53,31 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 args.ExecutableArguments.Add(env.JAVA_OPTS);
             }
             return true;
+        }
+
+        private class JavaEnvironment
+        {
+            public string JAVA_HOME { get; set; } = string.Empty;
+
+            public string JAVA_OPTS { get; set; } = string.Empty;
+
+            public string WEBSITE_INSTANCE_ID { get; set; } = string.Empty;
+
+            public bool IsAzureEnvironment => !string.IsNullOrEmpty(WEBSITE_INSTANCE_ID);
+
+            public bool HasJavaOpts => !string.IsNullOrEmpty(JAVA_OPTS);
+
+            public string ResolveJavaHome()
+            {
+                if (IsAzureEnvironment)
+                {
+                    return Path.Combine(JAVA_HOME, "..", "zulu8.23.0.3-jdk8.0.144-win_x64");
+                }
+                else
+                {
+                    return JAVA_HOME;
+                }
+            }
         }
     }
 }

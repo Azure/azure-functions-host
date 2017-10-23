@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class ProcessRegistryFactory
     {
-        static internal IProcessRegistry Create()
+        internal static IProcessRegistry Create()
         {
             // W3WP already manages job objects
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)

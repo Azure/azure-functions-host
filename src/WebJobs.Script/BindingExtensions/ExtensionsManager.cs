@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
                 var process = new Process { StartInfo = startInfo };
                 process.ErrorDataReceived += (s, e) => logBuilder.Append(e.Data);
-                process.OutputDataReceived += (s,e) => logBuilder.Append(e.Data);
+                process.OutputDataReceived += (s, e) => logBuilder.Append(e.Data);
                 process.EnableRaisingEvents = true;
 
                 process.Exited += (s, e) =>

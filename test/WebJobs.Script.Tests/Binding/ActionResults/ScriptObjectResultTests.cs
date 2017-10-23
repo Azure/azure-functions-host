@@ -1,12 +1,15 @@
-﻿using System;
-using System.Linq;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using Microsoft.AspNetCore.Http;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
 {
@@ -17,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
         {
             var obj = JObject.Parse("{ \"a\": 1 }");
             var result = new ScriptObjectResult(obj, new Dictionary<string, object>());
-            Assert.Equal(0, result.ContentTypes.Count);
+            Assert.Empty(result.ContentTypes);
             Assert.Equal(obj.ToString(), result.Value.ToString());
         }
 

@@ -173,7 +173,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var request = input as HttpRequest;
             if (request != null)
             {
-
                 InitializeHttpRequestEnvironmentVariables(environmentVariables, request);
             }
         }
