@@ -45,6 +45,36 @@
       "responseOverrides": {
         "response.statusCode": "200"
       }
+    },
+    "catchAll": {
+      "matchCondition": {
+        "route": "api/{*path}"
+      },
+      "backendUri": "http://localhost/api/Ping",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
+    },
+    "catchAllRoutes": {
+      "matchCondition": {
+        "route": "/{*path}"
+      },
+      "backendUri": "http://localhost/myroute",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
+    },
+    "1 Local Function_test$ にち": {
+      "matchCondition": {
+        "methods": [
+          "GET"
+        ],
+        "route": "/MyHttpWithNonAlphanumericProxyName"
+      },
+      "backendUri": "https://localhost/api/Ping",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
     }
   }
 }

@@ -1278,16 +1278,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("bing.com")]
-        [InlineData("http://bing.com")]
-        public void ValidateProxyName_ThrowsOnInvalidName(string proxyName)
+        [InlineData("myproxy")]
+        [InlineData("my proxy")]
+        [InlineData("my proxy %")]
+        public void UpdateProxyName(string proxyName)
         {
-            var ex = Assert.Throws<InvalidOperationException>(() =>
-            {
-                ScriptHost.ValidateName(proxyName, true);
-            });
-
-            Assert.Equal(string.Format("'{0}' is not a valid proxy name.", proxyName), ex.Message);
+            Assert.Equal("myproxy", ScriptHost.NormalizeProxyName(proxyName));
         }
 
         [Theory]

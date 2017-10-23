@@ -71,6 +71,48 @@ namespace WebJobs.Script.EndToEndTests
 
         [Fact]
         [TestTrace]
+        public async Task LocalFunctionCallForNonAlphanumericProxyName()
+        {
+            using (var client = CreateClient())
+            {
+                HttpResponseMessage response = await client.GetAsync($"MyHttpWithNonAlphanumericProxyName?code={_fixture.FunctionDefaultKey}");
+
+                string content = await response.Content.ReadAsStringAsync();
+                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
+                _fixture.Assert.Equals("Pong", content);
+            }
+        }
+
+        [Fact]
+        [TestTrace]
+        public async Task CatchAllApis()
+        {
+            using (var client = CreateClient())
+            {
+                HttpResponseMessage response = await client.GetAsync($"api/blahblah?code={_fixture.FunctionDefaultKey}");
+
+                string content = await response.Content.ReadAsStringAsync();
+                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
+                _fixture.Assert.Equals("Pong", content);
+            }
+        }
+
+        [Fact]
+        [TestTrace]
+        public async Task CatchAll()
+        {
+            using (var client = CreateClient())
+            {
+                HttpResponseMessage response = await client.GetAsync($"blahblah?code={_fixture.FunctionDefaultKey}");
+
+                string content = await response.Content.ReadAsStringAsync();
+                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
+                _fixture.Assert.Equals("Pong", content);
+            }
+        }
+
+        [Fact]
+        [TestTrace]
         public async Task LongRoute()
         {
             var longRoute = "test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234";

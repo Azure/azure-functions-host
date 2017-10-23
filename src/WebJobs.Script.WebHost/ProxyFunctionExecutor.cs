@@ -22,6 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Host
     {
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly ISecretManager _secretManager;
+        private readonly string _httpPrefix;
+
         private WebHookReceiverManager _webHookReceiverManager;
 
         internal ProxyFunctionExecutor(WebScriptHostManager scriptHostManager, WebHookReceiverManager webHookReceiverManager, ISecretManager secretManager)
@@ -29,12 +31,81 @@ namespace Microsoft.Azure.WebJobs.Script.Host
             _scriptHostManager = scriptHostManager;
             _webHookReceiverManager = webHookReceiverManager;
             _secretManager = secretManager;
+
+            _httpPrefix = HttpExtensionConstants.DefaultRoutePrefix;
+
+            if (_scriptHostManager.Instance != null)
+            {
+                var json = _scriptHostManager.Instance.ScriptConfig.HostConfig.HostConfigMetadata;
+
+                if (json != null && json["http"] != null && json["http"]["routePrefix"] != null)
+                {
+                    _httpPrefix = json["http"]["routePrefix"].ToString().Trim(new char[] { '/' });
+                }
+            }
         }
 
         public async Task ExecuteFuncAsync(string funcName, Dictionary<string, object> arguments, CancellationToken cancellationToken)
         {
             HttpRequestMessage request = arguments[ScriptConstants.AzureFunctionsHttpRequestKey] as HttpRequestMessage;
-            var function = _scriptHostManager.GetHttpFunctionOrNull(request);
+
+            FunctionDescriptor function = null;
+            var path = request.RequestUri.AbsolutePath.Trim(new char[] { '/' });
+
+            if (path.StartsWith(_httpPrefix))
+            {
+                path = path.Remove(0, _httpPrefix.Length);
+            }
+
+            path = path.Trim(new char[] { '/' });
+
+            // This is a call to the local function app, before handing the route to asp.net to pick the FunctionDescriptor the following will be run:
+            // 1. If the request maps to a local http trigger function name then that function will be picked.
+            // 2. Else if the request maps to a custom route of a local http trigger function then that function will be picked
+            // 3. Otherwise the request will be given to asp.net to pick the appropriate route.
+            foreach (var func in _scriptHostManager.HttpFunctions.Values)
+            {
+                if (!func.Metadata.IsProxy)
+                {
+                    if (path.Equals(func.Metadata.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        function = func;
+                        break;
+                    }
+                    else
+                    {
+                        foreach (var binding in func.InputBindings)
+                        {
+                            if (binding.Metadata.IsTrigger)
+                            {
+                                string functionRoute = null;
+                                var jsonContent = binding.Metadata.Raw;
+                                if (jsonContent != null && jsonContent["route"] != null)
+                                {
+                                    functionRoute = jsonContent["route"].ToString();
+                                }
+
+                                // BUG: Known issue, This does not work on dynamic routes like products/{category:alpha}/{id:int?}
+                                if (!string.IsNullOrEmpty(functionRoute) && path.Equals(functionRoute, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    function = func;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (function != null)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (function == null)
+            {
+                function = _scriptHostManager.GetHttpFunctionOrNull(request);
+            }
 
             var functionRequestInvoker = new FunctionRequestInvoker(function, _secretManager);
             var response = await functionRequestInvoker.PreprocessRequestAsync(request);

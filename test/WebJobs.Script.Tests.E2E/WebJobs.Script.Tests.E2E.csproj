@@ -107,6 +107,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="Functions\wwwroot\PingRoute\function.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Functions\wwwroot\PingRoute\run.csx">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="Functions\wwwroot\proxies.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
