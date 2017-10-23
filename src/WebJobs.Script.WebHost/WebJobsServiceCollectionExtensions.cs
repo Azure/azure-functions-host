@@ -39,7 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static IServiceCollection AddWebJobsScriptHostAuthorization(this IServiceCollection services)
         {
-
             services.AddAuthorization(o =>
             {
                 o.AddScriptPolicies();

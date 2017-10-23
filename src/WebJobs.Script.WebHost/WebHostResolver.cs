@@ -92,7 +92,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-
         // TODO: FACAVAL (WEBHOOKS)
         //public WebHookReceiverManager GetWebHookReceiverManager(WebHostSettings settings)
         //{

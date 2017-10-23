@@ -403,8 +403,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             string testSecret = "abcde0123456789abcde0123456789abcde0123456789";
             using (var directory = new TempDirectory())
             {
-                string expectedTraceMessage = "Master key Updated";
-
                 Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
 
                 KeyOperationResult result;

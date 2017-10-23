@@ -41,6 +41,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 Assert.True(request.IsAntaresInternalRequest());
             }
         }
-
     }
 }

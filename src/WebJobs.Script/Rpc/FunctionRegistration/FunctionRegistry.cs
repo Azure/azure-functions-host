@@ -8,12 +8,11 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Description;
-using System.Threading.Tasks.Dataflow;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {

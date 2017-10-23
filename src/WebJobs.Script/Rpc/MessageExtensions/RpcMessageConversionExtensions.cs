@@ -3,18 +3,15 @@
 
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Threading.Tasks;
+using System.IO;
+using System.Text;
 using Google.Protobuf;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RpcDataType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedData.DataOneofCase;
-using Microsoft.AspNetCore.Http;
-using System.IO;
-using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {

@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
             // Add rounte data to request info
             // TODO: Keeping this here for now as other code depend on this property, but this can be done in the HTTP binding.
             var routingFeature = context.Features.Get<IRoutingFeature>();
-            context.Items.Add(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, new Dictionary<string,object>(routingFeature.RouteData.Values));
+            context.Items.Add(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, new Dictionary<string, object>(routingFeature.RouteData.Values));
             context.Features.Set<IFunctionExecutionFeature>(new FunctionExecutionFeature { Descriptor = descriptor });
 
             bool authorized = await AuthenticateAndAuthorizeAsync(context, descriptor);

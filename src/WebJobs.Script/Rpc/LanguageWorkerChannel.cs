@@ -10,14 +10,11 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -140,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void InitWorker(RpcEvent startEvent)
         {
             _processRegistry?.Register(_process);
-            
+
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(timeoutInit)
                 .Take(1)
@@ -188,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             // associate the invocation input buffer with the function
             _functionInputBuffers[context.Metadata.FunctionId] = context.InputBuffer;
-            
+
             // send a load request for the registered function
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
@@ -287,9 +284,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        internal void Log(RpcEvent msg) {
+        internal void Log(RpcEvent msg)
+        {
             // TODO: use scope to attach worker info, map message category if exists
-            
+
             var rpcLog = msg.Message.RpcLog;
             LogLevel logLevel = (LogLevel)rpcLog.Level;
             if (_executingInvocations.TryGetValue(rpcLog.InvocationId, out ScriptInvocationContext context))
