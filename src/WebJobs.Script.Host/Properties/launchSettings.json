@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "WebJobs.Script.Host": {
+      "commandName": "Project"
+    }
+  }
+}
