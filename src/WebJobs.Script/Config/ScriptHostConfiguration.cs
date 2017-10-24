@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script
             LogFilter = new LogCategoryFilter();
             RootExtensionsPath = ConfigurationManager.AppSettings[EnvironmentSettingNames.AzureWebJobsExtensionsPath];
             LoggerFactoryBuilder = new DefaultLoggerFactoryBuilder();
+            HostHealthMonitorEnabled = true;
         }
 
         /// <summary>
@@ -98,6 +99,12 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets a value indicating whether the swagger endpoint is enabled or disabled. If true swagger is enabled, otherwise it is disabled
         /// </summary>
         public bool SwaggerEnabled { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the hosting environment will be monitored
+        /// for health (e.g. socket thresholds, etc.). Default is true.
+        /// </summary>
+        public bool HostHealthMonitorEnabled { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the host is running

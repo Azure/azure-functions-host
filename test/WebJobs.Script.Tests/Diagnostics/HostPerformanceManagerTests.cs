@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Scale;
 using Moq;
 using Xunit;
 
@@ -20,22 +21,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             string value = string.Empty;
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             mockSettings.Setup(p => p.GetSetting(EnvironmentSettingNames.AzureWebsiteAppCountersName)).Returns(() => value);
-            var performanceManager = new HostPerformanceManager(mockSettings.Object, traceWriter);
+            var performanceManager = new HostPerformanceManager(mockSettings.Object);
 
             value = "{\"userTime\": 30000000,\"kernelTime\": 16562500,\"pageFaults\": 131522,\"processes\": 1,\"processLimit\": 32,\"threads\": 32,\"threadLimit\": 512,\"connections\": 4,\"connectionLimit\": 300,\"sections\": 3,\"sectionLimit\": 256,\"namedPipes\": 0,\"namedPipeLimit\": 128,\"readIoOperations\": 675,\"writeIoOperations\": 18,\"otherIoOperations\": 9721,\"readIoBytes\": 72585119,\"writeIoBytes\": 5446,\"otherIoBytes\": 393926,\"privateBytes\": 33759232,\"handles\": 987,\"contextSwitches\": 15535,\"remoteOpens\": 250}";
-            var counters = performanceManager.GetPerformanceCounters();
+            var counters = performanceManager.GetPerformanceCounters(traceWriter);
             Assert.Equal(counters.PageFaults, 131522);
 
             value = "{\"userTime\": 30000000,\"kernelTime\": 16562500,\"pageFaults\": 131522,\"processes\": 1,\"processLimit\": 32,\"threads\": 32,\"threadLimit\": 512,\"connections\": 4,\"connectionLimit\": 300,\"sections\": 3,\"sectionLimit\": 256,\"namedPipes\": 0,\"namedPipeLimit\": 128,\"readIoOperations\": 675,\"writeIoOperations\": 18,\"otherIoOperations\": 9721,\"readIoBytes\": 72585119,\"writeIoBytes\": 5446,\"otherIoBytes\": 393926,\"privateBytes\": 33759232,\"handles\": 987,\"contextSwitches\": 15535,\"remoteOpens\": 250}猅";
-            counters = performanceManager.GetPerformanceCounters();
+            counters = performanceManager.GetPerformanceCounters(traceWriter);
             Assert.Equal(counters.PageFaults, 131522);
 
             value = "{}";
-            counters = performanceManager.GetPerformanceCounters();
+            counters = performanceManager.GetPerformanceCounters(traceWriter);
             Assert.Equal(counters.PageFaults, 0);
 
             value = "this is not json";
-            counters = performanceManager.GetPerformanceCounters();
+            counters = performanceManager.GetPerformanceCounters(traceWriter);
             Assert.Null(counters);
             var error = traceWriter.Traces.Last();
             Assert.Equal("Failed to deserialize application performance counters. JSON Content: \"this is not json\"", error.Message);

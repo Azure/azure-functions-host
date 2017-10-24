@@ -24,6 +24,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
 using Microsoft.Extensions.Logging;
@@ -36,7 +37,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static bool? _standbyMode;
         private readonly WebHostMetricsLogger _metricsLogger;
         private readonly ISecretManager _secretManager;
-        private readonly HostPerformanceManager _performanceManager;
         private readonly WebHostSettings _webHostSettings;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly ScriptHostConfiguration _config;
@@ -58,9 +58,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             WebHostSettings webHostSettings,
             IScriptHostFactory scriptHostFactory = null,
             ISecretsRepositoryFactory secretsRepositoryFactory = null,
+            HostPerformanceManager hostPerformanceManager = null,
             int hostTimeoutSeconds = WebScriptHostHandler.HostTimeoutSeconds,
             int hostPollingIntervalMilliseconds = WebScriptHostHandler.HostPollingIntervalMilliseconds)
-            : base(config, settingsManager, scriptHostFactory, eventManager)
+            : base(config, settingsManager, scriptHostFactory, eventManager, null, hostPerformanceManager)
         {
             _config = config;
             _metricsLogger = new WebHostMetricsLogger();
@@ -82,9 +83,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             config.IsSelfHost = webHostSettings.IsSelfHost;
 
-            _performanceManager = new HostPerformanceManager(settingsManager, config.TraceWriter);
             _swaggerDocumentManager = new SwaggerDocumentManager(config);
 
+            secretsRepositoryFactory = secretsRepositoryFactory ?? new DefaultSecretsRepositoryFactory();
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
             _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, config.HostConfig.LoggerFactory, secretsRepository);
 
@@ -97,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
             IScriptHostFactory scriptHostFactory)
-            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, scriptHostFactory, new DefaultSecretsRepositoryFactory())
+            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, scriptHostFactory, null)
         {
         }
 
@@ -113,8 +114,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         internal WebJobsSdkExtensionHookProvider BindingWebHookProvider => _bindingWebHookProvider;
 
         public ISecretManager SecretManager => _secretManager;
-
-        public HostPerformanceManager PerformanceManager => _performanceManager;
 
         public ISwaggerDocumentManager SwaggerDocumentManager => _swaggerDocumentManager;
 

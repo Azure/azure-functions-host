@@ -31,11 +31,5 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         /// </summary>
         [JsonProperty(PropertyName = "errors", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public Collection<string> Errors { get; set; }
-
-        /// <summary>
-        /// Gets or sets a the <see cref="LoadStatus"/>.
-        /// </summary>
-        [JsonProperty(PropertyName = "load", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public LoadStatus Load { get; set; }
     }
 }

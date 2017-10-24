@@ -1129,73 +1129,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task HostStatus_AnonymousAntaresInteral_CheckLoad_Succeeds()
-        {
-            string uri = "admin/host/status?checkLoad=1";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-
-            var vars = new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
-                { EnvironmentSettingNames.AzureWebsiteAppCountersName, "{\"connections\": 290, \"connectionLimit\": 300}" }
-            };
-            using (var env = new TestScopedEnvironmentVariable(vars))
-            {
-                HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
-
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-                string content = await response.Content.ReadAsStringAsync();
-                var jsonContent = JObject.Parse(content);
-
-                Assert.Equal(4, jsonContent.Properties().Count());
-                AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
-                string expectedVersion = fileVersionAttr.Version;
-                Assert.True(((string)jsonContent["id"]).Length > 0);
-                Assert.Equal(expectedVersion, jsonContent["version"].ToString());
-                var state = (string)jsonContent["state"];
-                Assert.True(state == "Running" || state == "Created");
-                JObject loadStatus = (JObject)jsonContent["load"];
-                Assert.True((bool)loadStatus["isHigh"]);
-            }
-        }
-
-        [Fact]
         public async Task HostStatus_AnonymousLevelRequest_Fails()
         {
             string uri = "admin/host/status";
             var request = new HttpRequestMessage(HttpMethod.Get, uri);
             var response = await this._fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-
-        [Fact]
-        public async Task HostStatus_AdminLevelRequest_WithLoad_Succeeds()
-        {
-            try
-            {
-                var counters = new JObject
-                {
-                    { "connections", 289 },
-                    { "connectionLimit", 300 }
-                };
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteAppCountersName, counters.ToString());
-
-                string uri = "admin/host/status?checkLoad=1";
-                var request = new HttpRequestMessage(HttpMethod.Get, uri);
-                request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, MasterKey);
-                var response = await this._fixture.HttpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-                string json = await response.Content.ReadAsStringAsync();
-                JObject jsonContent = JObject.Parse(json);
-                Assert.Equal(4, jsonContent.Properties().Count());
-                JObject loadStatus = (JObject)jsonContent["load"];
-                Assert.True((bool)loadStatus["isHigh"]);
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteAppCountersName, string.Empty);
-            }
         }
 
         private async Task<HttpResponseMessage> GetHostStatusAsync()
@@ -1211,6 +1150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             private readonly ScriptSettingsManager _settingsManager;
             private HttpConfiguration _config;
+            private TestTraceWriter _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
             public TestFixture()
             {
@@ -1223,7 +1163,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     IsSelfHost = true,
                     ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\sample"),
                     LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
-                    SecretsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\src\WebJobs.Script.WebHost\App_Data\Secrets")
+                    SecretsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\src\WebJobs.Script.WebHost\App_Data\Secrets"),
+                    TraceWriter = _traceWriter
                 };
                 WebApiConfig.Register(_config, _settingsManager, HostSettings);
 

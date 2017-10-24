@@ -671,6 +671,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ApplyConfiguration_HostHealthMonitor()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            Assert.True(scriptConfig.HostHealthMonitorEnabled);
+
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.True(scriptConfig.HostHealthMonitorEnabled);
+
+            config["hostHealthMonitorEnabled"] = new JValue(false);
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.False(scriptConfig.HostHealthMonitorEnabled);
+        }
+
+        [Fact]
         public void ApplyConfiguration_FileWatching()
         {
             JObject config = new JObject();
