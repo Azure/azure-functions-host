@@ -8,7 +8,11 @@
 
     context.res = {
         status: 200,
-        body: "Success!"
+        body: {
+            isBuffer: Buffer.isBuffer(body),
+            length: body.length,
+            rawBody: context.req.rawBody
+        }
     };
 
     context.done();

@@ -3,12 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -19,6 +16,7 @@ using Microsoft.WebJobs.Script.Tests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -348,22 +346,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(customHeader, reqHeaders["custom-1"]);
         }
 
-#if HTTP_TESTS
+
         [Fact]
         public async Task HttpTrigger_Post_ByteArray()
         {
             TestHelpers.ClearFunctionLogs("HttpTriggerByteArray");
 
-            byte[] inputBytes = new byte[] { 1, 2, 3, 4, 5 };
+            IHeaderDictionary headers = new HeaderDictionary();
+            headers.Add("Content-Type", "application/octet-stream");
 
-            HttpRequestMessage request = new HttpRequestMessage
-            {
-                RequestUri = new Uri(string.Format("http://localhost/api/httptriggerbytearray")),
-                Method = HttpMethod.Post,
-                Content = new ByteArrayContent(inputBytes)
-            };
-            request.SetConfiguration(new HttpConfiguration());
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            byte[] inputBytes = new byte[] { 1, 2, 3, 4, 5 };
+            var content = inputBytes;
+
+
+            HttpRequest request = HttpTestHelpers.CreateHttpRequest("POST", "http://localhost/api/httptriggerbytearray", headers, content); 
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -371,14 +367,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             await Fixture.Host.CallAsync("HttpTriggerByteArray", arguments);
 
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var result = (IActionResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
 
-            JObject testResult = await GetFunctionTestResult("HttpTriggerByteArray");
-            Assert.True((bool)testResult["isBuffer"]);
-            Assert.Equal(5, (int)testResult["length"]);
+            ObjectResult objectResult = result as ObjectResult;
+            Assert.NotNull(objectResult);
+            Assert.Equal(200, objectResult.StatusCode);
+
+            Newtonsoft.Json.Linq.JObject body = (Newtonsoft.Json.Linq.JObject) objectResult.Value;
+            Assert.True((bool) body["isBuffer"]);
+            Assert.Equal(5, body["length"]);
+
+            var rawBody = Encoding.UTF8.GetBytes((string) body["rawBody"]);
+            Assert.Equal(inputBytes, rawBody);
         }
 
+#if HTTP_TESTS
         [Fact]
         public async Task HttpTriggerToBlob()
         {

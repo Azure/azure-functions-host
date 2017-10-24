@@ -252,4 +252,5 @@ message RpcHttp {
   string status_code = 12;
   map<string,string> query = 15;
   bool is_raw = 16;
+  TypedData rawBody = 17;
 }
