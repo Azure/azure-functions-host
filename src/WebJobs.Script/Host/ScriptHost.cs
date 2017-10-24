@@ -1363,6 +1363,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
+            JToken hostHealthMonitorEnabled = (JToken)config["hostHealthMonitorEnabled"];
+            if (hostHealthMonitorEnabled != null && hostHealthMonitorEnabled.Type == JTokenType.Boolean)
+            {
+                scriptConfig.HostHealthMonitorEnabled = (bool)hostHealthMonitorEnabled;
+            }
+
             // Apply Singleton configuration
             JObject configSection = (JObject)config["singleton"];
             JToken value = null;

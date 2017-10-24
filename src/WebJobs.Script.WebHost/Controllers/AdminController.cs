@@ -117,16 +117,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     status.Errors.Add(Utility.FlattenException(lastError));
                 }
 
-                var parameters = Request.GetQueryParameterDictionary();
-                string value = null;
-                if (parameters.TryGetValue(ScriptConstants.CheckLoadQueryParameterName, out value) && value == "1")
-                {
-                    status.Load = new LoadStatus
-                    {
-                        IsHigh = _scriptHostManager.PerformanceManager.IsUnderHighLoad()
-                    };
-                }
-
                 string message = $"Host Status: {JsonConvert.SerializeObject(status, Formatting.Indented)}";
                 _traceWriter.Info(message);
                 _logger?.LogInformation(message);

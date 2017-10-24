@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockScriptHostFactory = new Mock<IScriptHostFactory>();
 
             _hostManager = new WebScriptHostManager(_config, new TestSecretManagerFactory(secretManager), mockEventManager.Object,
-                _settingsManager, webHostSettings, _mockScriptHostFactory.Object, new DefaultSecretsRepositoryFactory(), 2, 500);
+                _settingsManager, webHostSettings, _mockScriptHostFactory.Object, new DefaultSecretsRepositoryFactory(), null, 2, 500);
         }
 
         [Fact]

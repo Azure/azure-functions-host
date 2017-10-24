@@ -451,7 +451,6 @@
     <Compile Include="Models\Swagger\HttpOperationInfo.cs" />
     <Compile Include="Models\Swagger\HttpOperationParameterInfo.cs" />
     <Compile Include="Models\Link.cs" />
-    <Compile Include="Models\LoadStatus.cs" />
     <Compile Include="Models\Swagger\SwaggerInfo.cs" />
     <Compile Include="OperationResult.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -579,7 +578,7 @@
     <VisualStudio>
       <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">
         <WebProjectProperties>
-          <UseIIS>True</UseIIS>
+          <UseIIS>False</UseIIS>
           <AutoAssignPort>True</AutoAssignPort>
           <DevelopmentServerPort>28549</DevelopmentServerPort>
           <DevelopmentServerVPath>/</DevelopmentServerVPath>
