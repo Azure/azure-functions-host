@@ -346,6 +346,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.NotNull(objResult);
                 Assert.Equal(contentType, objResult.ContentTypes[0]);
                 Assert.Equal(200, objResult.StatusCode);
+                if(content is byte[])
+                {
+                    Assert.Equal(System.Text.Encoding.UTF8.GetString(content as byte[]), objResult.Value);
+                }
+                else
+                {
+                    Assert.Equal(content.ToString(), objResult.Value);
+                }
                 return objResult.Value.ToString();
             }
         }
