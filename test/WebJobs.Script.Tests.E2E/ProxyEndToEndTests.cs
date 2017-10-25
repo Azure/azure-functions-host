@@ -89,7 +89,7 @@ namespace WebJobs.Script.EndToEndTests
         {
             using (var client = CreateClient())
             {
-                HttpResponseMessage response = await client.GetAsync($"api/blahblah?code={_fixture.FunctionDefaultKey}");
+                HttpResponseMessage response = await client.GetAsync($"api/proxy/blahblah?code={_fixture.FunctionDefaultKey}");
 
                 string content = await response.Content.ReadAsStringAsync();
                 _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
@@ -103,7 +103,7 @@ namespace WebJobs.Script.EndToEndTests
         {
             using (var client = CreateClient())
             {
-                HttpResponseMessage response = await client.GetAsync($"blahblah?code={_fixture.FunctionDefaultKey}");
+                HttpResponseMessage response = await client.GetAsync($"proxy/blahblah?code={_fixture.FunctionDefaultKey}");
 
                 string content = await response.Content.ReadAsStringAsync();
                 _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));

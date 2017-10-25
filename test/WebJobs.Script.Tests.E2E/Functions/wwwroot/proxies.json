@@ -48,7 +48,7 @@
     },
     "catchAll": {
       "matchCondition": {
-        "route": "api/{*path}"
+        "route": "api/proxy/{*path}"
       },
       "backendUri": "http://localhost/api/Ping",
       "requestOverrides": {
@@ -57,7 +57,7 @@
     },
     "catchAllRoutes": {
       "matchCondition": {
-        "route": "/{*path}"
+        "route": "/proxy/{*path}"
       },
       "backendUri": "http://localhost/myroute",
       "requestOverrides": {
