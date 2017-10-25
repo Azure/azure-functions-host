@@ -183,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Host has been specialized.
+        ///   Looks up a localized string similar to Starting host specialization.
         /// </summary>
         internal static string HostSpecializationTrace {
             get {

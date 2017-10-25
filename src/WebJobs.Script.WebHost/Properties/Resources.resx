@@ -260,7 +260,7 @@
 }</value>
   </data>
   <data name="HostSpecializationTrace" xml:space="preserve">
-    <value>Host has been specialized</value>
+    <value>Starting host specialization</value>
   </data>
   <data name="SwaggerFileDeleteError" xml:space="preserve">
     <value>Error deleting Swagger document</value>

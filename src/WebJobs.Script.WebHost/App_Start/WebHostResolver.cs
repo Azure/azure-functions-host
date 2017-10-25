@@ -111,9 +111,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     if (_standbyHostManager != null)
                     {
-                        // we're undergoing the one and only one
+                        // we're starting the one and only one
                         // standby mode specialization
                         _activeScriptHostConfig.TraceWriter.Info(Resources.HostSpecializationTrace);
+
+                        // After specialization, we need to ensure that custom timezone
+                        // settings configured by the user (WEBSITE_TIME_ZONE) are honored.
+                        // DateTime caches timezone information, so we need to clear the cache.
+                        TimeZoneInfo.ClearCachedData();
                     }
 
                     _standbyHostManager?.Dispose();
