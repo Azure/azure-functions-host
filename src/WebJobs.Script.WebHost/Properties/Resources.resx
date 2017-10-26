@@ -256,7 +256,7 @@
 }</value>
   </data>
   <data name="HostSpecializationTrace" xml:space="preserve">
-    <value>Host has been specialized</value>
+    <value>Starting host specialization</value>
   </data>
   <data name="TraceAddOrUpdateFunctionSecret" xml:space="preserve">
     <value>{0} secret '{1}' for '{2}' {3}.</value>

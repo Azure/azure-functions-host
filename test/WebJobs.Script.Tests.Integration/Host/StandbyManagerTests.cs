@@ -84,6 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     IsSelfHost = true,
                     LogPath = Path.Combine(testRootPath, "Logs"),
                     SecretsPath = Path.Combine(testRootPath, "Secrets"),
+                    ScriptPath = testRootPath,
                     TraceWriter = traceWriter
                 };
                 
@@ -111,6 +112,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 responseBody = await response.Content.ReadAsStringAsync();
                 Assert.Equal("WarmUp complete.", responseBody);
 
+                // Now specialize the host
+                ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                request = new HttpRequestMessage(HttpMethod.Get, "api/dne");
+                response = await httpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+
                 httpServer.Dispose();
                 httpClient.Dispose();
 
@@ -121,6 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Stopping Host")));
                 Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
+                Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
             }
         }
     }

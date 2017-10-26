@@ -165,18 +165,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("HostSecretsSchemaV1", resourceCulture);
             }
         }
-
+        
         /// <summary>
-        ///   Looks up a localized string similar to Host has been specialized.
+        ///   Looks up a localized string similar to Starting host specialization.
         /// </summary>
-        internal static string HostSpecializationTrace
-        {
-            get
-            {
+        internal static string HostSpecializationTrace {
+            get {
                 return ResourceManager.GetString("HostSpecializationTrace", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   Looks up a localized string similar to {0} secret &apos;{1}&apos; for &apos;{2}&apos; {3}..
         /// </summary>
