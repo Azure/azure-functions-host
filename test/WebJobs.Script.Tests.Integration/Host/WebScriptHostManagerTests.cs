@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockEventManager = new Mock<IScriptEventManager>();
             _mockScriptHostFactory = new Mock<IScriptHostFactory>();
             IWebJobsRouter router = fixture.CreateRouter();
+
             _hostManager = new WebScriptHostManager(_config, new TestSecretManagerFactory(secretManager), mockEventManager.Object,
                 _settingsManager, webHostSettings, router, secretsRepositoryFactory: new DefaultSecretsRepositoryFactory(),
                 hostTimeoutSeconds: 2,  hostPollingIntervalMilliseconds: 500, scriptHostFactory: _mockScriptHostFactory.Object);

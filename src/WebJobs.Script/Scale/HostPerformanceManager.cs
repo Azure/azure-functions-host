@@ -1,12 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.ObjectModel;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Newtonsoft.Json;
 
-namespace Microsoft.Azure.WebJobs.Script.Diagnostics
+namespace Microsoft.Azure.WebJobs.Script.Scale
 {
     public class HostPerformanceManager
     {
@@ -14,19 +15,28 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         internal const float ThreadThreshold = 0.80F;
         internal const float ProcessesThreshold = 0.80F;
         internal const float NamedPipesThreshold = 0.80F;
+        internal const float SectionsThreshold = 0.80F;
 
         private readonly ScriptSettingsManager _settingsManager;
-        private readonly TraceWriter _traceWriter;
 
-        public HostPerformanceManager(ScriptSettingsManager settingsManager, TraceWriter traceWriter)
+        // for mock testing
+        public HostPerformanceManager()
         {
-            _settingsManager = settingsManager;
-            _traceWriter = traceWriter;
         }
 
-        public virtual bool IsUnderHighLoad(Collection<string> exceededCounters = null)
+        public HostPerformanceManager(ScriptSettingsManager settingsManager)
         {
-            var counters = GetPerformanceCounters();
+            if (settingsManager == null)
+            {
+                throw new ArgumentNullException(nameof(settingsManager));
+            }
+
+            _settingsManager = settingsManager;
+        }
+
+        public virtual bool IsUnderHighLoad(Collection<string> exceededCounters = null, TraceWriter traceWriter = null)
+        {
+            var counters = GetPerformanceCounters(traceWriter);
             if (counters != null)
             {
                 return IsUnderHighLoad(counters, exceededCounters);
@@ -44,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             exceeded |= ThresholdExceeded("Threads", counters.Threads, counters.ThreadLimit, ThreadThreshold, exceededCounters);
             exceeded |= ThresholdExceeded("Processes", counters.Processes, counters.ProcessLimit, ProcessesThreshold, exceededCounters);
             exceeded |= ThresholdExceeded("NamedPipes", counters.NamedPipes, counters.NamedPipeLimit, NamedPipesThreshold, exceededCounters);
+            exceeded |= ThresholdExceeded("Sections", counters.Sections, counters.SectionLimit, SectionsThreshold, exceededCounters);
 
             return exceeded;
         }
@@ -65,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             return exceeded;
         }
 
-        internal ApplicationPerformanceCounters GetPerformanceCounters()
+        internal ApplicationPerformanceCounters GetPerformanceCounters(TraceWriter traceWriter = null)
         {
             string json = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteAppCountersName);
             if (!string.IsNullOrEmpty(json))
@@ -85,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
                 }
                 catch (JsonReaderException ex)
                 {
-                    _traceWriter.Error($"Failed to deserialize application performance counters. JSON Content: \"{json}\"", ex);
+                    traceWriter?.Error($"Failed to deserialize application performance counters. JSON Content: \"{json}\"", ex);
                 }
             }
 

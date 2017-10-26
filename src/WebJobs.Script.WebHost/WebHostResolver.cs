@@ -7,7 +7,6 @@ using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Configuration;
@@ -67,11 +66,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public ISecretManager GetSecretManager(WebHostSettings settings)
         {
             return GetWebScriptHostManager(settings).SecretManager;
-        }
-
-        public HostPerformanceManager GetPerformanceManager(WebHostSettings settings)
-        {
-            return GetWebScriptHostManager(settings).PerformanceManager;
         }
 
         public WebScriptHostManager GetWebScriptHostManager() =>

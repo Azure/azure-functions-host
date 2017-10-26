@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public WebScriptHostRequestManagerTests()
         {
             _metricsLogger = new Mock<IMetricsLogger>(MockBehavior.Strict);
-            _performanceManager = new Mock<HostPerformanceManager>(MockBehavior.Strict, new object[] { new ScriptSettingsManager(), _traceWriter });
+            _performanceManager = new Mock<HostPerformanceManager>(MockBehavior.Strict, new object[] { new ScriptSettingsManager() });
             _httpConfig = new HttpExtensionConfiguration();
             _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             _requestManager = new WebScriptHostRequestManager(_httpConfig, _performanceManager.Object, _metricsLogger.Object, _traceWriter, 1);
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             bool highLoad = false;
             int highLoadQueryCount = 0;
             _performanceManager.Setup(p => p.IsUnderHighLoad(It.IsAny<Collection<string>>()))
-                .Callback<Collection<string>>((exceededCounters) =>
+                .Callback<Collection<string>, TraceWriter>((exceededCounters, tw) =>
                 {
                     if (highLoad)
                     {
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, highLoadQueryCount);
             Assert.Equal(3, throttleMetricCount);
             var trace = _traceWriter.Traces.Last();
-            Assert.Equal("Thresholds for the following counters have been exceeded: Threads, Processes", trace.Message);
+            Assert.Equal("Thresholds for the following counters have been exceeded: [Threads, Processes]", trace.Message);
 
             await Task.Delay(1000);
             highLoad = false;

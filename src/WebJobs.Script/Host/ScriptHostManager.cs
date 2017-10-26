@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -15,6 +16,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -34,6 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IScriptHostEnvironment _environment;
         private readonly IDisposable _fileEventSubscription;
         private readonly StructuredLogWriter _structuredLogWriter;
+        private readonly HostPerformanceManager _performanceManager;
+        private readonly Timer _hostHealthCheckTimer;
+        private readonly TimeSpan hostHealthCheckInterval = TimeSpan.FromSeconds(15);
         private ScriptHost _currentInstance;
         private int _hostStartCount;
 
@@ -57,8 +62,9 @@ namespace Microsoft.Azure.WebJobs.Script
             ScriptHostConfiguration config,
             IScriptEventManager eventManager = null,
             IScriptHostEnvironment environment = null,
-            ILoggerFactoryBuilder loggerFactoryBuilder = null)
-            : this(config, ScriptSettingsManager.Instance, new ScriptHostFactory(), eventManager, environment, loggerFactoryBuilder)
+            ILoggerFactoryBuilder loggerFactoryBuilder = null,
+            HostPerformanceManager hostPerformanceManager = null)
+            : this(config, ScriptSettingsManager.Instance, new ScriptHostFactory(), eventManager, environment, loggerFactoryBuilder, hostPerformanceManager)
         {
             if (config.FileWatchingEnabled)
             {
@@ -75,8 +81,19 @@ namespace Microsoft.Azure.WebJobs.Script
             IScriptHostFactory scriptHostFactory,
             IScriptEventManager eventManager = null,
             IScriptHostEnvironment environment = null,
-            ILoggerFactoryBuilder loggerFactoryBuilder = null)
+            ILoggerFactoryBuilder loggerFactoryBuilder = null,
+            HostPerformanceManager hostPerformanceManager = null)
         {
+            if (config == null)
+            {
+                throw new ArgumentNullException(nameof(config));
+            }
+            if (settingsManager == null)
+            {
+                throw new ArgumentNullException(nameof(settingsManager));
+            }
+
+            scriptHostFactory = scriptHostFactory ?? new ScriptHostFactory();
             _environment = environment ?? this;
             _config = config;
             _settingsManager = settingsManager;
@@ -86,7 +103,15 @@ namespace Microsoft.Azure.WebJobs.Script
             EventManager = eventManager ?? new ScriptEventManager();
 
             _structuredLogWriter = new StructuredLogWriter(EventManager, config.RootLogPath);
+            _performanceManager = hostPerformanceManager ?? new HostPerformanceManager(settingsManager);
+
+            if (config.HostHealthMonitorEnabled && settingsManager.IsAzureEnvironment)
+            {
+                _hostHealthCheckTimer = new Timer(OnHostHealthCheckTimer, null, TimeSpan.Zero, hostHealthCheckInterval);
+            }
         }
+
+        protected HostPerformanceManager PerformanceManager => _performanceManager;
 
         protected IScriptEventManager EventManager { get; }
 
@@ -136,6 +161,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         State = ScriptHostState.Default;
                     }
+
+                    OnHostStarting();
 
                     // Create a new host config, but keep the host id from existing one
                     _config.HostConfig = new JobHostConfiguration(_settingsManager.Configuration)
@@ -372,7 +399,12 @@ namespace Microsoft.Azure.WebJobs.Script
             State = ScriptHostState.Created;
         }
 
-        protected virtual void OnHostStarted()
+        protected virtual void OnHostStarting()
+        {
+            IsHostHealthy(throwWhenUnhealthy: true);
+        }
+
+    protected virtual void OnHostStarted()
         {
             var metricsLogger = _config.HostConfig.GetService<IMetricsLogger>();
             metricsLogger.LogEvent(new HostStarted(Instance));
@@ -401,6 +433,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
 
+                _hostHealthCheckTimer?.Dispose();
                 _stopEvent.Dispose();
                 _restartDelayTokenSource?.Dispose();
                 _fileEventSubscription?.Dispose();
@@ -429,6 +462,39 @@ namespace Microsoft.Azure.WebJobs.Script
             Stop();
 
             Process.GetCurrentProcess().Close();
+        }
+
+        private void OnHostHealthCheckTimer(object state)
+        {
+            if (State == ScriptHostState.Running && !IsHostHealthy())
+            {
+                // This periodic check allows us to break out of the host run
+                // loop. The health check performed in OnHostStarting will then
+                // fail and we'll enter a restart loop (exponentially backing off)
+                // until the host is healthy again and we can resume host processing.
+                RestartHost();
+            }
+        }
+
+        internal bool IsHostHealthy(bool throwWhenUnhealthy = false)
+        {
+            if (!_config.HostHealthMonitorEnabled || !_settingsManager.IsAzureEnvironment)
+            {
+                return true;
+            }
+
+            var exceededCounters = new Collection<string>();
+            if (PerformanceManager.IsUnderHighLoad(exceededCounters))
+            {
+                string formattedCounters = string.Join(", ", exceededCounters);
+                if (throwWhenUnhealthy)
+                {
+                    throw new InvalidOperationException($"Host thresholds exceeded: [{formattedCounters}]");
+                }
+                return false;
+            }
+
+            return true;
         }
 
         public async Task<bool> DelayUntilHostReady(int timeoutSeconds = HostCheckTimeoutSeconds, int pollingIntervalMilliseconds = HostCheckPollingIntervalMilliseconds)

@@ -3,15 +3,19 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Moq;
 using Moq.Protected;
@@ -204,7 +208,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = Environment.CurrentDirectory
+                RootScriptPath = Environment.CurrentDirectory,
+                TraceWriter = new TestTraceWriter(TraceLevel.Verbose)
             };
 
             var eventManager = new Mock<IScriptEventManager>();
@@ -213,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, It.IsAny<ScriptHostConfiguration>(), It.IsAny<ILoggerFactoryBuilder>()))
                 .Returns(hostMock.Object);
 
-            var target = new Mock<ScriptHostManager>(config, _settingsManager, factoryMock.Object, eventManager.Object, new NullScriptHostEnvironment(), new DefaultLoggerFactoryBuilder());
+            var target = new Mock<ScriptHostManager>(config, _settingsManager, factoryMock.Object, eventManager.Object, new NullScriptHostEnvironment(), new DefaultLoggerFactoryBuilder(), null);
             target.Protected().Setup("OnHostStarted")
                 .Throws(new Exception());
 
@@ -261,6 +266,58 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Null(hostManager.LastError);
             Assert.True(hostManager.CanInvoke());
             Assert.Equal(ScriptHostState.Running, hostManager.State);
+        }
+
+        [Fact]
+        public void IsHostHealthy_ReturnsExpectedResult()
+        {
+            var config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = Environment.CurrentDirectory,
+                TraceWriter = new TestTraceWriter(TraceLevel.Verbose)
+            };
+
+            var mockSettings = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
+            var eventManager = new Mock<IScriptEventManager>();
+            var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), eventManager.Object, config, null, null);
+            var factoryMock = new Mock<IScriptHostFactory>();
+            factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), mockSettings.Object, It.IsAny<ScriptHostConfiguration>(), It.IsAny<ILoggerFactoryBuilder>()))
+                .Returns(hostMock.Object);
+
+            var mockHostPerformanceManager = new Mock<HostPerformanceManager>(mockSettings.Object);
+            var target = new Mock<ScriptHostManager>(config, mockSettings.Object, factoryMock.Object, eventManager.Object, new NullScriptHostEnvironment(), mockHostPerformanceManager.Object);
+
+            Collection<string> exceededCounters = new Collection<string>();
+            bool isUnderHighLoad = false;
+            mockHostPerformanceManager.Setup(p => p.IsUnderHighLoad(It.IsAny<Collection<string>>(), It.IsAny<TraceWriter>()))
+                .Callback<Collection<string>, TraceWriter>((c, t) =>
+                {
+                    foreach (var counter in exceededCounters)
+                    {
+                        c.Add(counter);
+                    }
+                })
+                .Returns(() => isUnderHighLoad);
+
+            bool isAzureEnvironment = false;
+            mockSettings.Setup(p => p.IsAzureEnvironment).Returns(() => isAzureEnvironment);
+
+            config.HostHealthMonitorEnabled = false;
+            Assert.True(target.Object.IsHostHealthy());
+
+            config.HostHealthMonitorEnabled = true;
+            Assert.True(target.Object.IsHostHealthy());
+
+            isAzureEnvironment = true;
+            Assert.True(target.Object.IsHostHealthy());
+
+            isUnderHighLoad = true;
+            exceededCounters.Add("Foo");
+            exceededCounters.Add("Bar");
+            Assert.False(target.Object.IsHostHealthy());
+
+            var ex = Assert.Throws<InvalidOperationException>(() => target.Object.IsHostHealthy(true));
+            Assert.Equal("Host thresholds exceeded: [Foo, Bar]", ex.Message);
         }
 
         [Fact]

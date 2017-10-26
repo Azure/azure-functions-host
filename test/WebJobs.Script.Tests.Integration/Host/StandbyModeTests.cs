@@ -68,12 +68,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void GetPerformanceManager_ReturnsExpectedValue()
-        {
-            TestGetter(_webHostResolver.GetPerformanceManager);
-        }
-
-        [Fact]
         public void GetWebScriptHostManager_ReturnsExpectedValue()
         {
             TestGetter(_webHostResolver.GetWebScriptHostManager);

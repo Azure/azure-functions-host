@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 
@@ -29,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private readonly WebHostMetricsLogger _metricsLogger;
         private readonly ISecretManager _secretManager;
-        private readonly HostPerformanceManager _performanceManager;
         private readonly WebHostSettings _webHostSettings;
 
         private readonly IWebJobsExceptionHandler _exceptionHandler;
@@ -53,9 +53,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IScriptHostFactory scriptHostFactory = null,
             ISecretsRepositoryFactory secretsRepositoryFactory = null,
             ILoggerFactoryBuilder loggerFactoryBuilder = null,
+            HostPerformanceManager hostPerformanceManager = null,
             int hostTimeoutSeconds = 30,
             int hostPollingIntervalMilliseconds = 500)
-            : base(config, settingsManager, scriptHostFactory, eventManager, environment: null, loggerFactoryBuilder: loggerFactoryBuilder)
+            : base(config, settingsManager, scriptHostFactory, eventManager, environment: null, loggerFactoryBuilder: loggerFactoryBuilder, hostPerformanceManager: hostPerformanceManager)
         {
             _config = config;
 
@@ -78,8 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             config.IsSelfHost = webHostSettings.IsSelfHost;
-
-            _performanceManager = new HostPerformanceManager(settingsManager, config.TraceWriter);
 
             secretsRepositoryFactory = secretsRepositoryFactory ?? new DefaultSecretsRepositoryFactory();
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
@@ -114,8 +113,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         internal WebJobsSdkExtensionHookProvider BindingWebHookProvider => _bindingWebHookProvider;
 
         public ISecretManager SecretManager => _secretManager;
-
-        public HostPerformanceManager PerformanceManager => _performanceManager;
 
         public virtual bool Initialized
         {

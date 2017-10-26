@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
             RootScriptPath = Environment.CurrentDirectory;
             RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
             LogFilter = new LogCategoryFilter();
+            HostHealthMonitorEnabled = true;
         }
 
         /// <summary>
@@ -85,6 +86,12 @@ namespace Microsoft.Azure.WebJobs.Script
         /// there is no timeout duration.
         /// </summary>
         public TimeSpan? FunctionTimeout { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the hosting environment will be monitored
+        /// for health (e.g. socket thresholds, etc.). Default is true.
+        /// </summary>
+        public bool HostHealthMonitorEnabled { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the host is running
