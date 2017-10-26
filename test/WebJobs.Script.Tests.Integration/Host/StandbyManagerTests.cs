@@ -125,7 +125,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // verify logs
                 string[] logLines = traceWriter.Traces.Select(p => p.Message).ToArray();
-                string text = string.Join(Environment.NewLine, logLines);
                 Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Stopping Host")));
                 Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));

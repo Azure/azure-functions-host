@@ -85,11 +85,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public ICollection<string> Functions { get; set; }
 
         /// <summary>
-        /// Gets the set of <see cref="ScriptBindingProviders"/> to use when loading functions.
-        /// </summary>
-        public ICollection<ScriptBindingProvider> BindingProviders { get; internal set; }
-
-        /// <summary>
         /// Gets or sets a value indicating the timeout duration for all functions. If null,
         /// there is no timeout duration.
         /// </summary>
@@ -130,6 +125,11 @@ namespace Microsoft.Azure.WebJobs.Script
         /// the host's <see cref="ILoggerFactory"/>.
         /// </summary>
         public ILoggerFactoryBuilder LoggerFactoryBuilder { get; set; }
+
+        /// <summary>
+        /// Gets or sets the set of <see cref="ScriptBindingProviders"/> to use when loading functions.
+        /// </summary>
+        internal ICollection<ScriptBindingProvider> BindingProviders { get; set; }
 
         /// <summary>
         /// Gets or sets a test hook for modifying the configuration after host.json has been processed.
