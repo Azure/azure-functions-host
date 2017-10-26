@@ -23,16 +23,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private bool _disposed = false;
         private IDisposable _fileChangeSubscription;
 
-        internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata)
-            : this(host, functionMetadata, new FunctionLogger(host, functionMetadata.Name))
-        {
-        }
-
-        internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, FunctionLogger logInfo)
+        internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, string logDirName = null)
         {
             Host = host;
             Metadata = functionMetadata;
-            LogInfo = logInfo;
+            FunctionLogger = new FunctionLogger(host, logDirName ?? functionMetadata.Name);
         }
 
         protected static IDictionary<string, object> PrimaryHostTraceProperties { get; }
@@ -46,15 +41,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public ScriptHost Host { get; }
 
-        public FunctionLogger LogInfo { get; }
+        public FunctionLogger FunctionLogger { get; }
 
         public FunctionMetadata Metadata { get; }
 
-        protected TraceWriter TraceWriter => LogInfo.TraceWriter;
+        protected TraceWriter TraceWriter => FunctionLogger.TraceWriter;
 
-        protected ILogger Logger => LogInfo.Logger;
+        protected ILogger Logger => FunctionLogger.Logger;
 
-        public TraceWriter FileTraceWriter => LogInfo.FileTraceWriter;
+        public TraceWriter FileTraceWriter => FunctionLogger.FileTraceWriter;
 
         /// <summary>
         /// All unhandled invocation exceptions will flow through this method.
@@ -70,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected virtual void TraceError(string errorMessage)
         {
-            LogInfo.TraceError(errorMessage);
+            FunctionLogger.TraceError(errorMessage);
         }
 
         protected bool InitializeFileWatcherIfEnabled()
@@ -155,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return;
             }
 
-            TraceWriter traceWriter = LogInfo.TraceWriter;
+            TraceWriter traceWriter = FunctionLogger.TraceWriter;
             IDictionary<string, object> properties = PrimaryHostTraceProperties;
 
             if (!logTarget.HasFlag(LogTargets.User))
@@ -208,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     _fileChangeSubscription?.Dispose();
 
-                    (LogInfo.TraceWriter as IDisposable)?.Dispose();
+                    FunctionLogger.Dispose();
                 }
 
                 _disposed = true;
