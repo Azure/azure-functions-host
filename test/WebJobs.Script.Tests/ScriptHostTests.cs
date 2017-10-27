@@ -1015,7 +1015,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Initialize_LogsHostJson_IfParseError()
+        public void Initialize_LogsException_IfParseError()
         {
             TestLoggerProvider loggerProvider = null;
             var loggerFactoryHookMock = new Mock<ILoggerFactoryBuilder>(MockBehavior.Strict);
@@ -1048,11 +1048,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // We should have gotten sone messages.
             var logger = loggerProvider.CreatedLoggers.Single();
-            Assert.Equal(3, logger.LogMessages.Count);
-            Assert.StartsWith("Reading host configuration file", logger.LogMessages[0].FormattedMessage);
-            Assert.StartsWith("Host configuration file read", logger.LogMessages[1].FormattedMessage);
-            Assert.StartsWith("ScriptHost initialization failed", logger.LogMessages[2].FormattedMessage);
-            Assert.Equal("Unable to parse host.json file.", logger.LogMessages[2].Exception.Message);
+            Assert.Equal(2, logger.LogMessages.Count);
+            Assert.StartsWith("ScriptHost initialization failed", logger.LogMessages[1].FormattedMessage);
+            Assert.Equal("Unable to parse host.json file.", logger.LogMessages[1].Exception.Message);
         }
 
         [Fact]

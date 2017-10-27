@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {
         private const string EventTimestamp = "MM/dd/yyyy hh:mm:ss.fff tt";
 
-        public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, Exception exception = null)
+        public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary)
         {
             string eventTimestamp = DateTime.UtcNow.ToString(EventTimestamp);
             switch (level)
@@ -27,10 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
                 case TraceLevel.Error:
-                    if (string.IsNullOrEmpty(details) && exception != null)
-                    {
-                        details = exception.ToFormattedString();
-                    }
                     FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
             }

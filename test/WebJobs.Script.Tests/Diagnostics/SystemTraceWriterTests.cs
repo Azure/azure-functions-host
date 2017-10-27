@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, functionName);
             traceEvent.Properties.Add(ScriptConstants.TracePropertyEventDetailsKey, details);
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(TraceLevel.Verbose, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, details, traceEvent.Message, null));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(TraceLevel.Verbose, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, details, traceEvent.Message));
 
             _traceWriter.Trace(traceEvent);
 
@@ -67,7 +67,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             traceEvent.Properties.Add(ScriptConstants.TracePropertyEventNameKey, eventName);
             traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, functionName);
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(TraceLevel.Error, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, string.Empty, traceEvent.Message, ex));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(TraceLevel.Error, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, ex.ToFormattedString(), traceEvent.Message));
+
+            _traceWriter.Trace(traceEvent);
+
+            _mockEventGenerator.VerifyAll();
+        }
+
+        [Fact]
+        public void Trace_Sanitizes()
+        {
+            string secretReplacement = "[Hidden Credential]";
+            string secretString = "{ \"AzureWebJobsStorage\": \"DefaultEndpointsProtocol=https;AccountName=testAccount1;AccountKey=mykey1;EndpointSuffix=core.windows.net\", \"AnotherKey\": \"AnotherValue\" }";
+            string sanitizedString = $"{{ \"AzureWebJobsStorage\": \"{secretReplacement}\", \"AnotherKey\": \"AnotherValue\" }}";
+
+            string secretException = "Invalid string: \"DefaultEndpointsProtocol=https;AccountName=testaccount;AccountKey=testkey;BlobEndpoint=https://testaccount.blob.core.windows.net/;QueueEndpoint=https://testaccount.queue.core.windows.net/;TableEndpoint=https://testaccount.table.core.windows.net/;FileEndpoint=https://testaccount.file.core.windows.net/;\"";
+            string sanitizedException = $"System.InvalidOperationException : Invalid string: \"{secretReplacement}\"";
+
+            string functionName = "TestFunction";
+            string eventName = "TestEvent";
+
+            Exception ex = new InvalidOperationException(secretException);
+
+            TraceEvent traceEvent = new TraceEvent(TraceLevel.Error, secretString, "TestSource", ex);
+
+            traceEvent.Properties.Add(ScriptConstants.TracePropertyEventNameKey, eventName);
+            traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, functionName);
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(TraceLevel.Error, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, sanitizedException, sanitizedString));
 
             _traceWriter.Trace(traceEvent);
 
