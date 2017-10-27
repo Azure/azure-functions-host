@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Web.Http.Results;
 using Moq;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -56,6 +57,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var str = "asdf";
             var content = await Raw(str, "text/plain; charset=utf-8");
             Assert.Equal(str, content);
+        }
+
+        [Fact]
+        public async Task BadContentType_ThrowsExpectedException()
+        {
+            await Assert.ThrowsAsync<FunctionInvocationException>(async () =>
+            {
+                var content = await Response("asdf", null);
+            });
         }
 
         [Fact]
