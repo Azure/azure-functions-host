@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Script.WebHost.Formatters;
+using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -45,16 +46,27 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 foreach (var header in Headers)
                 {
-                    response.Headers.Add(header.Key, header.Value?.ToString() ?? string.Empty);
+                    if (header.Key.Equals("content-type", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (header.Value == null)
+                        {
+                            throw new InvalidOperationException("content-type header cannot be null");
+                        }
+                        response.ContentType = header.Value.ToString();
+                    }
+                    else
+                    {
+                        response.Headers.Add(header.Key, header.Value?.ToString() ?? string.Empty);
+                    }
                 }
             }
-
-            await WriteResponseBodyAsync(response, Content);
 
             if (StatusCode != null)
             {
                 response.StatusCode = StatusCode.Value;
             }
+
+            await WriteResponseBodyAsync(response, Content);
         }
 
         private async Task WriteResponseBodyAsync(HttpResponse response, object content)
@@ -83,11 +95,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         private static OutputFormatterWriteContext CreateFormatterContext(HttpResponse response, object content)
         {
-            return new OutputFormatterWriteContext(
+            var context = new OutputFormatterWriteContext(
                 response.HttpContext,
                 (s, e) => new HttpResponseStreamWriter(s, e),
                 content?.GetType(),
                 content);
+
+            context.ContentType = response.ContentType;
+
+            return context;
         }
 
         private static IOutputFormatter SelectedFormatter(OutputFormatterWriteContext formatterContext)
