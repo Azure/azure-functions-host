@@ -45,6 +45,12 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string GeneratedTypeNamespace = "Host";
         internal const string GeneratedTypeName = "Functions";
         private readonly IScriptHostEnvironment _scriptHostEnvironment;
+        private static readonly string[] WellKnownHostJsonProperties = new[]
+        {
+            "id", "functionTimeout", "http", "watchDirectories", "functions", "queues", "serviceBus",
+            "eventHub", "tracing", "singleton", "logger", "aggregator", "applicationInsights"
+        };
+
         private string _instanceId;
         private Func<Task> _restart;
         private Action _shutdown;
@@ -343,10 +349,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 TraceWriter.Info(readingFileMessage);
 
                 string json = File.ReadAllText(hostConfigFilePath);
-
-                string readFileMessage = $"Host configuration file read:{Environment.NewLine}{json}";
-                TraceWriter.Info(readFileMessage);
-
                 JObject hostConfigObject;
                 try
                 {
@@ -360,10 +362,13 @@ namespace Microsoft.Azure.WebJobs.Script
                     ConfigureDefaultLoggerFactory();
                     ILogger startupErrorLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
                     startupErrorLogger.LogInformation(readingFileMessage);
-                    startupErrorLogger.LogInformation(readFileMessage);
 
                     throw new FormatException(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex);
                 }
+
+                string sanitizedJson = SanitizeHostJson(hostConfigObject);
+                string readFileMessage = $"Host configuration file read:{Environment.NewLine}{sanitizedJson}";
+                TraceWriter.Info(readFileMessage);
 
                 try
                 {
@@ -525,6 +530,22 @@ namespace Microsoft.Azure.WebJobs.Script
                     PurgeOldLogDirectories();
                 }
             }
+        }
+
+        internal static string SanitizeHostJson(JObject hostJsonObject)
+        {
+            JObject sanitizedObject = new JObject();
+
+            foreach (var propName in WellKnownHostJsonProperties)
+            {
+                var propValue = hostJsonObject[propName];
+                if (propValue != null)
+                {
+                    sanitizedObject[propName] = propValue;
+                }
+            }
+
+            return sanitizedObject.ToString();
         }
 
         // Validate that for any precompiled assembly, all functions have the same configuration precedence.

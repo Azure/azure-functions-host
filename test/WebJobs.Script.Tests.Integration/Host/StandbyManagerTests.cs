@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void IsWarmUpRequest_ReturnsExpectedValue()
         {
             var request = new HttpRequestMessage(HttpMethod.Post, "http://azure.com/api/warmup");
-            Assert.False(StandbyManager.IsWarmUpRequest(request));
+            Assert.False(StandbyManager.IsWarmUpRequest(request), "Initial request to 'warmup'.");
 
             var vars = new Dictionary<string, string>
             {
@@ -41,20 +41,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-                Assert.False(StandbyManager.IsWarmUpRequest(request));
+                Assert.False(StandbyManager.IsWarmUpRequest(request), "Set PlaceholderMode to '1'.");
 
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId, "12345");
-                Assert.True(StandbyManager.IsWarmUpRequest(request));
+                Assert.True(StandbyManager.IsWarmUpRequest(request), "Set InstanceId to '12345'.");
 
                 request = new HttpRequestMessage(HttpMethod.Post, "http://azure.com/api/csharphttpwarmup");
-                Assert.True(StandbyManager.IsWarmUpRequest(request));
+                Assert.True(StandbyManager.IsWarmUpRequest(request), "Request to 'csharpwarmup'.");
 
                 request = new HttpRequestMessage(HttpMethod.Post, "http://azure.com/api/warmup");
                 request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, "xyz123");
-                Assert.False(StandbyManager.IsWarmUpRequest(request));
+                Assert.False(StandbyManager.IsWarmUpRequest(request), "Request to 'warmup'.");
 
                 request = new HttpRequestMessage(HttpMethod.Post, "http://azure.com/api/foo");
-                Assert.False(StandbyManager.IsWarmUpRequest(request));
+                Assert.False(StandbyManager.IsWarmUpRequest(request), "Request to 'foo'.");
             }
         }
 

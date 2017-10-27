@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -35,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string subscriptionId = _subscriptionId ?? string.Empty;
             string appName = _appName ?? string.Empty;
             string source = traceEvent.Source ?? string.Empty;
-            string summary = traceEvent.Message ?? string.Empty;
+            string summary = Sanitizer.Sanitize(traceEvent.Message) ?? string.Empty;
 
             // Apply any additional extended event info from the Properties bag
             string functionName = string.Empty;
@@ -63,11 +64,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 if (traceEvent.Properties.TryGetValue(ScriptConstants.TracePropertyEventDetailsKey, out value) && value != null)
                 {
-                    details = value.ToString();
+                    details = Sanitizer.Sanitize(value.ToString());
                 }
             }
 
-            _eventGenerator.LogFunctionTraceEvent(traceEvent.Level, subscriptionId, appName, functionName, eventName, source, details, summary, traceEvent.Exception);
+            if (string.IsNullOrEmpty(details) && traceEvent.Exception != null)
+            {
+                details = Sanitizer.Sanitize(traceEvent.Exception.ToFormattedString());
+            }
+
+            _eventGenerator.LogFunctionTraceEvent(traceEvent.Level, subscriptionId, appName, functionName, eventName, source, details, summary);
         }
     }
 }

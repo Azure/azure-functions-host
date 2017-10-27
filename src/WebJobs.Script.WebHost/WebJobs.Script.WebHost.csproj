@@ -421,6 +421,7 @@
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="App_Start\WebHostResolver.cs" />
     <Compile Include="App_Start\WebHostSettings.cs" />
+    <Compile Include="Diagnostics\Sanitizer.cs" />
     <Compile Include="StandbyManager.cs" />
     <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\FunctionsController.cs" />
