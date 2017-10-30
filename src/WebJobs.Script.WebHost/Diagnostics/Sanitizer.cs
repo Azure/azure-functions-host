@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Logging
     {
         private const string SecretReplacement = "[Hidden Credential]";
         private static readonly char[] ValueTerminators = new char[] { '<', '"' };
-        private static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=" };
+        private static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "SharedAccessKey=" };
 
         /// <summary>
         /// Removes well-known credential strings from strings.

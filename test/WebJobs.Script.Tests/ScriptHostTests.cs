@@ -1052,6 +1052,80 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void Initialize_Sanitizes_HostJsonLog()
+        {
+            TestTraceWriter traceWriter = new TestTraceWriter(TraceLevel.Info);
+            TestLoggerProvider loggerProvider = null;
+            var loggerFactoryHookMock = new Mock<ILoggerFactoryBuilder>(MockBehavior.Strict);
+            loggerFactoryHookMock
+                .Setup(m => m.AddLoggerProviders(It.IsAny<ILoggerFactory>(), It.IsAny<ScriptHostConfiguration>(), It.IsAny<ScriptSettingsManager>()))
+                .Callback<ILoggerFactory, ScriptHostConfiguration, ScriptSettingsManager>((factory, scriptConfig, settings) =>
+                {
+                    loggerProvider = new TestLoggerProvider(scriptConfig.LogFilter.Filter);
+                    factory.AddProvider(loggerProvider);
+                });
+
+            string rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests");
+            if (!Directory.Exists(rootPath))
+            {
+                Directory.CreateDirectory(rootPath);
+            }
+
+            // Turn off all logging. We shouldn't see any output.
+            string hostJsonContent = @"
+            {
+                'functionTimeout': '00:05:00',
+                'functions': [ 'FunctionA', 'FunctionB' ],
+                'logger': {
+                    'categoryFilter': {
+                        'defaultLevel': 'Information'
+                    }
+                },
+                'Values': {
+                    'MyCustomValue': 'abc'
+                }
+            }";
+
+            File.WriteAllText(Path.Combine(rootPath, "host.json"), hostJsonContent);
+
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = rootPath,
+                TraceWriter = traceWriter
+            };
+
+            config.LoggerFactoryBuilder = loggerFactoryHookMock.Object;
+
+            config.HostConfig.HostId = ID;
+            var environment = new Mock<IScriptHostEnvironment>();
+            var eventManager = new Mock<IScriptEventManager>();
+
+            ScriptHost.Create(environment.Object, eventManager.Object, config, _settingsManager);
+
+            string hostJsonSanitized = @"
+            {
+                'functionTimeout': '00:05:00',
+                'functions': [ 'FunctionA', 'FunctionB' ],
+                'logger': {
+                    'categoryFilter': {
+                        'defaultLevel': 'Information'
+                    }
+                }
+            }";
+
+            // for formatting
+            var hostJson = JObject.Parse(hostJsonSanitized);
+            string expectedMessgae = $"Host configuration file read:{Environment.NewLine}{hostJson}";
+
+            var logger = loggerProvider.CreatedLoggers.Single(l => l.Category == LogCategories.Startup);
+            var logMessage = logger.LogMessages.Single(l => l.FormattedMessage.StartsWith("Host configuration ")).FormattedMessage;
+            Assert.Equal(expectedMessgae, logMessage);
+
+            var traceMessage = traceWriter.Traces.Single(t => t.Message.StartsWith("Host configuration ")).Message;
+            Assert.Equal(expectedMessgae, traceMessage);
+        }
+
+        [Fact]
         public void Initialize_LogsException_IfParseError()
         {
             TestLoggerProvider loggerProvider = null;
