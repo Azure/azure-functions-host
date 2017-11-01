@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
 {
     public class TryRemoveIfMaxFreeWorkerRatioTests
     {
-        [Theory, MemberData("BasicData")]
+        [Theory, MemberData(nameof(BasicData))]
         public async Task BasicTests(double maxFreeWorkerRatio, IWorkerInfo manager, IEnumerable<IWorkerInfo> workers, IWorkerInfo toRemove)
         {
             var activityId = Guid.NewGuid().ToString();

@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
                         cs.FlushFinalBlock();
                     }
 
-                    return string.Format("{0}.{1}", iv, Convert.ToBase64String(ms.ToArray()));
+                    return string.Format("{0}.{1}.{2}", iv, Convert.ToBase64String(ms.ToArray()), GetSHA256Base64String(aes.Key));
                 }
             }
         }
@@ -117,16 +117,24 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         public static void ValidateToken(string token)
         {
             var parts = token.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length != 2)
+            if (parts.Length != 2 && parts.Length != 3)
             {
                 throw new ArgumentException("Malform encrypted data.");
             }
 
             var iv = Convert.FromBase64String(parts[0]);
             var data = Convert.FromBase64String(parts[1]);
+            var base64KeyHash = parts.Length == 3 ? parts[2] : null;
+
+            var encryptionKey = AppServiceSettings.RuntimeEncryptionKey;
+            if (!string.IsNullOrEmpty(base64KeyHash) && !string.Equals(GetSHA256Base64String(encryptionKey), base64KeyHash))
+            {
+                throw new InvalidOperationException(string.Format("Key with hash {0} does not exist.", base64KeyHash));
+            }
+
             using (var aes = new AesManaged())
             {
-                aes.Key = AppServiceSettings.RuntimeEncryptionKey;
+                aes.Key = encryptionKey;
 
                 using (var decrypter = aes.CreateDecryptor(aes.Key, iv))
                 using (var ms = new MemoryStream())
@@ -150,6 +158,14 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
                         throw new InvalidOperationException(string.Format("Token has expired at {0}", expiredUtc));
                     }
                 }
+            }
+        }
+
+        private static string GetSHA256Base64String(byte[] key)
+        {
+            using (var sha256 = new SHA256Managed())
+            {
+                return Convert.ToBase64String(sha256.ComputeHash(key));
             }
         }
     }
