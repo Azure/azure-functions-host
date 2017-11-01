@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
 {
     public class ScaleUtilsTests
     {
-        [Theory, MemberData("WorkerEqualsData")]
+        [Theory, MemberData(nameof(WorkerEqualsData))]
         public void WorkerEqualsTests(IWorkerInfo src, IWorkerInfo dst, bool expected)
         {
             var actual = ScaleUtils.WorkerEquals(src, dst);
@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
         public void GetAndValidateTokenTests(DateTime expiredUtc, bool expected)
         {
             var encryptionKey = GenerateEncryptionKey();
-            using (new TestScopedEnvironmentVariable("WEBSITE_ENCRYPTION_KEY", Convert.ToBase64String(encryptionKey)))
+            using (new TestScopedEnvironmentVariable("WEBSITE_AUTH_ENCRYPTION_KEY", Convert.ToBase64String(encryptionKey)))
             {
                 var token = ScaleUtils.GetToken(expiredUtc);
 

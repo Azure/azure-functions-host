@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
 {
     public class TryRemoveIfMaxWorkersTests
     {
-        [Theory, MemberData("BasicData")]
+        [Theory, MemberData(nameof(BasicData))]
         public async Task BasicTests(int maxWorkers, IWorkerInfo manager, IEnumerable<IWorkerInfo> workers, IEnumerable<IWorkerInfo> toRemoves)
         {
             var activityId = Guid.NewGuid().ToString();

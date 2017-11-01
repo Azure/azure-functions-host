@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
 {
     public class TryAddIfMaxBusyWorkerRatioTests
     {
-        [Theory, MemberData("BasicData")]
+        [Theory, MemberData(nameof(BasicData))]
         public async Task BasicTests(double maxBusyWorkerRatio, IWorkerInfo manager, IEnumerable<IWorkerInfo> workers, bool expected)
         {
             var activityId = Guid.NewGuid().ToString();

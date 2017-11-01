@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
 {
     public class ProcessWorkItemTests
     {
-        [Theory, MemberData("BasicData")]
+        [Theory, MemberData(nameof(BasicData))]
         public async Task BasicTests(IWorkerInfo worker, IWorkerInfo current)
         {
             var activityId = Guid.NewGuid().ToString();

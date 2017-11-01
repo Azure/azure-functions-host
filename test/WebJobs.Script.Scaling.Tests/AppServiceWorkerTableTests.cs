@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
     [Collection("Azure Test Collection")]
     public class AppServiceWorkerTableTests
     {
-        [Theory, MemberData("TestStorageConnectionString")]
+        [Theory, MemberData(nameof(TestStorageConnectionString))]
         public async Task CRUDTests(string storageConnectionString, string siteName)
         {
             if (string.IsNullOrEmpty(storageConnectionString))
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             }
         }
 
-        [Theory, MemberData("TestStorageConnectionString")]
+        [Theory, MemberData(nameof(TestStorageConnectionString))]
         public async Task GetSetManagerTests(string storageConnectionString, string siteName)
         {
             if (string.IsNullOrEmpty(storageConnectionString))
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             }
         }
 
-        [Theory, MemberData("TestStorageConnectionString")]
+        [Theory, MemberData(nameof(TestStorageConnectionString))]
         public async Task LeaseBasicTests(string storageConnectionString, string siteName)
         {
             if (string.IsNullOrEmpty(storageConnectionString))
@@ -173,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             }
         }
 
-        [Theory, MemberData("TestStorageConnectionString")]
+        [Theory, MemberData(nameof(TestStorageConnectionString))]
         public async Task LeaseConflictTests(string storageConnectionString, string siteName)
         {
             if (string.IsNullOrEmpty(storageConnectionString))

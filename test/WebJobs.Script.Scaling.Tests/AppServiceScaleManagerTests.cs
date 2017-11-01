@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
     [Collection("Azure Test Collection")]
     public class AppServiceScaleManagerTests
     {
-        [Theory, MemberData("SupportedData")]
+        [Theory, MemberData(nameof(SupportedData))]
         public void SupportedTests(bool runtimeScaleEnabled, string storageConnectionString, string sku, bool expected)
         {
             AppServiceSettings.RuntimeScalingEnabled = runtimeScaleEnabled;

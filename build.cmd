@@ -1,8 +1,4 @@
 @ECHO Off
-
-SET Config=%1
-IF "%1"=="" (
-  SET Config="Release"
-)
-
-msbuild WebJobs.Script.proj /p:Configuration=%Config%;SolutionDir=%~dp0 /flp:LogFile=msbuild.log;Verbosity=Normal
+call dotnet --version
+call dotnet restore WebJobs.Script.sln
+call dotnet build WebJobs.Script.sln
