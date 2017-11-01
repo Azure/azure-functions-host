@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
 {
     public class EnsureManagerTests
     {
-        [Theory, MemberData("EnsureManagerData")]
+        [Theory, MemberData(nameof(EnsureManagerData))]
         public async Task BasicTests(IWorkerInfo worker, IWorkerInfo current, IEnumerable<IWorkerInfo> workers, IWorkerInfo expected)
         {
             var activityId = Guid.NewGuid().ToString();

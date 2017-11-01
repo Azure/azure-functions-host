@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Microsoft.Win32;
 
 namespace Microsoft.Azure.WebJobs.Script.Scaling
@@ -259,19 +260,31 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
             {
                 if (_runtimeEncryptionKey == null)
                 {
-                    var value = Environment.GetEnvironmentVariable("WEBSITE_ENCRYPTION_KEY");
+                    var value = Environment.GetEnvironmentVariable("WEBSITE_AUTH_ENCRYPTION_KEY");
                     if (string.IsNullOrEmpty(value))
                     {
-                        throw new InvalidOperationException("MIssing WEBSITE_ENCRYPTION_KEY environment variable");
+                        throw new InvalidOperationException("Missing WEBSITE_AUTH_ENCRYPTION_KEY environment variable");
                     }
 
                     try
                     {
-                        _runtimeEncryptionKey = Convert.FromBase64String(value);
+                        // only support 32 bytes (256 bits) key length
+                        // either hex or base64 string format
+                        if (value.Length == 64)
+                        {
+                            _runtimeEncryptionKey = Enumerable.Range(0, value.Length)
+                                             .Where(x => x % 2 == 0)
+                                             .Select(x => Convert.ToByte(value.Substring(x, 2), 16))
+                                             .ToArray();
+                        }
+                        else
+                        {
+                            _runtimeEncryptionKey = Convert.FromBase64String(value);
+                        }
                     }
                     catch (Exception ex)
                     {
-                        throw new InvalidOperationException(string.Format("Invalid base64 WEBSITE_ENCRYPTION_KEY environment variable '{0}'.", value), ex);
+                        throw new InvalidOperationException(string.Format("Invalid base64 WEBSITE_AUTH_ENCRYPTION_KEY environment variable '{0}'.", value), ex);
                     }
                 }
 

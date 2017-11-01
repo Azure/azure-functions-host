@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
 {
     public class RequestRemoveWorkerTests
     {
-        [Theory, MemberData("BasicData")]
+        [Theory, MemberData(nameof(BasicData))]
         public async Task BasicTests(IWorkerInfo manager, IWorkerInfo toRemove)
         {
             var activityId = Guid.NewGuid().ToString();

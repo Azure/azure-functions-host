@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
 {
     public class SetManagerTests
     {
-        [Theory, MemberData("SuccessfulSetData")]
+        [Theory, MemberData(nameof(SuccessfulSetData))]
         public async Task SuccessfulSetTests(IWorkerInfo worker, IWorkerInfo current)
         {
             var activityId = Guid.NewGuid().ToString();
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             }
         }
 
-        [Theory, MemberData("AlreadySetData")]
+        [Theory, MemberData(nameof(AlreadySetData))]
         public async Task AlreadySetTests(IWorkerInfo worker, IWorkerInfo current, IWorkerInfo other)
         {
             var activityId = Guid.NewGuid().ToString();

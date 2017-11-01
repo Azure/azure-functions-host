@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
 {
     public class TrySwapIfLoadFactorMinWorkerTests
     {
-        [Theory, MemberData("BasicData")]
+        [Theory, MemberData(nameof(BasicData))]
         public async Task BasicTests(IWorkerInfo manager, IEnumerable<IWorkerInfo> workers, IWorkerInfo loadFactorMinWorker)
         {
             var activityId = Guid.NewGuid().ToString();
