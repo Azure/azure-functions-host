@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
 {
     public class RequestAddWorkerTests
     {
-        [Theory, MemberData("BasicData")]
+        [Theory, MemberData(nameof(BasicData))]
         public async Task BasicTests(int maxWorkers, IEnumerable<IWorkerInfo> workers, IWorkerInfo manager, bool force, bool expected)
         {
             var activityId = Guid.NewGuid().ToString();
