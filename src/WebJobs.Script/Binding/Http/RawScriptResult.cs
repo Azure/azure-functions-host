@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -12,7 +11,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Script.WebHost.Formatters;
-using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -80,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             IOutputFormatter selectedFormatter = SelectedFormatter(formatterContext);
 
-            if (selectedFormatter != null)
+            if (selectedFormatter == null)
             {
                 // We were unable to locate a formatter with the provided type, to maintain the original behavior
                 // we'll convert the object to string and get a formatter
@@ -89,6 +87,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 formatterContext = CreateFormatterContext(response, content);
                 selectedFormatter = SelectedFormatter(formatterContext);
             }
+
+            formatterContext.ContentType = response.ContentType;
 
             await selectedFormatter.WriteAsync(formatterContext);
         }
@@ -100,8 +100,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 (s, e) => new HttpResponseStreamWriter(s, e),
                 content?.GetType(),
                 content);
-
-            context.ContentType = response.ContentType;
 
             return context;
         }
