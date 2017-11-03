@@ -5,9 +5,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
@@ -106,6 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
             try
             {
+                string runtimeIdentifierParameter = GetRuntimeIdentifierParameter();
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = dotnetPath,
@@ -115,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                     UseShellExecute = false,
                     ErrorDialog = false,
                     WorkingDirectory = projectFolder,
-                    Arguments = $"build \"{ExtensionsProjectFileName}\" -o bin --force --no-incremental"
+                    Arguments = $"build \"{ExtensionsProjectFileName}\" -o bin --force --no-incremental {runtimeIdentifierParameter}"
                 };
 
                 string nugetPath = Path.Combine(Path.GetDirectoryName(ProjectPath), "nuget.config");
@@ -232,14 +233,41 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             var root = ProjectRootElement.Create(path, NewProjectFileOptions.None);
             root.Sdk = "Microsoft.NET.Sdk";
 
-            root.AddPropertyGroup()
-                .AddProperty("TargetFramework", "netstandard2.0");
+            var propGroup = root.AddPropertyGroup();
+            propGroup.AddProperty("TargetFramework", "netstandard2.0");
+            propGroup.AddProperty("WarningsAsErrors", string.Empty);
 
             root.AddItemGroup()
                 .AddItem(PackageReferenceElementName, ExtensionsPackageId)
                 .AddMetadata(PackageReferenceVersionElementName, "1.0.0-beta2", true);
 
             return root;
+        }
+
+        private static string GetRuntimeIdentifierParameter()
+        {
+            string os = null;
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                os = "win";
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                os = "osx";
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                os = "linux";
+            }
+            else
+            {
+                return string.Empty;
+            }
+
+            string arch = RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant();
+
+            return $"-r {os}-{arch}";
         }
     }
 }
