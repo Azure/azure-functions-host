@@ -114,9 +114,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected virtual ParameterDescriptor CreateTriggerParameter(BindingMetadata triggerMetadata, Type parameterType = null)
         {
-            ParameterDescriptor triggerParameter = null;
-            TryParseTriggerParameter(triggerMetadata.Raw, out triggerParameter, parameterType);
-            triggerParameter.IsTrigger = true;
+            if (TryParseTriggerParameter(triggerMetadata.Raw, out ParameterDescriptor triggerParameter, parameterType))
+            {
+                triggerParameter.IsTrigger = true;
+            }
+            else
+            {
+                throw new ScriptConfigurationException($"The binding type '{triggerMetadata.Type}' is not registered. " +
+                    $"Please ensure the type is correct and the binding extension is installed.");
+            }
 
             return triggerParameter;
         }
