@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Moq;
 using Xunit;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -77,6 +78,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             Assert.Equal("No trigger binding specified. A function must have a trigger input binding.", ex.Message);
+        }
+
+        [Fact]
+        public void CreateTriggerParameter_WithNoBindingMatch_ThrowsExpectedException()
+        {
+            FunctionMetadata functionMetadata = new FunctionMetadata();
+            BindingMetadata metadata = BindingMetadata.Create(JObject.Parse("{\"type\": \"someInvalidTrigger\",\"name\": \"req\",\"direction\": \"in\"}"));
+
+            functionMetadata.Bindings.Add(metadata);
+
+            var ex = Assert.Throws<ScriptConfigurationException>(() =>
+            {
+                _provider.TryCreate(functionMetadata, out FunctionDescriptor descriptor);
+            });
+
+            Assert.Contains("someInvalidTrigger", ex.Message);
         }
 
         [Theory]
@@ -147,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
             {
-                throw new NotImplementedException();
+                return new Mock<IFunctionInvoker>().Object;
             }
         }
     }
