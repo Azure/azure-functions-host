@@ -148,14 +148,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
 
                 string connectionString = Context.GetMetadataValue<string>("connection");
-                if (!string.IsNullOrEmpty(connectionString))
-                {
-                    connectionString = _nameResolver.Resolve(connectionString);
-                }
 
                 if (Context.IsTrigger)
                 {
                     var attribute = new EventHubTriggerAttribute(eventHubName);
+                    attribute.Connection = connectionString;
                     string consumerGroup = Context.GetMetadataValue<string>("consumerGroup");
                     if (consumerGroup != null)
                     {
@@ -163,13 +160,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         attribute.ConsumerGroup = consumerGroup;
                     }
                     attributes.Add(attribute);
-                    _eventHubConfiguration.AddReceiver(eventHubName, connectionString);
                 }
                 else
                 {
-                    attributes.Add(new EventHubAttribute(eventHubName));
-
-                    _eventHubConfiguration.AddSender(eventHubName, connectionString);
+                    var attribute = new EventHubAttribute(eventHubName);
+                    attribute.Connection = connectionString;
+                    attributes.Add(attribute);
                 }
 
                 return attributes;
