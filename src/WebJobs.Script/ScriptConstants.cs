@@ -75,6 +75,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SwaggerDocumentationKey = "swaggerdocumentationkey";
 
         public const int MaximumHostIdLength = 32;
-        public const int DynamicSkuConnectionLimit = 250;
+        public const int DynamicSkuConnectionLimit = 50;
     }
 }
