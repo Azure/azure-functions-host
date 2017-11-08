@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             if (string.Compare(context.Type, "eventHubTrigger", StringComparison.OrdinalIgnoreCase) == 0 ||
                 string.Compare(context.Type, "eventHub", StringComparison.OrdinalIgnoreCase) == 0)
             {
-                binding = new EventHubScriptBinding(Config, _eventHubConfiguration, context);
+                binding = new EventHubScriptBinding(Config, context);
             }
 
             return binding != null;
@@ -103,12 +103,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         private class EventHubScriptBinding : ScriptBinding
         {
-            private readonly EventHubConfiguration _eventHubConfiguration;
             private readonly INameResolver _nameResolver;
 
-            public EventHubScriptBinding(JobHostConfiguration hostConfig, EventHubConfiguration eventHubConfig, ScriptBindingContext context) : base(context)
+            public EventHubScriptBinding(JobHostConfiguration hostConfig, ScriptBindingContext context) : base(context)
             {
-                _eventHubConfiguration = eventHubConfig;
                 _nameResolver = hostConfig.NameResolver;
             }
 
