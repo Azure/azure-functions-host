@@ -775,6 +775,10 @@ namespace Microsoft.Azure.WebJobs.Script
                         // so delete it
                         try
                         {
+                            // destructive operation, thus log
+                            string removeLogMessage = $"Deleting log directory '{logDir.FullName}'";
+                            TraceWriter.Verbose(removeLogMessage);
+                            _startupLogger?.LogDebug(removeLogMessage);
                             logDir.Delete(recursive: true);
                         }
                         catch

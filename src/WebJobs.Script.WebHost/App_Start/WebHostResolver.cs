@@ -134,7 +134,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         TimeZoneInfo.ClearCachedData();
                     }
 
-                    _standbyHostManager?.Dispose();
+                    if (_standbyHostManager != null)
+                    {
+                        _standbyHostManager.Stop();
+                        _standbyHostManager.Dispose();
+                    }
                     _standbyReceiverManager?.Dispose();
                     _standbyScriptHostConfig = null;
                     _standbyHostManager = null;
