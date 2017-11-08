@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _settingsManager = ScriptSettingsManager.Instance;
             _traceWriter = new TestTraceWriter(TraceLevel.Info);
+            WebScriptHostManager.ResetStandbyMode();
         }
 
         [Fact]
@@ -81,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var webHostSettings = new WebHostSettings
                 {
                     IsSelfHost = true,
-                    LogPath = Path.Combine(testRootPath, "Logs"),
+                    LogPath = testRootPath,
                     SecretsPath = Path.Combine(testRootPath, "Secrets"),
                     ScriptPath = testRootPath,
                     TraceWriter = traceWriter
@@ -95,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 TestHelpers.WaitForWebHost(httpClient);
 
                 var traces = traceWriter.Traces.ToArray();
-                Assert.Equal($"Creating StandbyMode placeholder function directory ({Path.GetTempPath()}Functions\\Standby)", traces[0].Message);
+                Assert.Equal($"Creating StandbyMode placeholder function directory ({Path.GetTempPath()}Functions\\Standby\\WWWRoot)", traces[0].Message);
                 Assert.Equal("StandbyMode placeholder function directory created", traces[1].Message);
 
                 // issue warmup request and verify
@@ -123,12 +124,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 await Task.Delay(2000);
 
+                // verify secrets directory
+
                 // verify logs
                 string[] logLines = traceWriter.Traces.Select(p => p.Message).ToArray();
                 Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Stopping Host")));
                 Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
+
+                WebScriptHostManager.ResetStandbyMode();
             }
         }
     }

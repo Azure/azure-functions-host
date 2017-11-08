@@ -27,6 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _webHostResolver = new WebHostResolver(_settingsManager, new TestSecretManagerFactory(false), eventManagerMock.Object);
             _traceWriter = new TestTraceWriter(TraceLevel.Info);
+
+            WebScriptHostManager.ResetStandbyMode();
         }
 
         [Fact]

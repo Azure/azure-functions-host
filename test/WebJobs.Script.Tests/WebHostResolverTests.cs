@@ -48,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var settings = new WebHostSettings
             {
-                IsSelfHost = true
+                IsSelfHost = true,
+                ScriptPath = Path.Combine(Path.GetTempPath(), "Functions", "Standby")
             };
 
             var config = WebHostResolver.CreateScriptHostConfiguration(settings, true);
@@ -56,7 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(FileLoggingMode.DebugOnly, config.FileLoggingMode);
             Assert.Null(config.HostConfig.StorageConnectionString);
             Assert.Null(config.HostConfig.DashboardConnectionString);
-            Assert.Equal(Path.Combine(Path.GetTempPath(), "Functions", "Standby"), config.RootScriptPath);
         }
     }
 }
