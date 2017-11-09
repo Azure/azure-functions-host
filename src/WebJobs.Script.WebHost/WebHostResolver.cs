@@ -107,12 +107,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (!WebScriptHostManager.InStandbyMode)
             {
                 // standby mode can only change from true to false
-                // When standby mode changes, we reset all instances
+                // when standby mode changes, we reset all instances
                 if (_activeHostManager == null)
                 {
-                    _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
+                    _settingsManager.Reset();
 
+                    _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
                     _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager,  _settingsManager, settings, _router, _loggerFactoryBuilder);
+                    // _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
+                    InitializeFileSystem();
 
                     if (_standbyHostManager != null)
                     {
@@ -126,28 +129,47 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         TimeZoneInfo.ClearCachedData();
                     }
 
-                    _standbyHostManager?.Dispose();
-
                     // _standbyReceiverManager?.Dispose();
-
+                    _standbyHostManager?.Dispose();
                     _standbyScriptHostConfig = null;
                     _standbyHostManager = null;
-
                     // _standbyReceiverManager = null;
-                    _settingsManager.Reset();
                 }
             }
             else
             {
                 if (_standbyHostManager == null)
                 {
-                    _standbyScriptHostConfig = CreateScriptHostConfiguration(settings);
 
-                    _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings, _router, _loggerFactoryBuilder);
-
+                    var standbySettings = CreateStandbySettings(settings);
+                    _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
+                    _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings, _router, _loggerFactoryBuilder);
                     // _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
+
+                    InitializeFileSystem();
+                    StandbyManager.Initialize(_standbyScriptHostConfig);
                 }
             }
+        }
+
+        internal static WebHostSettings CreateStandbySettings(WebHostSettings settings)
+        {
+            // we need to create a new copy of the settings to avoid modifying
+            // the global settings
+            // important that we use paths that are different than the configured paths
+            // to ensure that placeholder files are isolated
+            string tempRoot = Path.GetTempPath();
+            var standbySettings = new WebHostSettings
+            {
+                LogPath = Path.Combine(tempRoot, @"Functions\Standby\Logs"),
+                ScriptPath = Path.Combine(tempRoot, @"Functions\Standby\WWWRoot"),
+                SecretsPath = Path.Combine(tempRoot, @"Functions\Standby\Secrets"),
+                LoggerFactoryBuilder = settings.LoggerFactoryBuilder,
+                TraceWriter = settings.TraceWriter,
+                IsSelfHost = settings.IsSelfHost
+            };
+
+            return standbySettings;
         }
 
         internal static ScriptHostConfiguration CreateScriptHostConfiguration(WebHostSettings settings, bool inStandbyMode = false)
@@ -163,7 +185,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (inStandbyMode)
             {
-                scriptHostConfig.RootScriptPath = Path.Combine(Path.GetTempPath(), "Functions", "Standby");
                 scriptHostConfig.FileLoggingMode = FileLoggingMode.DebugOnly;
                 scriptHostConfig.HostConfig.StorageConnectionString = null;
                 scriptHostConfig.HostConfig.DashboardConnectionString = null;

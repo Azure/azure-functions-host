@@ -14,10 +14,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly ILoggerFactory _loggerFactory;
+        private readonly WebScriptHostManager _scriptHostManager;
 
-        public ScriptHostCheckMiddleware(RequestDelegate next, ILoggerFactory loggerFactory)
+        public ScriptHostCheckMiddleware(RequestDelegate next, WebScriptHostManager scriptHostManager, ILoggerFactory loggerFactory)
         {
             _next = next;
+            _scriptHostManager = scriptHostManager;
             _loggerFactory = loggerFactory;
         }
 
@@ -37,6 +39,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                     return;
                 }
+            }
+
+            if (StandbyManager.IsWarmUpRequest(httpContext.Request))
+            {
+                await StandbyManager.WarmUp(httpContext.Request, _scriptHostManager);
             }
 
             await _next.Invoke(httpContext);
