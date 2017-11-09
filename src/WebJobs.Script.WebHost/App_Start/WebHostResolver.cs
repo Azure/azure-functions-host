@@ -151,9 +151,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (_standbyHostManager == null)
                 {
-                    var standbySetings = CreateStandbySettings(settings);
-                    _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySetings, true);
-                    _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySetings);
+                    var standbySettings = CreateStandbySettings(settings);
+                    _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
+                    _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings);
                     _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
 
                     InitializeFileSystem();

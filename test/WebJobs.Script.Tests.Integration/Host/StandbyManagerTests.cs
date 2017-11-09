@@ -124,8 +124,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 await Task.Delay(2000);
 
-                // verify secrets directory
-
                 // verify logs
                 string[] logLines = traceWriter.Traces.Select(p => p.Message).ToArray();
                 Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
