@@ -94,7 +94,9 @@ namespace Microsoft.Azure.WebJobs.Script
             _structuredLogWriter = new StructuredLogWriter(EventManager, config.RootLogPath);
             _performanceManager = hostPerformanceManager ?? new HostPerformanceManager(settingsManager);
 
-            if (config.HostHealthMonitorEnabled && settingsManager.IsAzureEnvironment)
+            // TEMP : temporarily disabling this until the feature is improved
+            bool periodicHealthCheckEnabled = false;
+            if (periodicHealthCheckEnabled && config.HostHealthMonitorEnabled && settingsManager.IsAzureEnvironment)
             {
                 _hostHealthCheckTimer = new Timer(OnHostHealthCheckTimer, null, TimeSpan.Zero, hostHealthCheckInterval);
             }
