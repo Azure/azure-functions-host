@@ -107,12 +107,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
-    <None Include="Functions\wwwroot\PingRoute\function.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Functions\wwwroot\PingRoute\run.csx">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="Functions\wwwroot\proxies.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -144,6 +138,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Functions\wwwroot\PingRoute\" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
@@ -178,5 +175,5 @@
   <Target Name="AfterBuild">
   </Target>
   -->
-    <Import Project="..\..\tools\Clean.targets"/>
+  <Import Project="..\..\tools\Clean.targets" />
 </Project>

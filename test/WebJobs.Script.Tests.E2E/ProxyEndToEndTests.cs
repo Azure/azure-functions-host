@@ -69,65 +69,6 @@ namespace WebJobs.Script.EndToEndTests
             }
         }
 
-        [Fact]
-        [TestTrace]
-        public async Task LocalFunctionCallForNonAlphanumericProxyName()
-        {
-            using (var client = CreateClient())
-            {
-                HttpResponseMessage response = await client.GetAsync($"MyHttpWithNonAlphanumericProxyName?code={_fixture.FunctionDefaultKey}");
-
-                string content = await response.Content.ReadAsStringAsync();
-                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
-                _fixture.Assert.Equals("Pong", content);
-            }
-        }
-
-        [Fact]
-        [TestTrace]
-        public async Task CatchAllApis()
-        {
-            using (var client = CreateClient())
-            {
-                HttpResponseMessage response = await client.GetAsync($"api/proxy/blahblah?code={_fixture.FunctionDefaultKey}");
-
-                string content = await response.Content.ReadAsStringAsync();
-                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
-                _fixture.Assert.Equals("Pong", content);
-            }
-        }
-
-        [Fact]
-        [TestTrace]
-        public async Task CatchAll()
-        {
-            using (var client = CreateClient())
-            {
-                HttpResponseMessage response = await client.GetAsync($"proxy/blahblah?code={_fixture.FunctionDefaultKey}");
-
-                string content = await response.Content.ReadAsStringAsync();
-                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
-                _fixture.Assert.Equals("Pong", content);
-            }
-        }
-
-        [Fact]
-        [TestTrace]
-        public async Task LongRoute()
-        {
-            var longRoute = "test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234";
-            using (var client = CreateClient())
-            {
-                HttpResponseMessage response = await client.GetAsync(longRoute);
-
-                string content = await response.Content.ReadAsStringAsync();
-                
-                // This is to make sure the url is greater than the default asp.net 260 characters.
-                _fixture.Assert.True(longRoute.Length > 260);
-                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
-            }
-        }
-
         public HttpClient CreateClient()
         {
             return new HttpClient

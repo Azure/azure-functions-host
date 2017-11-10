@@ -1013,9 +1013,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
             string proxiesJson = File.ReadAllText(proxyConfigPath);
 
-            var proxies = LoadProxyRoutes(proxiesJson);
+            if (!string.IsNullOrWhiteSpace(proxiesJson))
+            {
+                return LoadProxyRoutes(proxiesJson);
+            }
 
-            return proxies;
+            return null;
         }
 
         private Collection<FunctionMetadata> LoadProxyRoutes(string proxiesJson)

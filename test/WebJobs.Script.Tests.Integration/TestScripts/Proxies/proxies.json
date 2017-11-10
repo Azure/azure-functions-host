@@ -1,25 +1,92 @@
-{
+﻿{
   "proxies": {
-    "test": {
+    "MockProxy": {
       "matchCondition": {
-        "route": "/myproxy",
+        "route": "/mymockhttp",
         "methods": [
-          "GET", "POST"
+          "GET"
         ]
       },
-      "backendUri": "http://localhost/api/httptrigger"
-    },
-    "localFunction": {
-        "matchCondition": {
-          "route": "/mymockhttp",
-          "methods": [
-            "GET"
-          ]
-        },
       "responseOverrides": {
         "response.headers.myversion": "123",
         "response.statusCode": "200"
       }
+    },
+    "FileExtensionCheck": {
+      "matchCondition": {
+        "methods": [
+          "GET"
+        ],
+        "route": "/proxyextensions/{*path}"
+      },
+      "responseOverrides": {
+        "response.statusCode": "200",
+        "response.headers.Content-Type": "text/plain",
+        "response.body": "test"
+      }
+    },
+    "RootCheck": {
+      "matchCondition": {
+        "methods": [
+          "GET"
+        ],
+        "route": "/"
+      },
+      "responseOverrides": {
+        "response.headers.Content-Type": "text/plain",
+        "response.body": "Root"
+      }
+    },
+    "LocalFunctionCall": {
+      "matchCondition": {
+        "methods": [
+          "GET"
+        ],
+        "route": "/myhttptrigger"
+      },
+      "backendUri": "https://localhost/api/Ping",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
+    },
+    "LongRoute": {
+      "matchCondition": {
+        "route": "/test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234"
+      },
+      "responseOverrides": {
+        "response.statusCode": "200"
+      }
+    },
+    "catchAll": {
+      "matchCondition": {
+        "route": "api/proxy/{*path}"
+      },
+      "backendUri": "http://localhost/api/Ping",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
+    },
+    "catchAllRoutes": {
+      "matchCondition": {
+        "route": "/proxy/{*path}"
+      },
+      "backendUri": "http://localhost/myroute",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
+    },
+    "1 Local Function_test$ にち": {
+      "matchCondition": {
+        "methods": [
+          "GET"
+        ],
+        "route": "/MyHttpWithNonAlphanumericProxyName"
+      },
+      "backendUri": "https://localhost/api/Ping",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
     }
-   }
+  }
 }
+  
