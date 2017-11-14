@@ -43,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [HttpPost]
+        [RequiresRunningHost]
         [Route("admin/functions/{name}")]
         public HttpResponseMessage Invoke(string name, [FromBody] FunctionInvocation invocation)
         {
@@ -68,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [HttpGet]
+        [RequiresRunningHost]
         [Route("admin/functions/{name}/status")]
         public FunctionStatus GetFunctionStatus(string name)
         {
@@ -211,6 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [HttpPost]
         [AllowAnonymous]
+        [RequiresRunningHost]
         public async Task<HttpResponseMessage> ExtensionWebHookHandler(string name, CancellationToken token)
         {
             var provider = _scriptHostManager.BindingWebHookProvider;

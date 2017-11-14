@@ -11,22 +11,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 {
     public class WebScriptHostHandler : DelegatingHandler
     {
-        public const int HostTimeoutSeconds = 30;
-        public const int HostPollingIntervalMilliseconds = 25;
-
-        private readonly int _hostTimeoutSeconds;
-        private readonly int _hostRunningPollIntervalMilliseconds;
         private readonly HttpConfiguration _config;
 
-        public WebScriptHostHandler(HttpConfiguration config, int hostTimeoutSeconds = HostTimeoutSeconds, int hostPollingIntervalMilliseconds = HostPollingIntervalMilliseconds)
+        public WebScriptHostHandler(HttpConfiguration config)
         {
             if (config == null)
             {
                 throw new ArgumentNullException("config");
             }
 
-            _hostRunningPollIntervalMilliseconds = hostPollingIntervalMilliseconds;
-            _hostTimeoutSeconds = hostTimeoutSeconds;
             _config = config;
         }
 
@@ -38,6 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
             var scriptHostManager = resolver.GetService<WebScriptHostManager>();
             if (!scriptHostManager.Initialized)
             {
+                // need to ensure the host manager is initilized early in the pipeline
+                // before any other request code runs
                 scriptHostManager.Initialize();
             }
 
@@ -45,16 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
             if (webHostSettings.IsAuthDisabled)
             {
                 request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationDisabledKey, true);
-            }
-
-            // some routes do not require the host to be running (most do)
-            bool bypassHostCheck = request.MatchRoute("admin/host/status");
-            if (!bypassHostCheck)
-            {
-                // If the host is not running, we'll wait a bit for it to fully
-                // initialize. This might happen if http requests come in while the
-                // host is starting up for the first time, or if it is restarting.
-                await scriptHostManager.DelayUntilHostReady(_hostTimeoutSeconds, _hostRunningPollIntervalMilliseconds);
             }
 
             if (StandbyManager.IsWarmUpRequest(request))

@@ -26,6 +26,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
 using Microsoft.Extensions.Logging;
 
@@ -59,8 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IScriptHostFactory scriptHostFactory = null,
             ISecretsRepositoryFactory secretsRepositoryFactory = null,
             HostPerformanceManager hostPerformanceManager = null,
-            int hostTimeoutSeconds = WebScriptHostHandler.HostTimeoutSeconds,
-            int hostPollingIntervalMilliseconds = WebScriptHostHandler.HostPollingIntervalMilliseconds)
+            int hostTimeoutSeconds = ScriptConstants.HostTimeoutSeconds,
+            int hostPollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds)
             : base(config, settingsManager, scriptHostFactory, eventManager, null, hostPerformanceManager)
         {
             _config = config;
@@ -158,8 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task<HttpResponseMessage> HandleRequestAsync(FunctionDescriptor function, HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            // ensure that the host is ready to process requests
-            await DelayUntilHostReady(_hostTimeoutSeconds, _hostRunningPollIntervalMilliseconds);
+            await DelayUntilHostReady();
 
             // All authentication is assumed to have been done on the request
             // BEFORE this method is called
@@ -429,7 +429,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             HostingEnvironment.InitiateShutdown();
         }
 
-        public async Task DelayUntilHostReady(int timeoutSeconds = WebScriptHostHandler.HostTimeoutSeconds, int pollingIntervalMilliseconds = WebScriptHostHandler.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
+        public async Task DelayUntilHostReady()
+        {
+            // ensure that the host is ready to process requests
+            await DelayUntilHostReady(_hostTimeoutSeconds, _hostRunningPollIntervalMilliseconds);
+        }
+
+        public async Task DelayUntilHostReady(int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
         {
             TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
             TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);

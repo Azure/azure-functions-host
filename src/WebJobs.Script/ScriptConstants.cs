@@ -76,5 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const int MaximumHostIdLength = 32;
         public const int DynamicSkuConnectionLimit = 50;
+        public const int HostTimeoutSeconds = 30;
+        public const int HostPollingIntervalMilliseconds = 25;
     }
 }
