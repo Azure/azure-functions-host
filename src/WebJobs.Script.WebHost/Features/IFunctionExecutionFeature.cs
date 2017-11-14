@@ -4,13 +4,19 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
 {
     public interface IFunctionExecutionFeature
     {
-        FunctionDescriptor Descriptor { get; set; }
+        bool CanExecute { get; }
+
+        FunctionDescriptor Descriptor { get; }
+
+        Task ExecuteAsync(HttpRequest request, CancellationToken cancellationToken);
     }
 }

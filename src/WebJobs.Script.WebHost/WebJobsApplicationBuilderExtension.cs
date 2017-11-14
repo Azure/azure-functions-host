@@ -18,10 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static IApplicationBuilder UseWebJobsScriptHost(this IApplicationBuilder builder, IApplicationLifetime applicationLifetime, Action<WebJobsRouteBuilder> routes)
         {
-            WebScriptHostManager hostManager = builder.ApplicationServices.GetService(typeof(WebScriptHostManager)) as WebScriptHostManager;
-
+            builder.UseMiddleware<FunctionInvocationMiddleware>();
             builder.UseHttpBindingRouting(applicationLifetime, routes);
-
             builder.UseWhen(context => !context.Request.Path.StartsWithSegments("/admin/host/status"), config =>
             {
                 config.UseMiddleware<ScriptHostCheckMiddleware>();
