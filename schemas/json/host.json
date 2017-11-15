@@ -214,6 +214,73 @@
                     "pattern": "^\\d\\d:\\d\\d:\\d\\d$"
                 }
             }
+        },
+
+        "logger": {
+            "description": "Configuration settings for logging.",
+            "type": "object",
+
+            "properties": {
+                "defaultLevel": {
+                    "description": "The default level for logging. If a category level is not specified, this value is used.",
+                    "enum": [ "Critical", "Debug", "Error", "Information", "None", "Trace", "Warning" ],
+                    "default": "Information"
+                },
+
+                "categoryLevels": {
+                    "description": "Log levels for specific categories.",
+                    "type": "object",
+
+                    "additionalProperties": {
+                        "enum": [ "Critical", "Debug", "Error", "Information", "None", "Trace", "Warning" ]
+                    }
+                }
+            }
+        },
+
+        "aggregator": {
+            "description": "Configuration settings for the function result aggregator.",
+            "type": "object",
+
+            "properties": {
+                "batchSize": {
+                    "description": "The maximum batch size for aggregations. If this value is reached before the 'flushTimeout', all values will be flushed.",
+                    "type": "integer",
+                    "default": 1000
+                },
+
+                "flushTimeout": {
+                    "description": "The aggregation duration. The aggregator will flush periodically based on this value.",
+                    "pattern": "^\\d\\d:\\d\\d:\\d\\d$",
+                    "default": "00:00:30"
+                }
+            }
+        },
+
+        "applicationInsights": {
+            "description": "Configuration settings for Application Insights logging.",
+            "type": "object",
+
+            "properties": {
+                "sampling": {
+                    "description": "Configuration settings for Application Insights client-side adaptive sampling.",
+                    "type": "object",
+
+                    "properties": {
+                        "isEnabled": {
+                            "description": "If true, client-side adaptive sampling is enabled.",
+                            "type": "boolean",
+                            "default": true
+                        },
+
+                        "maxTelemetryItemsPerSecond": {
+                            "description": "The target rate that the adaptive algorithm aims for on each instance",
+                            "type": "integer",
+                            "default": 5
+                        }
+                    }
+                }
+            }
         }
     }
 }
