@@ -72,8 +72,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 if (hostSecrets == null)
                 {
-                    _traceWriter.Verbose(Resources.TraceHostSecretGeneration);
-                    _logger?.LogDebug(Resources.TraceHostSecretGeneration);
+                    _traceWriter.Info(Resources.TraceHostSecretGeneration);
+                    _logger?.LogInformation(Resources.TraceHostSecretGeneration);
                     hostSecrets = GenerateHostSecrets();
                     await PersistSecretsAsync(hostSecrets);
                 }
@@ -86,8 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // the state and persist the secrets
                 if (hostSecrets.HasStaleKeys)
                 {
-                    _traceWriter.Verbose(Resources.TraceStaleHostSecretRefresh);
-                    _logger?.LogDebug(Resources.TraceStaleHostSecretRefresh);
+                    _traceWriter.Info(Resources.TraceStaleHostSecretRefresh);
+                    _logger?.LogInformation(Resources.TraceStaleHostSecretRefresh);
                     await RefreshSecretsAsync(hostSecrets);
                 }
 
@@ -119,8 +119,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (secrets == null)
                 {
                     string message = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
-                    _traceWriter.Verbose(message);
-                    _logger?.LogDebug(message);
+                    _traceWriter.Info(message);
+                    _logger?.LogInformation(message);
                     secrets = new FunctionSecrets
                     {
                         Keys = new List<Key>
@@ -138,8 +138,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (secrets.HasStaleKeys)
                 {
                     string message = string.Format(Resources.TraceStaleFunctionSecretRefresh, functionName);
-                    _traceWriter.Verbose(message);
-                    _logger?.LogDebug(message);
+                    _traceWriter.Info(message);
+                    _logger?.LogInformation(message);
                     await RefreshSecretsAsync(secrets, functionName);
                 }
 

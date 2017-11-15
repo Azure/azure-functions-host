@@ -115,8 +115,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         {
                             // destructive operation, thus log
                             string removeSecretsMessage = $"Deleting secret file {secretFile.FullName}";
-                            traceWriter.Verbose(removeSecretsMessage);
-                            logger?.LogDebug(removeSecretsMessage);
+                            traceWriter.Info(removeSecretsMessage);
+                            logger?.LogInformation(removeSecretsMessage);
                             await FileUtility.DeleteIfExistsAsync(secretFile.FullName);
                         }
                         catch
