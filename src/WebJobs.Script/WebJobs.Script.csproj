@@ -25,7 +25,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="1.0.0-beta1-10022">
       <PrivateAssets>None</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta3" />
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta3-11077" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="3.0.0-beta3" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.0-beta3">
       <NoWarn>NU1701</NoWarn>
