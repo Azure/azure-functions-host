@@ -19,11 +19,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public static IApplicationBuilder UseWebJobsScriptHost(this IApplicationBuilder builder, IApplicationLifetime applicationLifetime, Action<WebJobsRouteBuilder> routes)
         {
             builder.UseMiddleware<FunctionInvocationMiddleware>();
-            builder.UseHttpBindingRouting(applicationLifetime, routes);
             builder.UseWhen(context => !context.Request.Path.StartsWithSegments("/admin/host/status"), config =>
             {
                 config.UseMiddleware<ScriptHostCheckMiddleware>();
             });
+
+            // Ensure the HTTP binding routing is registered after all middleware
+            builder.UseHttpBindingRouting(applicationLifetime, routes);
 
             builder.UseMvc(r =>
             {
