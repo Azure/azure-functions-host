@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
             if (!bypassHostCheck)
             {
-                bool hostReady = await manager.DelayUntilHostReady(timeoutSeconds: 5);
+                bool hostReady = await manager.DelayUntilHostReady();
 
                 if (!hostReady)
                 {
