@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Fixture.Host.CallAsync("Scenarios", arguments);
         }
 
-        [Fact(Skip = "Issues with how log entry objecs are serialized (see https://github.com/Azure/azure-webjobs-sdk-script/issues/2020")]
+        [Fact]
         public async Task Scenario_Logging()
         {
             // Sleep to make sure all logs from other "Scenarios" tests have flushed before
@@ -184,12 +184,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("loglevel error", traces[4].Message);
 
             // verify most of the logs look correct
-            Assert.EndsWith("Mathew Charles", logs[3]);
-            Assert.EndsWith("null", logs[4]);
-            Assert.EndsWith("1234", logs[5]);
-            Assert.EndsWith("true", logs[6]);
-            Assert.EndsWith("loglevel default", logs[7]);
-            Assert.EndsWith("loglevel info", logs[8]);
+            Assert.EndsWith("Mathew Charles", logs[4]);
+            Assert.EndsWith("null", logs[5]);
+            Assert.EndsWith("1234", logs[6]);
+            Assert.EndsWith("true", logs[7]);
+            Assert.EndsWith("loglevel default", logs[8]);
+            Assert.EndsWith("loglevel info", logs[9]);
         }
 
         private async Task<CloudBlobContainer> GetEmptyContainer(string containerName)
