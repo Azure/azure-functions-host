@@ -26,8 +26,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
-using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -437,19 +435,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task DelayUntilHostReady(int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
         {
+            await DelayUntilHostReady(this, timeoutSeconds, pollingIntervalMilliseconds);
+        }
+
+        internal static async Task DelayUntilHostReady(ScriptHostManager hostManager, int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
+        {
             TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
             TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);
             TimeSpan timeWaited = TimeSpan.Zero;
 
-            while (!CanInvoke() &&
-                    State != ScriptHostState.Error &&
+            while (!hostManager.CanInvoke() &&
+                    hostManager.State != ScriptHostState.Error &&
                     (timeWaited < timeout))
             {
                 await Task.Delay(delay);
                 timeWaited += delay;
             }
 
-            if (throwOnFailure && !CanInvoke())
+            if (throwOnFailure && !hostManager.CanInvoke())
             {
                 var errorResponse = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
                 {

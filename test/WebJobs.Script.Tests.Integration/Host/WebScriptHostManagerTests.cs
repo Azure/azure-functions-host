@@ -278,6 +278,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(result["p2"], "def");
         }
 
+        [Fact]
+        public async Task DelayUntilHostReady_HostInErrorState_ThrowsImmediately()
+        {
+            var settingsManager = ScriptSettingsManager.Instance;
+            var eventManager = new Mock<IScriptEventManager>();
+            var managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new TestSecretManagerFactory(), eventManager.Object,
+                settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, null, null, null, 1, 50);
+
+            managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Error);
+            managerMock.SetupGet(p => p.LastError).Returns(new Exception());
+
+            var ex = await Assert.ThrowsAsync<HttpResponseException>(async () => await WebScriptHostManager.DelayUntilHostReady(managerMock.Object, 1, 50));
+            HttpResponseMessage response = ex.Response;
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            managerMock.VerifyGet(p => p.State, Times.Exactly(5));
+        }
+
+        [Fact]
+        public async Task DelayUntilHostReady_HostNotRunning_Returns503()
+        {
+            var settingsManager = ScriptSettingsManager.Instance;
+            var eventManager = new Mock<IScriptEventManager>();
+            var managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new TestSecretManagerFactory(), eventManager.Object,
+                settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, null, null, null, 1, 50);
+
+            managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Default);
+            managerMock.SetupGet(p => p.LastError).Returns((Exception)null);
+
+            var ex = await Assert.ThrowsAsync<HttpResponseException>(async () => await WebScriptHostManager.DelayUntilHostReady(managerMock.Object, 1, 50));
+            HttpResponseMessage response = ex.Response;
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        }
+
         public void Dispose()
         {
             _secretsDirectory.Dispose();
