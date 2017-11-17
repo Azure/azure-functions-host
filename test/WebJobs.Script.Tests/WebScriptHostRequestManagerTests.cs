@@ -84,6 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 response = await _requestManager.ProcessRequestAsync(request, ProcessRequest, CancellationToken.None);
                 Assert.Equal((HttpStatusCode)429, response.StatusCode);
+                var scaleOutHeader = response.Headers.GetValues(ScriptConstants.AntaresScaleOutHeaderName).Single();
+                Assert.Equal("1", scaleOutHeader);
                 await Task.Delay(100);
             }
             Assert.Equal(2, highLoadQueryCount);

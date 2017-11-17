@@ -55,7 +55,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var function = request.GetPropertyOrDefault<FunctionDescriptor>(ScriptConstants.AzureFunctionsHttpFunctionKey);
             _metricsLogger.LogEvent(MetricEventNames.FunctionInvokeThrottled, function.Name);
 
-            return base.RejectRequest(request);
+            var response = base.RejectRequest(request);
+            response.Headers.Add(ScriptConstants.AntaresScaleOutHeaderName, "1");
+
+            return response;
         }
     }
 }

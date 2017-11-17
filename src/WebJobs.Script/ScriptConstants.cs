@@ -56,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DefaultFunctionKeyName = "default";
 
         public const string AntaresLogIdHeaderName = "X-ARR-LOG-ID";
+        public const string AntaresScaleOutHeaderName = "X-FUNCTION-SCALEOUT";
         public const string DynamicSku = "Dynamic";
         public const string DefaultProductionSlotName = "production";
 
