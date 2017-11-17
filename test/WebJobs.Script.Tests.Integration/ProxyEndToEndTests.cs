@@ -134,8 +134,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     IsSelfHost = true,
                     ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\TestScripts\Proxies"),
-                    LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
-                    SecretsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\src\WebJobs.Script.WebHost\App_Data\Secrets"),
+                    LogPath = Path.Combine(Path.GetTempPath(), @"ProxyTests\Logs"),
+                    SecretsPath = Path.Combine(Path.GetTempPath(), @"ProxyTests\Secrets"),
                     TraceWriter = _traceWriter
                 };
                 WebApiConfig.Register(_config, _settingsManager, HostSettings);
