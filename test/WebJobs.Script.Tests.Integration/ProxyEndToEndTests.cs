@@ -18,8 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class ProxyEndToEndTests : IClassFixture<ProxyEndToEndTests.TestFixture>
     {
-        internal const string MasterKey = "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy";
-
         private readonly ScriptSettingsManager _settingsManager;
         private TestFixture _fixture;
 
@@ -68,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task LocalFunctionCall()
         {
-            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"myhttptrigger?code={MasterKey}");
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"myhttptrigger");
 
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal("200", response.StatusCode.ToString("D"));
@@ -78,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task LocalFunctionCallForNonAlphanumericProxyName()
         {
-            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"MyHttpWithNonAlphanumericProxyName?code={MasterKey}");
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"MyHttpWithNonAlphanumericProxyName");
 
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal("200", response.StatusCode.ToString("D"));
@@ -88,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task CatchAllApis()
         {
-            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/proxy/blahblah?code={MasterKey}");
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/proxy/blahblah");
 
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal("200", response.StatusCode.ToString("D"));
@@ -98,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task CatchAll()
         {
-            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"proxy/blahblah?code={MasterKey}");
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"proxy/blahblah");
 
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal("200", response.StatusCode.ToString("D"));
