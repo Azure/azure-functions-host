@@ -74,10 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var settingsManager = ScriptSettingsManager.Instance;
                 var testRootPath = Path.Combine(Path.GetTempPath(), "StandbyModeTest");
-                if (Directory.Exists(testRootPath))
-                {
-                    Directory.Delete(testRootPath, true);
-                }
+                await FileUtility.DeleteDirectoryAsync(testRootPath, true);
                 var traceWriter = new TestTraceWriter(TraceLevel.Info);
                 var webHostSettings = new WebHostSettings
                 {
@@ -122,12 +119,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 httpServer.Dispose();
                 httpClient.Dispose();
 
-                await Task.Delay(3000);
+                await Task.Delay(2000);
 
-                // verify logs
                 string[] logLines = traceWriter.Traces.Select(p => p.Message).ToArray();
+                int stopCount = logLines.Count(p => p.Contains("Stopping Host"));
+                Assert.True(stopCount >= 1);
                 Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
-                Assert.Equal(2, logLines.Count(p => p.Contains("Stopping Host")));
                 Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
 
