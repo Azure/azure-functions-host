@@ -435,7 +435,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task DelayUntilHostReady(int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
         {
-            await DelayUntilHostReady(this, timeoutSeconds, pollingIntervalMilliseconds);
+            await DelayUntilHostReady(this, timeoutSeconds, pollingIntervalMilliseconds, throwOnFailure);
         }
 
         internal static async Task DelayUntilHostReady(ScriptHostManager hostManager, int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
