@@ -3,10 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Dynamic;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Reflection.Emit;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
@@ -16,8 +19,36 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
-    public class HttpBinding
+    public class HttpBinding : FunctionBinding
     {
+        public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access) 
+            : base(config, metadata, access)
+        {
+        }
+
+        public override Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType)
+        {
+            return null;
+        }
+
+        public override Task BindAsync(BindingContext context)
+        {
+            HttpRequest request = (HttpRequest)context.TriggerValue;
+
+            object content = context.Value;
+            if (content is Stream)
+            {
+                // for script language functions (e.g. PowerShell, BAT, etc.) the value
+                // will be a Stream which we need to convert to string
+                ConvertStreamToValue((Stream)content, DataType.String, ref content);
+            }
+
+            IActionResult response = CreateResult(request, content);
+            request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+
+            return Task.CompletedTask;
+        }
+
         internal static IActionResult CreateResult(HttpRequest request, object content)
         {
             string stringContent = content as string;

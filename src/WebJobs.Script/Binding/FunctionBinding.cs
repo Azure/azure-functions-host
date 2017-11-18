@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             {
                                 throw new InvalidOperationException("Http binding can only be used for output.");
                             }
+                            bindings.Add(new HttpBinding(config, bindingMetadata, FileAccess.Write));
                             break;
                         default:
                             FunctionBinding binding = null;
