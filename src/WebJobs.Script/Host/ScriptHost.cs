@@ -100,6 +100,10 @@ namespace Microsoft.Azure.WebJobs.Script
             _proxyClient = proxyClient;
         }
 
+        public event EventHandler HostInitialized;
+
+        public event EventHandler HostStarted;
+
         public event EventHandler IsPrimaryChanged;
 
         public string InstanceId
@@ -1778,6 +1782,20 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             AssemblyFileVersionAttribute fileVersionAttr = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             return fileVersionAttr?.Version ?? "Unknown";
+        }
+
+        protected override void OnHostInitialized()
+        {
+            HostInitialized?.Invoke(this, EventArgs.Empty);
+
+            base.OnHostInitialized();
+        }
+
+        protected override void OnHostStarted()
+        {
+            HostStarted?.Invoke(this, EventArgs.Empty);
+
+            base.OnHostStarted();
         }
 
         protected override void Dispose(bool disposing)
