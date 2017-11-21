@@ -22,7 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IWebJobsRouter _router;
         private readonly ILoggerFactoryBuilder _loggerFactoryBuilder;
         private readonly WebHostSettings _settings;
-        private readonly IConfiguration _configuration;
         private ScriptHostConfiguration _standbyScriptHostConfig;
         private WebScriptHostManager _standbyHostManager;
 
@@ -114,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
                     _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager,  _settingsManager, settings, _router, _loggerFactoryBuilder);
-                    // _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
+                    //_activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
                     InitializeFileSystem();
 
                     if (_standbyHostManager != null)
@@ -134,17 +133,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _standbyHostManager.Stop();
                         _standbyHostManager.Dispose();
                     }
-                    // _standbyReceiverManager?.Dispose();
+                    //_standbyReceiverManager?.Dispose();
                     _standbyScriptHostConfig = null;
                     _standbyHostManager = null;
-                    // _standbyReceiverManager = null;
+                    //_standbyReceiverManager = null;
                 }
             }
             else
             {
                 if (_standbyHostManager == null)
                 {
-
                     var standbySettings = CreateStandbySettings(settings);
                     _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
                     _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings, _router, _loggerFactoryBuilder);

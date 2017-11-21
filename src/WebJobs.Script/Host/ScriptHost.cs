@@ -27,13 +27,13 @@ using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.File;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -327,10 +327,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Set up a host level TraceMonitor that will receive notification
                 // of ALL errors that occur. This allows us to inspect/log errors.
-                var traceMonitor = new TraceMonitor()
+                _traceMonitor = new TraceMonitor()
                     .Filter(p => { return true; })
                     .Subscribe(HandleHostError);
-                _hostConfig.Tracing.Tracers.Add(traceMonitor);
+                _hostConfig.Tracing.Tracers.Add(_traceMonitor);
 
                 System.Diagnostics.TraceLevel hostTraceLevel = _hostConfig.Tracing.ConsoleLevel;
                 if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)

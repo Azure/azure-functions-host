@@ -2,8 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Extensions.Logging;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {

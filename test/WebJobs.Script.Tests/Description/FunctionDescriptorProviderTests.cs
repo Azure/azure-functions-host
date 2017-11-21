@@ -9,8 +9,8 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Moq;
-using Xunit;
 using Newtonsoft.Json.Linq;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {

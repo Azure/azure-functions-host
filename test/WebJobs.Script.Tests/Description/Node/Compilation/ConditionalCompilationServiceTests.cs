@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.Node.Compilation
             positiveTestData.CompilationServiceMock.Verify(c => c.GetFunctionCompilationAsync(It.IsAny<FunctionMetadata>()));
         }
 
-        public(Mock<ICompilationService<IJavaScriptCompilation>> CompilationServiceMock, ConditionalJavaScriptCompilationService Service) CreateTestData(Func<bool> predicate)
+        public (Mock<ICompilationService<IJavaScriptCompilation>> CompilationServiceMock, ConditionalJavaScriptCompilationService Service) CreateTestData(Func<bool> predicate)
         {
             var settingsManager = new ScriptSettingsManager();
             var innerCompilationServiceMock = new Mock<ICompilationService<IJavaScriptCompilation>>();

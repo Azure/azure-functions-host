@@ -185,12 +185,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 _eventGenerator.LogFunctionDetailsEvent(
                     appName,
                     GetNormalizedString(function.Name),
-                    function.Metadata != null
-                        ? SerializeBindings(function.Metadata.InputBindings)
-                        : GetNormalizedString(null),
-                    function.Metadata != null
-                        ? SerializeBindings(function.Metadata.OutputBindings)
-                        : GetNormalizedString(null),
+                    function.Metadata != null ? SerializeBindings(function.Metadata.InputBindings) : GetNormalizedString(null),
+                    function.Metadata != null ? SerializeBindings(function.Metadata.OutputBindings) : GetNormalizedString(null),
                     function.Metadata.ScriptType.ToString(),
                     function.Metadata != null ? function.Metadata.IsDisabled : false);
             }

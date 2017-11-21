@@ -253,7 +253,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("application/json", "\"Name: Fabio Cavalcante, Location: Seattle\"")]
         [InlineData("application/xml", "<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">Name: Fabio Cavalcante, Location: Seattle</string>")]
         [InlineData("text/plain", "Name: Fabio Cavalcante, Location: Seattle")]
+#pragma warning disable xUnit1026 // Theory methods should use all of their parameters
         public async Task HttpTrigger_GetWithAccept_NegotiatesContent(string accept, string expectedBody)
+#pragma warning restore xUnit1026 // Theory methods should use all of their parameters
         {
             var input = new JObject
             {

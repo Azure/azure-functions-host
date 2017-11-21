@@ -235,7 +235,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return logs;
         }
 
-
         public static async Task<string> ReadStreamToEnd(Stream stream)
         {
             stream.Position = 0;

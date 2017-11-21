@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public class HttpBinding : FunctionBinding
     {
-        public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access) 
+        public HttpBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access)
             : base(config, metadata, access)
         {
         }

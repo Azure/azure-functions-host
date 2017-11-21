@@ -1607,7 +1607,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-
         private class TestLoggerFactory : ILoggerFactory
         {
             public TestLoggerFactory()

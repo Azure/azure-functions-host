@@ -430,8 +430,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         {
             using (var directory = new TempDirectory())
             {
-                string expectedTraceMessage = "Master key Created";
-
                 Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
 
                 KeyOperationResult result;
