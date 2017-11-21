@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>True if the host can accept invoke requests, false otherwise.</returns>
         public bool CanInvoke()
         {
-            return State == ScriptHostState.Created || State == ScriptHostState.Running;
+            return State == ScriptHostState.Initialized || State == ScriptHostState.Running;
         }
 
         public void RunAndBlock(CancellationToken cancellationToken = default(CancellationToken))
@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         State = ScriptHostState.Default;
                     }
 
-                    OnHostStarting();
+                    OnCreatingHost();
 
                     // Create a new host config, but keep the host id from existing one
                     _config.HostConfig = new JobHostConfiguration(_settingsManager.Configuration)
@@ -173,6 +173,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     };
                     OnInitializeConfig(_config);
                     newInstance = _scriptHostFactory.Create(_environment, EventManager, _settingsManager, _config, _loggerFactoryBuilder);
+                    newInstance.HostInitialized += OnHostInitialized;
+                    newInstance.HostStarted += OnHostStarted;
                     _traceWriter = newInstance.TraceWriter;
                     _logger = newInstance.Logger;
 
@@ -182,8 +184,6 @@ namespace Microsoft.Azure.WebJobs.Script
                         _liveInstances.Add(newInstance);
                         _hostStartCount++;
                     }
-
-                    OnHostCreated();
 
                     string extensionVersion = _settingsManager.GetSetting(EnvironmentSettingNames.FunctionsExtensionVersion);
                     string hostId = newInstance.ScriptConfig.HostConfig.HostId;
@@ -196,11 +196,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     // log any function initialization errors
                     LogErrors(newInstance);
 
-                    OnHostStarted();
-
-                    // only after ALL initialization is complete do we set the
-                    // state to Running
-                    State = ScriptHostState.Running;
                     LastError = null;
                     consecutiveErrorCount = 0;
                     _restartDelayTokenSource = null;
@@ -262,6 +257,16 @@ namespace Microsoft.Azure.WebJobs.Script
             while (!_stopped && !cancellationToken.IsCancellationRequested);
         }
 
+        private void OnHostInitialized(object sender, EventArgs e)
+        {
+            OnHostInitialized();
+        }
+
+        private void OnHostStarted(object sender, EventArgs e)
+        {
+            OnHostStarted();
+        }
+
         private Task CreateRestartBackoffDelay(int consecutiveErrorCount)
         {
             _restartDelayTokenSource = new CancellationTokenSource();
@@ -296,6 +301,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="forceStop">Forces the call to stop and dispose of the instance, even if it isn't present in the live instances collection.</param>
         private async Task Orphan(ScriptHost instance, bool forceStop = false)
         {
+            instance.HostInitialized -= OnHostInitialized;
+            instance.HostStarted -= OnHostStarted;
+
             lock (_liveInstances)
             {
                 bool removed = _liveInstances.Remove(instance);
@@ -397,20 +405,28 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        protected virtual void OnHostCreated()
+        protected virtual void OnHostInitialized()
         {
-            State = ScriptHostState.Created;
+            State = ScriptHostState.Initialized;
         }
 
-        protected virtual void OnHostStarting()
-        {
-            IsHostHealthy(throwWhenUnhealthy: true);
-        }
-
-    protected virtual void OnHostStarted()
+        /// <summary>
+        /// Called after the host has been started.
+        /// </summary>
+        protected virtual void OnHostStarted()
         {
             var metricsLogger = _config.HostConfig.GetService<IMetricsLogger>();
             metricsLogger.LogEvent(new HostStarted(Instance));
+
+            State = ScriptHostState.Running;
+        }
+
+        /// <summary>
+        /// Called immediately before we begin creating the host.
+        /// </summary>
+        protected virtual void OnCreatingHost()
+        {
+            IsHostHealthy(throwWhenUnhealthy: true);
         }
 
         public void Dispose()

@@ -11,10 +11,11 @@ namespace Microsoft.Azure.WebJobs.Script
         Default,
 
         /// <summary>
-        /// The host has been created and can accept direct function
-        /// invocations, but listeners are not yet started.
+        /// The host has been fully initialized and can accept direct function
+        /// invocations. All functions have been indexed. Listeners may not yet
+        /// be not yet running.
         /// </summary>
-        Created,
+        Initialized,
 
         /// <summary>
         /// The host is fully running.

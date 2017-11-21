@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             hostConfig.DashboardConnectionString = null;
         }
 
-        protected override void OnHostCreated()
+        protected override void OnHostInitialized()
         {
             if (InStandbyMode)
             {
@@ -214,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             InitializeHttp();
 
-            base.OnHostCreated();
+            base.OnHostInitialized();
         }
 
         protected override void OnHostStarted()
