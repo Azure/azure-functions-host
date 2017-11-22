@@ -1,5 +1,4 @@
 ﻿{
-    "excluded": true,
     "bindings": [
         {
             "type": "queueTrigger",

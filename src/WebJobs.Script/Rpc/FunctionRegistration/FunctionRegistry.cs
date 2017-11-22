@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {

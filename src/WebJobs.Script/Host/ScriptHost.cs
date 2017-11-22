@@ -37,6 +37,7 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -1060,7 +1061,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 FunctionDirectory = scriptDirectory
             };
 
-            JValue triggerDisabledValue = null;
             JArray bindingArray = (JArray)configMetadata["bindings"];
             if (bindingArray == null || bindingArray.Count == 0)
             {
@@ -1073,25 +1073,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     BindingMetadata bindingMetadata = BindingMetadata.Create(binding);
                     functionMetadata.Bindings.Add(bindingMetadata);
-                    if (bindingMetadata.IsTrigger)
-                    {
-                        triggerDisabledValue = (JValue)binding["disabled"];
-                    }
                 }
-            }
-
-            // A function can be disabled at the trigger or function level
-            if (IsDisabled(triggerDisabledValue, settingsManager) ||
-                IsDisabled((JValue)configMetadata["disabled"], settingsManager))
-            {
-                functionMetadata.IsDisabled = true;
-            }
-
-            JToken value = null;
-            if (configMetadata.TryGetValue("excluded", StringComparison.OrdinalIgnoreCase, out value) &&
-                value.Type == JTokenType.Boolean)
-            {
-                functionMetadata.IsExcluded = (bool)value;
             }
 
             JToken isDirect;
@@ -1266,22 +1248,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             error = null;
             functionMetadata = ParseFunctionMetadata(functionName, functionConfig, scriptDirectory, settingsManager);
-
-            if (functionMetadata.IsExcluded)
-            {
-                string message = $"Function '{functionName}' is marked as excluded";
-                traceWriter.Info(message);
-                logger?.LogInformation(message);
-                functionMetadata = null;
-                return true;
-            }
-
-            if (functionMetadata.IsDisabled)
-            {
-                string message = $"Function '{functionName}' is disabled";
-                traceWriter.Info(message);
-                logger?.LogInformation(message);
-            }
 
             try
             {
@@ -1871,28 +1837,17 @@ namespace Microsoft.Azure.WebJobs.Script
             return string.Empty;
         }
 
-        private static bool IsDisabled(JToken isDisabledValue, ScriptSettingsManager settingsManager)
+        private void ApplyJobHostMetadata()
         {
-            if (isDisabledValue != null)
+            var metadataProvider = this.CreateMetadataProvider();
+            foreach (var function in Functions)
             {
-                if (isDisabledValue.Type == JTokenType.Boolean)
+                var metadata = metadataProvider.GetFunctionMetadata(function.Metadata.Name);
+                if (metadata != null)
                 {
-                    return (bool)isDisabledValue;
-                }
-                else
-                {
-                    string settingName = (string)isDisabledValue;
-                    string value = settingsManager.GetSetting(settingName);
-                    if (!string.IsNullOrEmpty(value) &&
-                        (string.Compare(value, "1", StringComparison.OrdinalIgnoreCase) == 0 ||
-                         string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0))
-                    {
-                        return true;
-                    }
+                    function.Metadata.IsDisabled = metadata.IsDisabled;
                 }
             }
-
-            return false;
         }
 
         internal static string GetAssemblyFileVersion(Assembly assembly)
@@ -1903,6 +1858,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected override void OnHostInitialized()
         {
+            this.ApplyJobHostMetadata();
+
             HostInitialized?.Invoke(this, EventArgs.Empty);
 
             base.OnHostInitialized();

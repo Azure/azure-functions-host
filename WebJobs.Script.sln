@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26730.16
+VisualStudioVersion = 15.0.26906.1
 MinimumVisualStudioVersion = 15.0.0.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}"
 EndProject
@@ -76,34 +76,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CSharp", "HttpT
 		sample\HttpTrigger-CSharp\run.csx = sample\HttpTrigger-CSharp\run.csx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-FSharp", "HttpTrigger-FSharp", "{4AE9E7EF-C992-4B44-AFBF-3671BD1D6108}"
-	ProjectSection(SolutionItems) = preProject
-		sample\HttpTrigger-FSharp\function.json = sample\HttpTrigger-FSharp\function.json
-		sample\HttpTrigger-FSharp\run.fsx = sample\HttpTrigger-FSharp\run.fsx
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TimerTrigger-CSharp", "TimerTrigger-CSharp", "{9B95236B-987B-4928-B2CB-561823B38FA1}"
 	ProjectSection(SolutionItems) = preProject
 		sample\TimerTrigger-CSharp\function.json = sample\TimerTrigger-CSharp\function.json
 		sample\TimerTrigger-CSharp\run.csx = sample\TimerTrigger-CSharp\run.csx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TimerTrigger-FSharp", "TimerTrigger-FSharp", "{9B95236B-987B-4928-B2CB-561823B38FA2}"
-	ProjectSection(SolutionItems) = preProject
-		sample\TimerTrigger-FSharp\function.json = sample\TimerTrigger-FSharp\function.json
-		sample\TimerTrigger-FSharp\run.fsx = sample\TimerTrigger-FSharp\run.fsx
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BlobTrigger-CSharp", "BlobTrigger-CSharp", "{15BA01AE-580C-4FBB-A117-F3B112B4BD02}"
 	ProjectSection(SolutionItems) = preProject
 		sample\BlobTrigger-CSharp\function.json = sample\BlobTrigger-CSharp\function.json
 		sample\BlobTrigger-CSharp\run.csx = sample\BlobTrigger-CSharp\run.csx
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BlobTrigger-FSharp", "BlobTrigger-FSharp", "{15BA01AE-580C-4FBB-A117-F3B112B4BD03}"
-	ProjectSection(SolutionItems) = preProject
-		sample\BlobTrigger-FSharp\function.json = sample\BlobTrigger-FSharp\function.json
-		sample\BlobTrigger-FSharp\run.fsx = sample\BlobTrigger-FSharp\run.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EventHubTrigger", "EventHubTrigger", "{B80C88CF-68EE-4400-A68D-216F1F85179C}"
@@ -124,12 +106,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-CSharp", "Docume
 		sample\DocumentDB-CSharp\run.csx = sample\DocumentDB-CSharp\run.csx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-FSharp", "DocumentDB-FSharp", "{437EB182-8CB9-42BD-9019-E5F6E69D1DB4}"
-	ProjectSection(SolutionItems) = preProject
-		sample\DocumentDB-FSharp\function.json = sample\DocumentDB-FSharp\function.json
-		sample\DocumentDB-FSharp\run.fsx = sample\DocumentDB-FSharp\run.fsx
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB-Node", "DocumentDB-Node", "{8811DCFB-1023-4577-AB9C-B4F191200082}"
 	ProjectSection(SolutionItems) = preProject
 		sample\DocumentDB-Node\function.json = sample\DocumentDB-Node\function.json
@@ -142,22 +118,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-CSharp", "Queu
 		sample\QueueTrigger-CSharp\run.csx = sample\QueueTrigger-CSharp\run.csx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "QueueTrigger-FSharp", "QueueTrigger-FSharp", "{C11EBC32-877C-4EBA-85B2-14720555BB72}"
-	ProjectSection(SolutionItems) = preProject
-		sample\QueueTrigger-FSharp\function.json = sample\QueueTrigger-FSharp\function.json
-		sample\QueueTrigger-FSharp\run.fsx = sample\QueueTrigger-FSharp\run.fsx
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NotificationHub-CSharp", "NotificationHub-CSharp", "{B5FA5BC0-F929-4B85-BC9E-E5C7754D8FC7}"
 	ProjectSection(SolutionItems) = preProject
 		sample\NotificationHub-CSharp\function.json = sample\NotificationHub-CSharp\function.json
 		sample\NotificationHub-CSharp\run.csx = sample\NotificationHub-CSharp\run.csx
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NotificationHub-FSharp", "NotificationHub-FSharp", "{B5FA5BC0-F929-4B85-BC9E-E5C7754D8FC8}"
-	ProjectSection(SolutionItems) = preProject
-		sample\NotificationHub-FSharp\function.json = sample\NotificationHub-FSharp\function.json
-		sample\NotificationHub-FSharp\run.fsx = sample\NotificationHub-FSharp\run.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NotificationHub-Node", "NotificationHub-Node", "{ACEE40C6-DA72-422E-99B6-2FA3824733CE}"
@@ -172,28 +136,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Generic-CSharp", "W
 		sample\WebHook-Generic-CSharp\run.csx = sample\WebHook-Generic-CSharp\run.csx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Generic-FSharp", "WebHook-Generic-FSharp", "{DC1805CF-39CE-40E3-9F3A-E7C7DAD52B7F}"
-	ProjectSection(SolutionItems) = preProject
-		sample\WebHook-Generic-FSharp\function.json = sample\WebHook-Generic-FSharp\function.json
-		sample\WebHook-Generic-FSharp\run.fsx = sample\WebHook-Generic-FSharp\run.fsx
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Disabled", "HttpTrigger-Disabled", "{97B9DB7D-8014-46A0-9E51-6C02A99E4D38}"
-	ProjectSection(SolutionItems) = preProject
-		sample\HttpTrigger-Disabled\function.json = sample\HttpTrigger-Disabled\function.json
-		sample\HttpTrigger-Disabled\index.js = sample\HttpTrigger-Disabled\index.js
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubFileTrigger-CSharp", "ApiHubFileTrigger-CSharp", "{A308340E-16AC-47DA-9402-A279F681D5F3}"
 	ProjectSection(SolutionItems) = preProject
 		sample\ApiHubFileTrigger-CSharp\function.json = sample\ApiHubFileTrigger-CSharp\function.json
 		sample\ApiHubFileTrigger-CSharp\run.csx = sample\ApiHubFileTrigger-CSharp\run.csx
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubFileTrigger-FSharp", "ApiHubFileTrigger-FSharp", "{A308340E-16AC-47DA-9402-A279F681D5F4}"
-	ProjectSection(SolutionItems) = preProject
-		sample\ApiHubFileTrigger-FSharp\function.json = sample\ApiHubFileTrigger-FSharp\function.json
-		sample\ApiHubFileTrigger-FSharp\run.fsx = sample\ApiHubFileTrigger-FSharp\run.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiHubFileTrigger", "ApiHubFileTrigger", "{5FBF4581-318C-4320-81AA-6B2F02AF34EC}"
@@ -208,22 +154,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTriggerWithObject-CShar
 		sample\HttpTriggerWithObject-CSharp\run.csx = sample\HttpTriggerWithObject-CSharp\run.csx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTriggerWithObject-FSharp", "HttpTriggerWithObject-FSharp", "{75DF7C02-CE61-4D1F-83F9-BFBD38AAAF0F}"
-	ProjectSection(SolutionItems) = preProject
-		sample\HttpTriggerWithObject-FSharp\function.json = sample\HttpTriggerWithObject-FSharp\function.json
-		sample\HttpTriggerWithObject-FSharp\run.fsx = sample\HttpTriggerWithObject-FSharp\run.fsx
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MobileTable-CSharp", "MobileTable-CSharp", "{C963B824-334A-4905-9AC7-2F373E5BC9CA}"
 	ProjectSection(SolutionItems) = preProject
 		sample\MobileTable-CSharp\function.json = sample\MobileTable-CSharp\function.json
 		sample\MobileTable-CSharp\run.csx = sample\MobileTable-CSharp\run.csx
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MobileTable-FSharp", "MobileTable-FSharp", "{C963B824-334A-4905-9AC7-2F373E5BC9CB}"
-	ProjectSection(SolutionItems) = preProject
-		sample\MobileTable-FSharp\function.json = sample\MobileTable-FSharp\function.json
-		sample\MobileTable-FSharp\run.fsx = sample\MobileTable-FSharp\run.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebHook-Azure-CSharp", "WebHook-Azure-CSharp", "{94B16BEB-70BD-4357-A21A-D1E70C8CDDF0}"
@@ -433,31 +367,20 @@ Global
 		{5A089F10-FC0E-4FA6-AC5C-1A76FC468359} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{844FBB84-D62F-49D4-A28B-BB900DA3C32B} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{4AE9E7EF-C992-4B44-AFBF-3671BD1D6107} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{4AE9E7EF-C992-4B44-AFBF-3671BD1D6108} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{9B95236B-987B-4928-B2CB-561823B38FA1} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{9B95236B-987B-4928-B2CB-561823B38FA2} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{15BA01AE-580C-4FBB-A117-F3B112B4BD02} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{15BA01AE-580C-4FBB-A117-F3B112B4BD03} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B80C88CF-68EE-4400-A68D-216F1F85179C} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{87E44645-EA02-4F12-8C3E-820B5710292D} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{437EB182-8CB9-42BD-9019-E5F6E69D1DB3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{437EB182-8CB9-42BD-9019-E5F6E69D1DB4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{8811DCFB-1023-4577-AB9C-B4F191200082} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C11EBC32-877C-4EBA-85B2-14720555BB71} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{C11EBC32-877C-4EBA-85B2-14720555BB72} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B5FA5BC0-F929-4B85-BC9E-E5C7754D8FC7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{B5FA5BC0-F929-4B85-BC9E-E5C7754D8FC8} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{ACEE40C6-DA72-422E-99B6-2FA3824733CE} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{DC1805CF-39CE-40E3-9F3A-E7C7DAD52B7E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{DC1805CF-39CE-40E3-9F3A-E7C7DAD52B7F} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{97B9DB7D-8014-46A0-9E51-6C02A99E4D38} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{A308340E-16AC-47DA-9402-A279F681D5F3} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{A308340E-16AC-47DA-9402-A279F681D5F4} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5FBF4581-318C-4320-81AA-6B2F02AF34EC} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{75DF7C02-CE61-4D1F-83F9-BFBD38AAAF0E} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{75DF7C02-CE61-4D1F-83F9-BFBD38AAAF0F} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{C963B824-334A-4905-9AC7-2F373E5BC9CA} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
-		{C963B824-334A-4905-9AC7-2F373E5BC9CB} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{94B16BEB-70BD-4357-A21A-D1E70C8CDDF0} = {94B16BEB-70BD-4357-A21A-D1E70C8CDDF1}
 		{23E6C413-FCFB-4727-8F4A-5AFEA63090A7} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{B69D3A0B-829B-4721-B034-8ECECB264458} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
