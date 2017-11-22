@@ -1092,19 +1092,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 #endif
 
         [Fact]
-        public void ExcludedFunction_NotAddedToHost()
-        {
-            // Make sure the function was not registered
-            var function = Fixture.Host.Functions.SingleOrDefault(p => string.Compare(p.Name, "Excluded") == 0);
-            Assert.Null(function);
-
-            // Make sure the host log was written
-            var trace = Fixture.TraceWriter.Traces.SingleOrDefault(p => p.Message == "Function 'Excluded' is marked as excluded");
-            Assert.NotNull(trace);
-            Assert.Equal(System.Diagnostics.TraceLevel.Info, trace.Level);
-        }
-
-        [Fact]
         public async Task PromiseResolve()
         {
             JObject input = new JObject

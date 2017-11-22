@@ -45,14 +45,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public bool IsDisabled { get; set; }
 
-        /// <summary>
-        /// Gets or sets a value indicating whether the function is excluded.
-        /// <remarks>
-        /// An excluded function is completely skipped during function loading. It will not be compiled
-        /// and will not be loaded into the host.
-        /// </remarks>
-        /// </summary>
-        public bool IsExcluded { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether that this function is a direct invoke.
