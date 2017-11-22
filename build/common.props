@@ -20,8 +20,32 @@
     <PackageIconUrl>https://raw.githubusercontent.com/Azure/azure-webjobs-sdk/dev/webjobs.png</PackageIconUrl>
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src\src.ruleset</CodeAnalysisRuleSet>
     <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <DebugType>embedded</DebugType>
+    <UseSourceLink Condition="$(UseSourceLink) == '' And $(CI) != ''">true</UseSourceLink>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(UseSourceLink)' == 'true'">
+    <SourceLink>$(BaseIntermediateOutputPath)source_link.json</SourceLink>
+  </PropertyGroup>
+  
+  <Target Name="GenerateSourceLink" BeforeTargets="CoreCompile" Condition="'$(UseSourceLink)' == 'true'">
+    <PropertyGroup>
+      <SrcRootDirectory>$([System.IO.Directory]::GetParent($(MSBuildThisFileDirectory.TrimEnd("\"))))</SrcRootDirectory>
+      <SourceLinkRoot>$(SrcRootDirectory.Replace("\", "\\"))</SourceLinkRoot>
+    </PropertyGroup>
+    <Message Importance="high" Text="Generating SourceLink..."></Message>
+    <Exec Command="git config --get remote.origin.url" ConsoleToMsBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="RemoteUri" />
+    </Exec>
+
+    <Exec Command="git rev-parse HEAD" ConsoleToMsBuild="true" Condition = " '$(LatestCommit)' == '' ">
+      <Output TaskParameter="ConsoleOutput" PropertyName="LatestCommit" />
+    </Exec>
+
+    <!-- Write out the source file for this project to point at raw.githubusercontent.com -->
+    <WriteLinesToFile File="$(BaseIntermediateOutputPath)source_link.json" Overwrite="true" Lines='{"documents": { "$(SourceLinkRoot)\\*" : "$(RemoteUri.Replace(".git", "").Replace("github.com", "raw.githubusercontent.com"))/$(LatestCommit)/*" }}' />
+  </Target>
+  
   <ItemGroup>
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)..\stylecop.json" Link="stylecop.json" />
   </ItemGroup>
