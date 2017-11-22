@@ -131,47 +131,49 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private async Task AcquireOrRenewLeaseAsync()
         {
-            string lockName = GetBlobName(_hostId);
-
-            DateTime requestStart = DateTime.UtcNow;
-            if (HasLease)
+            if (!_disposed)
             {
-                try
+                string lockName = GetBlobName(_hostId);
+
+                DateTime requestStart = DateTime.UtcNow;
+                if (HasLease)
                 {
-                    await _lockManager.RenewAsync(LockHandle, CancellationToken.None);
+                    try
+                    {
+                        await _lockManager.RenewAsync(LockHandle, CancellationToken.None);
+
+                        _lastRenewal = DateTime.UtcNow;
+                        _lastRenewalLatency = _lastRenewal - requestStart;
+                    }
+                    catch
+                    {
+                        // The lease was 'stolen'. Log details for debugging.
+                        string lastRenewalFormatted = _lastRenewal.ToString("yyyy-MM-ddTHH:mm:ss.FFFZ", CultureInfo.InvariantCulture);
+                        int millisecondsSinceLastSuccess = (int)(DateTime.UtcNow - _lastRenewal).TotalMilliseconds;
+                        int lastRenewalMilliseconds = (int)_lastRenewalLatency.TotalMilliseconds;
+                        ProcessLeaseError($"Another host has acquired the lease. The last successful renewal completed at {lastRenewalFormatted} ({millisecondsSinceLastSuccess} milliseconds ago) with a duration of {lastRenewalMilliseconds} milliseconds.");
+                    }
+                }
+                else
+                {
+                    LockHandle = await _lockManager.TryLockAsync(null, lockName, _instanceId, null, _leaseTimeout, CancellationToken.None);
+                    if (LockHandle == null)
+                    {
+                        // We didn't have the lease and failed to acquire it. Common if somebody else already has it.
+                        // This is normal and does not warrant any logging.
+                        return;
+                    }
 
                     _lastRenewal = DateTime.UtcNow;
                     _lastRenewalLatency = _lastRenewal - requestStart;
-                }
-                catch
-                {
-                    // The lease was 'stolen'. Log details for debugging.
-                    string lastRenewalFormatted = _lastRenewal.ToString("yyyy-MM-ddTHH:mm:ss.FFFZ", CultureInfo.InvariantCulture);
-                    int millisecondsSinceLastSuccess = (int)(DateTime.UtcNow - _lastRenewal).TotalMilliseconds;
-                    int lastRenewalMilliseconds = (int)_lastRenewalLatency.TotalMilliseconds;
-                    ProcessLeaseError($"Another host has acquired the lease. The last successful renewal completed at {lastRenewalFormatted} ({millisecondsSinceLastSuccess} milliseconds ago) with a duration of {lastRenewalMilliseconds} milliseconds.");
-                }
-            }
-            else
-            {
-                string proposedLeaseId = _instanceId;
-                LockHandle = await _lockManager.TryLockAsync(null, lockName, _instanceId, proposedLeaseId, _leaseTimeout, CancellationToken.None);
-                if (LockHandle == null)
-                {
-                    // We didn't have the lease and failed to acquire it. Common if somebody else already has it.
-                    // This is normal and does not warrant any logging.
-                    return;
-                }
 
-                _lastRenewal = DateTime.UtcNow;
-                _lastRenewalLatency = _lastRenewal - requestStart;
+                    string message = $"Host lock lease acquired by instance ID '{_instanceId}'.";
+                    _traceWriter.Info(message);
+                    _logger?.LogInformation(message);
 
-                string message = $"Host lock lease acquired by instance ID '{_instanceId}'.";
-                _traceWriter.Info(message);
-                _logger?.LogInformation(message);
-
-                // We've successfully acquired the lease, change the timer to use our renewal interval
-                SetTimerInterval(_renewalInterval);
+                    // We've successfully acquired the lease, change the timer to use our renewal interval
+                    SetTimerInterval(_renewalInterval);
+                }
             }
         }
 
