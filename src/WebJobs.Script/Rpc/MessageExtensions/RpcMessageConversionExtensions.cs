@@ -72,6 +72,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 };
                 typedData.Http = http;
 
+                http.RawBody = null;
+
                 foreach (var pair in request.Query)
                 {
                     http.Query.Add(pair.Key, pair.Value.ToString());
@@ -109,6 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             var bytes = new byte[length];
                             request.Body.Read(bytes, 0, length);
                             body = bytes;
+                            rawBody = bytes.ToString();
                             break;
 
                         default:
@@ -119,6 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     request.Body.Position = 0;
 
                     http.Body = body.ToRpc();
+                    http.RawBody = rawBody.ToRpc();
                 }
             }
             else
