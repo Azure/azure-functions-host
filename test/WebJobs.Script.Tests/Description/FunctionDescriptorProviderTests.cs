@@ -30,7 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new Mock<IScriptHostEnvironment>();
             var eventManager = new Mock<IScriptEventManager>();
             _settingsManager = ScriptSettingsManager.Instance;
-            _host = ScriptHost.Create(environment.Object, eventManager.Object, config, _settingsManager);
+            _host = new ScriptHost(environment.Object, eventManager.Object, config, _settingsManager);
+            _host.Initialize();
             _provider = new TestDescriptorProvider(_host, config);
         }
 

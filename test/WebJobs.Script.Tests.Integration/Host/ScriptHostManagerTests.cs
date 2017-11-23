@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Moq;
 using Moq.Protected;
@@ -29,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     [Trait("E2E", nameof(ScriptHostManagerTests))]
     public class ScriptHostManagerTests
     {
+        private const string ID = "5a709861cab44e68bfed5d2c2fe7fc0c";
         private readonly ScriptSettingsManager _settingsManager;
 
         public ScriptHostManagerTests()
@@ -232,6 +234,166 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task RunAndBlock_HostJsonValueError_LogsError()
+        {
+            // Try to load valid host.json file that has an out-of-range value.
+            // Ensure that it's logged to TraceWriter and ILogger
+
+            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\OutOfRange");
+
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = rootPath,
+                TraceWriter = traceWriter
+            };
+
+            TestLoggerProvider provider = new TestLoggerProvider();
+            config.LoggerFactoryBuilder = new TestLoggerFactoryBuilder(provider);
+
+            var factoryMock = new Mock<IScriptHostFactory>();
+            var scriptHostFactory = new TestScriptHostFactory();
+            var eventManagerMock = new Mock<IScriptEventManager>();
+            var hostManager = new ScriptHostManager(config, _settingsManager, scriptHostFactory, eventManagerMock.Object);
+            Task taskIgnore = Task.Run(() => hostManager.RunAndBlock());
+
+            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Error, 3000);
+
+            Assert.Equal(ScriptHostState.Error, hostManager.State);
+            Assert.False(hostManager.CanInvoke());
+            hostManager.Stop();
+            var ex = hostManager.LastError;
+            Assert.True(ex is ArgumentOutOfRangeException);
+
+            string msg = "A ScriptHost error has occurred";
+            var trace = traceWriter.Traces.Last(t => t.Level == TraceLevel.Error);
+            Assert.Equal(msg, trace.Message);
+            Assert.Same(ex, trace.Exception);
+
+            var startupLogger = provider.CreatedLoggers.Last();
+            var loggerMessage = startupLogger.LogMessages.First();
+            Assert.Equal(msg, loggerMessage.FormattedMessage);
+            Assert.Same(ex, loggerMessage.Exception);
+        }
+
+        [Fact]
+        public async Task RunAndBlock_ParseError_LogsError()
+        {
+            TestLoggerProvider loggerProvider = null;
+            var loggerFactoryHookMock = new Mock<ILoggerFactoryBuilder>(MockBehavior.Strict);
+            loggerFactoryHookMock
+                .Setup(m => m.AddLoggerProviders(It.IsAny<ILoggerFactory>(), It.IsAny<ScriptHostConfiguration>(), It.IsAny<ScriptSettingsManager>()))
+                .Callback<ILoggerFactory, ScriptHostConfiguration, ScriptSettingsManager>((factory, scriptConfig, settings) =>
+                {
+                    loggerProvider = new TestLoggerProvider(scriptConfig.LogFilter.Filter);
+                    factory.AddProvider(loggerProvider);
+                });
+
+            string rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests");
+            if (!Directory.Exists(rootPath))
+            {
+                Directory.CreateDirectory(rootPath);
+            }
+
+            File.WriteAllText(Path.Combine(rootPath, "host.json"), @"{<unparseable>}");
+
+            var config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = rootPath,
+                LoggerFactoryBuilder = loggerFactoryHookMock.Object
+            };
+            config.HostConfig.HostId = ID;
+
+            var scriptHostFactory = new TestScriptHostFactory();
+            var eventManagerMock = new Mock<IScriptEventManager>();
+            var hostManager = new ScriptHostManager(config, _settingsManager, scriptHostFactory, eventManagerMock.Object);
+            Task taskIgnore = Task.Run(() => hostManager.RunAndBlock());
+
+            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Error, 3000);
+
+            Assert.Equal(ScriptHostState.Error, hostManager.State);
+            hostManager.Stop();
+
+            var ex = hostManager.LastError;
+            Assert.True(ex is FormatException);
+            Assert.Equal("Unable to parse host.json file.", ex.Message);
+
+            var logger = loggerProvider.CreatedLoggers.Last();
+            Assert.Equal(3, logger.LogMessages.Count);
+            Assert.StartsWith("A ScriptHost error has occurred", logger.LogMessages[1].FormattedMessage);
+            Assert.Equal("Unable to parse host.json file.", logger.LogMessages[1].Exception.Message);
+        }
+
+        [Fact]
+        public async Task HostHealthMonitor_TriggersShutdown_WhenHostUnhealthy()
+        {
+            string functionDir = Path.Combine(TestHelpers.FunctionsTestDirectory, "Functions", Guid.NewGuid().ToString());
+            Directory.CreateDirectory(functionDir);
+            string logDir = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString());
+
+            JObject hostConfig = new JObject
+            {
+                { "id", "123456" }
+            };
+            File.WriteAllText(Path.Combine(functionDir, ScriptConstants.HostMetadataFileName), hostConfig.ToString());
+
+            var testTraceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            var config = new ScriptHostConfiguration
+            {
+                RootScriptPath = functionDir,
+                RootLogPath = logDir,
+                FileLoggingMode = FileLoggingMode.Always,
+                TraceWriter = testTraceWriter
+            };
+
+            // configure the monitor so it will fail within a couple seconds
+            config.HostHealthMonitor.HealthCheckInterval = TimeSpan.FromMilliseconds(100);
+            config.HostHealthMonitor.HealthCheckWindow = TimeSpan.FromSeconds(1);
+            config.HostHealthMonitor.HealthCheckThreshold = 5;
+
+            var environmentMock = new Mock<IScriptHostEnvironment>(MockBehavior.Strict);
+            environmentMock.Setup(p => p.Shutdown());
+
+            var mockSettings = new Mock<ScriptSettingsManager>();
+            mockSettings.Setup(p => p.IsAzureEnvironment).Returns(true);
+
+            var eventManagerMock = new Mock<IScriptEventManager>();
+            var hostHealthConfig = new HostHealthMonitorConfiguration();
+            var mockHostPerformanceManager = new Mock<HostPerformanceManager>(mockSettings.Object, hostHealthConfig);
+
+            bool underHighLoad = false;
+            mockHostPerformanceManager.Setup(p => p.IsUnderHighLoad(It.IsAny<Collection<string>>(), It.IsAny<TraceWriter>()))
+                .Callback<Collection<string>, TraceWriter>((c, t) =>
+                {
+                    c.Add("Connections");
+                })
+                .Returns(() => underHighLoad);
+
+            var hostManager = new ScriptHostManager(config, mockSettings.Object, new ScriptHostFactory(), eventManagerMock.Object, environmentMock.Object, mockHostPerformanceManager.Object);
+            Assert.True(hostManager.ShouldMonitorHostHealth);
+            Task runTask = Task.Run(() => hostManager.RunAndBlock());
+            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Running);
+
+            // now that host is running make host unhealthy and wait
+            // for host shutdown
+            underHighLoad = true;
+
+            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Error);
+
+            Assert.Equal(ScriptHostState.Error, hostManager.State);
+            environmentMock.Verify(p => p.Shutdown(), Times.Once);
+
+            // we expect a few restart iterations
+            var thresholdErrors = testTraceWriter.Traces.Where(p => p.Exception is InvalidOperationException && p.Exception.Message == "Host thresholds exceeded: [Connections]");
+            Assert.True(thresholdErrors.Count() > 1);
+
+            var log = testTraceWriter.Traces.Last();
+            Assert.True(testTraceWriter.Traces.Count(p => p.Message == "Host is unhealthy. Initiating a restart." && p.Level == TraceLevel.Error) > 0);
+            Assert.Equal("Host unhealthy count exceeds the threshold of 5 for time window 00:00:01. Initiating shutdown.", log.Message);
+            Assert.Equal(TraceLevel.Error, log.Level);
+        }
+
+        [Fact]
         public async Task RunAndBlock_SetsLastError_WhenExceptionIsThrown()
         {
             ScriptHostConfiguration config = new ScriptHostConfiguration()
@@ -285,7 +447,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), mockSettings.Object, It.IsAny<ScriptHostConfiguration>()))
                 .Returns(hostMock.Object);
 
-            var mockHostPerformanceManager = new Mock<HostPerformanceManager>(mockSettings.Object);
+            var hostHealthConfig = new HostHealthMonitorConfiguration();
+            var mockHostPerformanceManager = new Mock<HostPerformanceManager>(mockSettings.Object, hostHealthConfig);
             var target = new Mock<ScriptHostManager>(config, mockSettings.Object, factoryMock.Object, eventManager.Object, new NullScriptHostEnvironment(), mockHostPerformanceManager.Object);
 
             Collection<string> exceededCounters = new Collection<string>();
@@ -303,10 +466,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             bool isAzureEnvironment = false;
             mockSettings.Setup(p => p.IsAzureEnvironment).Returns(() => isAzureEnvironment);
 
-            config.HostHealthMonitorEnabled = false;
+            config.HostHealthMonitor.Enabled = false;
             Assert.True(target.Object.IsHostHealthy());
 
-            config.HostHealthMonitorEnabled = true;
+            config.HostHealthMonitor.Enabled = true;
             Assert.True(target.Object.IsHostHealthy());
 
             isAzureEnvironment = true;
@@ -531,7 +694,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<string>(), It.IsAny<string>()));
                 mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<MetricEvent>()));
 
-                return ScriptHost.Create(environment, eventManager, config, settingsManager);
+                return new ScriptHost(environment, eventManager, config, settingsManager);
             }
         }
     }

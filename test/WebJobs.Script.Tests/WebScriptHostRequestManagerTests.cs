@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public WebScriptHostRequestManagerTests()
         {
             _metricsLogger = new Mock<IMetricsLogger>(MockBehavior.Strict);
-            _performanceManager = new Mock<HostPerformanceManager>(MockBehavior.Strict, new object[] { new ScriptSettingsManager() });
+            _performanceManager = new Mock<HostPerformanceManager>(MockBehavior.Strict, new object[] { new ScriptSettingsManager(), new HostHealthMonitorConfiguration() });
             _httpConfig = new HttpExtensionConfiguration();
             _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             _requestManager = new WebScriptHostRequestManager(_httpConfig, _performanceManager.Object, _metricsLogger.Object, _traceWriter, 1);

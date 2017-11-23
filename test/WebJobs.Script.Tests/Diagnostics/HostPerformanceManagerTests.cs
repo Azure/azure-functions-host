@@ -21,7 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             string value = string.Empty;
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             mockSettings.Setup(p => p.GetSetting(EnvironmentSettingNames.AzureWebsiteAppCountersName)).Returns(() => value);
-            var performanceManager = new HostPerformanceManager(mockSettings.Object);
+            var healthMonitorConfig = new HostHealthMonitorConfiguration();
+            var performanceManager = new HostPerformanceManager(mockSettings.Object, healthMonitorConfig);
 
             value = "{\"userTime\": 30000000,\"kernelTime\": 16562500,\"pageFaults\": 131522,\"processes\": 1,\"processLimit\": 32,\"threads\": 32,\"threadLimit\": 512,\"connections\": 4,\"connectionLimit\": 300,\"sections\": 3,\"sectionLimit\": 256,\"namedPipes\": 0,\"namedPipeLimit\": 128,\"readIoOperations\": 675,\"writeIoOperations\": 18,\"otherIoOperations\": 9721,\"readIoBytes\": 72585119,\"writeIoBytes\": 5446,\"otherIoBytes\": 393926,\"privateBytes\": 33759232,\"handles\": 987,\"contextSwitches\": 15535,\"remoteOpens\": 250}";
             var counters = performanceManager.GetPerformanceCounters(traceWriter);

@@ -166,7 +166,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 RootScriptPath = rootPath
             };
-            var host = ScriptHost.Create(environment.Object, eventManager.Object, scriptConfig, SettingsManager);
+            var host = new ScriptHost(environment.Object, eventManager.Object, scriptConfig, SettingsManager);
+            host.Initialize();
             return new ScriptHostInfo(host, scriptConfig, rootPath);
         }
     }

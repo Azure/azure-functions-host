@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script
             LogFilter = new LogCategoryFilter();
             RootExtensionsPath = ConfigurationManager.AppSettings[EnvironmentSettingNames.AzureWebJobsExtensionsPath];
             LoggerFactoryBuilder = new DefaultLoggerFactoryBuilder();
-            HostHealthMonitorEnabled = true;
+            HostHealthMonitor = new HostHealthMonitorConfiguration();
         }
 
         /// <summary>
@@ -96,12 +96,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public bool SwaggerEnabled { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether the hosting environment will be monitored
-        /// for health (e.g. socket thresholds, etc.). Default is true.
-        /// </summary>
-        public bool HostHealthMonitorEnabled { get; set; }
-
-        /// <summary>
         /// Gets or sets a value indicating whether the host is running
         /// outside of the normal Azure hosting environment. E.g. when running
         /// locally or via CLI.
@@ -135,5 +129,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets a test hook for modifying the configuration after host.json has been processed.
         /// </summary>
         internal Action<ScriptHostConfiguration> OnConfigurationApplied { get; set; }
+
+        /// <summary>
+        /// Gets the <see cref="HostHealthMonitorConfiguration"/> to use.
+        /// </summary>
+        public HostHealthMonitorConfiguration HostHealthMonitor { get; }
     }
 }

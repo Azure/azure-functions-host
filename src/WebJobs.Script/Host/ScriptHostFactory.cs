@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         public ScriptHost Create(IScriptHostEnvironment environment, IScriptEventManager eventManager, ScriptSettingsManager settingsManager, ScriptHostConfiguration config)
         {
-            return ScriptHost.Create(environment, eventManager, config, settingsManager);
+           return new ScriptHost(environment, eventManager, config, settingsManager);
         }
     }
 }

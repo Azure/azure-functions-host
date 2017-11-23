@@ -428,6 +428,7 @@
     <Compile Include="Binding\WebJobsCoreScriptBindingProvider.cs" />
     <Compile Include="Binding\SimpleValueProvider.cs" />
     <Compile Include="Config\FeatureFlags.cs" />
+    <Compile Include="Config\HostHealthMonitorConfiguration.cs" />
     <Compile Include="Description\Binding\Cardinality.cs" />
     <Compile Include="Description\Compilation\CompilationServiceException.cs" />
     <Compile Include="Description\Compilation\ICompilation.cs" />
@@ -564,6 +565,7 @@
     <Compile Include="PropertyHelper.cs" />
     <Compile Include="ScriptConstants.cs" />
     <Compile Include="Config\ScriptSettingsManager.cs" />
+    <Compile Include="SlidingWindow.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="PlatformHelper.cs" />
   </ItemGroup>

@@ -561,6 +561,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Diagnostics\SystemTraceWriterTests.cs" />
     <Compile Include="Diagnostics\TraceWriterExtensionsTests.cs" />
+    <Compile Include="SlidingWindowTests.cs" />
     <Compile Include="Swagger\SwaggerDocumentManagerTests.cs" />
     <Compile Include="TestMetricsLogger.cs" />
     <Compile Include="UtilityTests.cs" />

@@ -39,7 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _proxyClient = GetMockProxyClient();
             _settingsManager = ScriptSettingsManager.Instance;
-            _host = ScriptHost.Create(environment.Object, eventManager.Object, _config, _settingsManager, _proxyClient);
+            _host = new ScriptHost(environment.Object, eventManager.Object, _config, _settingsManager, _proxyClient);
+            _host.Initialize();
             _metadataCollection = _host.ReadProxyMetadata(_config, _settingsManager);
         }
 
