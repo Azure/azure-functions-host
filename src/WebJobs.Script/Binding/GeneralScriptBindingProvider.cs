@@ -34,13 +34,13 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         // So we need a final call that lets us get the tooling snapshot of the graph after all extensions are set.
         public void CompleteInitialization(IJobHostMetadataProvider metadataProvider)
         {
-            this._metadataProvider = metadataProvider;
+            _metadataProvider = metadataProvider;
         }
 
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
         {
             string name = context.Type;
-            var attrType = this._metadataProvider.GetAttributeTypeFromName(name);
+            var attrType = _metadataProvider.GetAttributeTypeFromName(name);
             if (attrType == null)
             {
                 binding = null;
@@ -49,12 +49,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             try
             {
-                var attr = this._metadataProvider.GetAttribute(attrType, context.Metadata);
-                binding = new GeneralScriptBinding(this._metadataProvider, attr, context);
+                var attr = _metadataProvider.GetAttribute(attrType, context.Metadata);
+                binding = new GeneralScriptBinding(_metadataProvider, attr, context);
             }
             catch (Exception e)
             {
-                throw new Exception($"Unabled to configure binding '{context.Name}' of type '{name}'. This may indicate invalid function.json properties", e);
+                throw new Exception($"Unable to configure binding '{context.Name}' of type '{name}'. This may indicate invalid function.json properties", e);
             }
 
             return true;
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public override bool TryResolveAssembly(string assemblyName, out Assembly assembly)
         {
-            return this._metadataProvider.TryResolveAssembly(assemblyName, out assembly);
+            return _metadataProvider.TryResolveAssembly(assemblyName, out assembly);
         }
 
         // Function.json specifies a type via optional DataType and Cardinality properties.
@@ -131,8 +131,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     if (_defaultType == null)
                     {
-                        Type requestedType = GetRequestedType(this.Context);
-                        _defaultType = _metadataProvider.GetDefaultType(_attribute, this.Context.Access, requestedType);
+                        Type requestedType = GetRequestedType(Context);
+                        _defaultType = _metadataProvider.GetDefaultType(_attribute, Context.Access, requestedType);
                     }
                     return _defaultType;
                 }
