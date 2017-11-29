@@ -13,7 +13,7 @@
     <PackageReference Include="Google.Protobuf" Version="3.3.0" />
     <PackageReference Include="Grpc.Core" Version="1.4.1" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.4.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.0.0">
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.0.1">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client.Contract" Version="0.3.1.1">
@@ -25,29 +25,29 @@
     <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="1.0.0-beta1-10022">
       <PrivateAssets>None</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta3-11087" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="3.0.0-beta3" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.0-beta3">
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta4" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="3.0.0-beta4" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.0-beta4">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.0-beta3" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.0-beta3" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.0-beta4" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.0-beta4" />
     <PackageReference Include="Microsoft.Build" Version="15.3.409" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="2.3.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="2.4.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="2.0.0" />
     <PackageReference Include="Microsoft.FSharp.Compiler" Version="4.2.0-rc-170621-0" />
     <PackageReference Include="ncrontab" Version="3.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
-    <PackageReference Include="NuGet.Frameworks" Version="4.3.0" />
-    <PackageReference Include="NuGet.LibraryModel" Version="4.3.0" />
-    <PackageReference Include="NuGet.ProjectModel" Version="4.3.0" />
-    <PackageReference Include="NuGet.Versioning" Version="4.3.0" />
+    <PackageReference Include="NuGet.Frameworks" Version="4.4.0" />
+    <PackageReference Include="NuGet.LibraryModel" Version="4.4.0" />
+    <PackageReference Include="NuGet.ProjectModel" Version="4.4.0" />
+    <PackageReference Include="NuGet.Versioning" Version="4.4.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="System.IO.Abstractions" Version="2.0.0.144">
+    <PackageReference Include="System.IO.Abstractions" Version="2.1.0.175">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
     <PackageReference Include="System.Reactive.Linq" Version="3.1.1" />
