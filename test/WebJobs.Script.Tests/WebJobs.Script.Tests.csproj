@@ -42,17 +42,13 @@
 
   <ItemGroup>
     <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0-preview-20170923-02" />
-    <PackageReference Include="Moq" Version="4.7.99" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
+    <PackageReference Include="Moq" Version="4.7.145" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
-    <PackageReference Include="System.IO.Abstractions" Version="2.0.0.144">
-      <NoWarn>NU1701</NoWarn>
+    <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="2.1.0.175">
     </PackageReference>
-    <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="2.0.0.143">
-      <NoWarn>NU1701</NoWarn>
-    </PackageReference>
-    <PackageReference Include="xunit" Version="2.3.0" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.3.0" />
+    <PackageReference Include="xunit" Version="2.3.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.3.1" />
   </ItemGroup>
 
   <ItemGroup>
