@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
                 }
             }
 
-            AppServiceEventSource.Instance.Information(AppServiceSettings.SiteName, AppServiceSettings.CurrentStampName, AppServiceSettings.WorkerName, string.Format("Worker status provider is {0}.", provider != null ? "registered" : "unregistered"));
+            AppServiceEventSource.Instance.Information(AppServiceSettings.SiteName, AppServiceSettings.CurrentStampName, AppServiceSettings.WorkerName, string.Format("Worker status provider is {0}", provider != null ? "registered" : "unregistered"));
         }
     }
 }

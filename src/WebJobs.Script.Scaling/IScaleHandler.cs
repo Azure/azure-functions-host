@@ -16,12 +16,14 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         /// <summary>
         /// ScaleManager requests more worker
         /// </summary>
-        Task<string> AddWorker(string activityId, IEnumerable<string> stampNames, int workers);
+        /// <returns>The name of the worker if added.</returns>
+        Task<string> TryAddWorker(string activityId, IEnumerable<string> stampNames, int workers);
 
         /// <summary>
         /// ScaleManager requests worker removal
         /// </summary>
-        Task RemoveWorker(string activityId, IWorkerInfo worker);
+        /// <returns>True if the worker was removed, false otherwise.</returns>
+        Task<bool> TryRemoveWorker(string activityId, IWorkerInfo worker);
 
         /// <summary>
         /// ScaleManager requests to ping specific worker

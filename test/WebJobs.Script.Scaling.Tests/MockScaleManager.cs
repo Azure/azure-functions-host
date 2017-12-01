@@ -165,24 +165,24 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             return await base.TryRemoveSlaveWorker(activityId, workers, manager);
         }
 
-        protected override async Task<bool> RequestAddWorker(string activityId, IEnumerable<IWorkerInfo> workers, IWorkerInfo manager, bool force)
+        protected override async Task<bool> RequestAddWorker(string activityId, IEnumerable<IWorkerInfo> workers, IWorkerInfo manager, bool force, bool burst)
         {
-            return await MockRequestAddWorker(activityId, workers, manager, force);
+            return await MockRequestAddWorker(activityId, workers, manager, force, burst);
         }
 
-        public virtual async Task<bool> MockRequestAddWorker(string activityId, IEnumerable<IWorkerInfo> workers, IWorkerInfo manager, bool force)
+        public virtual async Task<bool> MockRequestAddWorker(string activityId, IEnumerable<IWorkerInfo> workers, IWorkerInfo manager, bool force, bool burst)
         {
-            return await base.RequestAddWorker(activityId, workers, manager, force);
+            return await base.RequestAddWorker(activityId, workers, manager, force, burst);
         }
 
-        protected override async Task RequestRemoveWorker(string activityId, IWorkerInfo manager, IWorkerInfo toRemove)
+        protected override async Task<bool> RequestRemoveWorker(string activityId, IWorkerInfo manager, IWorkerInfo toRemove)
         {
-            await MockRequestRemoveWorker(activityId, manager, toRemove);
+            return await MockRequestRemoveWorker(activityId, manager, toRemove);
         }
 
-        public virtual async Task MockRequestRemoveWorker(string activityId, IWorkerInfo manager, IWorkerInfo toRemove)
+        public virtual async Task<bool> MockRequestRemoveWorker(string activityId, IWorkerInfo manager, IWorkerInfo toRemove)
         {
-            await base.RequestRemoveWorker(activityId, manager, toRemove);
+            return await base.RequestRemoveWorker(activityId, manager, toRemove);
         }
 
         public void VerifyAll()

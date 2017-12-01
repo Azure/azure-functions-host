@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
                         scaleManager.MockScaleTracer.Setup(h => h.TraceWarning(activityId, stale, It.Is<string>(s => s.Contains("failed ping request"))));
 
                         mockManager.Setup(m => m.MockRequestRemoveWorker(activityId, manager, stale))
-                            .Returns(Task.CompletedTask);
+                            .Returns(Task.FromResult(true));
                     }
                     else
                     {

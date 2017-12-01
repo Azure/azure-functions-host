@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
                 {
                     scaleManager.MockScaleTracer.Setup(t => t.TraceInformation(activityId, loadFactorMaxWorker, It.Is<string>(s => s.Contains("have int.MaxValue loadfactor"))));
 
-                    mockManager.Setup(m => m.MockRequestAddWorker(activityId, workers, manager, false))
+                    mockManager.Setup(m => m.MockRequestAddWorker(activityId, workers, manager, false, false))
                         .Returns(Task.FromResult(true));
                 }
 

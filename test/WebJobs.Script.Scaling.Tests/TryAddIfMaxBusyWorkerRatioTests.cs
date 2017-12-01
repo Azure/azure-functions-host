@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
                 {
                     scaleManager.MockScaleTracer.Setup(t => t.TraceInformation(activityId, manager, It.Is<string>(s => s.Contains("exceeds maximum busy worker ratio"))));
 
-                    mockManager.Setup(m => m.MockRequestAddWorker(activityId, workers, manager, false))
+                    mockManager.Setup(m => m.MockRequestAddWorker(activityId, workers, manager, false, false))
                         .Returns(Task.FromResult(true));
                 }
 

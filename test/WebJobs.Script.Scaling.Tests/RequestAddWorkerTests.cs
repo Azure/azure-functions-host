@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
                 {
                     scaleManager.MockScaleTracer.Setup(t => t.TraceAddWorker(activityId, manager, It.IsAny<string>()));
 
-                    scaleManager.MockScaleHandler.Setup(s => s.AddWorker(activityId, It.IsAny<IEnumerable<string>>(), It.IsAny<int>()))
+                    scaleManager.MockScaleHandler.Setup(s => s.TryAddWorker(activityId, It.IsAny<IEnumerable<string>>(), It.IsAny<int>()))
                         .Returns(Task.FromResult("3"));
                 }
                 else
@@ -34,13 +34,13 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
 
                     if (force || workers.Count() < settings.MaxWorkers)
                     {
-                        scaleManager.MockScaleHandler.Setup(s => s.AddWorker(activityId, It.IsAny<IEnumerable<string>>(), It.IsAny<int>()))
+                        scaleManager.MockScaleHandler.Setup(s => s.TryAddWorker(activityId, It.IsAny<IEnumerable<string>>(), It.IsAny<int>()))
                             .Returns(Task.FromResult(string.Empty));
                     }
                 }
 
                 // test
-                var actual = await scaleManager.MockRequestAddWorker(activityId, workers, manager, force);
+                var actual = await scaleManager.MockRequestAddWorker(activityId, workers, manager, force, burst: false);
 
                 // assert
                 scaleManager.VerifyAll();

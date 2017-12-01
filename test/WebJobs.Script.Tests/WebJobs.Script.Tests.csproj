@@ -517,7 +517,7 @@
     <Compile Include="Eventing\StructuredLogEntryTests.cs" />
     <Compile Include="Filters\JwtAuthenticationAttributeTests.cs" />
     <Compile Include="Diagnostics\FastLoggerTests.cs" />
-    <Compile Include="Diagnostics\HostPerformanceManagerTests.cs" />
+    <Compile Include="Scale\HostPerformanceManagerTests.cs" />
     <Compile Include="Extensions\HttpRouteConstraintExtensionsTests.cs" />
     <Compile Include="Filters\AuthorizationLevelAttributeTests.cs" />
     <Compile Include="Binding\ExtensionBindingTests.cs" />
@@ -551,6 +551,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Scale\WorkerStatusProviderTests.cs" />
     <Compile Include="ScriptHostTests.cs" />
     <Compile Include="ScriptSettingsManagerTests.cs" />
     <Compile Include="Security\ScriptSecretSerializerTests.cs" />
@@ -615,6 +616,10 @@
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\WebJobs.Script.Scaling\WebJobs.Script.Scaling.csproj">
+      <Project>{292a9038-5807-4095-b37f-9a77170d7402}</Project>
+      <Name>WebJobs.Script.Scaling</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj">
       <Project>{63c9b2f4-f122-4acc-968f-9b8f0880a72f}</Project>
       <Name>WebJobs.Script.WebHost</Name>

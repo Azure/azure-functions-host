@@ -96,13 +96,13 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
                 // test
                 if (expectedException == null)
                 {
-                    var actual = await handler.AddWorker(activityId, stampNames, 1);
+                    var actual = await handler.TryAddWorker(activityId, stampNames, 1);
 
                     Assert.Equal(expected, actual);
                 }
                 else
                 {
-                    var exception = await Assert.ThrowsAsync<HttpRequestException>(async () => await handler.AddWorker(activityId, stampNames, 1));
+                    var exception = await Assert.ThrowsAsync<HttpRequestException>(async () => await handler.TryAddWorker(activityId, stampNames, 1));
 
                     Assert.Contains(expectedException.Message, exception.Message);
                 }
@@ -163,11 +163,11 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
                 // test
                 if (expectedException == null)
                 {
-                    await handler.RemoveWorker(activityId, worker);
+                    await handler.TryRemoveWorker(activityId, worker);
                 }
                 else
                 {
-                    var exception = await Assert.ThrowsAsync<HttpRequestException>(async () => await handler.RemoveWorker(activityId, worker));
+                    var exception = await Assert.ThrowsAsync<HttpRequestException>(async () => await handler.TryRemoveWorker(activityId, worker));
 
                     Assert.Contains(expectedException.Message, exception.Message);
                 }

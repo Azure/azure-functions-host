@@ -13,14 +13,14 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
         {
         }
 
-        public virtual Task<string> AddWorker(string activityId, IEnumerable<string> stampNames, int workers)
+        public virtual Task<string> TryAddWorker(string activityId, IEnumerable<string> stampNames, int workers)
         {
             return Task.FromResult(stampNames.FirstOrDefault());
         }
 
-        public virtual Task RemoveWorker(string activityId, IWorkerInfo workerInfo)
+        public virtual Task<bool> TryRemoveWorker(string activityId, IWorkerInfo workerInfo)
         {
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
         public virtual Task<bool> PingWorker(string activityId, IWorkerInfo workerInfo)

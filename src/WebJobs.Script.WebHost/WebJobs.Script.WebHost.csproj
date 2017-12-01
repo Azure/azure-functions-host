@@ -217,7 +217,7 @@
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.EventGrid.1.0.0-beta2-10009\lib\net46\Microsoft.Azure.WebJobs.Extensions.EventGrid.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.Http, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.Http.1.0.0-beta4-10554\lib\net45\Microsoft.Azure.WebJobs.Extensions.Http.dll</HintPath>
+      <HintPath>C:\code\Git\Azure\azure-webjobs-sdk-extensions\src\WebJobs.Extensions.Http\bin\Debug\Microsoft.Azure.WebJobs.Extensions.Http.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.MobileApps, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.MobileApps.1.1.0-beta4-10554\lib\net45\Microsoft.Azure.WebJobs.Extensions.MobileApps.dll</HintPath>
@@ -565,6 +565,10 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\WebJobs.Script.Scaling\WebJobs.Script.Scaling.csproj">
+      <Project>{292a9038-5807-4095-b37f-9a77170d7402}</Project>
+      <Name>WebJobs.Script.Scaling</Name>
+    </ProjectReference>
     <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj">
       <Project>{1dc670cd-f42f-4d8f-97bd-0e1aa8221094}</Project>
       <Name>WebJobs.Script</Name>

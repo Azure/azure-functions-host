@@ -62,11 +62,11 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         public static string GetSummary(this IEnumerable<IWorkerInfo> workers, string header)
         {
             var strb = new StringBuilder();
-            strb.AppendFormat("{0} {1} workers", header, workers.Count());
+            strb.AppendFormat("{0} worker count is {1}", header, workers.Count());
             foreach (var worker in workers)
             {
                 strb.AppendLine();
-                strb.AppendFormat("{0}, loadfactor: {1}, stale: {2}, lastupdate: {3}", worker.ToDisplayString(), worker.LoadFactor, worker.IsStale, worker.LastModifiedTimeUtc);
+                strb.AppendFormat("[{0}, LoadFactor: {1}, IsStale: {2}, LastUpdate: {3}]", worker.ToDisplayString(), worker.LoadFactor, worker.IsStale, worker.LastModifiedTimeUtc);
             }
 
             return strb.ToString();

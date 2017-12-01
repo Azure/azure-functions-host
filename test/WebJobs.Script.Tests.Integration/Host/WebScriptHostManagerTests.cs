@@ -221,6 +221,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(request.Properties.ContainsKey(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey));
         }
 
+        /*
+        [Theory]
+        [InlineData(0, 0, 0)]
+        [InlineData(1, 1, 0.8)] // fix - low numbers shoudln't cause scale out?
+        [InlineData(1, 0, 0.8)] // fix
+        [InlineData(10, 1, 1.0)]
+        [InlineData(1000, 1, 1.0)]
+        [InlineData(100, 0, 1.0)]
+        [InlineData(100, 1, 1.0)]
+        [InlineData(100, 10, 1.0)]
+        [InlineData(20, 100, 0.16)]
+        [InlineData(25, 100, 0.2)]
+        [InlineData(50, 100, 0.4)]
+        [InlineData(100, 50, 1.0)]
+        [InlineData(100, 100, 0.8)]
+        [InlineData(125, 100, 1.0)]
+        [InlineData(130, 100, 1.0)]
+        [InlineData(160, 100, 1.0)]
+        [InlineData(180, 100, 1.0)]
+        [InlineData(200, 100, 1.0)]
+        public void GetLoadFactor_ReturnsExpectedResult(int incomingRequests, int completedRequests, double expected)
+        {
+            var result = WebScriptHostRequestManager.GetLoadFactor(incomingRequests, completedRequests);
+            Assert.Equal(Math.Round(result, 2), expected);
+        }
+        */
+
         [Fact]
         public void AddRouteDataToRequest_AddsRequestProperty_WhenRouteDataNotNull()
         {

@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
                 foreach (var toRemove in toRemoves)
                 {
                     mockManager.Setup(m => m.MockRequestRemoveWorker(activityId, manager, toRemove))
-                        .Returns(Task.CompletedTask);
+                        .Returns(Task.FromResult(true));
                 }
 
                 // test

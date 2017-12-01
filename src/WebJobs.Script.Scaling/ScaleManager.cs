@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         private IWorkerInfo _worker;
         private Timer _workerUpdateTimer;
         private bool _disposed;
+        private bool _pingResult;
 
         private DateTime _pingWorkerUtc = DateTime.MinValue;
         private DateTime _managerCheckUtc = DateTime.MinValue;
@@ -129,48 +130,48 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         /// </summary>
         protected virtual async Task ProcessWorkItem(string activityId)
         {
-            // get worker status
-            var worker = await _provider.GetWorkerInfo(activityId);
-            _worker = worker;
+            // get worker status for this worker
+            _worker = await _provider.GetWorkerInfo(activityId);
 
-            // update worker status and keep alive
-            await PingWorker(activityId, worker);
+            // update status for this worker and keep alive
+            await PingWorker(activityId, _worker);
 
             // select manager
-            var manager = await EnsureManager(activityId, worker);
+            var manager = await EnsureManager(activityId, _worker);
 
-            // if this is manager, perform scale decision and stale worker management
-            if (ScaleUtils.WorkerEquals(worker, manager))
+            // if this worker is the manager, perform scale decision and stale worker management
+            if (ScaleUtils.WorkerEquals(_worker, manager))
             {
                 // perform scale decision
-                await MakeScaleDecision(activityId, worker);
+                await MakeScaleDecision(activityId, _worker);
 
                 // stale worker management
-                await CheckStaleWorker(activityId, worker);
+                await CheckStaleWorker(activityId, _worker);
             }
         }
 
         /// <summary>
-        /// add worker to table and ping to keep alive
+        /// Add worker to table and ping to keep alive
         /// </summary>
         protected virtual async Task PingWorker(string activityId, IWorkerInfo worker)
         {
-            var pingResult = true;
-            if (_pingWorkerUtc < DateTime.UtcNow)
+            // if ping was unsuccessful, keep pinging.  this is to address
+            // the issue where site continue to run on an unassigned worker.
+            if (!_pingResult || _pingWorkerUtc < DateTime.UtcNow)
             {
                 // if PingWorker throws, we will not update the worker status
                 // this worker will be stale and eventually removed.
-                pingResult = await _eventHandler.PingWorker(activityId, worker);
+                _pingResult = await _eventHandler.PingWorker(activityId, worker);
 
                 _pingWorkerUtc = DateTime.UtcNow.Add(_settings.WorkerPingInterval);
             }
 
             // check if worker is valid for the site
-            if (pingResult)
+            if (_pingResult)
             {
                 await _table.AddOrUpdate(worker);
 
-                _tracer.TraceUpdateWorker(activityId, worker, string.Format("Worker loadfactor {0} updated", worker.LoadFactor));
+                _tracer.TraceUpdateWorker(activityId, worker, $"Current worker load factor {worker.LoadFactor}");
             }
             else
             {
@@ -297,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
                         exception = ex;
                     }
 
-                    // worker failed to response
+                    // worker failed to respond
                     if (exception != null)
                     {
                         _tracer.TraceWarning(activityId, stale, string.Format("Stale worker (LastModifiedTimeUtc={0}) failed ping request {1}", stale.LastModifiedTimeUtc, exception));
@@ -346,9 +347,13 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
 
             try
             {
+                // Get the current set of active workers and make a scale decision
                 var workers = await _table.ListNonStale();
-                _tracer.TraceInformation(activityId, manager, workers.GetSummary("NonStale"));
+                var workerStatus = workers.GetSummary("NonStale");
+                _tracer.TraceInformation(activityId, manager, workerStatus);
 
+                // We only perform a single scale operation per interval - i.e. we
+                // stop at the first successful operation
                 if (await TryRemoveIfMaxWorkers(activityId, workers, manager))
                 {
                     return;
@@ -381,7 +386,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
             }
             catch (Exception ex)
             {
-                _tracer.TraceError(activityId, manager, string.Format("MakeScaleDecision failed with {0}", ex));
+                _tracer.TraceError(activityId, manager, string.Format("MakeScaleDecision failed: {0}", ex));
             }
             finally
             {
@@ -393,16 +398,20 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         {
             var workersCount = workers.Count();
             var maxWorkers = _settings.MaxWorkers;
+
             if (workersCount > maxWorkers)
             {
-                _tracer.TraceInformation(activityId, manager, string.Format("Number of workers ({0}) exceeds maximum number of workers ({1}) allowed.", workersCount, maxWorkers));
+                _tracer.TraceInformation(activityId, manager, $"Number of workers ({workersCount}) exceeds maximum number of workers ({maxWorkers}) allowed.");
 
-                await Task.WhenAll(workers.SortByRemovingOrder()
-                    .Take(workersCount - maxWorkers).Select(async toRemove =>
+                var workersToRemove = workers.SortByRemovingOrder().Take(workersCount - maxWorkers).ToArray();
+                var removeTasks = workersToRemove.Select(async toRemove =>
                 {
                     await RequestRemoveWorker(activityId, manager, toRemove);
-                }));
+                });
+                await Task.WhenAll(removeTasks);
 
+                // we return true if any requests were made
+                // regardless of whether they succeeded
                 return true;
             }
 
@@ -416,8 +425,10 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
             {
                 _tracer.TraceInformation(activityId, loadFactorMaxWorker, "Worker have int.MaxValue loadfactor.");
 
-                await RequestAddWorker(activityId, workers, manager, force: false);
+                await RequestAddWorker(activityId, workers, manager);
 
+                // we return true if any requests were made
+                // regardless of whether they succeeded
                 return true;
             }
 
@@ -426,17 +437,19 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
 
         protected virtual async Task<bool> TrySwapIfLoadFactorMinWorker(string activityId, IEnumerable<IWorkerInfo> workers, IWorkerInfo manager)
         {
-            // only awap one worker at a time
+            // only swap one worker at a time
             var loadFactorMinWorker = workers.SortByRemovingOrder().FirstOrDefault(w => w.LoadFactor == int.MinValue);
             if (loadFactorMinWorker != null)
             {
-                _tracer.TraceInformation(activityId, loadFactorMinWorker, "Worker have int.MinValue loadfactor.");
+                _tracer.TraceInformation(activityId, loadFactorMinWorker, "Worker has int.MinValue loadfactor.");
 
                 // swap the workers, force add then remove regardless whether add succeeded
                 await RequestAddWorker(activityId, workers, manager, force: true);
 
                 await RequestRemoveWorker(activityId, manager, loadFactorMinWorker);
 
+                // we return true if any requests were made
+                // regardless of whether they succeeded
                 return true;
             }
 
@@ -445,14 +458,22 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
 
         protected virtual async Task<bool> TryAddIfMaxBusyWorkerRatio(string activityId, IEnumerable<IWorkerInfo> workers, IWorkerInfo manager)
         {
+            // If the number of busy workers exceeds the threshold, we'll make a scale out request
+            int workerCount = workers.Count();
             var busyWorkers = workers.Where(w => w.LoadFactor >= _settings.BusyWorkerLoadFactor);
-            var busyWorkerRatio = (busyWorkers.Count() * 1.0) / workers.Count();
+            var busyWorkerRatio = (busyWorkers.Count() * 1.0) / workerCount;
             if (busyWorkerRatio > _settings.MaxBusyWorkerRatio)
             {
                 _tracer.TraceInformation(activityId, manager, string.Format("Busy worker ratio ({0:0.000}) exceeds maximum busy worker ratio ({1:0.000}).", busyWorkerRatio, _settings.MaxBusyWorkerRatio));
 
-                await RequestAddWorker(activityId, workers, manager, force: false);
+                // if we're at 0 or 1 workers and we need to add workers,
+                // we'll "burst" add
+                bool burst = false; // workerCount <= 1;
 
+                await RequestAddWorker(activityId, workers, manager, burst: burst);
+
+                // we return true if any requests were made
+                // regardless of whether they succeeded
                 return true;
             }
 
@@ -461,6 +482,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
 
         protected virtual async Task<bool> TryRemoveIfMaxFreeWorkerRatio(string activityId, IEnumerable<IWorkerInfo> workers, IWorkerInfo manager)
         {
+            // If the number of non-busy/free workers exceeds the threshold, we'll make a scale down request
             var freeWorkers = workers.Where(w => w.LoadFactor <= _settings.FreeWorkerLoadFactor);
             var freeWorkerRatio = (freeWorkers.Count() * 1.0) / workers.Count();
             if (freeWorkerRatio > _settings.MaxFreeWorkerRatio)
@@ -473,6 +495,8 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
                     await RequestRemoveWorker(activityId, manager, toRemove);
                 }
 
+                // we return true if any requests were made
+                // regardless of whether they succeeded
                 return true;
             }
 
@@ -496,6 +520,8 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
                         await RequestRemoveWorker(activityId, manager, toRemove);
                     }
 
+                    // we return true if any requests were made
+                    // regardless of whether they succeeded
                     return true;
                 }
             }
@@ -503,39 +529,48 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
             return false;
         }
 
-        protected virtual async Task<bool> RequestAddWorker(string activityId, IEnumerable<IWorkerInfo> workers, IWorkerInfo manager, bool force)
+        protected virtual async Task<bool> RequestAddWorker(string activityId, IEnumerable<IWorkerInfo> workers, IWorkerInfo manager, bool force = false, bool burst = false)
         {
-            string addedStampName = null;
-
-            if (!force && workers.Count() >= _settings.MaxWorkers)
+            int currentWorkerCount = workers.Count();
+            if (!force && currentWorkerCount >= _settings.MaxWorkers)
             {
                 _tracer.TraceWarning(activityId, manager, string.Format("Unable to add new worker due to maximum number of workers ({0}) allowed.", _settings.MaxWorkers));
+                return false;
             }
             else
             {
-                // try on each stamps
+                // determine the number of workers to add
+                // when adding in "burst" mode, we'll add several
+                int numWorkersToAdd = burst ? 3 : 1;
+
+                // try to add a worker
                 var stampNames = workers.GroupBy(w => w.StampName).Select(g => g.Key);
-                addedStampName = await _eventHandler.AddWorker(activityId, stampNames, 1);
-                if (!string.IsNullOrEmpty(addedStampName))
+                var stampName = await _eventHandler.TryAddWorker(activityId, stampNames, numWorkersToAdd);
+                if (!string.IsNullOrEmpty(stampName))
                 {
-                    _tracer.TraceAddWorker(activityId, manager, string.Format("New worker added to {0} stamp", addedStampName));
+                    _tracer.TraceAddWorker(activityId, manager, $"{numWorkersToAdd} worker(s) added to stamp {stampName}");
+                    return true;
                 }
                 else
                 {
-                    _tracer.TraceWarning(activityId, manager, string.Format("Unable to add worker to existing {0} stamps.", stampNames.ToDisplayString()));
+                    _tracer.TraceWarning(activityId, manager, $"Unable to add worker to existing {stampNames.ToDisplayString()} stamps.");
+                    return false;
                 }
             }
-
-            return !string.IsNullOrEmpty(addedStampName);
         }
 
-        protected virtual async Task RequestRemoveWorker(string activityId, IWorkerInfo manager, IWorkerInfo toRemove)
+        protected virtual async Task<bool> RequestRemoveWorker(string activityId, IWorkerInfo manager, IWorkerInfo toRemove)
         {
-            await _eventHandler.RemoveWorker(activityId, toRemove);
+            if (await _eventHandler.TryRemoveWorker(activityId, toRemove))
+            {
+                await _table.Delete(toRemove);
 
-            await _table.Delete(toRemove);
+                _tracer.TraceRemoveWorker(activityId, toRemove, $"Worker removed by manager ({manager.ToDisplayString()})");
 
-            _tracer.TraceRemoveWorker(activityId, toRemove, string.Format("Worker removed by manager ({0})", manager.ToDisplayString()));
+                return true;
+            }
+
+            return false;
         }
     }
 }

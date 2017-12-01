@@ -563,6 +563,8 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="PropertyHelper.cs" />
+    <Compile Include="Scale\ILoadFactorProvider.cs" />
+    <Compile Include="Scale\WorkerStatusProvider.cs" />
     <Compile Include="ScriptConstants.cs" />
     <Compile Include="Config\ScriptSettingsManager.cs" />
     <Compile Include="SlidingWindow.cs" />
@@ -653,6 +655,12 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Eventing\CodeDiagnostics\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WebJobs.Script.Scaling\WebJobs.Script.Scaling.csproj">
+      <Project>{292a9038-5807-4095-b37f-9a77170d7402}</Project>
+      <Name>WebJobs.Script.Scaling</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--  <Import Project="..\..\packages\StyleCop.MSBuild.4.7.50.0\build\StyleCop.MSBuild.Targets" Condition="Exists('..\..\packages\StyleCop.MSBuild.4.7.50.0\build\StyleCop.MSBuild.Targets')" /> -->

@@ -10,6 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
     public class ScaleSettings
     {
         public const int DefaultMaxWorkers = 100;
+        public const int DefaultStableWorkerLoadFactor = 50;
         public const int DefaultBusyWorkerLoadFactor = 80;
         public const double DefaultMaxBusyWorkerRatio = 0.8;
         public const int DefaultFreeWorkerLoadFactor = 20;

@@ -25,6 +25,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Azure.WebJobs.Script.Scaling;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private bool _hostStarted = false;
         private IDictionary<IHttpRoute, FunctionDescriptor> _httpFunctions;
         private HttpRouteCollection _httpRoutes;
-        private HttpRequestManager _httpRequestManager;
+        private WebScriptHostRequestManager _httpRequestManager;
 
         public WebScriptHostManager(ScriptHostConfiguration config,
             ISecretManagerFactory secretManagerFactory,
@@ -116,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public ISwaggerDocumentManager SwaggerDocumentManager => _swaggerDocumentManager;
 
-        public HttpRequestManager HttpRequestManager => _httpRequestManager;
+        public WebScriptHostRequestManager HttpRequestManager => _httpRequestManager;
 
         public virtual bool Initialized
         {
@@ -351,6 +352,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             InitializeHttp();
+
+            if (!InStandbyMode)
+            {
+                if (AppServiceScaleManager.Enabled)
+                {
+                    ILoadFactorProvider loadFactorProvider = _httpRequestManager;
+                    var statusProvider = new WorkerStatusProvider(PerformanceManager, loadFactorProvider, _config.TraceWriter);
+                    AppServiceScaleManager.RegisterProvider(statusProvider);
+                }
+            }
 
             base.OnHostInitialized();
         }

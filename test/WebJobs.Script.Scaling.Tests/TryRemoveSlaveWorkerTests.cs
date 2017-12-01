@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
                 {
                     scaleManager.MockScaleTracer.Setup(t => t.TraceInformation(activityId, toRemove, It.Is<string>(s => s.Contains("remove slave worker"))));
 
-                    mockManager.Setup(m => m.MockRequestAddWorker(activityId, Enumerable.Empty<IWorkerInfo>(), manager, true))
+                    mockManager.Setup(m => m.MockRequestAddWorker(activityId, Enumerable.Empty<IWorkerInfo>(), manager, true, false))
                         .Returns(Task.FromResult(added));
 
                     if (added)

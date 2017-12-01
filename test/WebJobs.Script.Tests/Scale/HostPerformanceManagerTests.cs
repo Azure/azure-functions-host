@@ -5,12 +5,11 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Moq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
+namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 {
     public class HostPerformanceManagerTests
     {

@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         /// - FE returns 404 No Capacity if no capacity and we will try on other stamps.
         /// - Other than that throws.
         /// </summary>
-        public async Task<string> AddWorker(string activityId, IEnumerable<string> stampNames, int workers)
+        public async Task<string> TryAddWorker(string activityId, IEnumerable<string> stampNames, int workers)
         {
             var list = stampNames.ToList();
 
@@ -103,16 +103,24 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
                 {
                     try
                     {
+                        if (response.StatusCode == HttpStatusCode.NotModified)
+                        {
+                            // A 304 NotModified from the front end is not an error. It just
+                            // means that a worker wasn't added. This might happen due to
+                            // throttling of scale operation requests.
+                            continue;
+                        }
+
                         response.EnsureSuccessStatusCode();
+
                         return stampName;
                     }
                     catch (HttpRequestException)
                     {
-                        // No capicity on this stamp
                         if (response.StatusCode == HttpStatusCode.NotFound &&
                             string.Equals(response.ReasonPhrase, NoCapacity, StringComparison.OrdinalIgnoreCase))
                         {
-                            // try other stamps
+                            // No capacity on this stamp - try other stamps
                             continue;
                         }
 
@@ -151,17 +159,16 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
                 }
                 catch (HttpRequestException)
                 {
-                    // Worker is not valid for the stamp
                     if (response.StatusCode == HttpStatusCode.NotFound &&
                         string.Equals(response.ReasonPhrase, WorkerNotFound, StringComparison.OrdinalIgnoreCase))
                     {
+                        // Worker is not valid for the stamp
                         return false;
                     }
-
-                    // Worker is not valid for the stamp
-                    if (response.StatusCode == HttpStatusCode.ServiceUnavailable &&
+                    else if (response.StatusCode == HttpStatusCode.ServiceUnavailable &&
                         string.Equals(response.ReasonPhrase, SiteUnavailableFromMiniArr, StringComparison.OrdinalIgnoreCase))
                     {
+                        // Worker is not valid for the stamp
                         return false;
                     }
 
@@ -173,9 +180,10 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         /// <summary>
         /// This requests FE to remove this specific worker.
         /// - FE should return success regardless if worker belongs.
+        /// - Return true if the worker was removed, false otherwise
         /// - Any unexpected error will throw.
         /// </summary>
-        public async Task RemoveWorker(string activityId, IWorkerInfo worker)
+        public async Task<bool> TryRemoveWorker(string activityId, IWorkerInfo worker)
         {
             var stampHostName = GetStampHostName(worker.StampName);
             var details = string.Format("Remove worker request from {0}:{1}", AppServiceSettings.CurrentStampName, AppServiceSettings.WorkerName);
@@ -187,7 +195,17 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
 
             using (var response = await SendAsync(activityId, HttpMethod.Delete, pathAndQuery, worker, details))
             {
+                // A 304 NotModified from the front end is not an error. It just
+                // means that the worker wasn't removed. This might happen due to
+                // throttling of scale operation requests.
+                if (response.StatusCode == HttpStatusCode.NotModified)
+                {
+                    return false;
+                }
+
                 response.EnsureSuccessStatusCode();
+
+                return true;
             }
         }
 
