@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
 
             await RunTimeoutExceptionTest(trace, handleCancellation: false);
 
-            await TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running));
+            await TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running), userMessage: "Expected host to not be running");
             Assert.DoesNotContain(trace.Traces, t => t.Message.StartsWith("Done"));
             Assert.Contains(trace.Traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
             Assert.Contains(trace.Traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
 
             // wait a few seconds to make sure the manager doesn't die
             await Assert.ThrowsAsync<ApplicationException>(() => TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running),
-                timeout: 3000, throwWhenDebugging: true));
+                timeout: 3000, throwWhenDebugging: true, userMessage: "Expected host manager not to die"));
             Assert.Contains(trace.Traces, t => t.Message.StartsWith("Done"));
             Assert.Contains(trace.Traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
             Assert.DoesNotContain(trace.Traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
@@ -51,7 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
 
         private async Task RunTimeoutExceptionTest(TraceWriter trace, bool handleCancellation)
         {
-            TimeSpan gracePeriod = TimeSpan.FromMilliseconds(5000);
             _manager = await CreateAndStartWebScriptHostManager(trace);
 
             string scenarioName = handleCancellation ? "useToken" : "ignoreToken";
@@ -80,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             var mockEventManager = new Mock<IScriptEventManager>();
             var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(), mockEventManager.Object, ScriptSettingsManager.Instance, new WebHostSettings { SecretsPath = _secretsDirectory.Path });
             Task task = Task.Run(() => { manager.RunAndBlock(); });
-            await TestHelpers.Await(() => manager.State == ScriptHostState.Running);
+            await TestHelpers.Await(() => manager.State == ScriptHostState.Running, userMessage: "Expected host to be running");
 
             return manager;
         }
