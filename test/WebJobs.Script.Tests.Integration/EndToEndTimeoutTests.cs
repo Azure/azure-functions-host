@@ -18,6 +18,8 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait("Category", "E2E")]
+    [Trait("E2E", nameof(EndToEndTimeoutTests))]
     public class EndToEndTimeoutTests
     {
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;

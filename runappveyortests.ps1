@@ -23,6 +23,9 @@ $exitCode = CheckExitCode "Node tests" $exitCode
 & $env:APPVEYOR_BUILD_FOLDER\packages\xunit.runner.console.2.3.0\tools\net452\xunit.console.x86.exe "$env:APPVEYOR_BUILD_FOLDER\test\WebJobs.Script.Tests.Integration\bin\Release\Microsoft.Azure.WebJobs.Script.Tests.Integration.dll" -notrait "Category=E2E"
 $exitCode = CheckExitCode "Non-E2E tests" $exitCode
 
+& $env:APPVEYOR_BUILD_FOLDER\packages\xunit.runner.console.2.3.0\tools\net452\xunit.console.x86.exe "$env:APPVEYOR_BUILD_FOLDER\test\WebJobs.Script.Tests.Integration\bin\Release\Microsoft.Azure.WebJobs.Script.Tests.Integration.dll" -trait "E2E=EndToEndTimeoutTests"
+$exitCode = CheckExitCode "EndToEndTimeoutTests tests" $exitCode
+
 & $env:APPVEYOR_BUILD_FOLDER\packages\xunit.runner.console.2.3.0\tools\net452\xunit.console.x86.exe "$env:APPVEYOR_BUILD_FOLDER\test\WebJobs.Script.Tests.Integration\bin\Release\Microsoft.Azure.WebJobs.Script.Tests.Integration.dll" -trait "E2E=CSharpEndToEndTests"
 $exitCode = CheckExitCode "CSharpEndToEndTests tests" $exitCode
 
