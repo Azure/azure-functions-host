@@ -25,6 +25,8 @@ using static Microsoft.Azure.WebJobs.Script.FunctionTraceWriterFactory;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait("Category", "E2E")]
+    [Trait("E2E", nameof(ScriptHostManagerTests))]
     public class ScriptHostManagerTests
     {
         private readonly ScriptSettingsManager _settingsManager;
