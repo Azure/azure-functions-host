@@ -1359,7 +1359,7 @@ namespace Microsoft.Azure.WebJobs.Script
             hostConfig.HostConfigMetadata = config;
 
             JArray functions = (JArray)config["functions"];
-            if (scriptConfig.Functions == null && functions != null && functions.Count > 0)
+            if (functions != null && functions.Count > 0)
             {
                 scriptConfig.Functions = new Collection<string>();
                 foreach (var function in functions)
