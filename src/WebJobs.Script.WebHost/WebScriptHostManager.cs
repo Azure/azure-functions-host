@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Routing;
@@ -243,10 +244,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // TODO: FACAVAL Instantiation of the ScriptRouteHandler should be cleaned up
             ILoggerFactory loggerFactory = _config.HostConfig.LoggerFactory;
-            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, () => Instance), httpConfig.RoutePrefix);
+            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, this), httpConfig.RoutePrefix);
 
             // Proxies do not honor the route prefix defined in host.json
-            WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, () => Instance), routePrefix: null);
+            WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, this), routePrefix: null);
 
             foreach (var function in functions)
             {
@@ -293,6 +294,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Stop();
 
             Program.InitiateShutdown();
+        }
+
+        public async Task DelayUntilHostReady()
+        {
+            // ensure that the host is ready to process requests
+            await DelayUntilHostReady(_hostTimeoutSeconds, _hostRunningPollIntervalMilliseconds);
+        }
+
+        public async Task DelayUntilHostReady(int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
+        {
+            await DelayUntilHostReady(this, timeoutSeconds, pollingIntervalMilliseconds, throwOnFailure);
+        }
+
+        internal static async Task DelayUntilHostReady(ScriptHostManager hostManager, int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
+        {
+            TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
+            TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);
+            TimeSpan timeWaited = TimeSpan.Zero;
+
+            while (!hostManager.CanInvoke() &&
+                    hostManager.State != ScriptHostState.Error &&
+                    (timeWaited < timeout))
+            {
+                await Task.Delay(delay);
+                timeWaited += delay;
+            }
+
+            if (throwOnFailure && !hostManager.CanInvoke())
+            {
+                throw new HttpException(HttpStatusCode.ServiceUnavailable, "Function host is not running.");
+            }
         }
     }
 }

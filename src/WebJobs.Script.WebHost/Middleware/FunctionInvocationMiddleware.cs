@@ -31,8 +31,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _loggerFactory = loggerFactory;
         }
 
-        public async Task Invoke(HttpContext context)
+        public async Task Invoke(HttpContext context, WebScriptHostManager manager)
         {
+            // flow required context through the request pipeline
+            // downstream middleware and filters rely on this
+            context.Items.Add(ScriptConstants.AzureFunctionsHostManagerKey, manager);
+
             await _next(context);
 
             IFunctionExecutionFeature functionExecution = context.Features.Get<IFunctionExecutionFeature>();

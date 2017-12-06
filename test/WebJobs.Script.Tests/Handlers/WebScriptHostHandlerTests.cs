@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _settingsManager = ScriptSettingsManager.Instance;
             var eventManager = new Mock<IScriptEventManager>();
             _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new TestSecretManagerFactory(), eventManager.Object,
-                _settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path });
+                _settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, null, null, null, 1, 50);
 
             _managerMock.SetupGet(p => p.Initialized).Returns(true);
             Mock<IDependencyResolver> mockResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             HttpConfiguration config = new HttpConfiguration();
             config.DependencyResolver = mockResolver.Object;
-            WebScriptHostHandler handler = new WebScriptHostHandler(config, hostTimeoutSeconds: 1, hostPollingIntervalMilliseconds: 50)
+            WebScriptHostHandler handler = new WebScriptHostHandler(config)
             {
                 InnerHandler = new TestHandler()
             };

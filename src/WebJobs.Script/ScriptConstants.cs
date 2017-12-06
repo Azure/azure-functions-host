@@ -16,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsRequestIdKey = "MS_AzureFunctionsRequestID";
         public const string AzureFunctionsHttpRequestKey = "MS_AzureFunctionsHttpRequest";
         public const string AzureProxyFunctionExecutorKey = "MS_AzureProxyFunctionExecutor";
+        public const string AzureFunctionsHostManagerKey = "MS_AzureFunctionsHostManager";
 
         public const string TracePropertyPrimaryHostKey = "MS_PrimaryHost";
         public const string TracePropertyFunctionNameKey = "MS_FunctionName";
@@ -77,5 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ExtensionsPackageId = "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator";
         public const string PackageReferenceElementName = "PackageReference";
         public const string PackageReferenceVersionElementName = "Version";
+        public const int HostTimeoutSeconds = 30;
+        public const int HostPollingIntervalMilliseconds = 25;
     }
 }

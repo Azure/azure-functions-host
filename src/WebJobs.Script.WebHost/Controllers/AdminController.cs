@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
+using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
@@ -47,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/functions/{name}")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        [RequiresRunningHost]
         public IActionResult Invoke(string name, [FromBody] FunctionInvocation invocation)
         {
             if (invocation == null)
@@ -73,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/functions/{name}/status")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        [RequiresRunningHost]
         public IActionResult GetFunctionStatus(string name)
         {
             FunctionStatus status = new FunctionStatus();
@@ -193,6 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [HttpPost]
         [Authorize(AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
+        [RequiresRunningHost]
         [Route("runtime/webhooks/{name}/{*extra}")]
         public async Task<IActionResult> ExtensionWebHookHandler(string name, CancellationToken token)
         {

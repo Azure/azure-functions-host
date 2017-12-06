@@ -515,20 +515,5 @@ namespace Microsoft.Azure.WebJobs.Script
 
             return true;
         }
-
-        public async Task<bool> DelayUntilHostReady(int timeoutSeconds = HostCheckTimeoutSeconds, int pollingIntervalMilliseconds = HostCheckPollingIntervalMilliseconds)
-        {
-            TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
-            TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);
-            TimeSpan timeWaited = TimeSpan.Zero;
-
-            while (!CanInvoke() && State != ScriptHostState.Error && (timeWaited < timeout))
-            {
-                await Task.Delay(delay);
-                timeWaited += delay;
-            }
-
-            return CanInvoke();
-        }
     }
 }
