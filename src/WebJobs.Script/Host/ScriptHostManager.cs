@@ -38,9 +38,10 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly StructuredLogWriter _structuredLogWriter;
         private readonly HostPerformanceManager _performanceManager;
         private readonly Timer _hostHealthCheckTimer;
-        private readonly TimeSpan hostHealthCheckInterval = TimeSpan.FromSeconds(15);
+        private readonly SlidingWindow<bool> _healthCheckWindow;
         private ScriptHost _currentInstance;
         private int _hostStartCount;
+        private int _consecutiveErrorCount;
 
         // ScriptHosts are not thread safe, so be clear that only 1 thread at a time operates on each instance.
         // List of all outstanding ScriptHost instances. Only 1 of these (specified by _currentInstance)
@@ -52,8 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private bool _stopped;
         private AutoResetEvent _stopEvent = new AutoResetEvent(false);
         private AutoResetEvent _restartHostEvent = new AutoResetEvent(false);
-        private TraceWriter _traceWriter;
-        private ILogger _logger;
 
         private ScriptSettingsManager _settingsManager;
         private CancellationTokenSource _restartDelayTokenSource;
@@ -103,19 +102,29 @@ namespace Microsoft.Azure.WebJobs.Script
             EventManager = eventManager ?? new ScriptEventManager();
 
             _structuredLogWriter = new StructuredLogWriter(EventManager, config.RootLogPath);
-            _performanceManager = hostPerformanceManager ?? new HostPerformanceManager(settingsManager);
+            _performanceManager = hostPerformanceManager ?? new HostPerformanceManager(settingsManager, _config.HostHealthMonitor);
 
-            // TEMP : temporarily disabling this until the feature is improved
-            bool periodicHealthCheckEnabled = false;
-            if (periodicHealthCheckEnabled && config.HostHealthMonitorEnabled && settingsManager.IsAzureEnvironment)
+            if (ShouldMonitorHostHealth)
             {
-                _hostHealthCheckTimer = new Timer(OnHostHealthCheckTimer, null, TimeSpan.Zero, hostHealthCheckInterval);
+                _hostHealthCheckTimer = new Timer(OnHostHealthCheckTimer, null, TimeSpan.Zero, _config.HostHealthMonitor.HealthCheckInterval);
+                _healthCheckWindow = new SlidingWindow<bool>(_config.HostHealthMonitor.HealthCheckWindow);
             }
         }
 
         protected HostPerformanceManager PerformanceManager => _performanceManager;
 
         protected IScriptEventManager EventManager { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the host health monitor should be active.
+        /// </summary>
+        internal bool ShouldMonitorHostHealth
+        {
+            get
+            {
+                return _config.HostHealthMonitor.Enabled && _settingsManager.IsAzureEnvironment;
+            }
+        }
 
         public virtual ScriptHost Instance
         {
@@ -150,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public void RunAndBlock(CancellationToken cancellationToken = default(CancellationToken))
         {
-            int consecutiveErrorCount = 0;
+            _consecutiveErrorCount = 0;
             do
             {
                 ScriptHost newInstance = null;
@@ -164,8 +173,6 @@ namespace Microsoft.Azure.WebJobs.Script
                         State = ScriptHostState.Default;
                     }
 
-                    OnCreatingHost();
-
                     // Create a new host config, but keep the host id from existing one
                     _config.HostConfig = new JobHostConfiguration(_settingsManager.Configuration)
                     {
@@ -173,10 +180,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     };
                     OnInitializeConfig(_config);
                     newInstance = _scriptHostFactory.Create(_environment, EventManager, _settingsManager, _config, _loggerFactoryBuilder);
-                    newInstance.HostInitialized += OnHostInitialized;
-                    newInstance.HostStarted += OnHostStarted;
-                    _traceWriter = newInstance.TraceWriter;
-                    _logger = newInstance.Logger;
 
                     _currentInstance = newInstance;
                     lock (_liveInstances)
@@ -185,11 +188,10 @@ namespace Microsoft.Azure.WebJobs.Script
                         _hostStartCount++;
                     }
 
-                    string extensionVersion = _settingsManager.GetSetting(EnvironmentSettingNames.FunctionsExtensionVersion);
-                    string hostId = newInstance.ScriptConfig.HostConfig.HostId;
-                    string message = $"Starting Host (HostId={hostId}, Version={ScriptHost.Version}, ProcessId={Process.GetCurrentProcess().Id}, Debug={newInstance.InDebugMode}, ConsecutiveErrors={consecutiveErrorCount}, StartupCount={_hostStartCount}, FunctionsExtensionVersion={extensionVersion})";
-                    _traceWriter?.Info(message);
-                    _logger?.LogInformation(message);
+                    newInstance.HostInitializing += OnHostInitializing;
+                    newInstance.HostInitialized += OnHostInitialized;
+                    newInstance.HostStarted += OnHostStarted;
+                    newInstance.Initialize();
 
                     newInstance.StartAsync(cancellationToken).GetAwaiter().GetResult();
 
@@ -197,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     LogErrors(newInstance);
 
                     LastError = null;
-                    consecutiveErrorCount = 0;
+                    _consecutiveErrorCount = 0;
                     _restartDelayTokenSource = null;
 
                     // Wait for a restart signal. This event will automatically reset.
@@ -228,13 +230,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     State = ScriptHostState.Error;
                     LastError = ex;
-                    consecutiveErrorCount++;
+                    _consecutiveErrorCount++;
 
                     // We need to keep the host running, so we catch and log any errors
                     // then restart the host
                     string message = "A ScriptHost error has occurred";
-                    _traceWriter?.Error(message, ex);
-                    _logger?.LogError(0, ex, message);
+                    Instance?.TraceWriter?.Error(message, ex);
+                    Instance?.Logger?.LogError(0, ex, message);
+
+                    if (ShutdownHostIfUnhealthy())
+                    {
+                        break;
+                    }
 
                     // If a ScriptHost instance was created before the exception was thrown
                     // Orphan and cleanup that instance.
@@ -251,10 +258,43 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     // attempt restarts using an exponential backoff strategy
-                    CreateRestartBackoffDelay(consecutiveErrorCount).GetAwaiter().GetResult();
+                    CreateRestartBackoffDelay(_consecutiveErrorCount).GetAwaiter().GetResult();
                 }
             }
             while (!_stopped && !cancellationToken.IsCancellationRequested);
+        }
+
+        private bool ShutdownHostIfUnhealthy()
+        {
+            if (ShouldMonitorHostHealth && _healthCheckWindow.GetEvents().Where(isHealthy => !isHealthy).Count() > _config.HostHealthMonitor.HealthCheckThreshold)
+            {
+                // if the number of times the host has been unhealthy in
+                // the current time window exceeds the threshold, recover by
+                // initiating shutdown
+                var message = $"Host unhealthy count exceeds the threshold of {_config.HostHealthMonitor.HealthCheckThreshold} for time window {_config.HostHealthMonitor.HealthCheckWindow}. Initiating shutdown.";
+                Instance?.TraceWriter?.Error(message);
+                Instance?.Logger?.LogError(0, message);
+                _environment.Shutdown();
+                return true;
+            }
+
+            return false;
+        }
+
+        private void OnHostInitializing(object sender, EventArgs e)
+        {
+            // by the time this event is raised, loggers for the host
+            // have been initialized
+            var host = (ScriptHost)sender;
+            string extensionVersion = _settingsManager.GetSetting(EnvironmentSettingNames.FunctionsExtensionVersion);
+            string hostId = host.ScriptConfig.HostConfig.HostId;
+            string message = $"Starting Host (HostId={hostId}, Version={ScriptHost.Version}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={host.InDebugMode}, ConsecutiveErrors={_consecutiveErrorCount}, StartupCount={_hostStartCount}, FunctionsExtensionVersion={extensionVersion})";
+            host.TraceWriter.Info(message);
+            host.Logger.LogInformation(message);
+
+            // we check host health before starting to avoid starting
+            // the host when connection or other issues exist
+            IsHostHealthy(throwWhenUnhealthy: true);
         }
 
         private void OnHostInitialized(object sender, EventArgs e)
@@ -301,6 +341,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="forceStop">Forces the call to stop and dispose of the instance, even if it isn't present in the live instances collection.</param>
         private async Task Orphan(ScriptHost instance, bool forceStop = false)
         {
+            instance.HostInitializing -= OnHostInitializing;
             instance.HostInitialized -= OnHostInitialized;
             instance.HostStarted -= OnHostStarted;
 
@@ -421,14 +462,6 @@ namespace Microsoft.Azure.WebJobs.Script
             State = ScriptHostState.Running;
         }
 
-        /// <summary>
-        /// Called immediately before we begin creating the host.
-        /// </summary>
-        protected virtual void OnCreatingHost()
-        {
-            IsHostHealthy(throwWhenUnhealthy: true);
-        }
-
         public void Dispose()
         {
             Dispose(true);
@@ -485,19 +518,25 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void OnHostHealthCheckTimer(object state)
         {
-            if (State == ScriptHostState.Running && !IsHostHealthy())
+            bool isHealthy = IsHostHealthy();
+            _healthCheckWindow.AddEvent(isHealthy);
+
+            if (!isHealthy && State == ScriptHostState.Running)
             {
                 // This periodic check allows us to break out of the host run
                 // loop. The health check performed in OnHostStarting will then
                 // fail and we'll enter a restart loop (exponentially backing off)
                 // until the host is healthy again and we can resume host processing.
+                var message = "Host is unhealthy. Initiating a restart.";
+                Instance?.TraceWriter?.Error(message);
+                Instance?.Logger?.LogError(0, message);
                 RestartHost();
             }
         }
 
         internal bool IsHostHealthy(bool throwWhenUnhealthy = false)
         {
-            if (!_config.HostHealthMonitorEnabled || !_settingsManager.IsAzureEnvironment)
+            if (!ShouldMonitorHostHealth)
             {
                 return true;
             }

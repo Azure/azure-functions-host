@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly string[] WellKnownHostJsonProperties = new[]
         {
             "id", "functionTimeout", "http", "watchDirectories", "functions", "queues", "serviceBus",
-            "eventHub", "tracing", "singleton", "logger", "aggregator", "applicationInsights"
+            "eventHub", "tracing", "singleton", "logger", "aggregator", "applicationInsights", "healthMonitor"
         };
 
         private string _instanceId;
@@ -108,6 +108,8 @@ namespace Microsoft.Azure.WebJobs.Script
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
             _proxyClient = proxyClient;
         }
+
+        public event EventHandler HostInitializing;
 
         public event EventHandler HostInitialized;
 
@@ -278,7 +280,10 @@ namespace Microsoft.Azure.WebJobs.Script
             await base.CallAsync(method, arguments, cancellationToken);
         }
 
-        protected virtual void Initialize()
+        /// <summary>
+        /// Performs all required initialization on the host. Must be called before the host is started.
+        /// </summary>
+        public void Initialize()
         {
             FileUtility.EnsureDirectoryExists(ScriptConfig.RootScriptPath);
             string hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
@@ -308,19 +313,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // If we're in debug/development mode, use optimal debug settings
                     _hostConfig.UseDevelopmentSettings();
-                }
-
-                // Ensure we always have an ILoggerFactory,
-                // regardless of whether AppInsights is registered or not
-                if (_hostConfig.LoggerFactory == null)
-                {
-                    _hostConfig.LoggerFactory = new LoggerFactory();
-
-                    // If we've created the LoggerFactory, then we are responsible for
-                    // disposing. Store this locally for disposal later. We can't rely
-                    // on accessing this directly from ScriptConfig.HostConfig as the
-                    // ScriptConfig is re-used for every host.
-                    _loggerFactory = _hostConfig.LoggerFactory;
                 }
 
                 Func<string, FunctionDescriptor> funcLookup = (name) => this.GetFunctionOrNull(name);
@@ -361,6 +353,16 @@ namespace Microsoft.Azure.WebJobs.Script
                     TraceWriter = new ConsoleTraceWriter(hostTraceLevel);
                 }
 
+                // Before configuration has been fully read, configure a default logger factory
+                // to ensure we can log any configuration errors. There's no filters at this point,
+                // but that's okay since we can't build filters until we apply configuration below.
+                // We'll recreate the loggers after config is read. We initialize the public logger
+                // to the startup logger until we've read configuration settings and can create the real logger.
+                // The "startup" logger is used in this class for startup related logs. The public logger is used
+                // for all other logging after startup.
+                ConfigureLoggerFactory();
+                Logger = _startupLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
+
                 string readingFileMessage = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath);
                 TraceWriter.Info(readingFileMessage);
 
@@ -372,13 +374,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 catch (JsonException ex)
                 {
-                    // If there's a parsing error, set up the logger and write out the previous messages so that they're
-                    // discoverable in Application Insights. There's no filter, but that's okay since we cannot parse host.json to
-                    // determine how to build the filtler.
-                    ConfigureDefaultLoggerFactory();
-                    ILogger startupErrorLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
-                    startupErrorLogger.LogInformation(readingFileMessage);
-
+                    // If there's a parsing error, write out the previous messages without filters to ensure
+                    // they're logged
+                    _startupLogger.LogInformation(readingFileMessage);
                     throw new FormatException(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex);
                 }
 
@@ -386,27 +384,19 @@ namespace Microsoft.Azure.WebJobs.Script
                 string readFileMessage = $"Host configuration file read:{Environment.NewLine}{sanitizedJson}";
                 TraceWriter.Info(readFileMessage);
 
-                try
-                {
-                    ApplyConfiguration(hostConfigObject, ScriptConfig);
-                }
-                catch (Exception)
-                {
-                    // If we have an error applying the configuration (for example, a value is invalid),
-                    // make sure we have a default LoggerFactory so that the error log can be written.
-                    ConfigureDefaultLoggerFactory();
-                    throw;
-                }
+                ApplyConfiguration(hostConfigObject, ScriptConfig);
+
+                // now the configuration has been read and applied re-create the logger
+                // factory and loggers ensuring that filters and settings have been applied
+                ConfigureLoggerFactory(recreate: true);
+                _startupLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
+                Logger = _hostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
 
                 // Allow tests to modify anything initialized by host.json
                 ScriptConfig.OnConfigurationApplied?.Invoke(ScriptConfig);
 
-                ConfigureDefaultLoggerFactory();
-
-                // Use the startupLogger in this class as it is concerned with startup. The public Logger is used
-                // for all other logging after startup.
-                _startupLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
-                Logger = _hostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+                // only after configuration has been applied and loggers have been created, raise the initializing event
+                HostInitializing?.Invoke(this, EventArgs.Empty);
 
                 // Do not log these until after all the configuration is done so the proper filters are applied.
                 _startupLogger.LogInformation(readingFileMessage);
@@ -838,8 +828,21 @@ namespace Microsoft.Azure.WebJobs.Script
             config.AddExtension(instance);
         }
 
-        private void ConfigureDefaultLoggerFactory()
+        private void ConfigureLoggerFactory(bool recreate = false)
         {
+            // Ensure we always have an ILoggerFactory,
+            // regardless of whether AppInsights is registered or not
+            if (recreate || _hostConfig.LoggerFactory == null)
+            {
+                _hostConfig.LoggerFactory = new LoggerFactory();
+
+                // If we've created the LoggerFactory, then we are responsible for
+                // disposing. Store this locally for disposal later. We can't rely
+                // on accessing this directly from ScriptConfig.HostConfig as the
+                // ScriptConfig is re-used for every host.
+                _loggerFactory = _hostConfig.LoggerFactory;
+            }
+
             ConfigureLoggerFactory(ScriptConfig, FunctionTraceWriterFactory, _settingsManager, _loggerFactoryBuilder, () => FileLoggingEnabled);
         }
 
@@ -985,28 +988,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 TraceWriter.Error(errorMsg, ex);
                 _startupLogger?.LogError(0, ex, errorMsg);
             }
-        }
-
-        public static ScriptHost Create(IScriptHostEnvironment environment, IScriptEventManager eventManager,
-            ScriptHostConfiguration scriptConfig = null, ScriptSettingsManager settingsManager = null, ILoggerFactoryBuilder loggerFactoryBuilder = null, ProxyClientExecutor proxyClient = null)
-        {
-            ScriptHost scriptHost = new ScriptHost(environment, eventManager, scriptConfig, settingsManager, loggerFactoryBuilder, proxyClient);
-            try
-            {
-                scriptHost.Initialize();
-            }
-            catch (Exception ex)
-            {
-                string errorMsg = "ScriptHost initialization failed";
-                scriptHost.TraceWriter?.Error(errorMsg, ex);
-
-                ILogger logger = scriptConfig?.HostConfig?.LoggerFactory?.CreateLogger(LogCategories.Startup);
-                logger?.LogError(0, ex, errorMsg);
-
-                throw;
-            }
-
-            return scriptHost;
         }
 
         private static Collection<ScriptBindingProvider> LoadBindingProviders(ScriptHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter, ILogger logger, IEnumerable<string> usedBindingTypes)
@@ -1529,12 +1510,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            JToken hostHealthMonitorEnabled = (JToken)config["hostHealthMonitorEnabled"];
-            if (hostHealthMonitorEnabled != null && hostHealthMonitorEnabled.Type == JTokenType.Boolean)
-            {
-                scriptConfig.HostHealthMonitorEnabled = (bool)hostHealthMonitorEnabled;
-            }
-
             // Apply Singleton configuration
             JObject configSection = (JObject)config["singleton"];
             JToken value = null;
@@ -1559,6 +1534,33 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (configSection.TryGetValue("lockAcquisitionPollingInterval", out value))
                 {
                     hostConfig.Singleton.LockAcquisitionPollingInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+                }
+            }
+
+            // Apply Host Health Montitor configuration
+            configSection = (JObject)config["healthMonitor"];
+            value = null;
+            if (configSection != null)
+            {
+                if (configSection.TryGetValue("enabled", out value) && value.Type == JTokenType.Boolean)
+                {
+                    scriptConfig.HostHealthMonitor.Enabled = (bool)value;
+                }
+                if (configSection.TryGetValue("healthCheckInterval", out value))
+                {
+                    scriptConfig.HostHealthMonitor.HealthCheckInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+                }
+                if (configSection.TryGetValue("healthCheckWindow", out value))
+                {
+                    scriptConfig.HostHealthMonitor.HealthCheckWindow = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+                }
+                if (configSection.TryGetValue("healthCheckThreshold", out value))
+                {
+                    scriptConfig.HostHealthMonitor.HealthCheckThreshold = (int)value;
+                }
+                if (configSection.TryGetValue("counterThreshold", out value))
+                {
+                    scriptConfig.HostHealthMonitor.CounterThreshold = (float)value;
                 }
             }
 

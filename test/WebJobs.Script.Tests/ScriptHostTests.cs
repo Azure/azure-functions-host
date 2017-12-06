@@ -375,50 +375,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var environment = new Mock<IScriptHostEnvironment>();
             var eventManager = new Mock<IScriptEventManager>();
+            var host = new ScriptHost(environment.Object, eventManager.Object, scriptConfig, _settingsManager);
 
             var ex = Assert.Throws<FormatException>(() =>
             {
-                ScriptHost.Create(environment.Object, eventManager.Object, scriptConfig, _settingsManager);
+                host.Initialize();
             });
 
             Assert.Equal(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex.Message);
             Assert.Equal("Invalid property identifier character: ~. Path '', line 2, position 4.", ex.InnerException.Message);
-        }
-
-        [Fact]
-        public void Create_HostJsonValueError_LogsError()
-        {
-            // Try to load valid host.json file that has an out-of-range value.
-            // Ensure that it's logged to TraceWriter and ILogger
-
-            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-            string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\OutOfRange");
-
-            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
-            {
-                RootScriptPath = rootPath,
-                TraceWriter = traceWriter
-            };
-
-            TestLoggerProvider provider = new TestLoggerProvider();
-            var builder = new TestLoggerFactoryBuilder(provider);
-
-            var environment = new Mock<IScriptHostEnvironment>();
-            var eventManager = new Mock<IScriptEventManager>();
-
-            var ex = Assert.Throws<ArgumentOutOfRangeException>(() =>
-            {
-                ScriptHost.Create(environment.Object, eventManager.Object, scriptConfig, _settingsManager, builder);
-            });
-
-            string msg = "ScriptHost initialization failed";
-            var trace = traceWriter.Traces.Single(t => t.Level == TraceLevel.Error);
-            Assert.Equal(msg, trace.Message);
-            Assert.Same(ex, trace.Exception);
-
-            var loggerMessage = provider.CreatedLoggers.Single().LogMessages.Single();
-            Assert.Equal(msg, loggerMessage.FormattedMessage);
-            Assert.Same(ex, loggerMessage.Exception);
         }
 
         [Theory]
@@ -428,7 +393,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("function test")]
         [InlineData("function.test")]
         [InlineData("function0.1")]
-        public void Create_InvalidFunctionNames_DoesNotCreateFunctionAndLogsFailure(string functionName)
+        public void Initialize_InvalidFunctionNames_DoesNotCreateFunctionAndLogsFailure(string functionName)
         {
             string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             string invalidFunctionNamePath = Path.Combine(rootPath, functionName);
@@ -449,7 +414,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new Mock<IScriptHostEnvironment>();
                 var eventManager = new Mock<IScriptEventManager>();
 
-                var scriptHost = ScriptHost.Create(environment.Object, eventManager.Object, scriptConfig, _settingsManager);
+                var scriptHost = new ScriptHost(environment.Object, eventManager.Object, scriptConfig, _settingsManager);
+                scriptHost.Initialize();
 
                 Assert.Equal(1, scriptHost.FunctionErrors.Count);
                 Assert.Equal(functionName, scriptHost.FunctionErrors.First().Key);
@@ -633,23 +599,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             tracing["fileLoggingMode"] = "DebugOnly";
             ScriptHost.ApplyConfiguration(config, scriptConfig);
             Assert.Equal(FileLoggingMode.DebugOnly, scriptConfig.FileLoggingMode);
-        }
-
-        [Fact]
-        public void ApplyConfiguration_HostHealthMonitor()
-        {
-            JObject config = new JObject();
-            config["id"] = ID;
-
-            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            Assert.True(scriptConfig.HostHealthMonitorEnabled);
-
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
-            Assert.True(scriptConfig.HostHealthMonitorEnabled);
-
-            config["hostHealthMonitorEnabled"] = new JValue(false);
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
-            Assert.False(scriptConfig.HostHealthMonitorEnabled);
         }
 
         [Fact]
@@ -893,6 +842,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Assert.Equal(25, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
         }
 
+        [Fact]
+        public void ApplyHostHealthMonitorConfig_AppliesExpectedSettings()
+        {
+            JObject config = JObject.Parse("{ }");
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+
+            Assert.True(scriptConfig.HostHealthMonitor.Enabled);
+            Assert.Equal(TimeSpan.FromSeconds(10), scriptConfig.HostHealthMonitor.HealthCheckInterval);
+            Assert.Equal(TimeSpan.FromMinutes(2), scriptConfig.HostHealthMonitor.HealthCheckWindow);
+            Assert.Equal(6, scriptConfig.HostHealthMonitor.HealthCheckThreshold);
+            Assert.Equal(HostHealthMonitorConfiguration.DefaultCounterThreshold, scriptConfig.HostHealthMonitor.CounterThreshold);
+
+            // now set custom configuration and verify
+            config = JObject.Parse(@"
+             {
+                 'healthMonitor': {
+                     'enabled': false
+                 }   
+             }");
+            scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+
+            Assert.False(scriptConfig.HostHealthMonitor.Enabled);
+
+            config = JObject.Parse(@"
+             {
+                 'healthMonitor': {
+                     'enabled': true,
+                     'healthCheckInterval': '00:00:07',
+                     'healthCheckWindow': '00:07:00',
+                     'healthCheckThreshold': 77,
+                     'counterThreshold': 0.77
+                 }
+                 
+             }");
+            scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+
+            Assert.True(scriptConfig.HostHealthMonitor.Enabled);
+            Assert.Equal(TimeSpan.FromSeconds(7), scriptConfig.HostHealthMonitor.HealthCheckInterval);
+            Assert.Equal(TimeSpan.FromMinutes(7), scriptConfig.HostHealthMonitor.HealthCheckWindow);
+            Assert.Equal(77, scriptConfig.HostHealthMonitor.HealthCheckThreshold);
+            Assert.Equal(0.77F, scriptConfig.HostHealthMonitor.CounterThreshold);
+        }
+
         [Fact(Skip = "Sampling not supported")]
         public void ApplyApplicationInsightsConfig_NoSettings_CreatesDefaultSettings()
         {
@@ -1005,7 +1001,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new Mock<IScriptHostEnvironment>();
             var eventManager = new Mock<IScriptEventManager>();
 
-            var host = ScriptHost.Create(environment.Object, eventManager.Object, config, null, loggerFactoryHookMock.Object);
+            var host = new ScriptHost(environment.Object, eventManager.Object, config, null, loggerFactoryHookMock.Object);
+            host.Initialize();
 
             // We shouldn't have any log messages
             foreach (var logger in loggerProvider.CreatedLoggers)
@@ -1061,7 +1058,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new Mock<IScriptHostEnvironment>();
             var eventManager = new Mock<IScriptEventManager>();
 
-            ScriptHost.Create(environment.Object, eventManager.Object, config, null, loggerFactoryHookMock.Object, null);
+            var host = new ScriptHost(environment.Object, eventManager.Object, config, null, loggerFactoryHookMock.Object, null);
+            host.Initialize();
 
             string hostJsonSanitized = @"
             {
@@ -1080,45 +1078,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var logger = loggerProvider.CreatedLoggers.Single(l => l.Category == LogCategories.Startup);
             var logMessage = logger.LogMessages.Single(l => l.FormattedMessage.StartsWith("Host configuration ")).FormattedMessage;
             Assert.Equal($"Host configuration file read:{Environment.NewLine}{hostJson}", logMessage);
-        }
-
-        [Fact]
-        public void Initialize_LogsException_IfParseError()
-        {
-            TestLoggerProvider loggerProvider = null;
-            var loggerFactoryHookMock = new Mock<ILoggerFactoryBuilder>(MockBehavior.Strict);
-            loggerFactoryHookMock
-                .Setup(m => m.AddLoggerProviders(It.IsAny<ILoggerFactory>(), It.IsAny<ScriptHostConfiguration>(), It.IsAny<ScriptSettingsManager>()))
-                .Callback<ILoggerFactory, ScriptHostConfiguration, ScriptSettingsManager>((factory, scriptConfig, settings) =>
-                {
-                    loggerProvider = new TestLoggerProvider(scriptConfig.LogFilter.Filter);
-                    factory.AddProvider(loggerProvider);
-                });
-
-            string rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests");
-            if (!Directory.Exists(rootPath))
-            {
-                Directory.CreateDirectory(rootPath);
-            }
-
-            File.WriteAllText(Path.Combine(rootPath, "host.json"), @"{<unparseable>}");
-
-            ScriptHostConfiguration config = new ScriptHostConfiguration()
-            {
-                RootScriptPath = rootPath
-            };
-
-            config.HostConfig.HostId = ID;
-            var environment = new Mock<IScriptHostEnvironment>();
-            var eventManager = new Mock<IScriptEventManager>();
-
-            Assert.Throws<FormatException>(() => ScriptHost.Create(environment.Object, eventManager.Object, config, null, loggerFactoryHookMock.Object, null));
-
-            // We should have gotten sone messages.
-            var logger = loggerProvider.CreatedLoggers.Single();
-            Assert.Equal(2, logger.LogMessages.Count);
-            Assert.StartsWith("ScriptHost initialization failed", logger.LogMessages[1].FormattedMessage);
-            Assert.Equal("Unable to parse host.json file.", logger.LogMessages[1].Exception.Message);
         }
 
         [Fact]
@@ -1574,77 +1533,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var eventManager = new Mock<IScriptEventManager>();
 
                 ScriptSettingsManager.Instance.Reset();
-                Host = ScriptHost.Create(environment.Object, eventManager.Object, config);
+                Host = new ScriptHost(environment.Object, eventManager.Object, config);
+                Host.Initialize();
             }
 
             public ScriptHost Host { get; private set; }
-        }
-
-        private class TestLoggerProvider : ILoggerProvider
-        {
-            private readonly Func<string, LogLevel, bool> _filter;
-
-            public TestLoggerProvider(Func<string, LogLevel, bool> filter = null)
-            {
-                _filter = filter;
-            }
-
-            public IList<TestLogger> CreatedLoggers { get; } = new List<TestLogger>();
-
-            public ILogger CreateLogger(string categoryName)
-            {
-                var logger = new TestLogger(categoryName, _filter);
-                CreatedLoggers.Add(logger);
-                return logger;
-            }
-
-            public IEnumerable<LogMessage> GetAllLogMessages()
-            {
-                return CreatedLoggers.SelectMany(l => l.LogMessages);
-            }
-
-            public void Dispose()
-            {
-            }
-        }
-
-        private class TestLoggerFactory : ILoggerFactory
-        {
-            public TestLoggerFactory()
-            {
-                Providers = new List<ILoggerProvider>();
-            }
-
-            public IList<ILoggerProvider> Providers { get; private set; }
-
-            public void AddProvider(ILoggerProvider provider)
-            {
-                Providers.Add(provider);
-            }
-
-            public ILogger CreateLogger(string categoryName)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void Dispose()
-            {
-            }
-        }
-
-        private class TestLoggerFactoryBuilder : ILoggerFactoryBuilder
-        {
-            private TestLoggerProvider _provider;
-
-            public TestLoggerFactoryBuilder(TestLoggerProvider provider)
-            {
-                _provider = provider;
-            }
-
-            public void AddLoggerProviders(ILoggerFactory factory, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager)
-            {
-                factory.AddProvider(_provider);
-            }
         }
     }
 }

@@ -3,11 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -22,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
             RootScriptPath = Environment.CurrentDirectory;
             RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
             LogFilter = new LogCategoryFilter();
-            HostHealthMonitorEnabled = true;
+            HostHealthMonitor = new HostHealthMonitorConfiguration();
         }
 
         /// <summary>
@@ -83,12 +81,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public TimeSpan? FunctionTimeout { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether the hosting environment will be monitored
-        /// for health (e.g. socket thresholds, etc.). Default is true.
-        /// </summary>
-        public bool HostHealthMonitorEnabled { get; set; }
-
-        /// <summary>
         /// Gets or sets a value indicating whether the host is running
         /// outside of the normal Azure hosting environment. E.g. when running
         /// locally or via CLI.
@@ -110,5 +102,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets a test hook for modifying the configuration after host.json has been processed.
         /// </summary>
         internal Action<ScriptHostConfiguration> OnConfigurationApplied { get; set; }
+
+        /// <summary>
+        /// Gets the <see cref="HostHealthMonitorConfiguration"/> to use.
+        /// </summary>
+        public HostHealthMonitorConfiguration HostHealthMonitor { get; }
     }
 }
