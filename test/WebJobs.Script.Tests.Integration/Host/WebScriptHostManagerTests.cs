@@ -20,6 +20,7 @@ using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
 using Xunit;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using System.Net;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -198,6 +199,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // the writer on each restart, resulting in a nested chain of writers
             // increasing on each restart
             Assert.Equal(typeof(SystemTraceWriter), _config.TraceWriter.GetType());
+        }
+
+        [Fact]
+        public async Task DelayUntilHostReady_HostInErrorState_ThrowsImmediately()
+        {
+            var settingsManager = ScriptSettingsManager.Instance;
+            var eventManager = new Mock<IScriptEventManager>();
+            var managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new TestSecretManagerFactory(),
+                eventManager.Object, settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, null, null, null, null, null, 1, 50);
+
+            managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Error);
+            managerMock.SetupGet(p => p.LastError).Returns(new Exception());
+
+            var ex = await Assert.ThrowsAsync<HttpException>(async () => await WebScriptHostManager.DelayUntilHostReady(managerMock.Object, 1, 50));
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, (HttpStatusCode)ex.StatusCode);
+            managerMock.VerifyGet(p => p.State, Times.Exactly(5));
+        }
+
+        [Fact]
+        public async Task DelayUntilHostReady_HostNotRunning_Returns503()
+        {
+            var settingsManager = ScriptSettingsManager.Instance;
+            var eventManager = new Mock<IScriptEventManager>();
+            var managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), 
+                new TestSecretManagerFactory(), eventManager.Object, settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, 
+                null, null, null, null, null, 1, 50);
+
+            managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Default);
+            managerMock.SetupGet(p => p.LastError).Returns((Exception)null);
+
+            var ex = await Assert.ThrowsAsync<HttpException>(async () => await WebScriptHostManager.DelayUntilHostReady(managerMock.Object, 1, 50));
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, (HttpStatusCode)ex.StatusCode);
         }
 
         public void Dispose()

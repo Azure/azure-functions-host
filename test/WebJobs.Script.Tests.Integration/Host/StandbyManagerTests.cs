@@ -83,9 +83,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var webHostSettings = new WebHostSettings
                 {
                     IsSelfHost = true,
-                    LogPath = testRootPath,
+                    LogPath = Path.Combine(testRootPath, "Logs"),
                     SecretsPath = Path.Combine(testRootPath, "Secrets"),
-                    ScriptPath = testRootPath,
+                    ScriptPath = Path.Combine(testRootPath, "WWWRoot"),
                     TraceWriter = traceWriter
                 };
                 
@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 httpServer.Dispose();
                 httpClient.Dispose();
 
-                await Task.Delay(2000);
+                await Task.Delay(3000);
 
                 // verify logs
                 string[] logLines = traceWriter.Traces.Select(p => p.Message).ToArray();
