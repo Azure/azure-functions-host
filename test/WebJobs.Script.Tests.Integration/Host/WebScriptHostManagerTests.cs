@@ -398,9 +398,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 public List<string> Events { get; private set; }
 
-                public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary)
+                public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exType, string exMessage)
                 {
-                    var elements = new string[] { level.ToString(), subscriptionId, appName, functionName, eventName, source, summary, details };
+                    var elements = new string[] { level.ToString(), subscriptionId, appName, functionName, eventName, source, summary, details, exType, exMessage };
                     string evt = string.Join(" ", elements.Where(p => !string.IsNullOrEmpty(p)));
                     lock (_syncLock)
                     {
