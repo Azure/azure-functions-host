@@ -5,7 +5,7 @@
         "name": "req",
         "type": "httpTrigger",
         "direction": "in",
-        "route": "myroute"
+        "route": "myroute/mysubroute"
       },
         {
             "name": "$return",

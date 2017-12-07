@@ -68,9 +68,10 @@
     },
     "catchAllRoutes": {
       "matchCondition": {
-        "route": "/proxy/{*path}"
+        "route": "/proxy/{*path}",
+        "methods": ["GET", "POST"]
       },
-      "backendUri": "http://localhost/myroute",
+      "backendUri": "http://localhost/{path}",
       "requestOverrides": {
         "backend.request.headers.accept": "text/plain"
       }
@@ -83,6 +84,24 @@
         "route": "/MyHttpWithNonAlphanumericProxyName"
       },
       "backendUri": "https://localhost/api/Ping",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
+    },
+    "ProxyCallingLocalProxy1": {
+      "matchCondition": {
+        "route": "/pr1/{*path}"
+      },
+      "backendUri": "https://localhost/pr2/{path}",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
+    },
+    "ProxyCallingLocalProxy2": {
+      "matchCondition": {
+        "route": "/pr2/{*path}"
+      },
+      "backendUri": "https://localhost/{path}",
       "requestOverrides": {
         "backend.request.headers.accept": "text/plain"
       }

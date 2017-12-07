@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private ProxyClientExecutor _proxyClient;
 
         public ProxyFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata, ProxyClientExecutor proxyClient)
-            : base(host, functionMetadata, logDirName: "Proxy")
+            : base(host, functionMetadata)
         {
             _proxyClient = proxyClient;
         }

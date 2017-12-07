@@ -26,6 +26,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -275,7 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return getDataMethod.Invoke(null, new object[] { context });
         }
 
-        public FunctionDescriptor GetHttpFunctionOrNull(HttpRequestMessage request)
+        public FunctionDescriptor GetHttpFunctionOrNull(HttpRequestMessage request, bool proxyRoutesFirst = true)
         {
             if (request == null)
             {
@@ -288,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             FunctionDescriptor function = null;
-            var routeData = _httpRoutes.GetRouteData(request);
+            var routeData = _httpRoutes.GetRouteData(request, proxyRoutesFirst);
             if (routeData != null)
             {
                 function = (FunctionDescriptor)routeData.Route.DataTokens[ScriptConstants.AzureFunctionsHttpFunctionKey];

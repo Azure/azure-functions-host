@@ -74,6 +74,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task LocalFunctionCallWithoutProxy()
+        {
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/Ping");
+
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("200", response.StatusCode.ToString("D"));
+            Assert.Equal("\"Pong\"", content);
+        }
+
+        [Fact]
+        public async Task LocalFunctionRouteCallWithoutProxy()
+        {
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/myroute/mysubroute");
+
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("200", response.StatusCode.ToString("D"));
+            Assert.Equal("\"Pong\"", content);
+        }
+
+        [Fact]
         public async Task LocalFunctionCallForNonAlphanumericProxyName()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"MyHttpWithNonAlphanumericProxyName");
@@ -94,13 +114,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task CatchAll()
+        public async Task CatchAllWithCustomRoutes()
         {
-            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"proxy/blahblah");
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"proxy/api/myroute/mysubroute");
 
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal("200", response.StatusCode.ToString("D"));
             Assert.Equal("Pong", content);
+        }
+
+        [Fact]
+        public async Task CatchAllWithCustomRoutesWithInvalidVerb()
+        {
+            HttpResponseMessage response = await _fixture.HttpClient.PutAsync($"proxy/api/myroute/mysubroute", null);
+
+            Assert.Equal("404", response.StatusCode.ToString("D"));
         }
 
         [Fact]
@@ -114,6 +142,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // This is to make sure the url is greater than the default asp.net 260 characters.
             Assert.True(longRoute.Length > 260);
             Assert.Equal("200", response.StatusCode.ToString("D"));
+        }
+
+        [Fact]
+        public async Task ProxyCallingLocalProxy()
+        {
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"/pr1/api/Ping");
+
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("200", response.StatusCode.ToString("D"));
+            Assert.Equal("Pong", content);
         }
 
         public class TestFixture : IDisposable

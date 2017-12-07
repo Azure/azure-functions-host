@@ -19,7 +19,7 @@
       <dependency id="FSharp.Core" version="4.0.0.1" />
       <dependency id="Microsoft.Azure.WebJobs" version="2.1.0-beta4-11100" />
       <dependency id="Microsoft.ApplicationInsights.WindowsServer" version="2.4.1" />
-      <dependency id="Microsoft.Azure.AppService.Proxy" version="0.3.2.20" />
+      <dependency id="Microsoft.Azure.AppService.Proxy" version="1.0.0.1" />
       <dependency id="Microsoft.Azure.ServiceBus.EventProcessorHost" version="2.2.10" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.ApiHub" version="1.0.0-beta6-10554" />
       <dependency id="Microsoft.Azure.WebJobs.Extensions.BotFramework" version="1.0.15-beta" />

@@ -79,7 +79,7 @@
       <HintPath>..\..\packages\Microsoft.ApplicationInsights.2.4.0\lib\net46\Microsoft.ApplicationInsights.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.AspNet.Razor, Version=4.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.0.3.2.20\lib\net461\Microsoft.AspNet.Razor.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.1.0.0.1\lib\net461\Microsoft.AspNet.Razor.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.AspNet.WebHooks.Common, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.AspNet.WebHooks.Common.1.2.0\lib\net45\Microsoft.AspNet.WebHooks.Common.dll</HintPath>
@@ -114,14 +114,14 @@
       <HintPath>..\..\packages\Microsoft.Azure.ApiHub.Sdk.0.7.2-alpha\lib\net45\Microsoft.Azure.ApiHub.Sdk.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Microsoft.Azure.AppService.Proxy.Client, Version=0.3.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.0.3.2.20\lib\net461\Microsoft.Azure.AppService.Proxy.Client.dll</HintPath>
+    <Reference Include="Microsoft.Azure.AppService.Proxy.Client, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.1.0.0.1\lib\net461\Microsoft.Azure.AppService.Proxy.Client.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Azure.AppService.Proxy.Common, Version=0.3.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.0.3.2.20\lib\net461\Microsoft.Azure.AppService.Proxy.Common.dll</HintPath>
+    <Reference Include="Microsoft.Azure.AppService.Proxy.Common, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.1.0.0.1\lib\net461\Microsoft.Azure.AppService.Proxy.Common.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Azure.AppService.Proxy.Runtime, Version=0.3.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.0.3.2.20\lib\net461\Microsoft.Azure.AppService.Proxy.Runtime.dll</HintPath>
+    <Reference Include="Microsoft.Azure.AppService.Proxy.Runtime, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.1.0.0.1\lib\net461\Microsoft.Azure.AppService.Proxy.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.Documents.ChangeFeedProcessor, Version=1.14.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.DocumentDB.ChangeFeedProcessor.1.0.0\lib\net45\Microsoft.Azure.Documents.ChangeFeedProcessor.dll</HintPath>
