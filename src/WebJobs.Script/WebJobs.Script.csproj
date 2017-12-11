@@ -434,6 +434,7 @@
     <Compile Include="Description\Compilation\ICompilation.cs" />
     <Compile Include="Description\DiagnosticSeverityExtensions.cs" />
     <Compile Include="Description\DotNet\Compilation\CSharp\Analyzers\AsyncVoidAnalyzer.cs" />
+    <Compile Include="Description\DotNet\Compilation\CSharp\Analyzers\InvalidPrivateMetadataReferenceAnalyzer.cs" />
     <Compile Include="Description\DotNet\Compilation\IDotNetCompilation.cs" />
     <Compile Include="Description\DotNet\Compilation\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />
     <Compile Include="Description\DotNet\Compilation\CSharp\CSharpCompilation.cs" />
