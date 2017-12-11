@@ -26,5 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         bool RequiresPackageRestore(FunctionMetadata metadata);
 
         bool TryGetPackageReference(string referenceName, out PackageReference package);
+
+        bool TryResolvePrivateAssembly(string name, out string assemblyPath);
     }
 }

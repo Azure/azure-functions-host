@@ -26,7 +26,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         // Simply getting the built in analyzers for now.
         // This should eventually be enhanced to dynamically discover/load analyzers.
-        private static ImmutableArray<DiagnosticAnalyzer> _analyzers = ImmutableArray.Create<DiagnosticAnalyzer>(new InvalidFileMetadataReferenceAnalyzer(), new AsyncVoidAnalyzer());
+        private static ImmutableArray<DiagnosticAnalyzer> _analyzers = ImmutableArray.Create<DiagnosticAnalyzer>(
+            new InvalidFileMetadataReferenceAnalyzer(),
+            new AsyncVoidAnalyzer(),
+            new InvalidPrivateMetadataReferenceAnalyzer());
 
         public CSharpCompilation(Compilation compilation)
         {

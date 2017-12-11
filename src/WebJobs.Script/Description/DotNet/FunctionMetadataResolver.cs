@@ -245,17 +245,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return assembly;
         }
 
-        private bool HasValidAssemblyFileExtension(string reference)
-        {
-            return _assemblyExtensions.Contains(Path.GetExtension(reference));
-        }
-
-        private bool TryResolvePrivateAssembly(string name, out string assemblyPath)
+        public bool TryResolvePrivateAssembly(string name, out string assemblyPath)
         {
             var names = GetProbingFilePaths(name);
             assemblyPath = names.FirstOrDefault(n => File.Exists(n));
 
             return assemblyPath != null;
+        }
+
+        private bool HasValidAssemblyFileExtension(string reference)
+        {
+            return _assemblyExtensions.Contains(Path.GetExtension(reference));
         }
 
         private IEnumerable<string> GetProbingFilePaths(string name)
