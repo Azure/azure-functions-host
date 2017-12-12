@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void ProcessLeaseTimerTick(object state)
         {
-            if (_processingLease)
+            if (_processingLease && !_disposed)
             {
                 return;
             }

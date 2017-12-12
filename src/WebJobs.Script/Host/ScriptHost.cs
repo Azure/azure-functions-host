@@ -1817,11 +1817,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     _debugModeFileWatcher.Dispose();
                 }
 
-                if (_blobLeaseManager != null)
-                {
-                    _blobLeaseManager.HasLeaseChanged -= BlobLeaseManagerHasLeaseChanged;
-                    _blobLeaseManager.Dispose();
-                }
+                DisposePrimaryHostCoordinator();
 
                 foreach (var function in Functions)
                 {
@@ -1851,6 +1847,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 // The LoggerFactory can be used by the host up until it's disposed,
                 // so make sure that it's disposed last.
                 _loggerFactory?.Dispose();
+            }
+        }
+
+        public void DisposePrimaryHostCoordinator()
+        {
+            if (_blobLeaseManager != null)
+            {
+                _blobLeaseManager.HasLeaseChanged -= BlobLeaseManagerHasLeaseChanged;
+                _blobLeaseManager.Dispose();
             }
         }
     }

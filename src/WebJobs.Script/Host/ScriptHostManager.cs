@@ -332,6 +332,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="forceStop">Forces the call to stop and dispose of the instance, even if it isn't present in the live instances collection.</param>
         private async Task Orphan(ScriptHost instance, bool forceStop = false)
         {
+            // Dispose primary host coordinator immediately so only new instance will have primary lease
+            instance.DisposePrimaryHostCoordinator();
+
             instance.HostInitializing -= OnHostInitializing;
             instance.HostInitialized -= OnHostInitialized;
             instance.HostStarted -= OnHostStarted;
