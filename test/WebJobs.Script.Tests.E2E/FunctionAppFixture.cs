@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -32,7 +33,7 @@ namespace WebJobs.Script.EndToEndTests
 
             FunctionDefaultKey = Guid.NewGuid().ToString().ToLower();
 
-            InitializeSite().Wait();
+            Initialize().Wait();
         }
 
         public TrackedAssert Assert => _assert;
@@ -45,17 +46,34 @@ namespace WebJobs.Script.EndToEndTests
 
         public string FunctionAppMasterKey { get; private set; }
 
-        private async Task InitializeSite()
+        private async Task Initialize()
         {
             Telemetry.TrackEvent(new EventTelemetry("EnvironmentInitialization"));
-
             Trace.WriteLine("Initializing environment...");
 
+            _kuduClient = new KuduClient($"https://{Settings.SiteName}.scm.azurewebsites.net", Settings.SitePublishingUser, Settings.SitePublishingPassword);
+            FunctionAppMasterKey = await _kuduClient.GetFunctionsMasterKey();
+
+            // to run tests against currently deployed site, skip
+            // this step (can take over 2 minutes)
+            await RedeployTestSite();
+
+            // ensure that our current client key is set as
+            // the default key for all http functions
+            await InitializeFunctionKeys();
+
+            // after all initialization is done, do a final restart for good measure
+            await RestartSite();
+
+            Trace.WriteLine("Environment initialized.");
+            Telemetry.TrackEvent(new EventTelemetry("EnvironmentInitialized"));
+        }
+
+        private async Task RedeployTestSite()
+        {
             await StopSite();
 
             await AddSettings();
-
-            _kuduClient = new KuduClient($"https://{Settings.SiteName}.scm.azurewebsites.net", Settings.SitePublishingUser, Settings.SitePublishingPassword);
 
             await UpdateRuntime();
 
@@ -63,29 +81,21 @@ namespace WebJobs.Script.EndToEndTests
 
             await StartSite();
 
-            await InitializeFunctionKeys();
-
-            Trace.WriteLine("Restarting site...");
-            await RestartSite();
-
-            Trace.WriteLine("Environment initialized.");
-            Telemetry.TrackEvent(new EventTelemetry("EnvironmentInitialized"));
+            await WaitForSite();
         }
 
         private async Task InitializeFunctionKeys()
         {
             Trace.WriteLine("Initializing keys...");
 
-            FunctionAppMasterKey = await _kuduClient.GetFunctionsMasterKey();
-
             using (var keysUpdate = Telemetry.StartOperation<RequestTelemetry>("KeysUpdate"))
             {
                 List<Function> functions = await _kuduClient.GetFunctions();
-
                 using (var client = new HttpClient())
                 {
                     client.BaseAddress = Settings.SiteBaseAddress;
 
+                    // update the default key for all http functions
                     var requests = new List<Task<HttpResponseMessage>>();
                     foreach (var function in functions.Where(f => f.Configuration.Bindings.Any(b => string.Equals(b.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase))))
                     {
@@ -97,6 +107,25 @@ namespace WebJobs.Script.EndToEndTests
 
                     requests.ForEach(t => t.Result.EnsureSuccessStatusCode());
                 }
+            }
+        }
+
+        private async Task WaitForSite()
+        {
+            using (var client = new HttpClient())
+            {
+                HttpStatusCode statusCode;
+                int attempts = 0;
+                do
+                {
+                    if (attempts++ > 0)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(3));
+                    }
+                    var result = await client.GetAsync($"{Settings.SiteBaseAddress}");
+                    statusCode = result.StatusCode;
+                }
+                while (statusCode != HttpStatusCode.OK && attempts < 5);
             }
         }
 

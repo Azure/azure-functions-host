@@ -203,6 +203,65 @@ namespace WebJobs.Script.EndToEndTests
             Assert.Equal(i * j, queueDescription.MessageCountDetails.ActiveMessageCount);
         }
 
+        [Fact]
+        [TestTrace]
+        public async Task FileExtension()
+        {
+            using (var client = CreateClient())
+            {
+                HttpResponseMessage response = await client.GetAsync($"test.txt");
+
+                string content = await response.Content.ReadAsStringAsync();
+                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
+                _fixture.Assert.Equals("test", content);
+            }
+        }
+
+        [Fact]
+        [TestTrace]
+        public async Task RootCheck()
+        {
+            using (var client = CreateClient())
+            {
+                HttpResponseMessage response = await client.GetAsync("/");
+
+                string content = await response.Content.ReadAsStringAsync();
+                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
+                _fixture.Assert.Equals("Root", content);
+            }
+        }
+
+        [Fact]
+        [TestTrace]
+        public async Task LocalFunctionCall()
+        {
+            using (var client = CreateClient())
+            {
+                HttpResponseMessage response = await client.GetAsync($"myhttptrigger?code={_fixture.FunctionDefaultKey}");
+
+                string content = await response.Content.ReadAsStringAsync();
+                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
+                _fixture.Assert.Equals("Pong", content);
+            }
+        }
+
+        [Fact]
+        [TestTrace]
+        public async Task LongRoute()
+        {
+            var longRoute = "test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234";
+            using (var client = CreateClient())
+            {
+                HttpResponseMessage response = await client.GetAsync(longRoute);
+
+                string content = await response.Content.ReadAsStringAsync();
+
+                // This is to make sure the url is greater than the default asp.net 260 characters.
+                _fixture.Assert.True(longRoute.Length > 260);
+                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
+            }
+        }
+
         // Assumes we have a valid function name.
         // Function names are case-insensitive, case-preserving. 
         // Table storage is case-sensitive. So need to normalize case to use as table keys. 
