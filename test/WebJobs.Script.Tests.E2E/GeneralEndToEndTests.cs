@@ -203,7 +203,7 @@ namespace WebJobs.Script.EndToEndTests
             Assert.Equal(i * j, queueDescription.MessageCountDetails.ActiveMessageCount);
         }
 
-        [Fact]
+        [Fact(Skip = "Proxy not yet enabled.")]
         [TestTrace]
         public async Task FileExtension()
         {
@@ -217,7 +217,7 @@ namespace WebJobs.Script.EndToEndTests
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Proxy not yet enabled.")]
         [TestTrace]
         public async Task RootCheck()
         {
@@ -231,7 +231,7 @@ namespace WebJobs.Script.EndToEndTests
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Proxy not yet enabled.")]
         [TestTrace]
         public async Task LocalFunctionCall()
         {
@@ -242,23 +242,6 @@ namespace WebJobs.Script.EndToEndTests
                 string content = await response.Content.ReadAsStringAsync();
                 _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
                 _fixture.Assert.Equals("Pong", content);
-            }
-        }
-
-        [Fact]
-        [TestTrace]
-        public async Task LongRoute()
-        {
-            var longRoute = "test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234";
-            using (var client = CreateClient())
-            {
-                HttpResponseMessage response = await client.GetAsync(longRoute);
-
-                string content = await response.Content.ReadAsStringAsync();
-
-                // This is to make sure the url is greater than the default asp.net 260 characters.
-                _fixture.Assert.True(longRoute.Length > 260);
-                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
             }
         }
 
