@@ -65,8 +65,10 @@ namespace WebJobs.Script.EndToEndTests
             // after all initialization is done, do a final restart for good measure
             await RestartSite();
 
-            Trace.WriteLine("Environment initialized.");
+            Trace.WriteLine("Environment initialized");
             Telemetry.TrackEvent(new EventTelemetry("EnvironmentInitialized"));
+
+            Trace.WriteLine("Test run starting...");
         }
 
         private async Task RedeployTestSite()
@@ -112,6 +114,8 @@ namespace WebJobs.Script.EndToEndTests
 
         private async Task WaitForSite()
         {
+            Trace.WriteLine("Waiting for site...");
+
             using (var client = new HttpClient())
             {
                 HttpStatusCode statusCode;
@@ -127,24 +131,32 @@ namespace WebJobs.Script.EndToEndTests
                 }
                 while (statusCode != HttpStatusCode.OK && attempts < 5);
             }
+
+            Trace.WriteLine("Site is up and running!");
         }
 
         private async Task AddSettings()
         {
             Trace.WriteLine("Updating app settings...");
             Telemetry.TrackEvent("SettingsUpdate");
+
             await AddAppSetting(Constants.ServiceBusKey, Environment.GetEnvironmentVariable(Constants.ServiceBusKey));
+
+            Trace.WriteLine("App settings updated");
         }
 
         private async Task UpdateSiteContents()
         {
             Trace.WriteLine("Updating site contents...");
             Telemetry.TrackEvent("ContentUpdate");
+
             await _kuduClient.DeleteDirectory("site/wwwroot", true);
             string filePath = Path.ChangeExtension(Path.GetTempFileName(), "zip");
             ZipFile.CreateFromDirectory(Path.Combine(Environment.CurrentDirectory, "Functions"), filePath);
 
             await _kuduClient.UploadZip("site", filePath);
+
+            Trace.WriteLine("Site contents updated");
         }
 
         private async Task UpdateRuntime()
@@ -180,16 +192,29 @@ namespace WebJobs.Script.EndToEndTests
 
         public async Task RestartSite()
         {
+            Trace.WriteLine("Restarting site...");
+
             await IssueSiteCommand($"/subscriptions/{Settings.SiteSubscriptionId}/resourceGroups/{Settings.SiteResourceGroup}/providers/Microsoft.Web/sites/{Settings.SiteName}/restart?api-version=2015-08-01&softRestart=true&synchronous=true");
+
+            Trace.WriteLine("Site restarted");
         }
 
         public async Task StopSite()
         {
+            Trace.WriteLine("Stopping site...");
+
             await IssueSiteCommand($"/subscriptions/{Settings.SiteSubscriptionId}/resourceGroups/{Settings.SiteResourceGroup}/providers/Microsoft.Web/sites/{Settings.SiteName}/stop?api-version=2015-08-01");
+
+            Trace.WriteLine("Site stopped");
         }
+
         public async Task StartSite()
         {
+            Trace.WriteLine("Starting site...");
+
             await IssueSiteCommand($"/subscriptions/{Settings.SiteSubscriptionId}/resourceGroups/{Settings.SiteResourceGroup}/providers/Microsoft.Web/sites/{Settings.SiteName}/start?api-version=2015-08-01");
+
+            Trace.WriteLine("Site started");
         }
 
         public async Task AddAppSetting(string name, string value)
