@@ -261,16 +261,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string logEntry = null;
 
-            await TestHelpers.Await(() =>
+            try
             {
-                // search the logs for token "TestResult:" and parse the following JSON
+                await TestHelpers.Await(() =>
+                {
+                    // search the logs for token "TestResult:" and parse the following JSON
+                    var logs = TestHelpers.GetFunctionLogsAsync(functionName, throwOnNoLogs: false).Result;
+                    if (logs != null)
+                    {
+                        logEntry = logs.SingleOrDefault(p => p.Contains("TestResult:"));
+                    }
+
+                    return logEntry != null;
+                });
+            }
+            catch (Exception e)
+            {
+                // Give a more detailed exception
                 var logs = TestHelpers.GetFunctionLogsAsync(functionName, throwOnNoLogs: false).Result;
                 if (logs != null)
                 {
-                    logEntry = logs.SingleOrDefault(p => p.Contains("TestResult:"));
+                    var all = string.Join("\r\n", logs);
+                    throw new ApplicationException("Expected 'TestResult' output message in logs.\r\n" + all);
                 }
-                return logEntry != null;
-            });
+                throw;
+            }
 
             int idx = logEntry.IndexOf("{");
             logEntry = logEntry.Substring(idx);
