@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         private IWorkerInfo _worker;
         private Timer _workerUpdateTimer;
         private bool _disposed;
+        private bool _pingResult;
 
         private DateTime _pingWorkerUtc = DateTime.MinValue;
         private DateTime _managerCheckUtc = DateTime.MinValue;
@@ -155,18 +156,19 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         /// </summary>
         protected virtual async Task PingWorker(string activityId, IWorkerInfo worker)
         {
-            var pingResult = true;
-            if (_pingWorkerUtc < DateTime.UtcNow)
+            // if ping was unsuccessful, keep pinging.  this is to address
+            // the issue where site continue to run on an unassigned worker.
+            if (!_pingResult || _pingWorkerUtc < DateTime.UtcNow)
             {
                 // if PingWorker throws, we will not update the worker status
                 // this worker will be stale and eventually removed.
-                pingResult = await _eventHandler.PingWorker(activityId, worker);
+                _pingResult = await _eventHandler.PingWorker(activityId, worker);
 
                 _pingWorkerUtc = DateTime.UtcNow.Add(_settings.WorkerPingInterval);
             }
 
             // check if worker is valid for the site
-            if (pingResult)
+            if (_pingResult)
             {
                 await _table.AddOrUpdate(worker);
 
@@ -531,11 +533,13 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
 
         protected virtual async Task RequestRemoveWorker(string activityId, IWorkerInfo manager, IWorkerInfo toRemove)
         {
-            await _eventHandler.RemoveWorker(activityId, toRemove);
+            // remove worker return true if worker is indeed removed
+            if (await _eventHandler.RemoveWorker(activityId, toRemove))
+            {
+                await _table.Delete(toRemove);
 
-            await _table.Delete(toRemove);
-
-            _tracer.TraceRemoveWorker(activityId, toRemove, string.Format("Worker removed by manager ({0})", manager.ToDisplayString()));
+                _tracer.TraceRemoveWorker(activityId, toRemove, string.Format("Worker removed by manager ({0})", manager.ToDisplayString()));
+            }
         }
     }
 }

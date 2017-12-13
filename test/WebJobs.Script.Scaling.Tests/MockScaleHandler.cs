@@ -18,9 +18,9 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
             return Task.FromResult(stampNames.FirstOrDefault());
         }
 
-        public virtual Task RemoveWorker(string activityId, IWorkerInfo workerInfo)
+        public virtual Task<bool> RemoveWorker(string activityId, IWorkerInfo workerInfo)
         {
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
         public virtual Task<bool> PingWorker(string activityId, IWorkerInfo workerInfo)
