@@ -4,9 +4,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -15,6 +17,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         protected ScriptSecrets()
         {
+            HostName = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
+            InstanceId = ScriptSettingsManager.Instance.InstanceId;
+            Source = ScriptConstants.Runtime;
         }
 
         [JsonIgnore]
@@ -22,6 +27,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         [JsonIgnore]
         public abstract ScriptSecretsType SecretsType { get; }
+
+        [JsonProperty(PropertyName = "hostName")]
+        public string HostName { get; set; }
+
+        [JsonProperty(PropertyName = "instanceId")]
+        public string InstanceId { get; set; }
+
+        [JsonProperty(PropertyName = "source")]
+        public string Source { get; set; }
 
         protected abstract ICollection<Key> GetKeys(string keyScope);
 

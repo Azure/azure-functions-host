@@ -70,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public const string HttpMethodConstraintName = "httpMethod";
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
+        public const string Runtime = "runtime";
 
         public const int MaximumHostIdLength = 32;
         public const int DynamicSkuConnectionLimit = 50;
