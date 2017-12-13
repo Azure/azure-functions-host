@@ -673,6 +673,21 @@ namespace Microsoft.Azure.WebJobs.Script
             Logger?.LogInformation(signalMessage);
         }
 
+        // Create a TimeoutConfiguration specified by scriptConfig knobs; else null.
+        internal static JobHostFunctionTimeoutConfiguration CreateTimeoutConfiguration(ScriptHostConfiguration scriptConfig)
+        {
+            if (scriptConfig.FunctionTimeout == null)
+            {
+                return null;
+            }
+            return new JobHostFunctionTimeoutConfiguration
+            {
+                Timeout = scriptConfig.FunctionTimeout.Value,
+                ThrowOnTimeout = true,
+                TimeoutWhileDebugging = true
+            };
+        }
+
         internal static Collection<CustomAttributeBuilder> CreateTypeAttributes(ScriptHostConfiguration scriptConfig)
         {
             Collection<CustomAttributeBuilder> customAttributes = new Collection<CustomAttributeBuilder>();
@@ -1468,6 +1483,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 scriptConfig.FunctionTimeout = requestedTimeout;
+                scriptConfig.HostConfig.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
             }
             else if (ScriptSettingsManager.Instance.IsDynamicSku)
             {
