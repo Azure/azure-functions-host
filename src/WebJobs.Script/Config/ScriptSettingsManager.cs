@@ -76,6 +76,17 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
         }
 
+        public virtual string InstanceId
+         {
+             get
+             {
+                 string instanceId = GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId)
+                     ?? Environment.MachineName.GetHashCode().ToString("X").PadLeft(32, '0');
+
+                 return instanceId.Substring(0, 32);
+             }
+         }
+
         public virtual string ApplicationInsightsInstrumentationKey
         {
             get => GetSettingFromCache(EnvironmentSettingNames.AppInsightsInstrumentationKey);

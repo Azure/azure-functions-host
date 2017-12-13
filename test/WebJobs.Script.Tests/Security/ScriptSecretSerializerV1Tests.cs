@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -40,16 +41,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var jsonObject = JObject.Parse(serializedSecret);
             var serializedSecrets = jsonObject.Property("keys")?.Value?.ToObject<List<Key>>();
+            var source = jsonObject.Property("source")?.Value;
+            var hostName = jsonObject.Property("hostName")?.Value;
+            var instanceId = jsonObject.Property("instanceId")?.Value;
 
             Assert.NotNull(serializedSecret);
             AssertKeyCollectionsEquality(secrets.Keys, serializedSecrets);
+            Assert.Equal(source, secrets.Source);
+            Assert.Equal(hostName, secrets.HostName);
+            Assert.Equal(instanceId, secrets.InstanceId);
         }
 
-        [Fact]
-        public void DeserializeFunctionSecrets_ReturnsExpectedResult()
+        [Theory]
+        [InlineData("{ 'keys': [ { 'name': 'Key1', 'value': 'Value1', 'encrypted': false }, { 'name': 'Key2', 'value': 'Value2', 'encrypted': true } ] }", null)]
+        [InlineData("{ 'keys': [ { 'name': 'Key1', 'value': 'Value1', 'encrypted': false }, { 'name': 'Key2', 'value': 'Value2', 'encrypted': true } ], 'hostName': 'test', 'source': 'runtime'}", "test")]
+        public void DeserializeFunctionSecrets_ReturnsExpectedResult(string serializedSecret, string hostName)
         {
             var serializer = new ScriptSecretSerializerV1();
-            var serializedSecret = "{ 'keys': [ { 'name': 'Key1', 'value': 'Value1', 'encrypted': false }, { 'name': 'Key2', 'value': 'Value2', 'encrypted': true } ] }";
             var expected = new List<Key>
             {
                 new Key
@@ -67,14 +75,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             FunctionSecrets actual = serializer.DeserializeSecrets<FunctionSecrets>(JObject.Parse(serializedSecret));
+            Assert.Equal(hostName, actual.HostName);
             AssertKeyCollectionsEquality(expected, actual.Keys);
         }
 
-        [Fact]
-        public void DeserializeHostSecrets_ReturnsExpectedResult()
+        [Theory]
+        [InlineData("{'masterKey':{'name':'master','value':'1234','encrypted':false},'functionKeys':[{'name':'Key1','value':'Value1','encrypted':false},{'name':'Key2','value':'Value2','encrypted':true}]}", null)]
+        [InlineData("{'masterKey':{'name':'master','value':'1234','encrypted':false},'functionKeys':[{'name':'Key1','value':'Value1','encrypted':false},{'name':'Key2','value':'Value2','encrypted':true}],  'hostName': 'test', 'source': 'runtime' }", "test")]
+        public void DeserializeHostSecrets_ReturnsExpectedResult(string serializedSecret, string hostName)
         {
             var serializer = new ScriptSecretSerializerV1();
-            var serializedSecret = "{'masterKey':{'name':'master','value':'1234','encrypted':false},'functionKeys':[{'name':'Key1','value':'Value1','encrypted':false},{'name':'Key2','value':'Value2','encrypted':true}]}";
             var expected = new HostSecrets
             {
                 MasterKey = new Key { Name = "master", Value = "1234" },
@@ -92,13 +102,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         Value = "Value2",
                         IsEncrypted = true
                     }
-                }
+                },
+                HostName = hostName
             };
 
             HostSecrets actual = serializer.DeserializeSecrets<HostSecrets>(JObject.Parse(serializedSecret));
 
             Assert.NotNull(actual);
             Assert.Equal(expected.MasterKey, actual.MasterKey);
+            Assert.Equal(actual.HostName, hostName);
+            Assert.Equal(expected.Source, ScriptConstants.Runtime);
             AssertKeyCollectionsEquality(expected.FunctionKeys, actual.FunctionKeys);
         }
 
@@ -132,10 +145,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var jsonObject = JObject.Parse(serializedSecret);
             var functionSecrets = jsonObject.Property("functionKeys")?.Value?.ToObject<List<Key>>();
             var masterKey = jsonObject.Property("masterKey")?.Value?.ToObject<Key>();
+            var instanceId = jsonObject.Property("instanceId")?.Value;
 
             Assert.NotNull(serializedSecret);
             Assert.Equal(secrets.MasterKey, masterKey);
             AssertKeyCollectionsEquality(secrets.FunctionKeys, functionSecrets);
+            Assert.Equal(instanceId, secrets.InstanceId);
         }
 
         [Theory]
@@ -143,6 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(typeof(FunctionSecrets), false, "{'key':'functionKeySecretString'}")]
         [InlineData(typeof(HostSecrets), true, "{'masterKey': {'name': 'master','value': '1234','encrypted': false},'functionKeys': [{'name': 'Key1','value': 'Value1','encrypted': false},{'name': 'Key2','value': 'Value2','encrypted': true}]}")]
         [InlineData(typeof(FunctionSecrets), true, "{'keys': [{'name': 'Key1','value': 'Value1','encrypted': false},{'name': 'Key2','value': 'Value2','encrypted': true}]}")]
+        [InlineData(typeof(HostSecrets), false, "{'masterKey': 'masterKeySecretString','functionKey': 'functionKeySecretString', 'hostName': 'test1', 'instanceId': 'test2', 'source': 'test3'}")]
         public void CanSerialize_WithValidHostPayload_ReturnsTrue(Type type, bool expectedResult, string input)
         {
             var serializer = new ScriptSecretSerializerV1();
