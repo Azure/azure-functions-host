@@ -20,8 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
 
         /// <summary>
         /// ScaleManager requests worker removal
+        /// true or false return value indicates whether worker was indeed removed
         /// </summary>
-        Task RemoveWorker(string activityId, IWorkerInfo worker);
+        Task<bool> RemoveWorker(string activityId, IWorkerInfo worker);
 
         /// <summary>
         /// ScaleManager requests to ping specific worker
