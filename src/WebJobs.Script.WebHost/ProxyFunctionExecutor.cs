@@ -63,8 +63,9 @@ namespace Microsoft.Azure.WebJobs.Script.Host
             // 1. If the request maps to a local http trigger function name then that function will be picked.
             // 2. Else if the request maps to a custom route of a local http trigger function then that function will be picked
             // 3. Otherwise the request will be given to asp.net to pick the appropriate route.
-            foreach (var func in _scriptHostManager.HttpFunctions.Values)
+            foreach (var route in _scriptHostManager.Routes)
             {
+                var func = (FunctionDescriptor)route.DataTokens[ScriptConstants.AzureFunctionsHttpFunctionKey];
                 if (!func.Metadata.IsProxy)
                 {
                     if (path.Equals(func.Metadata.Name, StringComparison.OrdinalIgnoreCase))

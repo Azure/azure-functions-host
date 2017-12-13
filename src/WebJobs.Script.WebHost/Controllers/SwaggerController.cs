@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             _traceWriter.Verbose(Resources.SwaggerGenerateDocument);
             _logger?.LogDebug(Resources.SwaggerGenerateDocument);
-            var swaggerDocument = _swaggerDocumentManager.GenerateSwaggerDocument(_scriptHostManager.HttpFunctions);
+            var swaggerDocument = _swaggerDocumentManager.GenerateSwaggerDocument(_scriptHostManager.Routes);
             return Ok(swaggerDocument);
         }
 

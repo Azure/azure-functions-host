@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Web.Http;
 using System.Web.Http.Routing;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json.Linq;
@@ -31,10 +32,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         Task<JObject> AddOrUpdateSwaggerDocumentAsync(JObject swaggerDocumentJson);
 
         /// <summary>
-        /// Generates a Swagger document as a JSON object using the information present in <paramref name="httpFunctions"/>
+        /// Generates a Swagger document as a JSON object using the information present in the route collection.
         /// </summary>
-        /// <param name="httpFunctions">Dictionary with the route information and the functions metadata</param>
-        /// <returns></returns>
-        JObject GenerateSwaggerDocument(IReadOnlyDictionary<IHttpRoute, FunctionDescriptor> httpFunctions);
+        /// <param name="routes">The mapped http routes</param>
+        /// <returns>The Swagger document</returns>
+        JObject GenerateSwaggerDocument(HttpRouteCollection routes);
     }
 }

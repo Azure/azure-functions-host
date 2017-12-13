@@ -46,7 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly WebJobsSdkExtensionHookProvider _bindingWebHookProvider;
 
         private bool _hostStarted = false;
-        private IDictionary<IHttpRoute, FunctionDescriptor> _httpFunctions;
         private HttpRouteCollection _httpRoutes;
         private HttpRequestManager _httpRequestManager;
 
@@ -147,11 +146,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public IReadOnlyDictionary<IHttpRoute, FunctionDescriptor> HttpFunctions
+        public HttpRouteCollection Routes
         {
             get
             {
-                return _httpFunctions as IReadOnlyDictionary<IHttpRoute, FunctionDescriptor>;
+                return _httpRoutes;
             }
         }
 
@@ -283,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 throw new ArgumentNullException(nameof(request));
             }
 
-            if (_httpFunctions == null || _httpFunctions.Count == 0)
+            if (_httpRoutes == null || _httpRoutes.Count == 0)
             {
                 return null;
             }
@@ -292,7 +291,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var routeData = _httpRoutes.GetRouteData(request);
             if (routeData != null)
             {
-                _httpFunctions.TryGetValue(routeData.Route, out function);
+                function = (FunctionDescriptor)routeData.Route.DataTokens[ScriptConstants.AzureFunctionsHttpFunctionKey];
                 AddRouteDataToRequest(routeData, request);
             }
 
@@ -390,30 +389,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Proxies do not honor the route prefix defined in host.json
             var proxyHttpRouteFactory = new HttpRouteFactory(string.Empty);
 
-            _httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>();
             _httpRoutes = new HttpRouteCollection();
 
             // Proxy routes will take precedence over http trigger functions and http trigger
             // routes so they will be added first to the list of http routes.
-            var orderdFunctions = functions.OrderBy(f => f.Metadata.IsProxy ? 0 : 1);
+            var orderedFunctions = functions.OrderBy(f => f.Metadata.IsProxy ? 0 : 1);
 
-            foreach (var function in orderdFunctions)
+            foreach (var function in orderedFunctions)
             {
-                var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
-                if (httpTrigger != null)
-                {
-                    IHttpRoute httpRoute = null;
-                    IEnumerable<HttpMethod> httpMethods = null;
-                    if (httpTrigger.Methods != null)
-                    {
-                        httpMethods = httpTrigger.Methods.Select(p => new HttpMethod(p)).ToArray();
-                    }
-                    var httpRouteFactory = function.Metadata.IsProxy ? proxyHttpRouteFactory : functionHttpRouteFactory;
-                    if (httpRouteFactory.TryAddRoute(function.Metadata.Name, httpTrigger.Route, httpMethods, _httpRoutes, out httpRoute))
-                    {
-                        _httpFunctions.Add(httpRoute, function);
-                    }
-                }
+                var httpRouteFactory = function.Metadata.IsProxy ? proxyHttpRouteFactory : functionHttpRouteFactory;
+                httpRouteFactory.TryAddRoute(_httpRoutes, function);
             }
         }
 

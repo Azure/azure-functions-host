@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Web.Http;
 using System.Web.Http.Routing;
 using System.Web.Http.Routing.Constraints;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -118,20 +119,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpRouteValueDictionary constraints = new HttpRouteValueDictionary();
             constraints.Add(ScriptConstants.HttpMethodConstraintName, httpMethodConstraint);
 
-            var httpRoute = new HttpRoute(routeTemplate, null, constraints);
-
-            Dictionary<IHttpRoute, FunctionDescriptor> httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>()
+            var function = new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null);
+            var dataTokens = new Dictionary<string, object>
             {
-                {
-                    httpRoute,
-                    new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null)
-                }
+                { ScriptConstants.AzureFunctionsHttpFunctionKey, function }
             };
+            HttpRouteCollection routes = new HttpRouteCollection();
+            var route = routes.CreateRoute(routeTemplate, null, constraints, dataTokens);
+            routes.Add("route1", route);
 
             // Act
             var swaggerDocumentManager = new SwaggerDocumentManager(_scriptConfig);
 
-            var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(httpFunctions);
+            var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(routes);
 
             string hostName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName);
             if (hostName == null)
@@ -192,12 +192,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void GenerateSwaggerDocument_CreatesSwaggerDocument_WithAllHttpMethods()
         {
             string apiEndpoint = "/api/HttpTriggerCSharp1";
-            Dictionary<IHttpRoute, FunctionDescriptor> httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>()
+            var routeTemplate = apiEndpoint.Substring(1);
+            var function = new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null);
+            var dataTokens = new Dictionary<string, object>
             {
-                { new HttpRoute(apiEndpoint.Substring(1)), new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null) }
+                { ScriptConstants.AzureFunctionsHttpFunctionKey, function }
             };
+            HttpRouteCollection routes = new HttpRouteCollection();
+            var route = routes.CreateRoute(routeTemplate, null, null, dataTokens);
+            routes.Add("route1", route);
+
             var swaggerDocumentManager = new SwaggerDocumentManager(_scriptConfig);
-            var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(httpFunctions);
+            var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(routes);
             var swaggerdoc = generatedDocument.ToObject<SwaggerDocument>();
             Assert.True(swaggerdoc.ApiEndpoints.ContainsKey(apiEndpoint));
             Assert.Equal(swaggerdoc.ApiEndpoints.Keys.Count, 1);
@@ -224,20 +230,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpRouteValueDictionary constraints = new HttpRouteValueDictionary();
             constraints.Add(ScriptConstants.HttpMethodConstraintName, httpMethodConstraint);
 
-            var httpRoute = new HttpRoute(routeTemplate, null, constraints);
-
-            Dictionary<IHttpRoute, FunctionDescriptor> httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>()
+            var function = new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null);
+            var dataTokens = new Dictionary<string, object>
             {
-                {
-                    httpRoute,
-                    new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null)
-                }
+                { ScriptConstants.AzureFunctionsHttpFunctionKey, function }
             };
+            HttpRouteCollection routes = new HttpRouteCollection();
+            var route = routes.CreateRoute(routeTemplate, null, constraints, dataTokens);
+            routes.Add("route1", route);
 
             var swaggerDocumentManager = new SwaggerDocumentManager(_scriptConfig);
 
             // Act
-            var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(httpFunctions);
+            var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(routes);
 
             // Assert
             var swaggerdoc = generatedDocument.ToObject<SwaggerDocument>();
@@ -261,17 +266,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string routeTemplate = apiEndpoint.Substring(1);
             var disabledFunction = new FunctionMetadata() { IsDisabled = true };
 
-            Dictionary<IHttpRoute, FunctionDescriptor> httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>()
+            var function = new FunctionDescriptor("HttpTriggerCSharp1", null, disabledFunction, null, null, null, null);
+            var dataTokens = new Dictionary<string, object>
             {
-                {
-                    new HttpRoute(routeTemplate),
-                    new FunctionDescriptor("HttpTriggerCSharp1", null, disabledFunction, null, null, null, null)
-                },
+                { ScriptConstants.AzureFunctionsHttpFunctionKey, function }
             };
+            HttpRouteCollection routes = new HttpRouteCollection();
+            var route = routes.CreateRoute(routeTemplate, null, null, dataTokens);
+            routes.Add("route1", route);
+
             var swaggerDocumentManager = new SwaggerDocumentManager(_scriptConfig);
 
             // Act
-            var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(httpFunctions);
+            var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(routes);
 
             // Assert
             var swaggerdoc = generatedDocument.ToObject<SwaggerDocument>();
@@ -292,18 +299,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             constraints.Add(ScriptConstants.HttpMethodConstraintName, httpMethodConstraint);
             constraints.Add("id", new IntRouteConstraint());
 
-            var httpRoute = new HttpRoute(routeTemplate, null, constraints);
-            Dictionary<IHttpRoute, FunctionDescriptor> httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>()
+            var function = new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null);
+            var dataTokens = new Dictionary<string, object>
             {
-                {
-                    httpRoute,
-                    new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null)
-                }
+                { ScriptConstants.AzureFunctionsHttpFunctionKey, function }
             };
+            HttpRouteCollection routes = new HttpRouteCollection();
+            var route = routes.CreateRoute(routeTemplate, null, constraints, dataTokens);
+            routes.Add("route1", route);
+
             var swaggerDocumentManager = new SwaggerDocumentManager(_scriptConfig);
 
             // Act
-            var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(httpFunctions);
+            var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(routes);
 
             // Assert
             var swaggerdoc = generatedDocument.ToObject<SwaggerDocument>();
@@ -339,18 +347,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             constraints.Add(ScriptConstants.HttpMethodConstraintName, httpMethodConstraint);
             constraints.Add("id", new IntRouteConstraint());
 
-            var httpRoute = new HttpRoute(routeTemplate, null, constraints);
-            Dictionary<IHttpRoute, FunctionDescriptor> httpFunctions = new Dictionary<IHttpRoute, FunctionDescriptor>()
+            var function = new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null);
+            var dataTokens = new Dictionary<string, object>
             {
-                {
-                    httpRoute,
-                    new FunctionDescriptor("HttpTriggerCSharp1", null, new FunctionMetadata(), null, null, null, null)
-                }
+                { ScriptConstants.AzureFunctionsHttpFunctionKey, function }
             };
+            HttpRouteCollection routes = new HttpRouteCollection();
+            var route = routes.CreateRoute(routeTemplate, null, constraints, dataTokens);
+            routes.Add("route1", route);
+
             var swaggerDocumentManager = new SwaggerDocumentManager(_scriptConfig);
 
             // Act
-            var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(httpFunctions);
+            var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(routes);
 
             // Assert
             var swaggerdoc = generatedDocument.ToObject<SwaggerDocument>();

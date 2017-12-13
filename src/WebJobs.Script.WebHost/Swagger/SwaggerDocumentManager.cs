@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Web.Http;
 using System.Web.Http.Routing;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -32,27 +33,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task<JObject> GetSwaggerDocumentAsync() => await ReadSwaggerAsync();
 
-        public JObject GenerateSwaggerDocument(IReadOnlyDictionary<IHttpRoute, FunctionDescriptor> httpFunctions)
+        public JObject GenerateSwaggerDocument(HttpRouteCollection routes)
         {
             var swaggerDocument = new SwaggerDocument();
             string hostname = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
             swaggerDocument.SwaggerInfo.FunctionAppName = hostname;
             swaggerDocument.Host = hostname;
-            swaggerDocument.ApiEndpoints = GetEndpointsData(httpFunctions);
+            swaggerDocument.ApiEndpoints = GetEndpointsData(routes);
             return JObject.FromObject(swaggerDocument);
         }
 
-        private static Dictionary<string, Dictionary<string, HttpOperationInfo>> GetEndpointsData(IReadOnlyDictionary<IHttpRoute, FunctionDescriptor> httpFunctions)
+        private static Dictionary<string, Dictionary<string, HttpOperationInfo>> GetEndpointsData(HttpRouteCollection routes)
         {
             var apiEndpoints = new Dictionary<string, Dictionary<string, HttpOperationInfo>>();
-            foreach (var httpRoute in httpFunctions.Keys)
+            foreach (var route in routes)
             {
-                if (httpFunctions[httpRoute].Metadata.IsDisabled == true)
+                var functionDescriptor = (FunctionDescriptor)route.DataTokens[ScriptConstants.AzureFunctionsHttpFunctionKey];
+                if (functionDescriptor.Metadata.IsDisabled)
                 {
                     continue;
                 }
 
-                string endpoint = $"/{httpRoute.RouteTemplate}";
+                string endpoint = $"/{route.RouteTemplate}";
                 Dictionary<string, HttpOperationInfo> endpointsOperationData;
                 if (!apiEndpoints.TryGetValue(endpoint, out endpointsOperationData))
                 {
@@ -60,8 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     apiEndpoints.Add(endpoint, endpointsOperationData);
                 }
 
-                string[] httpOperations = GetHttpOperations(httpRoute);
-                ICollection<HttpOperationParameterInfo> inputParameters = GetInputParameters(httpRoute);
+                string[] httpOperations = GetHttpOperations(route);
+                ICollection<HttpOperationParameterInfo> inputParameters = GetInputParameters(route);
                 foreach (var httpOperation in httpOperations)
                 {
                     // Trace is not recogized as an HttpMethod by swagger specification
