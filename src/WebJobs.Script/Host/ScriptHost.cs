@@ -1800,6 +1800,14 @@ namespace Microsoft.Azure.WebJobs.Script
             base.OnHostStarted();
         }
 
+        internal void SetPrimaryLeaseAsNotReleasable()
+        {
+            if (_blobLeaseManager != null)
+            {
+                _blobLeaseManager.NeedToReleaseLease = false;
+            }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -1817,7 +1825,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     _debugModeFileWatcher.Dispose();
                 }
 
-                DisposePrimaryHostCoordinator();
+                if (_blobLeaseManager != null)
+                {
+                    _blobLeaseManager.HasLeaseChanged -= BlobLeaseManagerHasLeaseChanged;
+                    _blobLeaseManager.Dispose();
+                }
 
                 foreach (var function in Functions)
                 {
@@ -1847,15 +1859,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 // The LoggerFactory can be used by the host up until it's disposed,
                 // so make sure that it's disposed last.
                 _loggerFactory?.Dispose();
-            }
-        }
-
-        public void DisposePrimaryHostCoordinator()
-        {
-            if (_blobLeaseManager != null)
-            {
-                _blobLeaseManager.HasLeaseChanged -= BlobLeaseManagerHasLeaseChanged;
-                _blobLeaseManager.Dispose();
             }
         }
     }

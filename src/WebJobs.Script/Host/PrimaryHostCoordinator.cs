@@ -59,11 +59,15 @@ namespace Microsoft.Azure.WebJobs.Script
             _timer = new Timer(ProcessLeaseTimerTick, null, TimeSpan.Zero, _leaseRetryInterval);
 
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+
+            NeedToReleaseLease = true;
         }
 
         public event EventHandler HasLeaseChanged;
 
         public bool HasLease => _lockHandle != null;
+
+        public bool NeedToReleaseLease { get; set; }
 
         internal IDistributedLock LockHandle
         {
@@ -213,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             try
             {
-                if (HasLease)
+                if (HasLease && NeedToReleaseLease)
                 {
                     Task.Run(() => _lockManager.ReleaseLockAsync(_lockHandle, CancellationToken.None)).GetAwaiter().GetResult();
 
