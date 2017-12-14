@@ -444,6 +444,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 // to prevent host startup failure
                 config.HostConfig.DashboardConnectionString = null;
             }
+
+            // If set, will run the SDK in a Blob Container specified by a SAS connection. 
+            config.SaSContainerConnectionString = 
+                _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebJobsStorageBlobContainer);
         }
 
         protected virtual void OnHostInitialized()
