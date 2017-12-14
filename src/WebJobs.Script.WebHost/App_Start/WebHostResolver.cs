@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -15,6 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public sealed class WebHostResolver : IDisposable
     {
+        private static ScriptSettingsManager _settingsManager;
+        private static ILoggerFactory _emptyLoggerFactory = new LoggerFactory();
         private static object _syncLock = new object();
 
         private readonly ISecretManagerFactory _secretManagerFactory;
@@ -22,14 +25,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private ScriptHostConfiguration _standbyScriptHostConfig;
         private WebScriptHostManager _standbyHostManager;
         private WebHookReceiverManager _standbyReceiverManager;
-
         private ScriptHostConfiguration _activeScriptHostConfig;
         private WebScriptHostManager _activeHostManager;
         private WebHookReceiverManager _activeReceiverManager;
-
-        private static ScriptSettingsManager _settingsManager;
-
-        private static ILoggerFactory _emptyLoggerFactory = new LoggerFactory();
+        private Timer _specializationTimer;
 
         public WebHostResolver(ScriptSettingsManager settingsManager, ISecretManagerFactory secretManagerFactory, IScriptEventManager eventManager)
         {
@@ -61,17 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public ScriptHostConfiguration GetScriptHostConfiguration(WebHostSettings settings)
         {
-            if (_activeScriptHostConfig != null)
-            {
-                return _activeScriptHostConfig;
-            }
-
-            lock (_syncLock)
-            {
-                EnsureInitialized(settings);
-
-                return _activeScriptHostConfig ?? _standbyScriptHostConfig;
-            }
+            return GetActiveInstance(settings, ref _activeScriptHostConfig, ref _standbyScriptHostConfig);
         }
 
         public ISecretManager GetSecretManager(WebHostSettings settings)
@@ -81,83 +70,79 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public WebScriptHostManager GetWebScriptHostManager(WebHostSettings settings)
         {
-            if (_activeHostManager != null)
-            {
-                return _activeHostManager;
-            }
-
-            lock (_syncLock)
-            {
-                EnsureInitialized(settings);
-
-                return _activeHostManager ?? _standbyHostManager;
-            }
+            return GetActiveInstance(settings, ref _activeHostManager, ref _standbyHostManager);
         }
 
         public WebHookReceiverManager GetWebHookReceiverManager(WebHostSettings settings)
         {
-            if (_activeReceiverManager != null)
-            {
-                return _activeReceiverManager;
-            }
-
-            lock (_syncLock)
-            {
-                EnsureInitialized(settings);
-
-                return _activeReceiverManager ?? _standbyReceiverManager;
-            }
+            return GetActiveInstance(settings, ref _activeReceiverManager, ref _standbyReceiverManager);
         }
 
+        /// <summary>
+        /// This method ensures that all services managed by this class are initialized
+        /// correctly taking into account specialization state transitions.
+        /// </summary>
         internal void EnsureInitialized(WebHostSettings settings)
         {
-            if (!WebScriptHostManager.InStandbyMode)
+            lock (_syncLock)
             {
-                // standby mode can only change from true to false
-                // when standby mode changes, we reset all instances
-                if (_activeHostManager == null)
+                if (!WebScriptHostManager.InStandbyMode)
                 {
-                    _settingsManager.Reset();
-
-                    _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
-                    _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings);
-                    _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
-                    InitializeFileSystem();
-
-                    if (_standbyHostManager != null)
+                    // standby mode can only change from true to false
+                    // when standby mode changes, we reset all instances
+                    if (_activeHostManager == null)
                     {
-                        // we're starting the one and only one
-                        // standby mode specialization
-                        _activeScriptHostConfig.TraceWriter.Info(Resources.HostSpecializationTrace);
+                        _settingsManager.Reset();
+                        _specializationTimer?.Dispose();
+                        _specializationTimer = null;
 
-                        // After specialization, we need to ensure that custom timezone
-                        // settings configured by the user (WEBSITE_TIME_ZONE) are honored.
-                        // DateTime caches timezone information, so we need to clear the cache.
-                        TimeZoneInfo.ClearCachedData();
-                    }
+                        _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
+                        _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings);
+                        _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
+                        InitializeFileSystem();
 
-                    if (_standbyHostManager != null)
-                    {
-                        _standbyHostManager.Stop();
-                        _standbyHostManager.Dispose();
+                        if (_standbyHostManager != null)
+                        {
+                            // we're starting the one and only one
+                            // standby mode specialization
+                            _activeScriptHostConfig.TraceWriter.Info(Resources.HostSpecializationTrace);
+
+                            // After specialization, we need to ensure that custom timezone
+                            // settings configured by the user (WEBSITE_TIME_ZONE) are honored.
+                            // DateTime caches timezone information, so we need to clear the cache.
+                            TimeZoneInfo.ClearCachedData();
+                        }
+
+                        if (_standbyHostManager != null)
+                        {
+                            _standbyHostManager.Stop();
+                            _standbyHostManager.Dispose();
+                        }
+                        _standbyReceiverManager?.Dispose();
+                        _standbyScriptHostConfig = null;
+                        _standbyHostManager = null;
+                        _standbyReceiverManager = null;
                     }
-                    _standbyReceiverManager?.Dispose();
-                    _standbyScriptHostConfig = null;
-                    _standbyHostManager = null;
-                    _standbyReceiverManager = null;
                 }
-            }
-            else
-            {
-                if (_standbyHostManager == null)
+                else
                 {
-                    var standbySettings = CreateStandbySettings(settings);
-                    _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
-                    _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings);
-                    _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
+                    // we're in standby (placeholder) mode
+                    if (_standbyHostManager == null)
+                    {
+                        var standbySettings = CreateStandbySettings(settings);
+                        _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
+                        _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings);
+                        _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
 
-                    InitializeFileSystem();
-                    StandbyManager.Initialize(_standbyScriptHostConfig);
+                        InitializeFileSystem();
+                        StandbyManager.Initialize(_standbyScriptHostConfig);
+
+                        // start a background timer to identify when specialization happens
+                        // specialization usually happens via an http request (e.g. scale controller
+                        // ping) but this timer is started as well to handle cases where we
+                        // might not receive a request
+                        _specializationTimer = new Timer(OnSpecializationTimerTick, settings, 1000, 1000);
+                    }
                 }
             }
         }
@@ -206,6 +191,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return scriptHostConfig;
         }
 
+        /// <summary>
+        /// Helper function used to manage active/standby transitions for objects managed
+        /// by this class.
+        /// </summary>
+        private TInstance GetActiveInstance<TInstance>(WebHostSettings settings, ref TInstance activeInstance, ref TInstance standbyInstance)
+        {
+            if (activeInstance != null)
+            {
+                // if we have an active (specialized) instance, return it
+                return activeInstance;
+            }
+
+            // we're either uninitialized or in standby mode
+            // perform intitialization
+            EnsureInitialized(settings);
+
+            if (activeInstance != null)
+            {
+                return activeInstance;
+            }
+            else
+            {
+                return standbyInstance;
+            }
+        }
+
+        private void OnSpecializationTimerTick(object state)
+        {
+            EnsureInitialized((WebHostSettings)state);
+        }
+
         private static void InitializeFileSystem()
         {
             if (ScriptSettingsManager.Instance.IsAzureEnvironment)
@@ -252,6 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _activeHostManager?.Dispose();
             _activeReceiverManager?.Dispose();
+            _specializationTimer?.Dispose();
         }
     }
 }
