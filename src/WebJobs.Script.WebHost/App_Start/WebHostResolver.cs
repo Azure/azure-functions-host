@@ -3,11 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 using Microsoft.Extensions.Logging;
@@ -28,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private ScriptHostConfiguration _activeScriptHostConfig;
         private WebScriptHostManager _activeHostManager;
         private WebHookReceiverManager _activeReceiverManager;
+        private TraceWriter _defaultTraceWriter;
         private Timer _specializationTimer;
 
         public WebHostResolver(ScriptSettingsManager settingsManager, ISecretManagerFactory secretManagerFactory, IScriptEventManager eventManager)
@@ -51,6 +55,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             return GetScriptHostConfiguration(settings).HostConfig.LoggerFactory;
+        }
+
+        public TraceWriter GetTraceWriter(WebHostSettings settings)
+        {
+            // if we have an active host, return it's fully configured
+            // trace writer
+            var hostManager = GetWebScriptHostManager(settings);
+            var traceWriter = hostManager.Instance?.TraceWriter;
+
+            if (traceWriter != null)
+            {
+                return traceWriter;
+            }
+
+            // if there is no active host, return the default trace writer
+            if (_defaultTraceWriter == null)
+            {
+                lock (_syncLock)
+                {
+                    if (_defaultTraceWriter == null)
+                    {
+                        _defaultTraceWriter = CreateDefaultTraceWriter(settings);
+                    }
+                }
+            }
+
+            return _defaultTraceWriter;
         }
 
         public ISwaggerDocumentManager GetSwaggerDocumentManager(WebHostSettings settings)
@@ -191,6 +222,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return scriptHostConfig;
         }
 
+        private TraceWriter CreateDefaultTraceWriter(WebHostSettings settings)
+        {
+            // need to set up a default trace writer that logs both host logs and system logs
+            var config = GetScriptHostConfiguration(settings);
+            var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
+            TraceWriter systemTraceWriter = new SystemTraceWriter(systemEventGenerator, _settingsManager, TraceLevel.Verbose);
+
+            // Note that we're creating a logger here that is independent of log configuration settings
+            // since we haven't read config yet. This logger is independent on the host having been started.
+            // That does mean that even if file logging is disabled, some logs might get written to the file system
+            // but that's ok.
+            string hostLogFilePath = Path.Combine(config.RootLogPath, "Host");
+            TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, config.HostConfig.Tracing.ConsoleLevel);
+
+            return new CompositeTraceWriter(new[] { systemTraceWriter, fileTraceWriter });
+        }
+
         /// <summary>
         /// Helper function used to manage active/standby transitions for objects managed
         /// by this class.
@@ -269,6 +317,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _activeHostManager?.Dispose();
             _activeReceiverManager?.Dispose();
             _specializationTimer?.Dispose();
+            ((IDisposable)_defaultTraceWriter)?.Dispose();
         }
     }
 }

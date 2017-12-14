@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
             var scriptHostManager = resolver.GetService<WebScriptHostManager>();
             if (!scriptHostManager.Initialized)
             {
-                // need to ensure the host manager is initilized early in the pipeline
+                // need to ensure the host manager is initialized early in the pipeline
                 // before any other request code runs
                 scriptHostManager.Initialize();
             }
