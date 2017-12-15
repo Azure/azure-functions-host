@@ -20,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly string _secretsPath;
         private readonly string _hostSecretsPath;
+        private readonly int _retryCount = 5;
+        private readonly int _retryDelay = 100;
         private readonly AutoRecoveringFileSystemWatcher _fileWatcher;
         private bool _disposed = false;
 
@@ -77,8 +79,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             string secretsContent = null;
             if (File.Exists(filePath))
             {
-                // load the secrets file
-                secretsContent = await FileUtility.ReadAsync(filePath);
+                for (int currentRetry = 0; ; currentRetry++)
+                {
+                    try
+                    {
+                        // load the secrets file
+                        secretsContent = await FileUtility.ReadAsync(filePath);
+                        break;
+                    }
+                    catch (IOException)
+                    {
+                        if (currentRetry > _retryCount)
+                        {
+                            throw;
+                        }
+                    }
+                    await Task.Delay(_retryDelay);
+                }
             }
             return secretsContent;
         }
@@ -86,7 +103,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public async Task WriteAsync(ScriptSecretsType type, string functionName, string secretsContent)
         {
             string filePath = GetSecretsFilePath(type, functionName);
-            await FileUtility.WriteAsync(filePath, secretsContent);
+            for (int currentRetry = 0; ; currentRetry++)
+            {
+                try
+                {
+                    await FileUtility.WriteAsync(filePath, secretsContent);
+                    break;
+                }
+                catch (IOException)
+                {
+                    if (currentRetry > _retryCount)
+                    {
+                        throw;
+                    }
+                }
+                await Task.Delay(_retryDelay);
+            }
         }
 
         public async Task PurgeOldSecretsAsync(IList<string> currentFunctions, TraceWriter traceWriter, ILogger logger)
