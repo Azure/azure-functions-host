@@ -32,6 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             // This might happen if http requests come in while the host is starting
             // up for the first time, or if it is restarting.
             await scriptHostManager.DelayUntilHostReady(TimeoutSeconds, PollingIntervalMilliseconds);
+
+            await next();
         }
     }
 }
