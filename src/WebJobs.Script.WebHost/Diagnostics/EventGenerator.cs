@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {
         private const string EventTimestamp = "MM/dd/yyyy hh:mm:ss.fff tt";
 
-        public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary)
+        public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage)
         {
             string eventTimestamp = DateTime.UtcNow.ToString(EventTimestamp);
             switch (level)
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
                 case TraceLevel.Error:
-                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
+                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp, exceptionType, exceptionMessage);
                     break;
             }
         }
@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            // RaiseFunctionsEventVerbose/Info/Warning/Error
+            // RaiseFunctionsEventVerbose/Info/Warning
             [NonEvent]
             protected void WriteEvent(int eventNum, string a, string b, string c, string d, string e, string f, string g, string h, string i)
             {
@@ -183,6 +183,50 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     data[8].DataPointer = (IntPtr)iPtr;
                     data[8].Size = (i.Length + 1) * sizeof(char);
 
+                    WriteEventCore(eventNum, count, data);
+                }
+            }
+
+            // RaiseFunctionsEventError
+            [NonEvent]
+            protected void WriteEvent(int eventNum, string a, string b, string c, string d, string e, string f, string g, string h, string i, string j, string k)
+            {
+                const int count = 11;
+                fixed (char* aPtr = a,
+                    bPtr = b,
+                    cPtr = c,
+                    dPtr = d,
+                    ePtr = e,
+                    fPtr = f,
+                    gPtr = g,
+                    hPtr = h,
+                    iPtr = i,
+                    jPtr = j,
+                    kPtr = k)
+                {
+                    EventData* data = stackalloc EventData[count];
+                    data[0].DataPointer = (IntPtr)aPtr;
+                    data[0].Size = (a.Length + 1) * sizeof(char);
+                    data[1].DataPointer = (IntPtr)bPtr;
+                    data[1].Size = (b.Length + 1) * sizeof(char);
+                    data[2].DataPointer = (IntPtr)cPtr;
+                    data[2].Size = (c.Length + 1) * sizeof(char);
+                    data[3].DataPointer = (IntPtr)dPtr;
+                    data[3].Size = (d.Length + 1) * sizeof(char);
+                    data[4].DataPointer = (IntPtr)ePtr;
+                    data[4].Size = (e.Length + 1) * sizeof(char);
+                    data[5].DataPointer = (IntPtr)fPtr;
+                    data[5].Size = (f.Length + 1) * sizeof(char);
+                    data[6].DataPointer = (IntPtr)gPtr;
+                    data[6].Size = (g.Length + 1) * sizeof(char);
+                    data[7].DataPointer = (IntPtr)hPtr;
+                    data[7].Size = (h.Length + 1) * sizeof(char);
+                    data[8].DataPointer = (IntPtr)iPtr;
+                    data[8].Size = (i.Length + 1) * sizeof(char);
+                    data[9].DataPointer = (IntPtr)jPtr;
+                    data[9].Size = (j.Length + 1) * sizeof(char);
+                    data[10].DataPointer = (IntPtr)kPtr;
+                    data[10].Size = (k.Length + 1) * sizeof(char);
                     WriteEventCore(eventNum, count, data);
                 }
             }
@@ -270,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             internal static readonly FunctionsSystemLogsEventSource Instance = new FunctionsSystemLogsEventSource();
 
-            [Event(65520, Level = EventLevel.Verbose, Channel = EventChannel.Operational, Version = 1)]
+            [Event(65520, Level = EventLevel.Verbose, Channel = EventChannel.Operational, Version = 2)]
             public void RaiseFunctionsEventVerbose(string SubscriptionId, string AppName, string FunctionName, string EventName, string Source, string Details, string Summary, string HostVersion, string EventTimestamp)
             {
                 if (IsEnabled())
@@ -279,7 +323,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            [Event(65521, Level = EventLevel.Informational, Channel = EventChannel.Operational, Version = 1)]
+            [Event(65521, Level = EventLevel.Informational, Channel = EventChannel.Operational, Version = 2)]
             public void RaiseFunctionsEventInfo(string SubscriptionId, string AppName, string FunctionName, string EventName, string Source, string Details, string Summary, string HostVersion, string EventTimestamp)
             {
                 if (IsEnabled())
@@ -288,7 +332,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            [Event(65522, Level = EventLevel.Warning, Channel = EventChannel.Operational, Version = 1)]
+            [Event(65522, Level = EventLevel.Warning, Channel = EventChannel.Operational, Version = 2)]
             public void RaiseFunctionsEventWarning(string SubscriptionId, string AppName, string FunctionName, string EventName, string Source, string Details, string Summary, string HostVersion, string EventTimestamp)
             {
                 if (IsEnabled())
@@ -297,16 +341,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            [Event(65523, Level = EventLevel.Error, Channel = EventChannel.Operational, Version = 1)]
-            public void RaiseFunctionsEventError(string SubscriptionId, string AppName, string FunctionName, string EventName, string Source, string Details, string Summary, string HostVersion, string EventTimestamp)
+            [Event(65523, Level = EventLevel.Error, Channel = EventChannel.Operational, Version = 2)]
+            public void RaiseFunctionsEventError(string SubscriptionId, string AppName, string FunctionName, string EventName, string Source, string Details, string Summary, string HostVersion, string EventTimestamp, string InnerExceptionType, string InnerExceptionMessage)
             {
                 if (IsEnabled())
                 {
-                    WriteEvent(65523, SubscriptionId, AppName, FunctionName, EventName, Source, Details, Summary, HostVersion, EventTimestamp);
+                    WriteEvent(65523, SubscriptionId, AppName, FunctionName, EventName, Source, Details, Summary, HostVersion, EventTimestamp, InnerExceptionType, InnerExceptionMessage);
                 }
             }
 
-            [Event(65524, Level = EventLevel.Informational, Channel = EventChannel.Operational, Version = 1)]
+            [Event(65524, Level = EventLevel.Informational, Channel = EventChannel.Operational, Version = 2)]
             public void LogFunctionMetricEvent(string SubscriptionId, string AppName, string FunctionName, string EventName, long Average, long Minimum, long Maximum, long Count, string HostVersion, string EventTimestamp)
             {
                 if (IsEnabled())
