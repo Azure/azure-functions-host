@@ -498,6 +498,140 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             }
         }
 
+        [Fact]
+        public async Task GetHostSecretsAsync_WaitsForNewSecrets()
+        {
+            using (var directory = new TempDirectory())
+            {
+                string hostSecretsJson = @"{
+    'masterKey': {
+        'name': 'master',
+        'value': '1234',
+        'encrypted': false
+    },
+    'functionKeys': [],
+    'systemKeys': []
+}";
+                string filePath = Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName);
+                File.WriteAllText(filePath, hostSecretsJson);
+
+                HostSecretsInfo hostSecrets = null;
+                var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+
+                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
+                {
+                    await Task.WhenAll(
+                        Task.Run(async () =>
+                        {
+                            // Lock the file
+                            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Write))
+                            {
+                                await Task.Delay(500);
+                            }
+                        }),
+                        Task.Run(async () =>
+                        {
+                            await Task.Delay(100);
+                            hostSecrets = await secretManager.GetHostSecretsAsync();
+                        }));
+
+                    Assert.Equal(hostSecrets.MasterKey, "1234");
+                }
+
+                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
+                {
+                    await Assert.ThrowsAsync<IOException>(async () =>
+                    {
+                        await Task.WhenAll(
+                            Task.Run(async () =>
+                            {
+                                // Lock the file
+                                using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Write))
+                                {
+                                    await Task.Delay(3000);
+                                }
+                            }),
+                            Task.Run(async () =>
+                            {
+                                await Task.Delay(100);
+                                hostSecrets = await secretManager.GetHostSecretsAsync();
+                            }));
+                    });
+                }
+            }
+        }
+
+        [Fact]
+        public async Task GetFunctionSecretsAsync_WaitsForNewSecrets()
+        {
+            using (var directory = new TempDirectory())
+            {
+                string functionName = "testfunction";
+                string functionSecretsJson =
+                 @"{
+    'keys': [
+        {
+            'name': 'Key1',
+            'value': 'FunctionValue1',
+            'encrypted': false
+        },
+        {
+            'name': 'Key2',
+            'value': 'FunctionValue2',
+            'encrypted': false
+        }
+    ]
+}";
+                string filePath = Path.Combine(directory.Path, functionName + ".json");
+                File.WriteAllText(filePath, functionSecretsJson);
+
+                IDictionary<string, string> functionSecrets = null;
+                var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
+                {
+                    await Task.WhenAll(
+                        Task.Run(async () =>
+                        {
+                            // Lock the file
+                            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Write))
+                            {
+                                await Task.Delay(500);
+                            }
+                        }),
+                        Task.Run(async () =>
+                        {
+                            await Task.Delay(100);
+                            functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
+                        }));
+
+                    Assert.Equal(functionSecrets["Key1"], "FunctionValue1");
+                }
+
+                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
+                {
+                    await Assert.ThrowsAsync<IOException>(async () =>
+                    {
+                        await Task.WhenAll(
+                            Task.Run(async () =>
+                            {
+                                // Lock the file
+                                using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Write))
+                                {
+                                    await Task.Delay(3000);
+                                }
+                            }),
+                            Task.Run(async () =>
+                            {
+                                await Task.Delay(100);
+                                functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
+                            }));
+                    });
+                }
+            }
+        }
+
         private Mock<IKeyValueConverterFactory> GetConverterFactoryMock(bool simulateWriteConversion = true, bool setStaleValue = true)
         {
             var mockValueReader = new Mock<IKeyValueReader>();
