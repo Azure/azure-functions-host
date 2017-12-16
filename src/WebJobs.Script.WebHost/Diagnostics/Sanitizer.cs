@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Logging
     internal static class Sanitizer
     {
         private const string SecretReplacement = "[Hidden Credential]";
-        private static readonly char[] ValueTerminators = new char[] { '<', '"' };
+        private static readonly char[] ValueTerminators = new char[] { '<', '"', '\'' };
         private static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "SharedAccessKey=" };
 
         /// <summary>
