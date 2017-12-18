@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Logging
     {
         private const string SecretReplacement = "[Hidden Credential]";
         private static readonly char[] ValueTerminators = new char[] { '<', '"', '\'' };
+        private static readonly string[] PublicTokens = new string[] { "PublicKeyToken=" };
         private static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "SharedAccessKey=" };
 
         /// <summary>
@@ -28,13 +29,29 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
 
             string t = input;
+            string inputWithPublicTokensHidden = input;
+
+            //Remove any known safe strings from the input before looking for Credentials
+            foreach (string publicToken in PublicTokens)
+            {
+                string hiddenString = string.Empty;
+                if (inputWithPublicTokensHidden.Contains(publicToken))
+                {
+                    foreach (char safechar in publicToken)
+                    {
+                        hiddenString += '#';
+                    }
+                    inputWithPublicTokensHidden = inputWithPublicTokensHidden.Replace(publicToken, hiddenString);
+                }
+            }
+
             foreach (var token in CredentialTokens)
             {
                 int startIndex = 0;
                 while (true)
                 {
                     // search for the next token instance
-                    startIndex = t.IndexOf(token, startIndex, StringComparison.OrdinalIgnoreCase);
+                    startIndex = inputWithPublicTokensHidden.IndexOf(token, startIndex, StringComparison.OrdinalIgnoreCase);
                     if (startIndex == -1)
                     {
                         break;
@@ -44,6 +61,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                     int credentialEnd = t.IndexOfAny(ValueTerminators, startIndex);
 
                     t = t.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? t.Substring(credentialEnd) : string.Empty);
+                    inputWithPublicTokensHidden = inputWithPublicTokensHidden.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? inputWithPublicTokensHidden.Substring(credentialEnd) : string.Empty);
                 }
             }
 
