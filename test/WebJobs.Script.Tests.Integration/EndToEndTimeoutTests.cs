@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -13,6 +12,8 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
@@ -21,6 +22,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class EndToEndTimeoutTests
     {
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
+        private ILoggerFactory _loggerFactory = new LoggerFactory();
+        private TestLoggerProvider _loggerProvider = new TestLoggerProvider();
+
+        public EndToEndTimeoutTests()
+        {
+            _loggerFactory.AddProvider(_loggerProvider);
+        }
 
         [Fact]
         public async Task TimeoutTest_SyncFunction_CSharp()
@@ -53,6 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await RunTokenTest("ignoreToken", (logs) =>
              {
                  // We do not expect 'Done' to be written here.
+                 Assert.NotEmpty(logs);
                  Assert.False(logs.Any(l => l.EndsWith("Done")));
              });
         }
@@ -61,8 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string functionName = "TimeoutToken";
             TestHelpers.ClearFunctionLogs(functionName);
-            var traceWriter = new TestTraceWriter(TraceLevel.Info);
-            using (var manager = await CreateAndStartScriptHostManager("CSharp", functionName, TimeSpan.FromSeconds(3), traceWriter))
+            using (var manager = await CreateAndStartScriptHostManager("CSharp", functionName, TimeSpan.FromSeconds(3)))
             {
                 Dictionary<string, object> arguments = new Dictionary<string, object>
                 {
@@ -74,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var exception = GetExceptionHandler(manager).TimeoutExceptionInfos.Single().SourceException;
                 Assert.IsType<FunctionTimeoutException>(exception);
 
-                verify(traceWriter.Traces.Select(t => t.ToString()));
+                verify(_loggerProvider.GetAllLogMessages().Where(t => t.FormattedMessage != null).Select(t => t.FormattedMessage));
             }
         }
 
@@ -82,8 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             TestHelpers.ClearFunctionLogs(functionName);
             TimeSpan testTimeout = TimeSpan.FromSeconds(3);
-            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-            using (var manager = await CreateAndStartScriptHostManager(scriptLang, functionName, testTimeout, traceWriter))
+            using (var manager = await CreateAndStartScriptHostManager(scriptLang, functionName, testTimeout))
             {
                 string testData = Guid.NewGuid().ToString();
 
@@ -99,8 +106,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     // make sure logging from within the function worked
                     // TODO: This doesn't appear to work for Powershell in AppVeyor. Need to investigate.
                     // bool hasTestData = inProgressLogs.Any(l => l.Contains(testData));
-                    var expectedMessage = $"Timeout value of {testTimeout} was exceeded by function: Functions.{functionName}";
-                    var traces = string.Join(Environment.NewLine, traceWriter.Traces);
+                    var expectedMessage = $"Timeout value of {testTimeout} exceeded by function 'Functions.{functionName}'";
+                    var traces = string.Join(Environment.NewLine, _loggerProvider.GetAllLogMessages().Where(t => t.FormattedMessage != null).Select(p => p.FormattedMessage));
                     return traces.Contains(expectedMessage);
                 });
 
@@ -114,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return manager.Instance.ScriptConfig.HostConfig.GetService<IWebJobsExceptionHandler>() as MockExceptionHandler;
         }
 
-        private async Task<MockScriptHostManager> CreateAndStartScriptHostManager(string scriptLang, string functionName, TimeSpan timeout, TraceWriter traceWriter)
+        private async Task<MockScriptHostManager> CreateAndStartScriptHostManager(string scriptLang, string functionName, TimeSpan timeout)
         {
             var functions = new Collection<string>();
             functions.Add(functionName);
@@ -122,13 +129,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
                 RootScriptPath = $@"TestScripts\{scriptLang}",
-                TraceWriter = traceWriter,
                 FileLoggingMode = FileLoggingMode.Always,
                 Functions = functions,
                 FunctionTimeout = timeout
             };
 
-            var scriptHostManager = new MockScriptHostManager(config);
+            var scriptHostManager = new MockScriptHostManager(config, new TestLoggerProviderFactory(_loggerProvider));
             ThreadPool.QueueUserWorkItem((s) => scriptHostManager.RunAndBlock());
             await TestHelpers.Await(() => scriptHostManager.State == ScriptHostState.Running);
 
@@ -160,8 +166,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class MockScriptHostManager : ScriptHostManager
         {
-            public MockScriptHostManager(ScriptHostConfiguration config)
-                : base(config, new Mock<IScriptEventManager>().Object)
+            public MockScriptHostManager(ScriptHostConfiguration config, ILoggerProviderFactory loggerProviderFactory)
+                : base(config, new Mock<IScriptEventManager>().Object, loggerProviderFactory: loggerProviderFactory)
             {
             }
 

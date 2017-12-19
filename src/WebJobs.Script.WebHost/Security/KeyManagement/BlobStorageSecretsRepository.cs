@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
@@ -135,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             await FileUtility.WriteAsync(filePath, DateTime.UtcNow.ToString());
         }
 
-        public async Task PurgeOldSecretsAsync(IList<string> currentFunctions, TraceWriter traceWriter, ILogger logger)
+        public async Task PurgeOldSecretsAsync(IList<string> currentFunctions, ILogger logger)
         {
             // no-op - allow stale secrets to remain
             await Task.Yield();

@@ -8,7 +8,7 @@
         "maxConcurrentRequests": 5,
         "maxOutstandingRequests": 30
     },
-    "tracing": {
+    "logger": {
         "fileLoggingMode": "always"
     },
     "queues": {

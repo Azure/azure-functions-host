@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -45,11 +46,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 State = state as IEnumerable<KeyValuePair<string, object>>,
                 Exception = exception,
                 FormattedMessage = formatter(state, exception),
-                Category = Category
+                Category = Category,
+                Timestamp = DateTime.UtcNow
             });
         }
     }
 
+    [DebuggerDisplay("{FormattedMessage}")]
     public class LogMessage
     {
         public LogLevel Level { get; set; }
@@ -63,5 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public string FormattedMessage { get; set; }
 
         public string Category { get; set; }
+
+        public DateTime Timestamp { get; set; }
     }
 }

@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class TestSecretManager : ISecretManager
     {
-        public virtual Task PurgeOldSecretsAsync(string rootScriptPath, TraceWriter traceWriter, ILogger logger)
+        public virtual Task PurgeOldSecretsAsync(string rootScriptPath, ILogger logger)
         {
             throw new NotImplementedException();
         }

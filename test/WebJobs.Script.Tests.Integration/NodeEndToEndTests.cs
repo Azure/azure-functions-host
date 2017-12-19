@@ -5,18 +5,18 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using Microsoft.WebJobs.Script.Tests;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs.Script.Binding;
-using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -162,24 +162,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             // verify use of context.log to log complex objects
-            TraceEvent scriptTrace = Fixture.TraceWriter.Traces.Single(p => p.Message.Contains(testData));
-            Assert.Equal(System.Diagnostics.TraceLevel.Info, scriptTrace.Level);
-            JObject logEntry = JObject.Parse(scriptTrace.Message);
+            LogMessage scriptTrace = Fixture.LoggerProvider.GetAllLogMessages().Single(p => p.FormattedMessage != null && p.FormattedMessage.Contains(testData));
+            Assert.Equal(LogLevel.Information, scriptTrace.Level);
+            JObject logEntry = JObject.Parse(scriptTrace.FormattedMessage);
             Assert.Equal("This is a test", logEntry["message"]);
             Assert.Equal(testData, logEntry["input"]);
 
             // verify log levels in traces
-            TraceEvent[] traces = Fixture.TraceWriter.Traces.Where(t => t.Message.Contains("loglevel")).ToArray();
-            Assert.Equal(System.Diagnostics.TraceLevel.Info, traces[0].Level);
-            Assert.Equal("loglevel default", traces[0].Message);
-            Assert.Equal(System.Diagnostics.TraceLevel.Info, traces[1].Level);
-            Assert.Equal("loglevel info", traces[1].Message);
-            Assert.Equal(System.Diagnostics.TraceLevel.Verbose, traces[2].Level);
-            Assert.Equal("loglevel verbose", traces[2].Message);
-            Assert.Equal(System.Diagnostics.TraceLevel.Warning, traces[3].Level);
-            Assert.Equal("loglevel warn", traces[3].Message);
-            Assert.Equal(System.Diagnostics.TraceLevel.Error, traces[4].Level);
-            Assert.Equal("loglevel error", traces[4].Message);
+            LogMessage[] traces = Fixture.LoggerProvider.GetAllLogMessages().Where(t => t.FormattedMessage != null && t.FormattedMessage.Contains("loglevel")).ToArray();
+            Assert.Equal(LogLevel.Information, traces[0].Level);
+            Assert.Equal("loglevel default", traces[0].FormattedMessage);
+            Assert.Equal(LogLevel.Information, traces[1].Level);
+            Assert.Equal("loglevel info", traces[1].FormattedMessage);
+            Assert.Equal(LogLevel.Trace, traces[2].Level);
+            Assert.Equal("loglevel verbose", traces[2].FormattedMessage);
+            Assert.Equal(LogLevel.Warning, traces[3].Level);
+            Assert.Equal("loglevel warn", traces[3].FormattedMessage);
+            Assert.Equal(LogLevel.Error, traces[4].Level);
+            Assert.Equal("loglevel error", traces[4].FormattedMessage);
 
             // verify most of the logs look correct
             Assert.EndsWith("Mathew Charles", logs[4]);
@@ -359,7 +359,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var content = inputBytes;
 
 
-            HttpRequest request = HttpTestHelpers.CreateHttpRequest("POST", "http://localhost/api/httptriggerbytearray", headers, content); 
+            HttpRequest request = HttpTestHelpers.CreateHttpRequest("POST", "http://localhost/api/httptriggerbytearray", headers, content);
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
             {
@@ -373,11 +373,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(objectResult);
             Assert.Equal(200, objectResult.StatusCode);
 
-            Newtonsoft.Json.Linq.JObject body = (Newtonsoft.Json.Linq.JObject) objectResult.Value;
-            Assert.True((bool) body["isBuffer"]);
+            Newtonsoft.Json.Linq.JObject body = (Newtonsoft.Json.Linq.JObject)objectResult.Value;
+            Assert.True((bool)body["isBuffer"]);
             Assert.Equal(5, body["length"]);
 
-            var rawBody = Encoding.UTF8.GetBytes((string) body["rawBody"]);
+            var rawBody = Encoding.UTF8.GetBytes((string)body["rawBody"]);
             Assert.Equal(inputBytes, rawBody);
         }
 

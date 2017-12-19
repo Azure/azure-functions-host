@@ -9,7 +9,6 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks.Dataflow;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -22,7 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IScriptEventManager _eventManager;
         private IRpcServer _server;
         private CreateChannel _channelFactory;
-        private TraceWriter _traceWriter;
         private List<WorkerConfig> _workerConfigs;
 
         private ConcurrentDictionary<WorkerConfig, WorkerState> _channelState = new ConcurrentDictionary<WorkerConfig, WorkerState>();
@@ -35,13 +33,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             IScriptEventManager manager,
             IRpcServer server,
             CreateChannel channelFactory,
-            TraceWriter traceWriter,
             IEnumerable<WorkerConfig> workers)
         {
             _eventManager = manager;
             _server = server;
             _channelFactory = channelFactory;
-            _traceWriter = traceWriter;
             _workerConfigs = workers?.ToList() ?? new List<WorkerConfig>();
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()

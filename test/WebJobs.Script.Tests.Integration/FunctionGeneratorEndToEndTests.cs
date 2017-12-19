@@ -2,29 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.WebJobs.Script.Tests;
-using Moq;
+using Microsoft.Extensions.Logging;
 using Xunit;
-using Microsoft.AspNetCore.Builder.Internal;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Routing;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -76,7 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // start the JobHost which will start running the timer function
             JobHostConfiguration config = new JobHostConfiguration()
             {
-                TypeLocator = new TypeLocator(functionType)
+                TypeLocator = new TypeLocator(functionType),
+                LoggerFactory = new LoggerFactory()
             };
             config.UseTimers();
             JobHost host = new JobHost(config);

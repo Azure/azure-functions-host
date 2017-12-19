@@ -5,7 +5,6 @@ using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Reflection;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -18,24 +17,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public sealed class FunctionAssemblyLoadContext
     {
         private readonly IFunctionMetadataResolver _metadataResolver;
-        private readonly TraceWriter _traceWriter;
         private readonly ILogger _logger;
         private ImmutableArray<Assembly> _loadedAssemblies;
         private Uri _functionBaseUri;
 
-        public FunctionAssemblyLoadContext(FunctionMetadata functionMetadata, Assembly functionAssembly, IFunctionMetadataResolver resolver, TraceWriter traceWriter, ILogger logger)
+        public FunctionAssemblyLoadContext(FunctionMetadata functionMetadata, Assembly functionAssembly, IFunctionMetadataResolver resolver, ILogger logger)
         {
             _metadataResolver = resolver;
             _loadedAssemblies = ImmutableArray<Assembly>.Empty;
-            _traceWriter = traceWriter;
             _logger = logger;
             FunctionAssembly = functionAssembly;
             Metadata = functionMetadata;
         }
 
         public ImmutableArray<Assembly> LoadedAssemblies => _loadedAssemblies;
-
-        public TraceWriter TraceWriter => _traceWriter;
 
         public ILogger Logger => _logger;
 

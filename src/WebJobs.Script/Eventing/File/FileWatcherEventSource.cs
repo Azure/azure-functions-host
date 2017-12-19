@@ -3,8 +3,8 @@
 
 using System;
 using System.IO;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.IO;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Eventing.File
 {
@@ -21,11 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing.File
             string filter = "*.*",
             bool includeSubdirectories = true,
             WatcherChangeTypes changeTypes = WatcherChangeTypes.All,
-            TraceWriter traceWriter = null)
+            ILoggerFactory loggerFactory = null)
         {
             _source = source;
             _eventManager = eventManager;
-            _fileWatcher = new AutoRecoveringFileSystemWatcher(path, filter, includeSubdirectories, changeTypes, traceWriter);
+            _fileWatcher = new AutoRecoveringFileSystemWatcher(path, filter, includeSubdirectories, changeTypes, loggerFactory);
             _fileWatcher.Changed += FileChanged;
         }
 

@@ -10,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
@@ -29,8 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly string _scriptFilePath;
         private readonly string[] _assemblyExtensions = new[] { ".exe", ".dll" };
         private readonly string _id = Guid.NewGuid().ToString();
-        private readonly TraceWriter _traceWriter;
-        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger _logger;
         private readonly ConcurrentDictionary<string, string> _externalReferences = new ConcurrentDictionary<string, string>();
         private readonly ExtensionSharedAssemblyProvider _extensionSharedAssemblyProvider;
 
@@ -72,16 +70,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "Microsoft.AspNetCore.Http"
             };
 
-        public FunctionMetadataResolver(string scriptFilePath, ICollection<ScriptBindingProvider> bindingProviders, TraceWriter traceWriter, ILoggerFactory loggerFactory)
+        public FunctionMetadataResolver(string scriptFilePath, ICollection<ScriptBindingProvider> bindingProviders, ILogger logger)
         {
             _scriptFileDirectory = Path.GetDirectoryName(scriptFilePath);
             _scriptFilePath = scriptFilePath;
-            _traceWriter = traceWriter;
             _packageAssemblyResolver = new PackageAssemblyResolver(_scriptFileDirectory);
             _privateAssembliesPath = GetBinDirectory(_scriptFileDirectory);
             _scriptResolver = ScriptMetadataResolver.Default.WithSearchPaths(_privateAssembliesPath);
             _extensionSharedAssemblyProvider = new ExtensionSharedAssemblyProvider(bindingProviders);
-            _loggerFactory = loggerFactory;
+            _logger = logger;
         }
 
         public ScriptOptions CreateScriptOptions()
@@ -263,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public async Task<PackageRestoreResult> RestorePackagesAsync()
         {
-            var packageManager = new PackageManager(_scriptFileDirectory, _traceWriter, _loggerFactory);
+            var packageManager = new PackageManager(_scriptFileDirectory, _logger);
             PackageRestoreResult result = await packageManager.RestorePackagesAsync();
 
             // Reload the resolver

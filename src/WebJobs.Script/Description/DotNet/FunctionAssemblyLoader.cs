@@ -7,9 +7,6 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Loggers;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -82,8 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     string message = string.Format(CultureInfo.InvariantCulture,
                         "Exception during runtime resolution of assembly '{0}': '{1}'", args.Name, e.ToString());
-                    context.TraceWriter.Warning(message);
-                    context.Logger?.LogWarning(message);
+                    context.Logger.LogWarning(message);
                 }
             }
 
@@ -93,15 +89,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 string message = string.Format(CultureInfo.InvariantCulture,
                     "Unable to find assembly '{0}'. Are you missing a private assembly file?", args.Name);
-                context.TraceWriter.Warning(message);
-                context.Logger?.LogWarning(message);
+                context.Logger.LogWarning(message);
             }
 
             return result;
         }
 
-        public FunctionAssemblyLoadContext CreateOrUpdateContext(FunctionMetadata metadata, Assembly functionAssembly, IFunctionMetadataResolver metadataResolver,
-            TraceWriter traceWriter, ILoggerFactory loggerFactory)
+        public FunctionAssemblyLoadContext CreateOrUpdateContext(FunctionMetadata metadata, Assembly functionAssembly, IFunctionMetadataResolver metadataResolver, ILogger logger)
         {
             if (metadata == null)
             {
@@ -115,13 +109,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 throw new ArgumentNullException("metadataResolver");
             }
-            if (traceWriter == null)
+            if (logger == null)
             {
-                throw new ArgumentNullException("traceWriter");
+                throw new ArgumentNullException("logger");
             }
 
-            ILogger logger = loggerFactory?.CreateLogger(LogCategories.Startup);
-            var context = new FunctionAssemblyLoadContext(metadata, functionAssembly, metadataResolver, traceWriter, logger);
+            var context = new FunctionAssemblyLoadContext(metadata, functionAssembly, metadataResolver, logger);
 
             return _functionContexts.AddOrUpdate(metadata.Name, context, (s, o) => context);
         }

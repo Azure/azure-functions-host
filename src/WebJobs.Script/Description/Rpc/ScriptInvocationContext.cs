@@ -4,7 +4,6 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -23,8 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public TaskCompletionSource<ScriptInvocationResult> ResultSource { get; set; }
 
-        public TraceWriter TraceWriter { get; set; }
-
         public ILogger Logger { get; set; }
+
+        public System.Threading.ExecutionContext AsyncExecutionContext { get; set; }
     }
 }

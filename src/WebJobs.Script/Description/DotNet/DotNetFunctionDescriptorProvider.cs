@@ -6,11 +6,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
-using System.Net.Http;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.CodeAnalysis.Scripting;
 
@@ -22,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> _compilationServiceFactory;
 
         public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
-           : this(host, config, new DotNetCompilationServiceFactory(host.TraceWriter, config.HostConfig.LoggerFactory))
+           : this(host, config, new DotNetCompilationServiceFactory(config.HostConfig.LoggerFactory))
         {
         }
 
@@ -194,8 +192,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             if (functionReturnType == typeof(void) || functionReturnType == typeof(Task))
             {
-                    return false;
-                }
+                return false;
+            }
 
             // Task<T>
             if (typeof(Task).IsAssignableFrom(functionReturnType))
@@ -214,14 +212,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var returnBinding = bindings.SingleOrDefault(p => p.Metadata.IsReturn);
             if (returnBinding != null)
             {
-            Collection<CustomAttributeBuilder> customAttributes = returnBinding.GetCustomAttributes(byRefType);
-            if (customAttributes != null)
-            {
-                foreach (var customAttribute in customAttributes)
+                Collection<CustomAttributeBuilder> customAttributes = returnBinding.GetCustomAttributes(byRefType);
+                if (customAttributes != null)
                 {
-                    descriptor.CustomAttributes.Add(customAttribute);
+                    foreach (var customAttribute in customAttributes)
+                    {
+                        descriptor.CustomAttributes.Add(customAttribute);
+                    }
                 }
-            }
             }
 
             return true;

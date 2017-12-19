@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             if (waitForFlush)
             {
-                await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+                await Task.Delay(FileWriter.LogFlushIntervalMs);
             }
 
             DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static async Task<IList<string>> GetHostLogsAsync(bool throwOnNoLogs = true)
         {
-            await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+            await Task.Delay(FileWriter.LogFlushIntervalMs);
 
             DirectoryInfo directory = GetHostLogFileDirectory();
             FileInfo lastLogFile = directory.GetFiles("*.log").OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
@@ -202,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public static FunctionBinding CreateTestBinding(JObject json)
         {
             ScriptBindingContext context = new ScriptBindingContext(json);
-            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(new JobHostConfiguration(), new JObject(), new TestTraceWriter(TraceLevel.Verbose));
+            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(new JobHostConfiguration(), new JObject(), null);
             ScriptBinding scriptBinding = null;
             provider.TryCreate(context, out scriptBinding);
             BindingMetadata bindingMetadata = BindingMetadata.Create(json);

@@ -5,12 +5,10 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -20,8 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     internal class WebJobsCoreScriptBindingProvider : ScriptBindingProvider
     {
-        public WebJobsCoreScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
-            : base(config, hostMetadata, traceWriter)
+        public WebJobsCoreScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, ILogger logger)
+            : base(config, hostMetadata, logger)
         {
         }
 

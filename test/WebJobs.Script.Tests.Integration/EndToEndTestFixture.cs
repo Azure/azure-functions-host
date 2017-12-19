@@ -2,22 +2,22 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Moq;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Host.Loggers;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -36,14 +36,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TableClient = storageAccount.CreateCloudTableClient();
 
             CreateTestStorageEntities().Wait();
-            TraceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
             // ApiHubTestHelper.SetDefaultConnectionFactory();
 
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
                 RootScriptPath = rootPath,
-                TraceWriter = TraceWriter,
                 FileLoggingMode = FileLoggingMode.Always
             };
 
@@ -51,6 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             EventManager = new ScriptEventManager();
             ScriptHostEnvironmentMock = new Mock<IScriptHostEnvironment>();
+            LoggerProvider = new TestLoggerProvider();
+            ILoggerProviderFactory loggerProviderFactory = new TestLoggerProviderFactory(LoggerProvider);
 
             // Reset the timer logs first, since one of the tests will
             // be checking them
@@ -62,14 +62,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fastLogger = new FunctionInstanceLogger(funcLookup, new MetricsLogger());
             config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
             _settingsManager.Reset();
-            Host = new ScriptHost(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager, proxyClient: proxyClient);
+            Host = new ScriptHost(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager,
+                proxyClient: proxyClient, loggerProviderFactory: loggerProviderFactory);
             Host.Initialize();
             Host.Start();
         }
 
-        public Mock<IScriptHostEnvironment> ScriptHostEnvironmentMock { get; }
+        public TestLoggerProvider LoggerProvider { get; }
 
-        public TestTraceWriter TraceWriter { get; private set; }
+        public Mock<IScriptHostEnvironment> ScriptHostEnvironmentMock { get; }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
 

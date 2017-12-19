@@ -163,15 +163,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                     .OfType<TraceTelemetry>()
                     .Where(t => t.Context.Operation.Id == invocationId)
                     .Where(t => !t.Message.StartsWith("Exception")) // we'll verify the exception message separately
-                    .Where(t => t.Properties[LogConstants.CategoryNameKey] == LogCategories.Executor)
+                    .Where(t => t.Properties[LogConstants.CategoryNameKey] == LogCategories.CreateFunctionCategory(functionName))
                     .OrderBy(t => t.Message)
                     .ToArray();
 
             string expectedMessage = functionSuccess ? "Function completed (Success, Id=" : "Function completed (Failure, Id=";
             SeverityLevel expectedLevel = functionSuccess ? SeverityLevel.Information : SeverityLevel.Error;
 
-            ValidateTrace(traces[0], expectedMessage + invocationId, LogCategories.Executor, functionName, invocationId, expectedLevel);
-            ValidateTrace(traces[1], "Function started (Id=" + invocationId, LogCategories.Executor, functionName, invocationId);
+            ValidateTrace(traces[0], expectedMessage + invocationId, LogCategories.CreateFunctionCategory(functionName), functionName, invocationId, expectedLevel);
+            ValidateTrace(traces[1], "Function started (Id=" + invocationId, LogCategories.CreateFunctionCategory(functionName), functionName, invocationId);
 
             if (!functionSuccess)
             {
@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                     .Where(t => t.Message.StartsWith("Exception"))
                     .Single();
 
-                ValidateTrace(errorTrace, $"Exception while executing function: Functions.{functionName}.", LogCategories.Executor, functionName, invocationId, SeverityLevel.Error);
+                ValidateTrace(errorTrace, $"Exception while executing function: Functions.{functionName}.", LogCategories.CreateFunctionCategory(functionName), functionName, invocationId, SeverityLevel.Error);
 
                 ExceptionTelemetry exception = _fixture.Channel.Telemetries
                     .OfType<ExceptionTelemetry>()
@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         private static void ValidateMetric(MetricTelemetry telemetry, string expectedOperationId, string expectedOperationName)
         {
-            ValidateTelemetry(telemetry, expectedOperationId, expectedOperationName, LogCategories.Function, SeverityLevel.Information);
+            ValidateTelemetry(telemetry, expectedOperationId, expectedOperationName, LogCategories.CreateFunctionCategory(expectedOperationName), SeverityLevel.Information);
 
             Assert.Equal("TestMetric", telemetry.Name);
             Assert.Equal(1234, telemetry.Sum);
@@ -274,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
             Assert.Equal(expectedCategory, telemetry.Properties[LogConstants.CategoryNameKey]);
 
-            if (expectedCategory == LogCategories.Function || expectedCategory == LogCategories.Executor)
+            if (expectedCategory.StartsWith("Function."))
             {
                 ValidateTelemetry(telemetry, expectedOperationId, expectedOperationName, expectedCategory, expectedLevel);
             }

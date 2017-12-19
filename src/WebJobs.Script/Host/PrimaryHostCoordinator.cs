@@ -3,13 +3,10 @@
 
 using System;
 using System.Globalization;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -23,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly TimeSpan _leaseTimeout;
         private readonly TimeSpan _renewalInterval;
         private readonly TimeSpan _leaseRetryInterval;
-        private readonly TraceWriter _traceWriter;
         private readonly ILogger _logger;
         private readonly string _hostId;
         private readonly string _instanceId;
@@ -36,11 +32,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private IDistributedLockManager _lockManager;
 
-        internal PrimaryHostCoordinator(IDistributedLockManager lockManager, TimeSpan leaseTimeout, string hostId, string instanceId, TraceWriter traceWriter,
+        internal PrimaryHostCoordinator(IDistributedLockManager lockManager, TimeSpan leaseTimeout, string hostId, string instanceId,
             ILoggerFactory loggerFactory, TimeSpan? renewalInterval = null)
         {
             _leaseTimeout = leaseTimeout;
-            _traceWriter = traceWriter;
             _hostId = hostId;
             _instanceId = instanceId;
 
@@ -58,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _timer = new Timer(ProcessLeaseTimerTick, null, TimeSpan.Zero, _leaseRetryInterval);
 
-            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
         }
 
         public event EventHandler HasLeaseChanged;
@@ -91,7 +86,6 @@ namespace Microsoft.Azure.WebJobs.Script
             TimeSpan leaseTimeout,
             string hostId,
             string instanceId,
-            TraceWriter traceWriter,
             ILoggerFactory loggerFactory,
             TimeSpan? renewalInterval = null)
         {
@@ -100,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentOutOfRangeException(nameof(leaseTimeout), $"The {nameof(leaseTimeout)} should be between 15 and 60 seconds");
             }
 
-            var manager = new PrimaryHostCoordinator(lockManager, leaseTimeout, hostId, instanceId, traceWriter, loggerFactory, renewalInterval);
+            var manager = new PrimaryHostCoordinator(lockManager, leaseTimeout, hostId, instanceId, loggerFactory, renewalInterval);
             return manager;
         }
 
@@ -167,8 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _lastRenewalLatency = _lastRenewal - requestStart;
 
                 string message = $"Host lock lease acquired by instance ID '{_instanceId}'.";
-                _traceWriter.Info(message);
-                _logger?.LogInformation(message);
+                _logger.LogInformation(message);
 
                 // We've successfully acquired the lease, change the timer to use our renewal interval
                 SetTimerInterval(_renewalInterval);
@@ -184,14 +177,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 ResetLease();
 
                 string message = $"Failed to renew host lock lease: {reason}";
-                _traceWriter.Info(message);
-                _logger?.LogInformation(message);
+                _logger.LogInformation(message);
             }
             else
             {
                 string message = $"Host instance '{_instanceId}' failed to acquire host lock lease: {reason}";
-                _traceWriter.Verbose(message);
-                _logger?.LogDebug(message);
+                _logger.LogDebug(message);
             }
         }
 
@@ -218,8 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     Task.Run(() => _lockManager.ReleaseLockAsync(_lockHandle, CancellationToken.None)).GetAwaiter().GetResult();
 
                     string message = $"Host instance '{_instanceId}' released lock lease.";
-                    _traceWriter.Verbose(message);
-                    _logger?.LogDebug(message);
+                    _logger.LogDebug(message);
                 }
             }
             catch (Exception)

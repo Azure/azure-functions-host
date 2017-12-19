@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 
@@ -37,11 +36,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets the root path for log files.
         /// </summary>
         public string RootLogPath { get; set; }
-
-        /// <summary>
-        /// Gets or sets the custom TraceWriter to add to the trace pipeline
-        /// </summary>
-        public TraceWriter TraceWriter { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the <see cref="ScriptHost"/> should

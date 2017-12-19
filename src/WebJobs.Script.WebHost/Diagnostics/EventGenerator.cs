@@ -2,9 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Tracing;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
@@ -12,21 +12,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {
         private const string EventTimestamp = "MM/dd/yyyy hh:mm:ss.fff tt";
 
-        public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage)
+        public void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage)
         {
             string eventTimestamp = DateTime.UtcNow.ToString(EventTimestamp);
             switch (level)
             {
-                case TraceLevel.Verbose:
+                case LogLevel.Trace:
+                case LogLevel.Debug:
                     FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventVerbose(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
-                case TraceLevel.Info:
+                case LogLevel.Information:
                     FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventInfo(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
-                case TraceLevel.Warning:
+                case LogLevel.Warning:
                     FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp);
                     break;
-                case TraceLevel.Error:
+                case LogLevel.Error:
                     FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp, exceptionType, exceptionMessage);
                     break;
             }

@@ -7,9 +7,11 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -21,8 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ISecretManagerFactory _secretManagerFactory;
         private readonly IScriptEventManager _eventManager;
         private readonly IWebJobsRouter _router;
-        private readonly ILoggerFactoryBuilder _loggerFactoryBuilder;
         private readonly WebHostSettings _settings;
+        private readonly ILoggerProviderFactory _loggerProviderFactory;
+        private readonly ILoggerFactory _loggerFactory;
+
         private ScriptHostConfiguration _standbyScriptHostConfig;
         private WebScriptHostManager _standbyHostManager;
         private ScriptHostConfiguration _activeScriptHostConfig;
@@ -30,14 +34,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private Timer _specializationTimer;
 
         public WebHostResolver(ScriptSettingsManager settingsManager, ISecretManagerFactory secretManagerFactory,
-            IScriptEventManager eventManager, WebHostSettings settings, IWebJobsRouter router, ILoggerFactoryBuilder loggerFactoryBuilder)
+            IScriptEventManager eventManager, WebHostSettings settings, IWebJobsRouter router, ILoggerProviderFactory loggerProviderFactory,
+            ILoggerFactory loggerFactory)
         {
             _settingsManager = settingsManager;
             _secretManagerFactory = secretManagerFactory;
             _eventManager = eventManager;
             _router = router;
-            _loggerFactoryBuilder = loggerFactoryBuilder;
             _settings = settings;
+
+            // _loggerProviderFactory is used for creating the LoggerFactory for each ScriptHost
+            _loggerProviderFactory = loggerProviderFactory;
+
+            // _loggerFactory is used when there is no host available.
+            _loggerFactory = loggerFactory;
+        }
+
+        public ILoggerFactory GetLoggerFactory(WebHostSettings settings)
+        {
+            WebScriptHostManager manager = GetWebScriptHostManager(settings);
+
+            if (!manager.CanInvoke())
+            {
+                // The host is still starting and the host's LoggerFactory cannot be used. Return
+                // a fallback LoggerFactory rather than waiting. By default, this will enable logging
+                // to the SystemLogger.
+                return _loggerFactory;
+            }
+
+            return GetScriptHostConfiguration(settings).HostConfig.LoggerFactory;
         }
 
         public ScriptHostConfiguration GetScriptHostConfiguration() =>
@@ -76,6 +101,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         internal void EnsureInitialized(WebHostSettings settings)
         {
+            // Create a logger that we can use when the host isn't yet initialized.
+            ILogger logger = _loggerFactory.CreateLogger(LogCategories.Startup);
+
             lock (_syncLock)
             {
                 if (!WebScriptHostManager.InStandbyMode)
@@ -89,7 +117,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _specializationTimer = null;
 
                         _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
-                        _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings, _router, _loggerFactoryBuilder);
+                        _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings,
+                            _router, loggerProviderFactory: _loggerProviderFactory, loggerFactory: _loggerFactory);
                         //_activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
                         InitializeFileSystem();
 
@@ -97,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         {
                             // we're starting the one and only one
                             // standby mode specialization
-                            _activeScriptHostConfig.TraceWriter.Info(Resources.HostSpecializationTrace);
+                            logger.LogInformation(Resources.HostSpecializationTrace);
 
                             // After specialization, we need to ensure that custom timezone
                             // settings configured by the user (WEBSITE_TIME_ZONE) are honored.
@@ -123,11 +152,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         var standbySettings = CreateStandbySettings(settings);
                         _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
-                        _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings, _router, _loggerFactoryBuilder);
+                        _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings,
+                            _router, loggerProviderFactory: _loggerProviderFactory, loggerFactory: _loggerFactory);
                         // _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
 
                         InitializeFileSystem();
-                        StandbyManager.Initialize(_standbyScriptHostConfig);
+                        StandbyManager.Initialize(_standbyScriptHostConfig, logger);
 
                         // start a background timer to identify when specialization happens
                         // specialization usually happens via an http request (e.g. scale controller
@@ -151,8 +181,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 LogPath = Path.Combine(tempRoot, @"Functions\Standby\Logs"),
                 ScriptPath = Path.Combine(tempRoot, @"Functions\Standby\WWWRoot"),
                 SecretsPath = Path.Combine(tempRoot, @"Functions\Standby\Secrets"),
-                LoggerFactoryBuilder = settings.LoggerFactoryBuilder,
-                TraceWriter = settings.TraceWriter,
                 IsSelfHost = settings.IsSelfHost
             };
 
@@ -166,7 +194,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 RootScriptPath = settings.ScriptPath,
                 RootLogPath = settings.LogPath,
                 FileLoggingMode = FileLoggingMode.DebugOnly,
-                TraceWriter = settings.TraceWriter,
                 IsSelfHost = settings.IsSelfHost
             };
 

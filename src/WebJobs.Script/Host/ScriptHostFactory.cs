@@ -13,9 +13,9 @@ namespace Microsoft.Azure.WebJobs.Script
             IScriptEventManager eventManager,
             ScriptSettingsManager settingsManager,
             ScriptHostConfiguration config,
-            ILoggerFactoryBuilder loggerFactoryBuilder)
+            ILoggerProviderFactory loggerProviderFactory)
         {
-            return new ScriptHost(environment, eventManager, config, settingsManager, loggerFactoryBuilder);
+            return new ScriptHost(environment, eventManager, config, settingsManager, loggerProviderFactory);
         }
     }
 }

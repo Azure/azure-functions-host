@@ -2,27 +2,23 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Moq;
 using Moq.Protected;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using static Microsoft.Azure.WebJobs.Script.FunctionTraceWriterFactory;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -210,17 +206,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = Environment.CurrentDirectory,
-                TraceWriter = new TestTraceWriter(TraceLevel.Verbose)
+                RootScriptPath = Environment.CurrentDirectory
             };
 
             var eventManager = new Mock<IScriptEventManager>();
             var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), eventManager.Object, config, null, null, null);
             var factoryMock = new Mock<IScriptHostFactory>();
-            factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, It.IsAny<ScriptHostConfiguration>(), It.IsAny<ILoggerFactoryBuilder>()))
+            factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, It.IsAny<ScriptHostConfiguration>(), It.IsAny<ILoggerProviderFactory>()))
                 .Returns(hostMock.Object);
 
-            var target = new Mock<ScriptHostManager>(config, _settingsManager, factoryMock.Object, eventManager.Object, new NullScriptHostEnvironment(), new DefaultLoggerFactoryBuilder(), null);
+            var target = new Mock<ScriptHostManager>(config, _settingsManager, factoryMock.Object, eventManager.Object, new NullScriptHostEnvironment(), null, null);
             target.Protected().Setup("OnHostStarted")
                 .Throws(new Exception());
 
@@ -236,38 +231,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task RunAndBlock_HostJsonValueError_LogsError()
         {
             // Try to load valid host.json file that has an out-of-range value.
-            // Ensure that it's logged to TraceWriter and ILogger
+            // Ensure that it's logged to ILogger
 
-            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\OutOfRange");
 
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = rootPath,
-                TraceWriter = traceWriter
+                RootScriptPath = rootPath
             };
 
             TestLoggerProvider provider = new TestLoggerProvider();
-            var loggerFactoryBuilder = new TestLoggerFactoryBuilder(provider);
+            var loggerProviderFactory = new TestLoggerProviderFactory(provider, includeDefaultLoggerProviders: false);
 
             var factoryMock = new Mock<IScriptHostFactory>();
             var scriptHostFactory = new TestScriptHostFactory();
             var eventManagerMock = new Mock<IScriptEventManager>();
-            var hostManager = new ScriptHostManager(config, _settingsManager, scriptHostFactory, eventManagerMock.Object, loggerFactoryBuilder: loggerFactoryBuilder);
+            var hostManager = new ScriptHostManager(config, _settingsManager, scriptHostFactory, eventManagerMock.Object, loggerProviderFactory: loggerProviderFactory);
             Task taskIgnore = Task.Run(() => hostManager.RunAndBlock());
 
-            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Error, 3000);
+            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Error, 3000, 50);
 
             Assert.Equal(ScriptHostState.Error, hostManager.State);
             Assert.False(hostManager.CanInvoke());
+
             hostManager.Stop();
             var ex = hostManager.LastError;
             Assert.True(ex is ArgumentOutOfRangeException);
 
             string msg = "A ScriptHost error has occurred";
-            var trace = traceWriter.Traces.Last(t => t.Level == TraceLevel.Error);
-            Assert.Equal(msg, trace.Message);
-            Assert.Same(ex, trace.Exception);
 
             var startupLogger = provider.CreatedLoggers.Last();
             var loggerMessage = startupLogger.LogMessages.First();
@@ -278,15 +269,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task RunAndBlock_ParseError_LogsError()
         {
-            TestLoggerProvider loggerProvider = null;
-            var loggerFactoryHookMock = new Mock<ILoggerFactoryBuilder>(MockBehavior.Strict);
-            loggerFactoryHookMock
-                .Setup(m => m.AddLoggerProviders(It.IsAny<ILoggerFactory>(), It.IsAny<ScriptHostConfiguration>(), It.IsAny<ScriptSettingsManager>()))
-                .Callback<ILoggerFactory, ScriptHostConfiguration, ScriptSettingsManager>((factory, scriptConfig, settings) =>
-                {
-                    loggerProvider = new TestLoggerProvider(scriptConfig.LogFilter.Filter);
-                    factory.AddProvider(loggerProvider);
-                });
+            TestLoggerProvider loggerProvider = new TestLoggerProvider();
+            TestLoggerProviderFactory factory = new TestLoggerProviderFactory(loggerProvider, includeDefaultLoggerProviders: false);
 
             string rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests");
             if (!Directory.Exists(rootPath))
@@ -304,14 +288,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var scriptHostFactory = new TestScriptHostFactory();
             var eventManagerMock = new Mock<IScriptEventManager>();
-            var hostManager = new ScriptHostManager(config, _settingsManager, scriptHostFactory, eventManagerMock.Object, loggerFactoryBuilder: loggerFactoryHookMock.Object);
+            var hostManager = new ScriptHostManager(config, _settingsManager, scriptHostFactory, eventManagerMock.Object, loggerProviderFactory: factory);
             Task taskIgnore = Task.Run(() => hostManager.RunAndBlock());
 
-            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Error, 3000);
+            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Error, 3000, 50);
 
             Assert.Equal(ScriptHostState.Error, hostManager.State);
-            hostManager.Stop();
 
+            hostManager.Stop();
+            
             var ex = hostManager.LastError;
             Assert.True(ex is FormatException);
             Assert.Equal("Unable to parse host.json file.", ex.Message);
@@ -335,13 +320,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             File.WriteAllText(Path.Combine(functionDir, ScriptConstants.HostMetadataFileName), hostConfig.ToString());
 
-            var testTraceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var config = new ScriptHostConfiguration
             {
                 RootScriptPath = functionDir,
                 RootLogPath = logDir,
                 FileLoggingMode = FileLoggingMode.Always,
-                TraceWriter = testTraceWriter
             };
 
             // configure the monitor so it will fail within a couple seconds
@@ -360,16 +343,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockHostPerformanceManager = new Mock<HostPerformanceManager>(mockSettings.Object, hostHealthConfig);
 
             bool underHighLoad = false;
-            mockHostPerformanceManager.Setup(p => p.IsUnderHighLoad(It.IsAny<Collection<string>>(), It.IsAny<TraceWriter>()))
-                .Callback<Collection<string>, TraceWriter>((c, t) =>
+            mockHostPerformanceManager.Setup(p => p.IsUnderHighLoad(It.IsAny<Collection<string>>(), It.IsAny<ILogger>()))
+                .Callback<Collection<string>, ILogger>((c, l) =>
                 {
                     c.Add("Connections");
                 })
                 .Returns(() => underHighLoad);
 
             var loggerProvider = new TestLoggerProvider();
-            var loggerFactoryBuilder = new TestLoggerFactoryBuilder(loggerProvider);
-            var hostManager = new ScriptHostManager(config, mockSettings.Object, new ScriptHostFactory(), eventManagerMock.Object, environmentMock.Object, loggerFactoryBuilder, mockHostPerformanceManager.Object);
+            var loggerProviderFactory = new TestLoggerProviderFactory(loggerProvider);
+            var hostManager = new ScriptHostManager(config, mockSettings.Object, new ScriptHostFactory(), eventManagerMock.Object, environmentMock.Object, loggerProviderFactory, mockHostPerformanceManager.Object);
             Assert.True(hostManager.ShouldMonitorHostHealth);
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
             await TestHelpers.Await(() => hostManager.State == ScriptHostState.Running);
@@ -384,13 +367,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environmentMock.Verify(p => p.Shutdown(), Times.Once);
 
             // we expect a few restart iterations
-            var thresholdErrors = testTraceWriter.Traces.Where(p => p.Exception is InvalidOperationException && p.Exception.Message == "Host thresholds exceeded: [Connections]");
+            var thresholdErrors = loggerProvider.GetAllLogMessages().Where(p => p.Exception is InvalidOperationException && p.Exception.Message == "Host thresholds exceeded: [Connections]");
             Assert.True(thresholdErrors.Count() > 1);
 
-            var log = testTraceWriter.Traces.Last();
-            Assert.True(testTraceWriter.Traces.Count(p => p.Message == "Host is unhealthy. Initiating a restart." && p.Level == TraceLevel.Error) > 0);
-            Assert.Equal("Host unhealthy count exceeds the threshold of 5 for time window 00:00:01. Initiating shutdown.", log.Message);
-            Assert.Equal(TraceLevel.Error, log.Level);
+            var log = loggerProvider.GetAllLogMessages().Last();
+            Assert.True(loggerProvider.GetAllLogMessages().Count(p => p.FormattedMessage == "Host is unhealthy. Initiating a restart." && p.Level == LogLevel.Error) > 0);
+            Assert.Equal("Host unhealthy count exceeds the threshold of 5 for time window 00:00:01. Initiating shutdown.", log.FormattedMessage);
+            Assert.Equal(LogLevel.Error, log.Level);
         }
 
         [Fact(Skip = "Fix this")]
@@ -436,25 +419,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var config = new ScriptHostConfiguration()
             {
-                RootScriptPath = Environment.CurrentDirectory,
-                TraceWriter = new TestTraceWriter(TraceLevel.Verbose)
+                RootScriptPath = Environment.CurrentDirectory
             };
 
             var mockSettings = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
             var eventManager = new Mock<IScriptEventManager>();
-            var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), eventManager.Object, config, null, null);
+            var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), eventManager.Object, config, null, null, null);
             var factoryMock = new Mock<IScriptHostFactory>();
-            factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), mockSettings.Object, It.IsAny<ScriptHostConfiguration>(), It.IsAny<ILoggerFactoryBuilder>()))
+            factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), mockSettings.Object, It.IsAny<ScriptHostConfiguration>(), It.IsAny<ILoggerProviderFactory>()))
                 .Returns(hostMock.Object);
 
             var hostHealthConfig = new HostHealthMonitorConfiguration();
             var mockHostPerformanceManager = new Mock<HostPerformanceManager>(mockSettings.Object, hostHealthConfig);
-            var target = new Mock<ScriptHostManager>(config, mockSettings.Object, factoryMock.Object, eventManager.Object, new NullScriptHostEnvironment(), mockHostPerformanceManager.Object);
+            var target = new Mock<ScriptHostManager>(config, mockSettings.Object, factoryMock.Object, eventManager.Object, new NullScriptHostEnvironment(), null, mockHostPerformanceManager.Object);
 
             Collection<string> exceededCounters = new Collection<string>();
             bool isUnderHighLoad = false;
-            mockHostPerformanceManager.Setup(p => p.IsUnderHighLoad(It.IsAny<Collection<string>>(), It.IsAny<TraceWriter>()))
-                .Callback<Collection<string>, TraceWriter>((c, t) =>
+            mockHostPerformanceManager.Setup(p => p.IsUnderHighLoad(It.IsAny<Collection<string>>(), It.IsAny<ILogger>()))
+                .Callback<Collection<string>, ILogger>((c, t) =>
                 {
                     foreach (var counter in exceededCounters)
                     {
@@ -522,7 +504,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             hostManager.Stop();
             Assert.Equal(ScriptHostState.Default, hostManager.State);
 
-            await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+            await Task.Delay(FileWriter.LogFlushIntervalMs);
 
             string hostLogFilePath = Directory.EnumerateFiles(Path.Combine(logDir, "Host")).Single();
             string hostLogs = File.ReadAllText(hostLogFilePath);
@@ -531,132 +513,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("No job functions found.", hostLogs);
             Assert.Contains("Job host started", hostLogs);
             Assert.Contains("Job host stopped", hostLogs);
-        }
-
-        [Fact]
-        public void Restart_CreatesNew_FunctionTraceWriter()
-        {
-            string functionDir = @"TestScripts\CSharp";
-            var traceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Info);
-            ScriptHostConfiguration config = new ScriptHostConfiguration
-            {
-                RootScriptPath = functionDir,
-                FileLoggingMode = FileLoggingMode.Always,
-                TraceWriter = traceWriter
-            };
-
-            string hostJsonPath = Path.Combine(functionDir, ScriptConstants.HostMetadataFileName);
-            string originalHostJson = File.ReadAllText(hostJsonPath);
-
-            // Only load two functions to start:
-            JObject hostConfig = new JObject
-            {
-                { "id", "123456" },
-                { "functions", new JArray("ManualTrigger", "Scenarios") }
-            };
-            File.WriteAllText(hostJsonPath, hostConfig.ToString());
-
-            CancellationTokenSource cts = new CancellationTokenSource();
-            ExceptionDispatchInfo exception = null;
-
-            try
-            {
-                using (var manager = new ScriptHostManager(config))
-                {
-                    // Background task to run while the main thread is pumping events at RunAndBlock().
-                    Thread t = new Thread(_ =>
-                    {
-                        try
-                        {
-                            // don't start until the manager is running
-                            TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
-
-                            var firstFileWriters = GetRemovableTraceWriters(manager.Instance);
-                            Assert.Equal(2, firstFileWriters.Count());
-
-                            // update the host.json to only have one function
-                            hostConfig["functions"] = new JArray("ManualTrigger");
-                            traceWriter.Traces.Clear();
-                            File.WriteAllText(hostJsonPath, hostConfig.ToString());
-                            TestHelpers.Await(() => traceWriter.Traces.Select(p => p.Message).Contains("Job host started")).Wait();
-                            TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
-
-                            var secondFileWriters = GetRemovableTraceWriters(manager.Instance);
-                            Assert.Equal(1, secondFileWriters.Count());
-
-                            // make sure we have a new instance of the ManualTrigger writer and that it does
-                            // not throw an ObjectDisposedException when we use it
-                            Assert.DoesNotContain(secondFileWriters.Single(), firstFileWriters);
-                            secondFileWriters.Single().Info("test");
-
-                            // add back the other function -- make sure the writer is not disposed
-                            hostConfig["functions"] = new JArray("ManualTrigger", "Scenarios");
-                            traceWriter.Traces.Clear();
-                            File.WriteAllText(hostJsonPath, hostConfig.ToString());
-                            TestHelpers.Await(() => traceWriter.Traces.Select(p => p.Message).Contains("Job host started")).Wait();
-                            TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
-
-                            var thirdFileWriters = GetRemovableTraceWriters(manager.Instance);
-                            Assert.Equal(2, thirdFileWriters.Count());
-
-                            // make sure these are all new and that they also do not throw
-                            var previousWriters = firstFileWriters.Concat(secondFileWriters);
-                            Assert.DoesNotContain(thirdFileWriters.First(), previousWriters);
-                            Assert.DoesNotContain(thirdFileWriters.Last(), previousWriters);
-                            thirdFileWriters.First().Info("test");
-                            thirdFileWriters.Last().Info("test");
-                        }
-                        catch (Exception ex)
-                        {
-                            exception = ExceptionDispatchInfo.Capture(ex);
-                        }
-                        finally
-                        {
-                            cts.Cancel();
-                        }
-                    });
-                    t.Start();
-                    manager.RunAndBlock(cts.Token);
-                    t.Join();
-                }
-
-                Assert.True(exception == null, exception?.SourceException?.ToString());
-            }
-            finally
-            {
-                File.WriteAllText(hostJsonPath, originalHostJson);
-            }
-        }
-
-        private static IEnumerable<RemovableTraceWriter> GetRemovableTraceWriters(ScriptHost host)
-        {
-            List<RemovableTraceWriter> removableTraceWriters = new List<RemovableTraceWriter>();
-
-            foreach (var function in host.Functions)
-            {
-                var invokerBase = function.Invoker as FunctionInvokerBase;
-                if (invokerBase == null)
-                {
-                    continue;
-                }
-
-                RemovableTraceWriter instance = null;
-                if (invokerBase.FileTraceWriter is ConditionalTraceWriter conditional)
-                {
-                    instance = conditional.InnerWriter as RemovableTraceWriter;
-                }
-                else
-                {
-                    instance = invokerBase.FileTraceWriter as RemovableTraceWriter;
-                }
-
-                if (instance != null)
-                {
-                    removableTraceWriters.Add(instance);
-                }
-            }
-
-            return removableTraceWriters;
         }
 
         // Update the manifest for the timer function
@@ -680,7 +536,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             public bool Throw { get; set; }
 
-            public ScriptHost Create(IScriptHostEnvironment environment, IScriptEventManager eventManager, ScriptSettingsManager settingsManager, ScriptHostConfiguration config, ILoggerFactoryBuilder loggerFactoryBuilder)
+            public ScriptHost Create(IScriptHostEnvironment environment, IScriptEventManager eventManager, ScriptSettingsManager settingsManager, ScriptHostConfiguration config, ILoggerProviderFactory loggerProviderFactory)
             {
                 if (Throw)
                 {
@@ -694,7 +550,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<string>(), It.IsAny<string>()));
                 mockMetricsLogger.Setup(p => p.LogEvent(It.IsAny<MetricEvent>()));
 
-                return new ScriptHost(environment, eventManager, config, settingsManager, loggerFactoryBuilder);
+                return new ScriptHost(environment, eventManager, config, settingsManager, loggerProviderFactory);
             }
         }
     }

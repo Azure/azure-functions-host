@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -22,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -51,13 +51,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
             IWebJobsRouter router,
+            ILoggerFactory loggerFactory,
             IScriptHostFactory scriptHostFactory = null,
             ISecretsRepositoryFactory secretsRepositoryFactory = null,
-            ILoggerFactoryBuilder loggerFactoryBuilder = null,
             HostPerformanceManager hostPerformanceManager = null,
+            ILoggerProviderFactory loggerProviderFactory = null,
             int hostTimeoutSeconds = 30,
             int hostPollingIntervalMilliseconds = 500)
-            : base(config, settingsManager, scriptHostFactory, eventManager, environment: null, loggerFactoryBuilder: loggerFactoryBuilder, hostPerformanceManager: hostPerformanceManager)
+            : base(config, settingsManager, scriptHostFactory, eventManager, environment: null,
+                  hostPerformanceManager: hostPerformanceManager, loggerProviderFactory: loggerProviderFactory)
         {
             _config = config;
 
@@ -68,22 +70,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _hostRunningPollIntervalMilliseconds = hostPollingIntervalMilliseconds;
             _router = router;
 
-            var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
-            var systemTraceWriter = new SystemTraceWriter(systemEventGenerator, settingsManager, TraceLevel.Verbose);
-            if (config.TraceWriter != null)
-            {
-                config.TraceWriter = new CompositeTraceWriter(new TraceWriter[] { config.TraceWriter, systemTraceWriter });
-            }
-            else
-            {
-                config.TraceWriter = systemTraceWriter;
-            }
-
             config.IsSelfHost = webHostSettings.IsSelfHost;
 
             secretsRepositoryFactory = secretsRepositoryFactory ?? new DefaultSecretsRepositoryFactory();
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
-            _secretManager = secretManagerFactory.Create(settingsManager, config.HostConfig.LoggerFactory, secretsRepository);
+            _secretManager = secretManagerFactory.Create(settingsManager, loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral), secretsRepository);
 
             _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider(_secretManager);
         }
@@ -94,9 +85,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
             IWebJobsRouter router,
-            IScriptHostFactory scriptHostFactory,
-            ILoggerFactoryBuilder loggerFactoryBuilder)
-            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, scriptHostFactory, new DefaultSecretsRepositoryFactory(), loggerFactoryBuilder)
+            ILoggerFactory loggerFactory,
+            IScriptHostFactory scriptHostFactory)
+            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, loggerFactory, scriptHostFactory, new DefaultSecretsRepositoryFactory())
         {
         }
 
@@ -106,8 +97,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
             IWebJobsRouter router,
-            ILoggerFactoryBuilder loggerFactoryBuilder)
-            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, new ScriptHostFactory(), loggerFactoryBuilder)
+            ILoggerFactory loggerFactory)
+            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, loggerFactory, new ScriptHostFactory())
         {
         }
 
@@ -199,7 +190,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var hostId = hostConfig.HostId ?? "default";
             Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
             var loggingConnectionString = config.HostConfig.DashboardConnectionString;
-            var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, loggingConnectionString, config.TraceWriter);
+
+            // TODO: This is asking for a LoggerFactory before the LoggerFactory is ready. Pass a Null instance for now.
+            var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, loggingConnectionString, NullLoggerFactory.Instance);
             hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
 
             // disable standard Dashboard logging (enabling Table logging above)
@@ -210,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (InStandbyMode)
             {
-                Instance?.TraceWriter.Info("Host is in standby mode");
+                Instance?.Logger.LogInformation("Host is in standby mode");
             }
 
             InitializeHttp();
@@ -223,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (!InStandbyMode)
             {
                 // Purge any old Function secrets
-                _secretManager.PurgeOldSecretsAsync(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter, Instance.Logger);
+                _secretManager.PurgeOldSecretsAsync(Instance.ScriptConfig.RootScriptPath, Instance.Logger);
             }
 
             base.OnHostStarted();
@@ -288,8 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public override void Shutdown()
         {
             string message = "Environment shutdown has been triggered. Stopping host and signaling shutdown.";
-            Instance?.TraceWriter.Info(message);
-            Instance?.Logger?.LogInformation(message);
+            Instance?.Logger.LogInformation(message);
 
             Stop();
 

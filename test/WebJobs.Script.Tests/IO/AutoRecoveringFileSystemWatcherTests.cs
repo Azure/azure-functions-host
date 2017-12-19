@@ -2,14 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.IO;
-using Moq;
+using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using WebJobs.Script.Tests;
 using Xunit;
 
@@ -70,10 +69,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
 
         public async Task RecoveryTest(int expectedNumberOfAttempts, bool isFailureScenario)
         {
-            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            ILoggerFactory loggerFactory = new LoggerFactory();
+            TestLoggerProvider loggerProvider = new TestLoggerProvider();
+            loggerFactory.AddProvider(loggerProvider);
 
             using (var directory = new TempDirectory())
-            using (var watcher = new AutoRecoveringFileSystemWatcher(directory.Path, traceWriter: traceWriter))
+            using (var watcher = new AutoRecoveringFileSystemWatcher(directory.Path, loggerFactory: loggerFactory))
             {
                 Directory.Delete(directory.Path, true);
 
@@ -88,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
 
                 await TestHelpers.Await(() =>
                 {
-                    return traceWriter.Traces.Count == expectedTracesBeforeRecovery;
+                    return loggerProvider.GetAllLogMessages().Count() == expectedTracesBeforeRecovery;
                 }, pollingInterval: 500);
 
                 if (isFailureScenario)
@@ -102,14 +103,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
 
                 await TestHelpers.Await(() =>
                 {
-                    return traceWriter.Traces.Count == expectedTracesAfterRecovery;
+                    return loggerProvider.GetAllLogMessages().Count() == expectedTracesAfterRecovery;
                 }, pollingInterval: 500);
 
-                TraceEvent failureEvent = traceWriter.Traces.First();
-                Assert.Equal(TraceLevel.Warning, failureEvent.Level);
-                Assert.Contains("Failure detected", failureEvent.Message);
+                LogMessage failureEvent = loggerProvider.GetAllLogMessages().First();
+                Assert.Equal(LogLevel.Warning, failureEvent.Level);
+                Assert.Contains("Failure detected", failureEvent.FormattedMessage);
 
-                var retryEvents = traceWriter.Traces.Where(t => t.Level == TraceLevel.Warning).Skip(1).ToList();
+                var retryEvents = loggerProvider.GetAllLogMessages().Where(t => t.Level == LogLevel.Warning).Skip(1).ToList();
 
                 if (isFailureScenario)
                 {
@@ -124,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                 for (int i = 0; i < retryEvents.Count; i++)
                 {
                     long expectedInterval = Convert.ToInt64((Math.Pow(2, i + 1) - 1) / 2);
-                    TraceEvent currentEvent = retryEvents[i];
+                    LogMessage currentEvent = retryEvents[i];
 
                     var actualInterval = currentEvent.Timestamp - previoustTimeStamp;
                     previoustTimeStamp = currentEvent.Timestamp;
@@ -134,18 +135,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                         $"Recovering interval did not meet the expected interval (expected '{expectedInterval}', actual '{intervalInSeconds}");
                 }
 
-                Assert.True(traceWriter.Traces.All(t => t.Message.EndsWith(fileWatcherLogSuffix)));
+                Assert.True(loggerProvider.GetAllLogMessages().All(t => t.FormattedMessage.EndsWith(fileWatcherLogSuffix)));
 
                 if (isFailureScenario)
                 {
-                    Assert.Contains("Recovery process aborted.", traceWriter.Traces.Last().Message);
+                    Assert.Contains("Recovery process aborted.", loggerProvider.GetAllLogMessages().Last().FormattedMessage);
                 }
                 else
                 {
-                    Assert.Contains("File watcher recovered.", traceWriter.Traces.Last().Message);
+                    Assert.Contains("File watcher recovered.", loggerProvider.GetAllLogMessages().Last().FormattedMessage);
                 }
 
-                Assert.Equal(ScriptConstants.TraceSourceFileWatcher, traceWriter.Traces.Last().Source);
+                Assert.Equal($"Host.{ScriptConstants.TraceSourceFileWatcher}", loggerProvider.GetAllLogMessages().Last().Category);
             }
         }
 
@@ -181,9 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
         public void FileWatcherTest(string path, Action<AutoRecoveringFileSystemWatcher> action, Func<FileSystemEventArgs, bool> changeHandler,
             WatcherChangeTypes changeTypes = WatcherChangeTypes.All, bool expectEvent = true)
         {
-            var traceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose);
-
-            using (var watcher = new AutoRecoveringFileSystemWatcher(path, traceWriter: traceWriter))
+            using (var watcher = new AutoRecoveringFileSystemWatcher(path))
             {
                 var resetEvent = new ManualResetEventSlim();
 
@@ -206,8 +205,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
         private class TestFileSystemWatcher : AutoRecoveringFileSystemWatcher
         {
             public TestFileSystemWatcher(string path, string filter = "*.*",
-                bool includeSubdirectories = true, WatcherChangeTypes changeTypes = WatcherChangeTypes.All, TraceWriter traceWriter = null)
-                : base(path, filter, includeSubdirectories, changeTypes, traceWriter)
+                bool includeSubdirectories = true, WatcherChangeTypes changeTypes = WatcherChangeTypes.All, ILoggerFactory loggerFactory = null)
+                : base(path, filter, includeSubdirectories, changeTypes, loggerFactory)
             {
             }
 

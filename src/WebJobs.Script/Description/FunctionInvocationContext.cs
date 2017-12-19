@@ -13,8 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public Binder Binder { get; set; }
 
-        public TraceWriter TraceWriter { get; set; }
-
         public ILogger Logger { get; set; }
     }
 }

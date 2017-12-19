@@ -18,12 +18,12 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureProxyFunctionExecutorKey = "MS_AzureProxyFunctionExecutor";
         public const string AzureFunctionsHostManagerKey = "MS_AzureFunctionsHostManager";
 
-        public const string TracePropertyPrimaryHostKey = "MS_PrimaryHost";
-        public const string TracePropertyFunctionNameKey = "MS_FunctionName";
-        public const string TracePropertyEventNameKey = "MS_EventName";
-        public const string TracePropertyEventDetailsKey = "MS_EventDetails";
-        public const string TracePropertyIsUserTraceKey = "MS_IsUserTrace";
-        public const string TracePropertyIsSystemTraceKey = "MS_IsSystemTrace";
+        public const string LogPropertyPrimaryHostKey = "MS_PrimaryHost";
+        public const string LogPropertyFunctionNameKey = "MS_FunctionName";
+        public const string LogPropertyEventNameKey = "MS_EventName";
+        public const string LogPropertyEventDetailsKey = "MS_EventDetails";
+        public const string LogPropertyIsUserLogKey = "MS_IsUserLog";
+        public const string LogPropertyIsSystemLogKey = "MS_IsSystemLog";
 
         public const string TraceSourceSecretManagement = "SecretManagement";
         public const string TraceSourceHostAdmin = "HostAdmin";

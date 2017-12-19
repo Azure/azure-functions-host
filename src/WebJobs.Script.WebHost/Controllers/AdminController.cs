@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -21,7 +20,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -41,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
-            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryAdminController);
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryAdminController);
             _authorizationService = authorizationService;
         }
 
@@ -121,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             string message = $"Host Status: {JsonConvert.SerializeObject(status, Formatting.Indented)}";
-            _logger?.LogInformation(message);
+            _logger.LogInformation(message);
 
             return Ok(status);
         }
@@ -147,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 var traceEvent = new TraceEvent(logEntry.Level, logEntry.Message, logEntry.Source);
                 if (!string.IsNullOrEmpty(logEntry.FunctionName))
                 {
-                    traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, logEntry.FunctionName);
+                    traceEvent.Properties.Add(ScriptConstants.LogPropertyFunctionNameKey, logEntry.FunctionName);
                 }
 
                 var logLevel = Utility.ToLogLevel(traceEvent.Level);

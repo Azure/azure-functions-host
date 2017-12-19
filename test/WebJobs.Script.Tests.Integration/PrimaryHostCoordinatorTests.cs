@@ -2,14 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Moq;
@@ -19,6 +20,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class PrimaryHostCoordinatorTests
     {
+        private ILoggerFactory _loggerFactory = new LoggerFactory();
+        private TestLoggerProvider _loggerProvider = new TestLoggerProvider();
+
+        public PrimaryHostCoordinatorTests()
+        {
+            _loggerFactory.AddProvider(_loggerProvider);
+        }
+
         // Helper to get a real Blob Lease based IDistributedLockManager
         private static IDistributedLockManager CreateLockManager()
         {
@@ -34,9 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
             string hostId = Guid.NewGuid().ToString();
             string instanceId = Guid.NewGuid().ToString();
-            var traceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose);
 
-            using (var manager = PrimaryHostCoordinator.Create(CreateLockManager(), TimeSpan.FromSeconds(15), hostId, instanceId, traceWriter, null))
+            using (var manager = PrimaryHostCoordinator.Create(CreateLockManager(), TimeSpan.FromSeconds(15), hostId, instanceId, _loggerFactory))
             {
                 await TestHelpers.Await(() => manager.HasLease);
             }
@@ -49,7 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string hostId = Guid.NewGuid().ToString();
             string instanceId = Guid.NewGuid().ToString();
-            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var resetEvent = new ManualResetEventSlim();
 
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
@@ -62,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             try
             {
-                manager = PrimaryHostCoordinator.Create(CreateLockManager(), TimeSpan.FromSeconds(15), hostId, instanceId, traceWriter, null);
+                manager = PrimaryHostCoordinator.Create(CreateLockManager(), TimeSpan.FromSeconds(15), hostId, instanceId, _loggerFactory);
                 manager.HasLeaseChanged += (s, a) => resetEvent.Set();
             }
             finally
@@ -89,7 +96,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
             ICloudBlob blob = await GetLockBlobAsync(connectionString, hostId);
 
-            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var resetEvent = new ManualResetEventSlim();
 
             PrimaryHostCoordinator manager = null;
@@ -97,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var lockManager = CreateLockManager();
             var renewalInterval = TimeSpan.FromSeconds(3);
-            using (manager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId, instanceId, traceWriter, null, renewalInterval))
+            using (manager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId, instanceId, _loggerFactory, renewalInterval))
             {
                 try
                 {
@@ -133,10 +139,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string instanceId = Guid.NewGuid().ToString();
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
 
-            var traceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose);
-
             var lockManager = CreateLockManager();
-            using (var manager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId, instanceId, traceWriter, null))
+            using (var manager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId, instanceId, _loggerFactory))
             {
                 await TestHelpers.Await(() => manager.HasLease);
             }
@@ -165,7 +169,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string hostId = Guid.NewGuid().ToString();
             string instanceId = Guid.NewGuid().ToString();
-            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var renewResetEvent = new ManualResetEventSlim();
 
             var blobMock = new Mock<IDistributedLockManager>();
@@ -173,17 +176,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                 .Returns(() => Task.FromResult<IDistributedLock>(new FakeLock()));
 
-            using (var manager = new PrimaryHostCoordinator(blobMock.Object, TimeSpan.FromSeconds(5), hostId, instanceId, traceWriter, null))
+            using (var manager = new PrimaryHostCoordinator(blobMock.Object, TimeSpan.FromSeconds(5), hostId, instanceId, _loggerFactory))
             {
                 renewResetEvent.Wait(TimeSpan.FromSeconds(10));
 
                 // Make sure we have enough time to trace the renewal
-                await TestHelpers.Await(() => traceWriter.Traces.Count == 1, 5000, 500);
+                await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages().Count() == 1, 5000, 500);
             }
 
-            TraceEvent acquisitionEvent = traceWriter.Traces.First();
-            Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.Message);
-            Assert.Equal(TraceLevel.Info, acquisitionEvent.Level);
+            LogMessage acquisitionEvent = _loggerProvider.GetAllLogMessages().First();
+            Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.FormattedMessage);
+            Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Information, acquisitionEvent.Level);
         }
 
         [Fact]
@@ -191,7 +194,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string hostId = Guid.NewGuid().ToString();
             string instanceId = Guid.NewGuid().ToString();
-            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var renewResetEvent = new ManualResetEventSlim();
 
             var blobMock = new Mock<IDistributedLockManager>();
@@ -203,20 +205,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Returns(() => Task.FromException<bool>(new StorageException(new RequestResult { HttpStatusCode = 409 }, "test", null)))
                 .Callback(() => renewResetEvent.Set());
 
-            using (var manager = new PrimaryHostCoordinator(blobMock.Object, TimeSpan.FromSeconds(5), hostId, instanceId, traceWriter, null))
+            using (var manager = new PrimaryHostCoordinator(blobMock.Object, TimeSpan.FromSeconds(5), hostId, instanceId, _loggerFactory))
             {
                 renewResetEvent.Wait(TimeSpan.FromSeconds(10));
-                await TestHelpers.Await(() => traceWriter.Traces.Count == 2, 5000, 500);
+                await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages().Count() == 2, 5000, 500);
             }
 
-            TraceEvent acquisitionEvent = traceWriter.Traces.First();
-            Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.Message);
-            Assert.Equal(TraceLevel.Info, acquisitionEvent.Level);
+            LogMessage acquisitionEvent = _loggerProvider.GetAllLogMessages().First();
+            Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.FormattedMessage);
+            Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Information, acquisitionEvent.Level);
 
-            TraceEvent renewalEvent = traceWriter.Traces.Skip(1).First();
+            LogMessage renewalEvent = _loggerProvider.GetAllLogMessages().Skip(1).First();
             string pattern = @"Failed to renew host lock lease: Another host has acquired the lease. The last successful renewal completed at (.+) \([0-9]+ milliseconds ago\) with a duration of [0-9]+ milliseconds.";
-            Assert.True(Regex.IsMatch(renewalEvent.Message, pattern), $"Expected trace event {pattern} not found.");
-            Assert.Equal(TraceLevel.Info, renewalEvent.Level);
+            Assert.True(Regex.IsMatch(renewalEvent.FormattedMessage, pattern), $"Expected trace event {pattern} not found.");
+            Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Information, renewalEvent.Level);
         }
 
         [Fact]
@@ -226,11 +228,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string hostId2 = Guid.NewGuid().ToString();
             string instanceId = Guid.NewGuid().ToString();
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
-            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
             var lockManager = CreateLockManager();
-            using (var manager1 = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId1, instanceId, traceWriter, null))
-            using (var manager2 = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId2, instanceId, traceWriter, null))
+            using (var manager1 = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId1, instanceId, NullLoggerFactory.Instance))
+            using (var manager2 = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId2, instanceId, NullLoggerFactory.Instance))
             {
                 Task manager1Check = TestHelpers.Await(() => manager1.HasLease);
                 Task manager2Check = TestHelpers.Await(() => manager2.HasLease);

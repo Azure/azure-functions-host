@@ -4,18 +4,16 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Timers;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class FileTraceWriter : TraceWriter, IDisposable
+    internal class FileWriter : IDisposable
     {
         internal const int LastModifiedCutoffDays = 1;
         private const long MaxLogFileSizeBytes = 5 * 1024 * 1024;
@@ -23,7 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script
         internal const int MaxLogLinesPerFlushInterval = 250;
         private readonly string _logFilePath;
         private readonly string _instanceId;
-        private readonly Func<string, string> _messageFormatter;
 
         private readonly DirectoryInfo _logDirectory;
         private static object _syncLock = new object();
@@ -33,11 +30,10 @@ namespace Microsoft.Azure.WebJobs.Script
         private Timer _flushTimer;
         private ConcurrentQueue<string> _logBuffer = new ConcurrentQueue<string>();
 
-        public FileTraceWriter(string logFilePath, TraceLevel level, Func<string, string> messageFormatter = null) : base(level)
+        public FileWriter(string logFilePath)
         {
             _logFilePath = logFilePath;
             _instanceId = GetInstanceId();
-            _messageFormatter = messageFormatter ?? FormatMessage;
 
             _logDirectory = new DirectoryInfo(logFilePath);
             if (!_logDirectory.Exists)
@@ -67,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _flushTimer.Start();
         }
 
-        public override void Flush()
+        public void Flush()
         {
             if (_logBuffer.Count == 0)
             {
@@ -127,56 +123,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public override void Trace(TraceEvent traceEvent)
-        {
-            if (traceEvent == null)
-            {
-                throw new ArgumentNullException(nameof(traceEvent));
-            }
-
-            object value;
-            if (traceEvent.Properties.TryGetValue(ScriptConstants.TracePropertyIsSystemTraceKey, out value)
-                && value is bool && (bool)value)
-            {
-                // we don't want to write system traces to the user trace files
-                return;
-            }
-
-            if (Level < traceEvent.Level || _logBuffer.Count > MaxLogLinesPerFlushInterval)
-            {
-                return;
-            }
-
-            if (_logBuffer.Count == MaxLogLinesPerFlushInterval)
-            {
-                AppendLine("Log output threshold exceeded.");
-                return;
-            }
-
-            AppendLine(traceEvent.Message);
-
-            if (traceEvent.Exception != null)
-            {
-                if (traceEvent.Exception is FunctionInvocationException ||
-                    traceEvent.Exception is AggregateException)
-                {
-                    // we want to minimize the stack traces for function invocation
-                    // failures, so we drill into the very inner exception, which will
-                    // be the script error
-                    Exception actualException = traceEvent.Exception;
-                    while (actualException.InnerException != null)
-                    {
-                        actualException = actualException.InnerException;
-                    }
-                    AppendLine(actualException.Message);
-                }
-                else
-                {
-                    AppendLine(traceEvent.Exception.ToFormattedString());
-                }
-            }
-        }
-
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
@@ -202,22 +148,28 @@ namespace Microsoft.Azure.WebJobs.Script
             GC.SuppressFinalize(this);
         }
 
-        protected virtual void AppendLine(string line)
+        public void AppendLine(string line)
         {
             if (line == null)
             {
                 return;
             }
 
+            if (_logBuffer.Count > MaxLogLinesPerFlushInterval)
+            {
+                return;
+            }
+
+            if (_logBuffer.Count == MaxLogLinesPerFlushInterval)
+            {
+                _logBuffer.Enqueue("Log output threshold exceeded.");
+                return;
+            }
+
             // add the line to the current buffer batch, which is flushed
             // on a timer
-            line = _messageFormatter(line);
-
             _logBuffer.Enqueue(line);
         }
-
-        private string FormatMessage(string message)
-            => string.Format(CultureInfo.InvariantCulture, "{0} {1}", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture), message.Trim());
 
         private void OnFlushLogs(object sender, ElapsedEventArgs e)
         {

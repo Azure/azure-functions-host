@@ -4,13 +4,14 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using WebJobs.Script.Tests;
 using Xunit;
@@ -21,39 +22,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
     {
         private readonly TempDirectory _secretsDirectory = new TempDirectory();
         private WebScriptHostManager _manager;
+        private TestLoggerProvider _loggerProvider = new TestLoggerProvider();
 
         [Fact(Skip = "Investigate test failure")]
         public async Task OnTimeoutException_IgnoreToken_StopsManager()
         {
-            var trace = new TestTraceWriter(TraceLevel.Info);
-
-            await RunTimeoutExceptionTest(trace, handleCancellation: false);
+            await RunTimeoutExceptionTest(handleCancellation: false);
 
             await TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running));
-            Assert.DoesNotContain(trace.Traces, t => t.Message.StartsWith("Done"));
-            Assert.Contains(trace.Traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
-            Assert.Contains(trace.Traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
+
+            var messages = _loggerProvider.GetAllLogMessages();
+            Assert.DoesNotContain(messages, t => t.FormattedMessage.StartsWith("Done"));
+            Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
+            Assert.Contains(messages, t => t.FormattedMessage == "A function timeout has occurred. Host is shutting down.");
         }
 
         [Fact(Skip = "Investigate test failure")]
         public async Task OnTimeoutException_UsesToken_ManagerKeepsRunning()
         {
-            var trace = new TestTraceWriter(TraceLevel.Info);
-
-            await RunTimeoutExceptionTest(trace, handleCancellation: true);
+            await RunTimeoutExceptionTest(handleCancellation: true);
 
             // wait a few seconds to make sure the manager doesn't die
             await Assert.ThrowsAsync<ApplicationException>(() => TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running),
                 timeout: 3000, throwWhenDebugging: true));
-            Assert.Contains(trace.Traces, t => t.Message.StartsWith("Done"));
-            Assert.Contains(trace.Traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
-            Assert.DoesNotContain(trace.Traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
+
+            var messages = _loggerProvider.GetAllLogMessages();
+            Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Done"));
+            Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
+            Assert.DoesNotContain(messages, t => t.FormattedMessage == "A function timeout has occurred. Host is shutting down.");
         }
 
-        private async Task RunTimeoutExceptionTest(TraceWriter trace, bool handleCancellation)
+        private async Task RunTimeoutExceptionTest(bool handleCancellation)
         {
             TimeSpan gracePeriod = TimeSpan.FromMilliseconds(5000);
-            _manager = await CreateAndStartWebScriptHostManager(trace);
+            _manager = await CreateAndStartWebScriptHostManager();
 
             string scenarioName = handleCancellation ? "useToken" : "ignoreToken";
 
@@ -65,19 +67,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             await Assert.ThrowsAsync<FunctionTimeoutException>(() => _manager.Instance.CallAsync("TimeoutToken", args));
         }
 
-        private async Task<WebScriptHostManager> CreateAndStartWebScriptHostManager(TraceWriter traceWriter)
+        private async Task<WebScriptHostManager> CreateAndStartWebScriptHostManager()
         {
             var functions = new Collection<string> { "TimeoutToken" };
 
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
                 RootScriptPath = $@"TestScripts\CSharp",
-                TraceWriter = traceWriter,
                 FileLoggingMode = FileLoggingMode.Always,
                 Functions = functions,
                 FunctionTimeout = TimeSpan.FromSeconds(3)
             };
 
+            var loggerProviderFactory = new TestLoggerProviderFactory(_loggerProvider);
             var mockEventManager = new Mock<IScriptEventManager>();
             var mockRouter = new Mock<IWebJobsRouter>();
             var manager = new WebScriptHostManager(
@@ -86,7 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
                 mockEventManager.Object,
                 ScriptSettingsManager.Instance,
                 new WebHostSettings { SecretsPath = _secretsDirectory.Path },
-                mockRouter.Object);
+                mockRouter.Object,
+                NullLoggerFactory.Instance);
 
             Task task = Task.Run(() => { manager.RunAndBlock(); });
             await TestHelpers.Await(() => manager.State == ScriptHostState.Running);

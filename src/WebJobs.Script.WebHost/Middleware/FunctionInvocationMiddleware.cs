@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,12 +22,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     public class FunctionInvocationMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly ILoggerFactory _loggerFactory;
 
-        public FunctionInvocationMiddleware(RequestDelegate next, ILoggerFactory loggerFactory)
+        public FunctionInvocationMiddleware(RequestDelegate next)
         {
             _next = next;
-            _loggerFactory = loggerFactory;
         }
 
         public async Task Invoke(HttpContext context, WebScriptHostManager manager)
@@ -83,7 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             {
                 // Add the request to the logging scope. This allows the App Insights logger to
                 // record details about the request.
-                ILogger logger = _loggerFactory.CreateLogger(LogCategories.Function);
+                ILoggerFactory loggerFactory = context.RequestServices.GetService<ILoggerFactory>();
+                ILogger logger = loggerFactory.CreateLogger(LogCategories.CreateFunctionCategory(functionExecution.Descriptor.Name));
                 var scopeState = new Dictionary<string, object>()
                 {
                     [ScriptConstants.LoggerHttpRequest] = context.Request

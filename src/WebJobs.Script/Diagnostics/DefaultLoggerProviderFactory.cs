@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -11,15 +13,13 @@ namespace Microsoft.Azure.WebJobs.Script
     /// <summary>
     /// Provides ways to plug into the ScriptHost ILoggerFactory initialization.
     /// </summary>
-    public class DefaultLoggerFactoryBuilder : ILoggerFactoryBuilder
+    public class DefaultLoggerProviderFactory : ILoggerProviderFactory
     {
-        /// <summary>
-        /// Adds additional <see cref="ILoggerProvider"/>s to the <see cref="ILoggerFactory"/>.
-        /// </summary>
-        /// <param name="factory">The <see cref="ILoggerFactory"/>.</param>
-        /// <param name="scriptConfig">The configuration.</param>
-        public virtual void AddLoggerProviders(ILoggerFactory factory, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager)
+        public virtual IEnumerable<ILoggerProvider> CreateLoggerProviders(ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager,
+            Func<bool> isFileLoggingEnabled, Func<bool> isPrimary)
         {
+            IList<ILoggerProvider> providers = new List<ILoggerProvider>();
+
             IMetricsLogger metricsLogger = scriptConfig.HostConfig.GetService<IMetricsLogger>();
 
             // Automatically register App Insights if the key is present
@@ -30,14 +30,17 @@ namespace Microsoft.Azure.WebJobs.Script
                 ITelemetryClientFactory clientFactory = scriptConfig.HostConfig.GetService<ITelemetryClientFactory>() ??
                     new ScriptTelemetryClientFactory(settingsManager.ApplicationInsightsInstrumentationKey, scriptConfig.LogFilter.Filter);
 
-                scriptConfig.HostConfig.LoggerFactory.AddApplicationInsights(clientFactory);
+                providers.Add(new ApplicationInsightsLoggerProvider(clientFactory));
             }
             else
             {
                 metricsLogger?.LogEvent(MetricEventNames.ApplicationInsightsDisabled);
             }
 
-            factory.AddConsole(scriptConfig.LogFilter.DefaultLevel, true);
+            providers.Add(new FunctionFileLoggerProvider(scriptConfig.RootLogPath, isFileLoggingEnabled, isPrimary));
+            providers.Add(new HostFileLoggerProvider(scriptConfig.RootLogPath, isFileLoggingEnabled));
+
+            return providers;
         }
     }
 }

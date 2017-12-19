@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
@@ -28,17 +27,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
         }
 
-        public SecretManager(ScriptSettingsManager settingsManager, ISecretsRepository repository, ILoggerFactory loggerFactory, bool createHostSecretsIfMissing = false)
-            : this(repository, new DefaultKeyValueConverterFactory(settingsManager), loggerFactory, createHostSecretsIfMissing)
+        public SecretManager(ScriptSettingsManager settingsManager, ISecretsRepository repository, ILogger logger, bool createHostSecretsIfMissing = false)
+            : this(repository, new DefaultKeyValueConverterFactory(settingsManager), logger, createHostSecretsIfMissing)
         {
         }
 
-        public SecretManager(ISecretsRepository repository, IKeyValueConverterFactory keyValueConverterFactory, ILoggerFactory loggerFactory, bool createHostSecretsIfMissing = false)
+        public SecretManager(ISecretsRepository repository, IKeyValueConverterFactory keyValueConverterFactory, ILogger logger, bool createHostSecretsIfMissing = false)
         {
             _repository = repository;
             _keyValueConverterFactory = keyValueConverterFactory;
             _repository.SecretsChanged += OnSecretsChanged;
-            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+            _logger = logger;
 
             if (createHostSecretsIfMissing)
             {
@@ -70,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 if (hostSecrets == null)
                 {
-                    _logger?.LogDebug(Resources.TraceHostSecretGeneration);
+                    _logger.LogDebug(Resources.TraceHostSecretGeneration);
                     hostSecrets = GenerateHostSecrets();
                     await PersistSecretsAsync(hostSecrets);
                 }
@@ -83,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // the state and persist the secrets
                 if (hostSecrets.HasStaleKeys)
                 {
-                    _logger?.LogDebug(Resources.TraceStaleHostSecretRefresh);
+                    _logger.LogDebug(Resources.TraceStaleHostSecretRefresh);
                     await RefreshSecretsAsync(hostSecrets);
                 }
 
@@ -115,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (secrets == null)
                 {
                     string message = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
-                    _logger?.LogDebug(message);
+                    _logger.LogDebug(message);
                     secrets = new FunctionSecrets
                     {
                         Keys = new List<Key>
@@ -132,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 if (secrets.HasStaleKeys)
                 {
-                    _logger?.LogDebug(string.Format(Resources.TraceStaleFunctionSecretRefresh, functionName));
+                    _logger.LogDebug(string.Format(Resources.TraceStaleFunctionSecretRefresh, functionName));
                     await RefreshSecretsAsync(secrets, functionName);
                 }
 
@@ -175,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             KeyOperationResult result = await AddOrUpdateSecretAsync(secretsType, keyScope, secretName, secret, secretsFactory);
 
-            _logger?.LogInformation(string.Format(Resources.TraceAddOrUpdateFunctionSecret, secretsType, secretName, keyScope ?? "host", result.Result));
+            _logger.LogInformation(string.Format(Resources.TraceAddOrUpdateFunctionSecret, secretsType, secretName, keyScope ?? "host", result.Result));
 
             return result;
         }
@@ -209,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             await PersistSecretsAsync(secrets);
 
-            _logger?.LogInformation(string.Format(Resources.TraceMasterKeyCreatedOrUpdated, result));
+            _logger.LogInformation(string.Format(Resources.TraceMasterKeyCreatedOrUpdated, result));
 
             return new KeyOperationResult(masterKey, result);
         }
@@ -228,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     ? $"Function ('{keyScope}')"
                     : $"Host (scope: '{keyScope}')";
 
-                _logger?.LogInformation(string.Format(Resources.TraceSecretDeleted, target, secretName));
+                _logger.LogInformation(string.Format(Resources.TraceSecretDeleted, target, secretName));
             }
 
             return deleted;
@@ -417,7 +416,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public async Task PurgeOldSecretsAsync(string rootScriptPath, TraceWriter traceWriter, ILogger logger)
+        public async Task PurgeOldSecretsAsync(string rootScriptPath, ILogger logger)
         {
             if (!Directory.Exists(rootScriptPath))
             {
@@ -431,7 +430,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // invalid unparsable states.
             var currentFunctions = Directory.EnumerateDirectories(rootScriptPath).Select(p => Path.GetFileName(p)).ToList();
 
-            await _repository.PurgeOldSecretsAsync(currentFunctions, traceWriter, logger);
+            await _repository.PurgeOldSecretsAsync(currentFunctions, logger);
         }
     }
 }

@@ -11,7 +11,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description.DotNet;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -25,13 +24,11 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
     public class ExtensionsManager : IExtensionsManager
     {
         private readonly string _scriptRootPath;
-        private readonly TraceWriter _traceWriter;
         private readonly ILogger _logger;
 
-        public ExtensionsManager(string scriptRootPath, TraceWriter traceWriter, ILogger logger)
+        public ExtensionsManager(string scriptRootPath, ILogger logger)
         {
             _scriptRootPath = scriptRootPath;
-            _traceWriter = traceWriter;
             _logger = logger;
         }
 
@@ -102,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
             var tcs = new TaskCompletionSource<object>();
 
-            _traceWriter.Info("Restoring extension packages");
+            _logger.LogInformation("Restoring extension packages");
 
             try
             {
@@ -160,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                                 else
                                 {
                                     tcs.SetResult(null);
-                                    _traceWriter.Info("Extensions packages restore succeeded.");
+                                    _logger.LogInformation("Extensions packages restore succeeded.");
                                 }
                             });
                     }

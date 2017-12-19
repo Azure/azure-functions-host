@@ -3,8 +3,8 @@
 
 using System;
 using System.Collections.ObjectModel;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Scale
@@ -34,9 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             _healthMonitorConfig = healthMonitorConfig;
         }
 
-        public virtual bool IsUnderHighLoad(Collection<string> exceededCounters = null, TraceWriter traceWriter = null)
+        public virtual bool IsUnderHighLoad(Collection<string> exceededCounters = null, ILogger logger = null)
         {
-            var counters = GetPerformanceCounters(traceWriter);
+            var counters = GetPerformanceCounters(logger);
             if (counters != null)
             {
                 return IsUnderHighLoad(counters, exceededCounters, _healthMonitorConfig.CounterThreshold);
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             return exceeded;
         }
 
-        internal ApplicationPerformanceCounters GetPerformanceCounters(TraceWriter traceWriter = null)
+        internal ApplicationPerformanceCounters GetPerformanceCounters(ILogger logger = null)
         {
             string json = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteAppCountersName);
             if (!string.IsNullOrEmpty(json))
@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                 }
                 catch (JsonReaderException ex)
                 {
-                    traceWriter?.Error($"Failed to deserialize application performance counters. JSON Content: \"{json}\"", ex);
+                    logger.LogError($"Failed to deserialize application performance counters. JSON Content: \"{json}\"", ex);
                 }
             }
 

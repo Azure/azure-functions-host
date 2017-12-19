@@ -64,7 +64,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 // TODO: link up cancellation token to parameter descriptors
                 CancellationToken = CancellationToken.None,
-                TraceWriter = context.TraceWriter,
                 Logger = context.Logger
             };
 

@@ -3,8 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Configuration;
-using System.Diagnostics;
 using System.Dynamic;
 using System.Globalization;
 using System.Linq;
@@ -14,7 +12,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -395,6 +392,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 default:
                     return LogLevel.None;
             }
+        }
+
+        public static LoggerFilterOptions CreateLoggerFilterOptions()
+        {
+            // Whitelist our log categories to remove large amounts of ASP.NET logs.
+            var filterOptions = new LoggerFilterOptions();
+            filterOptions.AddFilter((category, level) => category.StartsWith("Host.") || category.StartsWith("Function."));
+
+            return filterOptions;
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter

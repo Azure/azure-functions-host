@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -13,7 +12,6 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.CodeAnalysis;
@@ -54,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             _functionEntryPointResolver = functionEntryPointResolver;
             _assemblyLoader = assemblyLoader;
-            _metadataResolver = metadataResolver ?? CreateMetadataResolver(host, functionMetadata, TraceWriter);
+            _metadataResolver = metadataResolver ?? CreateMetadataResolver(host, functionMetadata, FunctionLogger);
             _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
@@ -74,10 +72,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _restorePackages = _restorePackages.Debounce();
         }
 
-        private static IFunctionMetadataResolver CreateMetadataResolver(ScriptHost host, FunctionMetadata functionMetadata, TraceWriter traceWriter)
+        private static IFunctionMetadataResolver CreateMetadataResolver(ScriptHost host, FunctionMetadata functionMetadata, ILogger logger)
         {
-            return new FunctionMetadataResolver(functionMetadata.ScriptFile, host.ScriptConfig.BindingProviders,
-                traceWriter, host.ScriptConfig.HostConfig.LoggerFactory);
+            return new FunctionMetadataResolver(functionMetadata.ScriptFile, host.ScriptConfig.BindingProviders, logger);
         }
 
         private void InitializeFileWatcher()
@@ -112,8 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private void OnReferencesChanged()
         {
             string message = "Assembly reference changes detected. Restarting host...";
-            TraceWriter.Info(message);
-            Logger?.LogInformation(message);
+            FunctionLogger.LogInformation(message);
 
             Host.Shutdown();
         }
@@ -139,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // Reset cached function
             _functionLoader.Reset();
             _compilerErrorCount = 0;
-            TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), TraceLevel.Info);
+            LogOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Script for function '{0}' changed. Reloading.", Metadata.Name), LogLevel.Information);
 
             ImmutableArray<Diagnostic> compilationResult = ImmutableArray<Diagnostic>.Empty;
             FunctionSignature signature = null;
@@ -161,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             bool compilationSucceeded = !compilationResult.Any(d => d.Severity == DiagnosticSeverity.Error);
 
-            TraceOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.", compilationSucceeded ? "succeeded" : "failed"), TraceLevel.Info);
+            LogOnPrimaryHost(string.Format(CultureInfo.InvariantCulture, "Compilation {0}.", compilationSucceeded ? "succeeded" : "failed"), LogLevel.Information);
 
             // If the compilation succeeded, AND:
             //  - We haven't cached a function (failed to compile on load), OR
@@ -183,15 +179,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (CompilationErrorException exc)
             {
-                TraceOnPrimaryHost("Function compilation error", TraceLevel.Error);
+                LogOnPrimaryHost("Function compilation error", LogLevel.Error);
                 TraceCompilationDiagnostics(exc.Diagnostics, LogTargets.User);
                 throw;
             }
-            catch (CompilationServiceException exc)
+            catch (CompilationServiceException)
             {
                 const string message = "Compilation service error";
-                TraceWriter.Error(message, exc, _compilationService.GetType().Name);
-                Logger?.LogError(message);
+                FunctionLogger.LogError(message);
 
                 // Compiler errors are often sporadic, so we'll attempt to reset the loader here to avoid
                 // caching the compiler error and leaving the function hopelessly broken
@@ -200,8 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     _functionLoader.Reset();
 
                     const string resetMessage = "Function loader reset. Failed compilation result will not be cached.";
-                    TraceWriter.Info(resetMessage);
-                    Logger?.LogError(resetMessage);
+                    FunctionLogger.LogError(resetMessage);
                 }
                 throw;
             }
@@ -217,19 +211,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         internal async Task RestorePackagesAsync(bool reloadScriptOnSuccess = true)
         {
-            TraceOnPrimaryHost("Restoring packages.", TraceLevel.Info);
+            LogOnPrimaryHost("Restoring packages.", LogLevel.Information);
 
             try
             {
                 PackageRestoreResult result = await _metadataResolver.RestorePackagesAsync();
 
-                TraceOnPrimaryHost("Packages restored.", TraceLevel.Info);
+                LogOnPrimaryHost("Packages restored.", LogLevel.Information);
 
                 if (reloadScriptOnSuccess)
                 {
                     if (!result.IsInitialInstall && result.ReferencesChanged)
                     {
-                        TraceOnPrimaryHost("Package references have changed.", TraceLevel.Info);
+                        LogOnPrimaryHost("Package references have changed.", LogLevel.Information);
 
                         // If this is not the initial package install and references changed,
                         // shutdown the host, which will cause it to have a clean start and load the new
@@ -244,8 +238,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (Exception exc)
             {
-                TraceOnPrimaryHost("Package restore failed:", TraceLevel.Error);
-                TraceOnPrimaryHost(exc.ToFormattedString(), TraceLevel.Error);
+                LogOnPrimaryHost("Package restore failed:", LogLevel.Error);
+                LogOnPrimaryHost(exc.ToFormattedString(), LogLevel.Error);
             }
         }
 
@@ -288,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     IDotNetCompilation compilation = await _compilationService.GetFunctionCompilationAsync(Metadata);
 
                     Assembly assembly = await compilation.EmitAsync(cancellationToken);
-                    _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, TraceWriter, Host.ScriptConfig.HostConfig.LoggerFactory);
+                    _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, FunctionLogger);
 
                     FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
 
@@ -320,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 if (_metadataResolver.RequiresPackageRestore(Metadata))
                 {
-                    TraceOnPrimaryHost("Package references have been updated.", TraceLevel.Info);
+                    LogOnPrimaryHost("Package references have been updated.", LogLevel.Information);
                     await RestorePackagesAsync(false);
                 }
             }
@@ -328,8 +322,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 // There was an issue processing the package references,
                 // wrap the exception in a CompilationErrorException and retrow
-                TraceOnPrimaryHost("Error processing package references.", TraceLevel.Error);
-                TraceOnPrimaryHost(exc.Message, TraceLevel.Error);
+                LogOnPrimaryHost("Error processing package references.", LogLevel.Error);
+                LogOnPrimaryHost(exc.Message, LogLevel.Error);
 
                 throw new CompilationErrorException("Unable to restore packages", ImmutableArray<Diagnostic>.Empty);
             }

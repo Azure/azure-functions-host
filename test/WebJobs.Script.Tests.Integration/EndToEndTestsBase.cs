@@ -3,18 +3,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data.Common;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
-using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -175,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Fixture.Host.CallAsync(functionName, arguments);
 
             // wait for logs to flush
-            await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+            await Task.Delay(FileWriter.LogFlushIntervalMs);
 
             IList<string> logs = null;
             await TestHelpers.Await(() =>
@@ -205,10 +201,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
             Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
 
-            TraceEvent traceEvent = await WaitForTraceAsync(p => p.Message.Contains(id));
-            Assert.Equal(System.Diagnostics.TraceLevel.Info, traceEvent.Level);
+            LogMessage traceEvent = await WaitForTraceAsync(p => p?.FormattedMessage != null && p.FormattedMessage.Contains(id));
+            Assert.Equal(LogLevel.Information, traceEvent.Level);
 
-            string trace = traceEvent.Message;
+            string trace = traceEvent.FormattedMessage;
             Assert.Contains("script processed queue message", trace);
             Assert.Contains(messageContent.Replace(" ", string.Empty), trace.Replace(" ", string.Empty));
         }
@@ -244,13 +240,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return false;
         }
 
-        protected async Task<TraceEvent> WaitForTraceAsync(Func<TraceEvent, bool> filter)
+        protected async Task<LogMessage> WaitForTraceAsync(Func<LogMessage, bool> filter)
         {
-            TraceEvent traceEvent = null;
+            LogMessage traceEvent = null;
 
             await TestHelpers.Await(() =>
             {
-                traceEvent = Fixture.TraceWriter.Traces.SingleOrDefault(filter);
+                traceEvent = Fixture.LoggerProvider.GetAllLogMessages().SingleOrDefault(filter);
                 return traceEvent != null;
             });
 

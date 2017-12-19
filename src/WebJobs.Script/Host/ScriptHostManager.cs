@@ -12,7 +12,6 @@ using System.Reactive.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -32,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private readonly ScriptHostConfiguration _config;
         private readonly IScriptHostFactory _scriptHostFactory;
-        private readonly ILoggerFactoryBuilder _loggerFactoryBuilder;
+        private readonly ILoggerProviderFactory _loggerProviderFactory;
         private readonly IScriptHostEnvironment _environment;
         private readonly IDisposable _fileEventSubscription;
         private readonly StructuredLogWriter _structuredLogWriter;
@@ -61,9 +60,9 @@ namespace Microsoft.Azure.WebJobs.Script
             ScriptHostConfiguration config,
             IScriptEventManager eventManager = null,
             IScriptHostEnvironment environment = null,
-            ILoggerFactoryBuilder loggerFactoryBuilder = null,
+            ILoggerProviderFactory loggerProviderFactory = null,
             HostPerformanceManager hostPerformanceManager = null)
-            : this(config, ScriptSettingsManager.Instance, new ScriptHostFactory(), eventManager, environment, loggerFactoryBuilder, hostPerformanceManager)
+            : this(config, ScriptSettingsManager.Instance, new ScriptHostFactory(), eventManager, environment, loggerProviderFactory, hostPerformanceManager)
         {
             if (config.FileWatchingEnabled)
             {
@@ -80,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IScriptHostFactory scriptHostFactory,
             IScriptEventManager eventManager = null,
             IScriptHostEnvironment environment = null,
-            ILoggerFactoryBuilder loggerFactoryBuilder = null,
+            ILoggerProviderFactory loggerProviderFactory = null,
             HostPerformanceManager hostPerformanceManager = null)
         {
             if (config == null)
@@ -97,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _config = config;
             _settingsManager = settingsManager;
             _scriptHostFactory = scriptHostFactory;
-            _loggerFactoryBuilder = loggerFactoryBuilder;
+            _loggerProviderFactory = loggerProviderFactory;
 
             EventManager = eventManager ?? new ScriptEventManager();
 
@@ -179,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         HostId = _config.HostConfig.HostId
                     };
                     OnInitializeConfig(_config);
-                    newInstance = _scriptHostFactory.Create(_environment, EventManager, _settingsManager, _config, _loggerFactoryBuilder);
+                    newInstance = _scriptHostFactory.Create(_environment, EventManager, _settingsManager, _config, _loggerProviderFactory);
 
                     _currentInstance = newInstance;
                     lock (_liveInstances)
@@ -235,8 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // We need to keep the host running, so we catch and log any errors
                     // then restart the host
                     string message = "A ScriptHost error has occurred";
-                    Instance?.TraceWriter?.Error(message, ex);
-                    Instance?.Logger?.LogError(0, ex, message);
+                    Instance?.Logger.LogError(0, ex, message);
 
                     if (ShutdownHostIfUnhealthy())
                     {
@@ -272,8 +270,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // the current time window exceeds the threshold, recover by
                 // initiating shutdown
                 var message = $"Host unhealthy count exceeds the threshold of {_config.HostHealthMonitor.HealthCheckThreshold} for time window {_config.HostHealthMonitor.HealthCheckWindow}. Initiating shutdown.";
-                Instance?.TraceWriter?.Error(message);
-                Instance?.Logger?.LogError(0, message);
+                Instance?.Logger.LogError(0, message);
                 _environment.Shutdown();
                 return true;
             }
@@ -289,7 +286,6 @@ namespace Microsoft.Azure.WebJobs.Script
             string extensionVersion = _settingsManager.GetSetting(EnvironmentSettingNames.FunctionsExtensionVersion);
             string hostId = host.ScriptConfig.HostConfig.HostId;
             string message = $"Starting Host (HostId={hostId}, Version={ScriptHost.Version}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={host.InDebugMode}, ConsecutiveErrors={_consecutiveErrorCount}, StartupCount={_hostStartCount}, FunctionsExtensionVersion={extensionVersion})";
-            host.TraceWriter.Info(message);
             host.Logger.LogInformation(message);
 
             // we check host health before starting to avoid starting
@@ -328,8 +324,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     builder.AppendLine(string.Format(CultureInfo.InvariantCulture, "{0}: {1}", error.Key, functionErrors));
                 }
                 string message = builder.ToString();
-                host.TraceWriter.Error(message);
-                host.Logger?.LogError(message);
+                host.Logger.LogError(message);
             }
         }
 
@@ -358,8 +353,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // this thread now owns the instance
                 string message = "Stopping Host";
-                instance.TraceWriter?.Info(message);
-                instance.Logger?.LogInformation(message);
+                instance.Logger.LogInformation(message);
 
                 await instance.StopAsync();
             }
@@ -528,8 +522,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // fail and we'll enter a restart loop (exponentially backing off)
                 // until the host is healthy again and we can resume host processing.
                 var message = "Host is unhealthy. Initiating a restart.";
-                Instance?.TraceWriter?.Error(message);
-                Instance?.Logger?.LogError(0, message);
+                Instance?.Logger.LogError(0, message);
                 RestartHost();
             }
         }

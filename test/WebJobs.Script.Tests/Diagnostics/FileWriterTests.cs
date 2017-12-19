@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -12,11 +11,11 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class FileTraceWriterTests
+    public class FileWriterTests
     {
         private string _logFilePath;
 
-        public FileTraceWriterTests()
+        public FileWriterTests()
         {
             _logFilePath = Path.Combine(Path.GetTempPath(), "WebJobs.Script.Tests", "FileTraceWriterTests");
 
@@ -54,14 +53,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             directory.Create();
 
             // below test expects the retention days to be set to 1
-            Assert.Equal(1, FileTraceWriter.LastModifiedCutoffDays);
+            Assert.Equal(1, FileWriter.LastModifiedCutoffDays);
 
             // create some log files
             List<FileInfo> logFiles = new List<FileInfo>();
             int initialCount = 5;
             for (int i = 0; i < initialCount; i++)
             {
-                string fileName = string.Format("{0}-{1}.log", i, FileTraceWriter.GetInstanceId());
+                string fileName = string.Format("{0}-{1}.log", i, FileWriter.GetInstanceId());
                 string path = Path.Combine(_logFilePath, fileName);
                 Thread.Sleep(50);
                 File.WriteAllText(path, "Test Logs");
@@ -79,8 +78,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
             Assert.Equal(initialCount, files.Length);
 
-            FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Verbose);
-            traceWriter.SetNewLogFile();
+            FileWriter fileWriter = new FileWriter(_logFilePath);
+            fileWriter.SetNewLogFile();
 
             files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
 
@@ -102,14 +101,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             DirectoryInfo directory = new DirectoryInfo(_logFilePath);
             directory.Create();
 
-            FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Verbose);
-            traceWriter.SetNewLogFile();
+            FileWriter fileWriter = new FileWriter(_logFilePath);
+            fileWriter.SetNewLogFile();
 
             var files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
             Assert.Equal(0, files.Length);
 
-            traceWriter.Verbose("Test log");
-            traceWriter.Flush();
+            fileWriter.AppendLine("Test log");
+            fileWriter.Flush();
 
             files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
             Assert.Equal(1, files.Length);
@@ -126,9 +125,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             for (int i = 0; i < 3; i++)
             {
-                FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Verbose);
-                traceWriter.Verbose("Testing");
-                traceWriter.Flush();
+                FileWriter fileWriter = new FileWriter(_logFilePath);
+                fileWriter.AppendLine("Testing");
+                fileWriter.Flush();
             }
 
             count = directory.EnumerateFiles().Count();
@@ -155,54 +154,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string logFile = directory.EnumerateFiles().First().FullName;
             string[] fileLines = File.ReadAllLines(logFile);
-            Assert.True(fileLines.Length == ((FileTraceWriter.MaxLogLinesPerFlushInterval * numIterations) + 3));
+            Assert.True(fileLines.Length == ((FileWriter.MaxLogLinesPerFlushInterval * numIterations) + 3));
             Assert.Equal(3, fileLines.Count(p => p.Contains("Log output threshold exceeded.")));
-        }
-
-        [Fact]
-        public void Trace_WritesExpectedLogs()
-        {
-            DirectoryInfo directory = new DirectoryInfo(_logFilePath);
-            directory.Create();
-
-            int count = directory.EnumerateFiles().Count();
-            Assert.Equal(0, count);
-
-            FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Info);
-
-            traceWriter.Verbose("Test Verbose");
-            traceWriter.Info("Test Info");
-            traceWriter.Warning("Test Warning");
-            traceWriter.Error("Test Error");
-
-            // trace a system event - expect it to be ignored
-            var properties = new Dictionary<string, object>
-            {
-                { ScriptConstants.TracePropertyIsSystemTraceKey, true }
-            };
-            traceWriter.Info("Test System", properties);
-
-            traceWriter.Flush();
-
-            string logFile = directory.EnumerateFiles().First().FullName;
-            string text = File.ReadAllText(logFile);
-            Assert.True(text.Contains("Test Error"));
-            Assert.True(text.Contains("Test Warning"));
-            Assert.True(text.Contains("Test Info"));
-            Assert.False(text.Contains("Test Verbose"));
-            Assert.False(text.Contains("Test System"));
         }
 
         private void WriteLogs(string logFilePath, int numLogs)
         {
-            FileTraceWriter traceWriter = new FileTraceWriter(logFilePath, TraceLevel.Verbose);
+            FileWriter fileWriter = new FileWriter(logFilePath);
 
             for (int i = 0; i < numLogs; i++)
             {
-                traceWriter.Verbose(string.Format("Test message {0} {1}", Thread.CurrentThread.ManagedThreadId, i));
+                fileWriter.AppendLine($"Test message {Thread.CurrentThread.ManagedThreadId} {i}");
             }
 
-            traceWriter.Flush();
+            fileWriter.Flush();
         }
     }
 }

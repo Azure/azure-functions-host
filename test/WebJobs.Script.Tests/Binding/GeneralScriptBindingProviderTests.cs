@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -45,9 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             JobHostConfiguration config = new JobHostConfiguration();
             config.UseScriptExtensions();
-            TestTraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             JObject hostMetadata = new JObject();
-            var provider = new GeneralScriptBindingProvider(config, hostMetadata, traceWriter);
+            var provider = new GeneralScriptBindingProvider(config, hostMetadata, null);
             var metadataProvider = new JobHost(config).CreateMetadataProvider();
             provider.CompleteInitialization(metadataProvider);
 

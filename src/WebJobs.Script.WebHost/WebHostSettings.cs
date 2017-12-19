@@ -3,8 +3,6 @@
 
 using System;
 using System.IO;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -29,10 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// should be disabled. Useful for local debugging or CLI scenarios.
         /// </summary>
         public bool IsAuthDisabled { get; set; } = false;
-
-        public TraceWriter TraceWriter { get; set; }
-
-        public ILoggerFactoryBuilder LoggerFactoryBuilder { get; set; } = new DefaultLoggerFactoryBuilder();
 
         internal static WebHostSettings CreateDefault(ScriptSettingsManager settingsManager)
         {

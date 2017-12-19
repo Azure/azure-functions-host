@@ -3,15 +3,16 @@
 
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public interface IFunctionInvoker
     {
         /// <summary>
-        /// Gets logging information for this function.
+        /// Gets the <see cref="ILogger"/> for this function.
         /// </summary>
-        FunctionLogger FunctionLogger { get; }
+        ILogger FunctionLogger { get; }
 
         /// <summary>
         /// Invoke the function using the specified parameters.

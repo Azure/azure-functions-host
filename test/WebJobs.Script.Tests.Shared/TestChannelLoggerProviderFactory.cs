@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script;
@@ -11,24 +12,24 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.WebJobs.Script.Tests
 {
-    public class TestChannelLoggerFactoryBuilder : DefaultLoggerFactoryBuilder
+    public class TestChannelLoggerProviderFactory : DefaultLoggerProviderFactory
     {
         public const string ApplicationInsightsKey = "some_key";
 
         private readonly TestTelemetryChannel _channel;
 
-        public TestChannelLoggerFactoryBuilder(TestTelemetryChannel channel)
+        public TestChannelLoggerProviderFactory(TestTelemetryChannel channel)
         {
             _channel = channel;
         }
 
-        public override void AddLoggerProviders(ILoggerFactory factory, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager)
+        public override IEnumerable<ILoggerProvider> CreateLoggerProviders(ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager, Func<bool> fileLoggingEnabled, Func<bool> isPrimary)
         {
             // Replace TelemetryClient
             var clientFactory = new TestTelemetryClientFactory(scriptConfig.LogFilter.Filter, _channel);
             scriptConfig.HostConfig.AddService<ITelemetryClientFactory>(clientFactory);
 
-            base.AddLoggerProviders(factory, scriptConfig, settingsManager);
+            return base.CreateLoggerProviders(scriptConfig, settingsManager, fileLoggingEnabled, isPrimary);
         }
     }
 
@@ -59,7 +60,7 @@ namespace Microsoft.WebJobs.Script.Tests
         private TestTelemetryChannel _channel;
 
         public TestTelemetryClientFactory(Func<string, LogLevel, bool> filter, TestTelemetryChannel channel)
-            : base(TestChannelLoggerFactoryBuilder.ApplicationInsightsKey, filter)
+            : base(TestChannelLoggerProviderFactory.ApplicationInsightsKey, filter)
         {
             _channel = channel;
         }
