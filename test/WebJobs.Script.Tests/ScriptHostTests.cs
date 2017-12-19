@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             host.LastDebugNotify = DateTime.MinValue;
-            Assert.False(host.InDebugMode);
+            Assert.False(host.InDebugMode, $"Expected InDebugMode to be false. Now: {DateTime.UtcNow}; Sentinel LastWriteTime: {File.GetLastWriteTimeUtc(debugSentinelFilePath)}; LastDebugNotify: {host.LastDebugNotify}.");
 
             // verify that our file watcher for the debug sentinel file is configured
             // properly by touching the file and ensuring that our host goes into
