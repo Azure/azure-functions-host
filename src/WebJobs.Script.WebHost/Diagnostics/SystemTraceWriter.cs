@@ -74,9 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             if (string.IsNullOrEmpty(details) && traceEvent.Exception != null)
             {
                 details = Sanitizer.Sanitize(traceEvent.Exception.ToFormattedString());
-                if (traceEvent.Exception is FunctionInvocationException)
+                if (string.IsNullOrEmpty(functionName) && traceEvent.Exception is FunctionInvocationException fex)
                 {
-                    FunctionInvocationException fex = (FunctionInvocationException)traceEvent.Exception;
                     functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName.Replace("Host.Functions.", string.Empty);
                 }
                 Exception innerException = traceEvent.Exception.InnerException;

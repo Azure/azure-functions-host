@@ -13,7 +13,9 @@ namespace Microsoft.Azure.WebJobs.Logging
     {
         private const string SecretReplacement = "[Hidden Credential]";
         private static readonly char[] ValueTerminators = new char[] { '<', '"', '\'' };
-        private static readonly string[] PublicTokens = new string[] { "PublicKeyToken=" };
+
+        // List of keywords that should not be replaced with [Hidden Credential]
+        private static readonly string[] AllowedTokens = new string[] { "PublicKeyToken=" };
         private static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "SharedAccessKey=" };
 
         /// <summary>
@@ -29,19 +31,15 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
 
             string t = input;
-            string inputWithPublicTokensHidden = input;
+            string inputWithAllowedTokensHidden = input;
 
             // Remove any known safe strings from the input before looking for Credentials
-            foreach (string publicToken in PublicTokens)
+            foreach (string allowedToken in AllowedTokens)
             {
-                string hiddenString = string.Empty;
-                if (inputWithPublicTokensHidden.Contains(publicToken))
+                if (inputWithAllowedTokensHidden.Contains(allowedToken))
                 {
-                    foreach (char safechar in publicToken)
-                    {
-                        hiddenString += '#';
-                    }
-                    inputWithPublicTokensHidden = inputWithPublicTokensHidden.Replace(publicToken, hiddenString);
+                    string hiddenString = new string('#', allowedToken.Length);
+                    inputWithAllowedTokensHidden = inputWithAllowedTokensHidden.Replace(allowedToken, hiddenString);
                 }
             }
 
@@ -51,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                 while (true)
                 {
                     // search for the next token instance
-                    startIndex = inputWithPublicTokensHidden.IndexOf(token, startIndex, StringComparison.OrdinalIgnoreCase);
+                    startIndex = inputWithAllowedTokensHidden.IndexOf(token, startIndex, StringComparison.OrdinalIgnoreCase);
                     if (startIndex == -1)
                     {
                         break;
@@ -61,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                     int credentialEnd = t.IndexOfAny(ValueTerminators, startIndex);
 
                     t = t.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? t.Substring(credentialEnd) : string.Empty);
-                    inputWithPublicTokensHidden = inputWithPublicTokensHidden.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? inputWithPublicTokensHidden.Substring(credentialEnd) : string.Empty);
+                    inputWithAllowedTokensHidden = inputWithAllowedTokensHidden.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? inputWithAllowedTokensHidden.Substring(credentialEnd) : string.Empty);
                 }
             }
 
