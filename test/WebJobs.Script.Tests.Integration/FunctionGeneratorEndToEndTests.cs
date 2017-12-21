@@ -44,17 +44,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Get the Type Attributes (in this case, a TimeoutAttribute)
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
             scriptConfig.FunctionTimeout = TimeSpan.FromMinutes(5);
-            Collection<CustomAttributeBuilder> typeAttributes = ScriptHost.CreateTypeAttributes(scriptConfig);
+            Collection<CustomAttributeBuilder> typeAttributes = new Collection<CustomAttributeBuilder>();
 
             // generate the Type
             Type functionType = FunctionGenerator.Generate("TestScriptHost", "TestFunctions", typeAttributes, functions);
 
             // verify the generated function
             MethodInfo method = functionType.GetMethod("TimerFunction");
-            TimeoutAttribute timeoutAttribute = (TimeoutAttribute)functionType.GetCustomAttributes().Single();
-            Assert.Equal(TimeSpan.FromMinutes(5), timeoutAttribute.Timeout);
-            Assert.True(timeoutAttribute.ThrowOnTimeout);
-            Assert.True(timeoutAttribute.TimeoutWhileDebugging);
             ParameterInfo triggerParameter = method.GetParameters()[0];
             TimerTriggerAttribute triggerAttribute = triggerParameter.GetCustomAttribute<TimerTriggerAttribute>();
             Assert.NotNull(triggerAttribute);

@@ -501,7 +501,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // read all script functions and apply to JobHostConfiguration
                 Collection<FunctionDescriptor> functions = GetFunctionDescriptors(functionMetadata);
-                Collection<CustomAttributeBuilder> typeAttributes = CreateTypeAttributes(ScriptConfig);
+                Collection<CustomAttributeBuilder> typeAttributes = new Collection<CustomAttributeBuilder>();
                 string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", GeneratedTypeNamespace, GeneratedTypeName);
 
                 string generatingMsg = string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count);
@@ -816,6 +816,21 @@ namespace Microsoft.Azure.WebJobs.Script
             string action = isShutdown ? "shutdown" : "restart";
             string signalMessage = $"Host configuration has changed. Signaling {action}";
             Logger.LogInformation(signalMessage);
+        }
+
+        // Create a TimeoutConfiguration specified by scriptConfig knobs; else null.
+        internal static JobHostFunctionTimeoutConfiguration CreateTimeoutConfiguration(ScriptHostConfiguration scriptConfig)
+        {
+            if (scriptConfig.FunctionTimeout == null)
+            {
+                return null;
+            }
+            return new JobHostFunctionTimeoutConfiguration
+            {
+                Timeout = scriptConfig.FunctionTimeout.Value,
+                ThrowOnTimeout = true,
+                TimeoutWhileDebugging = true
+            };
         }
 
         internal static Collection<CustomAttributeBuilder> CreateTypeAttributes(ScriptHostConfiguration scriptConfig)
@@ -1509,7 +1524,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-
             if (config.TryGetValue("functionTimeout", out value))
             {
                 TimeSpan requestedTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
@@ -1522,6 +1536,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 scriptConfig.FunctionTimeout = requestedTimeout;
+                scriptConfig.HostConfig.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
             }
             else if (ScriptSettingsManager.Instance.IsDynamicSku)
             {
