@@ -74,11 +74,13 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HttpMethodConstraintName = "httpMethod";
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
         public const string SwaggerDocumentationKey = "swaggerdocumentationkey";
+        public const string Snapshot = "snapshot";
         public const string Runtime = "runtime";
 
         public const int MaximumHostIdLength = 32;
         public const int DynamicSkuConnectionLimit = 50;
         public const int HostTimeoutSeconds = 30;
         public const int HostPollingIntervalMilliseconds = 25;
+        public const int MaximumSecretBackupCount = 10;
     }
 }

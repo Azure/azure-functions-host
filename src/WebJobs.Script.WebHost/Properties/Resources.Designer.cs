@@ -61,6 +61,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Repository has more than {0} non-decryptable secrets backups ({1})..
+        /// </summary>
+        internal static string ErrorTooManySecretBackups {
+            get {
+                return ResourceManager.GetString("ErrorTooManySecretBackups", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to {
         ///    &quot;type&quot;: &quot;object&quot;,
         ///    &quot;properties&quot;: {
@@ -269,6 +278,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         internal static string TraceMasterKeyCreatedOrUpdated {
             get {
                 return ResourceManager.GetString("TraceMasterKeyCreatedOrUpdated", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Non-decryptable function (&apos;{0}&apos;) secrets detected. Refreshing secrets..
+        /// </summary>
+        internal static string TraceNonDecryptedFunctionSecretRefresh {
+            get {
+                return ResourceManager.GetString("TraceNonDecryptedFunctionSecretRefresh", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Non-decryptable host secrets detected. Refreshing secrets..
+        /// </summary>
+        internal static string TraceNonDecryptedHostSecretRefresh {
+            get {
+                return ResourceManager.GetString("TraceNonDecryptedHostSecretRefresh", resourceCulture);
             }
         }
         

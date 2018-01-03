@@ -117,6 +117,9 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="ErrorTooManySecretBackups" xml:space="preserve">
+    <value>Repository has more than {0} non-decryptable secrets backups ({1}).</value>
+  </data>
   <data name="FunctionSecretsSchemaV0" xml:space="preserve">
     <value>{
     "type": "object",
@@ -288,6 +291,12 @@
   </data>
   <data name="TraceMasterKeyCreatedOrUpdated" xml:space="preserve">
     <value>Master key {0}</value>
+  </data>
+  <data name="TraceNonDecryptedFunctionSecretRefresh" xml:space="preserve">
+    <value>Non-decryptable function ('{0}') secrets detected. Refreshing secrets.</value>
+  </data>
+  <data name="TraceNonDecryptedHostSecretRefresh" xml:space="preserve">
+    <value>Non-decryptable host secrets detected. Refreshing secrets.</value>
   </data>
   <data name="TraceSecretDeleted" xml:space="preserve">
     <value>{0} secret '{1}' deleted.</value>
