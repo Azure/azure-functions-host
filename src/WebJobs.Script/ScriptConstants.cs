@@ -70,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public const string HttpMethodConstraintName = "httpMethod";
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
+        public const string Snapshot = "snapshot";
         public const string Runtime = "runtime";
 
         public const int MaximumHostIdLength = 32;
@@ -81,5 +82,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string PackageReferenceVersionElementName = "Version";
         public const int HostTimeoutSeconds = 30;
         public const int HostPollingIntervalMilliseconds = 25;
+        public const int MaximumSecretBackupCount = 10;
     }
 }

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -468,6 +469,126 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
+        public async Task GetHostSecrets_WhenNonDecryptedHostSecrets_SavesAndRefreshes()
+        {
+            using (var directory = new TempDirectory())
+            {
+                string expectedTraceMessage = Resources.TraceNonDecryptedHostSecretRefresh;
+                string hostSecretsJson =
+                    @"{
+    'masterKey': {
+        'name': 'master',
+        'value': 'cryptoError',
+        'encrypted': true
+    },
+    'functionKeys': [],
+    'systemKeys': []
+}";
+                File.WriteAllText(Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName), hostSecretsJson);
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(true, false);
+                HostSecretsInfo hostSecrets;
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, null))
+                {
+                    hostSecrets = await secretManager.GetHostSecretsAsync();
+                }
+
+                Assert.NotNull(hostSecrets);
+                Assert.Equal(hostSecrets.MasterKey, "cryptoError");
+                var result = JsonConvert.DeserializeObject<HostSecrets>(File.ReadAllText(Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName)));
+                Assert.Equal(result.MasterKey.Value, "!cryptoError");
+                Assert.Equal(1, Directory.GetFiles(directory.Path, $"host.{ScriptConstants.Snapshot}*").Length);
+            }
+        }
+
+        [Fact]
+        public async Task GetFunctiontSecrets_WhenNonDecryptedSecrets_SavesAndRefreshes()
+        {
+            using (var directory = new TempDirectory())
+            {
+                string functionName = "testfunction";
+                string expectedTraceMessage = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName);
+                string functionSecretsJson =
+                     @"{
+    'keys': [
+        {
+            'name': 'Key1',
+            'value': 'cryptoError',
+            'encrypted': true
+        },
+        {
+            'name': 'Key2',
+            'value': '1234',
+            'encrypted': false
+        }
+    ]
+}";
+                File.WriteAllText(Path.Combine(directory.Path, functionName + ".json"), functionSecretsJson);
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(true, false);
+                IDictionary<string, string> functionSecrets;
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, null))
+                {
+                    functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
+                }
+
+                Assert.NotNull(functionSecrets);
+                Assert.Equal(functionSecrets["Key1"], "cryptoError");
+                var result = JsonConvert.DeserializeObject<FunctionSecrets>(File.ReadAllText(Path.Combine(directory.Path, functionName + ".json")));
+                Assert.Equal(result.GetFunctionKey("Key1", functionName).Value, "!cryptoError");
+                Assert.Equal(1, Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length);
+            }
+        }
+
+        [Fact]
+        public async Task GetHostSecrets_WhenTooManyBackups_ThrowsException()
+        {
+            using (var directory = new TempDirectory())
+            {
+                string functionName = "testfunction";
+                string expectedTraceMessage = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, functionName);
+                string functionSecretsJson =
+                     @"{
+    'keys': [
+        {
+            'name': 'Key1',
+            'value': 'FunctionValue1',
+            'encrypted': true
+        },
+        {
+            'name': 'Key2',
+            'value': 'FunctionValue2',
+            'encrypted': false
+        }
+    ]
+}";
+
+                IDictionary<string, string> functionSecrets;
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+
+                using (var secretManager = new SecretManager(_settingsManager, repository, null))
+                {
+                    await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                    {
+                        for (int i = 0; i < ScriptConstants.MaximumSecretBackupCount + 10; i++)
+                        {
+                            File.WriteAllText(Path.Combine(directory.Path, functionName + ".json"), functionSecretsJson);
+                            functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
+                            if (i > ScriptConstants.MaximumSecretBackupCount)
+                            {
+                                await Task.Delay(500);
+                            }
+                        }
+                    });
+                }
+
+                Assert.True(Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length >= ScriptConstants.MaximumSecretBackupCount);
+            }
+        }
+
+        [Fact]
         public async Task GetHostSecretsAsync_WaitsForNewSecrets()
         {
             using (var directory = new TempDirectory())
@@ -485,10 +606,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 File.WriteAllText(filePath, hostSecretsJson);
 
                 HostSecretsInfo hostSecrets = null;
-                var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
 
-                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
+                using (var secretManager = new SecretManager(_settingsManager, repository, null))
                 {
                     await Task.WhenAll(
                         Task.Run(async () =>
@@ -508,7 +628,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     Assert.Equal(hostSecrets.MasterKey, "1234");
                 }
 
-                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
+                using (var secretManager = new SecretManager(_settingsManager, repository, null))
                 {
                     await Assert.ThrowsAsync<IOException>(async () =>
                     {
@@ -556,9 +676,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 File.WriteAllText(filePath, functionSecretsJson);
 
                 IDictionary<string, string> functionSecrets = null;
-                var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
+                using (var secretManager = new SecretManager(_settingsManager, repository, null))
                 {
                     await Task.WhenAll(
                         Task.Run(async () =>
@@ -578,7 +697,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     Assert.Equal(functionSecrets["Key1"], "FunctionValue1");
                 }
 
-                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
+                using (var secretManager = new SecretManager(_settingsManager, repository, null))
                 {
                     await Assert.ThrowsAsync<IOException>(async () =>
                     {
@@ -605,7 +724,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         {
             var mockValueReader = new Mock<IKeyValueReader>();
             mockValueReader.Setup(r => r.ReadValue(It.IsAny<Key>()))
-                .Returns<Key>(k => new Key(k.Name, k.Value) { IsStale = setStaleValue ? true : k.IsStale });
+                .Returns<Key>(k =>
+                {
+                    if (k.Value.StartsWith("cryptoError"))
+                    {
+                        throw new CryptographicException();
+                    }
+                    return new Key(k.Name, k.Value) { IsStale = setStaleValue ? true : k.IsStale };
+                });
 
             var mockValueWriter = new Mock<IKeyValueWriter>();
             mockValueWriter.Setup(r => r.WriteValue(It.IsAny<Key>()))
