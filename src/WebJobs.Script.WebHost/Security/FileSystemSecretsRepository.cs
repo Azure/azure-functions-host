@@ -43,11 +43,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public event EventHandler<SecretsChangedEventArgs> SecretsChanged;
 
-        private string GetSecretsFilePath(ScriptSecretsType secretsType, string functionName = null)
+        private string GetSecretsFilePath(ScriptSecretsType secretsType, string functionName = null, bool isSnapshot = false)
         {
-            return secretsType == ScriptSecretsType.Host
+            string result = secretsType == ScriptSecretsType.Host
                 ? _hostSecretsPath
                 : GetFunctionSecretsFilePath(functionName);
+
+            if (isSnapshot)
+            {
+                result = SecretsUtility.GetNonDecryptableName(result);
+            }
+
+            return result;
         }
 
         private string GetFunctionSecretsFilePath(string functionName)
@@ -121,6 +128,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        public async Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, string secretsContent)
+        {
+            string filePath = GetSecretsFilePath(type, functionName, true);
+            await FileUtility.WriteAsync(filePath, secretsContent);
+        }
+
         public async Task PurgeOldSecretsAsync(IList<string> currentFunctions, TraceWriter traceWriter, ILogger logger)
         {
             try
@@ -133,7 +146,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 foreach (var secretFile in secretsDirectory.GetFiles("*.json"))
                 {
-                    if (string.Compare(secretFile.Name, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0)
+                    if (string.Compare(secretFile.Name, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0
+                        || secretFile.Name.Contains(ScriptConstants.Snapshot))
                     {
                         // the secrets directory contains the host secrets file in addition
                         // to function secret files
@@ -165,6 +179,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 traceWriter.Error(message, ex);
                 logger?.LogError(0, ex, message);
             }
+        }
+
+        public async Task<string[]> GetSecretSnapshots(ScriptSecretsType type, string functionName)
+        {
+            string prefix = Path.GetFileNameWithoutExtension(GetSecretsFilePath(type, functionName)) + $".{ScriptConstants.Snapshot}*";
+
+            return await FileUtility.GetFilesAsync(Path.GetDirectoryName(_hostSecretsPath), prefix);
         }
 
         private void Dispose(bool disposing)

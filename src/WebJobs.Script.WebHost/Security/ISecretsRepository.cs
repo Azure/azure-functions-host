@@ -17,6 +17,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         Task WriteAsync(ScriptSecretsType type, string functionName, string secretsContent);
 
+        Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, string secretsContent);
+
         Task PurgeOldSecretsAsync(IList<string> currentFunctions, TraceWriter traceWriter, ILogger logger);
+
+        Task<string[]> GetSecretSnapshots(ScriptSecretsType type, string functionName);
     }
 }

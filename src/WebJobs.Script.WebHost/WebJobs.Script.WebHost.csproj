@@ -440,6 +440,7 @@
     <Compile Include="Extensions\HttpRouteCollectionExtensions.cs" />
     <Compile Include="Extensions\HttpRouteFactoryExtensions.cs" />
     <Compile Include="Filters\RequiresRunningHostAttribute.cs" />
+    <Compile Include="Security\SecretsUtility.cs" />
     <Compile Include="StandbyManager.cs" />
     <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\FunctionsController.cs" />

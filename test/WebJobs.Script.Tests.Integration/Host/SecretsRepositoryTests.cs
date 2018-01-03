@@ -197,6 +197,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Theory]
+        [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Host)]
+        [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Function)]
+        [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Host)]
+        [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Function)]
+        public async Task GetSecretSnapshots_ReturnsExpected(SecretsRepositoryType repositoryType, ScriptSecretsType secretsType)
+        {
+            using (var directory = new TempDirectory())
+            {
+                _fixture.TestInitialize(repositoryType, directory.Path);
+
+                string testContent = "test";
+                string testFunctionName = secretsType == ScriptSecretsType.Host ? null : "TestFunction";
+
+                var target = _fixture.GetNewSecretRepository();
+                await target.WriteAsync(secretsType, testFunctionName, testContent);
+                for (int i = 0; i < 5; i++)
+                {
+                    await target.WriteSnapshotAsync(secretsType, testFunctionName, testContent);
+                }
+                string[] files = await target.GetSecretSnapshots(secretsType, testFunctionName);
+
+                Assert.True(files.Length > 0);
+            }
+        }
+
         public class Fixture : IDisposable
         {
             public Fixture()
