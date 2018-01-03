@@ -74,9 +74,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     await PersistSecretsAsync(hostSecrets);
                 }
 
-                // Host secrets will be in the original persisted state at this point (e.g. encrypted),
-                // so we read the secrets running them through the appropriate readers
-                hostSecrets = ReadHostSecrets(hostSecrets);
+                try
+                {
+                    // Host secrets will be in the original persisted state at this point (e.g. encrypted),
+                    // so we read the secrets running them through the appropriate readers
+                    hostSecrets = ReadHostSecrets(hostSecrets);
+                }
+                catch (CryptographicException)
+                {
+                    _logger?.LogDebug(Resources.TraceNonDecryptedHostSecretRefresh);
+                    await PersistSecretsAsync(hostSecrets, null, true);
+                    await RefreshSecretsAsync(hostSecrets);
+                }
 
                 // If the persistence state of any of our secrets is stale (e.g. the encryption key has been rotated), update
                 // the state and persist the secrets
@@ -126,8 +135,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     await PersistSecretsAsync(secrets, functionName);
                 }
 
-                // Read all secrets, which will run the keys through the appropriate readers
-                secrets.Keys = secrets.Keys.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList();
+                try
+                {
+                    // Read all secrets, which will run the keys through the appropriate readers
+                    secrets.Keys = secrets.Keys.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList();
+                }
+                catch (CryptographicException)
+                {
+                    string message = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName);
+                     _logger?.LogDebug(message);
+                    await PersistSecretsAsync(secrets, functionName, true);
+                    await RefreshSecretsAsync(secrets, functionName);
+                }
 
                 if (secrets.HasStaleKeys)
                 {
@@ -358,10 +377,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return PersistSecretsAsync(refreshedSecrets, keyScope);
         }
 
-        private Task PersistSecretsAsync<T>(T secrets, string keyScope = null) where T : ScriptSecrets
+        private async Task PersistSecretsAsync<T>(T secrets, string keyScope = null, bool isNonDecryptable = false) where T : ScriptSecrets
         {
+            ScriptSecretsType secretsType = secrets.SecretsType;
             string secretsContent = ScriptSecretSerializer.SerializeSecrets<T>(secrets);
-            return _repository.WriteAsync(secrets.SecretsType, keyScope, secretsContent);
+            if (isNonDecryptable)
+            {
+                string[] secretBackups = await _repository.GetSecretSnapshots(secrets.SecretsType, keyScope);
+
+                if (secretBackups.Length >= ScriptConstants.MaximumSecretBackupCount)
+                {
+                    string message = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, string.IsNullOrEmpty(keyScope) ? "host" : keyScope);
+                    _logger?.LogDebug(message);
+                    throw new InvalidOperationException(message);
+                }
+                await _repository.WriteSnapshotAsync(secretsType, keyScope, secretsContent);
+            }
+            else
+            {
+                await _repository.WriteAsync(secretsType, keyScope, secretsContent);
+            }
         }
 
         private HostSecrets ReadHostSecrets(HostSecrets hostSecrets)

@@ -110,6 +110,24 @@ namespace Microsoft.Azure.WebJobs.Script
             return relativePath;
         }
 
+        public static Task<string[]> GetFilesAsync(string path, string prefix)
+        {
+            if (path == null)
+            {
+                throw new ArgumentNullException(nameof(path));
+            }
+
+            if (prefix == null)
+            {
+                throw new ArgumentNullException(nameof(prefix));
+            }
+
+            return Task.Run(() =>
+            {
+                return Directory.GetFiles(path, prefix);
+            });
+        }
+
         public static void CopyDirectory(string sourcePath, string targetPath)
         {
             foreach (string dirPath in Directory.GetDirectories(sourcePath, "*", SearchOption.AllDirectories))
