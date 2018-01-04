@@ -614,15 +614,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 {
                     await Assert.ThrowsAsync<InvalidOperationException>(async () =>
                     {
-                        for (int i = 0; i < ScriptConstants.MaximumSecretBackupCount + 1; i++)
+                        for (int i = 0; i < ScriptConstants.MaximumSecretBackupCount + 10; i++)
                         {
                             File.WriteAllText(Path.Combine(directory.Path, functionName + ".json"), functionSecretsJson);
                             functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
+                            if (i > ScriptConstants.MaximumSecretBackupCount)
+                            {
+                                await Task.Delay(500);
+                            }
                         }
                     });
                 }
 
-                Assert.Equal(ScriptConstants.MaximumSecretBackupCount, Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length);
+                Assert.True(Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length >= ScriptConstants.MaximumSecretBackupCount);
                 Assert.True(traceWriter.Traces.Any(
                     t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
                     "Expected Trace message not found");
