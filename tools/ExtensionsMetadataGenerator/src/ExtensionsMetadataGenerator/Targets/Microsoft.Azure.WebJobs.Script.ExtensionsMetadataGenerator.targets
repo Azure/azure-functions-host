@@ -1,0 +1,96 @@
+﻿<Project>
+
+  <PropertyGroup>
+    <_FunctionsExtensionsTaskFramework Condition=" '$(MSBuildRuntimeType)' == 'Core'">netstandard2.0</_FunctionsExtensionsTaskFramework>
+    <_FunctionsExtensionsTaskFramework Condition=" '$(_FunctionsExtensionsTaskFramework)' == ''">net46</_FunctionsExtensionsTaskFramework>
+    <_FunctionsExtensionsTasksDir Condition=" '$(_FunctionsExtensionsTasksDir)'=='' ">$(MSBuildThisFileDirectory)..\tools\$(_FunctionsExtensionsTaskFramework)</_FunctionsExtensionsTasksDir>
+    <_FunctionsExtensionsTaskAssemblyFullPath Condition=" '$(_FunctionsExtensionsTaskAssemblyFullPath)'=='' ">$(_FunctionsExtensionsTasksDir)\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll</_FunctionsExtensionsTaskAssemblyFullPath>
+    <IsPackable>false</IsPackable>
+    <_IsFunctionsSdkBuild Condition="$(_FunctionsTaskFramework) != ''">true</_IsFunctionsSdkBuild>
+    <_FunctionsExtensionsDir>$(TargetDir)</_FunctionsExtensionsDir>
+    <_FunctionsExtensionsDir Condition="$(_IsFunctionsSdkBuild) == 'true'">$(_FunctionsExtensionsDir)bin</_FunctionsExtensionsDir>
+  </PropertyGroup>
+
+  <UsingTask TaskName="GenerateFunctionsExtensionsMetadata"
+             AssemblyFile="$(_FunctionsExtensionsTaskAssemblyFullPath)"/>
+
+  <Target Name="_GenerateFunctionsExtensionsMetadataPostBuild"
+          AfterTargets="Build">
+    
+    <GenerateFunctionsExtensionsMetadata
+      SourcePath="$(_FunctionsExtensionsDir)"
+      OutputPath="$(_FunctionsExtensionsDir)"/>
+    
+    <Move Condition="$(_IsFunctionsSdkBuild) == 'true' AND Exists('$(TargetDir)extensions.json')" 
+          SourceFiles="$(TargetDir)extensions.json"
+          DestinationFiles="$(TargetDir)bin\extensions.json"
+          OverwriteReadOnlyFiles="true" 
+          ContinueOnError="true"/>
+  </Target>
+
+  <Target Name="_ResolveAdditionalReferenceCopyLocalPathsForFunctionsExtensions"
+          AfterTargets="ResolveReferences"
+          Condition="$(_IsFunctionsSdkBuild) != 'true'">
+
+    <!--
+      Copy publish assemblies that not already included in ReferenceCopyLocalPaths
+      via CopyLocalLockFileAssemblies=true. This will include RID-specific assets 
+      that would be published in  the runtimes/ folder, but excluded from 
+      CopyLocalLockFileAssemblies when no RuntimeIdentifier is set.
+    -->
+    <ItemGroup Condition="'$(RuntimeIdentifier)' == ''">
+      <!-- 
+       NOTE: The exclusion here is to ensure that we do not override any existing 
+             ReferenceCopyLocalPaths with assets from RunResolvedPublishAssemblies.
+             The ReferenceCopyLocalPaths can have conflicts resolved that are not 
+             also resolved in the publish set, and publish currently relies on copy
+             local paths having precedence over it to ensure conflict resolution 
+             applies. We must preserve that precedence here.
+     -->
+      <_RidSpecificAssembliesByDestination
+        Include="@(ResolvedAssembliesToPublish->'%(DestinationSubPath)')"
+        Exclude="@(ReferenceCopyLocalPaths->'%(DestinationSubDirectory)%(Filename)%(Extension)')"
+        OriginalItemSpec="%(ResolvedAssembliesToPublish.Identity)"
+       />
+
+      <_RidSpecificAssembliesByDestination
+        DestinationSubDirectory="%(_RidSpecificAssembliesByDestination.RelativeDir)"
+       />
+
+      <ReferenceCopyLocalPaths
+        Include="@(_RidSpecificAssembliesByDestination->'%(OriginalItemSpec)')"
+        Exclude="@(ReferenceCopyLocalPaths)"
+       />
+
+    </ItemGroup>
+
+    <!--
+       Copy reference assemblies needed for runtime compilation to refs/ folder. Only 
+       those that are not a also runtime assemblies and therefore already included in 
+       ReferenceCopyLocalPaths via CopyLocalLockFileAssemblies=true are needed.
+      -->
+    <ItemGroup Condition="'$(PreserveCompilationContext)' == 'true'">
+      <ReferenceCopyLocalPaths
+        Include="@(ReferencePath)"
+        Exclude="@(ReferenceCopyLocalPaths)"
+        DestinationSubDirectory="$(RefAssembliesFolderName)\"/>
+    </ItemGroup>
+
+    <!-- Force the binaries to be copied to the bin folder.-->
+    <ItemGroup>
+      <ReferenceCopyLocalPaths>
+        <DestinationSubDirectory>%(ReferenceCopyLocalPaths.DestinationSubDirectory)</DestinationSubDirectory>
+      </ReferenceCopyLocalPaths>
+
+      <ResolvedAssembliesToPublish>
+        <DestinationSubPath>%(ResolvedAssembliesToPublish.DestinationSubPath)</DestinationSubPath>
+      </ResolvedAssembliesToPublish>
+    </ItemGroup>
+
+    <!-- Target path needs to point to the correct dll so that P2P references work. -->
+    <PropertyGroup>
+      <TargetPath>$(TargetDir)$(TargetFileName)</TargetPath>
+    </PropertyGroup>
+
+  </Target>
+</Project>
