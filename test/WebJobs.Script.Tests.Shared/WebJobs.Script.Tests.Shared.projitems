@@ -17,7 +17,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)TestInvoker.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestChannelLoggerProviderFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestLogger.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)TestLoggerFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestLoggerProviderFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestLoggerProvider.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestScopedEnvironmentVariable.cs" />
