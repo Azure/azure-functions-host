@@ -1,19 +1,18 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-#if METRICS
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
@@ -23,45 +22,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private MockInvoker _invoker;
         private TestMetricsLogger _metricsLogger;
-        private TestTraceWriter _traceWriter;
+        private TestLoggerProvider _testLoggerProvider;
 
         public FunctionInvokerBaseTests()
         {
             _metricsLogger = new TestMetricsLogger();
-            _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
-            var config = new ScriptHostConfiguration();
-            config.HostConfig.AddService<IMetricsLogger>(_metricsLogger);
+            _testLoggerProvider = new TestLoggerProvider();
+
+            var scriptHostConfiguration = new ScriptHostConfiguration
+            {
+                HostConfig = new JobHostConfiguration(),
+                FileLoggingMode = FileLoggingMode.Always,
+                FileWatchingEnabled = true
+            };
+
+            ILoggerFactory loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(_testLoggerProvider);
+            scriptHostConfiguration.HostConfig.LoggerFactory = loggerFactory;
+
+            scriptHostConfiguration.HostConfig.AddService<IMetricsLogger>(_metricsLogger);
+
+            var eventManager = new ScriptEventManager();
+
+            var host = new Mock<ScriptHost>(new NullScriptHostEnvironment(), eventManager, scriptHostConfiguration, null, null, null);
+            host.CallBase = true;
+
+            host.SetupGet(h => h.IsPrimary).Returns(true);
+
             var funcDescriptor = new FunctionDescriptor();
             var funcDescriptors = new Collection<FunctionDescriptor>();
             funcDescriptors.Add(funcDescriptor);
-            var eventManager = new Mock<IScriptEventManager>();
-            var hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { new NullScriptHostEnvironment(), eventManager.Object, config, null, null });
-            hostMock.SetupGet(h => h.FunctionTraceWriterFactory).Returns(new FunctionTraceWriterFactory(config));
-            hostMock.SetupGet(h => h.Functions).Returns(funcDescriptors);
-            hostMock.Object.TraceWriter = _traceWriter;
+            host.SetupGet(h => h.Functions).Returns(funcDescriptors);
 
             var metadata = new FunctionMetadata
             {
                 Name = "TestFunction"
             };
-            _invoker = new MockInvoker(hostMock.Object, _metricsLogger, metadata);
+            _invoker = new MockInvoker(host.Object, _metricsLogger, metadata);
             funcDescriptor.Metadata = metadata;
             funcDescriptor.Invoker = _invoker;
             funcDescriptor.Name = metadata.Name;
         }
 
         [Fact]
-        public void TraceOnPrimaryHost_WritesExpectedLogs()
+        public void LogOnPrimaryHost_WritesExpectedLogs()
         {
-            _traceWriter.Traces.Clear();
+            _testLoggerProvider.ClearAllLogMessages();
 
-            _invoker.TraceOnPrimaryHost("Test message", TraceLevel.Info, "TestSource");
+            _invoker.LogOnPrimaryHost("Test message", LogLevel.Information);
 
-            Assert.Equal(1, _traceWriter.Traces.Count);
-            var trace = _traceWriter.Traces[0];
-            Assert.Equal("Test message", trace.Message);
-            Assert.Equal(TraceLevel.Info, trace.Level);
-            Assert.Equal("TestSource", trace.Source);
+            Assert.Equal(1, _testLoggerProvider.GetAllLogMessages().Count());
+            var log = _testLoggerProvider.GetAllLogMessages().ElementAt(0);
+            Assert.Equal("Test message", log.FormattedMessage);
+            Assert.Equal(LogLevel.Information, log.Level);
         }
 
         [Fact]
@@ -96,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 InvocationId = Guid.NewGuid()
             };
-            var parameters = new object[] { "Test", _traceWriter, executionContext };
+            var parameters = new object[] { "Test", _invoker.FunctionLogger, executionContext };
             await _invoker.Invoke(parameters);
 
             Assert.Equal(1, _metricsLogger.MetricEventsBegan.Count);
@@ -111,8 +124,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded[0];
             Assert.Same(startedEvent, completedStartEvent);
             Assert.True(completedStartEvent.Success);
-            var message = _traceWriter.Traces.Last().Message;
-            Assert.True(Regex.IsMatch(message, $"Function completed \\(Success, Id={executionContext.InvocationId}, Duration=[0-9]*ms\\)"));
 
             // verify latency event
             var startLatencyEvent = _metricsLogger.EventsBegan[0];
@@ -128,8 +139,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 InvocationId = Guid.NewGuid()
             };
-            var parameters1 = new object[] { "Test", _traceWriter, executionContext, new InvocationData { Delay = 2000 } };
-            var parameters2 = new object[] { "Test", _traceWriter, executionContext };
+            var parameters1 = new object[] { "Test", _invoker.FunctionLogger, executionContext, new InvocationData { Delay = 2000 } };
+            var parameters2 = new object[] { "Test", _invoker.FunctionLogger, executionContext };
 
             Task invocation1 = _invoker.Invoke(parameters1);
             Task invocation2 = _invoker.Invoke(parameters2);
@@ -140,22 +151,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, _metricsLogger.EventsBegan.Count);
             Assert.Equal(2, _metricsLogger.MetricEventsEnded.Count);
             Assert.Equal(2, _metricsLogger.EventsEnded.Count);
-
-            var completionEvents = _traceWriter.Traces
-                .Select(e => Regex.Match(e.Message, $"Function completed \\(Success, Id={executionContext.InvocationId}, Duration=(?'duration'[0-9]*)ms\\)"))
-                .Where(m => m.Success)
-                .ToList();
-
-            Assert.Equal(2, completionEvents.Count);
-            int invocation1Duration = (int.Parse(completionEvents[1].Groups["duration"].Value) / 100) * 100;
-
-            int invocation2RawDuration = int.Parse(completionEvents[0].Groups["duration"].Value); // save this for better output below.
-            int invocation2Duration = (invocation2RawDuration / 100) * 100;
-
-            Assert.NotEqual(invocation1Duration, invocation2Duration);
-            Assert.Equal(2000, invocation1Duration);
-
-            Assert.True(invocation2Duration == 500, $"Expected 500. Actual: {invocation2Duration}. Raw value: {invocation2RawDuration}");
         }
 
         [Fact]
@@ -165,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 InvocationId = Guid.NewGuid()
             };
-            var parameters = new object[] { "Test", _traceWriter, executionContext, new InvocationData { Throw = true } };
+            var parameters = new object[] { "Test", _invoker.FunctionLogger, executionContext, new InvocationData { Throw = true } };
             await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             {
                 await _invoker.Invoke(parameters);
@@ -183,8 +178,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded[0];
             Assert.Same(startedEvent, completedStartEvent);
             Assert.False(completedStartEvent.Success);
-            var message = _traceWriter.Traces.Last().Message;
-            Assert.True(Regex.IsMatch(message, $"Function completed \\(Failure, Id={executionContext.InvocationId}, Duration=[0-9]*ms\\)"));
 
             // verify latency event
             var startLatencyEvent = _metricsLogger.EventsBegan[0];
@@ -246,4 +239,3 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
     }
 }
-#endif

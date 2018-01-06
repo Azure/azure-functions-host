@@ -1053,7 +1053,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void ConfigureLoggerFactory_Default()
         {
             var config = new ScriptHostConfiguration();
-            var loggerFactory = new TestLoggerFactory();
+            var loggerFactoryMock = new Mock<ILoggerFactory>(MockBehavior.Loose);
+            loggerFactoryMock.Setup(x => x.AddProvider(It.IsAny<ILoggerProvider>()));
+            var loggerFactory = loggerFactoryMock.Object;
             config.HostConfig.LoggerFactory = loggerFactory;
 
             // Make sure no App Insights is configured
@@ -1070,7 +1072,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHost.ConfigureLoggerFactory(loggerFactory, config, settingsManager, builder, () => true, () => true, (ex) => { });
 
-            Assert.Contains(loggerFactory.Providers, p => p is FunctionFileLoggerProvider);
+            loggerFactoryMock.Verify(x => x.AddProvider(It.IsAny<FunctionFileLoggerProvider>()), Times.AtLeastOnce());
             Assert.Equal(1, metricsLogger.LoggedEvents.Count);
             Assert.Equal(MetricEventNames.ApplicationInsightsDisabled, metricsLogger.LoggedEvents[0]);
         }
@@ -1079,7 +1081,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void ConfigureLoggerFactory_ApplicationInsights()
         {
             var config = new ScriptHostConfiguration();
-            var loggerFactory = new TestLoggerFactory();
+            var loggerFactoryMock = new Mock<ILoggerFactory>(MockBehavior.Loose);
+            loggerFactoryMock.Setup(x => x.AddProvider(It.IsAny<ILoggerProvider>()));
+            var loggerFactory = loggerFactoryMock.Object;
             config.HostConfig.LoggerFactory = loggerFactory;
 
             // Make sure no App Insights is configured
@@ -1093,12 +1097,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHost.ConfigureLoggerFactory(loggerFactory, config, settingsManager, builder, () => true, () => true, (ex) => { });
 
-            Assert.Equal(4, loggerFactory.Providers.Count);
+            loggerFactoryMock.Verify(x => x.AddProvider(It.IsAny<ILoggerProvider>()), Times.Exactly(4));
 
-            Assert.Single(loggerFactory.Providers.OfType<FunctionFileLoggerProvider>());
-            Assert.Single(loggerFactory.Providers.OfType<HostFileLoggerProvider>());
-            Assert.Single(loggerFactory.Providers.OfType<ApplicationInsightsLoggerProvider>());
-            Assert.Single(loggerFactory.Providers.OfType<HostErrorLoggerProvider>());
+            loggerFactoryMock.Verify(x => x.AddProvider(It.IsAny<FunctionFileLoggerProvider>()), Times.Once());
+            loggerFactoryMock.Verify(x => x.AddProvider(It.IsAny<HostFileLoggerProvider>()), Times.Once());
+            loggerFactoryMock.Verify(x => x.AddProvider(It.IsAny<ApplicationInsightsLoggerProvider>()), Times.Once());
+            loggerFactoryMock.Verify(x => x.AddProvider(It.IsAny<HostErrorLoggerProvider>()), Times.Once());
 
             Assert.Equal(1, metricsLogger.LoggedEvents.Count);
             Assert.Equal(MetricEventNames.ApplicationInsightsEnabled, metricsLogger.LoggedEvents[0]);
