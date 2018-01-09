@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-#if ALLEXTENSIONS
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -14,14 +13,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class ServiceBusScriptBindingProviderTests
     {
-        private readonly ServiceBusScriptBindingProvider _provider;
+        private readonly GeneralScriptBindingProvider _provider;
 
         public ServiceBusScriptBindingProviderTests()
         {
+            var serviceBusConfig = new ServiceBusConfiguration();
+            serviceBusConfig.MessagingProvider = new MessagingProvider(serviceBusConfig);
+
             JobHostConfiguration config = new JobHostConfiguration();
-            TestTraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            config.UseServiceBus(serviceBusConfig);
             JObject hostMetadata = new JObject();
-            _provider = new ServiceBusScriptBindingProvider(config, hostMetadata, traceWriter);
+            _provider = new GeneralScriptBindingProvider(config, hostMetadata, null);
+            var metadataProvider = new JobHost(config).CreateMetadataProvider();
+            _provider.CompleteInitialization(metadataProvider);
         }
 
         [Fact]
@@ -34,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "direction", "out" },
                 { "queueName", "queue" }
             };
+
             ScriptBindingContext context = new ScriptBindingContext(bindingMetadata);
             ScriptBinding binding = null;
             bool created = _provider.TryCreate(context, out binding);
@@ -71,6 +76,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(EntityType.Topic, serviceBusAttr.EntityType);
         }
+
+        [Fact]
+        public void TryCreate_GetAttributes_EntityTypeQueue_Trigger()
+        {
+            JObject bindingMetadata = new JObject
+            {
+                { "type", "serviceBusTrigger" },
+                { "name", "test" },
+                { "direction", "in" },
+                { "queueName", "queue" }
+            };
+
+            ScriptBindingContext context = new ScriptBindingContext(bindingMetadata);
+            ScriptBinding binding = null;
+            bool created = _provider.TryCreate(context, out binding);
+
+            Assert.True(created);
+            Assert.Same(binding.Context, context);
+
+            var serviceBusTriggerAttr = binding.GetAttributes()
+                .Where(attr => attr is ServiceBusTriggerAttribute)
+                .First() as ServiceBusTriggerAttribute;
+
+            Assert.Equal(serviceBusTriggerAttr.QueueName, "queue");
+        }
+
+        [Fact]
+        public void TryCreate_GetAttributes_EntityTypeTopic_Trigger()
+        {
+            JObject bindingMetadata = new JObject
+            {
+                { "type", "serviceBusTrigger" },
+                { "name", "test" },
+                { "direction", "in" },
+                { "topicName", "topic" },
+                { "subscriptionName", "testSub" }
+            };
+            ScriptBindingContext context = new ScriptBindingContext(bindingMetadata);
+            ScriptBinding binding = null;
+            bool created = _provider.TryCreate(context, out binding);
+
+            Assert.True(created);
+            Assert.Same(binding.Context, context);
+
+            var serviceBusTriggerAttr = binding.GetAttributes()
+                .Where(attr => attr is ServiceBusTriggerAttribute)
+                .First() as ServiceBusTriggerAttribute;
+
+            Assert.Equal(serviceBusTriggerAttr.TopicName, "topic");
+        }
     }
 }
-#endif
