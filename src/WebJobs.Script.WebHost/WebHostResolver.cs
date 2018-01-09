@@ -89,12 +89,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return GetActiveInstance(settings, ref _activeHostManager, ref _standbyHostManager);
         }
 
-        // TODO: FACAVAL (WEBHOOKS)
-        //public WebHookReceiverManager GetWebHookReceiverManager(WebHostSettings settings)
-        //{
-        //    return GetActiveInstance(settings, ref _activeReceiverManager, ref _standbyReceiverManager);
-        //}
-
         /// <summary>
         /// This method ensures that all services managed by this class are initialized
         /// correctly taking into account specialization state transitions.

@@ -32,7 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _settingsManager = ScriptSettingsManager.Instance;
         }
 
-        // TODO: FACAVAL NODE
         //// Update a script file (the function.json) to force the ScriptHost to re-index and pick up new changes.
         //// Test with timers:
         [Fact]
