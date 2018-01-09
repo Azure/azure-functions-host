@@ -42,6 +42,7 @@
 
   <ItemGroup>
     <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.ServiceBus" Version="3.0.0-beta4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
     <PackageReference Include="Moq" Version="4.7.145" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
