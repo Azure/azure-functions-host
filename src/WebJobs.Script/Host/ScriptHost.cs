@@ -1813,6 +1813,14 @@ namespace Microsoft.Azure.WebJobs.Script
             base.OnHostStarted();
         }
 
+        internal void SetPrimaryLeaseAsNotReleasable()
+        {
+            if (_blobLeaseManager != null)
+            {
+                _blobLeaseManager.NeedToReleaseLease = false;
+            }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)

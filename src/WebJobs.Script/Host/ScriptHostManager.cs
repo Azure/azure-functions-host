@@ -169,6 +169,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     OnInitializeConfig(_config);
 
                     newInstance = _scriptHostFactory.Create(_environment, EventManager, _settingsManager, _config);
+                    if (_currentInstance != null)
+                    {
+                        // Do not dispose primary lease for orphan instance
+                        _currentInstance.SetPrimaryLeaseAsNotReleasable();
+                    }
                     _currentInstance = newInstance;
                     lock (_liveInstances)
                     {
