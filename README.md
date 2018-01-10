@@ -1,5 +1,14 @@
+# Azure Functions Languge Worker Protobuf
 
-# Contributing
+This repository contains the protobuf definition file which defines the gRPC service which is used between the Azure WebJobs Script host and the Azure Functions language workers. 
+
+Learn more about Azure Function's projects on the [meta](https://github.com/azure/azure-functions) repo.
+
+## Using the protobufs
+
+Download the contents from the latest (or specific) release. Release will follow semver guidelines.
+
+## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
