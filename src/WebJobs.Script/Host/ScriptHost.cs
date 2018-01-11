@@ -353,6 +353,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 _startupLogger.LogInformation(readingFileMessage);
                 _startupLogger.LogInformation(readFileMessage);
 
+                // If they set the host id in the JSON, emit a warning that this could cause issues and they shouldn't do it.
+                if (ScriptConfig.HostConfig?.HostConfigMetadata?["id"] != null)
+                {
+                    _startupLogger.LogWarning("Host id explicitly set in the host.json. It is recommended that you remove the \"id\" property in your host.json.");
+                }
+
                 if (string.IsNullOrEmpty(_hostConfig.HostId))
                 {
                     _hostConfig.HostId = Utility.GetDefaultHostId(_settingsManager, ScriptConfig);

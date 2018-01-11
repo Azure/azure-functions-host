@@ -1488,6 +1488,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(host.IsFunction(null));
         }
 
+        [Fact]
+        public void Initialize_LogsWarningForExplicitlySetHostId()
+        {
+            var loggerProvider = new TestLoggerProvider();
+            var loggerProviderFactory = new TestLoggerProviderFactory(loggerProvider, false);
+
+            string rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests_Initialize_LogsWarningForExplicitlySetHostId");
+            if (!Directory.Exists(rootPath))
+            {
+                Directory.CreateDirectory(rootPath);
+            }
+
+            // Set id in the host.json
+            string hostJsonContent = @"
+            {
+                'id': 'foobar'
+            }";
+            File.WriteAllText(Path.Combine(rootPath, "host.json"), hostJsonContent);
+
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = rootPath
+            };
+
+            // This id will be over written
+            config.HostConfig.HostId = ID;
+            var environment = new Mock<IScriptHostEnvironment>();
+            var eventManager = new Mock<IScriptEventManager>();
+
+            var host = new ScriptHost(environment.Object, eventManager.Object, config, null, loggerProviderFactory);
+            host.Initialize();
+
+            Assert.DoesNotMatch(ID, config.HostConfig.HostId);
+            Assert.Matches("foobar", config.HostConfig.HostId);
+
+            // We should have a warning for host id in the start up logger
+            var logger = loggerProvider.CreatedLoggers.First(x => x.Category == "Host.Startup");
+            Assert.Single(logger.LogMessages, x => x.FormattedMessage.Contains("Host id explicitly set in the host.json."));
+        }
+
         public class AssemblyMock : Assembly
         {
             public override object[] GetCustomAttributes(Type attributeType, bool inherit)
