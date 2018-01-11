@@ -96,8 +96,8 @@
     <Reference Include="Microsoft.Azure.AppService.Proxy.Runtime, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.AppService.Proxy.1.0.0.1\lib\net461\Microsoft.Azure.AppService.Proxy.Runtime.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Azure.Documents.ChangeFeedProcessor, Version=1.14.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.DocumentDB.ChangeFeedProcessor.1.0.0\lib\net45\Microsoft.Azure.Documents.ChangeFeedProcessor.dll</HintPath>
+    <Reference Include="Microsoft.Azure.Documents.ChangeFeedProcessor, Version=1.17.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.DocumentDB.ChangeFeedProcessor.1.1.1\lib\net45\Microsoft.Azure.Documents.ChangeFeedProcessor.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.Documents.Client, Version=1.13.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.DocumentDB.1.13.2\lib\net45\Microsoft.Azure.Documents.Client.dll</HintPath>
@@ -112,7 +112,7 @@
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Core.2.2.0-beta1-11229\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=2.1.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.2.2.0-beta1-10588\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.2.2.0-beta1-10592\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.ApiHub, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.ApiHub.1.0.0-beta1-10588\lib\net45\Microsoft.Azure.WebJobs.Extensions.ApiHub.dll</HintPath>
@@ -121,7 +121,7 @@
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.BotFramework.1.0.15-beta\lib\net46\Microsoft.Azure.WebJobs.Extensions.BotFramework.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.DocumentDB, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.2.0-beta1-10588\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.2.0-beta1-10592\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.EventGrid, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.EventGrid.1.0.0-beta3-10022\lib\net46\Microsoft.Azure.WebJobs.Extensions.EventGrid.dll</HintPath>

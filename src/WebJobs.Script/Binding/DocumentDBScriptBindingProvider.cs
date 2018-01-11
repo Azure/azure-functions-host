@@ -115,6 +115,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     attributeTrigger.LeaseConnectionStringSetting = Context.GetMetadataValue<string>("leaseConnectionStringSetting");
                     attributeTrigger.CreateLeaseCollectionIfNotExists = Context.GetMetadataValue<bool>("createLeaseCollectionIfNotExists", false);
                     attributeTrigger.LeasesCollectionThroughput = Context.GetMetadataValue<int>("leaseCollectionThroughput", 0);
+                    attributeTrigger.LeaseCollectionPrefix = Context.GetMetadataValue<string>("leaseCollectionPrefix");
+                    attributeTrigger.FeedPollDelay = Context.GetMetadataValue<int>("feedPollDelay", 0);
+                    attributeTrigger.LeaseAcquireInterval = Context.GetMetadataValue<int>("leaseAcquireInterval", 0);
+                    attributeTrigger.LeaseExpirationInterval = Context.GetMetadataValue<int>("leaseExpirationInterval", 0);
+                    attributeTrigger.LeaseRenewInterval = Context.GetMetadataValue<int>("leaseRenewInterval", 0);
+                    attributeTrigger.CheckpointInterval = Context.GetMetadataValue<int>("checkpointInterval", 0);
+                    attributeTrigger.CheckpointDocumentCount = Context.GetMetadataValue<int>("checkpointDocumentCount", 0);
+                    attributeTrigger.MaxItemsPerInvocation = Context.GetMetadataValue<int>("maxItemsPerInvocation", 0);
 
                     attributes.Add(attributeTrigger);
                 }
