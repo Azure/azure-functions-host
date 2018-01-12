@@ -36,6 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private IDistributedLockManager _lockManager;
 
+        private static PrimaryHostCoordinator latestCreatedInstance;
+        private static object syncLock = new object();
+
         internal PrimaryHostCoordinator(IDistributedLockManager lockManager, TimeSpan leaseTimeout, string hostId, string instanceId, TraceWriter traceWriter,
             ILoggerFactory loggerFactory, TimeSpan? renewalInterval = null)
         {
@@ -100,13 +103,22 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentOutOfRangeException(nameof(leaseTimeout), $"The {nameof(leaseTimeout)} should be between 15 and 60 seconds");
             }
 
-            var manager = new PrimaryHostCoordinator(lockManager, leaseTimeout, hostId, instanceId, traceWriter, loggerFactory, renewalInterval);
-            return manager;
+            lock (syncLock)
+            {
+                // Dispose previously created instance to ensure releasing a lease before new instance is created.
+                if (latestCreatedInstance != null)
+                {
+                    latestCreatedInstance.Dispose();
+                }
+
+                latestCreatedInstance = new PrimaryHostCoordinator(lockManager, leaseTimeout, hostId, instanceId, traceWriter, loggerFactory, renewalInterval);
+            }
+            return latestCreatedInstance;
         }
 
         private void ProcessLeaseTimerTick(object state)
         {
-            if (_processingLease)
+            if (_processingLease && !_disposed)
             {
                 return;
             }

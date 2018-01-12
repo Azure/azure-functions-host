@@ -229,8 +229,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
             var lockManager = CreateLockManager();
-            using (var manager1 = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId1, instanceId, traceWriter, null))
-            using (var manager2 = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId2, instanceId, traceWriter, null))
+            using (var manager1 = new PrimaryHostCoordinator(lockManager, TimeSpan.FromSeconds(15), hostId1, instanceId, traceWriter, null))
+            using (var manager2 = new PrimaryHostCoordinator(lockManager, TimeSpan.FromSeconds(15), hostId2, instanceId, traceWriter, null))
             {
                 Task manager1Check = TestHelpers.Await(() => manager1.HasLease);
                 Task manager2Check = TestHelpers.Await(() => manager2.HasLease);
@@ -239,6 +239,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             await Task.WhenAll(ClearLeaseBlob(hostId1), ClearLeaseBlob(hostId2));
+        }
+
+        [Fact]
+        public async Task Create_LastCreatedInstanceAquiresLease()
+        {
+            string hostId = Guid.NewGuid().ToString();
+            string instanceId = Guid.NewGuid().ToString();
+            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+
+            var lockManager = CreateLockManager();
+            using (var manager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId, instanceId, traceWriter, null))
+            {
+                Task managerCheck = TestHelpers.Await(() => manager.HasLease);
+                await Task.WhenAll(managerCheck);
+            }
+
+            var manager1 = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId, instanceId, traceWriter, null);
+            Task manager1Check = TestHelpers.Await(() => manager1.HasLease);
+            await Task.WhenAll(manager1Check);
+
+            var manager2 = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId, instanceId, traceWriter, null);
+            Task manager2Check = TestHelpers.Await(() => manager2.HasLease);
+            await Task.WhenAll(manager2Check);
+            Assert.True(traceWriter.Traces[traceWriter.Traces.Count() - 2].Message.Contains($"Host instance '{instanceId}' released lock lease"));
+            Assert.True(traceWriter.Traces.Last().Message.Contains($"Host lock lease acquired by instance ID '{instanceId}'"));
+
+            await Task.WhenAll(ClearLeaseBlob(hostId));
         }
 
         private static async Task<ICloudBlob> GetLockBlobAsync(string accountConnectionString, string hostId)
