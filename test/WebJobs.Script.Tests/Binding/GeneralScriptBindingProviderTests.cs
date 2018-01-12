@@ -66,5 +66,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var attr = binding.GetAttributes()[0];
             Assert.IsType<ManualTriggerAttribute>(attr);
         }
+
+        [Fact]
+        public void TryCreate_NoMatchingMetadata_DoesNotCreateBinding()
+        {
+            JObject bindingMetadata = new JObject
+            {
+                { "type", "unknown" },
+                { "name", "test" },
+                { "direction", "out" }
+            };
+            ScriptBindingContext context = new ScriptBindingContext(bindingMetadata);
+            ScriptBinding binding = null;
+            JobHostConfiguration config = new JobHostConfiguration();
+            config.UseScriptExtensions();
+            JObject hostMetadata = new JObject();
+            var provider = new GeneralScriptBindingProvider(config, hostMetadata, null);
+            var metadataProvider = new JobHost(config).CreateMetadataProvider();
+            provider.CompleteInitialization(metadataProvider);
+            bool created = provider.TryCreate(context, out binding);
+
+            Assert.False(created);
+            Assert.Null(binding);
+        }
     }
 }
