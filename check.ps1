@@ -25,6 +25,19 @@ function Check([string] $componentName, [string] $verstr, [Version] $requiredVer
 
 Write-Host "Checking dependencies"
 
+# Check VS 
+# Use vswhere, which is installed with VS 15.2 and later.  https://github.com/Microsoft/vswhere 
+$x= [Environment]::ExpandEnvironmentVariables("%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe")
+if(![System.IO.File]::Exists($x)){
+    Write-Host "    VSWhere is missing. Is VS 2017 installed? See https://www.visualstudio.com/downloads/ " -ForegroundColor Red
+} else {
+    $actualVersion = & $x -property catalog_buildVersion   
+    $ok = Check "VS 2017" $actualVersion ([Version]::Parse("15.5.0"))
+    if (-Not $ok) {
+        Write-Host "    You can update VS from the Tools | Extensions and Updates menu."
+    }
+}
+
 #  Check dotnet
 # C:\dev\AFunc\script-core3>dotnet --version
 # 2.0.0
