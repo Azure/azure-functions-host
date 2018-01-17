@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 {
     public class SecretManagerTests
     {
-        private ScriptSettingsManager _settingsManager = ScriptSettingsManager.Instance;
+        private ScriptSettingsManager _settingsManager = new ScriptSettingsManager();
 
         [Fact]
         public async Task MergedSecrets_PrioritizesFunctionSecrets()
