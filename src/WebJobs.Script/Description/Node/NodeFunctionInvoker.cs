@@ -236,7 +236,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         private static async Task ProcessOutputBindingsAsync(Collection<FunctionBinding> outputBindings, object input, Binder binder,
-            Dictionary<string, object> bindingData, Dictionary<string, object> scriptExecutionContext, object functionResult)
+            Dictionary<string, object> bindingData, object functionResult)
         {
             if (outputBindings == null)
             {
