@@ -243,24 +243,27 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return;
             }
 
-            var bindings = (Dictionary<string, object>)scriptExecutionContext["bindings"];
+            var functionResultDictionary = (IDictionary<string, object>)functionResult;
+            var returnValue = functionResultDictionary["returnValue"];
+            var bindingValues = (IDictionary<string, object>)functionResultDictionary["bindingValues"];
+
             var returnValueBinding = outputBindings.SingleOrDefault(p => p.Metadata.IsReturn);
             if (returnValueBinding != null)
             {
                 // if there is a $return binding, bind the entire function return to it
                 // if additional output bindings need to be bound, they'll have to use the explicit
                 // context.bindings mechanism to set values, not return value.
-                bindings[ScriptConstants.SystemReturnParameterBindingName] = functionResult;
+                bindingValues[ScriptConstants.SystemReturnParameterBindingName] = returnValue;
             }
             else
             {
                 // if the function returned binding values via the function result,
                 // apply them to context.bindings
-                if (functionResult is IDictionary<string, object> functionOutputs)
+                if (returnValue is IDictionary<string, object> functionOutputs)
                 {
                     foreach (var output in functionOutputs)
                     {
-                        bindings[output.Key] = output.Value;
+                        bindingValues[output.Key] = output.Value;
                     }
                 }
             }
@@ -269,13 +272,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 // get the output value from the script
                 object value = null;
-                bool haveValue = bindings.TryGetValue(binding.Metadata.Name, out value);
+                bool haveValue = bindingValues.TryGetValue(binding.Metadata.Name, out value);
                 if (!haveValue && string.Compare(binding.Metadata.Type, "http", StringComparison.OrdinalIgnoreCase) == 0)
                 {
                     // http bindings support a special context.req/context.res programming
                     // model, so we must map that back to the actual binding name if a value
                     // wasn't provided using the binding name itself
-                    haveValue = bindings.TryGetValue("res", out value);
+                    haveValue = bindingValues.TryGetValue("res", out value);
                 }
 
                 // apply the value to the binding
@@ -348,70 +351,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private async Task<Dictionary<string, object>> CreateScriptExecutionContextAsync(object input, DataType dataType, TraceWriter traceWriter, FunctionInvocationContext invocationContext)
         {
-            // create a TraceWriter wrapper that can be exposed to Node.js
-            var log = (ScriptFunc)(p =>
-            {
-                var logData = (IDictionary<string, object>)p;
-                string message = (string)logData["msg"];
-                if (message != null)
-                {
-                    try
-                    {
-                        TraceLevel level = (TraceLevel)logData["lvl"];
-                        var evt = new TraceEvent(level, message);
-
-                        // Node captures the AsyncLocal value of the first invocation, which means that logs
-                        // are correlated incorrectly. Here we'll overwrite that value with the correct value
-                        // immediately before logging.
-                        using (BeginFunctionScope(invocationContext))
-                        {
-                            // TraceWriter already logs to ILogger
-                            traceWriter.Trace(evt);
-                        }
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                        // if a function attempts to write to a disposed
-                        // TraceWriter. Might happen if a function tries to
-                        // log after calling done()
-                    }
-                }
-
-                return Task.FromResult<object>(null);
-            });
-
-            var metric = (ScriptFunc)(p =>
-            {
-                var metricObject = (IDictionary<string, object>)p;
-                string name = (string)metricObject["name"];
-                object valueObject = metricObject["value"];
-
-                if (name != null && valueObject != null)
-                {
-                    double value = Convert.ToDouble(valueObject);
-
-                    // properties are optional
-                    var properties = (IDictionary<string, object>)metricObject["properties"];
-
-                    using (BeginFunctionScope(invocationContext))
-                    {
-                        invocationContext.Logger.LogMetric(name, value, properties);
-                    }
-                }
-
-                return Task.FromResult<object>(null);
-            });
-
-            var bindings = new Dictionary<string, object>();
-            var bind = (ScriptFunc)(p =>
-            {
-                IDictionary<string, object> bindValues = (IDictionary<string, object>)p;
-                foreach (var bindValue in bindValues)
-                {
-                    bindings[bindValue.Key] = bindValue.Value;
-                }
-                return Task.FromResult<object>(null);
-            });
+            // It's important that we use WeakReferences here for objects captured by
+            // these function closures. Otherwise, due to the nature of how we're using Edge.js
+            // we'll get memory leaks (we're establishing bi-directional communication between
+            // .NET and Node).
+            var traceWriterReference = new WeakReference<TraceWriter>(traceWriter);
+            var invocationContextReference = new WeakReference<FunctionInvocationContext>(invocationContext);
+            var log = CreateLoggerFunc(traceWriterReference, invocationContextReference);
+            var metric = CreateMetricFunc(invocationContextReference);
 
             var executionContext = new Dictionary<string, object>
             {
@@ -420,14 +367,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ["functionDirectory"] = invocationContext.ExecutionContext.FunctionDirectory,
             };
 
+            var bindings = new Dictionary<string, object>();
             var context = new Dictionary<string, object>()
             {
                 { "invocationId", invocationContext.ExecutionContext.InvocationId },
                 { "executionContext", executionContext },
-                { "log", log },
-                { "_metric", metric },
                 { "bindings", bindings },
-                { "bind", bind }
+                { "log", log },
+                { "_metric", metric }
             };
 
             if (!string.IsNullOrEmpty(_entryPoint))
@@ -493,6 +440,71 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             context.Add("_triggerType", _trigger.Type);
 
             return context;
+        }
+
+        private static ScriptFunc CreateLoggerFunc(WeakReference<TraceWriter> traceWriterReference, WeakReference<FunctionInvocationContext> invocationContextReference)
+        {
+            return (ScriptFunc)(p =>
+            {
+                var logData = (IDictionary<string, object>)p;
+                string message = (string)logData["msg"];
+                if (message != null)
+                {
+                    try
+                    {
+                        // Node captures the AsyncLocal value of the first invocation, which means that logs
+                        // are correlated incorrectly. Here we'll overwrite that value with the correct value
+                        // immediately before logging.
+                        TraceWriter traceWriter = null;
+                        FunctionInvocationContext invocationContext = null;
+                        if (traceWriterReference.TryGetTarget(out traceWriter) &&
+                            invocationContextReference.TryGetTarget(out invocationContext))
+                        {
+                            using (BeginFunctionScope(invocationContext))
+                            {
+                                // TraceWriter already logs to ILogger
+                                TraceLevel level = (TraceLevel)logData["lvl"];
+                                var evt = new TraceEvent(level, message);
+                                traceWriter.Trace(evt);
+                            }
+                        }
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // if a function attempts to write to a disposed
+                        // TraceWriter. Might happen if a function tries to
+                        // log after calling done()
+                    }
+                }
+
+                return Task.FromResult<object>(null);
+            });
+        }
+
+        private static ScriptFunc CreateMetricFunc(WeakReference<FunctionInvocationContext> invocationContextReference)
+        {
+            return (ScriptFunc)(p =>
+            {
+                var metricObject = (IDictionary<string, object>)p;
+                string name = (string)metricObject["name"];
+                object valueObject = metricObject["value"];
+
+                if (name != null && valueObject != null)
+                {
+                    double value = Convert.ToDouble(valueObject);
+                    FunctionInvocationContext invocationContext = null;
+                    if (invocationContextReference.TryGetTarget(out invocationContext))
+                    {
+                        using (BeginFunctionScope(invocationContext))
+                        {
+                            var properties = (IDictionary<string, object>)metricObject["properties"];
+                            invocationContext.Logger.LogMetric(name, value, properties);
+                        }
+                    }
+                }
+
+                return Task.FromResult<object>(null);
+            });
         }
 
         private static IDisposable BeginFunctionScope(FunctionInvocationContext context)

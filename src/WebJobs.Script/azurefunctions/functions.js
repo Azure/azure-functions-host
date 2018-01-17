@@ -55,7 +55,7 @@ function createFunction(f) {
             origMetric({ name: name, value: value, properties: properties});
         };        
 
-        context.done = function (err, result) {
+        context.done = function (err, returnValue) {
             if (context._done) {
                 if (context._promise) {
                     context.log("Error: Choose either to return a promise or call 'done'.  Do not use both in your script.");
@@ -70,16 +70,23 @@ function createFunction(f) {
                 callback(err);
             }
             else {
-                var values = {};
                 if (context.res && context.bindings.res === undefined) {
                     context.bindings.res = context.res;
                 }
+
+                // because Edge.JS interop doesn't flow new values added to objects,
+                // we capture the binding values and pass them back as part of the
+                // result
+                var bindingValues = {};
                 for (var name in context.bindings) {
-                    values[name] = context.bindings[name];
+                    bindingValues[name] = context.bindings[name];
                 }
-                context.bind(values, function (err) {
-                    callback(err, result);
-                });
+
+                var result = {
+                    returnValue: returnValue,
+                    bindingValues: bindingValues
+                };
+                callback(null, result);
             }
         };
 
