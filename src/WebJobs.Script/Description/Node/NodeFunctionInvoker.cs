@@ -193,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             object functionResult = await function(scriptExecutionContext);
 
-            await ProcessOutputBindingsAsync(_outputBindings, input, context.Binder, bindingData, scriptExecutionContext, functionResult);
+            await ProcessOutputBindingsAsync(_outputBindings, input, context.Binder, bindingData, functionResult);
         }
 
         private async Task ProcessInputBindingsAsync(Binder binder, Dictionary<string, object> executionContext, Dictionary<string, object> bindingData)
