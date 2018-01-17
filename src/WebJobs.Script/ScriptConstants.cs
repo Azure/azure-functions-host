@@ -67,9 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
 
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
-        public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public const string HttpMethodConstraintName = "httpMethod";
-        public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
         public const string Snapshot = "snapshot";
         public const string Runtime = "runtime";
 
@@ -83,5 +81,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const int HostTimeoutSeconds = 30;
         public const int HostPollingIntervalMilliseconds = 25;
         public const int MaximumSecretBackupCount = 10;
+
+        public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
+        public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
     }
 }

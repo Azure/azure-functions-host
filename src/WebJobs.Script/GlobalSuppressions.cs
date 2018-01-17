@@ -247,3 +247,5 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.OrderingRules", "SA1201:Elements should appear in the correct order", Justification = "<Pending>", Scope = "type", Target = "~T:Microsoft.Azure.WebJobs.Script.Rpc.JobObjectInfoType")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.NamingRules", "SA1307:Accessible fields should begin with upper-case letter", Justification = "<Pending>", Scope = "type", Target = "~T:Microsoft.Azure.WebJobs.Script.Rpc.SECURITY_ATTRIBUTES")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:Fields should be private", Justification = "<Pending>", Scope = "member", Target = "~F:Microsoft.Azure.WebJobs.Script.Description.DotNetConstants.FrameworkReferences")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.SpacingRules", "SA1019:Member access symbols should be spaced correctly", Justification = "<Pending>", Scope = "member", Target = "~M:Microsoft.Azure.WebJobs.Script.Description.DotNet.DotNetMuxer.TryFindMuxerPath~System.String")]
+

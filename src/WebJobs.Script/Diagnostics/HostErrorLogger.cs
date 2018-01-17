@@ -34,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             }
         }
 
-
         private bool ShouldIgnore(Exception exception)
         {
             // often we may see multiple sequential error messages for the same

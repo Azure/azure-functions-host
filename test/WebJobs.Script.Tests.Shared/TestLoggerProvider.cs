@@ -12,21 +12,22 @@ namespace Microsoft.WebJobs.Script.Tests
     public class TestLoggerProvider : ILoggerProvider
     {
         private readonly Func<string, LogLevel, bool> _filter;
-        private Dictionary<string, TestLogger> _loggerCache { get; } = new Dictionary<string, TestLogger>();
 
         public TestLoggerProvider(Func<string, LogLevel, bool> filter = null)
         {
             _filter = filter;
         }
 
-        public IEnumerable<TestLogger> CreatedLoggers => _loggerCache.Values;
+        private Dictionary<string, TestLogger> LoggerCache { get; } = new Dictionary<string, TestLogger>();
+
+        public IEnumerable<TestLogger> CreatedLoggers => LoggerCache.Values;
 
         public ILogger CreateLogger(string categoryName)
         {
-            if (!_loggerCache.TryGetValue(categoryName, out TestLogger logger))
+            if (!LoggerCache.TryGetValue(categoryName, out TestLogger logger))
             {
                 logger = new TestLogger(categoryName, _filter);
-                _loggerCache.Add(categoryName, logger);
+                LoggerCache.Add(categoryName, logger);
             }
 
             return logger;

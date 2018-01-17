@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     return logEntry != null;
                 });
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // Give a more detailed exception
                 var logs = TestHelpers.GetFunctionLogsAsync(functionName, throwOnNoLogs: false).Result;

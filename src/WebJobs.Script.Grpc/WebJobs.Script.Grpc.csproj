@@ -22,10 +22,24 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Messages\DotNet\" />
+  </ItemGroup>
+
   <Target Name="GenerateProtoFiles" BeforeTargets="BeforeBuild" Inputs="Proto/FunctionRpc.proto" Outputs="Messages/DotNet/FunctionRpc.cs;Messages/DotNet/FunctionRpcGrpc.cs">
     <Exec Command="./generate_protos.$(Ext)" />
     <ItemGroup>
       <Compile Include="**/*$(DefaultLanguageSourceExtension)" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);$(BaseIntermediateOutputPath)**;$(BaseOutputPath)**;@(Compile)" />
     </ItemGroup>
   </Target>
+
+<Target Name="CodeWarningRemover" AfterTargets="GenerateProtoFiles">
+    <ItemGroup>
+        <Content Include="./Messages/DotNet/*" />
+    </ItemGroup>
+    <Exec Command="for %%f in (@(Content)) do echo #pragma warning disable&gt; %%f.temp" />
+    <Exec Command="for %%f in (@(Content)) do type %%f &gt;&gt; %%f.temp" />
+    <Exec Command="for %%f in (@(Content)) do copy /y %%f.temp %%f" />
+    <Exec Command="for %%f in (@(Content)) do del %%f.temp" />
+</Target>
 </Project>
