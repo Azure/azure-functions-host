@@ -155,11 +155,7 @@ describe('functions', () => {
             _inputs: [],
             bindings: {},
             log: (message) => logs.push(message),
-            _metric: (metric) => metrics.push(metric),
-            bind: (val, cb) => {
-                bindingValues = val;
-                cb && cb(val);
-            }
+            _metric: (metric) => metrics.push(metric)
         };
     });
 
@@ -295,14 +291,16 @@ describe('functions', () => {
             });            
         });
 
-        it('done passes data to binder', () => {
+        it('binding values propagate correctly', () => {
             var func = functions.createFunction((context) => {
-                context.bindings = { result: 'res' };
+                context.bindings = { foo: 'abc', bar: 123 };
                 context.done();
             });
 
-            func(context, (results) => {
-                expect(results).to.eql({ result: 'res' });
+            func(context, (err, result) => {
+                expect(Object.keys(result).length).to.equal(2);
+                expect(result.returnValue).to.equal(undefined);
+                expect(result.bindingValues).to.eql({ foo: 'abc', bar: 123 });
             });
         });
 
@@ -311,8 +309,8 @@ describe('functions', () => {
                 context.done('err');
             });
 
-            func(context, (results) => {
-                expect(results).to.eql('err');
+            func(context, (err, result) => {
+                expect(err).to.eql('err');
             });
         });
 
@@ -321,8 +319,8 @@ describe('functions', () => {
                 return Promise.reject('err');
             });
 
-            func(context, (results) => {
-                expect(results).to.eql('err');
+            func(context, (err, result) => {
+                expect(err).to.eql('err');
                 done();
             });
         });
@@ -338,7 +336,7 @@ describe('functions', () => {
             context.req = {
                 headers: { 'field': 'val' }
             };
-            func(context, (results) => {
+            func(context, (err, result) => {
                 expect(context.res.statusCode).to.equal(200);
                 expect(context.res.body).to.equal('test');
                 expect(context.res.headers.header).to.equal('val');
