@@ -45,7 +45,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public bool IsDisabled { get; set; }
 
-
         /// <summary>
         /// Gets or sets a value indicating whether that this function is a direct invoke.
         /// </summary>

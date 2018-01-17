@@ -419,7 +419,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     }));
 
                 _eventSubscriptions.Add(EventManager.OfType<HostRestartEvent>()
-                    .Subscribe((msg) => ScheduleRestartAsync(false)));
+                    .Subscribe((msg) => ScheduleRestartAsync(false)
+                    .ContinueWith(t => _startupLogger.LogCritical(t.Exception.Message),
+                        TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously)));
 
                 if (ScriptConfig.FileWatchingEnabled)
                 {
@@ -1612,7 +1614,6 @@ namespace Microsoft.Azure.WebJobs.Script
             // First, ensure that we've logged to the host log
             // Also ensure we flush immediately to ensure any buffered logs
             // are written
-            string message = "A ScriptHost error has occurred";
 
             // Note: We do not log to ILogger here as any error has already been logged.
 

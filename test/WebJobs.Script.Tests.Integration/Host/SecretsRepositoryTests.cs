@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var directory = new TempDirectory())
             {
-                _fixture.TestInitialize(repositoryType, directory.Path);
+                await _fixture.TestInitialize(repositoryType, directory.Path);
 
                 string testContent = "test";
                 string testFunctionName = secretsType == ScriptSecretsType.Host ? null : "TestFunction";

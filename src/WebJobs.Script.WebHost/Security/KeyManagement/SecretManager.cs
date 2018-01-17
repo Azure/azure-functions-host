@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 catch (CryptographicException)
                 {
                     string message = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName);
-                     _logger?.LogDebug(message);
+                    _logger?.LogDebug(message);
                     await PersistSecretsAsync(secrets, functionName, true);
                     await RefreshSecretsAsync(secrets, functionName);
                 }
