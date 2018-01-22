@@ -1,14 +1,15 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -37,13 +38,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             // downstream middleware and filters rely on this
             context.Items.Add(ScriptConstants.AzureFunctionsHostManagerKey, manager);
             SetRequestId(context.Request);
-            await _next(context);
+            if (_next != null)
+            {
+                await _next(context);
+            }
 
             IFunctionExecutionFeature functionExecution = context.Features.Get<IFunctionExecutionFeature>();
 
+            int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
+
+            IActionResult result = null;
+
             if (functionExecution != null && !context.Response.HasStarted)
             {
-                IActionResult result = await GetResultAsync(context, functionExecution);
+                result = await GetResultAsync(context, functionExecution);
+
+                if (nestedProxiesCount > 0)
+                {
+                    // if Proxy, the rest of the pipleline will be processed bt Proxies in case there are response overrides and what not.
+                    SetProxyResult(context, nestedProxiesCount, result);
+                    return;
+                }
 
                 var actionContext = new ActionContext
                 {
@@ -52,6 +67,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 await result.ExecuteResultAsync(actionContext);
             }
+        }
+
+        private static void SetProxyResult(HttpContext context, int nestedProxiesCount, IActionResult result)
+        {
+            context.Items.Add(ScriptConstants.AzureFunctionsProxyResult, result);
+
+            context.Items[ScriptConstants.AzureFunctionsNestedProxyCount] = nestedProxiesCount - 1;
+        }
+
+        private static int GetNestedProxiesCount(HttpContext context, IFunctionExecutionFeature functionExecution)
+        {
+            context.Items.TryGetValue(ScriptConstants.AzureFunctionsNestedProxyCount, out object nestedProxiesCount);
+
+            //HttpBufferingService is disabled for non - proxy functions.
+            if (functionExecution != null && !functionExecution.Descriptor.Metadata.IsProxy && nestedProxiesCount == null)
+            {
+                var bufferingFeature = context.Features.Get<IHttpBufferingFeature>();
+                bufferingFeature?.DisableRequestBuffering();
+                bufferingFeature?.DisableResponseBuffering();
+            }
+
+            if (nestedProxiesCount != null)
+            {
+                return (int)nestedProxiesCount;
+            }
+
+            return 0;
         }
 
         private async Task<IActionResult> GetResultAsync(HttpContext context, IFunctionExecutionFeature functionExecution)

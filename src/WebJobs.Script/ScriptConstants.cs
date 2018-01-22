@@ -18,6 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsHttpRequestKey = "MS_AzureFunctionsHttpRequest";
         public const string AzureProxyFunctionExecutorKey = "MS_AzureProxyFunctionExecutor";
         public const string AzureFunctionsHostManagerKey = "MS_AzureFunctionsHostManager";
+        public const string AzureFunctionsNestedProxyCount = "MS_AzureFunctionsNestedProxyCount";
+        public const string AzureFunctionsProxyResult = "MS_AzureFunctionsProxyResult";
 
         public const string LogPropertyPrimaryHostKey = "MS_PrimaryHost";
         public const string LogPropertySourceKey = "MS_Source";
@@ -71,6 +73,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresColdStartHeaderName = "X-MS-COLDSTART";
         public const string DynamicSku = "Dynamic";
         public const string DefaultProductionSlotName = "production";
+
+        public const string AzureProxyFunctionLocalRedirectKey = "MS_ProxyLocalRedirectCount";
+        public const int AzureProxyFunctionMaxLocalRedirects = 10;
 
         public const string FeatureFlagDisableShadowCopy = "DisableShadowCopy";
         public const string FeatureFlagsEnableDynamicExtensionLoading = "EnableDynamicExtensionLoading";

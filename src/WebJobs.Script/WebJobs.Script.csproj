@@ -16,9 +16,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.0.2">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client.Contract" Version="0.3.1.1">
-      <NoWarn>NU1701</NoWarn>
-    </PackageReference>
+    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.0.4100001-beta-d5a48cb8" />
     <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="1.1.0-beta2-10014">
       <PrivateAssets>None</PrivateAssets>
     </PackageReference>
