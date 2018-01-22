@@ -384,7 +384,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environmentMock.Verify(p => p.Shutdown(), Times.Once);
 
             // we expect a few restart iterations
-            var thresholdErrors = testTraceWriter.Traces.Where(p => p.Exception is InvalidOperationException && p.Exception.Message == "Host thresholds exceeded: [Connections]");
+            var thresholdErrors = testTraceWriter.Traces.Where(p => p.Exception is InvalidOperationException && p.Exception.Message == "Host thresholds exceeded: [Connections]. For more information, see https://aka.ms/functions-thresholds.");
             Assert.True(thresholdErrors.Count() > 1);
 
             var log = testTraceWriter.Traces.Last();
@@ -481,7 +481,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(target.Object.IsHostHealthy());
 
             var ex = Assert.Throws<InvalidOperationException>(() => target.Object.IsHostHealthy(true));
-            Assert.Equal("Host thresholds exceeded: [Foo, Bar]", ex.Message);
+            Assert.Equal("Host thresholds exceeded: [Foo, Bar]. For more information, see https://aka.ms/functions-thresholds.", ex.Message);
         }
 
         [Fact]
