@@ -539,7 +539,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string formattedCounters = string.Join(", ", exceededCounters);
                 if (throwWhenUnhealthy)
                 {
-                    throw new InvalidOperationException($"Host thresholds exceeded: [{formattedCounters}]");
+                    throw new InvalidOperationException($"Host thresholds exceeded: [{formattedCounters}]. For more information, see https://aka.ms/functions-thresholds.");
                 }
                 return false;
             }
