@@ -28,13 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
             SetRequestId(request);
 
             var resolver = _config.DependencyResolver;
+
+            // Need to ensure the host manager is initialized early in the pipeline
+            // before any other request code runs.
             var scriptHostManager = resolver.GetService<WebScriptHostManager>();
-            if (!scriptHostManager.Initialized)
-            {
-                // need to ensure the host manager is initialized early in the pipeline
-                // before any other request code runs
-                scriptHostManager.Initialize();
-            }
+            scriptHostManager.EnsureInitialized();
 
             var webHostSettings = resolver.GetService<WebHostSettings>();
             if (webHostSettings.IsAuthDisabled)

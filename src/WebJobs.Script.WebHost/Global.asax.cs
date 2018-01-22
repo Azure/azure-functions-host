@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             using (var metricsLogger = new WebHostMetricsLogger())
             using (metricsLogger.LatencyEvent(MetricEventNames.ApplicationStartLatency))
             {
+                // this startup call ensures that the host is started when the WebApp starts
                 GlobalConfiguration.Configure(c => WebApiConfig.Initialize(c, settingsManager, webHostSettings));
             }
         }

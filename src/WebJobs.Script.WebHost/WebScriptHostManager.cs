@@ -118,14 +118,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public HttpRequestManager HttpRequestManager => _httpRequestManager;
 
-        public virtual bool Initialized
-        {
-            get
-            {
-                return _hostStarted;
-            }
-        }
-
         public static bool InStandbyMode
         {
             get
@@ -192,7 +184,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return response;
         }
 
-        public void Initialize()
+        /// <summary>
+        /// Ensures that the host has been fully initialized and startup
+        /// has been initiated. This method is idempotent.
+        /// </summary>
+        public virtual void EnsureInitialized()
         {
             lock (_syncLock)
             {

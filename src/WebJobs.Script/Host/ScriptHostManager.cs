@@ -12,7 +12,6 @@ using System.Reactive.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -195,12 +194,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     // signaled. That is fine - the restart will be processed immediately
                     // once we get to this line again. The important thing is that these
                     // restarts are only happening on a single thread.
-                    WaitHandle.WaitAny(new WaitHandle[]
+                    var waitHandles = new WaitHandle[] { cancellationToken.WaitHandle, _restartHostEvent, _stopEvent };
+                    if (!waitHandles.Any(p => p.SafeWaitHandle.IsClosed))
                     {
-                        cancellationToken.WaitHandle,
-                        _restartHostEvent,
-                        _stopEvent
-                    });
+                        WaitHandle.WaitAny(waitHandles);
+                    }
 
                     // Immediately set the state to Default, which causes CanInvoke() to return false.
                     State = ScriptHostState.Default;
