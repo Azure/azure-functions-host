@@ -408,13 +408,16 @@ namespace Microsoft.Azure.WebJobs.Script
                         server.Uri,
                         _hostConfig.LoggerFactory);
                 };
-
-                var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
-                var workerConfigs = configFactory.GetConfigs(new List<IWorkerProvider>()
+                var providers = new List<IWorkerProvider>()
                 {
                     new NodeWorkerProvider(),
                     new JavaWorkerProvider()
-                });
+                };
+
+                providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, _startupLogger));
+
+                var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
+                var workerConfigs = configFactory.GetConfigs(providers);
 
                 _functionDispatcher = new FunctionRegistry(EventManager, server, channelFactory, workerConfigs);
 

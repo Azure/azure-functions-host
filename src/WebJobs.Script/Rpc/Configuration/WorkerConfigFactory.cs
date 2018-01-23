@@ -35,7 +35,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var workerPath = languageSection.GetSection("path").Value;
                 if (string.IsNullOrEmpty(workerPath) && !string.IsNullOrEmpty(description.DefaultWorkerPath))
                 {
-                    workerPath = Path.Combine(_assemblyDir, "workers", description.Language.ToLower(), description.DefaultWorkerPath);
+                    // TODO: This is ugly
+                    if (_config.GetSection("workers:config:path") != null && description.Language != "Node" && description.Language != "Java")
+                    {
+                        workerPath = Path.Combine(_config.GetSection("workers:config:path").Value, description.Language.ToLower(), description.DefaultWorkerPath);
+                    }
+                    else
+                    {
+                        workerPath = Path.Combine(_assemblyDir, "workers", description.Language.ToLower(), description.DefaultWorkerPath);
+                    }
                 }
 
                 var arguments = new ArgumentsDescription()
