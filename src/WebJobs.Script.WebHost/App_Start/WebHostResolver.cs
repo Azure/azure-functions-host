@@ -319,12 +319,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public void Dispose()
         {
+            _specializationTimer?.Dispose();
             _standbyHostManager?.Dispose();
             _standbyReceiverManager?.Dispose();
 
             _activeHostManager?.Dispose();
             _activeReceiverManager?.Dispose();
-            _specializationTimer?.Dispose();
             ((IDisposable)_defaultTraceWriter)?.Dispose();
         }
     }

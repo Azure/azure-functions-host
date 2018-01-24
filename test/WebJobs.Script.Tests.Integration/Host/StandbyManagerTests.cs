@@ -119,8 +119,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 httpServer.Dispose();
                 httpClient.Dispose();
 
-                await Task.Delay(2000);
-
                 var hostConfig = WebHostResolver.CreateScriptHostConfiguration(webHostSettings, true);
                 var expectedHostId = hostConfig.HostConfig.HostId;
 
