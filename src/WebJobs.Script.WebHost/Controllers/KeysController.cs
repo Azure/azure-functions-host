@@ -108,11 +108,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPut]
         [Route("admin/functions/{name}/keys/{keyName}")]
-        public Task<IActionResult> Put(string name, string keyName, Key key) => PutKeyAsync(keyName, key, name, ScriptSecretsType.Function);
+        public Task<IActionResult> Put(string name, string keyName, [FromBody] Key key) => PutKeyAsync(keyName, key, name, ScriptSecretsType.Function);
 
         [HttpPut]
         [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{keyName}")]
-        public Task<IActionResult> Put(string keyName, Key key) => PutKeyAsync(keyName, key, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
+        public Task<IActionResult> Put(string keyName,[FromBody] Key key) => PutKeyAsync(keyName, key, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
 
         [HttpDelete]
         [Route("admin/functions/{name}/keys/{keyName}")]
