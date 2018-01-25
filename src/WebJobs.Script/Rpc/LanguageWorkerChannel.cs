@@ -93,9 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     .Subscribe(msg =>
                     {
                         var jsonMsg = JsonConvert.SerializeObject(msg, _verboseSerializerSettings);
-
-                        // TODO: change to trace when ILogger & TraceWriter merge (issues with file trace writer)
-                        _logger.LogInformation(jsonMsg);
+                        _logger.LogTrace(jsonMsg);
                     }));
             }
 

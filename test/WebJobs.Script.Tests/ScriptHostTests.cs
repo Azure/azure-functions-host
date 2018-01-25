@@ -23,6 +23,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -1077,8 +1078,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(MetricEventNames.ApplicationInsightsDisabled, metricsLogger.LoggedEvents[0]);
         }
 
-        [Fact]
-        public void ConfigureLoggerFactory_ApplicationInsights()
+        [Theory]
+        [InlineData("always")]
+        [InlineData("never")]
+        [InlineData("")]
+        [InlineData(null)]
+        public void ConfigureLoggerFactory_ApplicationInsights(string consoleLoggingEnabled)
         {
             var config = new ScriptHostConfiguration();
             var loggerFactoryMock = new Mock<ILoggerFactory>(MockBehavior.Loose);
@@ -1088,6 +1093,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Make sure no App Insights is configured
             var settingsManager = ScriptSettingsManager.Instance;
+            settingsManager.SetSetting("host:logger:consoleLoggingMode", consoleLoggingEnabled);
             settingsManager.ApplicationInsightsInstrumentationKey = "Some_Instrumentation_Key";
 
             var metricsLogger = new TestMetricsLogger();
@@ -1097,7 +1103,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHost.ConfigureLoggerFactory(loggerFactory, config, settingsManager, builder, () => true, () => true, (ex) => { });
 
-            loggerFactoryMock.Verify(x => x.AddProvider(It.IsAny<ILoggerProvider>()), Times.Exactly(4));
+            if (consoleLoggingEnabled == "always")
+            {
+                loggerFactoryMock.Verify(x => x.AddProvider(It.IsAny<ILoggerProvider>()), Times.Exactly(5));
+                loggerFactoryMock.Verify(x => x.AddProvider(It.IsAny<ConsoleLoggerProvider>()), Times.Once());
+            }
+            else
+            {
+                loggerFactoryMock.Verify(x => x.AddProvider(It.IsAny<ILoggerProvider>()), Times.Exactly(4));
+            }
 
             loggerFactoryMock.Verify(x => x.AddProvider(It.IsAny<FunctionFileLoggerProvider>()), Times.Once());
             loggerFactoryMock.Verify(x => x.AddProvider(It.IsAny<HostFileLoggerProvider>()), Times.Once());

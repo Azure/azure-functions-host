@@ -36,6 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategoryAdminController = "Host.Controllers.Admin";
         public const string LogCategoryKeysController = "Host.Controllers.Keys";
         public const string LogCategoryHostGeneral = "Host.General";
+        public const string LogCategoryHost = "Host";
+        public const string LogCategoryFunction = "Function";
+        public const string LogCategoryWorker = "Worker";
 
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters
@@ -52,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionMetadataFileName = "function.json";
         public const string ProxyMetadataFileName = "proxies.json";
         public const string ExtensionsMetadataFileName = "extensions.json";
+        public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
 

@@ -31,19 +31,19 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var description = provider.GetDescription();
                 var languageSection = _config.GetSection($"workers:{description.Language}");
 
+                // Resolve worker path
+                // 1. If workers.{language}.path is set, use that explicitly
+                // 2. If workers.path is set, use that as the base directory + language + default path
+                // 3. Else, use the default workers directory
+
                 // get explicit worker path from config, or build relative path from default
                 var workerPath = languageSection.GetSection("path").Value;
-                if (string.IsNullOrEmpty(workerPath) && !string.IsNullOrEmpty(description.DefaultWorkerPath))
+                if (string.IsNullOrEmpty(workerPath))
                 {
-                    // TODO: This is ugly
-                    if (_config.GetSection("workers:config:path") != null && description.Language != "Node" && description.Language != "Java")
-                    {
-                        workerPath = Path.Combine(_config.GetSection("workers:config:path").Value, description.Language.ToLower(), description.DefaultWorkerPath);
-                    }
-                    else
-                    {
-                        workerPath = Path.Combine(_assemblyDir, "workers", description.Language.ToLower(), description.DefaultWorkerPath);
-                    }
+                    var baseWorkerPath = !string.IsNullOrEmpty(_config.GetSection("workers:path").Value) ?
+                            _config.GetSection("workers:path").Value :
+                            Path.Combine(_assemblyDir, "workers");
+                    workerPath = Path.Combine(baseWorkerPath, description.Language.ToLower(), description.DefaultWorkerPath);
                 }
 
                 var arguments = new ArgumentsDescription()

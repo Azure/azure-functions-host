@@ -396,9 +396,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static LoggerFilterOptions CreateLoggerFilterOptions()
         {
+            // TODO: Whitelist should be configurable
             // Whitelist our log categories to remove large amounts of ASP.NET logs.
             var filterOptions = new LoggerFilterOptions();
-            filterOptions.AddFilter((category, level) => category.StartsWith("Host.") || category.StartsWith("Function."));
+            filterOptions.AddFilter((category, level) => category.StartsWith($"{ScriptConstants.LogCategoryHost}.") || category.StartsWith($"{ScriptConstants.LogCategoryFunction}.") || category.StartsWith($"{ScriptConstants.LogCategoryWorker}."));
 
             return filterOptions;
         }
