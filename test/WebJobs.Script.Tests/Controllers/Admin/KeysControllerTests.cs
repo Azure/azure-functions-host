@@ -50,7 +50,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             WebHostSettings settings = new WebHostSettings();
             settings.SecretsPath = _secretsDirectory.Path;
             _secretsManagerMock = new Mock<ISecretManager>(MockBehavior.Strict);
-            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(_secretsManagerMock.Object), eventManager.Object, _settingsManager, settings, mockRouter.Object, NullLoggerFactory.Instance});
+
+            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(_secretsManagerMock.Object), eventManager.Object, _settingsManager, settings, mockRouter.Object, NullLoggerFactory.Instance });
+
             _managerMock.SetupGet(p => p.Instance).Returns(_hostMock.Object);
 
             _testController = new KeysController(_managerMock.Object, _secretsManagerMock.Object, new LoggerFactory());

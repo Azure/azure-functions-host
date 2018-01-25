@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -39,6 +40,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
             providers.Add(new FunctionFileLoggerProvider(scriptConfig.RootLogPath, isFileLoggingEnabled, isPrimary));
             providers.Add(new HostFileLoggerProvider(scriptConfig.RootLogPath, isFileLoggingEnabled));
+
+            if (settingsManager.Configuration.GetSection("host:logger:consoleLoggingMode").Value == "always")
+            {
+                providers.Add(new ConsoleLoggerProvider(scriptConfig.LogFilter.Filter, includeScopes: true));
+            }
 
             return providers;
         }
