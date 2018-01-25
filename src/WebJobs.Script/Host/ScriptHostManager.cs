@@ -150,6 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _consecutiveErrorCount = 0;
             do
             {
+                ScriptHost newInstance = null;
                 try
                 {
                     // if we were in an error state retain that,
@@ -166,22 +167,23 @@ namespace Microsoft.Azure.WebJobs.Script
                     };
                     OnInitializeConfig(_config);
 
-                    _currentInstance = _scriptHostFactory.Create(_environment, EventManager, _settingsManager, _config);
+                    newInstance = _scriptHostFactory.Create(_environment, EventManager, _settingsManager, _config);
+                    _currentInstance = newInstance;
                     lock (_liveInstances)
                     {
-                        _liveInstances.Add(_currentInstance);
+                        _liveInstances.Add(newInstance);
                         _hostStartCount++;
                     }
 
-                    _currentInstance.HostInitializing += OnHostInitializing;
-                    _currentInstance.HostInitialized += OnHostInitialized;
-                    _currentInstance.HostStarted += OnHostStarted;
-                    _currentInstance.Initialize();
+                    newInstance.HostInitializing += OnHostInitializing;
+                    newInstance.HostInitialized += OnHostInitialized;
+                    newInstance.HostStarted += OnHostStarted;
+                    newInstance.Initialize();
 
-                    _currentInstance.StartAsync(cancellationToken).GetAwaiter().GetResult();
+                    newInstance.StartAsync(cancellationToken).GetAwaiter().GetResult();
 
                     // log any function initialization errors
-                    LogErrors(_currentInstance);
+                    LogErrors(newInstance);
 
                     LastError = null;
                     _consecutiveErrorCount = 0;
@@ -204,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Orphan the current host instance. We're stopping it, so it won't listen for any new functions
                     // it will finish any currently executing functions and then clean itself up.
                     // Spin around and create a new host instance.
-                    Task.Run(() => Orphan(_currentInstance)
+                    Task.Run(() => Orphan(newInstance)
                         .ContinueWith(t =>
                         {
                             if (t.IsFaulted)
@@ -240,9 +242,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     // If a ScriptHost instance was created before the exception was thrown
                     // Orphan and cleanup that instance.
-                    if (_currentInstance != null)
+                    if (newInstance != null)
                     {
-                        Task.Run(() => Orphan(_currentInstance, forceStop: true)
+                        Task.Run(() => Orphan(newInstance, forceStop: true)
                             .ContinueWith(t =>
                             {
                                 if (t.IsFaulted)
