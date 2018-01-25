@@ -811,13 +811,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // verify the function output
             var logs = await TestHelpers.GetFunctionLogsAsync("QueueTrigger-Python");
 
-            // strip off the timestamps from the beginning of each line
-            logs = logs.Select(l => l.Split(new[] { ' ' }, 2)[1]).ToList();
+            // strip off the timestamps and [Info] from the beginning of each line
+            logs = logs.Select(l => l.Split(new[] { ' ' }, 3)[2]).ToList();
             int idx = logs.IndexOf("Read 5 Table entities");
             for (int i = idx + 1; i < 5; i++)
             {
                 string json = logs[i];
-                JObject entity = JObject.Parse(json);
+                JObject entity = null;
+                try
+                {
+                    entity = JObject.Parse(json);
+                }
+                catch (JsonReaderException)
+                {
+                    Assert.True(false, $"JsonReaderException while reading: {json}");
+                }
+
                 Assert.Equal("samples-python", entity["PartitionKey"]);
                 Assert.Equal(0, (int)entity["Status"]);
             }
@@ -1099,13 +1108,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string content = await response.Content.ReadAsStringAsync();
             JObject jsonContent = JObject.Parse(content);
 
-            Assert.Equal(3, jsonContent.Properties().Count());
+            Assert.True(jsonContent.Properties().Count() == 3, $"Response content: {jsonContent.ToString()}");
             AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             string expectedVersion = fileVersionAttr.Version;
             Assert.True(((string)jsonContent["id"]).Length > 0);
             Assert.Equal(expectedVersion, jsonContent["version"].ToString());
             var state = (string)jsonContent["state"];
-            Assert.True(state == "Running" || state == "Created");
+            Assert.True(state == ScriptHostState.Running.ToString() || state == ScriptHostState.Initialized.ToString());
 
             // Now ensure XML content works
             request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -1122,7 +1131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             node = doc.Descendants(XName.Get("Id", ns)).Single();
             Assert.True(node.Value.Length > 0);
             node = doc.Descendants(XName.Get("State", ns)).Single();
-            Assert.True(node.Value == "Running" || node.Value == "Created");
+            Assert.True(state == ScriptHostState.Running.ToString() || state == ScriptHostState.Initialized.ToString());
 
             node = doc.Descendants(XName.Get("Errors", ns)).Single();
             Assert.True(node.IsEmpty);

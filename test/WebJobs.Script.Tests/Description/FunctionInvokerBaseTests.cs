@@ -146,15 +146,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ToList();
 
             Assert.Equal(2, completionEvents.Count);
-            int invocation1Duration = (int.Parse(completionEvents[1].Groups["duration"].Value) / 100) * 100;
 
-            int invocation2RawDuration = int.Parse(completionEvents[0].Groups["duration"].Value); // save this for better output below.
-            int invocation2Duration = (invocation2RawDuration / 100) * 100;
+            int invocation1Duration = int.Parse(completionEvents[1].Groups["duration"].Value);
+            int invocation2Duration = int.Parse(completionEvents[0].Groups["duration"].Value);
 
             Assert.NotEqual(invocation1Duration, invocation2Duration);
-            Assert.Equal(2000, invocation1Duration);
-
-            Assert.True(invocation2Duration == 500, $"Expected 500. Actual: {invocation2Duration}. Raw value: {invocation2RawDuration}");
+            Assert.InRange(invocation1Duration, 1950, 2050);
+            Assert.InRange(invocation2Duration, 450, 550);
         }
 
         [Fact]

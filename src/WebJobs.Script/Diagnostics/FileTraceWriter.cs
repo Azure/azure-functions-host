@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 return;
             }
 
-            AppendLine(traceEvent.Message);
+            AppendLine($"[{traceEvent.Level}] {traceEvent.Message}");
 
             if (traceEvent.Exception != null)
             {
