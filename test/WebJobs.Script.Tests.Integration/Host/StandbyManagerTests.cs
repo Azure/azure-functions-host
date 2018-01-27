@@ -120,10 +120,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var hostConfig = WebHostResolver.CreateScriptHostConfiguration(webHostSettings, true);
                 var expectedHostId = hostConfig.HostConfig.HostId;
 
-                // verify logs
-                string[] logLines = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+                string[] logLines = null;
+                await TestHelpers.Await(() =>
+                {
+                    // wait for the trace indicating that the host has been specialized
+                    logLines = logLines = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+                    return logLines.Count(p => p.Contains($"Starting Host (HostId={expectedHostId}")) == 1;
+                });
+
+                // verify the rest of the expected logs
                 string text = string.Join(Environment.NewLine, logLines);
-                Assert.True(logLines.Count(p => p.Contains("Stopping Host")) > 1);
+                Assert.True(logLines.Count(p => p.Contains("Stopping Host")) >= 1);
                 Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
                 Assert.Equal(2, logLines.Count(p => p.Contains("Starting Host (HostId=placeholder-host")));

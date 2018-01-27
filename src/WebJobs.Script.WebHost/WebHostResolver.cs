@@ -283,6 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public void Dispose()
         {
+            _specializationTimer?.Dispose();
             _standbyHostManager?.Dispose();
 
             //_standbyReceiverManager?.Dispose();
@@ -290,8 +291,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _activeHostManager?.Dispose();
 
             //_activeReceiverManager?.Dispose();
-
-            _specializationTimer?.Dispose();
         }
     }
 }

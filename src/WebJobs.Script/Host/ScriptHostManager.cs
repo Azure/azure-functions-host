@@ -226,6 +226,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 catch (Exception ex)
                 {
+                    if (_disposed)
+                    {
+                        // In some cases during shutdown we'll be disposed and get
+                        // some terminating exceptions. We want to just ignore these
+                        // and stop immediately.
+                        break;
+                    }
+
                     State = ScriptHostState.Error;
                     LastError = ex;
                     _consecutiveErrorCount++;
@@ -258,7 +266,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     CreateRestartBackoffDelay(_consecutiveErrorCount).GetAwaiter().GetResult();
                 }
             }
-            while (!_stopped && !cancellationToken.IsCancellationRequested);
+            while (!_stopped && !_disposed && !cancellationToken.IsCancellationRequested);
         }
 
         private bool ShutdownHostIfUnhealthy()
@@ -348,18 +356,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            try
-            {
-                // this thread now owns the instance
-                string message = "Stopping Host";
-                instance.Logger.LogInformation(message);
-
-                await instance.StopAsync();
-            }
-            finally
-            {
-                instance.Dispose();
-            }
+            // this thread now owns the instance
+            string message = "Stopping Host";
+            instance.Logger.LogInformation(message);
+            await StopAndDisposeAsync(instance);
         }
 
         /// <summary>
