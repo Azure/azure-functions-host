@@ -232,6 +232,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private void OnSpecializationTimerTick(object state)
         {
             EnsureInitialized((WebHostSettings)state);
+
+            // We know we've just specialized, since this timer only runs
+            // when in standby mode. We want to initialize the host manager
+            // immediately. Note that the host might also be initialized
+            // concurrently by incoming http requests, but the initialization
+            // here ensures that it takes place in the absence of any http
+            // traffic.
+            _activeHostManager?.RunAsync(CancellationToken.None);
         }
 
         private static void InitializeFileSystem()

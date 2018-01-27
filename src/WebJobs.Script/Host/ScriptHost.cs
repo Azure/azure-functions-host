@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets the collection of all valid Functions. For functions that are in error
         /// and were unable to load successfully, consult the <see cref="FunctionErrors"/> collection.
         /// </summary>
-        public virtual Collection<FunctionDescriptor> Functions { get; private set; }
+        public virtual Collection<FunctionDescriptor> Functions { get; private set; } = new Collection<FunctionDescriptor>();
 
         // Maps from FunctionName to a set of errors for that function.
         public virtual Dictionary<string, Collection<string>> FunctionErrors { get; private set; }

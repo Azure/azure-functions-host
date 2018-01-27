@@ -106,14 +106,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public ISecretManager SecretManager => _secretManager;
 
-        public virtual bool Initialized
-        {
-            get
-            {
-                return _hostStarted;
-            }
-        }
-
         public static bool InStandbyMode
         {
             get
@@ -135,6 +127,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        /// <summary>
+        /// Ensures that the host has been fully initialized and startup
+        /// has been initiated. This method is idempotent.
+        /// </summary>
         public Task RunAsync(CancellationToken cancellationToken)
         {
             lock (_syncLock)

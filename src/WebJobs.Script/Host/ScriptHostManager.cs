@@ -206,12 +206,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     // signaled. That is fine - the restart will be processed immediately
                     // once we get to this line again. The important thing is that these
                     // restarts are only happening on a single thread.
-                    WaitHandle.WaitAny(new WaitHandle[]
+                    var waitHandles = new WaitHandle[] { cancellationToken.WaitHandle, _restartHostEvent, _stopEvent };
+                    if (!waitHandles.Any(p => p.SafeWaitHandle.IsClosed))
                     {
-                        cancellationToken.WaitHandle,
-                        _restartHostEvent,
-                        _stopEvent
-                    });
+                        WaitHandle.WaitAny(waitHandles);
+                    }
 
                     // Orphan the current host instance. We're stopping it, so it won't listen for any new functions
                     // it will finish any currently executing functions and then clean itself up.

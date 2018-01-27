@@ -108,22 +108,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // Now specialize the host
                 ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-                request = new HttpRequestMessage(HttpMethod.Get, "api/dne");
-                response = await httpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+
+                // give time for the specialization to happen
+                await Task.Delay(2000);
 
                 httpServer.Dispose();
                 httpClient.Dispose();
 
-                await Task.Delay(3000);
+                await Task.Delay(2000);
+
+                var hostConfig = WebHostResolver.CreateScriptHostConfiguration(webHostSettings, true);
+                var expectedHostId = hostConfig.HostConfig.HostId;
 
                 // verify logs
                 string[] logLines = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
-                int stopCount = logLines.Count(p => p.Contains("Stopping Host"));
-                Assert.True(stopCount >= 1);
+                string text = string.Join(Environment.NewLine, logLines);
+                Assert.True(logLines.Count(p => p.Contains("Stopping Host")) > 1);
+                Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
+                Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
+                Assert.Equal(2, logLines.Count(p => p.Contains("Starting Host (HostId=placeholder-host")));
                 Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
                 Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
+                Assert.Equal(1, logLines.Count(p => p.Contains($"Starting Host (HostId={expectedHostId}")));
+                Assert.Contains("Generating 0 job function(s)", logLines);
 
                 WebScriptHostManager.ResetStandbyMode();
             }
