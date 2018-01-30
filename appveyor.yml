@@ -1,5 +1,6 @@
 version: 1.0.{build}
 init:
+- ps: $env:Path = "c:\tools\php;c:\python35;C:\Program Files (x86)\Microsoft SDKs\F#\4.0\Framework\v4.0;" + $env:Path;
 - ps: | 
     if ($env:FUNCTIONS_NIGHTLY -eq "1") {
       $version = Get-Date -Format "yyyyMMdd-HHmm"
@@ -15,8 +16,6 @@ branches:
 max_jobs: 1
 image: Visual Studio 2017
 clone_folder: c:\projects\azure-webjobs-sdk-script
-init:
-- ps: $env:Path = "c:\tools\php;c:\python35;C:\Program Files (x86)\Microsoft SDKs\F#\4.0\Framework\v4.0;" + $env:Path;
 install:
 - ps: >-
     mkdir c:\tools\php | out-null
