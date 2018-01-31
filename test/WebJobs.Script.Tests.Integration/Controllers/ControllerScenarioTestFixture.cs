@@ -1,6 +1,5 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-#if SCENARIOS
 using System;
 using System.IO;
 using System.Net.Http;
@@ -35,8 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 IsAuthDisabled = isAuthDisabled
             };
 
-            WebApiConfig.Register(_config, _settingsManager, HostSettings, RegisterDependencies);
-
             HttpServer = new HttpServer(_config);
             HttpClient = new HttpClient(HttpServer);
             HttpClient.BaseAddress = new Uri("https://localhost/");
@@ -61,4 +58,3 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         }
     }
 }
-#endif
