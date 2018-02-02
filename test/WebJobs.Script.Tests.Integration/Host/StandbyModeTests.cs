@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (new TestEnvironment())
             {
-                _traceWriter.Traces.Clear();
+                _traceWriter.ClearTraces();
 
                 var settings = GetWebHostSettings();
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _webHostResolver.EnsureInitialized(settings);
 
                 // ensure specialization message is NOT written
-                var traces = _traceWriter.Traces.ToArray();
+                var traces = _traceWriter.GetTraces();
                 var traceEvent = traces.SingleOrDefault(p => p.Message.Contains(Resources.HostSpecializationTrace));
                 Assert.Null(traceEvent);
             }
@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (new TestEnvironment())
             {
-                _traceWriter.Traces.Clear();
+                _traceWriter.ClearTraces();
 
                 var settings = GetWebHostSettings();
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.False(WebScriptHostManager.InStandbyMode);
                 _webHostResolver.EnsureInitialized(settings);
 
-                var traces = _traceWriter.Traces.ToArray();
+                var traces = _traceWriter.GetTraces();
                 var traceEvent = traces.Last();
                 Assert.Equal(Resources.HostSpecializationTrace, traceEvent.Message);
                 Assert.Equal(TraceLevel.Info, traceEvent.Level);

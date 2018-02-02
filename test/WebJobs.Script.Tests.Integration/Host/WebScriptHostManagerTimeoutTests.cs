@@ -29,9 +29,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             await RunTimeoutExceptionTest(trace, handleCancellation: false);
 
             await TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running), userMessage: "Expected host to not be running");
-            Assert.DoesNotContain(trace.Traces, t => t.Message.StartsWith("Done"));
-            Assert.Contains(trace.Traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
-            Assert.Contains(trace.Traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
+
+            var traces = trace.GetTraces();
+            Assert.DoesNotContain(traces, t => t.Message.StartsWith("Done"));
+            Assert.Contains(traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
+            Assert.Contains(traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
         }
 
         [Fact]
@@ -44,9 +46,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             // wait a few seconds to make sure the manager doesn't die
             await Assert.ThrowsAsync<ApplicationException>(() => TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running),
                 timeout: 3000, throwWhenDebugging: true, userMessage: "Expected host manager not to die"));
-            Assert.Contains(trace.Traces, t => t.Message.StartsWith("Done"));
-            Assert.Contains(trace.Traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
-            Assert.DoesNotContain(trace.Traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
+
+            var traces = trace.GetTraces();
+            Assert.Contains(traces, t => t.Message.StartsWith("Done"));
+            Assert.Contains(traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
+            Assert.DoesNotContain(traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
         }
 
         private async Task RunTimeoutExceptionTest(TraceWriter trace, bool handleCancellation)

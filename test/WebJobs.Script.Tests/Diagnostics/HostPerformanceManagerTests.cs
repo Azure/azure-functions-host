@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             value = "this is not json";
             counters = performanceManager.GetPerformanceCounters(traceWriter);
             Assert.Null(counters);
-            var error = traceWriter.Traces.Last();
+            var error = traceWriter.GetTraces().Last();
             Assert.Equal("Failed to deserialize application performance counters. JSON Content: \"this is not json\"", error.Message);
         }
 

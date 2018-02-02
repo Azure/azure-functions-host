@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 Assert.Equal(2, result.Keys.Count);
                 Assert.True(functionSecretsConverted, "Function secrets were not persisted");
-                Assert.True(traceWriter.Traces.Any(t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage) > -1));
+                Assert.True(traceWriter.GetTraces().Any(t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage) > -1));
             }
         }
 
@@ -185,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.Equal("!" + hostSecrets.MasterKey, result.MasterKey.Value);
                 Assert.True(functionSecretsConverted, "Function secrets were not persisted");
                 Assert.True(systemSecretsConverted, "System secrets were not persisted");
-                Assert.True(traceWriter.Traces.Any(t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage) > -1));
+                Assert.True(traceWriter.GetTraces().Any(t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage) > -1));
             }
         }
 
@@ -216,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.Equal(0, hostSecrets.SystemKeys.Count);
                 Assert.Equal(persistedSecrets.MasterKey.Value, hostSecrets.MasterKey);
                 Assert.Equal(persistedSecrets.FunctionKeys.First().Value, hostSecrets.FunctionKeys.First().Value);
-                Assert.True(traceWriter.Traces.Any(t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage) > -1));
+                Assert.True(traceWriter.GetTraces().Any(t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage) > -1));
             }
         }
 
@@ -244,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.True(functionSecretsExists);
                 Assert.Equal(1, functionSecrets.Count);
                 Assert.Equal(ScriptConstants.DefaultFunctionKeyName, functionSecrets.Keys.First());
-                Assert.True(traceWriter.Traces.Any(
+                Assert.True(traceWriter.GetTraces().Any(
                     t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
                     "Expected Trace message not found");
             }
@@ -277,7 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.NotNull(persistedSecrets);
                 Assert.Equal(result.Secret, persistedSecrets.Keys.First().Value);
                 Assert.Equal(secretName, persistedSecrets.Keys.First().Name, StringComparer.Ordinal);
-                Assert.True(traceWriter.Traces.Any(t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage) > -1),
+                Assert.True(traceWriter.GetTraces().Any(t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage) > -1),
                     "Expected Trace message not found");
             }
         }
@@ -340,7 +340,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.NotNull(persistedSecrets);
                 Assert.Equal(result.Secret, persistedSecrets.Keys.First().Value);
                 Assert.Equal(secretName, persistedSecrets.Keys.First().Name, StringComparer.Ordinal);
-                Assert.True(traceWriter.Traces.Any(t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage) > -1),
+                Assert.True(traceWriter.GetTraces().Any(t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage) > -1),
                     "Expected Trace message not found");
             }
         }
@@ -406,7 +406,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             Assert.Equal(result.Secret, newSecret.Value);
             Assert.Equal(secretName, newSecret.Name, StringComparer.Ordinal);
             Assert.NotNull(persistedSecrets.MasterKey);
-            Assert.True(traceWriter.Traces.Any(t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage) > -1),
+            Assert.True(traceWriter.GetTraces().Any(t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage) > -1),
                 "Expected Trace message not found");
         }
 
@@ -437,7 +437,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.NotNull(persistedSecrets.MasterKey);
                 Assert.Equal(OperationResult.Updated, result.Result);
                 Assert.Equal(testSecret, result.Secret);
-                Assert.True(traceWriter.Traces.Any(t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage) > -1));
+                Assert.True(traceWriter.GetTraces().Any(t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage) > -1));
             }
         }
 
@@ -467,7 +467,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.NotNull(persistedSecrets.MasterKey);
                 Assert.Equal(OperationResult.Created, result.Result);
                 Assert.Equal(result.Secret, persistedSecrets.MasterKey.Value);
-                Assert.True(traceWriter.Traces.Any(t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage) > -1),
+                Assert.True(traceWriter.GetTraces().Any(t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage) > -1),
                     "Expected Trace message not found");
             }
         }
@@ -491,7 +491,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 Assert.False(preExistingFile);
                 Assert.True(fileCreated);
-                Assert.True(traceWriter.Traces.Any(t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage) > -1));
+                Assert.True(traceWriter.GetTraces().Any(t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage) > -1));
             }
             finally
             {
@@ -532,7 +532,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.Equal(result.MasterKey.Value, "!cryptoError");
                 Assert.Equal(1, Directory.GetFiles(directory.Path, $"host.{ScriptConstants.Snapshot}*").Length);
 
-                Assert.True(traceWriter.Traces.Any(
+                Assert.True(traceWriter.GetTraces().Any(
                     t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
                     "Expected Trace message not found");
             }
@@ -577,7 +577,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.Equal(result.GetFunctionKey("Key1", functionName).Value, "!cryptoError");
                 Assert.Equal(1, Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length);
 
-                Assert.True(traceWriter.Traces.Any(
+                Assert.True(traceWriter.GetTraces().Any(
                     t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
                     "Expected Trace message not found");
             }
@@ -627,7 +627,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 }
 
                 Assert.True(Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length >= ScriptConstants.MaximumSecretBackupCount);
-                Assert.True(traceWriter.Traces.Any(
+                Assert.True(traceWriter.GetTraces().Any(
                     t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
                     "Expected Trace message not found");
             }

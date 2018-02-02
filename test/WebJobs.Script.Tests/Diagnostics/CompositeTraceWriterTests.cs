@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string message = "Test trace";
             compositeWriter.Verbose(message);
 
-            TraceEvent trace = traceWriter.Traces.FirstOrDefault();
+            TraceEvent trace = traceWriter.GetTraces().FirstOrDefault();
 
             Assert.NotNull(trace);
             Assert.Equal(TraceLevel.Verbose, trace.Level);
@@ -37,9 +37,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             compositeWriter.Verbose(message);
             compositeWriter.Error(message);
 
-            Assert.Equal(1, traceWriter.Traces.Count);
+            Assert.Equal(1, traceWriter.GetTraces().Count);
 
-            TraceEvent trace = traceWriter.Traces.First();
+            TraceEvent trace = traceWriter.GetTraces().First();
 
             Assert.Equal(TraceLevel.Error, trace.Level);
             Assert.Equal(message, trace.Message);

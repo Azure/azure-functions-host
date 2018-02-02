@@ -1122,7 +1122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var logMessage = logger.LogMessages.Single(l => l.FormattedMessage.StartsWith("Host configuration ")).FormattedMessage;
             Assert.Equal(expectedMessgae, logMessage);
 
-            var traceMessage = traceWriter.Traces.Single(t => t.Message.StartsWith("Host configuration ")).Message;
+            var traceMessage = traceWriter.GetTraces().Single(t => t.Message.StartsWith("Host configuration ")).Message;
             Assert.Equal(expectedMessgae, traceMessage);
         }
 
@@ -1232,7 +1232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
             }
 
-            Assert.Equal(4, trace.Traces.Count);
+            Assert.Equal(4, trace.GetTraces().Count);
             Assert.Equal(4, channel.Telemetries.Count);
 
             var traces = channel.Telemetries.Cast<TraceTelemetry>().OrderBy(t => t.Message).ToArray();

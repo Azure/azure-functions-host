@@ -22,16 +22,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             wrappedTraceWriter.Info("Test2", "CustomSource");
             wrappedTraceWriter.Info("Test3", string.Empty);
 
-            Assert.Equal(3, testTraceWriter.Traces.Count);
+            var traces = testTraceWriter.GetTraces().ToArray();
+            Assert.Equal(3, traces.Length);
 
-            Assert.Equal("Test1", testTraceWriter.Traces[0].Message);
-            Assert.Equal("TestDefault", testTraceWriter.Traces[0].Source);
+            Assert.Equal("Test1", traces[0].Message);
+            Assert.Equal("TestDefault", traces[0].Source);
 
-            Assert.Equal("Test2", testTraceWriter.Traces[1].Message);
-            Assert.Equal("CustomSource", testTraceWriter.Traces[1].Source);
+            Assert.Equal("Test2", traces[1].Message);
+            Assert.Equal("CustomSource", traces[1].Source);
 
-            Assert.Equal("Test3", testTraceWriter.Traces[2].Message);
-            Assert.Equal("TestDefault", testTraceWriter.Traces[2].Source);
+            Assert.Equal("Test3", traces[2].Message);
+            Assert.Equal("TestDefault", traces[2].Source);
         }
 
         [Fact]
@@ -40,10 +41,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestTraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
 
             traceWriter.Info("Test message");
-            var traceEvent = traceWriter.Traces.Single();
+            var traceEvent = traceWriter.GetTraces().Single();
             Assert.Equal(0, traceEvent.Properties.Count);
 
-            traceWriter.Traces.Clear();
+            traceWriter.ClearTraces();
             var properties = new Dictionary<string, object>
             {
                 { "Foo", 123 },
@@ -52,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var interceptingTraceWriter = traceWriter.Apply(properties);
 
             interceptingTraceWriter.Info("Test message");
-            traceEvent = traceWriter.Traces.Single();
+            traceEvent = traceWriter.GetTraces().Single();
             Assert.Equal(2, traceEvent.Properties.Count);
             Assert.Equal(123, traceEvent.Properties["Foo"]);
             Assert.Equal(456, traceEvent.Properties["Bar"]);
@@ -114,9 +115,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             traceWriter.Trace("test", TraceLevel.Verbose, properties);
 
-            Assert.Equal(1, traceWriter.Traces.Count);
+            Assert.Equal(1, traceWriter.GetTraces().Count);
 
-            var trace = traceWriter.Traces.First();
+            var trace = traceWriter.GetTraces().First();
             foreach (var property in properties)
             {
                 Assert.True(trace.Properties.ContainsKey(property.Key));
@@ -129,9 +130,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var traceWriter = new TestTraceWriter(level);
             traceHandler(traceWriter);
 
-            Assert.Equal(1, traceWriter.Traces.Count);
-            Assert.Equal(level, traceWriter.Traces.First().Level);
-            Assert.Equal(message, traceWriter.Traces.First().Message);
+            var traces = traceWriter.GetTraces();
+            Assert.Equal(1, traces.Count);
+            Assert.Equal(level, traces.First().Level);
+            Assert.Equal(message, traces.First().Message);
         }
     }
 }

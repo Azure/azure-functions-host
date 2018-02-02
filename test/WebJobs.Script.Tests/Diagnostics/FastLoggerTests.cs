@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var ex = new InvalidOperationException("Boom!");
             FunctionInstanceLogger.OnException(ex, trace);
 
-            TraceEvent traceEvent = trace.Traces.Single();
+            TraceEvent traceEvent = trace.GetTraces().Single();
             Assert.StartsWith("Error writing logs to table storage: System.InvalidOperationException: Boom!", traceEvent.Message);
             Assert.Equal(TraceLevel.Error, traceEvent.Level);
             Assert.Same(ex, traceEvent.Exception);

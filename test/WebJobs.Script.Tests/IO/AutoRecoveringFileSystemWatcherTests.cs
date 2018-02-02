@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
 
                 await TestHelpers.Await(() =>
                 {
-                    return traceWriter.Traces.Count == expectedTracesBeforeRecovery;
+                    return traceWriter.GetTraces().Count == expectedTracesBeforeRecovery;
                 }, pollingInterval: 500);
 
                 if (isFailureScenario)
@@ -102,14 +102,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
 
                 await TestHelpers.Await(() =>
                 {
-                    return traceWriter.Traces.Count == expectedTracesAfterRecovery;
+                    return traceWriter.GetTraces().Count == expectedTracesAfterRecovery;
                 }, pollingInterval: 500);
 
-                TraceEvent failureEvent = traceWriter.Traces.First();
+                TraceEvent failureEvent = traceWriter.GetTraces().First();
                 Assert.Equal(TraceLevel.Warning, failureEvent.Level);
                 Assert.Contains("Failure detected", failureEvent.Message);
 
-                var retryEvents = traceWriter.Traces.Where(t => t.Level == TraceLevel.Warning).Skip(1).ToList();
+                var retryEvents = traceWriter.GetTraces().Where(t => t.Level == TraceLevel.Warning).Skip(1).ToList();
 
                 if (isFailureScenario)
                 {
@@ -134,18 +134,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                         $"Recovering interval did not meet the expected interval (expected '{expectedInterval}', actual '{intervalInSeconds}");
                 }
 
-                Assert.True(traceWriter.Traces.All(t => t.Message.EndsWith(fileWatcherLogSuffix)));
+                Assert.True(traceWriter.GetTraces().All(t => t.Message.EndsWith(fileWatcherLogSuffix)));
 
                 if (isFailureScenario)
                 {
-                    Assert.Contains("Recovery process aborted.", traceWriter.Traces.Last().Message);
+                    Assert.Contains("Recovery process aborted.", traceWriter.GetTraces().Last().Message);
                 }
                 else
                 {
-                    Assert.Contains("File watcher recovered.", traceWriter.Traces.Last().Message);
+                    Assert.Contains("File watcher recovered.", traceWriter.GetTraces().Last().Message);
                 }
 
-                Assert.Equal(ScriptConstants.TraceSourceFileWatcher, traceWriter.Traces.Last().Source);
+                Assert.Equal(ScriptConstants.TraceSourceFileWatcher, traceWriter.GetTraces().Last().Source);
             }
         }
 

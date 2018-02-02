@@ -4,6 +4,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -57,9 +58,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assembly result = resolver.ResolveAssembly(AppDomain.CurrentDomain, new System.ResolveEventArgs("MyTestAssembly.dll",
                 new TestAssembly(new AssemblyName("MyDirectReference"), @"file:///c:/testroot/test2/bin/MyDirectReference.dll")));
 
+            var traces = traceWriter.GetTraces();
             Assert.Null(result);
-            Assert.Equal(1, traceWriter.Traces.Count);
-            Assert.Contains("MyTestAssembly.dll", traceWriter.Traces[0].Message);
+            Assert.Equal(1, traces.Count);
+            Assert.Contains("MyTestAssembly.dll", traces.First().Message);
         }
 
         private class TestAssembly : Assembly

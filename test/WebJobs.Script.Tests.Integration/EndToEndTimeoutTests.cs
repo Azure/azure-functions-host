@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -68,12 +69,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task TimeoutTest_UsingToken_CSharp()
         {
-            await RunTokenTest("useToken", async (logs) =>
+            await RunTokenTest("useToken", async (trace) =>
              {
                  // The function should 'clean up' and write 'Done'
                  await TestHelpers.Await(() =>
                  {
-                     var doneLog = logs.SingleOrDefault(l => l.EndsWith("Done"));
+                     var doneLog = trace.GetTraces().SingleOrDefault(l => l.Message.EndsWith("Done"));
                      return doneLog != null;
                  });
              });
@@ -82,14 +83,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task TimeoutTest_IgnoringToken_CSharp()
         {
-            await RunTokenTest("ignoreToken", (logs) =>
+            await RunTokenTest("ignoreToken", (trace) =>
              {
                  // We do not expect 'Done' to be written here.
-                 Assert.False(logs.Any(l => l.EndsWith("Done")));
+                 Assert.False(trace.GetTraces().Any(l => l.Message.EndsWith("Done")));
              });
         }
 
-        private async Task RunTokenTest(string scenario, Action<IEnumerable<string>> verify)
+        private async Task RunTokenTest(string scenario, Action<TestTraceWriter> verify)
         {
             string functionName = "TimeoutToken";
             TestHelpers.ClearFunctionLogs(functionName);
@@ -106,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var exception = GetExceptionHandler(manager).TimeoutExceptionInfos.Single().SourceException;
                 Assert.IsType<FunctionTimeoutException>(exception);
 
-                verify(traceWriter.Traces.Select(t => t.ToString()));
+                verify(traceWriter);
             }
         }
 
@@ -132,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     // TODO: This doesn't appear to work for Powershell in AppVeyor. Need to investigate.
                     // bool hasTestData = inProgressLogs.Any(l => l.Contains(testData));
                     var expectedMessage = $"Timeout value of {testTimeout} was exceeded by function: Functions.{functionName}";
-                    var traces = string.Join(Environment.NewLine, traceWriter.Traces);
+                    var traces = string.Join(Environment.NewLine, traceWriter.GetTraces());
                     return traces.Contains(expectedMessage);
                 });
 
@@ -205,6 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             protected override void OnInitializeConfig(ScriptHostConfiguration config)
             {
                 base.OnInitializeConfig(config);
+                config.HostConfig.Tracing.ConsoleLevel = TraceLevel.Off;
                 config.HostConfig.AddService<IWebJobsExceptionHandler>(new MockExceptionHandler());
             }
         }

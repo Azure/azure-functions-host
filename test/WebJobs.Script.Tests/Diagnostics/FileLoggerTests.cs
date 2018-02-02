@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             // FunctionName comes from scope -- call with no scope values
             logger.Log(LogLevel.Information, 0, new FormattedLogValues("Some Message"), null, (s, e) => s.ToString());
 
-            Assert.Empty(trace.Traces);
+            Assert.Empty(trace.GetTraces());
             factoryMock.Verify(f => f.Create(It.IsAny<string>(), null), Times.Never);
         }
 
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 logger.Log(LogLevel.Information, 0, new FormattedLogValues("Some Message"), null, (s, e) => s.ToString());
             }
 
-            var traceEvent = trace.Traces.Single();
+            var traceEvent = trace.GetTraces().Single();
             Assert.Equal(TraceLevel.Info, traceEvent.Level);
             Assert.Equal("Some Message", traceEvent.Message);
             Assert.Equal("SomeCategory", traceEvent.Source);

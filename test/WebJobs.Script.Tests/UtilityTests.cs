@@ -86,7 +86,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             sw.Start();
             await Utility.DelayWithBackoffAsync(2, CancellationToken.None);
             sw.Stop();
-            Assert.True(sw.ElapsedMilliseconds >= 2000, $"Expected sw.ElapsedMilliseconds >= 2000; Actual: {sw.ElapsedMilliseconds}");
+
+            // We expect 2 seconds, but the timer could be slighlty off.
+            Assert.True(sw.ElapsedMilliseconds >= 1950, $"Expected sw.ElapsedMilliseconds >= 1950; Actual: {sw.ElapsedMilliseconds}");
         }
 
         [Theory]

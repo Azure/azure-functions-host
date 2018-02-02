@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 TestHelpers.WaitForWebHost(httpClient);
 
-                var traces = traceWriter.Traces.ToArray();
+                var traces = traceWriter.GetTraces().ToArray();
                 Assert.Equal($"Creating StandbyMode placeholder function directory ({Path.GetTempPath()}Functions\\Standby\\WWWRoot)", traces[0].Message);
                 Assert.Equal("StandbyMode placeholder function directory created", traces[1].Message);
 
@@ -126,8 +126,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await TestHelpers.Await(() =>
                 {
                     // wait for the trace indicating that the host has been specialized
-                    logLines = traceWriter.Traces.Select(p => p.Message).ToArray();
-                    return logLines.Count(p => p.Contains($"Starting Host (HostId={expectedHostId}")) == 1;
+                    logLines = traceWriter.GetTraces().Select(p => p.Message).ToArray();
+                    return logLines.Contains("Generating 0 job function(s)");
                 });
 
                 // verify the rest of the expected logs
@@ -140,7 +140,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
                 Assert.Equal(1, logLines.Count(p => p.Contains($"Starting Host (HostId={expectedHostId}")));
-                Assert.Contains("Generating 0 job function(s)", logLines);
 
                 WebScriptHostManager.ResetStandbyMode();
             }

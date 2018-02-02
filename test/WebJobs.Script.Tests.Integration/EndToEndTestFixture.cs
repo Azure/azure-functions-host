@@ -3,7 +3,9 @@
 
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Web.Http;
 using Microsoft.Azure.AppService.Proxy.Client;
 using Microsoft.Azure.WebJobs.Host;
@@ -26,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public abstract class EndToEndTestFixture : IDisposable
     {
         private readonly ScriptSettingsManager _settingsManager;
+        private readonly ManualResetEventSlim _hostStartedEvent = new ManualResetEventSlim();
 
         protected EndToEndTestFixture(string rootPath, string testId, ProxyClientExecutor proxyClient = null)
         {
@@ -67,7 +70,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Host = new ScriptHost(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager, proxyClient);
             Host.Initialize();
+            Host.ScriptConfig.HostConfig.Tracing.ConsoleLevel = TraceLevel.Off;
+            Host.HostStarted += (s, e) => _hostStartedEvent.Set();
             Host.Start();
+            _hostStartedEvent.Wait(TimeSpan.FromSeconds(30));
         }
 
         public Mock<IScriptHostEnvironment> ScriptHostEnvironmentMock { get; }

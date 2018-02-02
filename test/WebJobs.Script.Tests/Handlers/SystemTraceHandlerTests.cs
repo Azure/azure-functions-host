@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
 
             await _invoker.SendAsync(request, CancellationToken.None);
 
-            var traces = _traceWriter.Traces.ToArray();
+            var traces = _traceWriter.GetTraces().ToArray();
             Assert.Equal(3, traces.Length);
 
             // validate executing trace

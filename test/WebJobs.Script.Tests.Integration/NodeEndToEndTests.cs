@@ -265,8 +265,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return logs.Count > 0;
             });
 
+            var traces = Fixture.TraceWriter.GetTraces();
+
             // verify use of context.log to log complex objects
-            TraceEvent scriptTrace = Fixture.TraceWriter.Traces.Single(p => p.Message.Contains(testData));
+            TraceEvent scriptTrace = traces.Single(p => p.Message.Contains(testData));
             Assert.Equal(TraceLevel.Info, scriptTrace.Level);
             JObject logEntry = JObject.Parse(scriptTrace.Message);
             Assert.Equal("This is a test", logEntry["message"]);
@@ -274,17 +276,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(testData, logEntry["input"]);
 
             // verify log levels in traces
-            TraceEvent[] traces = Fixture.TraceWriter.Traces.Where(t => t.Message.Contains("loglevel")).ToArray();
-            Assert.Equal(TraceLevel.Info, traces[0].Level);
-            Assert.Equal("loglevel default", traces[0].Message);
-            Assert.Equal(TraceLevel.Info, traces[1].Level);
-            Assert.Equal("loglevel info", traces[1].Message);
-            Assert.Equal(TraceLevel.Verbose, traces[2].Level);
-            Assert.Equal("loglevel verbose", traces[2].Message);
-            Assert.Equal(TraceLevel.Warning, traces[3].Level);
-            Assert.Equal("loglevel warn", traces[3].Message);
-            Assert.Equal(TraceLevel.Error, traces[4].Level);
-            Assert.Equal("loglevel error", traces[4].Message);
+            TraceEvent[] logLevelTraces = traces.Where(t => t.Message.Contains("loglevel")).ToArray();
+            Assert.Equal(TraceLevel.Info, logLevelTraces[0].Level);
+            Assert.Equal("loglevel default", logLevelTraces[0].Message);
+            Assert.Equal(TraceLevel.Info, logLevelTraces[1].Level);
+            Assert.Equal("loglevel info", logLevelTraces[1].Message);
+            Assert.Equal(TraceLevel.Verbose, logLevelTraces[2].Level);
+            Assert.Equal("loglevel verbose", logLevelTraces[2].Message);
+            Assert.Equal(TraceLevel.Warning, logLevelTraces[3].Level);
+            Assert.Equal("loglevel warn", logLevelTraces[3].Message);
+            Assert.Equal(TraceLevel.Error, logLevelTraces[4].Level);
+            Assert.Equal("loglevel error", logLevelTraces[4].Message);
 
             // verify logs made it to file logs
             Assert.True(logs.Count == 14, string.Join(Environment.NewLine, logs));
@@ -1013,9 +1015,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task TimerTrigger()
         {
-            var logs = (await TestHelpers.GetFunctionLogsAsync("TimerTrigger")).ToArray();
+            var logs = await TestHelpers.GetFunctionLogsAsync("TimerTrigger", throwOnNoLogs: false);
 
-            Assert.True(logs[1].Contains("Timer function ran!"));
+            // There is likely still a timing issue here; capture traces to help pinpoint it.
+            var traces = string.Join(Environment.NewLine, Fixture.TraceWriter.GetTraces().Select(t => t.Message));
+            Assert.True(logs.Count() >= 2, traces);
+            Assert.True(logs[1].Contains("Timer function ran!"), traces);
         }
 
         [Fact]
@@ -1135,7 +1140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Null(function);
 
             // Make sure the host log was written
-            var trace = Fixture.TraceWriter.Traces.SingleOrDefault(p => p.Message == "Function 'Excluded' is marked as excluded");
+            var trace = Fixture.TraceWriter.GetTraces().SingleOrDefault(p => p.Message == "Function 'Excluded' is marked as excluded");
             Assert.NotNull(trace);
             Assert.Equal(TraceLevel.Info, trace.Level);
         }

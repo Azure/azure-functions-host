@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             Assert.Equal(2, highLoadQueryCount);
             Assert.Equal(3, throttleMetricCount);
-            var trace = _traceWriter.Traces.Last();
+            var trace = _traceWriter.GetTraces().Last();
             Assert.Equal("Thresholds for the following counters have been exceeded: [Threads, Processes]", trace.Message);
 
             await Task.Delay(1000);

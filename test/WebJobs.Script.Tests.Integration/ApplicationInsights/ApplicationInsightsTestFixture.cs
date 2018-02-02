@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
@@ -98,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public class TestTelemetryChannel : ITelemetryChannel
         {
-            public IList<ITelemetry> Telemetries { get; private set; } = new List<ITelemetry>();
+            public ConcurrentBag<ITelemetry> Telemetries { get; private set; } = new ConcurrentBag<ITelemetry>();
 
             public bool? DeveloperMode { get; set; }
 

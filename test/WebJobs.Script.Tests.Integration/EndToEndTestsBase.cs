@@ -485,7 +485,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await TestHelpers.Await(() =>
             {
-                traceEvent = Fixture.TraceWriter.Traces.SingleOrDefault(filter);
+                traceEvent = Fixture.TraceWriter.GetTraces().SingleOrDefault(filter);
                 return traceEvent != null;
             });
 

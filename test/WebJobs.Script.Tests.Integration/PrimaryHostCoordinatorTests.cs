@@ -178,10 +178,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 renewResetEvent.Wait(TimeSpan.FromSeconds(10));
 
                 // Make sure we have enough time to trace the renewal
-                await TestHelpers.Await(() => traceWriter.Traces.Count == 1, 5000, 500);
+                await TestHelpers.Await(() => traceWriter.GetTraces().Count == 1, 5000, 500);
             }
 
-            TraceEvent acquisitionEvent = traceWriter.Traces.First();
+            TraceEvent acquisitionEvent = traceWriter.GetTraces().First();
             Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.Message);
             Assert.Equal(TraceLevel.Info, acquisitionEvent.Level);
         }
@@ -206,14 +206,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (var manager = new PrimaryHostCoordinator(blobMock.Object, TimeSpan.FromSeconds(5), hostId, instanceId, traceWriter, null))
             {
                 renewResetEvent.Wait(TimeSpan.FromSeconds(10));
-                await TestHelpers.Await(() => traceWriter.Traces.Count == 2, 5000, 500);
+                await TestHelpers.Await(() => traceWriter.GetTraces().Count == 2, 5000, 500);
             }
 
-            TraceEvent acquisitionEvent = traceWriter.Traces.First();
+            TraceEvent acquisitionEvent = traceWriter.GetTraces().First();
             Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.Message);
             Assert.Equal(TraceLevel.Info, acquisitionEvent.Level);
 
-            TraceEvent renewalEvent = traceWriter.Traces.Skip(1).First();
+            TraceEvent renewalEvent = traceWriter.GetTraces().Skip(1).First();
             string pattern = @"Failed to renew host lock lease: Another host has acquired the lease. The last successful renewal completed at (.+) \([0-9]+ milliseconds ago\) with a duration of [0-9]+ milliseconds.";
             Assert.True(Regex.IsMatch(renewalEvent.Message, pattern), $"Expected trace event {pattern} not found.");
             Assert.Equal(TraceLevel.Info, renewalEvent.Level);

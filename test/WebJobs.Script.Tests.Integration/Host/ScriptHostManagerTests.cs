@@ -266,7 +266,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(ex is ArgumentOutOfRangeException);
 
             string msg = "A ScriptHost error has occurred";
-            var trace = traceWriter.Traces.Last(t => t.Level == TraceLevel.Error);
+            var trace = traceWriter.GetTraces().Last(t => t.Level == TraceLevel.Error);
             Assert.Equal(msg, trace.Message);
             Assert.Same(ex, trace.Exception);
 
@@ -383,12 +383,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(ScriptHostState.Error, hostManager.State);
             environmentMock.Verify(p => p.Shutdown(), Times.Once);
 
+            var traces = testTraceWriter.GetTraces();
+
             // we expect a few restart iterations
-            var thresholdErrors = testTraceWriter.Traces.Where(p => p.Exception is InvalidOperationException && p.Exception.Message == "Host thresholds exceeded: [Connections]. For more information, see https://aka.ms/functions-thresholds.");
+            var thresholdErrors = traces.Where(p => p.Exception is InvalidOperationException && p.Exception.Message == "Host thresholds exceeded: [Connections]. For more information, see https://aka.ms/functions-thresholds.");
             Assert.True(thresholdErrors.Count() > 1);
 
-            var log = testTraceWriter.Traces.Last();
-            Assert.True(testTraceWriter.Traces.Count(p => p.Message == "Host is unhealthy. Initiating a restart." && p.Level == TraceLevel.Error) > 0);
+            var log = traces.Last();
+            Assert.True(traces.Count(p => p.Message == "Host is unhealthy. Initiating a restart." && p.Level == TraceLevel.Error) > 0);
             Assert.Equal("Host unhealthy count exceeds the threshold of 5 for time window 00:00:01. Initiating shutdown.", log.Message);
             Assert.Equal(TraceLevel.Error, log.Level);
         }
@@ -576,9 +578,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                             // update the host.json to only have one function
                             hostConfig["functions"] = new JArray("ManualTrigger");
-                            traceWriter.Traces.Clear();
+                            traceWriter.ClearTraces();
                             File.WriteAllText(hostJsonPath, hostConfig.ToString());
-                            TestHelpers.Await(() => traceWriter.Traces.Select(p => p.Message).Contains("Job host started")).Wait();
+                            TestHelpers.Await(() => traceWriter.GetTraces().Select(p => p.Message).Contains("Job host started")).Wait();
                             TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
 
                             var secondFileWriters = GetRemovableTraceWriters(manager.Instance);
@@ -591,9 +593,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                             // add back the other function -- make sure the writer is not disposed
                             hostConfig["functions"] = new JArray("ManualTrigger", "Scenarios");
-                            traceWriter.Traces.Clear();
+                            traceWriter.ClearTraces();
                             File.WriteAllText(hostJsonPath, hostConfig.ToString());
-                            TestHelpers.Await(() => traceWriter.Traces.Select(p => p.Message).Contains("Job host started")).Wait();
+                            TestHelpers.Await(() => traceWriter.GetTraces().Select(p => p.Message).Contains("Job host started")).Wait();
                             TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
 
                             var thirdFileWriters = GetRemovableTraceWriters(manager.Instance);

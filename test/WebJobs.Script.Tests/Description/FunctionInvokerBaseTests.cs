@@ -52,12 +52,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void TraceOnPrimaryHost_WritesExpectedLogs()
         {
-            _traceWriter.Traces.Clear();
+            _traceWriter.ClearTraces();
 
             _invoker.TraceOnPrimaryHost("Test message", TraceLevel.Info, "TestSource");
 
-            Assert.Equal(1, _traceWriter.Traces.Count);
-            var trace = _traceWriter.Traces[0];
+            var traces = _traceWriter.GetTraces();
+            Assert.Equal(1, traces.Count);
+            var trace = traces.First();
             Assert.Equal("Test message", trace.Message);
             Assert.Equal(TraceLevel.Info, trace.Level);
             Assert.Equal("TestSource", trace.Source);
@@ -110,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded[0];
             Assert.Same(startedEvent, completedStartEvent);
             Assert.True(completedStartEvent.Success);
-            var message = _traceWriter.Traces.Last().Message;
+            var message = _traceWriter.GetTraces().Last().Message;
             Assert.True(Regex.IsMatch(message, $"Function completed \\(Success, Id={executionContext.InvocationId}, Duration=[0-9]*ms\\)"));
 
             // verify latency event
@@ -140,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, _metricsLogger.MetricEventsEnded.Count);
             Assert.Equal(2, _metricsLogger.EventsEnded.Count);
 
-            var completionEvents = _traceWriter.Traces
+            var completionEvents = _traceWriter.GetTraces()
                 .Select(e => Regex.Match(e.Message, $"Function completed \\(Success, Id={executionContext.InvocationId}, Duration=(?'duration'[0-9]*)ms\\)"))
                 .Where(m => m.Success)
                 .ToList();
@@ -180,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded[0];
             Assert.Same(startedEvent, completedStartEvent);
             Assert.False(completedStartEvent.Success);
-            var message = _traceWriter.Traces.Last().Message;
+            var message = _traceWriter.GetTraces().Last().Message;
             Assert.True(Regex.IsMatch(message, $"Function completed \\(Failure, Id={executionContext.InvocationId}, Duration=[0-9]*ms\\)"));
 
             // verify latency event

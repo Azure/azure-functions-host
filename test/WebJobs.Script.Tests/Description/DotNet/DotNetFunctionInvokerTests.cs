@@ -79,18 +79,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await TestHelpers.Await(() =>
             {
-                return dependencies.TraceWriter.Traces.Any(t => t.Message.Contains("Compilation failed.")) &&
-                 dependencies.TraceWriter.Traces.Any(t => t.Message.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
+                var traces = dependencies.TraceWriter.GetTraces();
+                return traces.Any(t => t.Message.Contains("Compilation failed.")) &&
+                 traces.Any(t => t.Message.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
             });
 
-            dependencies.TraceWriter.Traces.Clear();
+            dependencies.TraceWriter.ClearTraces();
 
             CompilationErrorException resultException = await Assert.ThrowsAsync<CompilationErrorException>(() => invoker.GetFunctionTargetAsync());
 
             await TestHelpers.Await(() =>
             {
-                return dependencies.TraceWriter.Traces.Any(t => t.Message.Contains("Function compilation error")) &&
-                 dependencies.TraceWriter.Traces.Any(t => t.Message.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
+                var traces = dependencies.TraceWriter.GetTraces();
+                return traces.Any(t => t.Message.Contains("Function compilation error")) &&
+                 traces.Any(t => t.Message.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
             });
         }
 
@@ -145,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     throw new Exception(compilationDetails, exc);
                 }
 
-                Assert.Contains(dependencies.TraceWriter.Traces,
+                Assert.Contains(dependencies.TraceWriter.GetTraces(),
                     t => t.Message.Contains($"warning {DotNetConstants.MissingBindingArgumentCompilationCode}") && t.Message.Contains("'TestBinding'"));
             }
         }
@@ -204,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
 
                 // Verify that logs on the second instance were suppressed
-                int count = dependencies.TraceWriter.Traces.Count();
+                int count = dependencies.TraceWriter.GetTraces().Count();
                 Assert.Equal(0, count);
             }
         }
@@ -295,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Equal(expectedAttempt.ToString(), exception.Message);
             }
 
-            var compilerErrorTraces = dependencies.TraceWriter.Traces
+            var compilerErrorTraces = dependencies.TraceWriter.GetTraces()
                 .Where(t => string.Equals(t.Message, "Function loader reset. Failed compilation result will not be cached."));
 
             // 3 attempts total, make sure we've logged the 2 retries.
