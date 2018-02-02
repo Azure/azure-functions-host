@@ -48,4 +48,6 @@ COPY --from=installer-env ["c:\\runtime", "C:\\runtime"]
 
 ENV AzureWebJobsScriptRoot=C:\approot
 
+ENV WEBSITE_HOSTNAME=localhost:80
+
 CMD ["dotnet", "C:\\runtime\\Microsoft.Azure.WebJobs.Script.WebHost.dll"]
