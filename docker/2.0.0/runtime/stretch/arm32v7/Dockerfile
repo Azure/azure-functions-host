@@ -16,4 +16,6 @@ ENV AzureWebJobsScriptRoot=/app
 
 EXPOSE 80
 
+ENV WEBSITE_HOSTNAME=localhost:80
+
 CMD ["dotnet", "/azure-functions-runtime/Microsoft.Azure.WebJobs.Script.WebHost.dll"]
