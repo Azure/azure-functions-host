@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Web;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -298,9 +299,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string userAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36";
             string accept = "text/html, application/xhtml+xml, application/xml; q=0.9, */*; q=0.8";
             string customHeader = "foo,bar,baz";
+            string url = $"http://localhost/api/{functionName}?name=Mathew%20Charles&location=Seattle";
             var request = HttpTestHelpers.CreateHttpRequest(
                 "GET",
-                $"http://localhost/api/{functionName}?name=Mathew%20Charles&location=Seattle",
+                url,
                 new HeaderDictionary()
                 {
                     ["test-header"] = "Test Request Header",
@@ -344,6 +346,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(userAgent, reqHeaders["user-agent"]);
             Assert.Equal(accept, reqHeaders["accept"]);
             Assert.Equal(customHeader, reqHeaders["custom-1"]);
+
+            // verify originalUrl is correct
+            Assert.Equal(HttpUtility.UrlDecode(url), (string)resultObject["reqOriginalUrl"]);
         }
 
 

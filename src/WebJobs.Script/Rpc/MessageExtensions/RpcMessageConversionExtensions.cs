@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 var http = new RpcHttp()
                 {
-                    Url = request.Path.ToString(),
+                    Url = $"{(request.IsHttps ? "https" : "http")}://{request.Host.ToString()}{request.Path.ToString()}{request.QueryString.ToString()}", // [http|https]://{url}{path}{query}
                     Method = request.Method.ToString()
                 };
                 typedData.Http = http;
