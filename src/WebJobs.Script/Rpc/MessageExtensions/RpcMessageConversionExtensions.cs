@@ -107,13 +107,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             break;
 
                         case "application/octet-stream":
+                        case string contentType when contentType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0:
                             var length = Convert.ToInt32(request.ContentLength);
                             var bytes = new byte[length];
                             request.Body.Read(bytes, 0, length);
                             body = bytes;
                             rawBody = Encoding.UTF8.GetString(bytes);
                             break;
-
                         default:
                             var reader = new StreamReader(request.Body, Encoding.UTF8);
                             body = rawBody = reader.ReadToEnd();

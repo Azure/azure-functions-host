@@ -347,13 +347,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
 
-        [Fact]
-        public async Task HttpTrigger_Post_ByteArray()
+        [Theory]
+        [InlineData("application/octet-stream")]
+        [InlineData("multipart/form-data; boundary=----WebKitFormBoundaryTYtz7wze2XXrH26B")]
+        public async Task HttpTrigger_Post_ByteArray(string contentType)
         {
             TestHelpers.ClearFunctionLogs("HttpTriggerByteArray");
 
             IHeaderDictionary headers = new HeaderDictionary();
-            headers.Add("Content-Type", "application/octet-stream");
+            headers.Add("Content-Type", contentType);
 
             byte[] inputBytes = new byte[] { 1, 2, 3, 4, 5 };
             var content = inputBytes;
