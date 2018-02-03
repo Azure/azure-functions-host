@@ -12,7 +12,8 @@ module.exports = function (context, req) {
             reqRawBodyType: typeof req.rawBody,
             reqRawBody: req.rawBody,
             reqHeaders: req.headers,
-            bindingData: context.bindingData
+            bindingData: context.bindingData,
+            reqOriginalUrl: req.originalUrl
         },
         headers: {
             'test-header': 'Test Response Header',
