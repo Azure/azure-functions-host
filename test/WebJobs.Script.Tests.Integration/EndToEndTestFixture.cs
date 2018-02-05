@@ -3,11 +3,9 @@
 
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Web.Http;
-using Microsoft.Azure.AppService.Proxy.Client;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -70,7 +68,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Host = new ScriptHost(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager, proxyClient);
             Host.Initialize();
+
+            // Note: This has to be done after the call to Initialize or all file logging will be disabled.
             Host.ScriptConfig.HostConfig.Tracing.ConsoleLevel = TraceLevel.Off;
+
             Host.HostStarted += (s, e) => _hostStartedEvent.Set();
             Host.Start();
             _hostStartedEvent.Wait(TimeSpan.FromSeconds(30));

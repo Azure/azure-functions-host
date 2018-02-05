@@ -612,7 +612,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
                 {
-                    await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                    InvalidOperationException ioe = null;
+                    try
                     {
                         for (int i = 0; i < ScriptConstants.MaximumSecretBackupCount + 10; i++)
                         {
@@ -623,7 +624,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                                 await Task.Delay(500);
                             }
                         }
-                    });
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        ioe = ex;
+                    }
+
+                    Assert.True(ioe != null, string.Join(Environment.NewLine, traceWriter.GetTraces()));
                 }
 
                 Assert.True(Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length >= ScriptConstants.MaximumSecretBackupCount);

@@ -164,8 +164,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\PowerShell");
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
             {
-                RootScriptPath = rootPath
+                RootScriptPath = rootPath,
+                TraceWriter = NullTraceWriter.Instance
             };
+
             var host = new ScriptHost(environment.Object, eventManager.Object, scriptConfig, SettingsManager);
             host.Initialize();
             return new ScriptHostInfo(host, scriptConfig, rootPath);

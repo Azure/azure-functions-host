@@ -24,7 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node");
             ScriptHostConfiguration config = new ScriptHostConfiguration
             {
-                RootScriptPath = rootPath
+                RootScriptPath = rootPath,
+                TraceWriter = NullTraceWriter.Instance
             };
 
             var environment = new Mock<IScriptHostEnvironment>();

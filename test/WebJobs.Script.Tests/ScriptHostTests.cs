@@ -370,7 +370,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
             {
-                RootScriptPath = rootPath
+                RootScriptPath = rootPath,
+                TraceWriter = NullTraceWriter.Instance
             };
 
             var environment = new Mock<IScriptHostEnvironment>();
@@ -409,8 +410,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
                 {
-                    RootScriptPath = rootPath
+                    RootScriptPath = rootPath,
+                    TraceWriter = NullTraceWriter.Instance
                 };
+
                 var environment = new Mock<IScriptHostEnvironment>();
                 var eventManager = new Mock<IScriptEventManager>();
 
@@ -1029,9 +1032,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = rootPath
+                RootScriptPath = rootPath,
+                TraceWriter = NullTraceWriter.Instance
             };
-
             config.LoggerFactoryBuilder = loggerFactoryHookMock.Object;
 
             config.HostConfig.HostId = ID;
@@ -1569,7 +1572,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             public TestFixture()
             {
-                ScriptHostConfiguration config = new ScriptHostConfiguration();
+                ScriptHostConfiguration config = new ScriptHostConfiguration()
+                {
+                    TraceWriter = NullTraceWriter.Instance
+                };
                 config.HostConfig.HostId = ID;
                 var environment = new Mock<IScriptHostEnvironment>();
                 var eventManager = new Mock<IScriptEventManager>();

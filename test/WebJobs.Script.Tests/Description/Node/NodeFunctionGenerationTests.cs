@@ -226,7 +226,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var eventManager = new Mock<IScriptEventManager>();
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration()
             {
-                RootScriptPath = rootPath
+                RootScriptPath = rootPath,
+                TraceWriter = NullTraceWriter.Instance
             };
 
             Collection<FunctionDescriptor> functionDescriptors = null;
