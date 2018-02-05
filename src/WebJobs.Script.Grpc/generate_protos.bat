@@ -45,4 +45,15 @@ set OUTDIR=%MSGDIR%\DotNet
 mkdir %OUTDIR%
 %NUGET_PATH%\protoc.exe %PROTO% --csharp_out %OUTDIR% --grpc_out=%OUTDIR% --plugin=protoc-gen-grpc=%NUGET_PATH%\grpc_csharp_plugin.exe --proto_path=.\Proto
 
+@rem add pragma warning disable labels to generated files
+
+cd ./Messages/DotNet/
+
+for %%f in ("*.cs") do echo #pragma warning disable> %%f.temp
+for %%f in ("*.cs") do type %%f >> %%f.temp
+for %%f in ("*.cs") do copy /y %%f.temp %%f
+for %%f in ("*.temp") do del %%f
+
+cd ../..
+
 endlocal
