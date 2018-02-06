@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             secretsRepositoryFactory = secretsRepositoryFactory ?? new DefaultSecretsRepositoryFactory();
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
-            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter, config.HostConfig.LoggerFactory, secretsRepository);
+            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter.WithSource(ScriptConstants.TraceSourceSecretManagement), config.HostConfig.LoggerFactory, secretsRepository);
 
             _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider(_secretManager);
         }
@@ -437,7 +437,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public override void Shutdown()
         {
             string message = "Environment shutdown has been triggered. Stopping host and signaling shutdown.";
-            Instance?.TraceWriter.Info(message);
+            Dictionary<string, object> traceProperties = new Dictionary<string, object>
+            {
+                {ScriptConstants.TracePropertyScriptHostInstanceIdKey, ScriptSettingsManager.Instance.InstanceId }
+            };
+            Instance?.TraceWriter.Info(message, traceProperties);
             Instance?.Logger?.LogInformation(message);
 
             Stop();

@@ -9,9 +9,11 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -232,7 +234,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     // We need to keep the host running, so we catch and log any errors
                     // then restart the host
                     string message = "A ScriptHost error has occurred";
-                    Instance?.TraceWriter?.Error(message, ex);
+                    TraceEvent traceEvent = new TraceEvent(TraceLevel.Error, message, ScriptConstants.TraceSourceScriptHost, ex);
+                    traceEvent.Properties.Add(ScriptConstants.TracePropertyScriptHostInstanceIdKey, Instance?.InstanceId);
+                    Instance?.TraceWriter?.Trace(traceEvent);
                     Instance?.Logger?.LogError(0, ex, message);
 
                     if (ShutdownHostIfUnhealthy())
@@ -269,7 +273,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 // the current time window exceeds the threshold, recover by
                 // initiating shutdown
                 var message = $"Host unhealthy count exceeds the threshold of {_config.HostHealthMonitor.HealthCheckThreshold} for time window {_config.HostHealthMonitor.HealthCheckWindow}. Initiating shutdown.";
-                Instance?.TraceWriter?.Error(message);
+                TraceEvent traceEvent = new TraceEvent(TraceLevel.Error, message, ScriptConstants.TraceSourceScriptHost);
+                traceEvent.Properties.Add(ScriptConstants.TracePropertyScriptHostInstanceIdKey, Instance?.InstanceId);
+                Instance?.TraceWriter?.Trace(traceEvent);
                 Instance?.Logger?.LogError(0, message);
                 _environment.Shutdown();
                 return true;
@@ -286,7 +292,9 @@ namespace Microsoft.Azure.WebJobs.Script
             string extensionVersion = _settingsManager.GetSetting(EnvironmentSettingNames.FunctionsExtensionVersion);
             string hostId = host.ScriptConfig.HostConfig.HostId;
             string message = $"Starting Host (HostId={hostId}, Version={ScriptHost.Version}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={host.InDebugMode}, ConsecutiveErrors={_consecutiveErrorCount}, StartupCount={_hostStartCount}, FunctionsExtensionVersion={extensionVersion})";
-            host.TraceWriter.Info(message);
+            TraceEvent traceEvent = new TraceEvent(TraceLevel.Info, message, ScriptConstants.TraceSourceScriptHostManager);
+            traceEvent.Properties.Add(ScriptConstants.TracePropertyHostIdKey, hostId);
+            host.TraceWriter.Trace(traceEvent);
             host.Logger.LogInformation(message);
 
             // we check host health before starting to avoid starting
@@ -325,7 +333,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     builder.AppendLine(string.Format(CultureInfo.InvariantCulture, "{0}: {1}", error.Key, functionErrors));
                 }
                 string message = builder.ToString();
-                host.TraceWriter.Error(message);
+                TraceEvent traceEvent = new TraceEvent(TraceLevel.Error, message, ScriptConstants.TraceSourceScriptHostManager);
+                traceEvent.Properties.Add(ScriptConstants.TracePropertyScriptHostInstanceIdKey, host.InstanceId);
+                host.TraceWriter.Trace(traceEvent);
                 host.Logger?.LogError(message);
             }
         }

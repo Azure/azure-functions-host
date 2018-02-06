@@ -24,10 +24,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private readonly IMetricsLogger _metrics;
 
+        private readonly string _hostId;
+
         public FunctionInstanceLogger(
             Func<string, FunctionDescriptor> funcLookup,
             IMetricsLogger metrics,
-            string hostName,
+            string hostInstanceId,
             string accountConnectionString, // May be null
             TraceWriter trace) : this(funcLookup, metrics)
         {
@@ -43,7 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 var tableProvider = LogFactory.NewLogTableProvider(client);
 
                 string containerName = Environment.MachineName;
-                this._writer = LogFactory.NewWriter(hostName, containerName, tableProvider, (e) => OnException(e, trace));
+                _hostId = hostInstanceId;
+                _writer = LogFactory.NewWriter(hostInstanceId, containerName, tableProvider, (e) => OnException(e, trace));
             }
         }
 
@@ -79,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         // This exception will cause the function to not get executed.
                         throw new InvalidOperationException($"Missing function.json for '{shortName}'.");
                     }
-                    state = new FunctionInstanceMonitor(descr.Metadata, _metrics, item.FunctionInstanceId, descr.Invoker.FunctionLogger);
+                    state = new FunctionInstanceMonitor(descr.Metadata, _metrics, _hostId, item.FunctionInstanceId, descr.Invoker.FunctionLogger);
 
                     item.Properties[Key] = state;
 

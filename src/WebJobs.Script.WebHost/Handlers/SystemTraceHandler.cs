@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
@@ -56,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
                 { "method", request.Method.ToString() },
                 { "uri", request.RequestUri.LocalPath.ToString() }
             };
-            TraceWriter.Info($"Executing HTTP request: {details}");
+            WriteTraceEvent($"Executing HTTP request: {details}", request);
 
             var response = await base.SendAsync(request, cancellationToken);
 
@@ -67,16 +68,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
                 { "uri", request.RequestUri.LocalPath.ToString() },
                 { "authorizationLevel", request.GetAuthorizationLevel().ToString() }
             };
-            TraceWriter.Info($"Executed HTTP request: {details}");
+            WriteTraceEvent($"Executed HTTP request: {details}", request);
 
             details = new JObject
             {
                 { "requestId", request.GetRequestId() },
                 { "status", response.StatusCode.ToString() }
             };
-            TraceWriter.Info($"Response details: {details}");
+            WriteTraceEvent($"Response details: {details}", request);
 
             return response;
+        }
+        private void WriteTraceEvent(string msg, HttpRequestMessage request)
+        {
+            TraceEvent traceEvent = new TraceEvent(TraceLevel.Info, msg);
+            object value = null;
+            if (request.Properties.TryGetValue(ScriptConstants.TracePropertyScriptHostInstanceIdKey, out value) && value != null)
+            {
+                value.ToString();
+            }
+            traceEvent.Properties.Add(ScriptConstants.TracePropertyScriptHostInstanceIdKey, value);
+            TraceWriter.Trace(traceEvent);
         }
     }
 }

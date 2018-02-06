@@ -31,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // Apply the function name as an event property to all traces
             var functionTraceProperties = new Dictionary<string, object>
             {
-                { ScriptConstants.TracePropertyFunctionNameKey, functionName }
+                { ScriptConstants.TracePropertyFunctionNameKey, functionName },
+                { ScriptConstants.TracePropertyScriptHostInstanceIdKey, host.InstanceId }
             };
 
             TraceWriter = traceWriter.Apply(functionTraceProperties);
@@ -67,23 +68,36 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         // Helper to emit a standard log message for function started.
-        public void LogFunctionStart(string invocationId)
+        public void LogFunctionStart(string hostInstanceId, string functionName, string functionInvocationId)
         {
-            string startMessage = $"Function started (Id={invocationId})";
-            TraceWriter.Info(startMessage);
+            string startMessage = $"Function started (Id={functionInvocationId} Name={functionName} hostId = {hostInstanceId})";
+
+            // TODO add source
+            TraceWriter.Trace(GetTraceEvent(hostInstanceId, functionName, functionInvocationId, startMessage, TraceLevel.Info));
+
             Logger?.LogInformation(startMessage);
         }
 
-        public void LogFunctionResult(bool success, string invocationId, long elapsedMs)
+        public void LogFunctionResult(bool success, string hostInstanceId, string functionName, string functionInvocationId, long elapsedMS)
         {
             string resultString = success ? "Success" : "Failure";
-            string message = $"Function completed ({resultString}, Id={invocationId ?? "0"}, Duration={elapsedMs}ms)";
+            string message = $"Function completed ({resultString}, Id={functionInvocationId ?? "0"}, Duration={elapsedMS}ms)";
 
             TraceLevel traceWriterLevel = success ? TraceLevel.Info : TraceLevel.Error;
             LogLevel logLevel = success ? LogLevel.Information : LogLevel.Error;
 
-            TraceWriter.Trace(message, traceWriterLevel, null);
+            TraceWriter.Trace(GetTraceEvent(hostInstanceId, functionName, functionInvocationId, message, traceWriterLevel));
+
             Logger?.Log(logLevel, new EventId(0), message, null, (s, e) => s);
+        }
+
+        private static TraceEvent GetTraceEvent(string hostInstanceId, string functionName, string functionInvocationId, string message, TraceLevel traceWriterLevel)
+        {
+            TraceEvent traceEvent = new TraceEvent(traceWriterLevel, message);
+            traceEvent.Properties[ScriptConstants.TracePropertyFunctionInvocationIdKey] = functionInvocationId;
+            traceEvent.Properties[ScriptConstants.TracePropertyScriptHostInstanceIdKey] = hostInstanceId;
+            traceEvent.Properties[ScriptConstants.TracePropertyFunctionNameKey] = functionName;
+            return traceEvent;
         }
 
         protected virtual void Dispose(bool disposing)

@@ -2,14 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -167,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _lastRenewalLatency = _lastRenewal - requestStart;
 
                 string message = $"Host lock lease acquired by instance ID '{_instanceId}'.";
-                _traceWriter.Info(message);
+                _traceWriter.Trace(GetTraceEvent(message, TraceLevel.Info));
                 _logger?.LogInformation(message);
 
                 // We've successfully acquired the lease, change the timer to use our renewal interval
@@ -184,13 +183,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 ResetLease();
 
                 string message = $"Failed to renew host lock lease: {reason}";
-                _traceWriter.Info(message);
+                _traceWriter.Trace(GetTraceEvent(message, TraceLevel.Info));
                 _logger?.LogInformation(message);
             }
             else
             {
                 string message = $"Host instance '{_instanceId}' failed to acquire host lock lease: {reason}";
-                _traceWriter.Verbose(message);
+                _traceWriter.Trace(GetTraceEvent(message, TraceLevel.Verbose));
                 _logger?.LogDebug(message);
             }
         }
@@ -218,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     Task.Run(() => _lockManager.ReleaseLockAsync(_lockHandle, CancellationToken.None)).GetAwaiter().GetResult();
 
                     string message = $"Host instance '{_instanceId}' released lock lease.";
-                    _traceWriter.Verbose(message);
+                    _traceWriter.Trace(GetTraceEvent(message, TraceLevel.Verbose));
                     _logger?.LogDebug(message);
                 }
             }
@@ -226,6 +225,13 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Best effort, the lease will expire if we fail to release it.
             }
+        }
+
+        private TraceEvent GetTraceEvent(string message, TraceLevel traceWriterLevel)
+        {
+            TraceEvent traceEvent = new TraceEvent(traceWriterLevel, message, GetType().Name);
+            traceEvent.Properties[ScriptConstants.TracePropertyScriptHostInstanceIdKey] = _instanceId;
+            return traceEvent;
         }
 
         private void Dispose(bool disposing)
