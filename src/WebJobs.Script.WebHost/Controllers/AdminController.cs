@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
-            _traceWriter = traceWriter.WithSource($"{ScriptConstants.TraceSourceHostAdmin}.Api");
+            _traceWriter = traceWriter.WithDefaults($"{ScriptConstants.TraceSourceHostAdmin}.Api");
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryAdminController);
         }
 

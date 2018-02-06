@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
@@ -9,6 +10,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json.Linq;
+using Microsoft.Azure.WebJobs.Script;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 {
@@ -30,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
                 {
                     _traceWriter = _config.DependencyResolver
                         .GetService<TraceWriter>()
-                        .WithSource(ScriptConstants.TraceSourceHttpHandler);
+                        .WithDefaults(ScriptConstants.TraceSourceHttpHandler);
                 }
 
                 return _traceWriter;
@@ -50,25 +52,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
                 request.Properties.Add(ScriptConstants.AzureFunctionsColdStartKey, sw);
             }
 
+            Dictionary<string, object> traceProperties = new Dictionary<string, object>();
+
             var details = new JObject
             {
                 { "requestId", request.GetRequestId() },
                 { "method", request.Method.ToString() },
                 { "uri", request.RequestUri.LocalPath.ToString() }
             };
-            TraceWriter.Info($"Executing HTTP request: {details}");
+            traceProperties[ScriptConstants.TracePropertyActivityIdKey] = details["requestId"];
+            TraceWriter.Info($"Executing HTTP request: {details}", traceProperties);
 
             var response = await base.SendAsync(request, cancellationToken);
 
-            details = new JObject
-            {
-                { "requestId", request.GetRequestId() },
-                { "method", request.Method.ToString() },
-                { "uri", request.RequestUri.LocalPath.ToString() },
-                { "authorizationLevel", request.GetAuthorizationLevel().ToString() },
-                { "status", response.StatusCode.ToString() }
-            };
-            TraceWriter.Info($"Executed HTTP request: {details}");
+            details["authorizationLevel"] = request.GetAuthorizationLevel().ToString();
+            TraceWriter.Info($"Executed HTTP request: {details}", traceProperties);
 
             return response;
         }

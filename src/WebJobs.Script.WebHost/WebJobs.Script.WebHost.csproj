@@ -497,6 +497,9 @@
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="App_Start\WebHostResolver.cs" />
     <Compile Include="App_Start\WebHostSettings.cs" />
+    <Compile Include="Diagnostics\ExtendedEventSource.cs" />
+    <Compile Include="Diagnostics\FunctionsEventSource.cs" />
+    <Compile Include="Diagnostics\FunctionsSystemLogsEventSource.cs" />
     <Compile Include="Diagnostics\Sanitizer.cs" />
     <Compile Include="Extensions\HttpRouteCollectionExtensions.cs" />
     <Compile Include="Extensions\HttpRouteFactoryExtensions.cs" />

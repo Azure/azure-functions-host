@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.IO
 
             if (traceWriter != null)
             {
-                _traceWriter = traceWriter.WithSource(ScriptConstants.TraceSourceFileWatcher);
+                _traceWriter = traceWriter.WithDefaults(ScriptConstants.TraceSourceFileWatcher);
             }
 
             InitializeWatcher();

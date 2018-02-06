@@ -9,9 +9,11 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -286,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script
             var host = (ScriptHost)sender;
             string extensionVersion = _settingsManager.GetSetting(EnvironmentSettingNames.FunctionsExtensionVersion);
             string hostId = host.ScriptConfig.HostConfig.HostId;
-            string message = $"Starting Host (HostId={hostId}, Version={ScriptHost.Version}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={host.InDebugMode}, ConsecutiveErrors={_consecutiveErrorCount}, StartupCount={_hostStartCount}, FunctionsExtensionVersion={extensionVersion})";
+            string message = $"Starting Host (HostId={hostId}, Version={ScriptHost.Version}, InstanceId={host.InstanceId}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={host.InDebugMode}, ConsecutiveErrors={_consecutiveErrorCount}, StartupCount={_hostStartCount}, FunctionsExtensionVersion={extensionVersion})";
             host.TraceWriter.Info(message);
             host.Logger.LogInformation(message);
 

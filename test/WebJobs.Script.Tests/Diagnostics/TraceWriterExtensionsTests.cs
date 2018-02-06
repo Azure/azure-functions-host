@@ -15,8 +15,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void WithSource_AppliesDefaultSource()
         {
+            string scriptHostId = Guid.NewGuid().ToString();
             TestTraceWriter testTraceWriter = new TestTraceWriter(TraceLevel.Verbose);
-            var wrappedTraceWriter = testTraceWriter.WithSource("TestDefault");
+            var wrappedTraceWriter = testTraceWriter.WithDefaults("TestDefault", scriptHostId);
 
             wrappedTraceWriter.Info("Test1");
             wrappedTraceWriter.Info("Test2", "CustomSource");

@@ -320,6 +320,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 LoggerFactoryBuilder = loggerFactoryHookMock.Object
             };
             config.HostConfig.HostId = ID;
+            config.TraceWriter = new TestTraceWriter(TraceLevel.Info);
 
             var scriptHostFactory = new TestScriptHostFactory();
             var eventManagerMock = new Mock<IScriptEventManager>();

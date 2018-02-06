@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             _swaggerDocumentManager = swaggerDocumentManager;
             _scriptHostManager = scriptHostManager;
-            _traceWriter = traceWriter.WithSource($"{ScriptConstants.TraceSourceSwagger}.Api");
+            _traceWriter = traceWriter.WithDefaults($"{ScriptConstants.TraceSourceSwagger}.Api");
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategorySwaggerController);
         }
 

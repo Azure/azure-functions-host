@@ -25,9 +25,9 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// <returns>The sanitized string.</returns>
         internal static string Sanitize(string input)
         {
-            if (input == null)
+            if (string.IsNullOrEmpty(input))
             {
-                return null;
+                return string.Empty;
             }
 
             string t = input;

@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var config = new ScriptHostConfiguration();
             config.HostConfig.AddService<IMetricsLogger>(_metricsLogger);
+            config.TraceWriter = new TestTraceWriter(TraceLevel.Info);
             var funcDescriptor = new FunctionDescriptor();
             var funcDescriptors = new Collection<FunctionDescriptor>();
             funcDescriptors.Add(funcDescriptor);
