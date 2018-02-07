@@ -1,6 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-#if ADMIN_SUPPORT
+
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,6 +10,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -19,6 +20,8 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WebJobs.Script.Tests;
 using Xunit;
@@ -33,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private Mock<WebScriptHostManager> managerMock;
         private Collection<FunctionDescriptor> testFunctions;
         private AdminController testController;
+        private Mock<ISecretManager> secretsManagerMock;
 
         public AdminControllerTests()
         {
@@ -42,22 +46,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var config = new ScriptHostConfiguration();
             var environment = new NullScriptHostEnvironment();
             var eventManager = new Mock<IScriptEventManager>();
-            hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, eventManager.Object, config, null, null });
+            var mockRouter = new Mock<IWebJobsRouter>();
+            hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, eventManager.Object, config, null, null, null });
             hostMock.Setup(p => p.Functions).Returns(testFunctions);
 
             WebHostSettings settings = new WebHostSettings();
             settings.SecretsPath = _secretsDirectory.Path;
-            managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(), eventManager.Object, _settingsManager, settings });
+            secretsManagerMock = new Mock<ISecretManager>(MockBehavior.Strict);
+            managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(secretsManagerMock.Object), eventManager.Object, _settingsManager, settings, mockRouter.Object, NullLoggerFactory.Instance });
             managerMock.SetupGet(p => p.Instance).Returns(hostMock.Object);
 
-            testController = new AdminController(managerMock.Object, settings, new TestTraceWriter(TraceLevel.Verbose), null);
-        }
-
-        [Fact]
-        public void HasAuthorizationLevelAttribute()
-        {
-            AuthorizationLevelAttribute attribute = typeof(AdminController).GetCustomAttribute<AuthorizationLevelAttribute>();
-            Assert.Equal(AuthorizationLevel.Admin, attribute.Level);
+            testController = new AdminController(managerMock.Object, settings, new LoggerFactory() , null);
         }
 
         [Fact]
@@ -97,8 +96,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Input = testInput
             };
-            HttpResponseMessage response = testController.Invoke(testFunctionName, invocation);
-            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+            IActionResult response = testController.Invoke(testFunctionName, invocation);
+            Assert.IsType<AcceptedResult>(response);
 
             // allow the invoke task to run
             await Task.Delay(200);
@@ -121,4 +120,3 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
     }
 }
-#endif
