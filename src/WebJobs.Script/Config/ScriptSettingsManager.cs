@@ -26,6 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public bool IsRemoteDebuggingEnabled => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.RemoteDebuggingPort));
 
+        public virtual bool IsZipDeployment => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteZipDeployment));
+
         public bool IsDynamicSku => GetSetting(EnvironmentSettingNames.AzureWebsiteSku) == ScriptConstants.DynamicSku;
 
         public virtual string AzureWebsiteDefaultSubdomain

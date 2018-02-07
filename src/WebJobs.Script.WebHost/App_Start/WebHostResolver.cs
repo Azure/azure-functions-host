@@ -267,6 +267,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void OnSpecializationTimerTick(object state)
         {
+            if (_settingsManager.IsZipDeployment)
+            {
+                // TEMP - when in Zip deploy mode, temporarily disabling timer based specialization
+                // until issue https://github.com/Azure/azure-functions-host/issues/2392 is fixed.
+                return;
+            }
+
             EnsureInitialized((WebHostSettings)state);
 
             // We know we've just specialized, since this timer only runs
