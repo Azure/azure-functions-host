@@ -39,6 +39,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            if (request.IsColdStart())
+            {
+                // for cold start requests we want to measure the request
+                // pipeline dispatch time
+                // important that this stopwatch is started as early as possible
+                // in the pipeline (in this case, in our first handler)
+                var sw = new Stopwatch();
+                sw.Start();
+                request.Properties.Add(ScriptConstants.AzureFunctionsColdStartKey, sw);
+            }
+
             var details = new JObject
             {
                 { "requestId", request.GetRequestId() },

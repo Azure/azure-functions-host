@@ -28,6 +28,8 @@ using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -38,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly WebHostMetricsLogger _metricsLogger;
         private readonly ISecretManager _secretManager;
         private readonly WebHostSettings _webHostSettings;
+        private readonly ScriptSettingsManager _settingsManager;
         private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly ScriptHostConfiguration _config;
         private readonly ISwaggerDocumentManager _swaggerDocumentManager;
@@ -49,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private bool _hostStarted = false;
         private HttpRouteCollection _httpRoutes;
         private HttpRequestManager _httpRequestManager;
+        private SystemTraceWriter _systemTraceWriter;
 
         public WebScriptHostManager(ScriptHostConfiguration config,
             ISecretManagerFactory secretManagerFactory,
@@ -66,18 +70,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _metricsLogger = new WebHostMetricsLogger();
             _exceptionHandler = new WebScriptHostExceptionHandler(this);
             _webHostSettings = webHostSettings;
+            _settingsManager = settingsManager;
             _hostTimeoutSeconds = hostTimeoutSeconds;
             _hostRunningPollIntervalMilliseconds = hostPollingIntervalMilliseconds;
 
             var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
-            var systemTraceWriter = new SystemTraceWriter(systemEventGenerator, settingsManager, TraceLevel.Verbose);
+            _systemTraceWriter = new SystemTraceWriter(systemEventGenerator, settingsManager, TraceLevel.Verbose);
             if (config.TraceWriter != null)
             {
-                config.TraceWriter = new CompositeTraceWriter(new TraceWriter[] { config.TraceWriter, systemTraceWriter });
+                config.TraceWriter = new CompositeTraceWriter(new TraceWriter[] { config.TraceWriter, _systemTraceWriter });
             }
             else
             {
-                config.TraceWriter = systemTraceWriter;
+                config.TraceWriter = _systemTraceWriter;
             }
 
             config.IsSelfHost = webHostSettings.IsSelfHost;
@@ -169,7 +174,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 };
                 using (logger.BeginScope(scopeState))
                 {
+                    JObject coldStartData = null;
+                    if (request.IsColdStart())
+                    {
+                        coldStartData = new JObject
+                        {
+                            { "requestId", request.GetRequestId() },
+                            { "language", function.Metadata.ScriptType.ToString() },
+                            { "sku", _settingsManager.WebsiteSku }
+                        };
+
+                        var dispatchStopwatch = request.GetPropertyOrDefault<Stopwatch>(ScriptConstants.AzureFunctionsColdStartKey);
+                        if (dispatchStopwatch != null)
+                        {
+                            dispatchStopwatch.Stop();
+                            coldStartData.Add("dispatchDuration", dispatchStopwatch.ElapsedMilliseconds);
+                        }
+                    }
+
+                    var functionStopwatch = new Stopwatch();
+                    functionStopwatch.Start();
                     await Instance.CallAsync(function.Name, arguments, cancellationToken);
+                    functionStopwatch.Stop();
+
+                    if (coldStartData != null)
+                    {
+                        coldStartData.Add("functionDuration", functionStopwatch.ElapsedMilliseconds);
+
+                        var coldStartEvent = new TraceEvent(TraceLevel.Info, coldStartData.ToString(Formatting.None));
+                        coldStartEvent.Properties.Add(ScriptConstants.TracePropertyEventNameKey, ScriptConstants.ColdStartEventName);
+                        _systemTraceWriter.Trace(coldStartEvent);
+                    }
                 }
             }
 

@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsHttpRequestAuthorizationDisabledKey = "MS_AzureFunctionsAuthorizationDisabled";
         public const string AzureFunctionsHttpFunctionKey = "MS_AzureFunctionsHttpFunction";
         public const string AzureFunctionsRequestIdKey = "MS_AzureFunctionsRequestID";
+        public const string AzureFunctionsColdStartKey = "MS_AzureFunctionsColdStart";
         public const string AzureFunctionsHttpRequestKey = "MS_AzureFunctionsHttpRequest";
         public const string AzureProxyFunctionExecutorKey = "MS_AzureProxyFunctionExecutor";
 
@@ -54,9 +55,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ProxyMetadataFileName = "proxies.json";
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
+        public const string ColdStartEventName = "ColdStart";
 
         public const string AntaresLogIdHeaderName = "X-ARR-LOG-ID";
         public const string AntaresScaleOutHeaderName = "X-FUNCTION-SCALEOUT";
+        public const string AntaresColdStartHeaderName = "X-MS-COLDSTART";
         public const string DynamicSku = "Dynamic";
         public const string DefaultProductionSlotName = "production";
 

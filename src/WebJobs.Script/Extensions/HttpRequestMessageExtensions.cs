@@ -42,6 +42,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return request.GetRequestPropertyOrDefault<T>(propertyName);
         }
 
+        public static bool IsColdStart(this HttpRequestMessage request)
+        {
+            return !string.IsNullOrEmpty(request.GetHeaderValueOrDefault(ScriptConstants.AntaresColdStartHeaderName));
+        }
+
         public static bool IsAntaresInternalRequest(this HttpRequestMessage request)
         {
             if (!ScriptSettingsManager.Instance.IsAzureEnvironment)
