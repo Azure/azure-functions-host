@@ -1018,9 +1018,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var logs = await TestHelpers.GetFunctionLogsAsync("TimerTrigger", throwOnNoLogs: false);
 
             // There is likely still a timing issue here; capture traces to help pinpoint it.
-            var traces = string.Join(Environment.NewLine, Fixture.TraceWriter.GetTraces().Select(t => t.Message));
-            Assert.True(logs.Count() >= 2, traces);
-            Assert.True(logs[1].Contains("Timer function ran!"), traces);
+            var timerTraces = Fixture.TraceWriter.GetTraces()
+                .Select(t => $"{t.Message} [{t.Timestamp.ToString("HH:mm:ss.fff")}]")
+                .Where(t => t.Contains("Timer") && !t.StartsWith("Found the following"));
+            string traceString = string.Join(Environment.NewLine, timerTraces);
+
+            Assert.True(logs.Count() >= 2, traceString);
+            Assert.True(logs[1].Contains("Timer function ran!"), traceString);
         }
 
         [Fact]
