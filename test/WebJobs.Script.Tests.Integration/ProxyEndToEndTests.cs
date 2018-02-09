@@ -74,6 +74,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task LocalFunctionInfiniteRedirectTest()
+        {
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/myloop");
+
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("400", response.StatusCode.ToString("D"));
+            Assert.True(content.Contains("Infinite loop"));
+        }
+
+        [Fact]
         public async Task LocalFunctionCallWithoutProxy()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/Ping");

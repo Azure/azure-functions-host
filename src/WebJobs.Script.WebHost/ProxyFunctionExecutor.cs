@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -54,6 +55,27 @@ namespace Microsoft.Azure.WebJobs.Script.Host
             {
                 return await functionRequestInvoker.ProcessRequestAsync(req, ct, _scriptHostManager, _webHookReceiverManager);
             };
+
+            // Local Function calls do not go thru ARR, so implementing the ARR's MAX-FORWARDs header logic here to avoid infinte redirects.
+            IEnumerable<string> values = null;
+            int redirectCount = 0;
+            if (request.Headers.TryGetValues(ScriptConstants.AzureProxyFunctionLocalRedirectHeaderName, out values))
+            {
+                int.TryParse(values.FirstOrDefault(), out redirectCount);
+
+                if(redirectCount >= ScriptConstants.AzureProxyFunctionMaxLocalRedirects)
+                {
+                    response = request.CreateErrorResponse(HttpStatusCode.BadRequest, "Infinite loop detected when trying to call a local function or proxy from a proxy.");
+                    request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+                    return;
+                }
+
+                // This is to make sure the header is properly updated. removing it then adding it with updated count.
+                request.Headers.Remove(ScriptConstants.AzureProxyFunctionLocalRedirectHeaderName);
+            }
+
+            redirectCount++;
+            request.Headers.Add(ScriptConstants.AzureProxyFunctionLocalRedirectHeaderName, redirectCount.ToString());
 
             var resp = await _scriptHostManager.HttpRequestManager.ProcessRequestAsync(request, processRequestHandler, cancellationToken);
             request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey] = resp;

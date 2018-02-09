@@ -69,7 +69,7 @@
     "catchAllRoutes": {
       "matchCondition": {
         "route": "/proxy/{*path}",
-        "methods": ["GET", "POST"]
+        "methods": [ "GET", "POST" ]
       },
       "backendUri": "http://localhost/{path}",
       "requestOverrides": {
@@ -105,6 +105,12 @@
       "requestOverrides": {
         "backend.request.headers.accept": "text/plain"
       }
+    },
+    "ProxyAvoidInfiniteRedirect": {
+      "matchCondition": {
+        "route": "/api/{*path}"
+      },
+      "backendUri": "https://localhost/api/{path}"
     }
   }
 }
