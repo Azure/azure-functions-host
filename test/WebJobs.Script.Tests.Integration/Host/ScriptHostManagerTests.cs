@@ -58,11 +58,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Background task to run while the main thread is pumping events at RunAndBlock().
                 Thread t = new Thread(_ =>
                 {
-                    // don't start until the manager is running
-                    TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
-
                     try
                     {
+                        // don't start until the manager is running
+                        TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
+
                         // Wait for initial execution.
                         TestHelpers.Await(() =>
                         {
@@ -116,6 +116,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var newDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestScripts/Node/MovedTrigger");
 
             CancellationTokenSource cts = new CancellationTokenSource();
+
+            // Don't wait forever
+            bool timeout = false;
+            Task ignore = Task.Delay(TimeSpan.FromMinutes(3)).ContinueWith((t) =>
+            {
+                timeout = true;
+                cts.Cancel();
+            });
+
             var fixture = new NodeEndToEndTests.TestFixture();
             await fixture.Host.StopAsync();
             var config = fixture.Host.ScriptConfig;
@@ -139,11 +148,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Background task to run while the main thread is pumping events at RunAndBlock().
                 Thread t = new Thread(_ =>
                 {
-                    // don't start until the manager is running
-                    TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
-
                     try
                     {
+                        // don't start until the manager is running
+                        TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
+
                         // Wait for initial execution.
                         TestHelpers.Await(() =>
                         {
@@ -164,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         // rename directory & delete old blob
                         Directory.Move(oldDirectory, newDirectory);
 
-                        resetEvent.Wait(TimeSpan.FromSeconds(10));
+                        Assert.True(resetEvent.Wait(TimeSpan.FromSeconds(10)), "Timeout waiting for 'RestartHost' to be called.");
 
                         blob.Delete();
 
@@ -201,12 +210,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                     cts.Cancel();
                 });
+
                 t.Start();
 
                 manager.RunAndBlock(cts.Token);
 
-                t.Join();
+                Assert.True(t.Join(TimeSpan.FromSeconds(10)), "Thread join timed out.");
 
+                Assert.False(timeout, "The test timed out and was canceled.");
                 Assert.True(exception == null, exception?.SourceException?.ToString());
                 Assert.True(moveException == null, "Failed to move function back to original directory: " + moveException?.SourceException?.ToString());
             }
