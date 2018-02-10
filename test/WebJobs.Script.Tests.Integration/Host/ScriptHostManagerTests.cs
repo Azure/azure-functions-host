@@ -51,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var config = fixture.Host.ScriptConfig;
 
             ExceptionDispatchInfo exception = null;
+            ExceptionDispatchInfo updateException = null;
             using (var eventManager = new ScriptEventManager())
             using (var manager = new ScriptHostManager(config, eventManager))
             {
@@ -89,8 +90,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         {
                             UpdateOutputName("first", "testblob", fixture);
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            updateException = ExceptionDispatchInfo.Capture(ex);
                         }
                     }
 
@@ -103,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 t.Join();
 
                 Assert.True(exception == null, exception?.SourceException?.ToString());
+                Assert.True(updateException == null, "Failed to update output name: " + updateException?.SourceException?.ToString());
             }
         }
 
@@ -120,6 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var blob = fixture.TestOutputContainer.GetBlockBlobReference("testblob");
 
             ExceptionDispatchInfo exception = null;
+            ExceptionDispatchInfo moveException = null;
             var mockEnvironment = new Mock<IScriptHostEnvironment>();
             using (var eventManager = new ScriptEventManager())
             using (var manager = new ScriptHostManager(config, eventManager, mockEnvironment.Object))
@@ -189,8 +193,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         {
                             Directory.Move(newDirectory, oldDirectory);
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            moveException = ExceptionDispatchInfo.Capture(ex);
                         }
                     }
 
@@ -203,6 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 t.Join();
 
                 Assert.True(exception == null, exception?.SourceException?.ToString());
+                Assert.True(moveException == null, "Failed to move function back to original directory: " + moveException?.SourceException?.ToString());
             }
         }
 
