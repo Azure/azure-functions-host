@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing.File
         private readonly AutoRecoveringFileSystemWatcher _fileWatcher;
         private readonly IScriptEventManager _eventManager;
         private readonly string _source;
+        private readonly TraceWriter _traceWriter;
         private bool _disposed = false;
 
         public FileWatcherEventSource(IScriptEventManager eventManager,
@@ -27,12 +28,22 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing.File
             _eventManager = eventManager;
             _fileWatcher = new AutoRecoveringFileSystemWatcher(path, filter, includeSubdirectories, changeTypes, traceWriter);
             _fileWatcher.Changed += FileChanged;
+            _traceWriter = traceWriter;
         }
 
         private void FileChanged(object sender, FileSystemEventArgs e)
         {
-            var fileEvent = new FileEvent(_source, e);
-            _eventManager.Publish(fileEvent);
+            // This handler is called on a background thread, so any exceptions thrown will crash
+            // the process. Handle and log all errors instead.
+            try
+            {
+                var fileEvent = new FileEvent(_source, e);
+                _eventManager.Publish(fileEvent);
+            }
+            catch (Exception ex)
+            {
+                _traceWriter?.Error($"Error handling '{e.ChangeType}' notification for '{e.FullPath}'.", ex);
+            }
         }
 
         private void Dispose(bool disposing)

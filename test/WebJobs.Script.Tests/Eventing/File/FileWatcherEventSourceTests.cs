@@ -3,10 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.File;
@@ -64,6 +64,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
                 await Task.Delay(2000);
 
                 Assert.Equal(2, events.Count);
+            }
+        }
+
+        [Fact]
+        public async Task FileChangedHandlerExceptions_LogError_AndDoNotThrow()
+        {
+            // Note: The FileSystemWatcher handler is called on a background thread. This means that when the handler
+            //       throws an exception, it crashes the process. The Visual Studio test runner handles that scenario and
+            //       does not crash. Before this handler was fixed, this test would only fail in the console runner.
+
+            TestTraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            using (var directory = new TempDirectory())
+            using (var eventManager = new ScriptEventManager())
+            using (var eventSource = new FileWatcherEventSource(eventManager, "TestSource", directory.Path, traceWriter: traceWriter))
+            {
+                var expectedException = new InvalidOperationException("This should not crash the process!");
+                eventManager.Subscribe(p => throw expectedException);
+
+                string fullPath = Path.Combine(directory.Path, "test.txt");
+                File.WriteAllText(fullPath, "Test");
+
+                await TestHelpers.Await(
+                    () => traceWriter.GetTraces().Any(p => p.Level == TraceLevel.Error && p.Message.Contains(fullPath) && p.Exception == expectedException),
+                    timeout: 2000, pollingInterval: 250);
             }
         }
     }
