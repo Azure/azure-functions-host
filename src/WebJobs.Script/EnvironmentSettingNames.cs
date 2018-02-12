@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteZipDeployment = "WEBSITE_USE_ZIP";
         public const string RemoteDebuggingPort = "REMOTEDEBUGGINGPORT";
         public const string AzureWebsitePlaceholderMode = "WEBSITE_PLACEHOLDER_MODE";
+        public const string AzureWebsiteContainerReady = "WEBSITE_CONTAINER_READY";
         public const string AzureWebsiteHomePath = "HOME";
         public const string AzureWebJobsScriptRoot = "AzureWebJobsScriptRoot";
         public const string CompilationReleaseMode = "AzureWebJobsDotNetReleaseCompilation";

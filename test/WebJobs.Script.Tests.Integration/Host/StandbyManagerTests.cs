@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var vars = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
+                { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, "87654639876900123453445678890144" }
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
@@ -112,6 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // Now specialize the host
                 ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
 
                 // give time for the specialization to happen
                 string[] logLines = null;
