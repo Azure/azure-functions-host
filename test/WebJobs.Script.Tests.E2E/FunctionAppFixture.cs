@@ -126,7 +126,12 @@ namespace WebJobs.Script.EndToEndTests
                     {
                         await Task.Delay(TimeSpan.FromSeconds(3));
                     }
-                    var result = await client.GetAsync($"{Settings.SiteBaseAddress}");
+
+                    // Workaround for https://github.com/Azure/azure-functions-host/issues/2397 as the base URL
+                    // doesn't currently start the host.
+                    // var result = await client.GetAsync($"{Settings.SiteBaseAddress}");
+                    var functions = await _kuduClient.GetFunctions();
+                    var result = await client.GetAsync($"{Settings.SiteBaseAddress}/admin/functions/{functions.First().Name}/status?code={FunctionAppMasterKey}");
                     statusCode = result.StatusCode;
                 }
                 while (statusCode != HttpStatusCode.OK && attempts < 5);
@@ -176,7 +181,7 @@ namespace WebJobs.Script.EndToEndTests
                 {
                     HttpResponseMessage response = await client.GetAsync(Settings.RuntimeExtensionPackageUrl);
                     response.EnsureSuccessStatusCode();
-                    
+
                     using (var fileStream = File.OpenWrite(extensionFilePath))
                     {
                         await response.Content.CopyToAsync(fileStream);

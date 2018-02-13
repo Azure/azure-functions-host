@@ -80,7 +80,7 @@ namespace WebJobs.Script.EndToEndTests
 
                 string response = await client.GetStringAsync($"api/appsettinginformation?code={_fixture.FunctionDefaultKey}");
 
-                _fixture.Assert.Equals("~1", response);
+                _fixture.Assert.Equals("beta", response);
             }
         }
 
@@ -146,7 +146,7 @@ namespace WebJobs.Script.EndToEndTests
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Requires Extension installation")]
         [TestTrace]
         public async Task ServiceBus_Node_DoesNotExhaustConnections()
         {
