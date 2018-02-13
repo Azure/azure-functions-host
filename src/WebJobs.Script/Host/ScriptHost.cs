@@ -241,7 +241,9 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // best effort
                 string message = "Unable to update the debug sentinel file.";
-                TraceWriter.Error(message, ex);
+                TraceEvent traceEvent = new TraceEvent(TraceLevel.Error, message, ScriptConstants.TraceSourceScriptHost, ex);
+                traceEvent.Properties.AddRange(GetTraceProperties());
+                TraceWriter.Trace(traceEvent);
                 Logger?.LogError(0, ex, message);
 
                 if (ex.IsFatal())
@@ -249,6 +251,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     throw;
                 }
             }
+        }
+
+        private Dictionary<string, object> GetTraceProperties()
+        {
+            return new Dictionary<string, object>()
+            {
+                 { ScriptConstants.TracePropertyScriptHostInstanceIdKey, _instanceId }
+            };
         }
 
         internal static void AddFunctionError(Dictionary<string, Collection<string>> functionErrors, string functionName, string error, bool isFunctionShortName = false)
@@ -349,7 +359,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 Logger = _startupLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
 
                 string readingFileMessage = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostConfigFilePath);
-                TraceWriter.Info(readingFileMessage);
+                TraceWriter.Trace(GetTraceEvent(readingFileMessage, TraceLevel.Info));
 
                 string json = File.ReadAllText(hostConfigFilePath);
                 JObject hostConfigObject;
@@ -367,7 +377,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 string sanitizedJson = SanitizeHostJson(hostConfigObject);
                 string readFileMessage = $"Host configuration file read:{Environment.NewLine}{sanitizedJson}";
-                TraceWriter.Info(readFileMessage);
+                TraceWriter.Trace(GetTraceEvent(readingFileMessage, TraceLevel.Info));
 
                 ApplyConfiguration(hostConfigObject, ScriptConfig);
 
@@ -454,7 +464,9 @@ namespace Microsoft.Azure.WebJobs.Script
                         // If we're unable to initialize a binding provider for any reason, log the error
                         // and continue
                         string errorMsg = string.Format("Error initializing binding provider '{0}'", bindingProvider.GetType().FullName);
-                        TraceWriter.Error(errorMsg, ex);
+                        TraceEvent traceEvent = new TraceEvent(TraceLevel.Error, errorMsg, ScriptConstants.TraceSourceScriptHost, ex);
+                        traceEvent.Properties.AddRange(GetTraceProperties());
+                        TraceWriter.Trace(traceEvent);
                         _startupLogger?.LogError(0, ex, errorMsg);
                     }
                 }
@@ -503,7 +515,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", GeneratedTypeNamespace, GeneratedTypeName);
 
                 string generatingMsg = string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", functions.Count);
-                TraceWriter.Info(generatingMsg);
+                TraceWriter.Trace(GetTraceEvent(generatingMsg, TraceLevel.Info));
                 _startupLogger?.LogInformation(generatingMsg);
 
                 Type type = FunctionGenerator.Generate(HostAssemblyName, typeName, typeAttributes, functions);
@@ -521,6 +533,13 @@ namespace Microsoft.Azure.WebJobs.Script
                     PurgeOldLogDirectories();
                 }
             }
+        }
+
+        private TraceEvent GetTraceEvent(string message, TraceLevel traceWriterLevel, string source = ScriptConstants.TraceSourceScriptHost)
+        {
+            TraceEvent traceEvent = new TraceEvent(traceWriterLevel, message, source);
+            traceEvent.Properties[ScriptConstants.TracePropertyScriptHostInstanceIdKey] = InstanceId;
+            return traceEvent;
         }
 
         internal static string SanitizeHostJson(JObject hostJsonObject)
@@ -578,7 +597,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Adding a function error will cause this function to get ignored
                     AddFunctionError(this.FunctionErrors, metadata.Name, msg);
 
-                    TraceWriter.Info(msg);
+                    TraceWriter.Trace(GetTraceEvent(msg, TraceLevel.Info));
                     _startupLogger?.LogInformation(msg);
                 }
 
@@ -614,7 +633,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // This likely means the function.json and dlls are out of sync. Perhaps a badly generated function.json?
                     string msg = $"Failed to load type '{typeName}' from '{path}'";
-                    TraceWriter.Warning(msg);
+                    TraceWriter.Trace(GetTraceEvent(msg, TraceLevel.Warning));
                     _startupLogger?.LogWarning(msg);
                 }
             }
@@ -664,12 +683,12 @@ namespace Microsoft.Azure.WebJobs.Script
         private void TraceFileChangeRestart(string changeDescription, string changeType, string path, bool isShutdown)
         {
             string fileChangeMsg = string.Format(CultureInfo.InvariantCulture, "{0} change of type '{1}' detected for '{2}'", changeDescription, changeType, path);
-            TraceWriter.Info(fileChangeMsg);
+            TraceWriter.Trace(GetTraceEvent(fileChangeMsg, TraceLevel.Info));
             Logger?.LogInformation(fileChangeMsg);
 
             string action = isShutdown ? "shutdown" : "restart";
             string signalMessage = $"Host configuration has changed. Signaling {action}";
-            TraceWriter.Info(signalMessage);
+            TraceWriter.Trace(GetTraceEvent(signalMessage, TraceLevel.Info));
             Logger?.LogInformation(signalMessage);
         }
 
@@ -796,7 +815,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         {
                             // destructive operation, thus log
                             string removeLogMessage = $"Deleting log directory '{logDir.FullName}'";
-                            TraceWriter.Verbose(removeLogMessage);
+                            TraceWriter.Trace(GetTraceEvent(removeLogMessage, TraceLevel.Verbose));
                             _startupLogger?.LogDebug(removeLogMessage);
                             logDir.Delete(recursive: true);
                         }
@@ -811,7 +830,9 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Purge is best effort
                 string errorMsg = "An error occurred while purging log files";
-                TraceWriter.Error(errorMsg, ex);
+                TraceEvent traceEvent = new TraceEvent(TraceLevel.Error, errorMsg, ScriptConstants.TraceSourceScriptHost, ex);
+                traceEvent.Properties.AddRange(GetTraceProperties());
+                TraceWriter.Trace(traceEvent);
                 _startupLogger?.LogError(0, ex, errorMsg);
             }
         }
@@ -859,7 +880,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     // If we're unable to load create a binding provider for any reason, log
                     // the error and continue
                     string errorMsg = string.Format("Unable to create binding provider '{0}'", bindingProviderType.FullName);
-                    traceWriter.Error(errorMsg, ex);
+                    TraceEvent traceEvent = new TraceEvent(TraceLevel.Error, errorMsg, ScriptConstants.TraceSourceScriptHost, ex);
+                    traceEvent.Properties.Add(ScriptConstants.TracePropertyScriptHostInstanceIdKey, hostConfig.HostId);
+                    traceWriter.Trace(traceEvent);
                     logger?.LogError(0, ex, errorMsg);
                 }
             }
@@ -933,7 +956,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (config.Functions != null)
             {
-                traceWriter.Info($"A function whitelist has been specified, excluding all but the following functions: [{string.Join(", ", config.Functions)}]");
+                string msg = $"A function whitelist has been specified, excluding all but the following functions: [{string.Join(", ", config.Functions)}]";
+                TraceEvent traceEvent = new TraceEvent(TraceLevel.Info, msg, ScriptConstants.TraceSourceScriptHost);
+                traceEvent.Properties.Add(ScriptConstants.TracePropertyScriptHostInstanceIdKey, settingsManager.InstanceId);
+                traceWriter.Trace(traceEvent);
             }
 
             foreach (var scriptDir in Directory.EnumerateDirectories(config.RootScriptPath))
@@ -1081,14 +1107,20 @@ namespace Microsoft.Azure.WebJobs.Script
         ScriptSettingsManager settingsManager, out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
         {
             fileSystem = fileSystem ?? new FileSystem();
-
+            Dictionary<string, object> traceProperties = new Dictionary<string, object>()
+                {
+                    { ScriptConstants.TracePropertyFunctionNameKey, functionName },
+                    { ScriptConstants.TracePropertyScriptHostInstanceIdKey, settingsManager.InstanceId }
+                };
             error = null;
             functionMetadata = ParseFunctionMetadata(functionName, functionConfig, scriptDirectory, settingsManager);
 
             if (functionMetadata.IsExcluded)
             {
                 string message = $"Function '{functionName}' is marked as excluded";
-                traceWriter.Info(message);
+                TraceEvent traceEvent = new TraceEvent(TraceLevel.Info, message, ScriptConstants.TraceSourceScriptHost);
+                traceEvent.Properties.AddRange(traceProperties);
+                traceWriter.Trace(traceEvent);
                 logger?.LogInformation(message);
                 functionMetadata = null;
                 return true;
@@ -1097,7 +1129,9 @@ namespace Microsoft.Azure.WebJobs.Script
             if (functionMetadata.IsDisabled)
             {
                 string message = $"Function '{functionName}' is disabled";
-                traceWriter.Info(message);
+                TraceEvent traceEvent = new TraceEvent(TraceLevel.Info, message, ScriptConstants.TraceSourceScriptHost);
+                traceEvent.Properties.AddRange(traceProperties);
+                traceWriter.Trace(traceEvent);
                 logger?.LogInformation(message);
             }
 
@@ -1618,7 +1652,9 @@ namespace Microsoft.Azure.WebJobs.Script
             // Also ensure we flush immediately to ensure any buffered logs
             // are written
             string message = "A ScriptHost error has occurred";
-            TraceWriter.Error(message, exception);
+            TraceEvent traceEvent = new TraceEvent(TraceLevel.Error, message, ScriptConstants.TraceSourceScriptHost, exception);
+            traceEvent.Properties.AddRange(GetTraceProperties());
+            TraceWriter.Trace(traceEvent);
             TraceWriter.Flush();
 
             // Note: We do not log to ILogger here as any error has already been logged.
@@ -1734,8 +1770,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 TraceFileChangeRestart(changeDescription, e.ChangeType.ToString(), e.FullPath, shutdown);
-                ScheduleRestartAsync(shutdown).ContinueWith(t => TraceWriter.Error($"Error restarting host (full shutdown: {shutdown})", t.Exception),
-                    TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+                TraceEvent traceEvent = new TraceEvent(TraceLevel.Error, $"Error restarting host (full shutdown: {shutdown})", ScriptConstants.TraceSourceScriptHost);
+                traceEvent.Properties.AddRange(GetTraceProperties());
+                ScheduleRestartAsync(shutdown).ContinueWith(t =>
+                {
+                 traceEvent.Exception = t.Exception;
+                 TraceWriter.Trace(traceEvent);
+                },
+                TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
             }
         }
 

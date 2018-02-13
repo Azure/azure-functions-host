@@ -120,7 +120,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 }
 
                 string message = $"Host Status: {JsonConvert.SerializeObject(status, Formatting.Indented)}";
-                _traceWriter.Info(message);
+                Dictionary<string, object> traceProperties = new Dictionary<string, object>
+                {
+                    {ScriptConstants.TracePropertyScriptHostInstanceIdKey, status.Id}
+                };
+                _traceWriter.Info(message, traceProperties);
                 _logger?.LogInformation(message);
 
                 return Ok(status);
@@ -161,6 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     {
                         traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, logEntry.FunctionName);
                     }
+                    traceEvent.Properties.Add(ScriptConstants.TracePropertyScriptHostInstanceIdKey, _scriptHostManager.Instance.InstanceId);
                     _traceWriter.Trace(traceEvent);
 
                     var logLevel = Utility.ToLogLevel(traceEvent.Level);

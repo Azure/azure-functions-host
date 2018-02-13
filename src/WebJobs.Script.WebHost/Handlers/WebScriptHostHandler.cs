@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
             // before any other request code runs.
             var scriptHostManager = resolver.GetService<WebScriptHostManager>();
             scriptHostManager.EnsureInitialized();
+            request.Properties[ScriptConstants.TracePropertyScriptHostInstanceIdKey] = scriptHostManager.Instance.InstanceId;
 
             var webHostSettings = resolver.GetService<WebHostSettings>();
             if (webHostSettings.IsAuthDisabled)

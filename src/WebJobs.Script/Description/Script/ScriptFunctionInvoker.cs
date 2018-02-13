@@ -9,6 +9,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -93,7 +94,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 if (e.Data != null)
                 {
                     // the user's TraceWriter will automatically log to ILogger as well
-                    userTraceWriter.Info(e.Data);
+                    TraceEvent traceEvent = new TraceEvent(TraceLevel.Info, e.Data, ScriptConstants.TraceSourceScriptFunctionExecution);
+                    traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionInvocationIdKey, invocationId);
+                    traceEvent.Properties.Add(ScriptConstants.TracePropertyScriptHostInstanceIdKey, Host.InstanceId);
+                    traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, context.ExecutionContext.FunctionName);
+                    userTraceWriter.Trace(traceEvent);
                 }
             };
 

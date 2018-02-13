@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -52,14 +53,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static void Initialize(ScriptHostConfiguration config)
         {
-            CreateStandbyFunctions(config.RootScriptPath, config.TraceWriter);
+            CreateStandbyFunctions(config.HostConfig.HostId, config.RootScriptPath, config.TraceWriter);
         }
 
-        private static void CreateStandbyFunctions(string scriptPath, TraceWriter traceWriter)
+        private static void CreateStandbyFunctions(string hostInstanceId, string scriptPath, TraceWriter traceWriter)
         {
+            Dictionary<string, object> traceProperties = new Dictionary<string, object>
+            {
+                {ScriptConstants.TracePropertyScriptHostInstanceIdKey, hostInstanceId },
+            };
             lock (_syncLock)
             {
-                traceWriter.Info($"Creating StandbyMode placeholder function directory ({scriptPath})");
+                traceWriter.Info($"Creating StandbyMode placeholder function directory ({scriptPath})", traceProperties);
 
                 FileUtility.DeleteDirectoryAsync(scriptPath, true).GetAwaiter().GetResult();
                 FileUtility.EnsureDirectoryExists(scriptPath);
@@ -74,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 content = ReadResourceString($"Functions.{WarmUpFunctionName}.run.csx");
                 File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
 
-                traceWriter.Info($"StandbyMode placeholder function directory created");
+                traceWriter.Info($"StandbyMode placeholder function directory created", traceProperties);
             }
         }
 

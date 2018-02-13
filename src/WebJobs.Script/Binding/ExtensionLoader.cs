@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -106,10 +107,25 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 catch (Exception e)
                 {
                     string msg = $"Failed to load custom extension from '{path}'.";
-                    _traceWriter.Error(msg, e);
+                    WriteTraceEvent(msg, ex: e);
                     _startupLogger.LogError(0, e, msg);
                 }
             }
+        }
+
+        private void WriteTraceEvent(string msg, TraceLevel traceLevel = TraceLevel.Info, Exception ex = null)
+        {
+            TraceEvent traceEvent;
+            if (ex != null)
+            {
+                traceEvent = new TraceEvent(TraceLevel.Error, msg, GetType().Name, ex);
+            }
+            else
+            {
+                traceEvent = new TraceEvent(traceLevel, msg, GetType().Name);
+            }
+            traceEvent.Properties.Add(ScriptConstants.TracePropertyHostIdKey, _config.HostConfig.HostId);
+            _traceWriter.Trace(traceEvent);
         }
 
         // Load extensions that are directly referenced by the user types.
@@ -174,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 msg = $"Loaded custom extension '{extensionName}'";
             }
 
-            _traceWriter.Info(msg);
+            WriteTraceEvent(msg);
             _startupLogger.LogInformation(msg);
             _config.HostConfig.AddExtension(extensionConfigProvider);
         }
@@ -190,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     if (typeExtension == null)
                     {
                         string errorMsg = $"Can't find binding provider '{assemblyQualifiedTypeName}' for '{bindingType}'";
-                        _traceWriter.Error(errorMsg);
+                        WriteTraceEvent(errorMsg, TraceLevel.Error);
                         _startupLogger?.LogError(errorMsg);
                     }
                     else
