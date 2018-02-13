@@ -367,7 +367,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var hostId = hostConfig.HostId ?? "default";
             Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
             var loggingConnectionString = config.HostConfig.DashboardConnectionString;
-            var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, loggingConnectionString, config.TraceWriter);
+            var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, ScriptSettingsManager.Instance.InstanceId, loggingConnectionString, config.TraceWriter);
             hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
 
             // disable standard Dashboard logging (enabling Table logging above)

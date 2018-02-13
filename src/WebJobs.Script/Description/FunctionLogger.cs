@@ -68,34 +68,34 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         // Helper to emit a standard log message for function started.
-        public void LogFunctionStart(string hostInstanceId, string functionName, string functionInvocationId)
+        public void LogFunctionStart(string hostId, string scriptHostInstanceId, string functionName, string functionInvocationId)
         {
-            string startMessage = $"Function started (Id={functionInvocationId} Name={functionName} hostId = {hostInstanceId})";
+            string startMessage = $"Function started (Id={functionInvocationId} Name={functionName} hostId = {hostId})";
 
             // TODO add source
-            TraceWriter.Trace(GetTraceEvent(hostInstanceId, functionName, functionInvocationId, startMessage, TraceLevel.Info));
+            TraceWriter.Trace(GetTraceEvent(hostId, scriptHostInstanceId, functionName, functionInvocationId, startMessage, TraceLevel.Info));
 
             Logger?.LogInformation(startMessage);
         }
 
-        public void LogFunctionResult(bool success, string hostInstanceId, string functionName, string functionInvocationId, long elapsedMS)
+        public void LogFunctionResult(bool success, string hostId, string scriptHostInstanceId, string functionName, string functionInvocationId, long elapsedMS)
         {
             string resultString = success ? "Success" : "Failure";
             string message = $"Function completed ({resultString}, Id={functionInvocationId ?? "0"}, Duration={elapsedMS}ms)";
 
             TraceLevel traceWriterLevel = success ? TraceLevel.Info : TraceLevel.Error;
             LogLevel logLevel = success ? LogLevel.Information : LogLevel.Error;
-
-            TraceWriter.Trace(GetTraceEvent(hostInstanceId, functionName, functionInvocationId, message, traceWriterLevel));
+            TraceWriter.Trace(GetTraceEvent(hostId, scriptHostInstanceId, functionName, functionInvocationId, message, traceWriterLevel));
 
             Logger?.Log(logLevel, new EventId(0), message, null, (s, e) => s);
         }
 
-        private static TraceEvent GetTraceEvent(string hostInstanceId, string functionName, string functionInvocationId, string message, TraceLevel traceWriterLevel)
+        private static TraceEvent GetTraceEvent(string hostId, string scriptHostInstanceId, string functionName, string functionInvocationId, string message, TraceLevel traceWriterLevel)
         {
             TraceEvent traceEvent = new TraceEvent(traceWriterLevel, message);
             traceEvent.Properties[ScriptConstants.TracePropertyFunctionInvocationIdKey] = functionInvocationId;
-            traceEvent.Properties[ScriptConstants.TracePropertyScriptHostInstanceIdKey] = hostInstanceId;
+            traceEvent.Properties[ScriptConstants.TracePropertyHostIdKey] = hostId;
+            traceEvent.Properties[ScriptConstants.TracePropertyScriptHostInstanceIdKey] = scriptHostInstanceId;
             traceEvent.Properties[ScriptConstants.TracePropertyFunctionNameKey] = functionName;
             return traceEvent;
         }

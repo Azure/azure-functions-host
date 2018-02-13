@@ -225,6 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IMetricsLogger _metrics;
         private readonly Guid _invocationId;
         private readonly string _hostId;
+        private readonly string _scriptHostInstanceId;
         private readonly FunctionLogger _logInfo;
 
         private readonly Stopwatch _invocationStopWatch = new Stopwatch();
@@ -236,6 +237,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             FunctionMetadata metadata,
             IMetricsLogger metrics,
             string hostId,
+            string scriptHostInstanceId,
             Guid invocationId,
             FunctionLogger logInfo)
         {
@@ -243,12 +245,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _metrics = metrics;
             _invocationId = invocationId;
             _hostId = hostId;
+            _scriptHostInstanceId = scriptHostInstanceId;
             _logInfo = logInfo;
         }
 
         public void Start()
         {
-            _logInfo.LogFunctionStart(_hostId, _metadata.Name, _invocationId.ToString());
+            _logInfo.LogFunctionStart(_hostId, _scriptHostInstanceId, _metadata.Name, _invocationId.ToString());
 
             startedEvent = new FunctionStartedEvent(_invocationId, _metadata);
             _metrics.BeginEvent(startedEvent);
@@ -259,7 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         // Called on success and failure
         public void End(bool success)
         {
-            _logInfo.LogFunctionResult(success, _hostId, _metadata.Name, _invocationId.ToString(), _invocationStopWatch.ElapsedMilliseconds);
+            _logInfo.LogFunctionResult(success, _hostId, _scriptHostInstanceId, _metadata.Name, _invocationId.ToString(), _invocationStopWatch.ElapsedMilliseconds);
 
             startedEvent.Success = success;
             _metrics.EndEvent(startedEvent);
