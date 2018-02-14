@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
@@ -47,14 +46,14 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
                 return;
             }
 
-            bool isSystemTrace = GetStateBoolValue(stateValues, ScriptConstants.LogPropertyIsSystemLogKey);
+            bool isSystemTrace = Utility.GetStateBoolValue(stateValues, ScriptConstants.LogPropertyIsSystemLogKey);
             if (isSystemTrace)
             {
                 // System traces are not logged to files.
                 return;
             }
 
-            bool isPrimaryHostTrace = GetStateBoolValue(stateValues, ScriptConstants.LogPropertyPrimaryHostKey);
+            bool isPrimaryHostTrace = Utility.GetStateBoolValue(stateValues, ScriptConstants.LogPropertyPrimaryHostKey);
             if (isPrimaryHostTrace && !_isPrimary())
             {
                 return;
@@ -71,24 +70,5 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         private string FormatMessage(string message)
            => string.Format(CultureInfo.InvariantCulture, "{0} {1}", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture), message.Trim());
-
-        private static bool GetStateBoolValue(IEnumerable<KeyValuePair<string, object>> state, string key)
-        {
-            if (state == null)
-            {
-                return false;
-            }
-
-            var kvps = state.Where(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
-
-            if (!kvps.Any())
-            {
-                return false;
-            }
-
-            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
-            // this, we shouldn't have conflicts.
-            return Convert.ToBoolean(kvps.Last().Value);
-        }
     }
 }

@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly string _subscriptionId;
         private readonly string _categoryName;
         private readonly string _functionName;
+        private readonly bool _isUserFunction;
 
         public SystemLogger(string categoryName, IEventGenerator eventGenerator, ScriptSettingsManager settingsManager)
         {
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _eventGenerator = eventGenerator;
             _categoryName = categoryName;
             _functionName = LogCategories.IsFunctionCategory(_categoryName) ? _categoryName.Split('.')[1] : string.Empty;
+            _isUserFunction = LogCategories.IsFunctionUserCategory(_categoryName);
         }
 
         public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope.Push(state);
@@ -37,18 +39,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             return true;
         }
 
+        private bool IsUserLog<TState>(TState state)
+        {
+            // User logs are determined by either the category or the presence of the LogPropertyIsUserLogKey
+            // in the log state.
+            // This check is extra defensive; the 'Function.{FunctionName}.User' category should never occur here
+            // as the SystemLoggerProvider checks that before creating a Logger.
+
+            return _isUserFunction ||
+                (state is IEnumerable<KeyValuePair<string, object>> stateDict &&
+                Utility.GetStateBoolValue(stateDict, ScriptConstants.LogPropertyIsUserLogKey) == true);
+        }
+
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            if (!IsEnabled(logLevel))
+            // User logs are not logged to system logs.
+            if (!IsEnabled(logLevel) || IsUserLog(state))
             {
-                return;
-            }
-
-            if (state is IDictionary<string, object> stateDict &&
-                stateDict.TryGetValue(ScriptConstants.LogPropertyIsUserLogKey, out object value) &&
-                value != null && value is bool && (bool)value == true)
-            {
-                // we don't write user traces to system logs
                 return;
             }
 

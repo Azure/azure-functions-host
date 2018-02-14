@@ -404,6 +404,25 @@ namespace Microsoft.Azure.WebJobs.Script
             return filterOptions;
         }
 
+        public static bool GetStateBoolValue(IEnumerable<KeyValuePair<string, object>> state, string key)
+        {
+            if (state == null)
+            {
+                return false;
+            }
+
+            var kvps = state.Where(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
+
+            if (!kvps.Any())
+            {
+                return false;
+            }
+
+            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
+            // this, we shouldn't have conflicts.
+            return Convert.ToBoolean(kvps.Last().Value);
+        }
+
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
         {
             public override bool CanWrite => true;
