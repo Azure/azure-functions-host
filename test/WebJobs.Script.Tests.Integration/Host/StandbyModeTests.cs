@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             loggerFactory.AddProvider(_loggerProvider);
 
             _webHostResolver = new WebHostResolver(_settingsManager, new TestSecretManagerFactory(false), eventManagerMock.Object,
-                WebHostSettings.CreateDefault(_settingsManager), routerMock.Object, new TestLoggerProviderFactory(_loggerProvider),
+                new WebHostSettings(), routerMock.Object, new TestLoggerProviderFactory(_loggerProvider),
                 loggerFactory);
 
             WebScriptHostManager.ResetStandbyMode();
