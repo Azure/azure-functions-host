@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
                         _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings);
                         _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
-                        InitializeFileSystem();
+                        InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
 
                         if (_standbyHostManager != null)
                         {
@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings);
                         _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
 
-                        InitializeFileSystem();
+                        InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
                         StandbyManager.Initialize(_standbyScriptHostConfig);
 
                         // start a background timer to identify when specialization happens
@@ -285,7 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _activeHostManager?.EnsureInitialized();
         }
 
-        private static void InitializeFileSystem()
+        private static void InitializeFileSystem(bool readOnlyFileSystem)
         {
             if (ScriptSettingsManager.Instance.IsAzureEnvironment)
             {
@@ -294,17 +294,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     string home = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
                     if (!string.IsNullOrEmpty(home))
                     {
-                        // Delete hostingstart.html if any. Azure creates that in all sites by default
-                        string siteRootPath = Path.Combine(home, @"site\wwwroot");
-                        string hostingStart = Path.Combine(siteRootPath, "hostingstart.html");
-                        if (File.Exists(hostingStart))
+                        if (!readOnlyFileSystem)
                         {
-                            File.Delete(hostingStart);
+                            // Delete hostingstart.html if any. Azure creates that in all sites by default
+                            string siteRootPath = Path.Combine(home, @"site\wwwroot");
+                            string hostingStart = Path.Combine(siteRootPath, "hostingstart.html");
+                            if (File.Exists(hostingStart))
+                            {
+                                File.Delete(hostingStart);
+                            }
                         }
 
-                        // Create the tools folder if it doesn't exist
                         string toolsPath = Path.Combine(home, @"site\tools");
-                        Directory.CreateDirectory(toolsPath);
+                        if (!readOnlyFileSystem)
+                        {
+                            // Create the tools folder if it doesn't exist
+                            Directory.CreateDirectory(toolsPath);
+                        }
 
                         var folders = new List<string>();
                         folders.Add(Path.Combine(home, @"site\tools"));
