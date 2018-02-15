@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Copyright 2016, Google Inc.
 # All rights reserved.
@@ -74,7 +74,7 @@ for f in *.cs; do
 	cat $f >> "$f.temp"
 done
 for f in *.cs; do
-	mv --force "$f.temp" $f
+	mv -f "$f.temp" $f
 done 
 
 cd ../..
