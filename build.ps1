@@ -30,6 +30,9 @@ dotnet pack src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj -o ..\..\buildout
 
 dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber
 
+# Create full binares package
+ZipContent $privateSiteExtensionPath "$buildoutput\Functions.Binaries.$extensionVersion-alpha.zip"
+
 # Project cleanup (trim some project files - this should be revisited)
 Remove-Item -Recurse -Force "$privateSiteExtensionPath\publish" -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force "$privateSiteExtensionPath\runtimes\linux" -ErrorAction SilentlyContinue
