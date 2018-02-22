@@ -1119,14 +1119,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // for formatting
             var hostJson = JObject.Parse(hostJsonSanitized);
-            string expectedMessgae = $"Host configuration file read:{Environment.NewLine}{hostJson}";
+            string expectedMessage = $"Host configuration file read:{Environment.NewLine}{hostJson}";
 
             var logger = loggerProvider.CreatedLoggers.Single(l => l.Category == LogCategories.Startup);
-            var logMessage = logger.LogMessages.Single(l => l.FormattedMessage.StartsWith("Host configuration ")).FormattedMessage;
-            Assert.Equal(expectedMessgae, logMessage);
+            var logMessage = logger.LogMessages.Single(l => l.FormattedMessage.StartsWith("Host configuration file read")).FormattedMessage;
+            Assert.Equal(expectedMessage, logMessage);
 
-            var traceMessage = traceWriter.GetTraces().Single(t => t.Message.StartsWith("Host configuration ")).Message;
-            Assert.Equal(expectedMessgae, traceMessage);
+            var traceMessage = traceWriter.GetTraces().Single(t => t.Message.StartsWith("Host configuration file read")).Message;
+            Assert.Equal(expectedMessage, traceMessage);
         }
 
         [Fact]
