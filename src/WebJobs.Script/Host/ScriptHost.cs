@@ -371,6 +371,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 ApplyConfiguration(hostConfigObject, ScriptConfig);
 
+                if (_settingsManager.FileSystemIsReadOnly)
+                {
+                    // we're in read-only mode so source files can't change
+                    ScriptConfig.FileWatchingEnabled = false;
+                }
+
                 // now the configuration has been read and applied re-create the logger
                 // factory and loggers ensuring that filters and settings have been applied
                 ConfigureLoggerFactory(recreate: true);
@@ -415,6 +421,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     _fileEventsSubscription = EventManager.OfType<FileEvent>()
                         .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
                         .Subscribe(e => OnFileChanged(e.FileChangeArguments));
+
+                    // take a snapshot so we can detect function additions/removals
+                    _directorySnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).ToImmutableArray();
                 }
 
                 // If a file change should result in a restart, we debounce the event to
@@ -427,9 +436,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 _shutdown = Shutdown;
                 _shutdown = _shutdown.Debounce(500);
-
-                // take a snapshot so we can detect function additions/removals
-                _directorySnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).ToImmutableArray();
 
                 // Scan the function.json early to determine the binding extensions used
                 var functionMetadata = ReadFunctionMetadata(ScriptConfig, TraceWriter, _startupLogger, FunctionErrors, _settingsManager);
