@@ -17,7 +17,7 @@
       <dependency id="Edge.js" version="6.11.3" />
       <dependency id="FSharp.Compiler.Service" version="9.0.1" />
       <dependency id="FSharp.Core" version="4.0.0.1" />
-      <dependency id="Microsoft.Azure.WebJobs" version="2.2.0-beta1-11214" />
+      <dependency id="Microsoft.Azure.WebJobs" version="2.2.0-beta1-11229" />
       <dependency id="Microsoft.ApplicationInsights.WindowsServer" version="2.4.1" />
       <dependency id="Microsoft.Azure.AppService.Proxy" version="1.0.0.1" />
       <dependency id="Microsoft.Azure.ServiceBus.EventProcessorHost" version="2.2.10" />
