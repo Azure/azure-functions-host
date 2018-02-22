@@ -385,6 +385,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Allow tests to modify anything initialized by host.json
                 ScriptConfig.OnConfigurationApplied?.Invoke(ScriptConfig);
+                TraceWriter.Verbose("Host configuration applied.");
 
                 // only after configuration has been applied and loggers have been created, raise the initializing event
                 HostInitializing?.Invoke(this, EventArgs.Empty);
@@ -406,6 +407,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
 
                 _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
+                TraceWriter.Verbose("Debug file watch initialized.");
 
                 var storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
                 if (storageString == null)
@@ -422,8 +424,12 @@ namespace Microsoft.Azure.WebJobs.Script
                         .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
                         .Subscribe(e => OnFileChanged(e.FileChangeArguments));
 
+                    TraceWriter.Verbose("File event source initialized.");
+
                     // take a snapshot so we can detect function additions/removals
                     _directorySnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).ToImmutableArray();
+
+                    TraceWriter.Verbose("Created directory snapshot.");
                 }
 
                 // If a file change should result in a restart, we debounce the event to
@@ -437,45 +443,62 @@ namespace Microsoft.Azure.WebJobs.Script
                 _shutdown = Shutdown;
                 _shutdown = _shutdown.Debounce(500);
 
-                // Scan the function.json early to determine the binding extensions used
-                var functionMetadata = ReadFunctionMetadata(ScriptConfig, TraceWriter, _startupLogger, FunctionErrors, _settingsManager);
+                Collection<FunctionMetadata> functionMetadata;
+                using (metricsLogger.LatencyEvent(MetricEventNames.HostStartupReadFunctionMetadataLatency))
+                {
+                    // Scan the function.json early to determine the binding extensions used
+                    functionMetadata = ReadFunctionMetadata(ScriptConfig, TraceWriter, _startupLogger, FunctionErrors, _settingsManager);
+                    TraceWriter.Verbose("Function metadata read.");
+                }
+
                 var extensionLoader = new ExtensionLoader(ScriptConfig, TraceWriter, _startupLogger);
                 var usedBindingTypes = extensionLoader.DiscoverBindingTypes(functionMetadata);
 
                 var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfigObject, TraceWriter, _startupLogger, usedBindingTypes);
                 ScriptConfig.BindingProviders = bindingProviders;
+                TraceWriter.Verbose("Binding providers loaded.");
 
                 var coreBinder = bindingProviders.OfType<CoreExtensionsScriptBindingProvider>().First();
                 coreBinder.AppDirectory = ScriptConfig.RootScriptPath;
 
                 // Allow BindingProviders to initialize
-                foreach (var bindingProvider in ScriptConfig.BindingProviders)
+                using (metricsLogger.LatencyEvent(MetricEventNames.HostStartupInitializeBindingProvidersLatency))
                 {
-                    try
+                    foreach (var bindingProvider in ScriptConfig.BindingProviders)
                     {
-                        bindingProvider.Initialize();
+                        try
+                        {
+                            bindingProvider.Initialize();
+                        }
+                        catch (Exception ex)
+                        {
+                            // If we're unable to initialize a binding provider for any reason, log the error
+                            // and continue
+                            string errorMsg = string.Format("Error initializing binding provider '{0}'", bindingProvider.GetType().FullName);
+                            TraceWriter.Error(errorMsg, ex);
+                            _startupLogger?.LogError(0, ex, errorMsg);
+                        }
                     }
-                    catch (Exception ex)
-                    {
-                        // If we're unable to initialize a binding provider for any reason, log the error
-                        // and continue
-                        string errorMsg = string.Format("Error initializing binding provider '{0}'", bindingProvider.GetType().FullName);
-                        TraceWriter.Error(errorMsg, ex);
-                        _startupLogger?.LogError(0, ex, errorMsg);
-                    }
+                    TraceWriter.Verbose("Binding providers initialized.");
                 }
+
                 extensionLoader.LoadBuiltinExtensions(usedBindingTypes);
 
                 var directTypes = GetDirectTypes(functionMetadata);
                 extensionLoader.LoadDirectlyReferencedExtensions(directTypes);
                 extensionLoader.LoadCustomExtensions();
+                TraceWriter.Verbose("Extension loading complete.");
 
                 // Now all extensions have been loaded, the metadata is finalized.
                 // There's a single script binding instance that services all extensions.
                 // give that script binding the metadata for all loaded extensions so it can dispatch to them.
-                var generalProvider = ScriptConfig.BindingProviders.OfType<GeneralScriptBindingProvider>().First();
-                var metadataProvider = this.CreateMetadataProvider();
-                generalProvider.CompleteInitialization(metadataProvider);
+                using (metricsLogger.LatencyEvent(MetricEventNames.HostStartupCreateMetadataProviderLatency))
+                {
+                    var generalProvider = ScriptConfig.BindingProviders.OfType<GeneralScriptBindingProvider>().First();
+                    var metadataProvider = this.CreateMetadataProvider();
+                    generalProvider.CompleteInitialization(metadataProvider);
+                    TraceWriter.Verbose("Metadata provider created.");
+                }
 
                 // Do this after we've loaded the custom extensions. That gives an extension an opportunity to plug in their own implementations.
                 if (storageString != null)
@@ -504,7 +527,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 };
 
                 // read all script functions and apply to JobHostConfiguration
-                Collection<FunctionDescriptor> functions = GetFunctionDescriptors(functionMetadata);
+                Collection<FunctionDescriptor> functions;
+                using (metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
+                {
+                    functions = GetFunctionDescriptors(functionMetadata);
+                    TraceWriter.Verbose("Function descriptors read.");
+                }
+
                 Collection<CustomAttributeBuilder> typeAttributes = CreateTypeAttributes(ScriptConfig);
                 string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", GeneratedTypeNamespace, GeneratedTypeName);
 
@@ -524,7 +553,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
                 {
-                    PurgeOldLogDirectories();
+                    using (metricsLogger.LatencyEvent(MetricEventNames.HostStartupPurgeLogDirectoriesLatency))
+                    {
+                        PurgeOldLogDirectories();
+                        TraceWriter.Verbose("Old log directories purged.");
+                    }
                 }
             }
         }
