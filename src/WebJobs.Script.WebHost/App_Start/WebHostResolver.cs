@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public sealed class WebHostResolver : IDisposable
     {
         private static ScriptSettingsManager _settingsManager;
-        private static ILoggerFactory _emptyLoggerFactory = new LoggerFactory();
         private static object _syncLock = new object();
 
         private readonly ISecretManagerFactory _secretManagerFactory;
@@ -31,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private ScriptHostConfiguration _activeScriptHostConfig;
         private WebScriptHostManager _activeHostManager;
         private WebHookReceiverManager _activeReceiverManager;
+        private ILoggerFactory _defaultLoggerFactory;
         private TraceWriter _defaultTraceWriter;
         private Timer _specializationTimer;
 
@@ -43,45 +43,57 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public ILoggerFactory GetLoggerFactory(WebHostSettings settings)
         {
-            WebScriptHostManager manager = GetWebScriptHostManager(settings);
-
-            if (!manager.CanInvoke())
+            // if we have an active initialized host, return it's fully configured
+            // logger factory
+            var hostManager = GetWebScriptHostManager(settings);
+            if (hostManager.CanInvoke())
             {
-                // The host is still starting and the LoggerFactory cannot be used. Return
-                // an empty LoggerFactory rather than waiting. This will mostly affect
-                // calls to /admin/host/status, which do not block on CanInvoke. It allows this
-                // API to remain fast with the side effect of occassional missed logs.
-                return _emptyLoggerFactory;
+                var config = GetScriptHostConfiguration(settings);
+                return config.HostConfig.LoggerFactory;
             }
-
-            return GetScriptHostConfiguration(settings).HostConfig.LoggerFactory;
+            else
+            {
+                // if there is no active host, return the default logger factory
+                if (_defaultLoggerFactory == null)
+                {
+                    lock (_syncLock)
+                    {
+                        if (_defaultLoggerFactory == null)
+                        {
+                            _defaultLoggerFactory = CreateDefaultLoggerFactory(settings);
+                        }
+                    }
+                }
+                
+                return _defaultLoggerFactory;
+            }
         }
 
         public TraceWriter GetTraceWriter(WebHostSettings settings)
         {
-            // if we have an active host, return it's fully configured
+            // if we have an active initialized host, return it's fully configured
             // trace writer
             var hostManager = GetWebScriptHostManager(settings);
-            var traceWriter = hostManager.Instance?.TraceWriter;
-
-            if (traceWriter != null)
+            if (hostManager.CanInvoke())
             {
-                return traceWriter;
+                return hostManager.Instance.TraceWriter;
             }
-
-            // if there is no active host, return the default trace writer
-            if (_defaultTraceWriter == null)
+            else
             {
-                lock (_syncLock)
+                // if there is no active host, return the default trace writer
+                if (_defaultTraceWriter == null)
                 {
-                    if (_defaultTraceWriter == null)
+                    lock (_syncLock)
                     {
-                        _defaultTraceWriter = CreateDefaultTraceWriter(settings);
+                        if (_defaultTraceWriter == null)
+                        {
+                            _defaultTraceWriter = CreateDefaultTraceWriter(settings);
+                        }
                     }
                 }
-            }
 
-            return _defaultTraceWriter;
+                return _defaultTraceWriter;
+            }
         }
 
         public ISwaggerDocumentManager GetSwaggerDocumentManager(WebHostSettings settings)
@@ -239,6 +251,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return new CompositeTraceWriter(new[] { systemTraceWriter, fileTraceWriter });
         }
 
+        private ILoggerFactory CreateDefaultLoggerFactory(WebHostSettings settings)
+        {
+            var loggerFactory = new LoggerFactory();
+            if (!string.IsNullOrEmpty(_settingsManager.ApplicationInsightsInstrumentationKey))
+            {
+                var config = GetScriptHostConfiguration(settings);
+                var clientFactory = new ScriptTelemetryClientFactory(_settingsManager.ApplicationInsightsInstrumentationKey, config.ApplicationInsightsSamplingSettings, config.LogFilter.Filter);
+                loggerFactory.AddApplicationInsights(clientFactory);
+            }
+
+            return loggerFactory;
+        }
+
         /// <summary>
         /// Helper function used to manage active/standby transitions for objects managed
         /// by this class.
@@ -339,6 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _activeHostManager?.Dispose();
             _activeReceiverManager?.Dispose();
             ((IDisposable)_defaultTraceWriter)?.Dispose();
+            _defaultLoggerFactory?.Dispose();
         }
     }
 }

@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -65,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetTraceWriter_ReturnsExpectedValue()
+        public async Task GetTraceWriter_GetLogger_ReturnsExpectedValue()
         {
             var settingsManager = new ScriptSettingsManager();
             var secretManagerFactoryMock = new Mock<ISecretManagerFactory>();
@@ -81,6 +82,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     ScriptPath = Path.Combine(tempRoot, @"Functions"),
                     SecretsPath = Path.Combine(tempRoot, @"Functions"),
                 };
+                File.WriteAllText(Path.Combine(settings.ScriptPath, "host.json"), "{ id: 'testid' }");
+
+                var secretsManagerMock = new Mock<ISecretManager>();
+                secretsManagerMock.Setup(p => p.PurgeOldSecretsAsync(settings.SecretsPath, It.IsAny<TraceWriter>(), It.IsAny<ILogger>())).Returns(Task.CompletedTask);
+                secretManagerFactoryMock.Setup(p => p.Create(settingsManager, It.IsAny<TraceWriter>(), It.IsAny<ILoggerFactory>(), It.IsAny<ISecretsRepository>())).Returns(secretsManagerMock.Object);
 
                 // ensure that the returned trace writer isn't null even though the
                 // host hasn't been initialized yet
@@ -104,13 +110,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var logs = await TestHelpers.GetHostLogsAsync();
                 Assert.True(logs.Single().Contains(id));
 
-                // now wait for the host to be initialized and verify the trace
-                // writer returned is the host trace writer
-                Task ignored = Task.Run(() => hostManager.RunAndBlock());
-                await TestHelpers.Await(() => hostManager.Instance != null);
+                // ensure that the returned logger factory isn't null even though the host
+                // hasn't been initialized yet
+                var loggerFactory = resolver.GetLoggerFactory(settings);
+                Assert.NotNull(loggerFactory);
 
+                // now wait for the host to be fully initialized
+                Task ignored = Task.Run(() => hostManager.RunAndBlock());
+                await TestHelpers.Await(() => hostManager.State == ScriptHostState.Error || hostManager.CanInvoke());
+
+                if (hostManager.State == ScriptHostState.Error)
+                {
+                    Assert.True(false, hostManager.LastError.Message);
+                }
+
+                // verify the trace writer returned is the host trace writer
                 traceWriter = resolver.GetTraceWriter(settings);
                 Assert.Same(hostManager.Instance.TraceWriter, traceWriter);
+
+                // verify the logger factory returned is the host trace writer
+                var config = resolver.GetScriptHostConfiguration(settings);
+                loggerFactory = resolver.GetLoggerFactory(settings);
+                Assert.Same(loggerFactory, config.HostConfig.LoggerFactory);
             }
         }
     }
