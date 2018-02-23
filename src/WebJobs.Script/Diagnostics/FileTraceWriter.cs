@@ -153,7 +153,17 @@ namespace Microsoft.Azure.WebJobs.Script
                 return;
             }
 
-            AppendLine($"[{traceEvent.Level}] {traceEvent.Message}");
+            // format the trace line metadata prefix
+            var traceProperties = new List<string>()
+            {
+                traceEvent.Level.ToString()
+            };
+            if (traceEvent.Properties.TryGetValue(ScriptConstants.TracePropertyFunctionNameKey, out value))
+            {
+                traceProperties.Add((string)value);
+            }
+            string tracePrefix = string.Join(",", traceProperties);
+            AppendLine($"[{tracePrefix}] {traceEvent.Message}");
 
             if (traceEvent.Exception != null)
             {
