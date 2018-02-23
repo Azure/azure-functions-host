@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -175,6 +176,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             traceWriter.Warning("Test Warning");
             traceWriter.Error("Test Error");
 
+            var evt = new TraceEvent(TraceLevel.Info, "Function level trace");
+            evt.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, "TestFunction");
+            traceWriter.Trace(evt);
+
             // trace a system event - expect it to be ignored
             var properties = new Dictionary<string, object>
             {
@@ -185,12 +190,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             traceWriter.Flush();
 
             string logFile = directory.EnumerateFiles().First().FullName;
-            string text = File.ReadAllText(logFile);
-            Assert.True(text.Contains("Test Error"));
-            Assert.True(text.Contains("Test Warning"));
-            Assert.True(text.Contains("Test Info"));
-            Assert.False(text.Contains("Test Verbose"));
-            Assert.False(text.Contains("Test System"));
+            string[] lines = File.ReadAllLines(logFile);
+            Assert.Equal(4, lines.Length);
+            Assert.True(lines[0].Contains("[Info] Test Info"));
+            Assert.True(lines[1].Contains("[Warning] Test Warning"));
+            Assert.True(lines[2].Contains("[Error] Test Error"));
+            Assert.True(lines[3].Contains("[Info,TestFunction] Function level trace"));
         }
 
         private void WriteLogs(string logFilePath, int numLogs)
