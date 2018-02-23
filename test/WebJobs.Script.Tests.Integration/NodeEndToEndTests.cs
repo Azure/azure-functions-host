@@ -1115,7 +1115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ApiHubTableEntityOut()
         {
-            var textArgValue = ApiHubTestHelper.NewRandomString();
+            var textArgValue = TestHelpers.NewRandomString();
 
             // Delete the test entity if it exists.
             await ApiHubTestHelper.DeleteEntityAsync(ApiHubTestHelper.EntityId5);

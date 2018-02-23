@@ -25,9 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private const string DataSetName = "default";
         private const string TableName = "SampleTable";
         private const string PrimaryKeyColumn = "Id";
-        private const string Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
-        private static readonly Random Random = new Random();
 
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
 
@@ -59,14 +56,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 //          CONSTRAINT PK_Id PRIMARY KEY(Id)
                 //      )
             }
-        }
-
-        public static string NewRandomString()
-        {
-            return new string(
-                Enumerable.Repeat('x', 10) // nvarchar(10)
-                    .Select(c => Chars[Random.Next(Chars.Length)])
-                    .ToArray());
         }
 
         public static async Task EnsureEntityAsync(int entityId, string text = null)

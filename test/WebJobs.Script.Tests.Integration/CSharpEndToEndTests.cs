@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ApiHubTableClientBindingTest()
         {
-            var textArgValue = ApiHubTestHelper.NewRandomString();
+            var textArgValue = TestHelpers.NewRandomString();
 
             // Ensure the test entity exists.
             await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId1);
@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ApiHubTableBindingTest()
         {
-            var textArgValue = ApiHubTestHelper.NewRandomString();
+            var textArgValue = TestHelpers.NewRandomString();
 
             // Ensure the test entity exists.
             await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId2);
@@ -221,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ApiHubTableEntityBindingTest()
         {
-            var textArgValue = ApiHubTestHelper.NewRandomString();
+            var textArgValue = TestHelpers.NewRandomString();
 
             // Ensure the test entity exists.
             await ApiHubTestHelper.EnsureEntityAsync(ApiHubTestHelper.EntityId3);

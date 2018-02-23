@@ -21,6 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public static class TestHelpers
     {
+        private const string Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        private static readonly Random Random = new Random();
+
         /// <summary>
         /// Gets the common root directory that functions tests create temporary directories under.
         /// This enables us to clean up test files by deleting this single directory.
@@ -31,6 +34,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 return Path.Combine(Path.GetTempPath(), "FunctionsTest");
             }
+        }
+
+        public static string NewRandomString(int length = 10)
+        {
+            return new string(
+                Enumerable.Repeat('x', length)
+                    .Select(c => Chars[Random.Next(Chars.Length)])
+                    .ToArray());
         }
 
         public static async Task Await(Func<bool> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000, bool throwWhenDebugging = false, string userMessage = null)

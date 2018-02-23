@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class FileTraceWriter : TraceWriter, IDisposable
     {
         internal const int LastModifiedCutoffDays = 1;
-        private const long MaxLogFileSizeBytes = 5 * 1024 * 1024;
+        internal const long MaxLogFileSizeBytes = 5 * 1024 * 1024;
         internal const int LogFlushIntervalMs = 1000;
         internal const int MaxLogLinesPerFlushInterval = 250;
         private readonly string _logFilePath;
@@ -38,24 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _logFilePath = logFilePath;
             _instanceId = GetInstanceId();
             _logType = logType;
-
             _logDirectory = new DirectoryInfo(logFilePath);
-            if (!_logDirectory.Exists)
-            {
-                _logDirectory.Create();
-            }
-            else
-            {
-                // query for all existing log files for this instance
-                // sorted by date, and get the last log file written to (or null)
-                var files = GetLogFiles(_logDirectory);
-                _currentLogFileInfo = files.FirstOrDefault();
-            }
-
-            if (_currentLogFileInfo == null)
-            {
-                SetNewLogFile();
-            }
 
             // start a timer to flush accumulated logs in batches
             _flushTimer = new Timer
@@ -100,30 +83,45 @@ namespace Microsoft.Azure.WebJobs.Script
                 sb.AppendLine(line);
             }
 
-            // write all lines in a single file operation
-            string contents = sb.ToString();
-            try
+            if (_currentLogFileInfo == null)
             {
-                lock (_syncLock)
-                {
-                    File.AppendAllText(_currentLogFileInfo.FullName, contents);
-                }
-            }
-            catch (DirectoryNotFoundException)
-            {
-                // need to handle cases where log file directories might
-                // have been deleted from underneath us
-                Directory.CreateDirectory(_logFilePath);
-                lock (_syncLock)
-                {
-                    File.AppendAllText(_currentLogFileInfo.FullName, contents);
-                }
+                // delay create log file
+                SetLogFile();
             }
 
-            _currentLogFileInfo.Refresh();
-            if (_currentLogFileInfo.Length > MaxLogFileSizeBytes)
+            // write all lines in a single file operation
+            string content = sb.ToString();
+            try
             {
-                SetNewLogFile();
+                AppendToFile(_currentLogFileInfo, content);
+            }
+            catch (Exception ex) when (ex is DirectoryNotFoundException || ex is FileNotFoundException)
+            {
+                // need to handle cases where log files or directories might
+                // have been deleted from underneath us
+                SetLogFile();
+                AppendToFile(_currentLogFileInfo, content);
+            }
+
+            // check to see if we need to roll to a new log file
+            _currentLogFileInfo.Refresh();
+            if (LogFileIsOverSize(_currentLogFileInfo))
+            {
+                SetLogFile();
+            }
+        }
+
+        private static void AppendToFile(FileInfo fileInfo, string content)
+        {
+            lock (_syncLock)
+            {
+                var fs = fileInfo.Open(FileMode.Open, FileAccess.Write);
+                fs.Seek(0, SeekOrigin.End);
+
+                using (var sw = new StreamWriter(fs))
+                {
+                    sw.Write(content);
+                }
             }
         }
 
@@ -250,21 +248,84 @@ namespace Microsoft.Azure.WebJobs.Script
             Flush();
         }
 
-        internal void SetNewLogFile()
+        /// <summary>
+        /// Called to set/create the current log file that will be used. Also handles purging of old
+        /// log files.
+        /// </summary>
+        internal void SetLogFile()
         {
-            // purge any log files (regardless of instance ID) whose last write time was earlier
-            // than our retention policy
-            var filesToPurge = _logDirectory.GetFiles("*.log").Where(p => (DateTime.UtcNow - p.LastWriteTimeUtc).TotalDays > LastModifiedCutoffDays);
-            DeleteFiles(filesToPurge);
+            if (!_logDirectory.Exists)
+            {
+                _logDirectory.Create();
+            }
 
-            // we include a machine identifier in the log file name to ensure we don't have any
-            // log file contention between scaled out instances
-            string filePath = Path.Combine(_logFilePath, string.Format(CultureInfo.InvariantCulture, "{0}-{1}.log", DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ssK"), _instanceId));
-            _currentLogFileInfo = new FileInfo(filePath);
+            // Check to see if there is already a log file we can use
+            bool newLogFileCreated = false;
+            var logFile = GetCurrentLogFile();
+            if (logFile != null)
+            {
+                _currentLogFileInfo = logFile;
+            }
+            else
+            {
+                lock (_syncLock)
+                {
+                    // we perform any file create operations in a lock to avoid
+                    // race conditions with multiple instances of this class on
+                    // multiple threads, where multiple log files might be created
+                    // unnecessarily
+                    logFile = GetCurrentLogFile();
+                    if (logFile != null)
+                    {
+                        _currentLogFileInfo = logFile;
+                    }
+                    else
+                    {
+                        // create a new log file
+                        // we include a machine identifier in the log file name to ensure we don't have any
+                        // log file contention between scaled out instances
+                        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ssK");
+                        string filePath = Path.Combine(_logFilePath, $"{timestamp}-{_instanceId}.log");
+                        _currentLogFileInfo = new FileInfo(filePath);
+                        _currentLogFileInfo.Create().Close();
+                        newLogFileCreated = true;
+                    }
+                }
+            }
+
+            if (newLogFileCreated)
+            {
+                // purge any log files (regardless of instance ID) whose last write time was earlier
+                // than our retention policy
+                // only do this peridically when we create a new file which will tend to keep
+                // this off the startup path
+                var filesToPurge = _logDirectory.GetFiles("*.log").Where(p => LogFileIsOld(p));
+                DeleteFiles(filesToPurge);
+            }
+        }
+
+        private static bool LogFileIsOverSize(FileInfo fileInfo)
+        {
+            // return true if the file is over our size threshold
+            return fileInfo.Length > MaxLogFileSizeBytes;
+        }
+
+        private static bool LogFileIsOld(FileInfo fileInfo)
+        {
+            return (DateTime.UtcNow - fileInfo.LastWriteTimeUtc).TotalDays > LastModifiedCutoffDays;
+        }
+
+        private FileInfo GetCurrentLogFile()
+        {
+            // return the last log file written to which is still under
+            // size threshold
+            return GetLogFiles(_logDirectory).FirstOrDefault(p => !LogFileIsOverSize(p));
         }
 
         private IEnumerable<FileInfo> GetLogFiles(DirectoryInfo directory)
         {
+            // query for all existing log files for this instance
+            // sorted by date
             string pattern = string.Format(CultureInfo.InvariantCulture, "*-{0}.log", _instanceId);
             return directory.GetFiles(pattern).OrderByDescending(p => p.LastWriteTime);
         }
