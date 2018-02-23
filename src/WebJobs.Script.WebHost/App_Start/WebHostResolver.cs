@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
@@ -246,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // That does mean that even if file logging is disabled, some logs might get written to the file system
             // but that's ok.
             string hostLogFilePath = Path.Combine(config.RootLogPath, "Host");
-            TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, config.HostConfig.Tracing.ConsoleLevel);
+            TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, config.HostConfig.Tracing.ConsoleLevel, LogType.Host);
 
             return new CompositeTraceWriter(new[] { systemTraceWriter, fileTraceWriter });
         }

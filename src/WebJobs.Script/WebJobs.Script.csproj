@@ -510,6 +510,7 @@
     <Compile Include="Description\Proxies\ProxyFunctionInvoker.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Description\DotNet\Compilation\FSharp\FSharpCompilation.cs" />
+    <Compile Include="Diagnostics\LogType.cs" />
     <Compile Include="Scale\ApplicationPerformanceCounters.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />

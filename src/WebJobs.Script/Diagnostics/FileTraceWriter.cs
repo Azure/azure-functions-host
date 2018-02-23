@@ -12,6 +12,7 @@ using System.Text;
 using System.Timers;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -23,21 +24,20 @@ namespace Microsoft.Azure.WebJobs.Script
         internal const int MaxLogLinesPerFlushInterval = 250;
         private readonly string _logFilePath;
         private readonly string _instanceId;
-        private readonly Func<string, string> _messageFormatter;
+        private readonly LogType _logType;
 
         private readonly DirectoryInfo _logDirectory;
         private static object _syncLock = new object();
         private FileInfo _currentLogFileInfo;
         private bool _disposed = false;
-
         private Timer _flushTimer;
         private ConcurrentQueue<string> _logBuffer = new ConcurrentQueue<string>();
 
-        public FileTraceWriter(string logFilePath, TraceLevel level, Func<string, string> messageFormatter = null) : base(level)
+        public FileTraceWriter(string logFilePath, TraceLevel level, LogType logType) : base(level)
         {
             _logFilePath = logFilePath;
             _instanceId = GetInstanceId();
-            _messageFormatter = messageFormatter ?? FormatMessage;
+            _logType = logType;
 
             _logDirectory = new DirectoryInfo(logFilePath);
             if (!_logDirectory.Exists)
@@ -149,11 +149,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (_logBuffer.Count == MaxLogLinesPerFlushInterval)
             {
-                AppendLine("Log output threshold exceeded.");
+                AppendLine(traceEvent, "Log output threshold exceeded.");
                 return;
             }
 
-            AppendLine($"[{traceEvent.Level}] {traceEvent.Message}");
+            AppendLine(traceEvent, traceEvent.Message);
 
             if (traceEvent.Exception != null)
             {
@@ -168,13 +168,27 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         actualException = actualException.InnerException;
                     }
-                    AppendLine(actualException.Message);
+                    AppendLine(traceEvent, actualException.Message);
                 }
                 else
                 {
-                    AppendLine(traceEvent.Exception.ToFormattedString());
+                    AppendLine(traceEvent, traceEvent.Exception.ToFormattedString());
                 }
             }
+        }
+
+        internal static string GetTracePrefix(TraceEvent traceEvent, LogType logType)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append(traceEvent.Level.ToString());
+
+            object value = null;
+            if (logType == LogType.Host && traceEvent.Properties.TryGetValue(ScriptConstants.TracePropertyFunctionNameKey, out value))
+            {
+                sb.AppendFormat(",{0}",  value);
+            }
+
+            return sb.ToString();
         }
 
         protected virtual void Dispose(bool disposing)
@@ -202,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script
             GC.SuppressFinalize(this);
         }
 
-        protected virtual void AppendLine(string line)
+        protected virtual void AppendLine(TraceEvent traceEvent, string line)
         {
             if (line == null)
             {
@@ -211,13 +225,25 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // add the line to the current buffer batch, which is flushed
             // on a timer
-            line = _messageFormatter(line);
+            line = FormatLine(traceEvent, line);
 
             _logBuffer.Enqueue(line);
         }
 
-        private string FormatMessage(string message)
-            => string.Format(CultureInfo.InvariantCulture, "{0} {1}", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture), message.Trim());
+        /// <summary>
+        /// Format the log line for the current event being traced.
+        /// </summary>
+        /// <param name="traceEvent">The event currently being traced.</param>
+        /// <param name="line">The log line to format.</param>
+        /// <returns>The formatted log message.</returns>
+        protected virtual string FormatLine(TraceEvent traceEvent, string line)
+        {
+            string tracePrefix = GetTracePrefix(traceEvent, _logType);
+            string timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture);
+            string formattedLine = $"{timestamp} [{tracePrefix}] {line.Trim()}";
+
+            return formattedLine;
+        }
 
         private void OnFlushLogs(object sender, ElapsedEventArgs e)
         {

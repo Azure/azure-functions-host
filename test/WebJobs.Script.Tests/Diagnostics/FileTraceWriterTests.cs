@@ -8,6 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -79,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
             Assert.Equal(initialCount, files.Length);
 
-            FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Verbose);
+            FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Verbose, LogType.Host);
             traceWriter.SetNewLogFile();
 
             files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
@@ -102,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             DirectoryInfo directory = new DirectoryInfo(_logFilePath);
             directory.Create();
 
-            FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Verbose);
+            FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Verbose, LogType.Host);
             traceWriter.SetNewLogFile();
 
             var files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
@@ -126,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             for (int i = 0; i < 3; i++)
             {
-                FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Verbose);
+                FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Verbose, LogType.Host);
                 traceWriter.Verbose("Testing");
                 traceWriter.Flush();
             }
@@ -168,12 +170,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             int count = directory.EnumerateFiles().Count();
             Assert.Equal(0, count);
 
-            FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Info);
+            FileTraceWriter traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Info, LogType.Host);
 
             traceWriter.Verbose("Test Verbose");
             traceWriter.Info("Test Info");
             traceWriter.Warning("Test Warning");
             traceWriter.Error("Test Error");
+
+            var evt = new TraceEvent(TraceLevel.Info, "Function level trace");
+            evt.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, "TestFunction");
+            traceWriter.Trace(evt);
 
             // trace a system event - expect it to be ignored
             var properties = new Dictionary<string, object>
@@ -185,17 +191,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             traceWriter.Flush();
 
             string logFile = directory.EnumerateFiles().First().FullName;
-            string text = File.ReadAllText(logFile);
-            Assert.True(text.Contains("Test Error"));
-            Assert.True(text.Contains("Test Warning"));
-            Assert.True(text.Contains("Test Info"));
-            Assert.False(text.Contains("Test Verbose"));
-            Assert.False(text.Contains("Test System"));
+            string[] lines = File.ReadAllLines(logFile);
+            Assert.Equal(4, lines.Length);
+            Assert.True(lines[0].Contains("[Info] Test Info"));
+            Assert.True(lines[1].Contains("[Warning] Test Warning"));
+            Assert.True(lines[2].Contains("[Error] Test Error"));
+            Assert.True(lines[3].Contains("[Info,TestFunction] Function level trace"));
+        }
+
+        [Fact]
+        public void GetTracePrefix_ReturnsExpectedValue()
+        {
+            var evt = new TraceEvent(TraceLevel.Info, "Test trace");
+            evt.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, "TestFunction");
+
+            var prefix = FileTraceWriter.GetTracePrefix(evt, LogType.Host);
+            Assert.Equal("Info,TestFunction", prefix);
+
+            prefix = FileTraceWriter.GetTracePrefix(evt, LogType.Function);
+            Assert.Equal("Info", prefix);
+
+            prefix = FileTraceWriter.GetTracePrefix(evt, LogType.Structured);
+            Assert.Equal("Info", prefix);
         }
 
         private void WriteLogs(string logFilePath, int numLogs)
         {
-            FileTraceWriter traceWriter = new FileTraceWriter(logFilePath, TraceLevel.Verbose);
+            FileTraceWriter traceWriter = new FileTraceWriter(logFilePath, TraceLevel.Verbose, LogType.Host);
 
             for (int i = 0; i < numLogs; i++)
             {

@@ -16,6 +16,7 @@ using System.Web.Http.Routing;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -438,7 +439,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             private void CreateTestFunctionLogs(string logRoot, string functionName)
             {
                 string functionLogPath = Path.Combine(logRoot, functionName);
-                FileTraceWriter traceWriter = new FileTraceWriter(functionLogPath, TraceLevel.Verbose);
+                FileTraceWriter traceWriter = new FileTraceWriter(functionLogPath, TraceLevel.Verbose, LogType.Function);
                 traceWriter.Verbose("Test log message");
                 traceWriter.Flush();
             }

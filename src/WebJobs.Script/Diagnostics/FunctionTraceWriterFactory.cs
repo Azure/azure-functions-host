@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -37,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script
             string logFilePath = Path.Combine(config.RootLogPath, dirName, functionName);
 
             // Wrap the FileTraceWriter in a RemovableTraceWriter so we can remove it from the cache when it is disposed
-            var innerTraceWriter = new FileTraceWriter(logFilePath, functionTraceLevel);
+            var innerTraceWriter = new FileTraceWriter(logFilePath, functionTraceLevel, LogType.Function);
             return new RemovableTraceWriter(this, functionName, innerTraceWriter);
         }
 

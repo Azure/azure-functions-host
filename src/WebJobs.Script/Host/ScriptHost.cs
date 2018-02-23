@@ -315,7 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // Host file logging is only done conditionally
                     string hostLogFilePath = Path.Combine(ScriptConfig.RootLogPath, "Host");
-                    TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, hostTraceLevel).Conditional(p => FileLoggingEnabled);
+                    TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, hostTraceLevel, LogType.Host).Conditional(p => FileLoggingEnabled);
 
                     if (TraceWriter != null)
                     {

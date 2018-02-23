@@ -2,13 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
@@ -22,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public StructuredLogWriter(IScriptEventManager eventManager, string baseLogPath)
         {
             string logPath = Path.Combine(baseLogPath, "structured");
-            _traceWriter = new FileTraceWriter(logPath, TraceLevel.Verbose, s => s);
+            _traceWriter = new StructuredFileTraceWriter(logPath);
 
             _subscription = eventManager.OfType<StructuredLogEntryEvent>()
                 .Subscribe(OnLogEntry);
@@ -51,6 +49,19 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public void Dispose()
         {
             Dispose(true);
+        }
+
+        private class StructuredFileTraceWriter : FileTraceWriter
+        {
+            public StructuredFileTraceWriter(string logFilePath) : base(logFilePath, TraceLevel.Verbose, LogType.Structured)
+            {
+            }
+
+            protected override string FormatLine(TraceEvent traceEvent, string message)
+            {
+                // don't want any of the default log line formatting
+                return message;
+            }
         }
     }
 }
