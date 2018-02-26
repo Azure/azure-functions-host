@@ -446,6 +446,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             bool isAzureEnvironment = false;
             mockSettings.Setup(p => p.IsAzureEnvironment).Returns(() => isAzureEnvironment);
+            mockSettings.Setup(p => p.FileSystemIsReadOnly).Returns(false);
 
             config.HostHealthMonitor.Enabled = false;
             Assert.True(target.Object.IsHostHealthy());

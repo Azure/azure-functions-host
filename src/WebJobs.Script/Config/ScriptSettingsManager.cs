@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public bool IsDynamicSku => WebsiteSku == ScriptConstants.DynamicSku;
 
-        public bool FileSystemIsReadOnly => IsZipDeployment;
+        public virtual bool FileSystemIsReadOnly => IsZipDeployment;
 
         public virtual string AzureWebsiteDefaultSubdomain
         {

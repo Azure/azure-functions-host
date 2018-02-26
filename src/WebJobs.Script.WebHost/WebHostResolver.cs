@@ -52,21 +52,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public ILoggerFactory GetLoggerFactory(WebHostSettings settings)
         {
-            WebScriptHostManager manager = GetWebScriptHostManager(settings);
-
-            if (!manager.CanInvoke())
+            // if we have an active initialized host, return it's fully configured
+            // logger factory
+            var hostManager = GetWebScriptHostManager(settings);
+            if (hostManager.CanInvoke())
             {
-                // The host is still starting and the host's LoggerFactory cannot be used. Return
-                // a fallback LoggerFactory rather than waiting. By default, this will enable logging
-                // to the SystemLogger.
+                var config = GetScriptHostConfiguration(settings);
+                return config.HostConfig.LoggerFactory;
+            }
+            else
+            {
+                // if there is no active host, return the default logger factory
+                // By default, this will enable logging to the SystemLogger.
                 return _loggerFactory;
             }
-
-            return GetScriptHostConfiguration(settings).HostConfig.LoggerFactory;
         }
-
-        public ScriptHostConfiguration GetScriptHostConfiguration() =>
-            GetScriptHostConfiguration(_settings);
 
         public ScriptHostConfiguration GetScriptHostConfiguration(WebHostSettings settings)
         {
