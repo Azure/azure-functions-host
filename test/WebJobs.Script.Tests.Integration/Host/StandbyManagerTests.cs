@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await TestHelpers.Await(() =>
                 {
                     // wait for the trace indicating that the host has been specialized
-                    logLines = logLines = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+                    logLines = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
                     return logLines.Count(p => p.Contains($"Starting Host (HostId={expectedHostId}")) == 1;
                 });
 
