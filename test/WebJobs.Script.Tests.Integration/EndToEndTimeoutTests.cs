@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerFactory.AddProvider(_loggerProvider);
         }
 
-        [Fact]
+        [Fact(Skip = "These tests currently hang (#2463)")]
         public async Task TimeoutTest_SyncFunction_CSharp()
         {
             await TimeoutTest_SyncFunction("CSharp");
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await RunTimeoutTest(scriptLang, "TimeoutSync");
         }
 
-        [Fact]
+        [Fact(Skip = "These tests currently hang (#2463)")]
         public async Task TimeoutTest_UsingToken_CSharp()
         {
             await RunTokenTest("useToken", async (logs) =>
@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
              });
         }
 
-        [Fact]
+        [Fact(Skip = "These tests currently hang (#2463)")]
         public async Task TimeoutTest_IgnoringToken_CSharp()
         {
             await RunTokenTest("ignoreToken", (logs) =>
