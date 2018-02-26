@@ -7,6 +7,7 @@ branches:
   - master
   - core
 image: Visual Studio 2017
+max_jobs: 1
 clone_folder: c:\azure-webjobs-sdk-script
 install:
 - ps: >-
