@@ -4,7 +4,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Extensions.Logging;
@@ -15,11 +15,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
     {
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly ILoggerFactory _loggerFactory;
+        private readonly ScriptSettingsManager _settingsManager;
 
-        public ScriptRouteHandler(ILoggerFactory loggerFactory, WebScriptHostManager scriptHostManager)
+        public ScriptRouteHandler(ILoggerFactory loggerFactory, WebScriptHostManager scriptHostManager, ScriptSettingsManager settingsManager)
         {
             _scriptHostManager = scriptHostManager;
             _loggerFactory = loggerFactory;
+            _settingsManager = settingsManager;
         }
 
         public async Task InvokeAsync(HttpContext context, string functionName)
@@ -29,8 +31,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
 
             // TODO: FACAVAL This should be improved....
             var host = _scriptHostManager.Instance;
-            FunctionDescriptor descriptor = host.Functions.FirstOrDefault(f => string.Equals(f.Name, functionName));
-            context.Features.Set<IFunctionExecutionFeature>(new FunctionExecutionFeature(host, descriptor));
+            var descriptor = host.Functions.FirstOrDefault(f => string.Equals(f.Name, functionName));
+            var executionFeature = new FunctionExecutionFeature(host, descriptor, _settingsManager, _loggerFactory);
+            context.Features.Set<IFunctionExecutionFeature>(executionFeature);
 
             await Task.CompletedTask;
         }

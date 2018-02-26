@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly WebHostMetricsLogger _metricsLogger;
         private readonly ISecretManager _secretManager;
         private readonly WebHostSettings _webHostSettings;
+        private readonly ScriptSettingsManager _settingsManager;
 
         private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly ScriptHostConfiguration _config;
@@ -66,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _metricsLogger = new WebHostMetricsLogger();
             _exceptionHandler = new WebScriptHostExceptionHandler(this);
             _webHostSettings = webHostSettings;
+            _settingsManager = settingsManager;
             _hostTimeoutSeconds = hostTimeoutSeconds;
             _hostRunningPollIntervalMilliseconds = hostPollingIntervalMilliseconds;
             _router = router;
@@ -233,10 +235,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // TODO: FACAVAL Instantiation of the ScriptRouteHandler should be cleaned up
             ILoggerFactory loggerFactory = _config.HostConfig.LoggerFactory;
-            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, this), httpConfig.RoutePrefix);
+            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, this, _settingsManager), httpConfig.RoutePrefix);
 
             // Proxies do not honor the route prefix defined in host.json
-            WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, this), routePrefix: null);
+            WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, this, _settingsManager), routePrefix: null);
 
             foreach (var function in functions)
             {

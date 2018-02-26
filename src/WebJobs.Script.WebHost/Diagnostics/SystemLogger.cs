@@ -51,6 +51,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 Utility.GetStateBoolValue(stateDict, ScriptConstants.LogPropertyIsUserLogKey) == true);
         }
 
+        private string GetEventName<TState>(TState state)
+        {
+            string value = string.Empty;
+            if (state is IEnumerable<KeyValuePair<string, object>> stateDict)
+            {
+                value = Utility.GetStateValueOrDefault<string>(stateDict, ScriptConstants.LogPropertyEventNameKey) ?? string.Empty;
+            }
+            return value;
+        }
+
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
             // User logs are not logged to system logs.
@@ -77,9 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string innerExceptionType = string.Empty;
             string innerExceptionMessage = string.Empty;
             string functionName = _functionName;
-
-            // eventName is not currently used
-            string eventName = string.Empty;
+            string eventName = GetEventName(state);
 
             // Populate details from the exception.
             string details = string.Empty;

@@ -36,7 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public virtual bool IsZipDeployment => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteZipDeployment));
 
-        public bool IsDynamicSku => GetSetting(EnvironmentSettingNames.AzureWebsiteSku) == ScriptConstants.DynamicSku;
+        public string WebsiteSku => GetSetting(EnvironmentSettingNames.AzureWebsiteSku);
+
+        public bool IsDynamicSku => WebsiteSku == ScriptConstants.DynamicSku;
 
         public virtual string AzureWebsiteDefaultSubdomain
         {

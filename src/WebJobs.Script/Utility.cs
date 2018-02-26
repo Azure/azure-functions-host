@@ -423,6 +423,25 @@ namespace Microsoft.Azure.WebJobs.Script
             return Convert.ToBoolean(kvps.Last().Value);
         }
 
+        public static TValue GetStateValueOrDefault<TValue>(IEnumerable<KeyValuePair<string, object>> state, string key)
+        {
+            if (state == null)
+            {
+                return default(TValue);
+            }
+
+            var kvps = state.Where(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
+
+            if (!kvps.Any())
+            {
+                return default(TValue);
+            }
+
+            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
+            // this, we shouldn't have conflicts.
+            return (TValue)kvps.Last().Value;
+        }
+
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
         {
             public override bool CanWrite => true;

@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.Await(() =>
             {
                 logs = TestHelpers.GetFunctionLogsAsync(functionName, throwOnNoLogs: false).Result;
-                return logs.Count > 0;
+                return logs.Count == 4;
             });
 
             Assert.True(logs.Count == 4, string.Join(Environment.NewLine, logs));

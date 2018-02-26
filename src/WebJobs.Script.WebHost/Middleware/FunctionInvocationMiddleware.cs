@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -56,6 +58,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             if (functionExecution.Descriptor == null)
             {
                 return new NotFoundResult();
+            }
+
+            if (context.Request.IsColdStart())
+            {
+                // for cold start requests we want to measure the request
+                // pipeline dispatch time
+                // important that this stopwatch is started as early as possible
+                // in the pipeline (in this case, in our first middleware)
+                var sw = new Stopwatch();
+                sw.Start();
+                context.Request.HttpContext.Items.Add(ScriptConstants.AzureFunctionsColdStartKey, sw);
             }
 
             // Add route data to request info

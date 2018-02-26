@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsHttpRequestAuthorizationDisabledKey = "MS_AzureFunctionsAuthorizationDisabled";
         public const string AzureFunctionsHttpFunctionKey = "MS_AzureFunctionsHttpFunction";
         public const string AzureFunctionsRequestIdKey = "MS_AzureFunctionsRequestID";
+        public const string AzureFunctionsColdStartKey = "MS_AzureFunctionsColdStart";
         public const string AzureFunctionsHttpRequestKey = "MS_AzureFunctionsHttpRequest";
         public const string AzureProxyFunctionExecutorKey = "MS_AzureProxyFunctionExecutor";
         public const string AzureFunctionsHostManagerKey = "MS_AzureFunctionsHostManager";
@@ -36,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategoryAdminController = "Host.Controllers.Admin";
         public const string LogCategoryKeysController = "Host.Controllers.Keys";
         public const string LogCategoryHostGeneral = "Host.General";
+        public const string LogCategoryHostMetrics = "Host.Metrics";
         public const string LogCategoryHost = "Host";
         public const string LogCategoryFunction = "Function";
         public const string LogCategoryWorker = "Worker";
@@ -58,9 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
+        public const string ColdStartEventName = "ColdStart";
 
         public const string AntaresLogIdHeaderName = "X-ARR-LOG-ID";
         public const string AntaresScaleOutHeaderName = "X-FUNCTION-SCALEOUT";
+        public const string AntaresColdStartHeaderName = "X-MS-COLDSTART";
         public const string DynamicSku = "Dynamic";
         public const string DefaultProductionSlotName = "production";
 
