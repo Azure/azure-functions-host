@@ -292,9 +292,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 // read host.json and apply to JobHostConfiguration
                 string hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, ScriptConstants.HostMetadataFileName);
 
-                // If it doesn't exist, create an empty JSON file
-                if (!File.Exists(hostConfigFilePath))
+                if (!_settingsManager.FileSystemIsReadOnly && !File.Exists(hostConfigFilePath))
                 {
+                    // If it doesn't exist, create an empty JSON file
                     File.WriteAllText(hostConfigFilePath, "{}");
                 }
 
