@@ -64,14 +64,6 @@ namespace Microsoft.Azure.WebJobs.Script
             HostPerformanceManager hostPerformanceManager = null)
             : this(config, ScriptSettingsManager.Instance, new ScriptHostFactory(), eventManager, environment, loggerProviderFactory, hostPerformanceManager)
         {
-            if (config.FileWatchingEnabled)
-            {
-                // We only setup a subscription here as the actual ScriptHost will create the publisher
-                // when initialized.
-                _fileEventSubscription = EventManager.OfType<FileEvent>()
-                     .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
-                     .Subscribe(e => OnScriptFileChanged(null, e.FileChangeArguments));
-            }
         }
 
         public ScriptHostManager(ScriptHostConfiguration config,
@@ -102,6 +94,15 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _structuredLogWriter = new StructuredLogWriter(EventManager, config.RootLogPath);
             _performanceManager = hostPerformanceManager ?? new HostPerformanceManager(settingsManager, _config.HostHealthMonitor);
+
+            if (config.FileWatchingEnabled && !settingsManager.FileSystemIsReadOnly)
+            {
+                // We only setup a subscription here as the actual ScriptHost will create the publisher
+                // when initialized.
+                _fileEventSubscription = EventManager.OfType<FileEvent>()
+                     .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
+                     .Subscribe(e => OnScriptFileChanged(null, e.FileChangeArguments));
+            }
 
             if (ShouldMonitorHostHealth)
             {
