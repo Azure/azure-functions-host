@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         public ILogger CreateLogger(string categoryName)
         {
-            return new FileLogger(categoryName, _writer, _isFileLoggingEnabled, () => true);
+            return new FileLogger(categoryName, _writer, _isFileLoggingEnabled, () => true, LogType.Host);
         }
 
         public void Dispose()

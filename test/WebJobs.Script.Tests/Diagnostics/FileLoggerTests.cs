@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public void FileLogger_DoesNotLog_IfNoText()
         {
-            ILogger logger = new FileLogger(_category, _fileWriter, isFileLoggingEnabled: () => true, isPrimary: () => true);
+            ILogger logger = new FileLogger(_category, _fileWriter, isFileLoggingEnabled: () => true, isPrimary: () => true, logType: LogType.Host);
             logger.LogInformation("Line 1");
             logger.LogInformation(string.Empty);
             logger.LogInformation(null); // The ILogger extensions replace nulls with "[null]"
@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public void FileLogger_DoesNotLog_IfSystemLog()
         {
-            ILogger logger = new FileLogger(_category, _fileWriter, isFileLoggingEnabled: () => true, isPrimary: () => true);
+            ILogger logger = new FileLogger(_category, _fileWriter, isFileLoggingEnabled: () => true, isPrimary: () => true, logType: LogType.Host);
 
             // We send this value as state in order to mark a log as a System log.
             var isSystemTrace = new Dictionary<string, object> { [ScriptConstants.LogPropertyIsSystemLogKey] = true };
@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public void FileLogger_DoesNotLogPrimaryLog_IfNotPrimary()
         {
-            ILogger logger = new FileLogger(_category, _fileWriter, isFileLoggingEnabled: () => true, isPrimary: () => false);
+            ILogger logger = new FileLogger(_category, _fileWriter, isFileLoggingEnabled: () => true, isPrimary: () => false, logType: LogType.Host);
 
             // We send this value as state in order to mark a log as a System log.
             var isSystemTrace = new Dictionary<string, object> { [ScriptConstants.LogPropertyPrimaryHostKey] = true };
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 return fileLoggingEnabled;
             };
 
-            ILogger logger = new FileLogger(_category, _fileWriter, isFileLoggingEnabled, isPrimary: () => true);
+            ILogger logger = new FileLogger(_category, _fileWriter, isFileLoggingEnabled, isPrimary: () => true, logType: LogType.Host);
 
             // We send this value as state in order to mark a log as a System log.
             logger.LogInformation("1");
@@ -135,5 +135,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 t => Assert.EndsWith("5", t),
                 t => Assert.EndsWith("6", t));
         }
+
+        [Fact]
+        public void FileLogger_LogsExpectedLines()
+        {
+            var logger = new FileLogger(_category, _fileWriter, () => true, isPrimary: () => true, logType: LogType.Host);
+
+            var logData = new Dictionary<string, object>();
+            logger.Log(LogLevel.Trace, 0, logData, null, (s, e) => "Test Message");
+
+            logData.Add(ScriptConstants.LogPropertyFunctionNameKey, "TestFunction");
+            logger.Log(LogLevel.Information, 0, logData, null, (s, e) => "Test Message With Function");
+
+            _fileWriter.Flush();
+
+            string logFile = Directory.EnumerateFiles(_logFilePath).Single();
+            string[] lines = File.ReadAllLines(logFile);
+
+            Assert.Collection(lines,
+                t => Assert.EndsWith("[Trace] Test Message", t),
+                t => Assert.EndsWith("[Information,TestFunction] Test Message With Function", t));
+        }
+
+        [Fact]
+        public void GetLogPrefix_ReturnsExpectedValue()
+        {
+            var state = new Dictionary<string, object>
+            {
+                [ScriptConstants.LogPropertyFunctionNameKey] = "TestFunction"
+            };
+            var stateEntries = (IEnumerable<KeyValuePair<string, object>>)state;
+
+            var prefix = FileLogger.GetLogPrefix(state, LogLevel.Information, LogType.Host);
+            Assert.Equal("Information,TestFunction", prefix);
+
+            prefix = FileLogger.GetLogPrefix(state, LogLevel.Information, LogType.Function);
+            Assert.Equal("Information", prefix);
+
+            prefix = FileLogger.GetLogPrefix(state, LogLevel.Information, LogType.Structured);
+            Assert.Equal("Information", prefix);
+        }
+
     }
 }

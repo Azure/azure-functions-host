@@ -1144,7 +1144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             using (logger.BeginScope(new Dictionary<string, object>
             {
-                [ScriptConstants.LoggerFunctionNameKey] = "Test"
+                [ScriptConstants.LogPropertyFunctionNameKey] = "Test"
             }))
             {
                 // Now log as if from within a function.

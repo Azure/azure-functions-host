@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/log")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
-        public IActionResult Log(IEnumerable<HostLogEntry> logEntries)
+        public IActionResult Log([FromBody]IEnumerable<HostLogEntry> logEntries)
         {
             if (logEntries == null)
             {
@@ -151,8 +151,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 var logLevel = Utility.ToLogLevel(traceEvent.Level);
                 var logData = new Dictionary<string, object>
                 {
-                    ["Source"] = logEntry.Source,
-                    ["FunctionName"] = logEntry.FunctionName
+                    [ScriptConstants.LogPropertySourceKey] = logEntry.Source,
+                    [ScriptConstants.LogPropertyFunctionNameKey] = logEntry.FunctionName
                 };
                 _logger.Log(logLevel, 0, logData, null, (s, e) => logEntry.Message);
             }

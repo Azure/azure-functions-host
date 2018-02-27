@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsHostManagerKey = "MS_AzureFunctionsHostManager";
 
         public const string LogPropertyPrimaryHostKey = "MS_PrimaryHost";
+        public const string LogPropertySourceKey = "MS_Source";
         public const string LogPropertyFunctionNameKey = "MS_FunctionName";
         public const string LogPropertyEventNameKey = "MS_EventName";
         public const string LogPropertyEventDetailsKey = "MS_EventDetails";
@@ -31,7 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TraceSourceFileWatcher = "FileWatcher";
         public const string TraceSourceHttpHandler = "HttpRequestTraceHandler";
 
-        public const string LoggerFunctionNameKey = "MS_FunctionName";
         public const string LoggerHttpRequest = "MS_HttpRequest";
 
         public const string LogCategoryAdminController = "Host.Controllers.Admin";

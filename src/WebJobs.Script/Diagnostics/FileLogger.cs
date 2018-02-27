@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
@@ -14,13 +15,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         private readonly Func<bool> _isFileLoggingEnabled;
         private readonly Func<bool> _isPrimary;
         private readonly string _categoryName;
+        private readonly LogType _logType;
 
-        public FileLogger(string categoryName, FileWriter fileWriter, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary)
+        public FileLogger(string categoryName, FileWriter fileWriter, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary, LogType logType)
         {
             _fileWriter = fileWriter;
             _isFileLoggingEnabled = isFileLoggingEnabled;
             _isPrimary = isPrimary;
             _categoryName = categoryName;
+            _logType = logType;
         }
 
         public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope.Push(state);
@@ -37,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
                 return;
             }
 
-            IEnumerable<KeyValuePair<string, object>> stateValues = state as IEnumerable<KeyValuePair<string, object>>;
+            var stateValues = state as IEnumerable<KeyValuePair<string, object>>;
             string formattedMessage = formatter?.Invoke(state, exception);
 
             // If we don't have a message, there's nothing to log.
@@ -59,7 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
                 return;
             }
 
-            _fileWriter.AppendLine(FormatMessage(formattedMessage));
+            formattedMessage = FormatLine(stateValues, logLevel, formattedMessage);
+            _fileWriter.AppendLine(formattedMessage);
 
             // flush errors immediately
             if (logLevel == LogLevel.Error || exception != null)
@@ -68,7 +72,37 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             }
         }
 
-        private string FormatMessage(string message)
-           => string.Format(CultureInfo.InvariantCulture, "{0} {1}", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture), message.Trim());
+        /// <summary>
+        /// Format the log line for the current event being traced.
+        /// </summary>
+        /// <param name="stateValues">The event state.</param>
+        /// <param name="level">The event level.</param>
+        /// <param name="line">The log line to format.</param>
+        /// <returns>The formatted log message.</returns>
+        protected virtual string FormatLine(IEnumerable<KeyValuePair<string, object>> stateValues, LogLevel level, string line)
+        {
+            string tracePrefix = GetLogPrefix(stateValues, level, _logType);
+            string timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture);
+            string formattedLine = $"{timestamp} [{tracePrefix}] {line.Trim()}";
+
+            return formattedLine;
+        }
+
+        internal static string GetLogPrefix(IEnumerable<KeyValuePair<string, object>> stateValues, LogLevel level, LogType logType)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append(level.ToString());
+
+            if (logType == LogType.Host)
+            {
+                var functionName = Utility.GetStateValueOrDefault<string>(stateValues, ScriptConstants.LogPropertyFunctionNameKey);
+                if (!string.IsNullOrEmpty(functionName))
+                {
+                    sb.AppendFormat(",{0}", functionName);
+                }
+            }
+
+            return sb.ToString();
+        }
     }
 }
