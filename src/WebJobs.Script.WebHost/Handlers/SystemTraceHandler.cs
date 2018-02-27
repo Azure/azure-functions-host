@@ -65,16 +65,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
                 { "requestId", request.GetRequestId() },
                 { "method", request.Method.ToString() },
                 { "uri", request.RequestUri.LocalPath.ToString() },
-                { "authorizationLevel", request.GetAuthorizationLevel().ToString() }
-            };
-            TraceWriter.Info($"Executed HTTP request: {details}");
-
-            details = new JObject
-            {
-                { "requestId", request.GetRequestId() },
+                { "authorizationLevel", request.GetAuthorizationLevel().ToString() },
                 { "status", response.StatusCode.ToString() }
             };
-            TraceWriter.Info($"Response details: {details}");
+            TraceWriter.Info($"Executed HTTP request: {details}");
 
             return response;
         }

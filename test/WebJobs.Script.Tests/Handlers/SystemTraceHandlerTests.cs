@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             await _invoker.SendAsync(request, CancellationToken.None);
 
             var traces = _traceWriter.GetTraces().ToArray();
-            Assert.Equal(3, traces.Length);
+            Assert.Equal(2, traces.Length);
 
             // validate executing trace
             var trace = traces[0];
@@ -64,14 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             trace = traces[1];
             Assert.Equal(TraceLevel.Info, trace.Level);
             message = Regex.Replace(trace.Message, @"\s+", string.Empty);
-            Assert.Equal($"ExecutedHTTPrequest:{{\"requestId\":\"{requestId}\",\"method\":\"GET\",\"uri\":\"/api/testfunc\",\"authorizationLevel\":\"Function\"}}", message);
-            Assert.Equal(ScriptConstants.TraceSourceHttpHandler, trace.Source);
-
-            // validate response trace
-            trace = traces[2];
-            Assert.Equal(TraceLevel.Info, trace.Level);
-            message = Regex.Replace(trace.Message, @"\s+", string.Empty);
-            Assert.Equal($"Responsedetails:{{\"requestId\":\"{requestId}\",\"status\":\"OK\"}}", message);
+            Assert.Equal($"ExecutedHTTPrequest:{{\"requestId\":\"{requestId}\",\"method\":\"GET\",\"uri\":\"/api/testfunc\",\"authorizationLevel\":\"Function\",\"status\":\"OK\"}}", message);
             Assert.Equal(ScriptConstants.TraceSourceHttpHandler, trace.Source);
         }
     }
