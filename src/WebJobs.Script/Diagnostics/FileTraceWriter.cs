@@ -254,6 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal void SetLogFile()
         {
+            _logDirectory.Refresh();
             if (!_logDirectory.Exists)
             {
                 _logDirectory.Create();

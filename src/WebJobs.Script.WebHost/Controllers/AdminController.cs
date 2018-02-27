@@ -166,8 +166,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     var logLevel = Utility.ToLogLevel(traceEvent.Level);
                     var logData = new Dictionary<string, object>
                     {
-                        ["Source"] = logEntry.Source,
-                        ["FunctionName"] = logEntry.FunctionName
+                        [ScriptConstants.TracePropertySourceKey] = logEntry.Source,
+                        [ScriptConstants.TracePropertyFunctionNameKey] = logEntry.FunctionName
                     };
                     _logger.Log(logLevel, 0, logData, null, (s, e) => logEntry.Message);
                 }

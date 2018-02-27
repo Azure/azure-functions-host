@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string TracePropertyPrimaryHostKey = "MS_PrimaryHost";
         public const string TracePropertyFunctionNameKey = "MS_FunctionName";
+        public const string TracePropertySourceKey = "MS_Source";
         public const string TracePropertyEventNameKey = "MS_EventName";
         public const string TracePropertyEventDetailsKey = "MS_EventDetails";
         public const string TracePropertyIsUserTraceKey = "MS_IsUserTrace";
