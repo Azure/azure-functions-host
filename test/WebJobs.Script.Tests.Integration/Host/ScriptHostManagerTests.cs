@@ -320,6 +320,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 LoggerFactoryBuilder = loggerFactoryHookMock.Object
             };
             config.HostConfig.HostId = ID;
+            config.TraceWriter = new TestTraceWriter(TraceLevel.Info);
 
             var scriptHostFactory = new TestScriptHostFactory();
             var eventManagerMock = new Mock<IScriptEventManager>();
@@ -417,7 +418,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = @"TestScripts\Empty"
+                RootScriptPath = @"TestScripts\Empty",
+                TraceWriter = new TestTraceWriter(TraceLevel.Info)
             };
 
             var factoryMock = new Mock<IScriptHostFactory>();
@@ -519,11 +521,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             File.WriteAllText(Path.Combine(functionDir, ScriptConstants.HostMetadataFileName), hostConfig.ToString());
 
-            ScriptHostConfiguration config = new ScriptHostConfiguration
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
                 RootScriptPath = functionDir,
                 RootLogPath = logDir,
-                FileLoggingMode = FileLoggingMode.Always
+                FileLoggingMode = FileLoggingMode.Always,
+                TraceWriter = new TestTraceWriter(TraceLevel.Info)
             };
 
             var eventManagerMock = new Mock<IScriptEventManager>();

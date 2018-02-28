@@ -1533,6 +1533,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             Mock<IScriptHostEnvironment> mockEnvironment = new Mock<IScriptHostEnvironment>(MockBehavior.Strict);
             var config = new ScriptHostConfiguration();
+            config.TraceWriter = new TestTraceWriter(TraceLevel.Info);
             var eventManager = new Mock<IScriptEventManager>();
             var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, eventManager.Object, config, null, null });
 

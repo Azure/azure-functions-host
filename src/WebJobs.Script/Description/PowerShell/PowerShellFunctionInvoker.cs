@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Management.Automation;
@@ -61,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             InitializeEnvironmentVariables(environmentVariables, functionInstanceOutputPath, input, _outputBindings, context.ExecutionContext);
 
             var userTraceWriter = context.TraceWriter;
-            PSDataCollection<ErrorRecord> errors = await InvokePowerShellScript(environmentVariables, userTraceWriter);
+            PSDataCollection<ErrorRecord> errors = await InvokePowerShellScript(environmentVariables, userTraceWriter, invocationId);
 
             await ProcessOutputBindingsAsync(functionInstanceOutputPath, _outputBindings, input, context.Binder, bindingData);
 
@@ -72,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private async Task<PSDataCollection<ErrorRecord>> InvokePowerShellScript(Dictionary<string, string> envVars, TraceWriter traceWriter)
+        private async Task<PSDataCollection<ErrorRecord>> InvokePowerShellScript(Dictionary<string, string> envVars, TraceWriter traceWriter, string invocationId)
         {
             InitialSessionState iss = InitialSessionState.CreateDefault();
             PSDataCollection<ErrorRecord> errors = new PSDataCollection<ErrorRecord>();
@@ -102,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     PSDataCollection<PSObject> outputCollection = new PSDataCollection<PSObject>();
                     outputCollection.DataAdded += (sender, e) => OutputCollectionDataAdded(sender, e, traceWriter);
 
-                    powerShellInstance.Streams.Error.DataAdded += (sender, e) => ErrorDataAdded(sender, e, traceWriter);
+                    powerShellInstance.Streams.Error.DataAdded += (sender, e) => ErrorDataAdded(sender, e, traceWriter, invocationId);
 
                     IAsyncResult result = powerShellInstance.BeginInvoke<PSObject, PSObject>(null, outputCollection);
                     await Task.Factory.FromAsync<PSDataCollection<PSObject>>(result, powerShellInstance.EndInvoke);
@@ -171,11 +172,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <summary>
         /// Event handler for the error stream.
         /// </summary>
-        private void ErrorDataAdded(object sender, DataAddedEventArgs e, TraceWriter traceWriter)
+        private void ErrorDataAdded(object sender, DataAddedEventArgs e, TraceWriter traceWriter, string invocationId)
         {
             var source = (PSDataCollection<ErrorRecord>)sender;
             var msg = GetErrorMessage(_functionName, _scriptFilePath, source[e.Index]);
-            traceWriter.Error(msg);
+            TraceEvent traceEvent = new TraceEvent(TraceLevel.Error, msg, ScriptConstants.TraceSourceScriptFunctionExecution);
+            traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionInvocationIdKey, invocationId);
+            traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, _functionName);
+            traceWriter.Trace(traceEvent);
         }
 
         internal static string GetErrorMessage(string functioName, string scriptFilePath, ErrorRecord errorRecord)

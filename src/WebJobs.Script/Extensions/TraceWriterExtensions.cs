@@ -40,7 +40,15 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Apply the specified default source value to all trace events
         /// when the source is not specified.
         /// </summary>
-        public static TraceWriter WithSource(this TraceWriter traceWriter, string source) => new InterceptingTraceWriter(traceWriter, t => t.Source = string.IsNullOrEmpty(t.Source) ? source : t.Source);
+        public static TraceWriter WithDefaults(this TraceWriter traceWriter, string source, string hostInstanceId = "") =>
+            new InterceptingTraceWriter(traceWriter, t =>
+            {
+                t.Source = string.IsNullOrEmpty(t.Source) ? source : t.Source;
+                if (!string.IsNullOrEmpty(hostInstanceId))
+                {
+                    t.Properties[ScriptConstants.TracePropertyInstanceIdKey] = hostInstanceId;
+                }
+            });
 
         public static void Verbose(this TraceWriter traceWriter, string message, IDictionary<string, object> properties)
         {

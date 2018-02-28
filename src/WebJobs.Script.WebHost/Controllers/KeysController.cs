@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             _scriptHostManager = scriptHostManager;
             _secretManager = secretManager;
-            _traceWriter = traceWriter.WithSource($"{ScriptConstants.TraceSourceSecretManagement}.Api");
+            _traceWriter = traceWriter.WithDefaults($"{ScriptConstants.TraceSourceSecretManagement}.Api");
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryKeysController);
         }
 

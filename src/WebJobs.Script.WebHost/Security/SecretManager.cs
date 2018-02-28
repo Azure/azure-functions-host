@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -118,7 +119,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 throw new ArgumentNullException(nameof(functionName));
             }
-
+            Dictionary<string, object> traceProperties = new Dictionary<string, object>
+            {
+                {ScriptConstants.TracePropertyFunctionNameKey, functionName }
+            };
             functionName = functionName.ToLowerInvariant();
             Dictionary<string, string> functionSecrets;
             _secretsMap.TryGetValue(functionName, out functionSecrets);
@@ -129,7 +133,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (secrets == null)
                 {
                     string message = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
-                    _traceWriter.Verbose(message);
+                    _traceWriter.Verbose(message, traceProperties);
+
                     _logger?.LogDebug(message);
                     secrets = new FunctionSecrets
                     {
@@ -150,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 catch (CryptographicException)
                 {
                     string message = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName);
-                    _traceWriter.Verbose(message);
+                    _traceWriter.Verbose(message, traceProperties);
                     _logger?.LogDebug(message);
                     await PersistSecretsAsync(secrets, functionName, true);
                     await RefreshSecretsAsync(secrets, functionName);
@@ -262,6 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 string message = string.Format(Resources.TraceSecretDeleted, target, secretName);
                 _traceWriter.Info(message);
+
                 _logger?.LogInformation(message);
             }
 
@@ -404,6 +410,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (secretBackups.Length >= ScriptConstants.MaximumSecretBackupCount)
                 {
                     string message = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, string.IsNullOrEmpty(keyScope) ? "host" : keyScope);
+                    TraceEvent traceEvent = new TraceEvent(TraceLevel.Verbose, message);
                     _traceWriter.Verbose(message);
                     _logger?.LogDebug(message);
                     throw new InvalidOperationException(message);

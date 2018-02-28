@@ -83,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
             _hostConfig = scriptConfig.HostConfig;
+            _instanceId = Guid.NewGuid().ToString();
             if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
             {
                 scriptConfig.RootScriptPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootScriptPath);
@@ -93,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script
 #if FEATURE_NODE
             NodeFunctionInvoker.UnhandledException += OnUnhandledException;
 #endif
-            TraceWriter = ScriptConfig.TraceWriter;
+            TraceWriter = ScriptConfig.TraceWriter.WithDefaults(ScriptConstants.TraceSourceScriptHost, _instanceId);
             EventManager = eventManager;
 
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
@@ -114,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (_instanceId == null)
                 {
-                    _instanceId = _settingsManager.InstanceId;
+                    _instanceId = Guid.NewGuid().ToString();
                 }
 
                 return _instanceId;
@@ -504,7 +505,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (storageString != null)
                 {
                     var lockManager = (IDistributedLockManager)Services.GetService(typeof(IDistributedLockManager));
-                    _blobLeaseManager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), _hostConfig.HostId, InstanceId, TraceWriter, _hostConfig.LoggerFactory);
+                    _blobLeaseManager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), _hostConfig.HostId, _settingsManager.InstanceId, TraceWriter, _hostConfig.LoggerFactory);
                 }
 
                 // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal
@@ -782,6 +783,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal void Shutdown()
         {
+            string shutdownLogMessage = $"Script Host with Id:'{_instanceId}' shutting down";
+            TraceWriter.Verbose(shutdownLogMessage);
             _scriptHostEnvironment.Shutdown();
         }
 
@@ -972,7 +975,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (config.Functions != null)
             {
-                traceWriter.Info($"A function whitelist has been specified, excluding all but the following functions: [{string.Join(", ", config.Functions)}]");
+                string msg = $"A function whitelist has been specified, excluding all but the following functions: [{string.Join(", ", config.Functions)}]";
+                traceWriter.Info(msg);
             }
 
             foreach (var scriptDir in Directory.EnumerateDirectories(config.RootScriptPath))
@@ -1120,14 +1124,17 @@ namespace Microsoft.Azure.WebJobs.Script
         ScriptSettingsManager settingsManager, out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
         {
             fileSystem = fileSystem ?? new FileSystem();
-
+            Dictionary<string, object> traceProperties = new Dictionary<string, object>()
+                {
+                    { ScriptConstants.TracePropertyFunctionNameKey, functionName }
+                };
             error = null;
             functionMetadata = ParseFunctionMetadata(functionName, functionConfig, scriptDirectory, settingsManager);
 
             if (functionMetadata.IsExcluded)
             {
                 string message = $"Function '{functionName}' is marked as excluded";
-                traceWriter.Info(message);
+                traceWriter.Info(message, traceProperties);
                 logger?.LogInformation(message);
                 functionMetadata = null;
                 return true;
@@ -1136,7 +1143,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (functionMetadata.IsDisabled)
             {
                 string message = $"Function '{functionName}' is disabled";
-                traceWriter.Info(message);
+                traceWriter.Info(message, traceProperties);
                 logger?.LogInformation(message);
             }
 
@@ -1856,12 +1863,13 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (disposing)
             {
-                (TraceWriter as IDisposable)?.Dispose();
 #if FEATURE_NODE
                 NodeFunctionInvoker.UnhandledException -= OnUnhandledException;
 #endif
                 _fileEventsSubscription?.Dispose();
                 _fileEventSource?.Dispose();
+
+                (TraceWriter as IDisposable)?.Dispose();
 
                 if (_debugModeFileWatcher != null)
                 {

@@ -2,14 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -189,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                string message = $"Host instance '{_instanceId}' failed to acquire host lock lease: {reason}";
+                string message = $"Host '{_instanceId}' failed to acquire host lock lease: {reason}";
                 _traceWriter.Verbose(message);
                 _logger?.LogDebug(message);
             }
@@ -217,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     Task.Run(() => _lockManager.ReleaseLockAsync(_lockHandle, CancellationToken.None)).GetAwaiter().GetResult();
 
-                    string message = $"Host instance '{_instanceId}' released lock lease.";
+                    string message = $"Host '{_instanceId}' released lock lease.";
                     _traceWriter.Verbose(message);
                     _logger?.LogDebug(message);
                 }

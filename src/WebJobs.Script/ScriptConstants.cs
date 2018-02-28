@@ -25,12 +25,17 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TracePropertyEventDetailsKey = "MS_EventDetails";
         public const string TracePropertyIsUserTraceKey = "MS_IsUserTrace";
         public const string TracePropertyIsSystemTraceKey = "MS_IsSystemTrace";
+        public const string TracePropertyFunctionInvocationIdKey = "MS_FunctionInvocationId";
+        public const string TracePropertyInstanceIdKey = "MS_InstanceId";
+        public const string TracePropertyActivityIdKey = "MS_ActivityId";
 
         public const string TraceSourceSecretManagement = "SecretManagement";
         public const string TraceSourceHostAdmin = "HostAdmin";
         public const string TraceSourceFileWatcher = "FileWatcher";
         public const string TraceSourceSwagger = "SwaggerDocumentation";
         public const string TraceSourceHttpHandler = "HttpRequestTraceHandler";
+        public const string TraceSourceScriptHost = "Script.Host";
+        public const string TraceSourceScriptFunctionExecution = "Script.Execution";
 
         public const string LoggerFunctionNameKey = "MS_FunctionName";
         public const string LoggerHttpRequest = "MS_HttpRequest";

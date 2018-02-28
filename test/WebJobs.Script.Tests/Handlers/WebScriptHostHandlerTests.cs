@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -30,10 +31,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public WebScriptHostHandlerTests()
         {
             _settingsManager = ScriptSettingsManager.Instance;
-            var eventManager = new Mock<IScriptEventManager>();
-            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new TestSecretManagerFactory(), eventManager.Object,
-                _settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, null, null, null, 1, 50);
 
+            var scriptHostConfiguration = new ScriptHostConfiguration();
+            scriptHostConfiguration.TraceWriter = new TestTraceWriter(TraceLevel.Info);
+            var environment = new NullScriptHostEnvironment();
+            var eventManager = new Mock<IScriptEventManager>();
+            Mock<ScriptHost> hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, eventManager.Object, scriptHostConfiguration, null, null });
+
+            WebHostSettings settings = new WebHostSettings();
+            settings.SecretsPath = _secretsDirectory.Path;
+            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { scriptHostConfiguration, new TestSecretManagerFactory(), eventManager.Object, _settingsManager, settings });
+            _managerMock.SetupGet(p => p.Instance).Returns(hostMock.Object);
             _managerMock.Setup(p => p.EnsureInitialized());
             Mock<IDependencyResolver> mockResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);
             mockResolver.Setup(p => p.GetService(typeof(WebScriptHostManager))).Returns(_managerMock.Object);
@@ -48,24 +56,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 InnerHandler = new TestHandler()
             };
             _invoker = new HttpMessageInvoker(handler);
-        }
-
-        [Fact]
-        public void SetRequestId_SetsExpectedValue()
-        {
-            // if the log header is present, it is used;
-            var request = new HttpRequestMessage(HttpMethod.Get, "http://test.com");
-            string logIdValue = Guid.NewGuid().ToString();
-            request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, logIdValue);
-            WebScriptHostHandler.SetRequestId(request);
-            string requestId = request.GetRequestId();
-            Assert.Equal(logIdValue, requestId);
-
-            // otherwise a new guid is specified
-            request = new HttpRequestMessage(HttpMethod.Get, "http://test.com");
-            WebScriptHostHandler.SetRequestId(request);
-            requestId = request.GetRequestId();
-            Guid.Parse(requestId);
         }
 
         [Fact]

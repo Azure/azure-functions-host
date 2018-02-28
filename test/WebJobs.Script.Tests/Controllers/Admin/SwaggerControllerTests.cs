@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         {
             _settingsManager = ScriptSettingsManager.Instance;
             _testFunctions = new Collection<FunctionDescriptor>();
+            _config.TraceWriter = new TestTraceWriter(TraceLevel.Info);
             var environment = new NullScriptHostEnvironment();
             var eventManager = new Mock<IScriptEventManager>();
             _hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, eventManager.Object, _config, null, null });

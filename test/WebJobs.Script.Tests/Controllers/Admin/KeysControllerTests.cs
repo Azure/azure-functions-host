@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testFunctionErrors = new Dictionary<string, Collection<string>>();
 
             var config = new ScriptHostConfiguration();
+            config.TraceWriter = new TestTraceWriter(TraceLevel.Info);
             var environment = new NullScriptHostEnvironment();
             var eventManager = new Mock<IScriptEventManager>();
             _hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, eventManager.Object, config, null, null });

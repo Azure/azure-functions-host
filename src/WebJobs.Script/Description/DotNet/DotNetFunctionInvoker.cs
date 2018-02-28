@@ -115,10 +115,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private void OnReferencesChanged()
         {
             string message = "Assembly reference changes detected. Restarting host...";
-            TraceWriter.Info(message);
+            TraceWriter.Info(message, GetTraceProperties());
             Logger?.LogInformation(message);
 
             Host.Shutdown();
+        }
+
+        private Dictionary<string, object> GetTraceProperties()
+        {
+            return new Dictionary<string, object>()
+            {
+                 { ScriptConstants.TracePropertyFunctionNameKey,  Metadata.Name },
+            };
         }
 
         public override void OnError(Exception ex)
@@ -193,7 +201,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             catch (CompilationServiceException exc)
             {
                 const string message = "Compilation service error";
-                TraceWriter.Error(message, exc, _compilationService.GetType().Name);
+                TraceEvent traceEvent = new TraceEvent(TraceLevel.Error, message, _compilationService.GetType().Name, exc);
+                traceEvent.Properties.AddRange(GetTraceProperties());
+                TraceWriter.Trace(traceEvent);
+
                 Logger?.LogError(message);
 
                 // Compiler errors are often sporadic, so we'll attempt to reset the loader here to avoid
@@ -203,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     _functionLoader.Reset();
 
                     const string resetMessage = "Function loader reset. Failed compilation result will not be cached.";
-                    TraceWriter.Info(resetMessage);
+                    TraceWriter.Info(resetMessage, GetTraceProperties());
                     Logger?.LogError(resetMessage);
                 }
                 throw;
