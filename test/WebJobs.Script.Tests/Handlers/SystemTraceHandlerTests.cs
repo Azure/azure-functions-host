@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             var request = new HttpRequestMessage(HttpMethod.Get, "http://functions.com/api/testfunc?code=123");
             string requestId = Guid.NewGuid().ToString();
             request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, requestId);
-            WebScriptHostHandler.SetRequestId(request);
+            SystemTraceHandler.SetRequestId(request);
             request.SetAuthorizationLevel(AuthorizationLevel.Function);
 
             await _invoker.SendAsync(request, CancellationToken.None);
@@ -66,6 +66,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             message = Regex.Replace(trace.Message, @"\s+", string.Empty);
             Assert.Equal($"ExecutedHTTPrequest:{{\"requestId\":\"{requestId}\",\"method\":\"GET\",\"uri\":\"/api/testfunc\",\"authorizationLevel\":\"Function\",\"status\":\"OK\"}}", message);
             Assert.Equal(ScriptConstants.TraceSourceHttpHandler, trace.Source);
+        }
+
+        [Fact]
+        public void SetRequestId_SetsExpectedValue()
+        {
+            // if the log header is present, it is used;
+            var request = new HttpRequestMessage(HttpMethod.Get, "http://test.com");
+            string logIdValue = Guid.NewGuid().ToString();
+            request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, logIdValue);
+            SystemTraceHandler.SetRequestId(request);
+            string requestId = request.GetRequestId();
+            Assert.Equal(logIdValue, requestId);
+
+            // otherwise a new guid is specified
+            request = new HttpRequestMessage(HttpMethod.Get, "http://test.com");
+            SystemTraceHandler.SetRequestId(request);
+            requestId = request.GetRequestId();
+            Guid.Parse(requestId);
         }
     }
 }

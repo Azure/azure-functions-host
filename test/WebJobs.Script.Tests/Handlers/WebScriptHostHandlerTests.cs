@@ -59,24 +59,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void SetRequestId_SetsExpectedValue()
-        {
-            // if the log header is present, it is used;
-            var request = new HttpRequestMessage(HttpMethod.Get, "http://test.com");
-            string logIdValue = Guid.NewGuid().ToString();
-            request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, logIdValue);
-            WebScriptHostHandler.SetRequestId(request);
-            string requestId = request.GetRequestId();
-            Assert.Equal(logIdValue, requestId);
-
-            // otherwise a new guid is specified
-            request = new HttpRequestMessage(HttpMethod.Get, "http://test.com");
-            WebScriptHostHandler.SetRequestId(request);
-            requestId = request.GetRequestId();
-            Guid.Parse(requestId);
-        }
-
-        [Fact]
         public async Task SendAsync_AuthDisabled_SetsExpectedRequestProperty()
         {
             var request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/admin/host/status");

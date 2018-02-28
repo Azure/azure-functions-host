@@ -41,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            SetRequestId(request);
             if (request.IsColdStart())
             {
                 // for cold start requests we want to measure the request
@@ -70,6 +71,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
             TraceWriter.Info($"Executed HTTP request: {details}", traceProperties);
 
             return response;
+        }
+
+        internal static void SetRequestId(HttpRequestMessage request)
+        {
+            string requestID = request.GetHeaderValueOrDefault(ScriptConstants.AntaresLogIdHeaderName) ?? Guid.NewGuid().ToString();
+            request.Properties[ScriptConstants.AzureFunctionsRequestIdKey] = requestID;
         }
     }
 }

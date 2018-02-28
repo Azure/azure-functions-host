@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,18 +15,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
 
         public WebScriptHostHandler(HttpConfiguration config)
         {
-            if (config == null)
-            {
-                throw new ArgumentNullException("config");
-            }
-
-            _config = config;
+            _config = config ?? throw new ArgumentNullException("config");
         }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            SetRequestId(request);
-
             var resolver = _config.DependencyResolver;
 
             // Need to ensure the host manager is initialized early in the pipeline
@@ -48,12 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
             }
 
             return await base.SendAsync(request, cancellationToken);
-        }
-
-        internal static void SetRequestId(HttpRequestMessage request)
-        {
-            string requestID = request.GetHeaderValueOrDefault(ScriptConstants.AntaresLogIdHeaderName) ?? Guid.NewGuid().ToString();
-            request.Properties[ScriptConstants.AzureFunctionsRequestIdKey] = requestID;
         }
     }
 }
