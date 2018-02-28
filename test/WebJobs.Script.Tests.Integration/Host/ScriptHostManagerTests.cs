@@ -418,7 +418,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = @"TestScripts\Empty"
+                RootScriptPath = @"TestScripts\Empty",
+                TraceWriter = new TestTraceWriter(TraceLevel.Info)
             };
 
             var factoryMock = new Mock<IScriptHostFactory>();
