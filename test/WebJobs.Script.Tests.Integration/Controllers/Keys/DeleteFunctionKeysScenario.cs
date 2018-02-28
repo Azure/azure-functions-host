@@ -1,9 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-#if SCENARIOS
 
 using System.Net.Http;
-using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Moq;
 using Xunit;
 
@@ -43,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
             public Fixture()
             {
-                HttpClient.DefaultRequestHeaders.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, "1234");
+                HttpClient.DefaultRequestHeaders.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, "1234");
                 HttpResponse = HttpClient.DeleteAsync(FormattedRequestUri).Result;
             }
 
@@ -64,4 +63,3 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         }
     }
 }
-#endif

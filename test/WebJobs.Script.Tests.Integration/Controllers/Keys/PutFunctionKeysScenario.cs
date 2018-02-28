@@ -1,12 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-#if SCENARIOS
 
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Moq;
 using Xunit;
@@ -60,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
             public Fixture()
             {
-                HttpClient.DefaultRequestHeaders.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, "1234");
+                HttpClient.DefaultRequestHeaders.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, "1234");
                 HttpResponse = HttpClient.PutAsJsonAsync(FormattedRequestUri, new { name = "TestKey", value = "testvalue" }).Result;
                 Result = HttpResponse.Content.ReadAsAsync<ApiModel>().Result;
             }
@@ -75,4 +74,3 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         }
     }
 }
-#endif
