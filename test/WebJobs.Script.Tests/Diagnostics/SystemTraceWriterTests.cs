@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string eventName = "TestEvent";
             string details = "TestDetails";
             string functionInvocationId = Guid.NewGuid().ToString();
-            string scriptHostInstanceId = Guid.NewGuid().ToString();
+            string hostInstanceId = Guid.NewGuid().ToString();
             string hostId = Guid.NewGuid().ToString();
             string activityId = Guid.NewGuid().ToString();
 
@@ -50,10 +50,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, functionName);
             traceEvent.Properties.Add(ScriptConstants.TracePropertyEventDetailsKey, details);
             traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionInvocationIdKey, functionInvocationId);
-            traceEvent.Properties.Add(ScriptConstants.TracePropertyInstanceIdKey, scriptHostInstanceId);
+            traceEvent.Properties.Add(ScriptConstants.TracePropertyInstanceIdKey, hostInstanceId);
             traceEvent.Properties.Add(ScriptConstants.TracePropertyActivityIdKey, activityId);
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(TraceLevel.Verbose, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, details, traceEvent.Message, string.Empty, string.Empty, functionInvocationId, scriptHostInstanceId, activityId));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(TraceLevel.Verbose, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, details, traceEvent.Message, string.Empty, string.Empty, functionInvocationId, hostInstanceId, activityId));
 
             _traceWriter.Trace(traceEvent);
 
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionName = "TestFunction";
             string eventName = "TestEvent";
             string functionInvocationId = Guid.NewGuid().ToString();
-            string scriptHostInstanceId = Guid.NewGuid().ToString();
+            string hostInstanceId = Guid.NewGuid().ToString();
             string hostId = Guid.NewGuid().ToString();
             string activityId = Guid.NewGuid().ToString();
 
@@ -77,10 +77,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             traceEvent.Properties.Add(ScriptConstants.TracePropertyEventNameKey, eventName);
             traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, functionName);
             traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionInvocationIdKey, functionInvocationId);
-            traceEvent.Properties.Add(ScriptConstants.TracePropertyInstanceIdKey, scriptHostInstanceId);
+            traceEvent.Properties.Add(ScriptConstants.TracePropertyInstanceIdKey, hostInstanceId);
             traceEvent.Properties.Add(ScriptConstants.TracePropertyActivityIdKey, activityId);
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(TraceLevel.Error, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, ex.ToFormattedString(), traceEvent.Message, ex.GetType().ToString(), ex.Message, functionInvocationId, scriptHostInstanceId, activityId));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(TraceLevel.Error, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, ex.ToFormattedString(), traceEvent.Message, ex.GetType().ToString(), ex.Message, functionInvocationId, hostInstanceId, activityId));
 
             _traceWriter.Trace(traceEvent);
 

@@ -188,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                string message = $"Host instance '{_instanceId}' failed to acquire host lock lease: {reason}";
+                string message = $"Host '{_instanceId}' failed to acquire host lock lease: {reason}";
                 _traceWriter.Verbose(message);
                 _logger?.LogDebug(message);
             }
@@ -216,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     Task.Run(() => _lockManager.ReleaseLockAsync(_lockHandle, CancellationToken.None)).GetAwaiter().GetResult();
 
-                    string message = $"Host instance '{_instanceId}' released lock lease.";
+                    string message = $"Host '{_instanceId}' released lock lease.";
                     _traceWriter.Verbose(message);
                     _logger?.LogDebug(message);
                 }
