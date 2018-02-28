@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
             var response = await base.SendAsync(request, cancellationToken);
 
             details["authorizationLevel"] = request.GetAuthorizationLevel().ToString();
+            details["status"] = response.StatusCode.ToString();
             TraceWriter.Info($"Executed HTTP request: {details}", traceProperties);
 
             return response;
