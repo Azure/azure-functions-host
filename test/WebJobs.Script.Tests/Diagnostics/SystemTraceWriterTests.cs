@@ -78,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, functionName);
             traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionInvocationIdKey, functionInvocationId);
             traceEvent.Properties.Add(ScriptConstants.TracePropertyInstanceIdKey, scriptHostInstanceId);
+            traceEvent.Properties.Add(ScriptConstants.TracePropertyActivityIdKey, activityId);
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(TraceLevel.Error, _subscriptionId, _websiteName, functionName, eventName, traceEvent.Source, ex.ToFormattedString(), traceEvent.Message, ex.GetType().ToString(), ex.Message, functionInvocationId, scriptHostInstanceId, activityId));
 

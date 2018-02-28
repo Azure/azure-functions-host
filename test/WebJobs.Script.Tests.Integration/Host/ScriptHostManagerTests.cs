@@ -520,11 +520,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             File.WriteAllText(Path.Combine(functionDir, ScriptConstants.HostMetadataFileName), hostConfig.ToString());
 
-            ScriptHostConfiguration config = new ScriptHostConfiguration
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
                 RootScriptPath = functionDir,
                 RootLogPath = logDir,
-                FileLoggingMode = FileLoggingMode.Always
+                FileLoggingMode = FileLoggingMode.Always,
+                TraceWriter = new TestTraceWriter(TraceLevel.Info)
             };
 
             var eventManagerMock = new Mock<IScriptEventManager>();
