@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string eventName = GetTraceEventProperty(traceEvent, ScriptConstants.TracePropertyEventNameKey);
             string details = Sanitizer.Sanitize(GetTraceEventProperty(traceEvent, ScriptConstants.TracePropertyEventDetailsKey));
             string functionInvocationId = GetTraceEventProperty(traceEvent, ScriptConstants.TracePropertyFunctionInvocationIdKey);
-            string scriptHostInstanceId = GetTraceEventProperty(traceEvent, ScriptConstants.TracePropertyInstanceIdKey);
+            string hostInstanceId = GetTraceEventProperty(traceEvent, ScriptConstants.TracePropertyInstanceIdKey);
             string activityId = GetTraceEventProperty(traceEvent, ScriptConstants.TracePropertyActivityIdKey);
             if (traceEvent.Properties != null)
             {
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            _eventGenerator.LogFunctionTraceEvent(traceEvent.Level, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, functionInvocationId, scriptHostInstanceId, activityId);
+            _eventGenerator.LogFunctionTraceEvent(traceEvent.Level, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, functionInvocationId, hostInstanceId, activityId);
         }
 
         private static void GetExceptionDetails(Exception exception, out string exceptionType, out string exceptionMessage)
