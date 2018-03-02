@@ -22,6 +22,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMiddleware<FunctionInvocationMiddleware>();
             builder.UseMiddleware<HostWarmupMiddleware>();
 
+            builder.UseWhen(context => !context.Request.Path.StartsWithSegments("/admin"), config =>
+            {
+                config.UseMiddleware<HostAvailabilityCheckMiddleware>();
+            });
+
             // Ensure the HTTP binding routing is registered after all middleware
             builder.UseHttpBindingRouting(applicationLifetime, routes);
 
