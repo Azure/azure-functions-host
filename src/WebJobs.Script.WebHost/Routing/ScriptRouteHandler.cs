@@ -26,9 +26,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
 
         public async Task InvokeAsync(HttpContext context, string functionName)
         {
-            // all function invocations require the host to be ready
-            await _scriptHostManager.DelayUntilHostReady();
-
             // TODO: FACAVAL This should be improved....
             var host = _scriptHostManager.Instance;
             var descriptor = host.Functions.FirstOrDefault(f => string.Equals(f.Name, functionName));

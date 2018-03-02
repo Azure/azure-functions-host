@@ -286,18 +286,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Program.InitiateShutdown();
         }
 
-        public async Task DelayUntilHostReady()
+        public Task DelayUntilHostReady()
         {
             // ensure that the host is ready to process requests
-            await DelayUntilHostReady(_hostTimeoutSeconds, _hostRunningPollIntervalMilliseconds);
+            return DelayUntilHostReady(_hostTimeoutSeconds, _hostRunningPollIntervalMilliseconds);
         }
 
-        public async Task DelayUntilHostReady(int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
+        public Task<bool> DelayUntilHostReady(int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
         {
-            await DelayUntilHostReady(this, timeoutSeconds, pollingIntervalMilliseconds, throwOnFailure);
+            return DelayUntilHostReady(this, timeoutSeconds, pollingIntervalMilliseconds, throwOnFailure);
         }
 
-        internal static async Task DelayUntilHostReady(ScriptHostManager hostManager, int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
+        internal static async Task<bool> DelayUntilHostReady(ScriptHostManager hostManager, int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
         {
             TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
             TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);
@@ -311,10 +311,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 timeWaited += delay;
             }
 
-            if (throwOnFailure && !hostManager.CanInvoke())
+            bool hostReady = hostManager.CanInvoke();
+
+            if (throwOnFailure && !hostReady)
             {
                 throw new HttpException(HttpStatusCode.ServiceUnavailable, "Function host is not running.");
             }
+
+            return hostReady;
         }
     }
 }

@@ -31,7 +31,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IApplicationLifetime applicationLifetime, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
-            app.UseDeveloperExceptionPage();
+            if (env.IsDevelopment())
+            {
+                loggerFactory.AddConsole(LogLevel.Trace, true);
+                app.UseDeveloperExceptionPage();
+            }
+
             app.UseWebJobsScriptHost(applicationLifetime);
         }
     }
