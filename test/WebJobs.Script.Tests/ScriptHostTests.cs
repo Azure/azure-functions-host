@@ -61,7 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var functionErrors = new Dictionary<string, Collection<string>>();
-            var metadata = ScriptHost.ReadFunctionMetadata(config, traceWriter, null, functionErrors);
+            var functionDirectories = Directory.EnumerateDirectories(config.RootScriptPath);
+            var metadata = ScriptHost.ReadFunctionMetadata(functionDirectories, traceWriter, null, functionErrors, functionWhitelist: config.Functions);
             Assert.Equal(51, metadata.Count);
         }
 

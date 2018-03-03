@@ -9,11 +9,9 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -36,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly HostPerformanceManager _performanceManager;
         private readonly Timer _hostHealthCheckTimer;
         private readonly SlidingWindow<bool> _healthCheckWindow;
+        private readonly Stopwatch _stopwatch = new Stopwatch();
         private ScriptHost _currentInstance;
         private int _hostStartCount;
         private int _consecutiveErrorCount;
@@ -154,6 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script
             do
             {
                 ScriptHost newInstance = null;
+                _stopwatch.Restart();
                 try
                 {
                     // if we were in an error state retain that,
@@ -446,6 +446,10 @@ namespace Microsoft.Azure.WebJobs.Script
         protected virtual void OnHostInitialized()
         {
             State = ScriptHostState.Initialized;
+
+            string message = $"Host initialized ({_stopwatch.ElapsedMilliseconds}ms)";
+            Instance.TraceWriter.Info(message);
+            Instance.Logger.LogInformation(message);
         }
 
         /// <summary>
@@ -457,6 +461,10 @@ namespace Microsoft.Azure.WebJobs.Script
             metricsLogger.LogEvent(new HostStarted(Instance));
 
             State = ScriptHostState.Running;
+
+            string message = $"Host started ({_stopwatch.ElapsedMilliseconds}ms)";
+            Instance.TraceWriter.Info(message);
+            Instance.Logger.LogInformation(message);
         }
 
         public void Dispose()
