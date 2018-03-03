@@ -235,19 +235,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 return traces.Length >= 11;
             });
 
-            Assert.True(traces.Length == 11, $"Expected 10 messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
+            Assert.True(traces.Length == 13, $"Expected 10 messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
             ValidateTrace(traces[0], "Found the following functions:\r\n", LogCategories.Startup);
             ValidateTrace(traces[1], "Generating 2 job function(s)", LogCategories.Startup);
             ValidateTrace(traces[2], "Host configuration file read:", LogCategories.Startup);
-            ValidateTrace(traces[3], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
-            ValidateTrace(traces[4], "Job host started", LogCategories.Startup);
-            ValidateTrace(traces[5], "Loaded custom extension 'BotFrameworkConfiguration'", LogCategories.Startup);
-            ValidateTrace(traces[6], "Loaded custom extension 'EventGridExtensionConfig'", LogCategories.Startup);
-            ValidateTrace(traces[7], "Loaded custom extension 'SendGridConfiguration'", LogCategories.Startup);
-            ValidateTrace(traces[8], "Reading host configuration file", LogCategories.Startup);
-            ValidateTrace(traces[9], "ServicePointManager.DefaultConnectionLimit is set to the default value of 2. This can limit the connection throughput to services like Azure Storage. For more information, see https://aka.ms/webjobs-connections.", LogCategories.Startup, expectedLevel: SeverityLevel.Warning);
-            ValidateTrace(traces[10], "Starting Host (HostId=function-tests-", ScriptConstants.LogCategoryHostGeneral);
+            ValidateTrace(traces[3], "Host initialized (", LogCategories.Startup);
+            ValidateTrace(traces[4], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
+            ValidateTrace(traces[5], "Host started (", LogCategories.Startup);
+            ValidateTrace(traces[6], "Job host started", LogCategories.Startup);
+            ValidateTrace(traces[7], "Loaded custom extension 'BotFrameworkConfiguration'", LogCategories.Startup);
+            ValidateTrace(traces[8], "Loaded custom extension 'EventGridExtensionConfig'", LogCategories.Startup);
+            ValidateTrace(traces[9], "Loaded custom extension 'SendGridConfiguration'", LogCategories.Startup);
+            ValidateTrace(traces[10], "Reading host configuration file", LogCategories.Startup);
+            ValidateTrace(traces[11], "ServicePointManager.DefaultConnectionLimit is set to the default value of 2. This can limit the connection throughput to services like Azure Storage. For more information, see https://aka.ms/webjobs-connections.", LogCategories.Startup, expectedLevel: SeverityLevel.Warning);
+            ValidateTrace(traces[12], "Starting Host (HostId=function-tests-", ScriptConstants.LogCategoryHostGeneral);
 
             await Task.CompletedTask;
         }

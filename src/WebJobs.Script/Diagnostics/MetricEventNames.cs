@@ -14,7 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string HostStartupInitializeBindingProvidersLatency = "host.startup.initializebindingproviders.latency";
         public const string HostStartupCreateMetadataProviderLatency = "host.startup.createmetadataprovider.latency";
         public const string HostStartupGetFunctionDescriptorsLatency = "host.startup.getfunctiondescriptors.latency";
-        public const string HostStartupPurgeLogDirectoriesLatency = "host.startup.purgelogdirectories.latency";
 
         // function level events
         public const string FunctionInvokeLatency = "function.invoke.latency";
