@@ -10,17 +10,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     {
         private static class Logger
         {
+            private static readonly Func<ILogger, string, IDisposable> _verifyingHostAvailabilityScope =
+                LoggerMessage.DefineScope<string>("Verifying host availability (Request = {RequestId})");
+
+            private static readonly Action<ILogger, Exception> _initiatingHostAvailabilityCheck =
+               LoggerMessage.Define(LogLevel.Debug, new EventId(1, nameof(InitiatingHostAvailabilityCheck)), "Initiating host availability check.");
+
             private static readonly Action<ILogger, Exception> _hostUnavailableAfterCheck =
-               LoggerMessage.Define(LogLevel.Warning, new EventId(3, nameof(HostUnavailableAfterCheck)), "Host unavailable after check. Returning error.");
+               LoggerMessage.Define(LogLevel.Warning, new EventId(2, nameof(HostUnavailableAfterCheck)), "Host unavailable after check. Returning error.");
 
             private static readonly Action<ILogger, Exception> _hostAvailabilityCheckSucceeded =
                LoggerMessage.Define(LogLevel.Debug, new EventId(3, nameof(HostAvailabilityCheckSucceeded)), "Host availability check succeeded.");
-
-            private static readonly Action<ILogger, Exception> _initiatingHostAvailabilityCheck =
-               LoggerMessage.Define(LogLevel.Debug, new EventId(3, nameof(InitiatingHostAvailabilityCheck)), "Initiating host availability check.");
-
-            private static Func<ILogger, string, IDisposable> _verifyingHostAvailabilityScope =
-                LoggerMessage.DefineScope<string>("Verifying host availability (Request = {RequestId})");
 
             public static IDisposable VerifyingHostAvailabilityScope(ILogger logger, string requestId) => _verifyingHostAvailabilityScope(logger, requestId);
 
