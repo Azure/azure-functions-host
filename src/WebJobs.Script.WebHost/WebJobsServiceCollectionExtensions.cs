@@ -127,8 +127,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var hostFileLogger = new HostFileLoggerProvider(hostInstanceId, settings.LogPath, () => true);
             loggerFactory.AddProvider(hostFileLogger);
 
-            loggerFactory.AddConsole();
-
             return loggerFactory;
         }
     }
