@@ -128,6 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fixture = new NodeEndToEndTests.TestFixture();
             await fixture.Host.StopAsync();
             var config = fixture.Host.ScriptConfig;
+            List<string> pollMessages = new List<string>();
 
             var blob = fixture.TestOutputContainer.GetBlockBlobReference("testblob");
 
@@ -151,14 +152,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     try
                     {
                         // don't start until the manager is running
-                        TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
+                        TestHelpers.Await(() => manager.State == ScriptHostState.Running,
+                            userMessage: "Host did not start in time.").Wait();
 
                         // Wait for initial execution.
                         TestHelpers.Await(() =>
                         {
                             bool exists = blob.Exists();
+                            pollMessages.Add($"TimerTrigger: [{DateTime.UtcNow.ToString("HH:mm:ss.fff")}] '{blob.Uri}' exists: {exists}");
                             return exists;
-                        }, timeout: 10 * 1000).Wait();
+                        }, timeout: 10 * 1000, userMessage: $"Blob '{blob.Uri}' was not created by 'TimerTrigger' in time.").Wait();
 
                         // find __dirname from blob
                         string text;
@@ -181,8 +184,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         TestHelpers.Await(() =>
                         {
                             bool exists = blob.Exists();
+                            pollMessages.Add($"MovedTrigger: [{DateTime.UtcNow.ToString("HH:mm:ss.fff")}] '{blob.Uri}' exists: {exists}");
                             return exists;
-                        }, timeout: 30 * 1000).Wait();
+                        }, timeout: 30 * 1000, userMessage: $"Blob '{blob.Uri}' was not created by 'MovedTrigger' in time.").Wait();
 
                         using (var stream = new MemoryStream())
                         {
@@ -218,7 +222,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.True(t.Join(TimeSpan.FromSeconds(10)), "Thread join timed out.");
 
                 Assert.False(timeout, "The test timed out and was canceled.");
-                Assert.True(exception == null, exception?.SourceException?.ToString());
+                string pollString = string.Join(Environment.NewLine, pollMessages);
+                Assert.True(exception == null, pollString + Environment.NewLine + exception?.SourceException?.ToString());
                 Assert.True(moveException == null, "Failed to move function back to original directory: " + moveException?.SourceException?.ToString());
             }
         }
