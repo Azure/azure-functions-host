@@ -572,14 +572,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 {
                     await Assert.ThrowsAsync<InvalidOperationException>(async () =>
                     {
-                        for (int i = 0; i < ScriptConstants.MaximumSecretBackupCount + 10; i++)
+                        for (int i = 0; i < ScriptConstants.MaximumSecretBackupCount + 20; i++)
                         {
                             File.WriteAllText(Path.Combine(directory.Path, functionName + ".json"), functionSecretsJson);
-                            functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
-                            if (i > ScriptConstants.MaximumSecretBackupCount)
+
+                            // If we haven't hit the exception yet, pause to ensure the file contents are being flushed.
+                            if (i >= ScriptConstants.MaximumSecretBackupCount)
                             {
                                 await Task.Delay(500);
                             }
+
+                            functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                         }
                     });
                 }
