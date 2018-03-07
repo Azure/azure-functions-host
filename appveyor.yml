@@ -12,15 +12,7 @@ clone_folder: c:\azure-webjobs-sdk-script
 install:
 - ps: >-
     $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
-
-    mkdir c:\tools\php | out-null
-
-    Invoke-WebRequest https://azfunc.blob.core.windows.net/public/php-7.1.3-Win32-VC14-x86.zip -OutFile c:\tools\php\php.zip
-
-    Add-Type -AssemblyName System.IO.Compression.FileSystem;
-
-    [System.IO.Compression.ZipFile]::ExtractToDirectory("c:\tools\php\php.zip", "c:\tools\php")
-
+    
     Install-Product node 8.4.0 x86
 build_script:
 - ps: >
