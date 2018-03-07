@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     .ToArray());
         }
 
-        public static async Task Await(Func<bool> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000, bool throwWhenDebugging = false, string userMessage = null)
+        public static async Task Await(Func<bool> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000, bool throwWhenDebugging = false, Func<string> userMessageCallback = null)
         {
             DateTime start = DateTime.Now;
             while (!condition())
@@ -55,9 +55,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 if (shouldThrow && (DateTime.Now - start).TotalMilliseconds > timeout)
                 {
                     string error = "Condition not reached within timeout.";
-                    if (userMessage != null)
+                    if (userMessageCallback != null)
                     {
-                        error += " " + userMessage;
+                        error += " " + userMessageCallback();
                     }
                     throw new ApplicationException(error);
                 }

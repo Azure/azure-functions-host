@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     {
                         // don't start until the manager is running
                         TestHelpers.Await(() => manager.State == ScriptHostState.Running,
-                            userMessage: "Host did not start in time.").Wait();
+                            userMessageCallback: () => "Host did not start in time.").Wait();
 
                         // Wait for initial execution.
                         TestHelpers.Await(() =>
@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             bool exists = blob.Exists();
                             pollMessages.Add($"TimerTrigger: [{DateTime.UtcNow.ToString("HH:mm:ss.fff")}] '{blob.Uri}' exists: {exists}");
                             return exists;
-                        }, timeout: 10 * 1000, userMessage: $"Blob '{blob.Uri}' was not created by 'TimerTrigger' in time.").Wait();
+                        }, timeout: 10 * 1000, userMessageCallback: () => $"Blob '{blob.Uri}' was not created by 'TimerTrigger' in time.").Wait();
 
                         // find __dirname from blob
                         string text;
@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             bool exists = blob.Exists();
                             pollMessages.Add($"MovedTrigger: [{DateTime.UtcNow.ToString("HH:mm:ss.fff")}] '{blob.Uri}' exists: {exists}");
                             return exists;
-                        }, timeout: 30 * 1000, userMessage: $"Blob '{blob.Uri}' was not created by 'MovedTrigger' in time.").Wait();
+                        }, timeout: 30 * 1000, userMessageCallback: () => $"Blob '{blob.Uri}' was not created by 'MovedTrigger' in time.").Wait();
 
                         using (var stream = new MemoryStream())
                         {

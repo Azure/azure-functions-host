@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
 
             await RunTimeoutExceptionTest(trace, handleCancellation: false);
 
-            await TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running), userMessage: "Expected host to not be running");
+            await TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running), userMessageCallback: () => "Expected host to not be running");
 
             var traces = trace.GetTraces();
             Assert.DoesNotContain(traces, t => t.Message.StartsWith("Done"));
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
 
             // wait a few seconds to make sure the manager doesn't die
             await Assert.ThrowsAsync<ApplicationException>(() => TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running),
-                timeout: 3000, throwWhenDebugging: true, userMessage: "Expected host manager not to die"));
+                timeout: 3000, throwWhenDebugging: true, userMessageCallback: () => "Expected host manager not to die"));
 
             var traces = trace.GetTraces();
             Assert.Contains(traces, t => t.Message.StartsWith("Done"));
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             var mockEventManager = new Mock<IScriptEventManager>();
             var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(), mockEventManager.Object, ScriptSettingsManager.Instance, new WebHostSettings { SecretsPath = _secretsDirectory.Path });
             Task task = Task.Run(() => { manager.RunAndBlock(); });
-            await TestHelpers.Await(() => manager.State == ScriptHostState.Running, userMessage: "Expected host to be running");
+            await TestHelpers.Await(() => manager.State == ScriptHostState.Running, userMessageCallback: () => "Expected host to be running");
 
             return manager;
         }
