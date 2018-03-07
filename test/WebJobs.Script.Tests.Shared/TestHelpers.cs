@@ -111,11 +111,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private static bool IsHostRunning(HttpClient client)
         {
-            using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty))
+            // Workaround for https://github.com/Azure/azure-functions-host/issues/2397 as the base URL
+            // doesn't currently start the host. 
+            // Note: the master key "1234" is from the TestSecretManager.
+            using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "/admin/functions/dummyName/status?code=1234"))
             {
                 using (HttpResponseMessage response = client.SendAsync(request).Result)
                 {
-                    return response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.OK;
+                    return response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.NotFound;
                 }
             }
         }

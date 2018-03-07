@@ -4,47 +4,55 @@
 using System;
 using System.IO;
 using System.Net.Http;
-using System.Web.Http;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 {
     public abstract class ApplicationInsightsTestFixture : IDisposable
     {
-        private readonly ScriptSettingsManager _settingsManager;
-        private readonly HttpConfiguration _config = new HttpConfiguration();
-        private readonly HttpServer _httpServer;
+        private readonly TestServer _testServer;
 
         public ApplicationInsightsTestFixture(string scriptRoot, string testId)
         {
-            _settingsManager = ScriptSettingsManager.Instance;
-
             HostSettings = new WebHostSettings
             {
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(Environment.CurrentDirectory, scriptRoot),
                 LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
-                SecretsPath = Environment.CurrentDirectory, // not used
-                IsAuthDisabled = true
+                SecretsPath = Environment.CurrentDirectory // not used
             };
-            //  WebApiConfig.Register(_config, _settingsManager, HostSettings);
 
-            var resolver = _config.DependencyResolver;
-            var hostConfig = (resolver.GetService(typeof(WebHostResolver)) as WebHostResolver).GetScriptHostConfiguration(HostSettings);
+            _testServer = new TestServer(
+                AspNetCore.WebHost.CreateDefaultBuilder()
+                .UseStartup<Startup>()
+                .ConfigureServices(services =>
+                {
+                    ScriptSettingsManager.Instance.ApplicationInsightsInstrumentationKey = TestChannelLoggerProviderFactory.ApplicationInsightsKey;
+                    services.Replace(new ServiceDescriptor(typeof(WebHostSettings), HostSettings));
+                    services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestChannelLoggerProviderFactory(Channel)));
 
-            _settingsManager.ApplicationInsightsInstrumentationKey = TestChannelLoggerProviderFactory.ApplicationInsightsKey;
+                    services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
+                }));
 
-            InitializeConfig(hostConfig);
+            var scriptConfig = _testServer.Host.Services.GetService<WebHostResolver>().GetScriptHostConfiguration(HostSettings);
 
-            _httpServer = new HttpServer(_config);
-            HttpClient = new HttpClient(_httpServer)
-            {
-                BaseAddress = new Uri("https://localhost/")
-            };
+            InitializeConfig(scriptConfig);
+
+            HttpClient = _testServer.CreateClient();
+            HttpClient.BaseAddress = new Uri("https://localhost/");
 
             TestHelpers.WaitForWebHost(HttpClient);
+        }
+
+        public ScriptHost GetScriptHost()
+        {
+            return _testServer.Host.Services.GetService<WebHostResolver>().GetWebScriptHostManager(HostSettings).Instance;
         }
 
         public TestTelemetryChannel Channel { get; private set; } = new TestTelemetryChannel();
@@ -67,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public void Dispose()
         {
-            _httpServer?.Dispose();
+            _testServer?.Dispose();
             HttpClient?.Dispose();
         }
     }

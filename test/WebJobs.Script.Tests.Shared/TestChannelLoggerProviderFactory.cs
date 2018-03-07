@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.Implementation;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -60,7 +61,7 @@ namespace Microsoft.WebJobs.Script.Tests
         private TestTelemetryChannel _channel;
 
         public TestTelemetryClientFactory(Func<string, LogLevel, bool> filter, TestTelemetryChannel channel)
-            : base(TestChannelLoggerProviderFactory.ApplicationInsightsKey, filter)
+            : base(TestChannelLoggerProviderFactory.ApplicationInsightsKey, new SamplingPercentageEstimatorSettings(), filter)
         {
             _channel = channel;
         }

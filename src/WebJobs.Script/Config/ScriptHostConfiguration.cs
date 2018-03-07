@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.Implementation;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 
@@ -86,6 +87,12 @@ namespace Microsoft.Azure.WebJobs.Script
         /// registered <see cref="ILoggerFactory"/>.
         /// </summary>
         public LogCategoryFilter LogFilter { get; set; }
+
+        /// <summary>
+        /// Gets or sets the <see cref="SamplingPercentageEstimatorSettings"/> to be used for Application
+        /// Insights client-side sampling. If null, client-side sampling is disabled.
+        /// </summary>
+        public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
 
         /// <summary>
         /// Gets or sets the set of <see cref="ScriptBindingProviders"/> to use when loading functions.

@@ -61,6 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ExecutionContext = context.ExecutionContext,
                 Inputs = inputs,
                 ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
 
                 // TODO: link up cancellation token to parameter descriptors
                 CancellationToken = CancellationToken.None,

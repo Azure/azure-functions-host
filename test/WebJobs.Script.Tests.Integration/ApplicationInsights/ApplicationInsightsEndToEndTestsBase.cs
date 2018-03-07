@@ -7,10 +7,10 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Newtonsoft.Json.Linq;
@@ -25,49 +25,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public ApplicationInsightsEndToEndTestsBase(ApplicationInsightsTestFixture fixture)
         {
-            TestHelpers.ClearFunctionLogs("Scenarios");
-            TestHelpers.ClearFunctionLogs("Http-Scenarios");
-
             _fixture = fixture;
         }
 
-        [Fact(Skip = "Migrate fixture to build the host")]
+        [Fact]
         public async Task Validate_Manual()
         {
             string functionName = "Scenarios";
             int invocationCount = 5;
 
             List<string> functionTraces = new List<string>();
+            ScriptHost host = _fixture.GetScriptHost();
 
             // We want to invoke this multiple times specifically to make sure Node invocationIds
             // are correctly being set. Invoke them all first, then come back and validate all.
             for (int i = 0; i < invocationCount; i++)
             {
-                HttpRequestMessage request = new HttpRequestMessage
-                {
-                    RequestUri = new Uri($"https://localhost/admin/functions/{functionName}"),
-                    Method = HttpMethod.Post,
-                };
-
                 string functionTrace = $"Function trace: {Guid.NewGuid().ToString()}";
                 functionTraces.Add(functionTrace);
 
-                JObject input = new JObject()
+                Dictionary<string, object> input = new Dictionary<string, object>
                 {
-                    {
-                        "input", new JObject()
+                    ["input"] = new JObject()
                         {
                             { "scenario", "appInsights" },
                             { "container", "not-used" },
                             { "value",  functionTrace }
                         }.ToString()
-                    }
                 };
-                request.Content = new StringContent(input.ToString());
-                request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
-                HttpResponseMessage response = await _fixture.HttpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+                await host.CallAsync(functionName, input);
             }
 
             // Now validate each function invocation.
@@ -77,28 +64,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
                 string invocationId = ValidateEndToEndTest(functionName, functionTrace, true);
 
-                // Do some additional metric validation
-                MetricTelemetry metric = _fixture.Channel.Telemetries
-                    .OfType<MetricTelemetry>()
-                    .Where(t => t.Context.Operation.Id == invocationId)
-                    .Single();
-                ValidateMetric(metric, invocationId, functionName);
+                // TODO: Remove this check when metrics are supported in Node:
+                // https://github.com/Azure/azure-functions-host/issues/2189
+                if (this is ApplicationInsightsCSharpEndToEndTests)
+                {
+                    // Do some additional metric validation
+                    MetricTelemetry metric = _fixture.Channel.Telemetries
+                        .OfType<MetricTelemetry>()
+                        .Where(t => t.Context.Operation.Id == invocationId)
+                        .Single();
+                    ValidateMetric(metric, invocationId, functionName);
+                }
             }
         }
 
-        [Fact(Skip = "Migrate fixture to build the host")]
+        [Fact(Skip = "HTTP logging not currently supported")]
         public async Task Validate_Http_Success()
         {
             await RunHttpTest("HttpTrigger-Scenarios", "appInsights-Success", HttpStatusCode.OK, true);
         }
 
-        [Fact(Skip = "Migrate fixture to build the host")]
+        [Fact(Skip = "HTTP logging not currently supported")]
         public async Task Validate_Http_Failure()
         {
             await RunHttpTest("HttpTrigger-Scenarios", "appInsights-Failure", HttpStatusCode.Conflict, true);
         }
 
-        [Fact(Skip = "Migrate fixture to build the host")]
+        [Fact(Skip = "HTTP logging not currently supported")]
         public async Task Validate_Http_Throw()
         {
             await RunHttpTest("HttpTrigger-Scenarios", "appInsights-Throw", HttpStatusCode.InternalServerError, false);
@@ -122,6 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             };
             request.Content = new StringContent(input.ToString());
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            request.Content.Headers.ContentLength = input.ToString().Length;
 
             HttpResponseMessage response = await _fixture.HttpClient.SendAsync(request);
             Assert.Equal(expectedStatusCode, response.StatusCode);
@@ -167,18 +160,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                     .OrderBy(t => t.Message)
                     .ToArray();
 
-            string expectedMessage = functionSuccess ? "Function completed (Success, Id=" : "Function completed (Failure, Id=";
+            string expectedMessage = functionSuccess ? $"Executed 'Functions.{functionName}' (Succeeded, Id=" : $"Executed 'Functions.{functionName}' (Failed, Id=";
             SeverityLevel expectedLevel = functionSuccess ? SeverityLevel.Information : SeverityLevel.Error;
 
             ValidateTrace(traces[0], expectedMessage + invocationId, LogCategories.CreateFunctionCategory(functionName), functionName, invocationId, expectedLevel);
-            ValidateTrace(traces[1], "Function started (Id=" + invocationId, LogCategories.CreateFunctionCategory(functionName), functionName, invocationId);
+            ValidateTrace(traces[1], $"Executing 'Functions.{functionName}' (Reason='This function was programmatically called via the host APIs.', Id=" + invocationId, LogCategories.CreateFunctionCategory(functionName), functionName, invocationId);
 
             if (!functionSuccess)
             {
                 TraceTelemetry errorTrace = _fixture.Channel.Telemetries
                     .OfType<TraceTelemetry>()
                     .Where(t => t.Context.Operation.Id == invocationId)
-                    .Where(t => t.Message.StartsWith("Exception"))
+                    .Where(t => t.Message.Contains("Exception while"))
                     .Single();
 
                 ValidateTrace(errorTrace, $"Exception while executing function: Functions.{functionName}.", LogCategories.CreateFunctionCategory(functionName), functionName, invocationId, SeverityLevel.Error);
@@ -202,11 +195,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         private async Task WaitForFunctionTrace(string functionName, string functionTrace)
         {
-            // make sure file logs have the info
-            IList<string> logs = null;
+            // make sure the telemetry has flushed
+            IEnumerable<string> logs = null;
             await TestHelpers.Await(() =>
             {
-                logs = TestHelpers.GetFunctionLogsAsync(functionName, throwOnNoLogs: false).Result;
+                logs = _fixture.Channel.Telemetries.OfType<TraceTelemetry>().Select(p => p.Message);
                 return logs.Count(p => p.Contains(functionTrace)) == 1;
             }, pollingInterval: 100);
         }
@@ -217,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTelemetry(telemetry, expectedOperationId, expectedOperationName, expectedCategory, SeverityLevel.Error);
         }
 
-        [Fact(Skip = "Migrate fixture to build the host")]
+        [Fact]
         public async Task Validate_HostLogs()
         {
             // Validate the host startup traces. Order by message string as the requests may come in
@@ -228,32 +221,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             {
                 traces = _fixture.Channel.Telemetries
                     .OfType<TraceTelemetry>()
-                    .Where(t => t.Context.Operation.Id == null)
+                    .Where(t => t.Properties[LogConstants.CategoryNameKey].ToString().StartsWith("Host."))
                     .OrderBy(t => t.Message)
                     .ToArray();
 
-                return traces.Length >= 10;
+                return traces.Length >= 9;
             });
 
-            Assert.True(traces.Length == 10, $"Expected 10 messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
+            Assert.True(traces.Length == 9, $"Expected 9 messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
-            ValidateTrace(traces[0], "Found the following functions:\r\n", LogCategories.Startup);
-            ValidateTrace(traces[1], "Generating 2 job function(s)", LogCategories.Startup);
-            ValidateTrace(traces[2], "Host configuration file read:", LogCategories.Startup);
-            ValidateTrace(traces[3], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
-            ValidateTrace(traces[4], "Job host started", LogCategories.Startup);
-            ValidateTrace(traces[5], "Loaded custom extension 'BotFrameworkConfiguration'", LogCategories.Startup);
-            ValidateTrace(traces[6], "Loaded custom extension 'EventGridExtensionConfig'", LogCategories.Startup);
-            ValidateTrace(traces[7], "Loaded custom extension 'SendGridConfiguration'", LogCategories.Startup);
-            ValidateTrace(traces[8], "Reading host configuration file", LogCategories.Startup);
-            ValidateTrace(traces[9], "Starting Host (HostId=function-tests-", ScriptConstants.LogCategoryHostGeneral);
+            ValidateTrace(traces[0], "A function whitelist has been specified", LogCategories.Startup);
+            ValidateTrace(traces[1], "Found the following functions:\r\n", LogCategories.Startup);
+            ValidateTrace(traces[2], "Generating 2 job function(s)", LogCategories.Startup);
+            ValidateTrace(traces[3], "Host configuration file read:", LogCategories.Startup);
+            ValidateTrace(traces[4], "Host id explicitly set", LogCategories.Startup, expectedLevel: SeverityLevel.Warning);
+            ValidateTrace(traces[5], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
+            ValidateTrace(traces[6], "Job host started", LogCategories.Startup);
+            ValidateTrace(traces[7], "Reading host configuration file", LogCategories.Startup);
+            ValidateTrace(traces[8], "Starting Host (HostId=function-tests-", ScriptConstants.LogCategoryHostGeneral);
 
             await Task.CompletedTask;
         }
 
         private static void ValidateMetric(MetricTelemetry telemetry, string expectedOperationId, string expectedOperationName)
         {
-            ValidateTelemetry(telemetry, expectedOperationId, expectedOperationName, LogCategories.CreateFunctionCategory(expectedOperationName), SeverityLevel.Information);
+            ValidateTelemetry(telemetry, expectedOperationId, expectedOperationName, LogCategories.CreateFunctionUserCategory(expectedOperationName), SeverityLevel.Information);
 
             Assert.Equal("TestMetric", telemetry.Name);
             Assert.Equal(1234, telemetry.Sum);
@@ -330,10 +322,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         private static void ValidateSdkVersion(ITelemetry telemetry)
         {
-            PropertyInfo propInfo = typeof(TelemetryContext).GetProperty("Tags", BindingFlags.NonPublic | BindingFlags.Instance);
-            IDictionary<string, string> tags = propInfo.GetValue(telemetry.Context) as IDictionary<string, string>;
-
-            Assert.StartsWith("azurefunctions: ", tags["ai.internal.sdkVersion"]);
+            Assert.StartsWith("azurefunctions: ", telemetry.Context.GetInternalContext().SdkVersion);
         }
     }
 }

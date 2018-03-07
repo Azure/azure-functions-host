@@ -15,6 +15,7 @@ using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.Implementation;
 using Microsoft.Azure.AppService.Proxy.Client.Contract;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
@@ -1559,6 +1560,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             ApplyLoggerConfig(config, scriptConfig);
+            ApplyApplicationInsightsConfig(config, scriptConfig);
         }
 
         internal static void ApplyLoggerConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
@@ -1614,6 +1616,37 @@ namespace Microsoft.Azure.WebJobs.Script
                     if (Enum.TryParse<FileLoggingMode>((string)value, true, out fileLoggingMode))
                     {
                         scriptConfig.FileLoggingMode = fileLoggingMode;
+                    }
+                }
+            }
+        }
+
+        internal static void ApplyApplicationInsightsConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
+        {
+            scriptConfig.ApplicationInsightsSamplingSettings = new SamplingPercentageEstimatorSettings();
+            JObject configSection = (JObject)configJson["applicationInsights"];
+            if (configSection != null)
+            {
+                JObject samplingSection = (JObject)configSection["sampling"];
+                if (samplingSection != null)
+                {
+                    if (samplingSection.TryGetValue("isEnabled", out JToken value))
+                    {
+                        if (bool.TryParse(value.ToString(), out bool isEnabled) && !isEnabled)
+                        {
+                            scriptConfig.ApplicationInsightsSamplingSettings = null;
+                        }
+                    }
+
+                    if (scriptConfig.ApplicationInsightsSamplingSettings != null)
+                    {
+                        if (samplingSection.TryGetValue("maxTelemetryItemsPerSecond", out value))
+                        {
+                            if (double.TryParse(value.ToString(), out double itemsPerSecond))
+                            {
+                                scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond = itemsPerSecond;
+                            }
+                        }
                     }
                 }
             }

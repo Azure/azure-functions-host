@@ -256,8 +256,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 });
             }
 
-            context.AsyncExecutionContext = System.Threading.ExecutionContext.Capture();
-
             _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
             Send(new StreamingMessage

@@ -746,79 +746,79 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact(Skip = "Sampling not supported")]
+        [Fact]
         public void ApplyApplicationInsightsConfig_SamplingDisabled_CreatesNullSettings()
         {
-            // JObject config = JObject.Parse(@"
-            // {
-            //     'applicationInsights': {
-            //         'sampling': {
-            //             'isEnabled': false
-            //         }
-            //     }
-            // }");
+            JObject config = JObject.Parse(@"
+             {
+                 'applicationInsights': {
+                     'sampling': {
+                         'isEnabled': false
+                     }
+                 }
+             }");
 
-            // ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            // ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
 
-            // Assert.Null(scriptConfig.ApplicationInsightsSamplingSettings);
+            Assert.Null(scriptConfig.ApplicationInsightsSamplingSettings);
         }
 
-        [Fact(Skip = "Sampling not supported")]
+        [Fact]
         public void ApplyApplicationInsightsConfig_SamplingDisabled_IgnoresOtherSettings()
         {
-            // JObject config = JObject.Parse(@"
-            // {
-            //     'applicationInsights': {
-            //         'sampling': {
-            //             'isEnabled': false,
-            //             'maxTelemetryItemsPerSecond': 25
-            //         }
-            //     }
-            // }");
+            JObject config = JObject.Parse(@"
+             {
+                 'applicationInsights': {
+                     'sampling': {
+                         'isEnabled': false,
+                         'maxTelemetryItemsPerSecond': 25
+                     }
+                 }
+             }");
 
-            // ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            // ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
 
-            // Assert.Null(scriptConfig.ApplicationInsightsSamplingSettings);
+            Assert.Null(scriptConfig.ApplicationInsightsSamplingSettings);
         }
 
-        [Fact(Skip = "Sampling not supported")]
+        [Fact]
         public void ApplyApplicationInsightsConfig_SamplingEnabled_CreatesDefaultSettings()
         {
-            // JObject config = JObject.Parse(@"
-            // {
-            //     'applicationInsights': {
-            //         'sampling': {
-            //             'isEnabled': true
-            //         }
-            //     }
-            // }");
+            JObject config = JObject.Parse(@"
+             {
+                 'applicationInsights': {
+                     'sampling': {
+                         'isEnabled': true
+                     }
+                 }
+             }");
 
-            // ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            // ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
 
-            // Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
-            // Assert.Equal(5, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
+            Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
+            Assert.Equal(5, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
         }
 
-        [Fact(Skip = "Sampling not supported")]
+        [Fact]
         public void ApplyApplicationInsightsConfig_Sets_MaxTelemetryItemsPerSecond()
         {
-            // JObject config = JObject.Parse(@"
-            // {
-            //     'applicationInsights': {
-            //         'sampling': {
-            //             'maxTelemetryItemsPerSecond': 25
-            //         }
-            //     }
-            // }");
+            JObject config = JObject.Parse(@"
+             {
+                 'applicationInsights': {
+                     'sampling': {
+                         'maxTelemetryItemsPerSecond': 25
+                     }
+                 }
+             }");
 
-            // ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            // ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
 
-            // Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
-            // Assert.Equal(25, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
+            Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
+            Assert.Equal(25, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
         }
 
         [Fact]
@@ -868,16 +868,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(0.77F, scriptConfig.HostHealthMonitor.CounterThreshold);
         }
 
-        [Fact(Skip = "Sampling not supported")]
+        [Fact]
         public void ApplyApplicationInsightsConfig_NoSettings_CreatesDefaultSettings()
         {
-            // JObject config = JObject.Parse("{ }");
+            JObject config = JObject.Parse("{ }");
 
-            // ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            // ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
 
-            // Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
-            // Assert.Equal(5, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
+            Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
+            Assert.Equal(5, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
         }
 
         [Fact]
