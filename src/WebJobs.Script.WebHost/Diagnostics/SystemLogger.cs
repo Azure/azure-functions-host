@@ -19,16 +19,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly string _categoryName;
         private readonly string _functionName;
         private readonly bool _isUserFunction;
+        private readonly string _hostInstanceId;
 
-        public SystemLogger(string categoryName, IEventGenerator eventGenerator, ScriptSettingsManager settingsManager)
+        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, ScriptSettingsManager settingsManager)
         {
             _settingsManager = settingsManager;
             _appName = _settingsManager.AzureWebsiteUniqueSlotName;
             _subscriptionId = Utility.GetSubscriptionId();
             _eventGenerator = eventGenerator;
-            _categoryName = categoryName;
+            _categoryName = categoryName ?? string.Empty;
             _functionName = LogCategories.IsFunctionCategory(_categoryName) ? _categoryName.Split('.')[1] : string.Empty;
             _isUserFunction = LogCategories.IsFunctionUserCategory(_categoryName);
+            _hostInstanceId = hostInstanceId;
         }
 
         public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope.Push(state);
@@ -51,12 +53,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 Utility.GetStateBoolValue(stateDict, ScriptConstants.LogPropertyIsUserLogKey) == true);
         }
 
-        private string GetEventName<TState>(TState state)
+        private string GetValueFromState<TState>(TState state, string key)
         {
             string value = string.Empty;
             if (state is IEnumerable<KeyValuePair<string, object>> stateDict)
             {
-                value = Utility.GetStateValueOrDefault<string>(stateDict, ScriptConstants.LogPropertyEventNameKey) ?? string.Empty;
+                value = Utility.GetStateValueOrDefault<string>(stateDict, key) ?? string.Empty;
             }
             return value;
         }
@@ -82,22 +84,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // otherwise the ETW event will fail to be persisted (silently)
             string subscriptionId = _subscriptionId ?? string.Empty;
             string appName = _appName ?? string.Empty;
-            string source = _categoryName ?? string.Empty;
+            string source = GetValueFromState(state, ScriptConstants.LogPropertySourceKey) ?? _categoryName;
             string summary = Sanitizer.Sanitize(formattedMessage) ?? string.Empty;
             string innerExceptionType = string.Empty;
             string innerExceptionMessage = string.Empty;
             string functionName = _functionName;
-            string eventName = GetEventName(state);
+            string eventName = GetValueFromState(state, ScriptConstants.LogPropertyEventNameKey);
+            string functionInvocationId = GetValueFromState(state, ScriptConstants.LogPropertyFunctionInvocationIdKey);
+            string hostInstanceId = _hostInstanceId;
+            string activityId = GetValueFromState(state, ScriptConstants.LogPropertyActivityIdKey);
 
             // Populate details from the exception.
             string details = string.Empty;
-            if (string.IsNullOrEmpty(details) && exception != null)
+            if (exception != null)
             {
                 details = Sanitizer.Sanitize(exception.ToFormattedString());
-
                 if (string.IsNullOrEmpty(functionName) && exception is FunctionInvocationException fex)
                 {
-                    functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName.Replace("Host.Functions.", string.Empty);
+                    functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName;
                 }
 
                 Exception innerException = exception.InnerException;
@@ -116,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage);
+            _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, functionInvocationId, hostInstanceId, activityId);
         }
 
         private void GetExceptionDetails(Exception exception, out string exceptionType, out string exceptionMessage)

@@ -13,6 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script
     /// </summary>
     public interface ILoggerProviderFactory
     {
-        IEnumerable<ILoggerProvider> CreateLoggerProviders(ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary);
+        IEnumerable<ILoggerProvider> CreateLoggerProviders(string hostInstanceId, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary);
     }
 }

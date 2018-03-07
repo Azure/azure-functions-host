@@ -20,11 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _settingsManager = settingsManager;
         }
 
-        public override IEnumerable<ILoggerProvider> CreateLoggerProviders(ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary)
+        public override IEnumerable<ILoggerProvider> CreateLoggerProviders(string hostInstanceId, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary)
         {
-            ILoggerProvider systemProvider = new SystemLoggerProvider(_eventGenerator, _settingsManager);
+            ILoggerProvider systemProvider = new SystemLoggerProvider(hostInstanceId, _eventGenerator, _settingsManager);
 
-            return base.CreateLoggerProviders(scriptConfig, settingsManager, isFileLoggingEnabled, isPrimary).Append(systemProvider);
+            return base.CreateLoggerProviders(hostInstanceId, scriptConfig, settingsManager, isFileLoggingEnabled, isPrimary).Append(systemProvider);
         }
     }
 }

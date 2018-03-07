@@ -24,13 +24,13 @@ namespace Microsoft.WebJobs.Script.Tests
             _channel = channel;
         }
 
-        public override IEnumerable<ILoggerProvider> CreateLoggerProviders(ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager, Func<bool> fileLoggingEnabled, Func<bool> isPrimary)
+        public override IEnumerable<ILoggerProvider> CreateLoggerProviders(string hostInstanceId, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager, Func<bool> fileLoggingEnabled, Func<bool> isPrimary)
         {
             // Replace TelemetryClient
             var clientFactory = new TestTelemetryClientFactory(scriptConfig.LogFilter.Filter, _channel);
             scriptConfig.HostConfig.AddService<ITelemetryClientFactory>(clientFactory);
 
-            return base.CreateLoggerProviders(scriptConfig, settingsManager, fileLoggingEnabled, isPrimary);
+            return base.CreateLoggerProviders(hostInstanceId, scriptConfig, settingsManager, fileLoggingEnabled, isPrimary);
         }
     }
 

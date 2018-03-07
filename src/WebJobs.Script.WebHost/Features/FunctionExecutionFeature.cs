@@ -73,7 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
 
                 var logData = new Dictionary<string, object>
                 {
-                    [ScriptConstants.LogPropertyEventNameKey] = ScriptConstants.ColdStartEventName
+                    [ScriptConstants.LogPropertyEventNameKey] = ScriptConstants.ColdStartEventName,
+                    [ScriptConstants.LogPropertyActivityIdKey] = request.GetRequestId()
                 };
                 _logger.Log(LogLevel.Information, 0, logData, null, (s, e) => coldStartData.ToString(Formatting.None));
             }

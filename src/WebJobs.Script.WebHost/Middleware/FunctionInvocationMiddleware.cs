@@ -97,7 +97,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 ILogger logger = loggerFactory.CreateLogger(LogCategories.CreateFunctionCategory(functionExecution.Descriptor.Name));
                 var scopeState = new Dictionary<string, object>()
                 {
-                    [ScriptConstants.LoggerHttpRequest] = context.Request
+                    [ScriptConstants.LoggerHttpRequest] = context.Request,
+                    [ScriptConstants.LogPropertyActivityIdKey] = context.Request.GetRequestId()
                 };
 
                 using (logger.BeginScope(scopeState))

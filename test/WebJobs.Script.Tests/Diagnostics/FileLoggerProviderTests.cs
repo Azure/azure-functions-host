@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -24,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         public void CreateLogger_UsesSameFileWriter_ForSameFile()
         {
             var rootPath = Path.GetTempPath();
-            using (var provider = new FunctionFileLoggerProvider(rootPath, () => true, () => true))
+            using (var provider = new FunctionFileLoggerProvider(Guid.NewGuid().ToString(), rootPath, () => true, () => true))
             {
                 provider.CreateLogger(LogCategories.CreateFunctionCategory("Test1"));
                 provider.CreateLogger(LogCategories.CreateFunctionUserCategory("Test1"));

@@ -21,12 +21,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptSettingsManager _settingsManager;
         private readonly string _category;
         private readonly string _functionName = "TestFunction";
+        private readonly string _hostInstanceId;
 
         public SystemLoggerTests()
         {
             _settingsManager = ScriptSettingsManager.Instance;
 
             _subscriptionId = "e3235165-1600-4819-85f0-2ab362e909e4";
+            _hostInstanceId = Guid.NewGuid().ToString();
             _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName, $"{_subscriptionId}+westuswebspace");
 
             _websiteName = "functionstest";
@@ -35,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockEventGenerator = new Mock<IEventGenerator>(MockBehavior.Strict);
 
             _category = LogCategories.CreateFunctionCategory(_functionName);
-            _logger = new SystemLogger(_category, _mockEventGenerator.Object, _settingsManager);
+            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, _settingsManager);
         }
 
         [Fact]
@@ -43,11 +45,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string eventName = string.Empty;
             string details = string.Empty;
+            string summary = "TestMessage";
+            string functionInvocationId = string.Empty;
+            string activityId = string.Empty;
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, _subscriptionId, _websiteName, _functionName, eventName, _category, details, summary, string.Empty, string.Empty, functionInvocationId, _hostInstanceId, activityId));
+
+            _logger.LogDebug(summary);
+
+            _mockEventGenerator.VerifyAll();
+        }
+
+        [Fact]
+        public void Trace_Verbose_LogData_EmitsExpectedEvent()
+        {
+            string eventName = string.Empty;
+            string details = string.Empty;
             string message = "TestMessage";
+            string functionInvocationId = Guid.NewGuid().ToString();
+            string activityId = Guid.NewGuid().ToString();
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, _subscriptionId, _websiteName, _functionName, eventName, _category, details, message, string.Empty, string.Empty));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, _subscriptionId, _websiteName, _functionName, eventName, _category, details, message, string.Empty, string.Empty, functionInvocationId, _hostInstanceId, activityId));
 
-            _logger.LogDebug(message);
+            var logData = new Dictionary<string, object>
+            {
+                ["message"] = message,
+                [ScriptConstants.LogPropertyFunctionInvocationIdKey] = functionInvocationId,
+                [ScriptConstants.LogPropertyActivityIdKey] = activityId
+            };
+
+            _logger.Log(LogLevel.Debug, 0, logData, null, (state, ex) => state["message"].ToString());
 
             _mockEventGenerator.VerifyAll();
         }
@@ -57,10 +84,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string eventName = string.Empty;
             string message = "TestMessage";
+            string functionInvocationId = string.Empty;
+            string activityId = string.Empty;
 
             Exception ex = new Exception("Kaboom");
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, ex.ToFormattedString(), message, ex.GetType().ToString(), ex.Message));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, ex.ToFormattedString(), message, ex.GetType().ToString(), ex.Message, functionInvocationId, _hostInstanceId, activityId));
 
             _logger.LogError(ex, message);
 
@@ -79,10 +108,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string sanitizedExceptionMessage = $"Invalid string: \"{secretReplacement}\"";
 
             string eventName = string.Empty;
+            string functionInvocationId = string.Empty;
+            string activityId = string.Empty;
 
             Exception ex = new InvalidOperationException(secretException);
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, sanitizedDetails, sanitizedString, ex.GetType().ToString(), sanitizedExceptionMessage));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, sanitizedDetails, sanitizedString, ex.GetType().ToString(), sanitizedExceptionMessage, functionInvocationId, _hostInstanceId, activityId));
 
             _logger.LogError(ex, secretString);
 
@@ -93,11 +124,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Trace_Ignores_FunctionUserCategory()
         {
             // Create a logger with the Function.{FunctionName}.User category, which is what determines user logs.
-            ILogger logger = new SystemLogger(LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, _settingsManager);
+            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, _settingsManager);
             logger.LogDebug("TestMessage");
 
             // Make sure it's never been called.
-            _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), string.Empty, string.Empty), Times.Never);
+            _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), string.Empty, string.Empty, string.Empty, string.Empty, string.Empty), Times.Never);
         }
 
         [Fact]
@@ -113,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _logger.LogDebug($"{{{ScriptConstants.LogPropertyIsUserLogKey}}}", true);
 
             // Make sure it's never been called.
-            _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), string.Empty, string.Empty), Times.Never);
+            _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), string.Empty, string.Empty, string.Empty, string.Empty, string.Empty), Times.Never);
         }
 
         public void Dispose()

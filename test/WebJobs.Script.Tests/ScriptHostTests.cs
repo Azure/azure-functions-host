@@ -947,7 +947,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestLoggerProvider loggerProvider = null;
             var loggerFactoryHookMock = new Mock<ILoggerProviderFactory>(MockBehavior.Strict);
             loggerFactoryHookMock
-                .Setup(m => m.CreateLoggerProviders(It.IsAny<ScriptHostConfiguration>(), It.IsAny<ScriptSettingsManager>(), It.IsAny<Func<bool>>(), It.IsAny<Func<bool>>()))
+                .Setup(m => m.CreateLoggerProviders(It.IsAny<string>(), It.IsAny<ScriptHostConfiguration>(), It.IsAny<ScriptSettingsManager>(), It.IsAny<Func<bool>>(), It.IsAny<Func<bool>>()))
                 .Returns<ScriptHostConfiguration, ScriptSettingsManager, Func<bool>, Func<bool>>((scriptConfig, settingsManager, fileLoggingEnabled, isPrimary) =>
                  {
                      loggerProvider = new TestLoggerProvider(scriptConfig.LogFilter.Filter);
@@ -1071,7 +1071,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ILoggerProviderFactory builder = new DefaultLoggerProviderFactory();
 
-            ScriptHost.ConfigureLoggerFactory(loggerFactory, config, settingsManager, builder, () => true, () => true, (ex) => { });
+            ScriptHost.ConfigureLoggerFactory(Guid.NewGuid().ToString(), loggerFactory, config, settingsManager, builder, () => true, () => true, (ex) => { });
 
             loggerFactoryMock.Verify(x => x.AddProvider(It.IsAny<FunctionFileLoggerProvider>()), Times.AtLeastOnce());
             Assert.Equal(1, metricsLogger.LoggedEvents.Count);
@@ -1101,7 +1101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ILoggerProviderFactory builder = new DefaultLoggerProviderFactory();
 
-            ScriptHost.ConfigureLoggerFactory(loggerFactory, config, settingsManager, builder, () => true, () => true, (ex) => { });
+            ScriptHost.ConfigureLoggerFactory(Guid.NewGuid().ToString(), loggerFactory, config, settingsManager, builder, () => true, () => true, (ex) => { });
 
             if (consoleLoggingEnabled == "always")
             {
@@ -1136,7 +1136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var builder = new TestChannelLoggerProviderFactory(channel);
 
-            ScriptHost.ConfigureLoggerFactory(loggerFactory, config, settingsManager, builder, () => true, () => true, (ex) => { });
+            ScriptHost.ConfigureLoggerFactory(Guid.NewGuid().ToString(), loggerFactory, config, settingsManager, builder, () => true, () => true, (ex) => { });
 
             // Create a logger and try out the configured factory. We need to pretend that it is coming from a
             // function, so set the function name and the category appropriately.

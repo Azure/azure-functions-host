@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
             _hostConfig = scriptConfig.HostConfig;
-
+            _instanceId = Guid.NewGuid().ToString();
             if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
             {
                 scriptConfig.RootScriptPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootScriptPath);
@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (_instanceId == null)
                 {
-                    _instanceId = _settingsManager.InstanceId;
+                    _instanceId = Guid.NewGuid().ToString();
                 }
 
                 return _instanceId;
@@ -349,7 +349,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 ConfigureLoggerFactory(recreate: true);
                 _startupLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
                 Logger = _hostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
-
                 // Allow tests to modify anything initialized by host.json
                 ScriptConfig.OnConfigurationApplied?.Invoke(ScriptConfig);
 
@@ -498,7 +497,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (storageString != null)
                 {
                     var lockManager = (IDistributedLockManager)Services.GetService(typeof(IDistributedLockManager));
-                    _blobLeaseManager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), _hostConfig.HostId, InstanceId, _hostConfig.LoggerFactory);
+                    _blobLeaseManager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), _hostConfig.HostId, _settingsManager.InstanceId, _hostConfig.LoggerFactory);
                 }
 
                 // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal
@@ -807,14 +806,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 _loggerFactory = _hostConfig.LoggerFactory;
             }
 
-            ConfigureLoggerFactory(_hostConfig.LoggerFactory, ScriptConfig, _settingsManager, _loggerProviderFactory,
+            ConfigureLoggerFactory(_instanceId, _hostConfig.LoggerFactory, ScriptConfig, _settingsManager, _loggerProviderFactory,
                 () => FileLoggingEnabled, () => IsPrimary, HandleHostError);
         }
 
-        internal static void ConfigureLoggerFactory(ILoggerFactory loggerFactory, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager,
+        internal static void ConfigureLoggerFactory(string instanceId, ILoggerFactory loggerFactory, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager,
             ILoggerProviderFactory builder, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary, Action<Exception> handleException)
         {
-            foreach (ILoggerProvider provider in builder.CreateLoggerProviders(scriptConfig, settingsManager, isFileLoggingEnabled, isPrimary))
+            foreach (ILoggerProvider provider in builder.CreateLoggerProviders(instanceId, scriptConfig, settingsManager, isFileLoggingEnabled, isPrimary))
             {
                 loggerFactory.AddProvider(provider);
             }
