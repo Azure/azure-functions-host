@@ -31,10 +31,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
 
             await TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running));
 
-            var messages = _loggerProvider.GetAllLogMessages();
-            Assert.DoesNotContain(messages, t => t.FormattedMessage.StartsWith("Done"));
-            Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
-            Assert.Contains(messages, t => t.FormattedMessage == "A function timeout has occurred. Host is shutting down.");
+            await TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running), userMessageCallback: () => "Expected host to not be running");
+
+            var traces = trace.GetTraces();
+            Assert.DoesNotContain(traces, t => t.Message.StartsWith("Done"));
+            Assert.Contains(traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
+            Assert.Contains(traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
         }
 
         [Fact(Skip = "Investigate test failure")]
@@ -44,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
 
             // wait a few seconds to make sure the manager doesn't die
             await Assert.ThrowsAsync<ApplicationException>(() => TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running),
-                timeout: 3000, throwWhenDebugging: true));
+                timeout: 3000, throwWhenDebugging: true, userMessageCallback: () => "Expected host manager not to die"));
 
             var messages = _loggerProvider.GetAllLogMessages();
             Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Done"));
@@ -92,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
                 NullLoggerFactory.Instance);
 
             Task task = Task.Run(() => { manager.RunAndBlock(); });
-            await TestHelpers.Await(() => manager.State == ScriptHostState.Running);
+            await TestHelpers.Await(() => manager.State == ScriptHostState.Running, userMessageCallback: () => "Expected host to be running");
 
             return manager;
         }
