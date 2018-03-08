@@ -442,6 +442,15 @@ namespace Microsoft.Azure.WebJobs.Script
             return (TValue)kvps.Last().Value;
         }
 
+        public static string GetValueFromState<TState>(TState state, string key)
+        {
+            string value = string.Empty;
+            if (state is IEnumerable<KeyValuePair<string, object>> stateDict)
+            {
+                value = GetStateValueOrDefault<string>(stateDict, key) ?? string.Empty;
+            }
+            return value;
+        }
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
         {
             public override bool CanWrite => true;

@@ -53,16 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 Utility.GetStateBoolValue(stateDict, ScriptConstants.LogPropertyIsUserLogKey) == true);
         }
 
-        private string GetValueFromState<TState>(TState state, string key)
-        {
-            string value = string.Empty;
-            if (state is IEnumerable<KeyValuePair<string, object>> stateDict)
-            {
-                value = Utility.GetStateValueOrDefault<string>(stateDict, key) ?? string.Empty;
-            }
-            return value;
-        }
-
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
             // User logs are not logged to system logs.
@@ -84,15 +74,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // otherwise the ETW event will fail to be persisted (silently)
             string subscriptionId = _subscriptionId ?? string.Empty;
             string appName = _appName ?? string.Empty;
-            string source = GetValueFromState(state, ScriptConstants.LogPropertySourceKey) ?? _categoryName;
+            string source = _categoryName ?? Utility.GetValueFromState(state, ScriptConstants.LogPropertySourceKey);
             string summary = Sanitizer.Sanitize(formattedMessage) ?? string.Empty;
             string innerExceptionType = string.Empty;
             string innerExceptionMessage = string.Empty;
             string functionName = _functionName;
-            string eventName = GetValueFromState(state, ScriptConstants.LogPropertyEventNameKey);
-            string functionInvocationId = GetValueFromState(state, ScriptConstants.LogPropertyFunctionInvocationIdKey);
+            string eventName = Utility.GetValueFromState(state, ScriptConstants.LogPropertyEventNameKey);
+            string functionInvocationId = Utility.GetValueFromState(state, ScriptConstants.LogPropertyFunctionInvocationIdKey);
             string hostInstanceId = _hostInstanceId;
-            string activityId = GetValueFromState(state, ScriptConstants.LogPropertyActivityIdKey);
+            string activityId = Utility.GetValueFromState(state, ScriptConstants.LogPropertyActivityIdKey);
 
             // Populate details from the exception.
             string details = string.Empty;

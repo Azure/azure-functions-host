@@ -1,12 +1,14 @@
-﻿using System;
-using System.Diagnostics;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Tracing;
-using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     [EventSource(Guid = "a7044dd6-c8ef-4980-858c-942d972b6250")]
+    [SuppressMessage("StyleCop.CSharp.NamingRules", "SA1313:ParameterNamesMustBeginWithLowerCaseLetter", Justification = "MDS columns names need to Pascal case", Scope = "member", Target = "~M:Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.EventGenerator.FunctionsSystemLogsEventSource)")]
     public sealed class FunctionsSystemLogsEventSource : ExtendedEventSource
     {
         internal static readonly FunctionsSystemLogsEventSource Instance = new FunctionsSystemLogsEventSource();
@@ -43,7 +45,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 WriteEvent(65522, SubscriptionId, AppName, FunctionName, EventName, Source, Details, Summary, HostVersion, EventTimestamp, FunctionInvocationId, HostInstanceId);
             }
         }
-
 
         [SuppressMessage("Microsoft.Naming", "CA1709:IdentifiersShouldBeCasedCorrectly")]
         [SuppressMessage("Microsoft.Design", "CA1030:UseEventsWhereAppropriate")]

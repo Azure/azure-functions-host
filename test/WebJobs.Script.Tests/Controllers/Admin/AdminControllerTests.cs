@@ -4,10 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.Net;
-using System.Net.Http;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -18,7 +14,6 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
-using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -56,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(secretsManagerMock.Object), eventManager.Object, _settingsManager, settings, mockRouter.Object, NullLoggerFactory.Instance });
             managerMock.SetupGet(p => p.Instance).Returns(hostMock.Object);
 
-            testController = new AdminController(managerMock.Object, settings, new LoggerFactory() , null);
+            testController = new AdminController(managerMock.Object, settings, new LoggerFactory(), null);
         }
 
         [Fact]

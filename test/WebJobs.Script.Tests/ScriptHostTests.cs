@@ -948,7 +948,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var loggerFactoryHookMock = new Mock<ILoggerProviderFactory>(MockBehavior.Strict);
             loggerFactoryHookMock
                 .Setup(m => m.CreateLoggerProviders(It.IsAny<string>(), It.IsAny<ScriptHostConfiguration>(), It.IsAny<ScriptSettingsManager>(), It.IsAny<Func<bool>>(), It.IsAny<Func<bool>>()))
-                .Returns<ScriptHostConfiguration, ScriptSettingsManager, Func<bool>, Func<bool>>((scriptConfig, settingsManager, fileLoggingEnabled, isPrimary) =>
+                .Returns<string, ScriptHostConfiguration, ScriptSettingsManager, Func<bool>, Func<bool>>((instanceId, scriptConfig, settingsManager, fileLoggingEnabled, isPrimary) =>
                  {
                      loggerProvider = new TestLoggerProvider(scriptConfig.LogFilter.Filter);
                      return new[] { loggerProvider };

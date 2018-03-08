@@ -10,15 +10,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class SystemLoggerProvider : ILoggerProvider
     {
+        private readonly string _hostInstanceId;
         private IEventGenerator _eventGenerator;
         private ScriptSettingsManager _settingsManager;
-        private readonly string _hostInstanceId;
 
-        public SystemLoggerProvider(string instanceId, IEventGenerator eventGenerator, ScriptSettingsManager settingsManager)
+        public SystemLoggerProvider(string hostInstanceId, IEventGenerator eventGenerator, ScriptSettingsManager settingsManager)
         {
             _eventGenerator = eventGenerator;
             _settingsManager = settingsManager;
-            _hostInstanceId = instanceId;
+            _hostInstanceId = hostInstanceId;
         }
 
         public ILogger CreateLogger(string categoryName)

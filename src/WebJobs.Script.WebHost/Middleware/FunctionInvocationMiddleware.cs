@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
@@ -35,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             // flow required context through the request pipeline
             // downstream middleware and filters rely on this
             context.Items.Add(ScriptConstants.AzureFunctionsHostManagerKey, manager);
-
+            SetRequestId(context.Request);
             await _next(context);
 
             IFunctionExecutionFeature functionExecution = context.Features.Get<IFunctionExecutionFeature>();
@@ -98,7 +99,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 var scopeState = new Dictionary<string, object>()
                 {
                     [ScriptConstants.LoggerHttpRequest] = context.Request,
-                    [ScriptConstants.LogPropertyActivityIdKey] = context.Request.GetRequestId()
                 };
 
                 using (logger.BeginScope(scopeState))
@@ -128,6 +128,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             var authorizeResult = await policyEvaluator.AuthorizeAsync(policy, authenticateResult, context, descriptor);
 
             return authorizeResult.Succeeded;
+        }
+
+        internal static void SetRequestId(HttpRequest request)
+        {
+            string requestID = request.GetHeaderValueOrDefault(ScriptConstants.AntaresLogIdHeaderName) ?? Guid.NewGuid().ToString();
+            request.HttpContext.Items[ScriptConstants.AzureFunctionsRequestIdKey] = requestID;
         }
     }
 }
