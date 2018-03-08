@@ -177,8 +177,8 @@
     <Reference Include="Microsoft.Azure.NotificationHubs, Version=2.16.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.NotificationHubs.1.0.7\lib\net45-full\Microsoft.Azure.NotificationHubs.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs, Version=2.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Core.2.2.0-beta1-11229\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
+    <Reference Include="Microsoft.Azure.WebJobs, Version=2.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Core.2.2.0\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=2.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.2.2.0-beta1-10592\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
@@ -210,17 +210,17 @@
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.Twilio, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.Twilio.1.2.0-beta1-10588\lib\net45\Microsoft.Azure.WebJobs.Extensions.Twilio.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs.Host, Version=2.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.2.2.0-beta1-11229\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
+    <Reference Include="Microsoft.Azure.WebJobs.Host, Version=2.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.2.2.0\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Logging, Version=2.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Logging.2.2.0-beta1-11229\lib\net45\Microsoft.Azure.WebJobs.Logging.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights, Version=2.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.2.2.0-beta1-11229\lib\net45\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.dll</HintPath>
+    <Reference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights, Version=2.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.2.2.0\lib\net45\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs.ServiceBus, Version=2.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.ServiceBus.2.2.0-beta1-11229\lib\net45\Microsoft.Azure.WebJobs.ServiceBus.dll</HintPath>
+    <Reference Include="Microsoft.Azure.WebJobs.ServiceBus, Version=2.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.ServiceBus.2.2.0\lib\net45\Microsoft.Azure.WebJobs.ServiceBus.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebSites.DataProtection, Version=0.1.6.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebSites.DataProtection.0.1.81-alpha\lib\net46\Microsoft.Azure.WebSites.DataProtection.dll</HintPath>
