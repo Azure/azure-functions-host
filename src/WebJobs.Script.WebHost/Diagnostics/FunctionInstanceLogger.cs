@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     Arguments = item.Arguments,
                     ErrorDetails = item.ErrorDetails,
                     LogOutput = item.LogOutput,
-                    ParentId = item.ParentId,
+                    ParentId = item.ParentId
                 });
             }
         }
