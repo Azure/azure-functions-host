@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
     /// </summary>
     public static class ApiModelUtility
     {
-        private static readonly Lazy<JsonSerializer> JsonSerializer;
+        public static readonly Lazy<JsonSerializer> JsonSerializer;
 
         static ApiModelUtility()
         {
