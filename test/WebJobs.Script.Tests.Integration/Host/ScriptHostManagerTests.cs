@@ -35,90 +35,123 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         //// Update a script file (the function.json) to force the ScriptHost to re-index and pick up new changes.
         //// Test with timers:
         [Fact]
-        public async Task UpdateFileAndRestart()
+        public void UpdateFileAndRestart()
         {
-            CancellationTokenSource cts = new CancellationTokenSource();
-            var fixture = new NodeEndToEndTests.TestFixture();
-            var blob1 = await UpdateOutputName("testblob", "first", fixture);
-
-            await fixture.Host.StopAsync();
+            var fixture = new NodeEndToEndTests.TestFixture(false);
             var config = fixture.Host.ScriptConfig;
 
-            ExceptionDispatchInfo exception = null;
+            config.OnConfigurationApplied = c =>
+            {
+                c.Functions = new Collection<string> { "TimerTrigger" };
+            };
+
+            var blob1 = UpdateOutputName("testblob", "first", fixture);
+
             using (var eventManager = new ScriptEventManager())
             using (var manager = new ScriptHostManager(config, eventManager))
             {
-                // Background task to run while the main thread is pumping events at RunAndBlock().
-                Thread t = new Thread(_ =>
+                string GetErrorTraces()
                 {
-                    // don't start until the manager is running
-                    TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
+                    var messages = fixture.TraceWriter.GetTraces()
+                        .Where(t => t.Level == TraceLevel.Error)
+                        .Select(t => t.Message);
+
+                    return string.Join(Environment.NewLine, messages);
+                }
+
+                List<Exception> exceptions = new List<Exception>();
+
+                // Background task to run while the main thread is pumping events at RunAndBlock().
+                Thread backgroundThread = new Thread(_ =>
+                {
+                    try
+                    {
+                        // don't start until the manager is running
+                        TestHelpers.Await(() => manager.State == ScriptHostState.Running,
+                            userMessageCallback: GetErrorTraces).GetAwaiter().GetResult();
 
                     try
                     {
                         // Wait for initial execution.
-                        TestHelpers.Await(async () =>
-                        {
-                            bool exists = await blob1.ExistsAsync();
-                            return exists;
-                        }, timeout: 10 * 1000).Wait();
+                        TestHelpers.Await(() =>
+                         {
+                             bool exists = blob1.Exists();
+                             return exists;
+                         }, timeout: 10 * 1000, userMessageCallback: GetErrorTraces).GetAwaiter().GetResult();
 
                         // This changes the bindings so that we now write to blob2
                         var blob2 = UpdateOutputName("first", "testblob", fixture).Result;
 
                         // wait for newly executed
-                        TestHelpers.Await(async () =>
-                        {
-                            bool exists = await blob2.ExistsAsync();
-                            return exists;
-                        }, timeout: 30 * 1000).Wait();
+                        TestHelpers.Await(() =>
+                         {
+                             bool exists = blob2.Exists();
+                             return exists;
+                         }, timeout: 30 * 1000, userMessageCallback: GetErrorTraces).GetAwaiter().GetResult();
+
+                        // The TimerTrigger can fire before the host is fully started. To be more
+                        // reliably clean up the test, wait until it is running before calling Stop.
+                        TestHelpers.Await(() => manager.State == ScriptHostState.Running,
+                            userMessageCallback: GetErrorTraces).GetAwaiter().GetResult();
                     }
                     catch (Exception ex)
                     {
-                        exception = ExceptionDispatchInfo.Capture(ex);
+                        exceptions.Add(ex);
                     }
                     finally
                     {
                         try
                         {
-                            UpdateOutputName("first", "testblob", fixture).Wait();
+                            // Calling Stop (rather than using a token) lets us wait until all listeners have stopped.
+                            manager.Stop();
                         }
                         catch
                         {
+                            exceptions.Add(ex);
                         }
                     }
-
-                    cts.Cancel();
                 });
-                t.Start();
 
-                manager.RunAndBlock(cts.Token);
+                try
+                {
+                    backgroundThread.Start();
+                    manager.RunAndBlock();
+                    Assert.True(backgroundThread.Join(60000), "The background task did not complete in 60 seconds.");
 
-                t.Join();
-
-                Assert.True(exception == null, exception?.SourceException?.ToString());
+                    string exceptionString = string.Join(Environment.NewLine, exceptions.Select(p => p.ToString()));
+                    Assert.True(exceptions.Count() == 0, exceptionString);
+                }
+                finally
+                {
+                    // make sure to put the original names back
+                    UpdateOutputName("first", "testblob", fixture);
+                }
             }
         }
 
         [Fact]
-        public async Task RenameFunctionAndRestart()
+        public void RenameFunctionAndRestart()
         {
             var oldDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestScripts/Node/TimerTrigger");
             var newDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestScripts/Node/MovedTrigger");
 
-            CancellationTokenSource cts = new CancellationTokenSource();
-            var fixture = new NodeEndToEndTests.TestFixture();
-            await fixture.Host.StopAsync();
+            var fixture = new NodeEndToEndTests.TestFixture(false);
             var config = fixture.Host.ScriptConfig;
 
-            var blob = fixture.TestOutputContainer.GetBlockBlobReference("testblob");
+            config.OnConfigurationApplied = c =>
+            {
+                c.Functions = new Collection<string> { "TimerTrigger", "MovedTrigger" };
+            };
 
-            ExceptionDispatchInfo exception = null;
+            var blob = fixture.TestOutputContainer.GetBlockBlobReference("testblob");
             var mockEnvironment = new Mock<IScriptHostEnvironment>();
+
             using (var eventManager = new ScriptEventManager())
             using (var manager = new ScriptHostManager(config, eventManager, mockEnvironment.Object))
             using (var resetEvent = new ManualResetEventSlim())
             {
+                List<Exception> exceptions = new List<Exception>();
+
                 mockEnvironment.Setup(e => e.RestartHost())
                     .Callback(() =>
                     {
@@ -127,19 +160,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     });
 
                 // Background task to run while the main thread is pumping events at RunAndBlock().
-                Thread t = new Thread(_ =>
+                Thread backgroundThread = new Thread(_ =>
                 {
-                    // don't start until the manager is running
-                    TestHelpers.Await(() => manager.State == ScriptHostState.Running).Wait();
+                    try
+                    {
+                        // don't start until the manager is running
+                        TestHelpers.Await(() => manager.State == ScriptHostState.Running,
+                            userMessageCallback: () => "Host did not start in time.").GetAwaiter().GetResult();
 
                     try
                     {
                         // Wait for initial execution.
                         TestHelpers.Await(async () =>
                         {
-                            bool exists = await blob.ExistsAsync();
+                            bool exists = blob.Exists();
                             return exists;
-                        }, timeout: 10 * 1000).Wait();
+                        }, timeout: 10 * 1000,
+                        userMessageCallback: () => $"Blob '{blob.Uri}' was not created by 'TimerTrigger' in time.").GetAwaiter().GetResult();
 
                         // find __dirname from blob
                         string text;
@@ -161,9 +198,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         // wait for newly executed
                         TestHelpers.Await(async () =>
                         {
-                            bool exists = await blob.ExistsAsync();
+                            bool exists = blob.Exists();
                             return exists;
-                        }, timeout: 30 * 1000).Wait();
+                        }, timeout: 30 * 1000,
+                        userMessageCallback: () => $"Blob '{blob.Uri}' was not created by 'MovedTrigger' in time.").GetAwaiter().GetResult();
 
                         using (var stream = new MemoryStream())
                         {
@@ -172,31 +210,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         }
 
                         Assert.Contains("MovedTrigger", text);
+
+                        // The TimerTrigger can fire before the host is fully started. To be more
+                        // reliably clean up the test, wait until it is running before calling Stop.
+                        TestHelpers.Await(() => manager.State == ScriptHostState.Running).GetAwaiter().GetResult();
                     }
                     catch (Exception ex)
                     {
-                        exception = ExceptionDispatchInfo.Capture(ex);
+                        exceptions.Add(ex);
                     }
                     finally
                     {
                         try
                         {
-                            Directory.Move(newDirectory, oldDirectory);
+                            manager.Stop();
                         }
                         catch
                         {
+                            exceptions.Add(ex);
                         }
                     }
-
-                    cts.Cancel();
                 });
-                t.Start();
 
-                manager.RunAndBlock(cts.Token);
+                try
+                {
+                    backgroundThread.Start();
+                    manager.RunAndBlock();
+                    Assert.True(backgroundThread.Join(60000), "The background task did not complete in 60 seconds.");
 
-                t.Join();
-
-                Assert.True(exception == null, exception?.SourceException?.ToString());
+                    string exceptionString = string.Join(Environment.NewLine, exceptions.Select(p => p.ToString()));
+                    Assert.True(exceptions.Count() == 0, exceptionString);
+                }
+                finally
+                {
+                    // Move the directory back after the host has stopped to prevent
+                    // unnecessary host restarts
+                    if (Directory.Exists(newDirectory))
+                    {
+                        Directory.Move(newDirectory, oldDirectory);
+                    }
+                }
             }
         }
 
@@ -522,13 +575,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string name = hint;
 
+            // As soon as we touch the file, the trigger may reload, so delete any existing blob first.
+            var blob = fixture.TestOutputContainer.GetBlockBlobReference(name);
+            blob.DeleteIfExists();
+
             string manifestPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node\TimerTrigger\function.json");
             string content = File.ReadAllText(manifestPath);
             content = content.Replace(prev, name);
             File.WriteAllText(manifestPath, content);
 
-            var blob = fixture.TestOutputContainer.GetBlockBlobReference(name);
-            await blob.DeleteIfExistsAsync();
             return blob;
         }
 

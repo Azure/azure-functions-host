@@ -1192,7 +1192,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\Node", "node")
+            public TestFixture()
+               : base(@"TestScripts\Node", "node")
+            {
+            }
+
+            internal TestFixture(bool startHost)
+                : base(@"TestScripts\Node", "node", startHost: startHost)
             {
             }
         }

@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly ScriptSettingsManager _settingsManager;
 
-        protected EndToEndTestFixture(string rootPath, string testId, ProxyClientExecutor proxyClient = null)
+        protected EndToEndTestFixture(string rootPath, string testId, ProxyClientExecutor proxyClient = null, bool startHost = true)
         {
             _settingsManager = ScriptSettingsManager.Instance;
             FixtureId = testId;
@@ -65,7 +65,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Host = new ScriptHost(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager,
                 proxyClient: proxyClient, loggerProviderFactory: loggerProviderFactory);
             Host.Initialize();
-            Host.Start();
+
+            // Note: This has to be done after the call to Initialize or all file logging will be disabled.
+            Host.ScriptConfig.HostConfig.Tracing.ConsoleLevel = TraceLevel.Off;
+
+            if (startHost)
+            {
+                Host.HostStarted += (s, e) => _hostStartedEvent.Set();
+                Host.Start();
+                _hostStartedEvent.Wait(TimeSpan.FromSeconds(30));
+            }
         }
 
         public TestLoggerProvider LoggerProvider { get; }
