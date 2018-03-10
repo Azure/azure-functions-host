@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Guid.Parse(invocationId);
         }
 
-        [Fact]
+        [Fact(Skip = "See issue https://github.com/Azure/azure-functions-host/issues/2511")]
         public async Task QueueTriggerByteArray()
         {
             TestHelpers.ClearFunctionLogs("QueueTriggerByteArray");
