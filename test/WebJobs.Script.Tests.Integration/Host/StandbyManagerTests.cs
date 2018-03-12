@@ -123,7 +123,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
 
                 // give time for the specialization to happen
-                await Task.Delay(2000);
+                string[] logLines = null;
+                await TestHelpers.Await(() =>
+                {
+                    // wait for the trace indicating that the host has been specialized
+                    logLines = traceWriter.GetTraces().Select(p => p.Message).ToArray();
+                    return logLines.Contains("Generating 0 job function(s)");
+                }, userMessageCallback: () => string.Join(Environment.NewLine, traceWriter.GetTraces().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.Message}")));
 
                 httpServer.Dispose();
                 httpClient.Dispose();
@@ -132,14 +138,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var hostConfig = WebHostResolver.CreateScriptHostConfiguration(webHostSettings, true);
                 var expectedHostId = hostConfig.HostConfig.HostId;
-
-                string[] logLines = null;
-                await TestHelpers.Await(() =>
-                {
-                    // wait for the trace indicating that the host has been specialized
-                    logLines = traceWriter.GetTraces().Select(p => p.Message).ToArray();
-                    return logLines.Contains("Generating 0 job function(s)");
-                }, userMessageCallback: () => string.Join(Environment.NewLine, traceWriter.GetTraces().Select(p => p.Message)));
 
                 // verify the rest of the expected logs
                 string text = string.Join(Environment.NewLine, logLines);
