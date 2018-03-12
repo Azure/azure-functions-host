@@ -145,6 +145,9 @@
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.DocumentDB, Version=1.2.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.DocumentDB.1.2.0\lib\net45\Microsoft.Azure.WebJobs.Extensions.DocumentDB.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.Azure.WebJobs.Extensions.EventGrid, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.EventGrid.1.0.0-beta3-10022\lib\net46\Microsoft.Azure.WebJobs.Extensions.EventGrid.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Extensions.Http, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Extensions.Http.1.1.0\lib\net45\Microsoft.Azure.WebJobs.Extensions.Http.dll</HintPath>
     </Reference>
@@ -162,6 +165,9 @@
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Host, Version=2.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.2.2.0\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Azure.WebJobs.Logging, Version=2.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Logging.2.2.0\lib\net45\Microsoft.Azure.WebJobs.Logging.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights, Version=2.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.2.2.0\lib\net45\Microsoft.Azure.WebJobs.Logging.ApplicationInsights.dll</HintPath>
@@ -587,6 +593,7 @@
     <Compile Include="TestMetricsLogger.cs" />
     <Compile Include="UtilityTests.cs" />
     <Compile Include="WebApiApplicationTests.cs" />
+    <Compile Include="WebConfigTests\WebConfigTests.cs" />
     <Compile Include="WebHooks\DynamicWebHookReceiverConfigTests.cs" />
     <Compile Include="Handlers\WebScriptHostHandlerTests.cs" />
     <Compile Include="WebHooks\WebHookReceiverManagerTests.cs" />
@@ -595,6 +602,9 @@
     <AdditionalFiles Include="..\..\stylecop.json">
       <Link>stylecop.json</Link>
     </AdditionalFiles>
+    <EmbeddedResource Include="..\..\src\WebJobs.Script.WebHost\Web.config">
+      <Link>WebConfigTests\Web.config</Link>
+    </EmbeddedResource>
     <None Include="app.config">
       <SubType>Designer</SubType>
     </None>
@@ -628,7 +638,9 @@
     <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithoutLock\project.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="packages.config" />
+    <None Include="packages.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
