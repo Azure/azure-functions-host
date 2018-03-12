@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script
     /// </summary>
     public class DefaultLoggerProviderFactory : ILoggerProviderFactory
     {
-        public virtual IEnumerable<ILoggerProvider> CreateLoggerProviders(ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager,
+        public virtual IEnumerable<ILoggerProvider> CreateLoggerProviders(string hostInstanceId, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager,
             Func<bool> isFileLoggingEnabled, Func<bool> isPrimary)
         {
             IList<ILoggerProvider> providers = new List<ILoggerProvider>();
@@ -38,8 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 metricsLogger?.LogEvent(MetricEventNames.ApplicationInsightsDisabled);
             }
 
-            providers.Add(new FunctionFileLoggerProvider(scriptConfig.RootLogPath, isFileLoggingEnabled, isPrimary));
-            providers.Add(new HostFileLoggerProvider(scriptConfig.RootLogPath, isFileLoggingEnabled));
+            providers.Add(new FunctionFileLoggerProvider(hostInstanceId, scriptConfig.RootLogPath, isFileLoggingEnabled, isPrimary));
+            providers.Add(new HostFileLoggerProvider(hostInstanceId, scriptConfig.RootLogPath, isFileLoggingEnabled));
 
             if (settingsManager.Configuration.GetSection("host:logger:consoleLoggingMode").Value == "always")
             {

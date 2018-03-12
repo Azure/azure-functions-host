@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Logging
     {
         private const string SecretReplacement = "[Hidden Credential]";
         private static readonly char[] ValueTerminators = new char[] { '<', '"', '\'' };
+
         // List of keywords that should not be replaced with [Hidden Credential]
         private static readonly string[] AllowedTokens = new string[] { "PublicKeyToken=" };
         private static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "SharedAccessKey=" };
@@ -24,15 +25,15 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// <returns>The sanitized string.</returns>
         internal static string Sanitize(string input)
         {
-            if (input == null)
+            if (string.IsNullOrEmpty(input))
             {
-                return null;
+                return string.Empty;
             }
 
             string t = input;
             string inputWithAllowedTokensHidden = input;
 
-            //Remove any known safe strings from the input before looking for Credentials
+            // Remove any known safe strings from the input before looking for Credentials
             foreach (string allowedToken in AllowedTokens)
             {
                 if (inputWithAllowedTokensHidden.Contains(allowedToken))

@@ -293,7 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script
             var host = (ScriptHost)sender;
             string extensionVersion = _settingsManager.GetSetting(EnvironmentSettingNames.FunctionsExtensionVersion);
             string hostId = host.ScriptConfig.HostConfig.HostId;
-            string message = $"Starting Host (HostId={hostId}, Version={ScriptHost.Version}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={host.InDebugMode}, ConsecutiveErrors={_consecutiveErrorCount}, StartupCount={_hostStartCount}, FunctionsExtensionVersion={extensionVersion})";
+            string message = $"Starting Host (HostId={hostId}, InstanceId={host.InstanceId}, Version={ScriptHost.Version}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={host.InDebugMode}, ConsecutiveErrors={_consecutiveErrorCount}, StartupCount={_hostStartCount}, FunctionsExtensionVersion={extensionVersion})";
             host.Logger.LogInformation(message);
 
             // we check host health before starting to avoid starting

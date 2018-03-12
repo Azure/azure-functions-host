@@ -14,13 +14,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     {
         private readonly FileWriter _writer;
         private readonly Func<bool> _isFileLoggingEnabled;
+        private readonly string _hostInstanceId;
 
         private bool _disposed = false;
 
-        public HostFileLoggerProvider(string rootLogPath, Func<bool> isFileLoggingEnabled)
+        public HostFileLoggerProvider(string hostInstanceId, string rootLogPath, Func<bool> isFileLoggingEnabled)
         {
             _writer = new FileWriter(Path.Combine(rootLogPath, "Host"));
             _isFileLoggingEnabled = isFileLoggingEnabled;
+            _hostInstanceId = hostInstanceId;
         }
 
         public ILogger CreateLogger(string categoryName)

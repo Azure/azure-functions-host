@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.RegisterType<WebHostResolver>().SingleInstance()
                 .WithParameter(new ResolvedParameter(
                     (pi, ctx) => pi.ParameterType == typeof(ILoggerFactory),
-                    (pi, ctx) => CreateLoggerFactory(ctx.Resolve<ScriptSettingsManager>(), ctx.Resolve<IEventGenerator>(), ctx.Resolve<WebHostSettings>())));
+                    (pi, ctx) => CreateLoggerFactory(string.Empty, ctx.Resolve<ScriptSettingsManager>(), ctx.Resolve<IEventGenerator>(), ctx.Resolve<WebHostSettings>())));
 
             // Register the LoggerProviderFactory, which defines the ILoggerProviders for the host.
             builder.RegisterType<WebHostLoggerProviderFactory>().As<ILoggerProviderFactory>().SingleInstance();
@@ -110,16 +110,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return new AutofacServiceProvider(applicationContainer);
         }
 
-        private static ILoggerFactory CreateLoggerFactory(ScriptSettingsManager settingsManager, IEventGenerator eventGenerator, WebHostSettings settings)
+        private static ILoggerFactory CreateLoggerFactory(string hostInstanceId, ScriptSettingsManager settingsManager, IEventGenerator eventGenerator, WebHostSettings settings)
         {
             var loggerFactory = new LoggerFactory(Enumerable.Empty<ILoggerProvider>(), Utility.CreateLoggerFilterOptions());
 
-            var systemLoggerProvider = new SystemLoggerProvider(eventGenerator, settingsManager);
+            var systemLoggerProvider = new SystemLoggerProvider(hostInstanceId, eventGenerator, settingsManager);
             loggerFactory.AddProvider(systemLoggerProvider);
 
             // This loggerFactory logs everything to host files. No filter is applied because it is created
             // before we parse host.json.
-            var hostFileLogger = new HostFileLoggerProvider(settings.LogPath, () => true);
+            var hostFileLogger = new HostFileLoggerProvider(hostInstanceId, settings.LogPath, () => true);
             loggerFactory.AddProvider(hostFileLogger);
 
             loggerFactory.AddConsole();

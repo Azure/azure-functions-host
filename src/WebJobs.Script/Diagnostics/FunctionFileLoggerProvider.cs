@@ -21,15 +21,17 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         private readonly Func<bool> _isFileLoggingEnabled;
         private readonly Func<bool> _isPrimary;
         private readonly string _roogLogPath;
+        private readonly string _hostInstanceId;
         private static readonly Regex _workerCategoryRegex = new Regex(@"^Worker\.[^\s]+\.[^\s]+");
 
         private bool _disposed = false;
 
-        public FunctionFileLoggerProvider(string rootLogPath, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary)
+        public FunctionFileLoggerProvider(string hostInstanceId, string rootLogPath, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary)
         {
             _roogLogPath = rootLogPath;
             _isFileLoggingEnabled = isFileLoggingEnabled;
             _isPrimary = isPrimary;
+            _hostInstanceId = hostInstanceId;
         }
 
         // For testing

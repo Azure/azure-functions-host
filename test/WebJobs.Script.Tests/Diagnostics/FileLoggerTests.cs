@@ -175,6 +175,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             prefix = FileLogger.GetLogPrefix(state, LogLevel.Information, LogType.Structured);
             Assert.Equal("Information", prefix);
         }
-
     }
 }

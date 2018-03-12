@@ -10,13 +10,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class SystemLoggerProvider : ILoggerProvider
     {
+        private readonly string _hostInstanceId;
         private IEventGenerator _eventGenerator;
         private ScriptSettingsManager _settingsManager;
 
-        public SystemLoggerProvider(IEventGenerator eventGenerator, ScriptSettingsManager settingsManager)
+        public SystemLoggerProvider(string hostInstanceId, IEventGenerator eventGenerator, ScriptSettingsManager settingsManager)
         {
             _eventGenerator = eventGenerator;
             _settingsManager = settingsManager;
+            _hostInstanceId = hostInstanceId;
         }
 
         public ILogger CreateLogger(string categoryName)
@@ -24,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // The SystemLogger is not used for user logs.
             if (!LogCategories.IsFunctionUserCategory(categoryName))
             {
-                return new SystemLogger(categoryName, _eventGenerator, _settingsManager);
+                return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _settingsManager);
             }
 
             return NullLogger.Instance;
