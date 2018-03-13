@@ -451,6 +451,17 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             return value;
         }
+
+        public static string GetValueFromScope(IDictionary<string, object> scopeProperties, string key)
+        {
+            object value;
+            if (scopeProperties != null && scopeProperties.TryGetValue(key, out value) && value != null)
+            {
+                return value.ToString();
+            }
+            return string.Empty;
+        }
+
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
         {
             public override bool CanWrite => true;

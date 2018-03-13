@@ -64,13 +64,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string message = "TestMessage";
             string functionInvocationId = Guid.NewGuid().ToString();
             string activityId = Guid.NewGuid().ToString();
+            var scopeState = new Dictionary<string, object>
+            {
+                [ScriptConstants.LogPropertyFunctionInvocationIdKey] = functionInvocationId
+            };
+            DictionaryLoggerScope.Push(scopeState);
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, _subscriptionId, _websiteName, _functionName, eventName, _category, details, message, string.Empty, string.Empty, functionInvocationId, _hostInstanceId, activityId));
 
             var logData = new Dictionary<string, object>
             {
                 ["message"] = message,
-                [ScriptConstants.LogPropertyFunctionInvocationIdKey] = functionInvocationId,
                 [ScriptConstants.LogPropertyActivityIdKey] = activityId
             };
 

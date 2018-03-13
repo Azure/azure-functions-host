@@ -69,6 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
+            IDictionary<string, object> scopeProps = DictionaryLoggerScope.GetMergedStateDictionary() ?? new Dictionary<string, object>();
+
             // Apply standard event properties
             // Note: we must be sure to default any null values to empty string
             // otherwise the ETW event will fail to be persisted (silently)
@@ -80,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string innerExceptionMessage = string.Empty;
             string functionName = _functionName;
             string eventName = Utility.GetValueFromState(state, ScriptConstants.LogPropertyEventNameKey);
-            string functionInvocationId = Utility.GetValueFromState(state, ScriptConstants.LogPropertyFunctionInvocationIdKey);
+            string functionInvocationId = Utility.GetValueFromScope(scopeProps, ScriptConstants.LogPropertyFunctionInvocationIdKey);
             string hostInstanceId = _hostInstanceId;
             string activityId = Utility.GetValueFromState(state, ScriptConstants.LogPropertyActivityIdKey);
 
