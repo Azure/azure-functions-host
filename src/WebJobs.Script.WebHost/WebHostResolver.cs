@@ -100,11 +100,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             lock (_syncLock)
             {
+                // Determine whether we should do normal or standby initialization
                 if (!WebScriptHostManager.InStandbyMode)
                 {
-                    // standby mode can only change from true to false
-                    // when standby mode changes, we reset all instances
-                    if (_activeHostManager == null)
+                    // We're not in standby mode. There are two cases to consider:
+                    // 1) We _were_ in standby mode and now we're ready to specialize
+                    // 2) We're doing non-specialization normal initialization
+                    if (_activeHostManager == null &&
+                        (_standbyHostManager == null || _settingsManager.ContainerReady))
                     {
                         _settingsManager.Reset();
                         _specializationTimer?.Dispose();
@@ -141,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 else
                 {
-                    // we're in standby (placeholder) mode
+                    // We're in standby (placeholder) mode. Initialize the standby services.
                     if (_standbyHostManager == null)
                     {
                         var standbySettings = CreateStandbySettings(settings);
@@ -231,13 +234,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void OnSpecializationTimerTick(object state)
         {
-            if (_settingsManager.IsZipDeployment)
-            {
-                // TEMP - when in Zip deploy mode, temporarily disabling timer based specialization
-                // until issue https://github.com/Azure/azure-functions-host/issues/2392 is fixed.
-                return;
-            }
-
             EnsureInitialized((WebHostSettings)state);
 
             // We know we've just specialized, since this timer only runs

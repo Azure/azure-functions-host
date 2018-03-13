@@ -9,8 +9,12 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
@@ -64,7 +68,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var vars = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
-                { EnvironmentSettingNames.AzureWebsiteInstanceId, "87654639876900123453445678890144" }
+                { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
+                { EnvironmentSettingNames.AzureWebsiteInstanceId, "87654639876900123453445678890144" },
+                { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" }
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
@@ -73,24 +79,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var settingsManager = ScriptSettingsManager.Instance;
                 var testRootPath = Path.Combine(Path.GetTempPath(), "StandbyModeTest");
                 await FileUtility.DeleteDirectoryAsync(testRootPath, true);
-                TestLoggerProvider loggerProvider = new TestLoggerProvider();
+                var loggerProvider = new TestLoggerProvider();
+                var loggerProviderFactory = new TestLoggerProviderFactory(loggerProvider);
                 var webHostSettings = new WebHostSettings
                 {
                     IsSelfHost = true,
                     LogPath = Path.Combine(testRootPath, "Logs"),
                     SecretsPath = Path.Combine(testRootPath, "Secrets"),
-                    ScriptPath = Path.Combine(testRootPath, "WWWRoot"),
+                    ScriptPath = Path.Combine(testRootPath, "WWWRoot")
                 };
 
-                var httpServer = new HttpServer(httpConfig);
-                var httpClient = new HttpClient(httpServer);
+                var webHostBuilder = new WebHostBuilder()
+                    .UseStartup<Startup>()
+                    .ConfigureAppConfiguration(c => c.AddEnvironmentVariables())
+                    .ConfigureServices(c => c.AddSingleton(webHostSettings).AddSingleton<ILoggerProviderFactory>(loggerProviderFactory));
+
+                var httpServer = new TestServer(webHostBuilder);
+                var httpClient = httpServer.CreateClient();
                 httpClient.BaseAddress = new Uri("https://localhost/");
 
                 TestHelpers.WaitForWebHost(httpClient);
 
                 var traces = loggerProvider.GetAllLogMessages().ToArray();
-                Assert.Equal($"Creating StandbyMode placeholder function directory ({Path.GetTempPath()}Functions\\Standby\\WWWRoot)", traces[0].FormattedMessage);
-                Assert.Equal("StandbyMode placeholder function directory created", traces[1].FormattedMessage);
+                Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Starting Host (HostId=placeholder-host")));
+                Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Host is in standby mode")));
 
                 // issue warmup request and verify
                 var request = new HttpRequestMessage(HttpMethod.Get, "api/warmup");
@@ -108,6 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // Now specialize the host
                 ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
 
                 // give time for the specialization to happen
                 await Task.Delay(2000);
@@ -124,8 +137,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await TestHelpers.Await(() =>
                 {
                     // wait for the trace indicating that the host has been specialized
-                    logLines = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
-                    return logLines.Count(p => p.Contains($"Starting Host (HostId={expectedHostId}")) == 1;
+                    logLines = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).Where(p => !string.IsNullOrEmpty(p)).ToArray();
+                    return logLines.Any(p => p.Contains($"Starting Host (HostId={expectedHostId}"));
                 });
 
                 // verify the rest of the expected logs
