@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string innerExceptionMessage = string.Empty;
             string functionName = _functionName;
             string eventName = Utility.GetValueFromState(state, ScriptConstants.LogPropertyEventNameKey);
-            string functionInvocationId = Utility.GetValueFromScope(scopeProps, ScriptConstants.LogPropertyFunctionInvocationIdKey);
+            string functionInvocationId = Utility.GetValueFromScope(scopeProps, ScriptConstants.LogPropertyFunctionInvocationIdKey) ?? string.Empty;
             string hostInstanceId = _hostInstanceId;
             string activityId = Utility.GetValueFromState(state, ScriptConstants.LogPropertyActivityIdKey);
 

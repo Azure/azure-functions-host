@@ -459,7 +459,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return value.ToString();
             }
-            return string.Empty;
+            return null;
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
