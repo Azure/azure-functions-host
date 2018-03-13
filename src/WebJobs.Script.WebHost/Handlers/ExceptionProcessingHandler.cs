@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
-using System.Web.Http;
 using System.Web.Http.ExceptionHandling;
 using System.Web.Http.Results;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -24,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     {
         private readonly IDictionary<Type, ExceptionProcessor> _handlers;
         private readonly System.Web.Http.HttpConfiguration _config;
-        private readonly Lazy<TraceWriter> _traceWriterLoader;
 
         public ExceptionProcessingHandler(System.Web.Http.HttpConfiguration config)
         {
@@ -34,7 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             _config = config;
-            _traceWriterLoader = new Lazy<TraceWriter>(() => _config.DependencyResolver.GetService<TraceWriter>());
             _handlers = InitializeExceptionHandlers();
         }
 
@@ -104,7 +101,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             string message = JsonConvert.SerializeObject(error);
             var traceEvent = new TraceEvent(TraceLevel.Error, message, $"ApiError", exceptionContext.Exception);
-            _traceWriterLoader.Value.Trace(traceEvent);
+
+            var traceWriter = _config.DependencyResolver.GetService<TraceWriter>();
+            traceWriter.Trace(traceEvent);
         }
 
         private static void CryptographicExceptionHandler(ExceptionContext exceptionContext, AuthorizationLevel currentLevel, ApiErrorModel error)
