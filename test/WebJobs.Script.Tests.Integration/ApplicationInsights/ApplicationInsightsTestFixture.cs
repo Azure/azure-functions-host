@@ -36,7 +36,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                     ScriptSettingsManager.Instance.ApplicationInsightsInstrumentationKey = TestChannelLoggerProviderFactory.ApplicationInsightsKey;
                     services.Replace(new ServiceDescriptor(typeof(WebHostSettings), HostSettings));
                     services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestChannelLoggerProviderFactory(Channel)));
-
                     services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
                 }));
 

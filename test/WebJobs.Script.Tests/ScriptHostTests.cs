@@ -67,7 +67,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var functionErrors = new Dictionary<string, Collection<string>>();
-            var metadata = ScriptHost.ReadFunctionMetadata(config, null, functionErrors);
+            var functionDirectories = Directory.EnumerateDirectories(config.RootScriptPath);
+            var metadata = ScriptHost.ReadFunctionMetadata(functionDirectories, null, functionErrors);
             Assert.Equal(40, metadata.Count);
         }
 
@@ -1046,7 +1047,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var hostJson = JObject.Parse(hostJsonSanitized);
 
             var logger = loggerProvider.CreatedLoggers.Single(l => l.Category == LogCategories.Startup);
-            var logMessage = logger.LogMessages.Single(l => l.FormattedMessage.StartsWith("Host configuration ")).FormattedMessage;
+            var logMessage = logger.LogMessages.Single(l => l.FormattedMessage.StartsWith("Reading host configuration file")).FormattedMessage;
+            logMessage = logger.LogMessages.Single(l => l.FormattedMessage.StartsWith("Host configuration file read")).FormattedMessage;
             Assert.Equal($"Host configuration file read:{Environment.NewLine}{hostJson}", logMessage);
         }
 
