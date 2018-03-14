@@ -141,12 +141,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static async Task<IList<string>> GetFunctionLogsAsync(string functionName, bool throwOnNoLogs = true, bool waitForFlush = true)
         {
-            if (waitForFlush)
+            DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
+
+            int retryCounter = 3;
+            while (waitForFlush && !directory.Exists && retryCounter > 0)
             {
+                retryCounter--;
                 await Task.Delay(FileWriter.LogFlushIntervalMs);
             }
 
-            DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
             FileInfo lastLogFile = directory.GetFiles("*.log").OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
 
             if (lastLogFile != null)
