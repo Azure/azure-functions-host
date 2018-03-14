@@ -47,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/functions/{name}")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         [RequiresRunningHost]
+        [EnableDebugMode]
         public IActionResult Invoke(string name, [FromBody] FunctionInvocation invocation)
         {
             if (invocation == null)
@@ -101,6 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/host/status")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [EnableDebugMode]
         public IActionResult GetHostStatus()
         {
             var status = new HostStatus
@@ -163,6 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/debug")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        [EnableDebugMode]
         public IActionResult LaunchDebugger()
         {
             if (_webHostSettings.IsSelfHost)
@@ -179,16 +182,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             return StatusCode(StatusCodes.Status501NotImplemented);
-        }
-
-        public override void OnActionExecuting(ActionExecutingContext context)
-        {
-            // For all admin api requests, we'll update the ScriptHost debug timeout
-            // For now, we'll enable debug mode on ANY admin requests. Since the Portal interacts through
-            // the admin API this is sufficient for identifying when the Portal is connected.
-            _scriptHostManager.Instance?.NotifyDebug();
-
-            base.OnActionExecuting(context);
         }
 
         [HttpGet]
