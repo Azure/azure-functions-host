@@ -29,14 +29,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
         {
             await RunTimeoutExceptionTest(handleCancellation: false);
 
-            await TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running));
-
             await TestHelpers.Await(() => !(_manager.State == ScriptHostState.Running), userMessageCallback: () => "Expected host to not be running");
 
-            var traces = trace.GetTraces();
-            Assert.DoesNotContain(traces, t => t.Message.StartsWith("Done"));
-            Assert.Contains(traces, t => t.Message.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
-            Assert.Contains(traces, t => t.Message == "A function timeout has occurred. Host is shutting down.");
+            var traces = _loggerProvider.GetAllLogMessages();
+            Assert.DoesNotContain(traces, t => t.FormattedMessage.StartsWith("Done"));
+            Assert.Contains(traces, t => t.FormattedMessage.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
+            Assert.Contains(traces, t => t.FormattedMessage == "A function timeout has occurred. Host is shutting down.");
         }
 
         [Fact(Skip = "Investigate test failure")]

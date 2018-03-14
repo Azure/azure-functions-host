@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Host;
@@ -24,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public abstract class EndToEndTestFixture : IDisposable
     {
         private readonly ScriptSettingsManager _settingsManager;
+        private readonly ManualResetEventSlim _hostStartedEvent = new ManualResetEventSlim();
 
         protected EndToEndTestFixture(string rootPath, string testId, ProxyClientExecutor proxyClient = null, bool startHost = true)
         {
@@ -65,9 +67,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Host = new ScriptHost(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager,
                 proxyClient: proxyClient, loggerProviderFactory: loggerProviderFactory);
             Host.Initialize();
-
-            // Note: This has to be done after the call to Initialize or all file logging will be disabled.
-            Host.ScriptConfig.HostConfig.Tracing.ConsoleLevel = TraceLevel.Off;
 
             if (startHost)
             {

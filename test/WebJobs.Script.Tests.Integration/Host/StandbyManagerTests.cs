@@ -127,9 +127,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await TestHelpers.Await(() =>
                 {
                     // wait for the trace indicating that the host has been specialized
-                    logLines = traceWriter.GetTraces().Select(p => p.Message).ToArray();
+                    logLines = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
                     return logLines.Contains("Generating 0 job function(s)");
-                }, userMessageCallback: () => string.Join(Environment.NewLine, traceWriter.GetTraces().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.Message}")));
+                }, userMessageCallback: () => string.Join(Environment.NewLine, loggerProvider.GetAllLogMessages().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.FormattedMessage}")));
 
                 httpServer.Dispose();
                 httpClient.Dispose();

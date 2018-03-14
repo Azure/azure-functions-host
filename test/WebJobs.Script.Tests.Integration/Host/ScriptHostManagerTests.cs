@@ -2,10 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         //// Update a script file (the function.json) to force the ScriptHost to re-index and pick up new changes.
         //// Test with timers:
         [Fact]
-        public void UpdateFileAndRestart()
+        public async Task UpdateFileAndRestart()
         {
             var fixture = new NodeEndToEndTests.TestFixture(false);
             var config = fixture.Host.ScriptConfig;
@@ -45,16 +45,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 c.Functions = new Collection<string> { "TimerTrigger" };
             };
 
-            var blob1 = UpdateOutputName("testblob", "first", fixture);
+            var blob1 = await UpdateOutputName("testblob", "first", fixture);
 
             using (var eventManager = new ScriptEventManager())
             using (var manager = new ScriptHostManager(config, eventManager))
             {
                 string GetErrorTraces()
                 {
-                    var messages = fixture.TraceWriter.GetTraces()
-                        .Where(t => t.Level == TraceLevel.Error)
-                        .Select(t => t.Message);
+                    var messages = fixture.LoggerProvider.GetAllLogMessages()
+                        .Where(t => t.Level == LogLevel.Error)
+                        .Select(t => t.FormattedMessage);
 
                     return string.Join(Environment.NewLine, messages);
                 }
@@ -70,12 +70,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         TestHelpers.Await(() => manager.State == ScriptHostState.Running,
                             userMessageCallback: GetErrorTraces).GetAwaiter().GetResult();
 
-                    try
-                    {
                         // Wait for initial execution.
                         TestHelpers.Await(() =>
                          {
-                             bool exists = blob1.Exists();
+                             bool exists = blob1.ExistsAsync().GetAwaiter().GetResult();
                              return exists;
                          }, timeout: 10 * 1000, userMessageCallback: GetErrorTraces).GetAwaiter().GetResult();
 
@@ -85,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         // wait for newly executed
                         TestHelpers.Await(() =>
                          {
-                             bool exists = blob2.Exists();
+                             bool exists = blob2.ExistsAsync().GetAwaiter().GetResult();
                              return exists;
                          }, timeout: 30 * 1000, userMessageCallback: GetErrorTraces).GetAwaiter().GetResult();
 
@@ -105,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             // Calling Stop (rather than using a token) lets us wait until all listeners have stopped.
                             manager.Stop();
                         }
-                        catch
+                        catch (Exception ex)
                         {
                             exceptions.Add(ex);
                         }
@@ -124,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 finally
                 {
                     // make sure to put the original names back
-                    UpdateOutputName("first", "testblob", fixture);
+                    await UpdateOutputName("first", "testblob", fixture);
                 }
             }
         }
@@ -166,17 +164,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     {
                         // don't start until the manager is running
                         TestHelpers.Await(() => manager.State == ScriptHostState.Running,
-                            userMessageCallback: () => "Host did not start in time.").GetAwaiter().GetResult();
+                        userMessageCallback: () => "Host did not start in time.").GetAwaiter().GetResult();
 
-                    try
-                    {
                         // Wait for initial execution.
-                        TestHelpers.Await(async () =>
-                        {
-                            bool exists = blob.Exists();
-                            return exists;
-                        }, timeout: 10 * 1000,
-                        userMessageCallback: () => $"Blob '{blob.Uri}' was not created by 'TimerTrigger' in time.").GetAwaiter().GetResult();
+                        TestHelpers.Await(() =>
+                    {
+                        bool exists = blob.ExistsAsync().GetAwaiter().GetResult();
+                        return exists;
+                    }, timeout: 10 * 1000,
+                    userMessageCallback: () => $"Blob '{blob.Uri}' was not created by 'TimerTrigger' in time.").GetAwaiter().GetResult();
 
                         // find __dirname from blob
                         string text;
@@ -196,12 +192,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         blob.DeleteIfExistsAsync();
 
                         // wait for newly executed
-                        TestHelpers.Await(async () =>
-                        {
-                            bool exists = blob.Exists();
-                            return exists;
-                        }, timeout: 30 * 1000,
-                        userMessageCallback: () => $"Blob '{blob.Uri}' was not created by 'MovedTrigger' in time.").GetAwaiter().GetResult();
+                        TestHelpers.Await(() =>
+                    {
+                        bool exists = blob.ExistsAsync().GetAwaiter().GetResult();
+                        return exists;
+                    }, timeout: 30 * 1000,
+                    userMessageCallback: () => $"Blob '{blob.Uri}' was not created by 'MovedTrigger' in time.").GetAwaiter().GetResult();
 
                         using (var stream = new MemoryStream())
                         {
@@ -225,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         {
                             manager.Stop();
                         }
-                        catch
+                        catch (Exception ex)
                         {
                             exceptions.Add(ex);
                         }
@@ -348,7 +344,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(ScriptHostState.Error, hostManager.State);
 
             hostManager.Stop();
-            
+
             var ex = hostManager.LastError;
             Assert.True(ex is FormatException);
             Assert.Equal("Unable to parse host.json file.", ex.Message);
@@ -577,7 +573,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // As soon as we touch the file, the trigger may reload, so delete any existing blob first.
             var blob = fixture.TestOutputContainer.GetBlockBlobReference(name);
-            blob.DeleteIfExists();
+            await blob.DeleteIfExistsAsync();
 
             string manifestPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node\TimerTrigger\function.json");
             string content = File.ReadAllText(manifestPath);
