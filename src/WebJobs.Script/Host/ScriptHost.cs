@@ -566,10 +566,11 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void InitializeFileSystem()
         {
+            FileUtility.EnsureDirectoryExists(_hostLogPath);
+
             if (!_settingsManager.FileSystemIsReadOnly)
             {
                 FileUtility.EnsureDirectoryExists(ScriptConfig.RootScriptPath);
-                FileUtility.EnsureDirectoryExists(_hostLogPath);
 
                 if (!File.Exists(_hostConfigFilePath))
                 {
