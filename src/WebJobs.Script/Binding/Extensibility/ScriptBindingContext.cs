@@ -120,9 +120,12 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
                     return value.Value<TValue>();
                 }
             }
-            catch (InvalidCastException e)
+            catch (Exception e)
             {
-                throw new FormatException($"Error parsing function.json: Invalid value specified for binding property '{name}' of type {PrettyTypeName(typeof(TValue))}.", e);
+                if (e is InvalidCastException || e is FormatException)
+                {
+                    throw new FormatException($"Error parsing function.json: Invalid value specified for binding property '{name}' of type {PrettyTypeName(typeof(TValue))}.", e);
+                }
             }
 
             return defaultValue;

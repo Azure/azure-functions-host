@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Extensibility.Tests
 
             ScriptBindingContext context = new ScriptBindingContext(metadata);
             FormatException e = Assert.Throws<FormatException>(() => context.GetMetadataValue<int?>("take"));
-            Assert.Equal("Invalid value specified for binding property 'take' of type Nullable<Int32>.", e.Message);
+            Assert.Equal("Error parsing function.json: Invalid value specified for binding property 'take' of type Nullable<Int32>.", e.Message);
         }
 
         [Fact]
