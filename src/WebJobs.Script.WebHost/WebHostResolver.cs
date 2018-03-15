@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
 
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly WebHostSettings _settings;
         private readonly ILoggerProviderFactory _loggerProviderFactory;
         private readonly ILoggerFactory _loggerFactory;
+        private readonly IEventGenerator _eventGenerator;
 
         private ScriptHostConfiguration _standbyScriptHostConfig;
         private WebScriptHostManager _standbyHostManager;
@@ -35,13 +37,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public WebHostResolver(ScriptSettingsManager settingsManager, ISecretManagerFactory secretManagerFactory,
             IScriptEventManager eventManager, WebHostSettings settings, IWebJobsRouter router, ILoggerProviderFactory loggerProviderFactory,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory, IEventGenerator eventGenerator)
         {
             _settingsManager = settingsManager;
             _secretManagerFactory = secretManagerFactory;
             _eventManager = eventManager;
             _router = router;
             _settings = settings;
+            _eventGenerator = eventGenerator;
 
             // _loggerProviderFactory is used for creating the LoggerFactory for each ScriptHost
             _loggerProviderFactory = loggerProviderFactory;
@@ -115,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                         _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
                         _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings,
-                            _router, loggerProviderFactory: _loggerProviderFactory, loggerFactory: _loggerFactory);
+                            _router, loggerProviderFactory: _loggerProviderFactory, loggerFactory: _loggerFactory, eventGenerator: _eventGenerator);
                         //_activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
                         InitializeFileSystem(settings, _settingsManager.FileSystemIsReadOnly);
 
@@ -150,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         var standbySettings = CreateStandbySettings(settings);
                         _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
                         _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings,
-                            _router, loggerProviderFactory: _loggerProviderFactory, loggerFactory: _loggerFactory);
+                            _router, loggerProviderFactory: _loggerProviderFactory, loggerFactory: _loggerFactory, eventGenerator: _eventGenerator);
                         // _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
 
                         InitializeFileSystem(settings, _settingsManager.FileSystemIsReadOnly);

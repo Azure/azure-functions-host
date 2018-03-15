@@ -103,6 +103,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const int HostPollingIntervalMilliseconds = 25;
         public const int MaximumSecretBackupCount = 10;
 
+        public const string LinuxLogEventStreamName = "MS_FUNCTION_LOGS";
+        public const string LinuxMetricEventStreamName = "MS_FUNCTION_METRICS";
+        public const string LinuxFunctionDetailsEventStreamName = "MS_FUNCTION_DETAILS";
+
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
     }

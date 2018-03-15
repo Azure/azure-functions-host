@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    internal class EventGenerator : IEventGenerator
+    internal class EtwEventGenerator : IEventGenerator
     {
         private const string EventTimestamp = "MM/dd/yyyy hh:mm:ss.fff tt";
 

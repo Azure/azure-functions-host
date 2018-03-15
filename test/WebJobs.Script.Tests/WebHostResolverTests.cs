@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -38,8 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     SecretsPath = @"c:\secrets\path"
                 };
 
+                Mock<IEventGenerator> eventGeneratorMock = new Mock<IEventGenerator>();
                 var resolver = new WebHostResolver(settingsManager, secretManagerFactoryMock.Object, eventManagerMock.Object, settings, routerMock.Object,
-                    new TestLoggerProviderFactory(null), NullLoggerFactory.Instance);
+                    new TestLoggerProviderFactory(null), NullLoggerFactory.Instance, eventGeneratorMock.Object);
 
                 ScriptHostConfiguration configuration = resolver.GetScriptHostConfiguration(settings);
 

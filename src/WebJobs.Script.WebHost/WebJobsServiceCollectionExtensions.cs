@@ -70,12 +70,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // ScriptSettingsManager should be replaced. We're setting this here as a temporary step until
             // broader configuaration changes are made:
-            ScriptSettingsManager.Instance.SetConfigurationFactory(() => configuration);
-            builder.RegisterInstance(ScriptSettingsManager.Instance);
+            var settingsManager = ScriptSettingsManager.Instance;
+            settingsManager.SetConfigurationFactory(() => configuration);
+            builder.RegisterInstance(settingsManager);
+
+            builder.Register<IEventGenerator>(c =>
+            {
+                if (settingsManager.IsLinuxContainer)
+                {
+                    return new LinuxContainerEventGenerator();
+                }
+                else
+                {
+                    return new EtwEventGenerator();
+                }
+            }).SingleInstance();
 
             builder.RegisterType<DefaultSecretManagerFactory>().As<ISecretManagerFactory>().SingleInstance();
             builder.RegisterType<ScriptEventManager>().As<IScriptEventManager>().SingleInstance();
-            builder.RegisterType<EventGenerator>().As<IEventGenerator>().SingleInstance();
             builder.Register(c => WebHostSettings.CreateDefault(c.Resolve<ScriptSettingsManager>()));
 
             // Pass a specially-constructed LoggerFactory to the WebHostResolver. This LoggerFactory is only used

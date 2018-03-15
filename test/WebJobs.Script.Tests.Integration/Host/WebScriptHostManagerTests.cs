@@ -209,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var settingsManager = ScriptSettingsManager.Instance;
             var eventManager = new Mock<IScriptEventManager>();
             var managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new TestSecretManagerFactory(),
-                eventManager.Object, settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, null, NullLoggerFactory.Instance, null, null, null, null, 1, 50);
+                eventManager.Object, settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, null, NullLoggerFactory.Instance, null, null, null, null, null, 1, 50);
 
             managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Error);
             managerMock.SetupGet(p => p.LastError).Returns(new Exception());
@@ -226,7 +226,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var eventManager = new Mock<IScriptEventManager>();
             var managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(),
                 new TestSecretManagerFactory(), eventManager.Object, settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path },
-                null, NullLoggerFactory.Instance, null, null, null, null, 1, 50);
+                null, NullLoggerFactory.Instance, null, null, null, null, null, 1, 50);
 
             managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Default);
             managerMock.SetupGet(p => p.LastError).Returns((Exception)null);

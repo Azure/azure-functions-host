@@ -1074,7 +1074,6 @@ namespace Microsoft.Azure.WebJobs.Script
             try
             {
                 // read the function config
-                // read the function config
                 string functionConfigPath = Path.Combine(scriptDir, ScriptConstants.FunctionMetadataFileName);
                 string json = null;
                 try

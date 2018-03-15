@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ISecretsRepositoryFactory secretsRepositoryFactory = null,
             HostPerformanceManager hostPerformanceManager = null,
             ILoggerProviderFactory loggerProviderFactory = null,
+            IEventGenerator eventGenerator = null,
             int hostTimeoutSeconds = 30,
             int hostPollingIntervalMilliseconds = 500)
             : base(config, settingsManager, scriptHostFactory, eventManager, environment: null,
@@ -64,7 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             _config = config;
 
-            _metricsLogger = new WebHostMetricsLogger();
             _exceptionHandler = new WebScriptHostExceptionHandler(this);
             _webHostSettings = webHostSettings;
             _settingsManager = settingsManager;
@@ -77,8 +77,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             secretsRepositoryFactory = secretsRepositoryFactory ?? new DefaultSecretsRepositoryFactory();
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
             _secretManager = secretManagerFactory.Create(settingsManager, loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral), secretsRepository);
+            eventGenerator = eventGenerator ?? new EtwEventGenerator();
 
             _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider(_secretManager);
+            _metricsLogger = new WebHostMetricsLogger(eventGenerator);
         }
 
         public WebScriptHostManager(ScriptHostConfiguration config,
@@ -140,7 +142,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (!_hostStarted)
                 {
                     _runTask = Task.Run(() => RunAndBlock(cancellationToken));
-
                     _hostStarted = true;
                 }
             }
