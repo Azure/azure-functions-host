@@ -113,19 +113,20 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         public TValue GetMetadataValue<TValue>(string name, TValue defaultValue = default(TValue))
         {
             JToken value = null;
+            TValue metadataValue = defaultValue;
             try
             {
                 if (Metadata.TryGetValue(name, StringComparison.OrdinalIgnoreCase, out value))
                 {
-                    return value.Value<TValue>();
+                    metadataValue = value.Value<TValue>();
                 }
             }
-            catch (FormatException e)
+            catch (InvalidCastException e)
             {
-                throw new FormatException($"Invalid value specified for binding property '{name}' of type {PrettyTypeName(typeof(TValue))}.", e);
+                throw new FormatException($"Error parsing function.json: Invalid value specified for binding property '{name}' of type {PrettyTypeName(typeof(TValue))}.", e);
             }
 
-            return defaultValue;
+            return metadataValue;
         }
 
         private static string PrettyTypeName(Type t)
