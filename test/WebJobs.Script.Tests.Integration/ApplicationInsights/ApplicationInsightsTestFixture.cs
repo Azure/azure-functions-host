@@ -2,12 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.WebJobs.Script.Tests;
@@ -33,7 +35,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 .UseStartup<Startup>()
                 .ConfigureServices(services =>
                 {
-                    ScriptSettingsManager.Instance.ApplicationInsightsInstrumentationKey = TestChannelLoggerProviderFactory.ApplicationInsightsKey;
+                    var settingsManager = new ScriptSettingsManager();
+                    settingsManager.SetConfigurationFactory(() =>
+                    {
+                        return new ConfigurationBuilder()
+                            .AddInMemoryCollection(new Dictionary<string, string>
+                            {
+                                [EnvironmentSettingNames.AppInsightsInstrumentationKey] = TestChannelLoggerProviderFactory.ApplicationInsightsKey
+                            })
+                            .AddEnvironmentVariables()
+                            .Build();
+                    });
+
+                    services.Replace(new ServiceDescriptor(typeof(ScriptSettingsManager), settingsManager));
                     services.Replace(new ServiceDescriptor(typeof(WebHostSettings), HostSettings));
                     services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestChannelLoggerProviderFactory(Channel)));
                     services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
@@ -76,6 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
         {
             _testServer?.Dispose();
             HttpClient?.Dispose();
+            ScriptSettingsManager.Instance.Reset();
         }
     }
 }

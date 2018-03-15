@@ -4,16 +4,12 @@ using System;
 using System.IO;
 using System.Net.Http;
 using System.Web.Http;
-using Autofac;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Tests.Integration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging.Console;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 {
@@ -28,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         }
 
         public ControllerScenarioTestFixture(bool isAuthDisabled)
-        {
+        {            
             _config = new HttpConfiguration();
             _settingsManager = ScriptSettingsManager.Instance;
 

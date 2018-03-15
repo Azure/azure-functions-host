@@ -217,6 +217,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // slightly out-of-order or on different threads
             TraceTelemetry[] traces = null;
 
+            int expectedCount = 11;
+
             await TestHelpers.Await(() =>
             {
                 traces = _fixture.Channel.Telemetries
@@ -225,22 +227,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                     .OrderBy(t => t.Message)
                     .ToArray();
 
-                return traces.Length >= 9;
+                // When these two messages are logged, we know we've completed initialization.
+                return traces
+                .Where(t => t.Message.Contains("Host lock lease acquired by instance ID") || t.Message.Contains("Job host started"))
+                .Count() == 2;
             });
 
-            Assert.True(traces.Length == 9, $"Expected 9 messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
+            Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
             ValidateTrace(traces[0], "A function whitelist has been specified", LogCategories.Startup);
             ValidateTrace(traces[1], "Found the following functions:\r\n", LogCategories.Startup);
             ValidateTrace(traces[2], "Generating 2 job function(s)", LogCategories.Startup);
             ValidateTrace(traces[3], "Host configuration file read:", LogCategories.Startup);
             ValidateTrace(traces[4], "Host id explicitly set", LogCategories.Startup, expectedLevel: SeverityLevel.Warning);
-            ValidateTrace(traces[5], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
-            ValidateTrace(traces[6], "Job host started", LogCategories.Startup);
-            ValidateTrace(traces[7], "Reading host configuration file", LogCategories.Startup);
-            ValidateTrace(traces[8], "Starting Host (HostId=function-tests-", ScriptConstants.LogCategoryHostGeneral);
-
-            await Task.CompletedTask;
+            ValidateTrace(traces[5], "Host initialized (", LogCategories.Startup);
+            ValidateTrace(traces[6], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
+            ValidateTrace(traces[7], "Host started (", LogCategories.Startup);
+            ValidateTrace(traces[8], "Job host started", LogCategories.Startup);
+            ValidateTrace(traces[9], "Reading host configuration file", LogCategories.Startup);
+            ValidateTrace(traces[10], "Starting Host (HostId=function-tests-", ScriptConstants.LogCategoryHostGeneral);
         }
 
         private static void ValidateMetric(MetricTelemetry telemetry, string expectedOperationId, string expectedOperationName)

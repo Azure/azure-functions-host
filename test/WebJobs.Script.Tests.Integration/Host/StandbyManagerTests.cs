@@ -20,7 +20,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class StandbyManagerTests
+    public class StandbyManagerTests : IDisposable
     {
         private readonly ScriptSettingsManager _settingsManager;
 
@@ -153,6 +153,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 WebScriptHostManager.ResetStandbyMode();
             }
+        }
+
+        public void Dispose()
+        {
+            ScriptSettingsManager.Instance.Reset();
         }
     }
 }

@@ -40,10 +40,8 @@ test_script:
 
     $success = $success -and $?
 
-    dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build --filter "(FullyQualifiedName~Tests.NodeEndToEndTests|FullyQualifiedName~NodeContentTests|FullyQualifiedName~Tests.SecretsRepositoryTests|FullyQualifiedName~StandbyModeTests)"
-
+    dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
+    
     $success = $success -and $?
-
-    # Skipping integration tests for initial build # dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
 
     if (-not $success) { exit 1 }

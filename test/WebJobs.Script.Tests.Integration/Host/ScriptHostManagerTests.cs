@@ -71,9 +71,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             userMessageCallback: GetErrorTraces).GetAwaiter().GetResult();
 
                         // Wait for initial execution.
-                        TestHelpers.Await(() =>
+                        TestHelpers.Await(async () =>
                          {
-                             bool exists = blob1.ExistsAsync().GetAwaiter().GetResult();
+                             bool exists = await blob1.ExistsAsync();
                              return exists;
                          }, timeout: 10 * 1000, userMessageCallback: GetErrorTraces).GetAwaiter().GetResult();
 
@@ -81,9 +81,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         var blob2 = UpdateOutputName("first", "testblob", fixture).Result;
 
                         // wait for newly executed
-                        TestHelpers.Await(() =>
+                        TestHelpers.Await(async () =>
                          {
-                             bool exists = blob2.ExistsAsync().GetAwaiter().GetResult();
+                             bool exists = await blob2.ExistsAsync();
                              return exists;
                          }, timeout: 30 * 1000, userMessageCallback: GetErrorTraces).GetAwaiter().GetResult();
 
@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void RenameFunctionAndRestart()
+        public async Task RenameFunctionAndRestart()
         {
             var oldDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestScripts/Node/TimerTrigger");
             var newDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestScripts/Node/MovedTrigger");
@@ -142,6 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var blob = fixture.TestOutputContainer.GetBlockBlobReference("testblob");
+            await blob.DeleteIfExistsAsync();
             var mockEnvironment = new Mock<IScriptHostEnvironment>();
 
             using (var eventManager = new ScriptEventManager())
@@ -167,12 +168,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         userMessageCallback: () => "Host did not start in time.").GetAwaiter().GetResult();
 
                         // Wait for initial execution.
-                        TestHelpers.Await(() =>
-                    {
-                        bool exists = blob.ExistsAsync().GetAwaiter().GetResult();
-                        return exists;
-                    }, timeout: 10 * 1000,
-                    userMessageCallback: () => $"Blob '{blob.Uri}' was not created by 'TimerTrigger' in time.").GetAwaiter().GetResult();
+                        TestHelpers.Await(async () =>
+                        {
+                            bool exists = await blob.ExistsAsync();
+                            return exists;
+                        }, timeout: 10 * 1000,
+                        userMessageCallback: () => $"Blob '{blob.Uri}' was not created by 'TimerTrigger' in time.").GetAwaiter().GetResult();
 
                         // find __dirname from blob
                         string text;
@@ -189,15 +190,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                         resetEvent.Wait(TimeSpan.FromSeconds(10));
 
-                        blob.DeleteIfExistsAsync();
+                        blob.DeleteIfExistsAsync().GetAwaiter().GetResult();
 
                         // wait for newly executed
-                        TestHelpers.Await(() =>
-                    {
-                        bool exists = blob.ExistsAsync().GetAwaiter().GetResult();
-                        return exists;
-                    }, timeout: 30 * 1000,
-                    userMessageCallback: () => $"Blob '{blob.Uri}' was not created by 'MovedTrigger' in time.").GetAwaiter().GetResult();
+                        TestHelpers.Await(async () =>
+                        {
+                            bool exists = await blob.ExistsAsync();
+                            return exists;
+                        }, timeout: 30 * 1000,
+                        userMessageCallback: () => $"Blob '{blob.Uri}' was not created by 'MovedTrigger' in time.").GetAwaiter().GetResult();
 
                         using (var stream = new MemoryStream())
                         {
