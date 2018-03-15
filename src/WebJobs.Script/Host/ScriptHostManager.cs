@@ -106,8 +106,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (ShouldMonitorHostHealth)
             {
-                _hostHealthCheckTimer = new Timer(OnHostHealthCheckTimer, null, TimeSpan.Zero, _config.HostHealthMonitor.HealthCheckInterval);
                 _healthCheckWindow = new SlidingWindow<bool>(_config.HostHealthMonitor.HealthCheckWindow);
+                _hostHealthCheckTimer = new Timer(OnHostHealthCheckTimer, null, TimeSpan.Zero, _config.HostHealthMonitor.HealthCheckInterval);
             }
         }
 
