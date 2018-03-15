@@ -223,6 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // Validate the host startup traces. Order by message string as the requests may come in
             // slightly out-of-order or on different threads
             TraceTelemetry[] traces = null;
+            int expectedCount = 13;
 
             await TestHelpers.Await(() =>
             {
@@ -232,10 +233,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                     .OrderBy(t => t.Message)
                     .ToArray();
 
-                return traces.Length >= 11;
+                // When these two messages are logged, we know we've completed initialization.
+                return traces
+                .Where(t => t.Message.Contains("Host lock lease acquired by instance ID") || t.Message.Contains("Job host started"))
+                .Count() == 2;
             });
 
-            Assert.True(traces.Length == 13, $"Expected 10 messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
+            Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
             ValidateTrace(traces[0], "Found the following functions:\r\n", LogCategories.Startup);
             ValidateTrace(traces[1], "Generating 2 job function(s)", LogCategories.Startup);
@@ -250,8 +254,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTrace(traces[10], "Reading host configuration file", LogCategories.Startup);
             ValidateTrace(traces[11], "ServicePointManager.DefaultConnectionLimit is set to the default value of 2. This can limit the connection throughput to services like Azure Storage. For more information, see https://aka.ms/webjobs-connections.", LogCategories.Startup, expectedLevel: SeverityLevel.Warning);
             ValidateTrace(traces[12], "Starting Host (HostId=function-tests-", ScriptConstants.LogCategoryHostGeneral);
-
-            await Task.CompletedTask;
         }
 
         private static void ValidateMetric(MetricTelemetry telemetry, string expectedOperationId, string expectedOperationName)

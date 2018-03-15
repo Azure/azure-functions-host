@@ -402,7 +402,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             config.HostHealthMonitor.HealthCheckThreshold = 5;
 
             var environmentMock = new Mock<IScriptHostEnvironment>(MockBehavior.Strict);
-            environmentMock.Setup(p => p.Shutdown());
+            bool shutdownCalled = false;
+            environmentMock.Setup(p => p.Shutdown()).Callback(() => shutdownCalled = true);
 
             var mockSettings = new Mock<ScriptSettingsManager>();
             mockSettings.Setup(p => p.IsAzureEnvironment).Returns(true);
@@ -428,9 +429,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // for host shutdown
             underHighLoad = true;
 
-            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Error);
+            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Error && shutdownCalled);
 
-            Assert.Equal(ScriptHostState.Error, hostManager.State);
             environmentMock.Verify(p => p.Shutdown(), Times.Once);
 
             var traces = testTraceWriter.GetTraces();
