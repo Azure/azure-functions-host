@@ -114,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         t.Exception.Handle(e =>
                         {
-                            ProcessLeaseError(e.Message);
+                            ProcessLeaseError(Utility.FlattenException(e));
                             return true;
                         });
                     }
