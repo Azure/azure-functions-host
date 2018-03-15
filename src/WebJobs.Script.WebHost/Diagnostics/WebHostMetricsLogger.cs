@@ -13,7 +13,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private bool disposed = false;
 
         public WebHostMetricsLogger()
-            : this(ScriptSettingsManager.Instance, new EventGenerator(), 5)
+            : this(ScriptSettingsManager.Instance, new EtwEventGenerator(), 5)
+        {
+        }
+
+        public WebHostMetricsLogger(IEventGenerator eventGenerator)
+            : this(ScriptSettingsManager.Instance, eventGenerator, 5)
         {
         }
 

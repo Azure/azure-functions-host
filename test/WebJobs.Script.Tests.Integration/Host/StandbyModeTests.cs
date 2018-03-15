@@ -7,7 +7,9 @@ using System.Linq;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
@@ -31,9 +33,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
 
+            Mock<IEventGenerator> eventGeneratorMock = new Mock<IEventGenerator>();
+            Mock<IFunctionMonitor> functionMonitorMock = new Mock<IFunctionMonitor>();
             _webHostResolver = new WebHostResolver(_settingsManager, new TestSecretManagerFactory(false), eventManagerMock.Object,
                 new WebHostSettings(), routerMock.Object, new TestLoggerProviderFactory(_loggerProvider),
-                loggerFactory);
+                loggerFactory, eventGeneratorMock.Object, functionMonitorMock.Object);
 
             WebScriptHostManager.ResetStandbyMode();
         }

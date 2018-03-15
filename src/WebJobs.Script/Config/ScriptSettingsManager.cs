@@ -44,6 +44,17 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public virtual bool FileSystemIsReadOnly => IsZipDeployment;
 
+        public bool IsLinuxContainer
+        {
+            get
+            {
+                return true;
+
+                // TEMP
+                // return !IsAzureEnvironment && !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.ContainerName));
+            }
+        }
+
         public virtual string AzureWebsiteDefaultSubdomain
         {
             get
