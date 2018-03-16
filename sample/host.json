@@ -29,6 +29,5 @@
         "healthCheckThreshold": 6,
         "counterThreshold": 0.80
     },
-    "functionTimeout": "00:05:00",
-    "functions": [ "HttpTrigger-CSharp" ]
+    "functionTimeout": "00:05:00"
 }

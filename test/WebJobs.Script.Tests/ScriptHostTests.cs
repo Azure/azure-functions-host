@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionErrors = new Dictionary<string, Collection<string>>();
             var functionDirectories = Directory.EnumerateDirectories(config.RootScriptPath);
             var metadata = ScriptHost.ReadFunctionsMetadata(functionDirectories, null, functionErrors);
-            Assert.Equal(40, metadata.Count);
+            Assert.Equal(41, metadata.Count);
         }
 
         [Fact]

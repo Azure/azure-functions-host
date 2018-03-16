@@ -74,6 +74,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public string FixtureId { get; private set; }
 
+        /// <summary>
+        /// Override this to set the list of functions to write to host.json.
+        /// </summary>
+        /// <returns>The list of enabled functions.</returns>
         protected virtual IEnumerable<string> GetActiveFunctions()
         {
             return Enumerable.Empty<string>();

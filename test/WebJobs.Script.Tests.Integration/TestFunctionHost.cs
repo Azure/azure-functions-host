@@ -55,6 +55,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public ISecretManager SecretManager => _testServer.Host.Services.GetService<ISecretManager>();
 
+        public string LogPath => _hostSettings.LogPath;
+
+        public string ScriptPath => _hostSettings.ScriptPath;
+
+        public async Task<string> GetMasterKeyAsync()
+        {
+            HostSecretsInfo secrets = await SecretManager.GetHostSecretsAsync();
+            return secrets.MasterKey;
+        }
+
+        public async Task<string> GetFunctionSecretAsync(string functionName)
+        {
+            var secrets = await SecretManager.GetFunctionSecretsAsync(functionName);
+            return secrets.First().Value;
+        }
+
         public HttpClient HttpClient { get; private set; }
 
         public async Task StartAsync()
