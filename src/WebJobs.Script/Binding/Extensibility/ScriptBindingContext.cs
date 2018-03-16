@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
                 }
                 else
                 {
-                    throw new FormatException($"Invalid value specified for binding property '{name}' of enum type {PrettyTypeName(typeof(TEnum))}.");
+                    throw new FormatException($"Error parsing function.json: Invalid value specified for binding property '{name}' of enum type {PrettyTypeName(typeof(TEnum))}.");
                 }
             }
 
@@ -120,12 +120,9 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
                     return value.Value<TValue>();
                 }
             }
-            catch (Exception e)
+            catch (Exception e) when (e is InvalidCastException || e is FormatException)
             {
-                if (e is InvalidCastException || e is FormatException)
-                {
-                    throw new FormatException($"Error parsing function.json: Invalid value specified for binding property '{name}' of type {PrettyTypeName(typeof(TValue))}.", e);
-                }
+                throw new FormatException($"Error parsing function.json: Invalid value specified for binding property '{name}' of type {PrettyTypeName(typeof(TValue))}.", e);
             }
 
             return defaultValue;
