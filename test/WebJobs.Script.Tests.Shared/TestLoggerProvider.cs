@@ -33,16 +33,13 @@ namespace Microsoft.WebJobs.Script.Tests
             return logger;
         }
 
-        public IEnumerable<LogMessage> GetAllLogMessages()
-        {
-            return CreatedLoggers.SelectMany(l => l.LogMessages);
-        }
+        public IEnumerable<LogMessage> GetAllLogMessages() => CreatedLoggers.SelectMany(l => l.GetLogMessages()).OrderBy(p => p.Timestamp);
 
         public void ClearAllLogMessages()
         {
             foreach (TestLogger logger in CreatedLoggers)
             {
-                logger.LogMessages.Clear();
+                logger.ClearLogMessages();
             }
         }
 

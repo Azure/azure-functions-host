@@ -6,7 +6,6 @@ using System.Collections.ObjectModel;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
-using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
@@ -60,8 +59,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 new TestAssembly(new AssemblyName("MyDirectReference"), @"file:///c:/testroot/test2/bin/MyDirectReference.dll")));
 
             Assert.Null(result);
-            Assert.Equal(1, testLogger.LogMessages.Count);
-            Assert.Contains("MyTestAssembly.dll", testLogger.LogMessages[0].FormattedMessage);
+            Assert.Equal(1, testLogger.GetLogMessages().Count);
+            Assert.Contains("MyTestAssembly.dll", testLogger.GetLogMessages()[0].FormattedMessage);
         }
 
         private class TestAssembly : Assembly

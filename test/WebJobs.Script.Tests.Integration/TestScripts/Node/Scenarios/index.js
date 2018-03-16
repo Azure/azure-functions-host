@@ -63,6 +63,9 @@ var assert = require('assert');
         assert(!context._inputs);
         assert(!context._entryPoint);
 
+        // The test looks for this in the log to determine success.
+        context.log.info(input.value);
+
         context.done();
     }
     else if (scenario === 'bindingContainsFunctions') {

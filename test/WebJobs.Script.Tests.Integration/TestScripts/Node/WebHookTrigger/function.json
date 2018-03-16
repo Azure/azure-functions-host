@@ -1,0 +1,15 @@
+﻿{
+    "bindings": [
+        {
+            "type": "httpTrigger",
+            "name": "payload",
+            "direction": "in",
+            "webHookType": "genericJson"
+        },
+        {
+            "type": "http",
+            "name": "res",
+            "direction": "out"
+        }
+    ]
+}

@@ -4,21 +4,14 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -45,62 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _webHostSettings = webHostSettings;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostController);
             _authorizationService = authorizationService;
-        }
-
-        [HttpPost]
-        [Route("admin/functions/{name}")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        [RequiresRunningHost]
-        [EnableDebugMode]
-        public IActionResult Invoke(string name, [FromBody] FunctionInvocation invocation)
-        {
-            if (invocation == null)
-            {
-                return BadRequest();
-            }
-
-            FunctionDescriptor function = _scriptHostManager.Instance.GetFunctionOrNull(name);
-            if (function == null)
-            {
-                return NotFound();
-            }
-
-            ParameterDescriptor inputParameter = function.Parameters.First(p => p.IsTrigger);
-            Dictionary<string, object> arguments = new Dictionary<string, object>()
-            {
-                { inputParameter.Name, invocation.Input }
-            };
-            Task.Run(() => _scriptHostManager.Instance.CallAsync(function.Name, arguments));
-
-            return Accepted();
-        }
-
-        [HttpGet]
-        [Route("admin/functions/{name}/status")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        [RequiresRunningHost]
-        public IActionResult GetFunctionStatus(string name)
-        {
-            FunctionStatus status = new FunctionStatus();
-            Collection<string> functionErrors = null;
-
-            // first see if the function has any errors
-            if (_scriptHostManager.Instance.FunctionErrors.TryGetValue(name, out functionErrors))
-            {
-                status.Errors = functionErrors;
-            }
-            else
-            {
-                // if we don't have any errors registered, make sure the function exists
-                // before returning empty errors
-                FunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
-                if (function == null)
-                {
-                    return NotFound();
-                }
-            }
-
-            return Ok(status);
         }
 
         [HttpGet]

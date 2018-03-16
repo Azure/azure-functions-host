@@ -3,11 +3,11 @@
 #r "System.Net.Http"
 
 open System
+open System.Net
 open System.Net.Http
 open Microsoft.Azure.WebJobs.Host
 open PrimaryDependency
 
-
-
 let Run(req: HttpRequestMessage, log: TraceWriter) =
-    req.Properties.["DependencyOutput"] <- (new Primary()).GetValue();
+    let response = (new Primary()).GetValue()
+    new HttpResponseMessage(HttpStatusCode.OK, Content = new StringContent(response))   

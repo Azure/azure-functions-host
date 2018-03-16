@@ -1,0 +1,16 @@
+﻿{
+    "bindings": [
+        {
+            "type": "manualTrigger",
+            "name": "input",
+            "direction": "in"
+        },
+        {
+            "type": "mobileTable",
+            "direction": "out",
+            "name": "item",
+            "tableName": "Item",
+            "connection": "AzureWebJobs_TestMobileUri"
+        }
+    ]
+}

@@ -1,0 +1,22 @@
+﻿{
+    "bindings": [
+        {
+            "type": "serviceBusTrigger",
+            "name": "input",
+            "direction": "in",
+            "queueName": "test-input-csharp"
+        },
+        {
+            "type": "serviceBus",
+            "name": "message",
+            "direction": "out",
+            "queueName": "test-input-csharp"
+        },
+        {
+            "type": "blob",
+            "name": "completed",
+            "direction": "out",
+            "path": "test-output-csharp/completed"
+        }
+    ]
+}

@@ -1,0 +1,14 @@
+﻿{
+    "bindings": [
+        {
+            "type": "manualTrigger",
+            "name": "input",
+            "direction": "in"
+        },
+        {
+            "type": "notificationHub",
+            "name": "notification",
+            "direction": "out"
+        }
+    ]
+}

@@ -1,0 +1,34 @@
+﻿{
+  "bindings": [
+    {
+      "type": "queueTrigger",
+      "name": "input",
+      "queueName": "documentdb-input-node",
+      "direction": "in"
+    },
+    {
+      "type": "cosmosDB",
+      "name": "itemIn",
+      "direction": "in",
+      "databaseName": "ItemDb",
+      "collectionName": "ItemCollection",
+      "id": "{documentId}"
+    },
+    {
+      "type": "cosmosDB",
+      "name": "relatedItems",
+      "direction": "in",
+      "databaseName": "ItemDb",
+      "collectionName": "ItemCollection",
+      "sqlQuery": "SELECT f.id, f.related FROM f WHERE f.related = {documentId}"
+    },
+    {
+      "type": "cosmosDB",
+      "name": "itemOut",
+      "direction": "out",
+      "databaseName": "ItemDb",
+      "collectionName": "ItemCollection",
+      "createIfNotExists": true
+    }
+  ]
+}

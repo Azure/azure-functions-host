@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -11,6 +12,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class TestLogger : ILogger
     {
         private readonly Func<string, LogLevel, bool> _filter;
+        private IList<LogMessage> _logMessages = new List<LogMessage>();
+
 
         public TestLogger(string category, Func<string, LogLevel, bool> filter = null)
         {
@@ -19,8 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public string Category { get; private set; }
-
-        public IList<LogMessage> LogMessages { get; } = new List<LogMessage>();
 
         public IDisposable BeginScope<TState>(TState state)
         {
@@ -32,6 +33,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return _filter?.Invoke(Category, logLevel) ?? true;
         }
 
+        public IList<LogMessage> GetLogMessages() => _logMessages.ToList();
+
+        public void ClearLogMessages() => _logMessages.Clear();
+
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
             if (!IsEnabled(logLevel))
@@ -39,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return;
             }
 
-            LogMessages.Add(new LogMessage
+            _logMessages.Add(new LogMessage
             {
                 Level = logLevel,
                 EventId = eventId,
@@ -52,7 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
     }
 
-    [DebuggerDisplay("{FormattedMessage}")]
     public class LogMessage
     {
         public LogLevel Level { get; set; }
@@ -68,5 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public string Category { get; set; }
 
         public DateTime Timestamp { get; set; }
+
+        public override string ToString() => $"[{Timestamp.ToString("HH:mm:ss.fff")}] [{Category}] {FormattedMessage}";
     }
 }

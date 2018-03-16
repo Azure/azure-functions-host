@@ -321,7 +321,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 link.Dispose();
             }
 
-            _logger.LogError($"Worker encountered an error.", exc);
+            _logger.LogError(exc, $"Worker encountered an error.");
             _eventManager.Publish(new WorkerErrorEvent(this, exc));
         }
 

@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task UpdateFileAndRestart()
         {
-            var fixture = new NodeEndToEndTests.TestFixture(false);
+            var fixture = new NodeScriptHostTests.TestFixture(false);
             var config = fixture.Host.ScriptConfig;
 
             config.OnConfigurationApplied = c =>
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var oldDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestScripts/Node/TimerTrigger");
             var newDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestScripts/Node/MovedTrigger");
 
-            var fixture = new NodeEndToEndTests.TestFixture(false);
+            var fixture = new NodeScriptHostTests.TestFixture(false);
             var config = fixture.Host.ScriptConfig;
 
             config.OnConfigurationApplied = c =>
@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string msg = "A ScriptHost error has occurred";
 
             var startupLogger = provider.CreatedLoggers.Last();
-            var loggerMessage = startupLogger.LogMessages.First();
+            var loggerMessage = startupLogger.GetLogMessages().First();
             Assert.Equal(msg, loggerMessage.FormattedMessage);
             Assert.Same(ex, loggerMessage.Exception);
         }
@@ -351,9 +351,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Unable to parse host.json file.", ex.Message);
 
             var logger = loggerProvider.CreatedLoggers.Last();
-            Assert.Equal(3, logger.LogMessages.Count);
-            Assert.StartsWith("A ScriptHost error has occurred", logger.LogMessages[1].FormattedMessage);
-            Assert.Equal("Unable to parse host.json file.", logger.LogMessages[1].Exception.Message);
+            Assert.Equal(3, logger.GetLogMessages().Count);
+            Assert.StartsWith("A ScriptHost error has occurred", logger.GetLogMessages()[1].FormattedMessage);
+            Assert.Equal("Unable to parse host.json file.", logger.GetLogMessages()[1].Exception.Message);
         }
 
         [Fact]
@@ -568,7 +568,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         // Update the manifest for the timer function
         // - this will cause a file touch which cause ScriptHostManager to notice and update
         // - set to a new output location so that we can ensure we're getting new changes.
-        private static async Task<CloudBlockBlob> UpdateOutputName(string prev, string hint, EndToEndTestFixture fixture)
+        private static async Task<CloudBlockBlob> UpdateOutputName(string prev, string hint, ScriptHostEndToEndTestFixture fixture)
         {
             string name = hint;
 

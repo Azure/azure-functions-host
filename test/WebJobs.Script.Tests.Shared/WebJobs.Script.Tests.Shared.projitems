@@ -14,6 +14,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)TempDirectory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHelpers.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestHelpers.Functions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestInvoker.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestChannelLoggerProviderFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestLogger.cs" />

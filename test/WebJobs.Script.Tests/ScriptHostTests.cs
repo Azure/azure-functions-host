@@ -987,7 +987,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // We shouldn't have any log messages
             foreach (var logger in loggerProvider.CreatedLoggers)
             {
-                Assert.Empty(logger.LogMessages);
+                Assert.Empty(logger.GetLogMessages());
             }
         }
 
@@ -1047,8 +1047,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var hostJson = JObject.Parse(hostJsonSanitized);
 
             var logger = loggerProvider.CreatedLoggers.Single(l => l.Category == LogCategories.Startup);
-            var logMessage = logger.LogMessages.Single(l => l.FormattedMessage.StartsWith("Reading host configuration file")).FormattedMessage;
-            logMessage = logger.LogMessages.Single(l => l.FormattedMessage.StartsWith("Host configuration file read")).FormattedMessage;
+            var logMessage = logger.GetLogMessages().Single(l => l.FormattedMessage.StartsWith("Host configuration file read")).FormattedMessage;
             Assert.Equal($"Host configuration file read:{Environment.NewLine}{hostJson}", logMessage);
         }
 
@@ -1541,7 +1540,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // We should have a warning for host id in the start up logger
             var logger = loggerProvider.CreatedLoggers.First(x => x.Category == "Host.Startup");
-            Assert.Single(logger.LogMessages, x => x.FormattedMessage.Contains("Host id explicitly set in the host.json."));
+            Assert.Single(logger.GetLogMessages(), x => x.FormattedMessage.Contains("Host id explicitly set in the host.json."));
         }
 
         public class AssemblyMock : Assembly
