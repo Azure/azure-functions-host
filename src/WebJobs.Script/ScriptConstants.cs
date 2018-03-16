@@ -65,6 +65,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
         public const string ColdStartEventName = "ColdStart";
+        public const string SingleLanguageModeSettingName = "workers:language";
+        public const string DotNetLanguageName = "DotNet";
+        public const string NodeLanguageName = "Node";
+        public const string JavaLanguageName = "Java";
+        public const string DefaultWorkersDirectoryName = "workers";
 
         public const string AntaresLogIdHeaderName = "X-ARR-LOG-ID";
         public const string AntaresScaleOutHeaderName = "X-FUNCTION-SCALEOUT";
