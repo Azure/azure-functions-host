@@ -6,7 +6,7 @@
             "cardinality": "many",
             "direction": "in",
             "connection": "AzureWebJobsEventHubReceiver",
-            "path": "%AzureWebJobsEventHubPath%"
+            "eventHubName": "%AzureWebJobsEventHubPath%"
         }
     ]
 }

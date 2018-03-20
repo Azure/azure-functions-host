@@ -52,12 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // await MobileTablesTest(isDotNet: true);
         }
 
-        [Fact]
-        public async Task CosmosDB()
-        {
-            await CosmosDBTest();
-        }
-
         [Fact(Skip = "Not yet enabled.")]
         public void NotificationHub()
         {

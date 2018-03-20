@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private string _copiedRootPath;
 
-        protected EndToEndTestFixture(string rootPath, string testId)
+        protected EndToEndTestFixture(string rootPath, string testId, string extensionName = null, string extensionVersion = null)
         {
             FixtureId = testId;
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
@@ -46,11 +46,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             File.WriteAllText(hostJsonPath, hostJson.ToString());
 
             Host = new TestFunctionHost(_copiedRootPath);
-            Host.SetNugetPackageSources("http://www.myget.org/F/azure-appservice/api/v2", "https://api.nuget.org/v3/index.json");
-            Host.InstallBindingExtension("Microsoft.Azure.WebJobs.Extensions.CosmosDB", "3.0.0-beta7-10602").Wait();
 
-            // TODO: Find a better way to ensure extensions have installed and host has initiated restart.
-            Task.Delay(3000).Wait();
+            // We can currently only support a single extension.
+            if (extensionName != null && extensionVersion != null)
+            {
+                Host.SetNugetPackageSources("http://www.myget.org/F/azure-appservice/api/v2", "https://api.nuget.org/v3/index.json");
+                Host.InstallBindingExtension(extensionName, extensionVersion).Wait();
+            }
+
             Host.StartAsync().Wait();
         }
 

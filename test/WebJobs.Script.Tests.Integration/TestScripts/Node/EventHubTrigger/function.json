@@ -5,7 +5,7 @@
             "name": "workItem",
             "direction": "in",
             "connection": "AzureWebJobsEventHubReceiver",
-            "path": "%AzureWebJobsEventHubPath%",
+            "eventHubName": "%AzureWebJobsEventHubPath%",
             "consumerGroup": "$Default"
         },
         {

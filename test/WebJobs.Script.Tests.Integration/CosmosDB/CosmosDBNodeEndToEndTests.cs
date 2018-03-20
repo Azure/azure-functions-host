@@ -4,12 +4,12 @@
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDBTrigger
+namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 {
-    public class CosmosDBTriggerNodeEndToEndTests :
-        CosmosDBTriggerEndToEndTestsBase<CosmosDBTriggerNodeEndToEndTests.TestFixture>
+    public class CosmosDBNodeEndToEndTests :
+        CosmosDBEndToEndTestsBase<CosmosDBNodeEndToEndTests.TestFixture>
     {
-        public CosmosDBTriggerNodeEndToEndTests(TestFixture fixture) : base(fixture)
+        public CosmosDBNodeEndToEndTests(TestFixture fixture) : base(fixture)
         {
         }
 
@@ -19,7 +19,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDBTrigger
             return CosmosDBTriggerToBlobTest();
         }
 
-        public class TestFixture : CosmosDBTriggerTestFixture
+        [Fact]
+        public Task CosmosDB()
+        {
+            return CosmosDBTest();
+        }
+
+        public class TestFixture : CosmosDBTestFixture
         {
             private const string ScriptRoot = @"TestScripts\Node";
 

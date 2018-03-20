@@ -8,14 +8,15 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDBTrigger
+namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 {
-    public abstract class CosmosDBTriggerEndToEndTestsBase<TTestFixture> :
-        EndToEndTestsBase<TTestFixture> where TTestFixture : CosmosDBTriggerTestFixture, new()
+    public abstract class CosmosDBEndToEndTestsBase<TTestFixture> :
+        EndToEndTestsBase<TTestFixture> where TTestFixture : CosmosDBTestFixture, new()
     {
-        public CosmosDBTriggerEndToEndTestsBase(TTestFixture fixture) : base(fixture)
+        public CosmosDBEndToEndTestsBase(TTestFixture fixture) : base(fixture)
         {
         }
 
@@ -53,17 +54,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDBTrigger
 
             Assert.False(string.IsNullOrEmpty(result));
         }
+
+        protected async Task CosmosDBTest()
+        {
+            // DocumentDB tests need the following environment vars:
+            // "AzureWebJobsDocumentDBConnectionString" -- the connection string to the account
+            string id = Guid.NewGuid().ToString();
+
+            await Fixture.Host.BeginFunctionAsync("CosmosDBOut", id);
+
+            Document doc = await WaitForDocumentAsync(id);
+
+            Assert.Equal(doc.Id, id);
+
+            // Now add that Id to a Queue, in an object to test binding
+            var queue = await Fixture.GetNewQueue("documentdb-input");
+            string messageContent = string.Format("{{ \"documentId\": \"{0}\" }}", id);
+            await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
+
+            // And wait for the text to be updated
+            Document updatedDoc = await WaitForDocumentAsync(id, "This was updated!");
+
+            Assert.Equal(updatedDoc.Id, doc.Id);
+            Assert.NotEqual(doc.ETag, updatedDoc.ETag);
+        }
+
     }
 
-    public abstract class CosmosDBTriggerTestFixture : EndToEndTestFixture
+    public abstract class CosmosDBTestFixture : EndToEndTestFixture
     {
-        protected CosmosDBTriggerTestFixture(string rootPath, string testId) : base(rootPath, testId)
+        protected CosmosDBTestFixture(string rootPath, string testId) :
+            base(rootPath, testId, "Microsoft.Azure.WebJobs.Extensions.CosmosDB", "3.0.0-beta7-10602")
         {
         }
 
         public DocumentClient DocumentClient { get; private set; }
 
-        protected override IEnumerable<string> GetActiveFunctions() => new[] { "CosmosDBTrigger" };
+        protected override IEnumerable<string> GetActiveFunctions() => new[] { "CosmosDBTrigger", "CosmosDBIn", "CosmosDBOut" };
 
         public async Task InitializeDocumentClient()
         {

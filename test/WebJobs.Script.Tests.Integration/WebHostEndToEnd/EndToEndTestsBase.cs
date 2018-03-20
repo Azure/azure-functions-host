@@ -228,30 +228,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         //    }
         //}
 
-        protected async Task CosmosDBTest()
-        {
-            // DocumentDB tests need the following environment vars:
-            // "AzureWebJobsDocumentDBConnectionString" -- the connection string to the account
-            string id = Guid.NewGuid().ToString();
-
-            await Fixture.Host.BeginFunctionAsync("CosmosDBOut", id);
-
-            Document doc = await WaitForDocumentAsync(id);
-
-            Assert.Equal(doc.Id, id);
-
-            // Now add that Id to a Queue, in an object to test binding
-            var queue = await Fixture.GetNewQueue("documentdb-input");
-            string messageContent = string.Format("{{ \"documentId\": \"{0}\" }}", id);
-            await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
-
-            // And wait for the text to be updated
-            Document updatedDoc = await WaitForDocumentAsync(id, "This was updated!");
-
-            Assert.Equal(updatedDoc.Id, doc.Id);
-            Assert.NotEqual(doc.ETag, updatedDoc.ETag);
-        }
-
         //protected async Task ServiceBusQueueTriggerToBlobTestImpl()
         //{
         //    var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("completed");

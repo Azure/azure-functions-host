@@ -23,6 +23,7 @@
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="1.9.1" />
+    <PackageReference Include="Microsoft.Azure.EventHubs" Version="1.0.3" />
     <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="1.1.0-beta2-10009" />
     <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="1.0.0-beta1-10026" />
     <PackageReference Include="Microsoft.Azure.Mobile.Client" Version="4.0.2" />
@@ -31,7 +32,6 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
     <PackageReference Include="Moq" Version="4.7.145" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
-    <PackageReference Include="WindowsAzure.ServiceBus" Version="4.1.7" />
     <PackageReference Include="xunit" Version="2.3.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.3.1" />
   </ItemGroup>

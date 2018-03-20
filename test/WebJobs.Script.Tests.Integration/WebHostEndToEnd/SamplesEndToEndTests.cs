@@ -2,25 +2,19 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Tests.Integration.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
-using Microsoft.ServiceBus;
-using Microsoft.ServiceBus.Messaging;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
@@ -42,53 +36,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
-        }
-
-        [Fact(Skip = "Not currently supported.")]
-        public async Task EventHubTrigger()
-        {
-            TestHelpers.ClearFunctionLogs("EventHubTrigger");
-
-            // write 3 events
-            List<EventData> events = new List<EventData>();
-            string[] ids = new string[3];
-            for (int i = 0; i < 3; i++)
-            {
-                ids[i] = Guid.NewGuid().ToString();
-                JObject jo = new JObject
-                {
-                    { "value", ids[i] }
-                };
-                var evt = new EventData(Encoding.UTF8.GetBytes(jo.ToString(Formatting.None)));
-                evt.Properties.Add("TestIndex", i);
-                events.Add(evt);
-            }
-
-            string connectionString = Environment.GetEnvironmentVariable("AzureWebJobsEventHubSender");
-            ServiceBusConnectionStringBuilder builder = new ServiceBusConnectionStringBuilder(connectionString);
-            EventHubClient eventHubClient;
-            if (!string.IsNullOrWhiteSpace(builder.EntityPath))
-            {
-                eventHubClient = EventHubClient.CreateFromConnectionString(connectionString);
-            }
-            else
-            {
-                string eventHubPath = _settingsManager.GetSetting("AzureWebJobsEventHubPath");
-                eventHubClient = EventHubClient.CreateFromConnectionString(connectionString, eventHubPath);
-            }
-
-            await eventHubClient.SendBatchAsync(events);
-
-            string logs = null;
-            await TestHelpers.Await(() =>
-            {
-                // wait until all of the 3 of the unique IDs sent
-                // above have been processed
-                logs = string.Join("\r\n", TestHelpers.GetFunctionLogsAsync("EventHubTrigger", throwOnNoLogs: false).Result);
-                return ids.All(p => logs.Contains(p));
-            });
-
-            Assert.True(logs.Contains("IsArray true"));
         }
 
         [Fact]
@@ -541,7 +488,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             string uri = "api/webhook-azure-csharp?code=yKjiimZjC1FQoGlaIj8TUfGltnPE/f2LhgZNq6Fw9/XfAOGHmSgUlQ==";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-            request.Content = new StringContent(Resources.AzureWebHookEventRequest);
+            request.Content = new StringContent(Integration.Properties.Resources.AzureWebHookEventRequest);
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
             HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
@@ -662,139 +609,139 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact(Skip = "Not currently supported.")]
         public async Task ServiceBusQueueTrigger_Succeeds()
         {
-            string queueName = "samples-input";
-            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
-            var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
-            namespaceManager.DeleteQueue(queueName);
-            namespaceManager.CreateQueue(queueName);
+            //string queueName = "samples-input";
+            //string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
+            //var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
+            //namespaceManager.DeleteQueue(queueName);
+            //namespaceManager.CreateQueue(queueName);
 
-            var client = Microsoft.ServiceBus.Messaging.QueueClient.CreateFromConnectionString(connectionString, queueName);
+            //var client = Microsoft.ServiceBus.Messaging.QueueClient.CreateFromConnectionString(connectionString, queueName);
 
-            // write a start message to the queue to kick off the processing
-            int max = 3;
-            string id = Guid.NewGuid().ToString();
-            JObject message = new JObject
-            {
-                { "count", 1 },
-                { "max", max },
-                { "id", id }
-            };
-            using (Stream stream = new MemoryStream())
-            using (TextWriter writer = new StreamWriter(stream))
-            {
-                writer.Write(message.ToString());
-                writer.Flush();
-                stream.Position = 0;
+            //// write a start message to the queue to kick off the processing
+            //int max = 3;
+            //string id = Guid.NewGuid().ToString();
+            //JObject message = new JObject
+            //{
+            //    { "count", 1 },
+            //    { "max", max },
+            //    { "id", id }
+            //};
+            //using (Stream stream = new MemoryStream())
+            //using (TextWriter writer = new StreamWriter(stream))
+            //{
+            //    writer.Write(message.ToString());
+            //    writer.Flush();
+            //    stream.Position = 0;
 
-                client.Send(new BrokeredMessage(stream) { ContentType = "text/plain" });
-            }
+            //    client.Send(new BrokeredMessage(stream) { ContentType = "text/plain" });
+            //}
 
-            client.Close();
+            //client.Close();
 
-            // wait for function to execute and produce its result blob
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+            //// wait for function to execute and produce its result blob
+            //CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            //CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
+            //string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
 
-            Assert.Equal(string.Format("{0} messages processed", max), result.Trim());
+            //Assert.Equal(string.Format("{0} messages processed", max), result.Trim());
         }
 
         [Fact(Skip = "Not currently supported.")]
-        public async Task ServiceBusTopicTrigger_Succeeds()
+        public void ServiceBusTopicTrigger_Succeeds()
         {
-            string topicName = "samples-topic";
-            string subscriptionName = "samples";
-            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
-            var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
+            //    string topicName = "samples-topic";
+            //    string subscriptionName = "samples";
+            //    string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
+            //    var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
 
-            if (!namespaceManager.TopicExists(topicName))
-            {
-                namespaceManager.CreateTopic(topicName);
-            }
+            //    if (!namespaceManager.TopicExists(topicName))
+            //    {
+            //        namespaceManager.CreateTopic(topicName);
+            //    }
 
-            if (!namespaceManager.SubscriptionExists(topicName, subscriptionName))
-            {
-                namespaceManager.CreateSubscription(topicName, subscriptionName);
-            }
+            //    if (!namespaceManager.SubscriptionExists(topicName, subscriptionName))
+            //    {
+            //        namespaceManager.CreateSubscription(topicName, subscriptionName);
+            //    }
 
-            var client = Microsoft.ServiceBus.Messaging.TopicClient.CreateFromConnectionString(connectionString, topicName);
+            //    var client = Microsoft.ServiceBus.Messaging.TopicClient.CreateFromConnectionString(connectionString, topicName);
 
-            // write a start message to the queue to kick off the processing
-            string id = Guid.NewGuid().ToString();
-            string value = Guid.NewGuid().ToString();
-            JObject message = new JObject
-            {
-                { "id", id },
-                { "value", value }
-            };
-            using (Stream stream = new MemoryStream())
-            using (TextWriter writer = new StreamWriter(stream))
-            {
-                writer.Write(message.ToString());
-                writer.Flush();
-                stream.Position = 0;
+            //    // write a start message to the queue to kick off the processing
+            //    string id = Guid.NewGuid().ToString();
+            //    string value = Guid.NewGuid().ToString();
+            //    JObject message = new JObject
+            //    {
+            //        { "id", id },
+            //        { "value", value }
+            //    };
+            //    using (Stream stream = new MemoryStream())
+            //    using (TextWriter writer = new StreamWriter(stream))
+            //    {
+            //        writer.Write(message.ToString());
+            //        writer.Flush();
+            //        stream.Position = 0;
 
-                client.Send(new BrokeredMessage(stream) { ContentType = "text/plain" });
-            }
+            //        client.Send(new BrokeredMessage(stream) { ContentType = "text/plain" });
+            //    }
 
-            client.Close();
+            //    client.Close();
 
-            // wait for function to execute and produce its result blob
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+            //    // wait for function to execute and produce its result blob
+            //    CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            //    CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
+            //    string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
 
-            Assert.Equal(value, result.Trim());
+            //    Assert.Equal(value, result.Trim());
         }
 
         [Fact(Skip = "Not currently supported.")]
-        public async Task ServiceBusTopicTrigger_ManualInvoke_Succeeds()
+        public void ServiceBusTopicTrigger_ManualInvoke_Succeeds()
         {
-            string topicName = "samples-topic";
-            string subscriptionName = "samples";
-            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
-            var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
+            //    string topicName = "samples-topic";
+            //    string subscriptionName = "samples";
+            //    string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
+            //    var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
 
-            if (!namespaceManager.TopicExists(topicName))
-            {
-                namespaceManager.CreateTopic(topicName);
-            }
+            //    if (!namespaceManager.TopicExists(topicName))
+            //    {
+            //        namespaceManager.CreateTopic(topicName);
+            //    }
 
-            if (!namespaceManager.SubscriptionExists(topicName, subscriptionName))
-            {
-                namespaceManager.CreateSubscription(topicName, subscriptionName);
-            }
+            //    if (!namespaceManager.SubscriptionExists(topicName, subscriptionName))
+            //    {
+            //        namespaceManager.CreateSubscription(topicName, subscriptionName);
+            //    }
 
-            string uri = "admin/functions/servicebustopictrigger";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
-            string id = Guid.NewGuid().ToString();
-            string value = Guid.NewGuid().ToString();
-            JObject input = new JObject()
-            {
-                {
-                    "input", new JObject()
-                    {
-                        { "id", id },
-                        { "value", value }
-                    }.ToString()
-                }
-            };
-            string json = input.ToString();
-            request.Content = new StringContent(json);
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            //    string uri = "admin/functions/servicebustopictrigger";
+            //    HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            //    request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
+            //    string id = Guid.NewGuid().ToString();
+            //    string value = Guid.NewGuid().ToString();
+            //    JObject input = new JObject()
+            //    {
+            //        {
+            //            "input", new JObject()
+            //            {
+            //                { "id", id },
+            //                { "value", value }
+            //            }.ToString()
+            //        }
+            //    };
+            //    string json = input.ToString();
+            //    request.Content = new StringContent(json);
+            //    request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+            //    HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            //    Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 
-            var client = Microsoft.ServiceBus.Messaging.TopicClient.CreateFromConnectionString(connectionString, topicName);
+            //    var client = Microsoft.ServiceBus.Messaging.TopicClient.CreateFromConnectionString(connectionString, topicName);
 
-            // wait for function to execute and produce its result blob
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+            //    // wait for function to execute and produce its result blob
+            //    CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            //    CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
+            //    string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
 
-            Assert.Equal(value, result.Trim());
+            //    Assert.Equal(value, result.Trim());
         }
 
         [Fact]
@@ -964,7 +911,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
             }
 
-            public NamespaceManager NamespaceManager { get; set; }
+            // public NamespaceManager NamespaceManager { get; set; }
 
             protected override async Task CreateTestStorageEntities()
             {

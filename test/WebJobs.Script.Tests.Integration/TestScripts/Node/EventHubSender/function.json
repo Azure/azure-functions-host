@@ -10,7 +10,7 @@
             "name": "output",
             "direction": "out",
             "connection": "AzureWebJobsEventHubSender",
-            "path": "%AzureWebJobsEventHubPath%"
+            "eventHubName": "%AzureWebJobsEventHubPath%"
         }
     ]
 }
