@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await TableOutputTest();
         }
 
-        [Fact(Skip = "Non-.NET languages not currently supported.")]
+        [Fact]
         public async Task CosmosDB()
         {
             await CosmosDBTest();

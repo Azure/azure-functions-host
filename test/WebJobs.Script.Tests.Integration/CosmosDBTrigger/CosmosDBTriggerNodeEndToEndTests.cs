@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDBTrigger
         {
         }
 
-        [Fact(Skip = "Non-.NET CosmosDBTrigger not currently supported")]
+        [Fact]
         public Task CosmosDBTrigger()
         {
             return CosmosDBTriggerToBlobTest();

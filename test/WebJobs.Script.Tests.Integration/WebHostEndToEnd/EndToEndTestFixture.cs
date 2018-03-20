@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Host = new TestFunctionHost(_copiedRootPath);
             Host.SetNugetPackageSources("http://www.myget.org/F/azure-appservice/api/v2", "https://api.nuget.org/v3/index.json");
-            Host.InstallBindingExtension("Microsoft.Azure.WebJobs.Extensions.CosmosDB", "3.0.0-beta7-10595").Wait();
+            Host.InstallBindingExtension("Microsoft.Azure.WebJobs.Extensions.CosmosDB", "3.0.0-beta7-10602").Wait();
 
             // TODO: Find a better way to ensure extensions have installed and host has initiated restart.
             Task.Delay(3000).Wait();
