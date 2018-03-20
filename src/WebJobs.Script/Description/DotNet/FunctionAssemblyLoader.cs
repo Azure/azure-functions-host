@@ -47,7 +47,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
+        /// <summary>
+        /// Note - it is possible for this method to be hooked up to AppDomain.CurrentDomain.AssemblyResolve multiple times, in different contexts (for example, during placeholder specialization).
+        /// The way AppDomain.CurrentDomain.AssemblyResolve works, if one registered handler throws an exception, the other handlers do not get to participate.
+        /// This behavior can result in assembly load failures that are difficult to diagnose or understand. To avoid this problem, this implementation swallows all exceptions.
+        /// Error logging, where possible, is performed in ResolveAssemblyCore.
+        /// </summary>
         internal Assembly ResolveAssembly(object sender, ResolveEventArgs args)
+        {
+            try
+            {
+                return ResolveAssemblyCore(sender, args);
+            }
+            catch
+            {
+                // Do not allow an exception to prevent other registered handlers from attempting to resolve the assembly.
+                return null;
+            }
+        }
+
+        private Assembly ResolveAssemblyCore(object sender, ResolveEventArgs args)
         {
             FunctionAssemblyLoadContext context = GetFunctionContext(args.RequestingAssembly);
             Assembly result = null;
