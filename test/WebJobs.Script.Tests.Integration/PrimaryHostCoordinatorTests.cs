@@ -28,6 +28,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return lockManager;
         }
 
+        [Theory]
+        [InlineData(14.99)]
+        [InlineData(60.01)]
+        public void RejectsInvalidLeaseTimeout(double leaseTimeoutSeconds)
+        {
+            var leaseTimeout = TimeSpan.FromSeconds(leaseTimeoutSeconds);
+
+            string hostId = Guid.NewGuid().ToString();
+            string instanceId = Guid.NewGuid().ToString();
+            var traceWriter = new TestTraceWriter(System.Diagnostics.TraceLevel.Verbose);
+
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => PrimaryHostCoordinator.Create(CreateLockManager(), leaseTimeout, hostId, instanceId, traceWriter, null));
+        }
+
         [Fact]
         public async Task HasLease_WhenLeaseIsAcquired_ReturnsTrue()
         {
