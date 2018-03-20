@@ -89,9 +89,9 @@ namespace Microsoft.Azure.WebJobs.Script
             ILoggerFactory loggerFactory,
             TimeSpan? renewalInterval = null)
         {
-            if (leaseTimeout.TotalSeconds < 15 || leaseTimeout.TotalSeconds > 60)
+            if (leaseTimeout < TimeSpan.FromSeconds(15) || leaseTimeout > TimeSpan.FromSeconds(60))
             {
-                throw new ArgumentOutOfRangeException(nameof(leaseTimeout), $"The {nameof(leaseTimeout)} should be between 15 and 60 seconds");
+                throw new ArgumentOutOfRangeException(nameof(leaseTimeout), $"The {nameof(leaseTimeout)} should be between 15 and 60 seconds but was '{leaseTimeout}'");
             }
 
             var manager = new PrimaryHostCoordinator(lockManager, leaseTimeout, hostId, instanceId, loggerFactory, renewalInterval);
