@@ -134,9 +134,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "002", Region = "West", Name = "Test Entity 2", Status = 1 });
             batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "003", Region = "West", Name = "Test Entity 3", Status = 0 });
             await TestTable.ExecuteBatchAsync(batch);
-
-            string serviceBusQueueName = string.Format("test-input-{0}", FixtureId);
-            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
         }
 
         public async Task DeleteEntities(CloudTable table, string partition = null)

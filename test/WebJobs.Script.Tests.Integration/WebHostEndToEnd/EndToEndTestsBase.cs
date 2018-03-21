@@ -228,34 +228,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         //    }
         //}
 
-        //protected async Task ServiceBusQueueTriggerToBlobTestImpl()
-        //{
-        //    var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("completed");
-        //    await resultBlob.DeleteIfExistsAsync();
-
-        //    string id = Guid.NewGuid().ToString();
-        //    JObject message = new JObject
-        //    {
-        //        { "count", 0 },
-        //        { "id", id }
-        //    };
-
-        //    using (Stream stream = new MemoryStream())
-        //    using (TextWriter writer = new StreamWriter(stream))
-        //    {
-        //        writer.Write(message.ToString());
-        //        writer.Flush();
-        //        stream.Position = 0;
-
-        //        await Fixture.ServiceBusQueueClient.SendAsync(new BrokeredMessage(stream) { ContentType = "text/plain" });
-        //    }
-
-        //    // now wait for function to be invoked
-        //    string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
-
-        //    Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(id), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
-        //}
-
         //protected async Task NotificationHubTest(string functionName)
         //{
         //    // NotificationHub tests need the following environment vars:
