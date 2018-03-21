@@ -37,13 +37,13 @@
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client.Contract" Version="0.3.1.1">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta4-11268" />
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta4-11270" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="3.0.0-beta4-10578" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.0-beta4-10578">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.0-beta4-11268" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.0-beta4-11268" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.0-beta4-11270" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.0-beta4-11270" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.88-alpha" />
     <PackageReference Include="System.Net.Primitives" Version="4.3.0" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.6.0" />

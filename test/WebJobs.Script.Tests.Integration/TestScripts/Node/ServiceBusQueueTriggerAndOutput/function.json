@@ -2,21 +2,21 @@
     "bindings": [
         {
             "type": "serviceBusTrigger",
-            "name": "input",
+            "name": "trigger",
             "direction": "in",
-            "queueName": "test-input-fsharp"
+            "queueName": "core-test-queue1"
         },
         {
             "type": "serviceBus",
-            "name": "message",
+            "name": "output",
             "direction": "out",
-            "queueName": "test-input-fsharp"
+            "queueName": "core-test-queue2"
         },
         {
             "type": "blob",
             "name": "completed",
             "direction": "out",
-            "path": "test-output-fsharp/completed"
+            "path": "test-output-node/servicebuse2e-queue-completed"
         }
     ]
 }

@@ -1,0 +1,21 @@
+﻿{
+    "bindings": [
+        {
+            "type": "manualTrigger",
+            "name": "trigger",
+            "direction": "in"
+        },
+        {
+            "type": "serviceBus",
+            "name": "output",
+            "direction": "out",
+            "topicName": "core-test-topic1"
+        },
+        {
+            "type": "blob",
+            "name": "completed",
+            "direction": "out",
+            "path": "test-output-node/servicebuse2e-topic-completed"
+        }
+    ]
+}

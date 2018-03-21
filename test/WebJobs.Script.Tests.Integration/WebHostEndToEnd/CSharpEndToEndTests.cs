@@ -34,11 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await QueueTriggerToBlobTest();
         }
 
-        [Fact(Skip = "Not yet enabled.")]
-        public void ServiceBusQueueTriggerToBlobTest()
-        {
-            // await ServiceBusQueueTriggerToBlobTestImpl();
-        }
 
         [Fact(Skip = "Not yet enabled.")]
         public void TwilioReferenceInvokeSucceeds()
