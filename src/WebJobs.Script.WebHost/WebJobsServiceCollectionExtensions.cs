@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.Register<IExtensionsManager>(c =>
             {
                 var hostInstance = c.Resolve<WebScriptHostManager>().Instance;
-                return new ExtensionsManager(hostInstance.ScriptConfig.RootScriptPath, hostInstance.Logger);
+                return new ExtensionsManager(hostInstance.ScriptConfig.RootScriptPath, hostInstance.Logger, hostInstance.ScriptConfig.NugetFallBackPath);
             });
 
             // The services below need to be scoped to a pseudo-tenant (warm/specialized environment)

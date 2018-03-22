@@ -82,6 +82,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HttpMethodConstraintName = "httpMethod";
         public const string Snapshot = "snapshot";
         public const string Runtime = "runtime";
+        public const string NugetFallbackFolderRootName = "FuncNuGetFallback";
+        public const string NugetXmlDocModeSettingName = "NUGET_XMLDOC_MODE";
+        public const string NugetXmlDocSkipMode = "skip";
+
 
         public const int MaximumHostIdLength = 32;
         public const int DynamicSkuConnectionLimit = 50;

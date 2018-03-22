@@ -1494,6 +1494,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
+            JToken nugetFallbackFolder = config["nugetFallbackFolder"];
+            if (nugetFallbackFolder != null && nugetFallbackFolder.Type == JTokenType.String)
+            {
+                scriptConfig.NugetFallBackPath = (string)nugetFallbackFolder;
+            }
+
             // Apply Singleton configuration
             JObject configSection = (JObject)config["singleton"];
             JToken value = null;

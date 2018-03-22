@@ -35,6 +35,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public string RootScriptPath { get; set; }
 
         /// <summary>
+        /// Gets or sets NugetFallBackPath
+        /// </summary>
+        public string NugetFallBackPath { get; set; }
+
+        /// <summary>
         /// Gets or sets the root path for log files.
         /// </summary>
         public string RootLogPath { get; set; }
