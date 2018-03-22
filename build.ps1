@@ -1,7 +1,7 @@
 ﻿param (
   [string]$buildNumber = "0",
   [string]$extensionVersion = "2.0.$buildNumber",
-  [string]$versionSuffix = "$buildNumber"
+  [bool]$includeVersion = $true
 )
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -157,9 +157,23 @@ function BuildPackages([string] $runtime, [bool] $isSelfContained) {
 
 dotnet --version
 dotnet build .\WebJobs.Script.sln -v q /p:BuildNumber="$buildNumber"
-dotnet pack src\WebJobs.Script\WebJobs.Script.csproj -o ..\..\buildoutput --no-build --version-suffix $versionSuffix
-dotnet pack src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o ..\..\buildoutput --no-build --version-suffix $versionSuffix
-dotnet pack src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj -o ..\..\buildoutput --no-build --version-suffix $versionSuffix
+
+$projects = 
+  "WebJobs.Script",
+  "WebJobs.Script.WebHost",
+  "WebJobs.Script.Grpc"
+  
+foreach ($project in $projects)
+{
+  $cmd = "pack", "src\$project\$project.csproj", "-o", "..\..\buildoutput", "--no-build"
+  
+  if ($includeVersion)
+  {
+    $cmd += "--version-suffix", "-$buildNumber"
+  }
+  
+  & dotnet $cmd  
+}
 
 
 # build IL extensions
