@@ -159,6 +159,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 throw new InvalidOperationException("Failed to install extension.");
             }
+
+            // TODO: Find a better way to ensure the site has restarted.
+            await Task.Delay(3000);
         }
 
         private async Task<HttpResponseMessage> CheckExtensionInstallStatus(Uri jobLocation)
