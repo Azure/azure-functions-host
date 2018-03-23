@@ -3,13 +3,10 @@
 
 using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
-using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Newtonsoft.Json.Linq;
 
@@ -43,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 TestDataHref = VirtualFileSystem.FilePathToVfsUri(functionMetadata.GetTestDataFilePath(config), baseUrl, config),
                 Href = GetFunctionHref(functionMetadata.Name, baseUrl),
                 TestData = await GetTestData(functionMetadata.GetTestDataFilePath(config), config),
-                Config = await GetFunctionConfig(functionMetadataFilePath, config),
+                Config = await GetFunctionConfig(functionMetadataFilePath),
 
                 // Properties below this comment are not present in the kudu version.
                 IsDirect = functionMetadata.IsDirect,
@@ -53,13 +50,50 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             return response;
         }
 
+        /// <summary>
+        /// This method converts a FunctionMetadata into a JObject
+        /// the scale conteller understands. It's mainly the trigger binding
+        /// with functionName inserted in it.
+        /// </summary>
+        /// <param name="functionMetadata">FunctionMetadata object to convert to a JObject.</param>
+        /// <param name="config">ScriptHostConfiguration to read RootScriptPath from.</param>
+        /// <returns>JObject that represent the trigger for scale controller to consume</returns>
+        public static async Task<JObject> ToFunctionTrigger(this FunctionMetadata functionMetadata, ScriptHostConfiguration config)
+        {
+            // Only look at the function if it's not disabled
+            if (!functionMetadata.IsDisabled)
+            {
+                // Get function.json path
+                var functionPath = Path.Combine(config.RootScriptPath, functionMetadata.Name);
+                var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
+
+                // Read function.json as a JObject
+                var functionConfig = await GetFunctionConfig(functionMetadataFilePath);
+
+                // Find the trigger and add functionName to it
+                // Q: Do we plan on supporting multiple triggers?
+                foreach (JObject binding in (JArray)functionConfig["bindings"])
+                {
+                    var type = (string)binding["type"];
+                    if (type.EndsWith("Trigger", StringComparison.OrdinalIgnoreCase))
+                    {
+                        binding.Add("functionName", functionMetadata.Name);
+                        return binding;
+                    }
+                }
+            }
+
+            // If the function is disabled or has no trigger return null
+            return null;
+        }
+
         public static string GetTestDataFilePath(this FunctionMetadata functionMetadata, ScriptHostConfiguration config) =>
             GetTestDataFilePath(functionMetadata.Name, config);
 
         public static string GetTestDataFilePath(string functionName, ScriptHostConfiguration config) =>
             Path.Combine(config.TestDataPath, $"{functionName}.dat");
 
-        private static async Task<JObject> GetFunctionConfig(string path, ScriptHostConfiguration config)
+        private static async Task<JObject> GetFunctionConfig(string path)
         {
             try
             {

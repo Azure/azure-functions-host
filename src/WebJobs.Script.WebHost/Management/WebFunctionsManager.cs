@@ -6,15 +6,18 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
@@ -37,9 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <returns>collection of FunctionMetadataResponse</returns>
         public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(HttpRequest request)
         {
-            return await ScriptHost.ReadFunctionsMetadata(FileUtility.EnumerateDirectories(_config.RootScriptPath), _logger, new Dictionary<string, Collection<string>>())
-                .Select(fm => fm.ToFunctionMetadataResponse(request, _config))
-                .WhenAll();
+            return await GetFunctionsMetadata().Select(fm => fm.ToFunctionMetadataResponse(request, _config)).WhenAll();
         }
 
         /// <summary>
@@ -123,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <returns>(success, FunctionMetadataResponse)</returns>
         public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request)
         {
-            var functionMetadata = ScriptHost.ReadFunctionMetadata(Path.Combine(_config.RootScriptPath, name), _logger, new Dictionary<string, Collection<string>>());
+            var functionMetadata = ScriptHost.ReadFunctionMetadata(Path.Combine(_config.RootScriptPath, name), new Dictionary<string, Collection<string>>());
             if (functionMetadata != null)
             {
                 return (true, await functionMetadata.ToFunctionMetadataResponse(request, _config));
@@ -158,6 +159,88 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
+        /// <summary>
+        /// Try to perform sync triggers to the scale controller
+        /// </summary>
+        /// <returns>(success, error)</returns>
+        public async Task<(bool success, string error)> TrySyncTriggers()
+        {
+            var durableTaskHubName = await GetDurableTaskHubName();
+            var functionsTriggers = (await GetFunctionsMetadata()
+                .Select(f => f.ToFunctionTrigger(_config))
+                .WhenAll())
+                .Where(t => t != null)
+                .Select(t =>
+                {
+                    // if we have a durableTask hub name and the function trigger is either orchestrationTrigger OR activityTrigger,
+                    // add a property "taskHubName" with durable task hub name.
+                    if (durableTaskHubName != null
+                        && (t["type"]?.ToString().Equals("orchestrationTrigger", StringComparison.OrdinalIgnoreCase) == true
+                            || t["type"]?.ToString().Equals("activityTrigger", StringComparison.OrdinalIgnoreCase) == true))
+                    {
+                        t["taskHubName"] = durableTaskHubName;
+                    }
+                    return t;
+                });
+
+            if (FileUtility.FileExists(Path.Combine(_config.RootScriptPath, ScriptConstants.ProxyMetadataFileName)))
+            {
+                // This is because we still need to scale function apps that are proxies only
+                functionsTriggers = functionsTriggers.Append(new JObject(new { type = "routingTrigger" }));
+            }
+
+            return await InternalSyncTriggers(functionsTriggers);
+        }
+
+        // This function will call POST https://{app}.azurewebsites.net/operation/settriggers with the content
+        // of triggers. It'll verify app owner ship using a SWT token valid for 5 minutes. It should be plenty.
+        private async Task<(bool, string)> InternalSyncTriggers(IEnumerable<JObject> triggers)
+        {
+            var content = JsonConvert.SerializeObject(triggers);
+            var token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
+
+            // This will be a problem for national clouds. However, Antares isn't injecting the
+            // WEBSITE_HOSTNAME yet for linux apps. So until then will use this.
+            var url = $"https://{Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME")}.azurewebsites.net/operations/settriggers";
+
+            using (var request = new HttpRequestMessage(HttpMethod.Post, url))
+            {
+                // This has to start with Mozilla because the frontEnd checks for it.
+                request.Headers.Add("User-Agent", "Mozilla/5.0");
+                request.Headers.Add("x-ms-site-restricted-token", token);
+                request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+
+                var response = await HttpClientUtility.Instance.SendAsync(request);
+                return response.IsSuccessStatusCode
+                    ? (true, string.Empty)
+                    : (false, $"Sync triggers failed with: {response.StatusCode}");
+            }
+        }
+
+        private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
+        {
+            return ScriptHost
+                .ReadFunctionsMetadata(FileUtility.EnumerateDirectories(_config.RootScriptPath), _logger, new Dictionary<string, Collection<string>>());
+        }
+
+        private async Task<string> GetDurableTaskHubName()
+        {
+            string hostJsonPath = Path.Combine(_config.RootScriptPath, ScriptConstants.HostMetadataFileName);
+            if (FileUtility.FileExists(hostJsonPath))
+            {
+                // We're looking for {VALUE}
+                // {
+                //     "durableTask": {
+                //         "HubName": "{VALUE}"
+                //     }
+                // }
+                var hostJson = JsonConvert.DeserializeObject<HostJsonModel>(await FileUtility.ReadAsync(hostJsonPath));
+                return hostJson?.DurableTask?.HubName;
+            }
+
+            return null;
+        }
+
         private void DeleteFunctionArtifacts(FunctionMetadataResponse function)
         {
             // TODO: clear secrets
@@ -168,6 +251,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 FileUtility.DeleteFileSafe(testDataPath);
             }
+        }
+
+        private class HostJsonModel
+        {
+            public DurableTaskHostModel DurableTask { get; set; }
+        }
+
+        private class DurableTaskHostModel
+        {
+            public string HubName { get; set; }
         }
     }
 }

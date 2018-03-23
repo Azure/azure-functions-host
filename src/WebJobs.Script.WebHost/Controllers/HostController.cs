@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
@@ -31,13 +32,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly WebHostSettings _webHostSettings;
         private readonly ILogger _logger;
         private readonly IAuthorizationService _authorizationService;
+        private readonly IWebFunctionsManager _functionsManager;
 
-        public HostController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory, IAuthorizationService authorizationService)
+        public HostController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory, IAuthorizationService authorizationService, IWebFunctionsManager functionsManager)
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostController);
             _authorizationService = authorizationService;
+            _functionsManager = functionsManager;
         }
 
         [HttpGet]
@@ -123,6 +126,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             return StatusCode(StatusCodes.Status501NotImplemented);
+        }
+
+        [HttpPost]
+        [Route("admin/host/synctriggers")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        public async Task<IActionResult> SyncTriggers()
+        {
+            (var success, var error) = await _functionsManager.TrySyncTriggers();
+
+            // Return a dummy body to make it valid in ARM template action evaluation
+            return success
+                ? Ok(new { status = "success" })
+                : StatusCode(StatusCodes.Status500InternalServerError, new { status = error });
         }
 
         [HttpGet]
