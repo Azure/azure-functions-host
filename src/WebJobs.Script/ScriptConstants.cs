@@ -18,6 +18,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsHttpRequestKey = "MS_AzureFunctionsHttpRequest";
         public const string AzureProxyFunctionExecutorKey = "MS_AzureProxyFunctionExecutor";
 
+        public const string AzureFunctionsKeyAuthenticationType = "key";
+        public const string AzureFunctionsAuthLevelClaimType = "urn:functions:authLevel";
+        public const string AzureFunctionsKeyIdClaimType = "urn:functions:keyId";
+        public const string AzureFunctionsHasEasyAuthUser = "MS_AzureFunctionsHasEasyAuthUser";
+
+        public const string EasyAuthIdentityHeaderName = "x-ms-client-principal";
+        public const string AzureFunctionsKeyIdentityHeaderName = "x-ms-functions-key-identity";
+
         public const string TracePropertyPrimaryHostKey = "MS_PrimaryHost";
         public const string TracePropertyFunctionNameKey = "MS_FunctionName";
         public const string TracePropertySourceKey = "MS_Source";
@@ -54,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SystemReturnParameterBindingName = "$return";
         public const string SystemReturnParameterName = "_return";
         public const string SystemLoggerParameterName = "_logger";
+        public const string SystemClaimsPrincipalParameterName = "_principal";
 
         public const string DebugSentinelFileName = "debug_sentinel";
         public const string HostMetadataFileName = "host.json";

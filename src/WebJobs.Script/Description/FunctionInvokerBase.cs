@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -101,13 +102,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             TraceWriter functionTraceWriter = parameters.OfType<TraceWriter>().FirstOrDefault();
             Binder binder = parameters.OfType<Binder>().FirstOrDefault();
             ILogger logger = parameters.OfType<ILogger>().FirstOrDefault();
+            ClaimsPrincipal principal = parameters.OfType<ClaimsPrincipal>().FirstOrDefault();
 
             FunctionInvocationContext context = new FunctionInvocationContext
             {
                 ExecutionContext = functionExecutionContext,
                 Binder = binder,
                 TraceWriter = functionTraceWriter,
-                Logger = logger
+                Logger = logger,
+                Principal = principal
             };
 
             return context;
