@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                     })
                     .Where(p => p.Item2 != null)
                     .OrderByDescending(p => p.Item2)
-                    .FirstOrDefault().Item1?.ToString();
+                    .FirstOrDefault()?.Item1?.ToString();
             }
 
             if (FileUtility.DirectoryExists(_nugetFallbackPath))
