@@ -208,26 +208,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains(messageContent.Replace(" ", string.Empty), trace.Replace(" ", string.Empty));
         }
 
-        //protected async Task TwilioReferenceInvokeSucceedsImpl(bool isDotNet)
-        //{
-        //    if (isDotNet)
-        //    {
-        //        TestHelpers.ClearFunctionLogs("TwilioReference");
-
-        //        string testData = Guid.NewGuid().ToString();
-        //        string inputName = "input";
-        //        Dictionary<string, object> arguments = new Dictionary<string, object>
-        //        {
-        //            { inputName, testData }
-        //        };
-        //        await Fixture.Host.CallAsync("TwilioReference", arguments);
-
-        //        // make sure the input string made it all the way through
-        //        var logs = await TestHelpers.GetFunctionLogsAsync("TwilioReference");
-        //        Assert.True(logs.Any(p => p.Contains(testData)));
-        //    }
-        //}
-
         //protected async Task NotificationHubTest(string functionName)
         //{
         //    // NotificationHub tests need the following environment vars:
