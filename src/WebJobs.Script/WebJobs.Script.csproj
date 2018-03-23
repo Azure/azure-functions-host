@@ -13,7 +13,7 @@
     <PackageReference Include="Google.Protobuf" Version="3.3.0" />
     <PackageReference Include="Grpc.Core" Version="1.4.1" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.5.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.0.1">
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.0.2">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client.Contract" Version="0.3.1.1">
@@ -25,13 +25,13 @@
     <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="1.0.0-beta1-10026">
       <PrivateAssets>None</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta4-11270" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="3.0.0-beta4-10578" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.0-beta4-10578">
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta5" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="3.0.0-beta5" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.0-beta5">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.0-beta4-11270" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.0-beta4-11270" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.0-beta5" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.0-beta5" />
     <PackageReference Include="Microsoft.Build" Version="15.3.409" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="2.4.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="2.0.0" />
