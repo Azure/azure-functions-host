@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             // Setup
             var settings = CreateWebSettings();
             var fileSystem = CreateFileSystem(settings.ScriptPath);
-            var loggerFactory = CreateLoggerFactory();
+            var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
             var webManager = new WebFunctionsManager(settings, loggerFactory);
             var httpClient = CreateHttpClient();
 
@@ -116,25 +116,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 .Returns(function2);
 
             return fileSystem;
-        }
-
-        private static ILoggerFactory CreateLoggerFactory()
-        {
-            var loggerFactory = Substitute.For<ILoggerFactory>();
-            var logger = CreateLogger();
-            loggerFactory.CreateLogger(Arg.Any<string>()).Returns(logger);
-            return loggerFactory;
-        }
-
-        private static ILogger CreateLogger()
-        {
-            var logger = Substitute.For<ILogger>();
-            logger.Log(Arg.Any<LogLevel>(),
-                Arg.Any<EventId>(),
-                Arg.Any<object>(),
-                Arg.Any<Exception>(),
-                Arg.Any<Func<object, Exception, string>>());
-            return logger;
         }
 
         public void Dispose()

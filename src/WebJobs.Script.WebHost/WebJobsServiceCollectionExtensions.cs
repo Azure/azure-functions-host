@@ -112,6 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.Register<WebScriptHostManager>(c => c.Resolve<WebHostResolver>().GetWebScriptHostManager()).ExternallyOwned();
             builder.Register<ISecretManager>(c => c.Resolve<WebHostResolver>().GetSecretManager()).ExternallyOwned();
             builder.RegisterType<WebFunctionsManager>().As<IWebFunctionsManager>().SingleInstance();
+            builder.RegisterType<InstanceManager>().As<IInstanceManager>().SingleInstance();
             builder.RegisterType<VirtualFileSystem>();
             builder.RegisterType<VirtualFileSystemMiddleware>();
 
