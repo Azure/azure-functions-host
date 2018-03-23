@@ -111,6 +111,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LinuxMetricEventStreamName = "MS_FUNCTION_METRICS";
         public const string LinuxFunctionDetailsEventStreamName = "MS_FUNCTION_DETAILS";
 
+        public const string DurableTaskPropertyName = "durableTask";
+        public const string DurableTaskHubName = "HubName";
+
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
     }
