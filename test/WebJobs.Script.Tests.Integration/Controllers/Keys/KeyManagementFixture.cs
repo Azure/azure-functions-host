@@ -1,11 +1,16 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-#if SCENARIOS
 
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Net.Http;
 using Autofac;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 {
@@ -23,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         public virtual ScriptSecretsType SecretsType => ScriptSecretsType.Function;
 
-        protected override void RegisterDependencies(ContainerBuilder builder, WebHostSettings settings)
+        protected override void ConfigureWebHostBuilder(IWebHostBuilder webHostBuilder)
         {
             TestFunctionKeys = new Dictionary<string, string>
             {
@@ -33,9 +38,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
             SecretManagerMock = BuildSecretManager();
 
-            builder.RegisterInstance<ISecretManager>(SecretManagerMock.Object);
+            webHostBuilder.ConfigureServices(c => c.AddSingleton<ISecretManager>(SecretManagerMock.Object));
 
-            base.RegisterDependencies(builder, settings);
+            base.ConfigureWebHostBuilder(webHostBuilder);
+        }
+
+        public static ApiModel ReadApiModelContent(HttpResponseMessage response)
+        {
+            var result = response.Content.ReadAsAsync<JObject>().Result;
+
+            var apimodel = new ApiModel();
+            apimodel.Merge(result);
+
+            if (result["links"] != null)
+            {
+                apimodel.Links = result["links"].ToObject<Collection<Link>>();
+            }
+
+            return apimodel;
         }
 
         protected virtual Mock<TestSecretManager> BuildSecretManager()
@@ -49,4 +69,3 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         }
     }
 }
-#endif

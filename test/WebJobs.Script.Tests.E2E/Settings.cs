@@ -33,11 +33,11 @@ namespace WebJobs.Script.EndToEndTests
         {
             get
             {
-                Match versionMatch = Regex.Match(RuntimeExtensionPackageUrl, "(?<version>\\d*\\.\\d*\\.\\d*)\\.zip$");
+                Match versionMatch = Regex.Match(RuntimeExtensionPackageUrl, "(?<version>\\d*\\.\\d*\\.\\d*)(-.*)?\\.zip$");
 
                 if (!versionMatch.Success)
                 {
-                    throw new Exception("Unable to resolve runtime version from package URL");
+                    throw new Exception("Unable to resolve the Function runtime version from package URL");
                 }
 
                 // Adding a revision number here as it is returned by the status endpoint

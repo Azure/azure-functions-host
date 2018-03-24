@@ -6,6 +6,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -62,8 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void LogErrorAndFlush(string message, Exception exception)
         {
-            _manager.Instance.TraceWriter.Error(message, exception);
-            _manager.Instance.TraceWriter.Flush();
+            _manager.Instance.Logger.LogError(0, exception, message);
         }
     }
 }

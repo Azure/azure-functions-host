@@ -2,13 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -24,8 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public GeneralScriptBindingProvider(
             JobHostConfiguration config,
             JObject hostMetadata,
-            TraceWriter traceWriter)
-            : base(config, hostMetadata, traceWriter)
+            ILogger logger)
+            : base(config, hostMetadata, logger)
         {
         }
 

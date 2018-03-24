@@ -2,14 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using WebJobs.Script.Tests;
@@ -190,10 +189,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Purge, passing even named files as the existing functions
                 var currentFunctions = sequence.Where(i => i % 2 == 0).Select(i => i.ToString()).ToList();
 
-                await target.PurgeOldSecretsAsync(currentFunctions, new TestTraceWriter(TraceLevel.Off), null);
+                await target.PurgeOldSecretsAsync(currentFunctions, NullLogger.Instance);
 
                 // Ensure only expected files exist
                 Assert.True(sequence.All(i => (i % 2 == 0) == File.Exists(getFilePath(i))));
+            }
+        }
+
+        [Theory]
+        [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Host)]
+        [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Function)]
+        [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Host)]
+        [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Function)]
+        public async Task GetSecretSnapshots_ReturnsExpected(SecretsRepositoryType repositoryType, ScriptSecretsType secretsType)
+        {
+            using (var directory = new TempDirectory())
+            {
+                await _fixture.TestInitialize(repositoryType, directory.Path);
+
+                string testContent = "test";
+                string testFunctionName = secretsType == ScriptSecretsType.Host ? null : "TestFunction";
+
+                var target = _fixture.GetNewSecretRepository();
+                await target.WriteAsync(secretsType, testFunctionName, testContent);
+                for (int i = 0; i < 5; i++)
+                {
+                    await target.WriteSnapshotAsync(secretsType, testFunctionName, testContent);
+                }
+                string[] files = await target.GetSecretSnapshots(secretsType, testFunctionName);
+
+                Assert.True(files.Length > 0);
             }
         }
 

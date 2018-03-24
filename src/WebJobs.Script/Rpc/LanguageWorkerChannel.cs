@@ -9,11 +9,9 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks.Dataflow;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
-using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -48,14 +46,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDisposable _startSubscription;
 
         private JsonSerializerSettings _verboseSerializerSettings = new JsonSerializerSettings()
-            {
-                Formatting = Formatting.Indented,
-                NullValueHandling = NullValueHandling.Ignore,
-                Converters = new List<JsonConverter>()
+        {
+            Formatting = Formatting.Indented,
+            NullValueHandling = NullValueHandling.Ignore,
+            Converters = new List<JsonConverter>()
                     {
                         new StringEnumConverter()
                     }
-            };
+        };
 
         private bool disposedValue;
 
@@ -95,9 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     .Subscribe(msg =>
                     {
                         var jsonMsg = JsonConvert.SerializeObject(msg, _verboseSerializerSettings);
-
-                        // TODO: change to trace when ILogger & TraceWriter merge (issues with file trace writer)
-                        _logger.LogInformation(jsonMsg);
+                        _logger.LogTrace(jsonMsg);
                     }));
             }
 
@@ -287,29 +283,27 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void Log(RpcEvent msg)
         {
-            // TODO: use scope to attach worker info, map message category if exists
-
             var rpcLog = msg.Message.RpcLog;
             LogLevel logLevel = (LogLevel)rpcLog.Level;
             if (_executingInvocations.TryGetValue(rpcLog.InvocationId, out ScriptInvocationContext context))
             {
-                // TODO - remove tracewriter
-                // logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
-                TraceEvent trace;
-                if (rpcLog.Exception != null)
+                // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
+                System.Threading.ExecutionContext.Run(context.AsyncExecutionContext, (s) =>
                 {
-                    var exception = new Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
+                    if (rpcLog.Exception != null)
+                    {
+                        var exception = new Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
 
-                    // trace = new TraceEvent(logLevel.ToTraceLevel(), rpcLog.Message, rpcLog.Exception.Source, exception);
-                    // context.TraceWriter.Trace(trace);
-                    context.ResultSource.TrySetException(exception);
-                    _executingInvocations.TryRemove(rpcLog.InvocationId, out ScriptInvocationContext _);
-                }
-                else
-                {
-                    trace = new TraceEvent(logLevel.ToTraceLevel(), rpcLog.Message);
-                    context.TraceWriter.Trace(trace);
-                }
+                        context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
+
+                        context.ResultSource.TrySetException(exception);
+                        _executingInvocations.TryRemove(rpcLog.InvocationId, out ScriptInvocationContext _);
+                    }
+                    else
+                    {
+                        context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
+                    }
+                }, null);
             }
             else
             {
@@ -327,7 +321,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 link.Dispose();
             }
 
-            _logger.LogError($"Worker encountered an error.", exc);
+            _logger.LogError(exc, $"Worker encountered an error.");
             _eventManager.Publish(new WorkerErrorEvent(this, exc));
         }
 

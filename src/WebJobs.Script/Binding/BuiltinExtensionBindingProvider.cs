@@ -4,8 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -35,8 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 { "Sendgrid" },
             };
 
-        public BuiltinExtensionBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
-            : base(config, hostMetadata, traceWriter)
+        public BuiltinExtensionBindingProvider(JobHostConfiguration config, JObject hostMetadata, ILogger logger)
+            : base(config, hostMetadata, logger)
         {
         }
 

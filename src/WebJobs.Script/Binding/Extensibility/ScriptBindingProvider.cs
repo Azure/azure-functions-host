@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Reflection;
-using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Extensibility
@@ -17,12 +17,12 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         /// </summary>
         /// <param name="config">The <see cref="JobHostConfiguration"/>.</param>
         /// <param name="hostMetadata">The host configuration metadata.</param>
-        /// <param name="traceWriter">The <see cref="TraceWriter"/> that can be used to log trace events.</param>
-        protected ScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
+        /// <param name="logger">The <see cref="ILogger"/> that can be used to log trace events.</param>
+        protected ScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, ILogger logger)
         {
             Config = config;
             Metadata = hostMetadata;
-            TraceWriter = traceWriter;
+            Logger = logger;
         }
 
         /// <summary>
@@ -36,9 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         protected JObject Metadata { get; private set; }
 
         /// <summary>
-        /// Gets the <see cref="TraceWriter"/> that can be used to log trace events.
+        /// Gets the <see cref="ILogger"/> that can be used to log trace events.
         /// </summary>
-        protected TraceWriter TraceWriter { get; private set; }
+        protected ILogger Logger { get; private set; }
 
         /// <summary>
         /// Called early in the host initialization pipeline, before bindings have been created

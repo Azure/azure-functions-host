@@ -63,6 +63,9 @@ var assert = require('assert');
         assert(!context._inputs);
         assert(!context._entryPoint);
 
+        // The test looks for this in the log to determine success.
+        context.log.info(input.value);
+
         context.done();
     }
     else if (scenario === 'bindingContainsFunctions') {
@@ -92,12 +95,16 @@ var assert = require('assert');
         };
 
         context.log(logPayload);
+
+        /* currently not supported in Node
         context.log.metric("TestMetric", 1234, {
             count: 50,
             min: 10.4,
             max: 23,
             MyCustomMetricProperty: 100
         });
+        */
+
         context.done();
     }
     else {

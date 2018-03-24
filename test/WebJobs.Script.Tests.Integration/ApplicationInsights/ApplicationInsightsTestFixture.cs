@@ -5,50 +5,67 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Web.Http;
-using Microsoft.ApplicationInsights.Channel;
-using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 {
     public abstract class ApplicationInsightsTestFixture : IDisposable
     {
-        private readonly ScriptSettingsManager _settingsManager;
-        private readonly HttpConfiguration _config = new HttpConfiguration();
-        private readonly HttpServer _httpServer;
+        private readonly TestServer _testServer;
 
         public ApplicationInsightsTestFixture(string scriptRoot, string testId)
         {
-            _settingsManager = ScriptSettingsManager.Instance;
-
             HostSettings = new WebHostSettings
             {
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(Environment.CurrentDirectory, scriptRoot),
                 LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
-                SecretsPath = Environment.CurrentDirectory, // not used
-                IsAuthDisabled = true
+                SecretsPath = Environment.CurrentDirectory // not used
             };
-          //  WebApiConfig.Register(_config, _settingsManager, HostSettings);
 
-            var resolver = _config.DependencyResolver;
-            var hostConfig = (resolver.GetService(typeof(WebHostResolver)) as WebHostResolver).GetScriptHostConfiguration(HostSettings);
+            _testServer = new TestServer(
+                AspNetCore.WebHost.CreateDefaultBuilder()
+                .UseStartup<Startup>()
+                .ConfigureServices(services =>
+                {
+                    var settingsManager = new ScriptSettingsManager();
+                    settingsManager.SetConfigurationFactory(() =>
+                    {
+                        return new ConfigurationBuilder()
+                            .AddInMemoryCollection(new Dictionary<string, string>
+                            {
+                                [EnvironmentSettingNames.AppInsightsInstrumentationKey] = TestChannelLoggerProviderFactory.ApplicationInsightsKey
+                            })
+                            .AddEnvironmentVariables()
+                            .Build();
+                    });
 
-            _settingsManager.ApplicationInsightsInstrumentationKey = TestChannelLoggerFactoryBuilder.ApplicationInsightsKey;
+                    services.Replace(new ServiceDescriptor(typeof(ScriptSettingsManager), settingsManager));
+                    services.Replace(new ServiceDescriptor(typeof(WebHostSettings), HostSettings));
+                    services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestChannelLoggerProviderFactory(Channel)));
+                    services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
+                }));
 
-            InitializeConfig(hostConfig);
+            var scriptConfig = _testServer.Host.Services.GetService<WebHostResolver>().GetScriptHostConfiguration(HostSettings);
 
-            _httpServer = new HttpServer(_config);
-            HttpClient = new HttpClient(_httpServer)
-            {
-                BaseAddress = new Uri("https://localhost/")
-            };
+            InitializeConfig(scriptConfig);
+
+            HttpClient = _testServer.CreateClient();
+            HttpClient.BaseAddress = new Uri("https://localhost/");
 
             TestHelpers.WaitForWebHost(HttpClient);
+        }
+
+        public ScriptHost GetScriptHost()
+        {
+            return _testServer.Host.Services.GetService<WebHostResolver>().GetWebScriptHostManager(HostSettings).Instance;
         }
 
         public TestTelemetryChannel Channel { get; private set; } = new TestTelemetryChannel();
@@ -71,65 +88,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public void Dispose()
         {
-            _httpServer?.Dispose();
+            _testServer?.Dispose();
             HttpClient?.Dispose();
-        }
-
-        private class TestLoggerFactoryBuilder : DefaultLoggerFactoryBuilder
-        {
-            private readonly TestTelemetryChannel _channel;
-
-            public TestLoggerFactoryBuilder(TestTelemetryChannel channel)
-            {
-                _channel = channel;
-            }
-
-            public override void AddLoggerProviders(ILoggerFactory factory, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager)
-            {
-                // Replace TelemetryClient
-                var clientFactory = new TestTelemetryClientFactory(scriptConfig.LogFilter.Filter, _channel);
-                scriptConfig.HostConfig.AddService<ITelemetryClientFactory>(clientFactory);
-
-                base.AddLoggerProviders(factory, scriptConfig, settingsManager);
-            }
-        }
-
-        public class TestTelemetryChannel : ITelemetryChannel
-        {
-            public IList<ITelemetry> Telemetries { get; private set; } = new List<ITelemetry>();
-
-            public bool? DeveloperMode { get; set; }
-
-            public string EndpointAddress { get; set; }
-
-            public void Dispose()
-            {
-            }
-
-            public void Flush()
-            {
-            }
-
-            public void Send(ITelemetry item)
-            {
-                Telemetries.Add(item);
-            }
-        }
-
-        private class TestTelemetryClientFactory : ScriptTelemetryClientFactory
-        {
-            private TestTelemetryChannel _channel;
-
-            public TestTelemetryClientFactory(Func<string, LogLevel, bool> filter, TestTelemetryChannel channel)
-                : base(TestChannelLoggerFactoryBuilder.ApplicationInsightsKey, filter)
-            {
-                _channel = channel;
-            }
-
-            protected override ITelemetryChannel CreateTelemetryChannel()
-            {
-                return _channel;
-            }
+            ScriptSettingsManager.Instance.Reset();
         }
     }
 }

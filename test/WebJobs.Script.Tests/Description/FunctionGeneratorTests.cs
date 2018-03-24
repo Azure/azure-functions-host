@@ -9,6 +9,7 @@ using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -34,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Make sure we don't generate a TimeoutAttribute if FunctionTimeout is null.
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
             scriptConfig.FunctionTimeout = null;
-            Collection<CustomAttributeBuilder> typeAttributes = ScriptHost.CreateTypeAttributes(scriptConfig);
+            Collection<CustomAttributeBuilder> typeAttributes = new Collection<CustomAttributeBuilder>();
 
             // generate the Type
             Type functionType = FunctionGenerator.Generate("TestScriptHost", "TestFunctions", typeAttributes, functions);
@@ -150,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _innerMethod = innerMethod;
             }
 
-            public FunctionLogger FunctionLogger => throw new NotImplementedException();
+            public ILogger FunctionLogger => throw new NotImplementedException();
 
             public Task<object> Invoke(object[] parameters)
             {

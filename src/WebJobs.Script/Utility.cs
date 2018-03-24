@@ -3,8 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Configuration;
-using System.Diagnostics;
 using System.Dynamic;
 using System.Globalization;
 using System.Linq;
@@ -14,7 +12,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -185,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString();
                 hostId = $"{sanitizedMachineName}-{Math.Abs(GetStableHash(scriptConfig.RootScriptPath))}";
             }
-            else if (!string.IsNullOrEmpty(settingsManager.AzureWebsiteUniqueSlotName))
+            else if (!string.IsNullOrEmpty(settingsManager?.AzureWebsiteUniqueSlotName))
             {
                 // If running on Azure Web App, derive the host ID from unique site slot name
                 hostId = settingsManager.AzureWebsiteUniqueSlotName;
@@ -395,6 +392,74 @@ namespace Microsoft.Azure.WebJobs.Script
                 default:
                     return LogLevel.None;
             }
+        }
+
+        public static LoggerFilterOptions CreateLoggerFilterOptions()
+        {
+            // TODO: Whitelist should be configurable
+            // Whitelist our log categories to remove large amounts of ASP.NET logs.
+            var filterOptions = new LoggerFilterOptions();
+            filterOptions.AddFilter((category, level) => category.StartsWith($"{ScriptConstants.LogCategoryHost}.") || category.StartsWith($"{ScriptConstants.LogCategoryFunction}.") || category.StartsWith($"{ScriptConstants.LogCategoryWorker}."));
+
+            return filterOptions;
+        }
+
+        public static bool GetStateBoolValue(IEnumerable<KeyValuePair<string, object>> state, string key)
+        {
+            if (state == null)
+            {
+                return false;
+            }
+
+            var kvps = state.Where(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
+
+            if (!kvps.Any())
+            {
+                return false;
+            }
+
+            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
+            // this, we shouldn't have conflicts.
+            return Convert.ToBoolean(kvps.Last().Value);
+        }
+
+        public static TValue GetStateValueOrDefault<TValue>(IEnumerable<KeyValuePair<string, object>> state, string key)
+        {
+            if (state == null)
+            {
+                return default(TValue);
+            }
+
+            var kvps = state.Where(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
+
+            if (!kvps.Any())
+            {
+                return default(TValue);
+            }
+
+            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
+            // this, we shouldn't have conflicts.
+            return (TValue)kvps.Last().Value;
+        }
+
+        public static string GetValueFromState<TState>(TState state, string key)
+        {
+            string value = string.Empty;
+            if (state is IEnumerable<KeyValuePair<string, object>> stateDict)
+            {
+                value = GetStateValueOrDefault<string>(stateDict, key) ?? string.Empty;
+            }
+            return value;
+        }
+
+        public static string GetValueFromScope(IDictionary<string, object> scopeProperties, string key)
+        {
+            object value;
+            if (scopeProperties != null && scopeProperties.TryGetValue(key, out value) && value != null)
+            {
+                return value.ToString();
+            }
+            return null;
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter

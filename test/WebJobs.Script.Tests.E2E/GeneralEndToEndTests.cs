@@ -80,7 +80,7 @@ namespace WebJobs.Script.EndToEndTests
 
                 string response = await client.GetStringAsync($"api/appsettinginformation?code={_fixture.FunctionDefaultKey}");
 
-                _fixture.Assert.Equals("~1", response);
+                _fixture.Assert.Equals("beta", response);
             }
         }
 
@@ -146,7 +146,7 @@ namespace WebJobs.Script.EndToEndTests
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Requires Extension installation")]
         [TestTrace]
         public async Task ServiceBus_Node_DoesNotExhaustConnections()
         {
@@ -201,6 +201,48 @@ namespace WebJobs.Script.EndToEndTests
 
             QueueDescription queueDescription = manager.GetQueue("node");
             Assert.Equal(i * j, queueDescription.MessageCountDetails.ActiveMessageCount);
+        }
+
+        [Fact(Skip = "Proxy not yet enabled.")]
+        [TestTrace]
+        public async Task FileExtension()
+        {
+            using (var client = CreateClient())
+            {
+                HttpResponseMessage response = await client.GetAsync($"test.txt");
+
+                string content = await response.Content.ReadAsStringAsync();
+                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
+                _fixture.Assert.Equals("test", content);
+            }
+        }
+
+        [Fact(Skip = "Proxy not yet enabled.")]
+        [TestTrace]
+        public async Task RootCheck()
+        {
+            using (var client = CreateClient())
+            {
+                HttpResponseMessage response = await client.GetAsync("/");
+
+                string content = await response.Content.ReadAsStringAsync();
+                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
+                _fixture.Assert.Equals("Root", content);
+            }
+        }
+
+        [Fact(Skip = "Proxy not yet enabled.")]
+        [TestTrace]
+        public async Task LocalFunctionCall()
+        {
+            using (var client = CreateClient())
+            {
+                HttpResponseMessage response = await client.GetAsync($"myhttptrigger?code={_fixture.FunctionDefaultKey}");
+
+                string content = await response.Content.ReadAsStringAsync();
+                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
+                _fixture.Assert.Equals("Pong", content);
+            }
         }
 
         // Assumes we have a valid function name.

@@ -3,8 +3,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Routing;
@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -31,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly WebHostMetricsLogger _metricsLogger;
         private readonly ISecretManager _secretManager;
         private readonly WebHostSettings _webHostSettings;
+        private readonly ScriptSettingsManager _settingsManager;
 
         private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly ScriptHostConfiguration _config;
@@ -50,39 +52,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
             IWebJobsRouter router,
+            ILoggerFactory loggerFactory,
             IScriptHostFactory scriptHostFactory = null,
             ISecretsRepositoryFactory secretsRepositoryFactory = null,
-            ILoggerFactoryBuilder loggerFactoryBuilder = null,
             HostPerformanceManager hostPerformanceManager = null,
+            ILoggerProviderFactory loggerProviderFactory = null,
             int hostTimeoutSeconds = 30,
             int hostPollingIntervalMilliseconds = 500)
-            : base(config, settingsManager, scriptHostFactory, eventManager, environment: null, loggerFactoryBuilder: loggerFactoryBuilder, hostPerformanceManager: hostPerformanceManager)
+            : base(config, settingsManager, scriptHostFactory, eventManager, environment: null,
+                  hostPerformanceManager: hostPerformanceManager, loggerProviderFactory: loggerProviderFactory)
         {
             _config = config;
 
             _metricsLogger = new WebHostMetricsLogger();
             _exceptionHandler = new WebScriptHostExceptionHandler(this);
             _webHostSettings = webHostSettings;
+            _settingsManager = settingsManager;
             _hostTimeoutSeconds = hostTimeoutSeconds;
             _hostRunningPollIntervalMilliseconds = hostPollingIntervalMilliseconds;
             _router = router;
-
-            var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
-            var systemTraceWriter = new SystemTraceWriter(systemEventGenerator, settingsManager, TraceLevel.Verbose);
-            if (config.TraceWriter != null)
-            {
-                config.TraceWriter = new CompositeTraceWriter(new TraceWriter[] { config.TraceWriter, systemTraceWriter });
-            }
-            else
-            {
-                config.TraceWriter = systemTraceWriter;
-            }
 
             config.IsSelfHost = webHostSettings.IsSelfHost;
 
             secretsRepositoryFactory = secretsRepositoryFactory ?? new DefaultSecretsRepositoryFactory();
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
-            _secretManager = secretManagerFactory.Create(settingsManager, config.HostConfig.LoggerFactory, secretsRepository);
+            _secretManager = secretManagerFactory.Create(settingsManager, loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral), secretsRepository);
 
             _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider(_secretManager);
         }
@@ -93,9 +87,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
             IWebJobsRouter router,
-            IScriptHostFactory scriptHostFactory,
-            ILoggerFactoryBuilder loggerFactoryBuilder)
-            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, scriptHostFactory, new DefaultSecretsRepositoryFactory(), loggerFactoryBuilder)
+            ILoggerFactory loggerFactory,
+            IScriptHostFactory scriptHostFactory)
+            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, loggerFactory, scriptHostFactory, new DefaultSecretsRepositoryFactory())
         {
         }
 
@@ -105,22 +99,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
             IWebJobsRouter router,
-            ILoggerFactoryBuilder loggerFactoryBuilder)
-            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, new ScriptHostFactory(), loggerFactoryBuilder)
+            ILoggerFactory loggerFactory)
+            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, loggerFactory, new ScriptHostFactory())
         {
         }
 
         internal WebJobsSdkExtensionHookProvider BindingWebHookProvider => _bindingWebHookProvider;
 
         public ISecretManager SecretManager => _secretManager;
-
-        public virtual bool Initialized
-        {
-            get
-            {
-                return _hostStarted;
-            }
-        }
 
         public static bool InStandbyMode
         {
@@ -143,6 +129,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        /// <summary>
+        /// Ensures that the host has been fully initialized and startup
+        /// has been initiated. This method is idempotent.
+        /// </summary>
         public Task RunAsync(CancellationToken cancellationToken)
         {
             lock (_syncLock)
@@ -198,7 +188,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var hostId = hostConfig.HostId ?? "default";
             Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
             var loggingConnectionString = config.HostConfig.DashboardConnectionString;
-            var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, loggingConnectionString, config.TraceWriter);
+
+            // TODO: This is asking for a LoggerFactory before the LoggerFactory is ready. Pass a Null instance for now.
+            var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, loggingConnectionString, NullLoggerFactory.Instance);
             hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
 
             // disable standard Dashboard logging (enabling Table logging above)
@@ -209,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (InStandbyMode)
             {
-                Instance?.TraceWriter.Info("Host is in standby mode");
+                Instance?.Logger.LogInformation("Host is in standby mode");
             }
 
             InitializeHttp();
@@ -222,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (!InStandbyMode)
             {
                 // Purge any old Function secrets
-                _secretManager.PurgeOldSecretsAsync(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter, Instance.Logger);
+                _secretManager.PurgeOldSecretsAsync(Instance.ScriptConfig.RootScriptPath, Instance.Logger);
             }
 
             base.OnHostStarted();
@@ -243,10 +235,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // TODO: FACAVAL Instantiation of the ScriptRouteHandler should be cleaned up
             ILoggerFactory loggerFactory = _config.HostConfig.LoggerFactory;
-            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, () => Instance), httpConfig.RoutePrefix);
+            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, this, _settingsManager), httpConfig.RoutePrefix);
 
             // Proxies do not honor the route prefix defined in host.json
-            WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, () => Instance), routePrefix: null);
+            WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, this, _settingsManager), routePrefix: null);
 
             foreach (var function in functions)
             {
@@ -287,12 +279,46 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public override void Shutdown()
         {
             string message = "Environment shutdown has been triggered. Stopping host and signaling shutdown.";
-            Instance?.TraceWriter.Info(message);
-            Instance?.Logger?.LogInformation(message);
+            Instance?.Logger.LogInformation(message);
 
             Stop();
 
             Program.InitiateShutdown();
+        }
+
+        public Task DelayUntilHostReady()
+        {
+            // ensure that the host is ready to process requests
+            return DelayUntilHostReady(_hostTimeoutSeconds, _hostRunningPollIntervalMilliseconds);
+        }
+
+        public Task<bool> DelayUntilHostReady(int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
+        {
+            return DelayUntilHostReady(this, timeoutSeconds, pollingIntervalMilliseconds, throwOnFailure);
+        }
+
+        internal static async Task<bool> DelayUntilHostReady(ScriptHostManager hostManager, int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
+        {
+            TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
+            TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);
+            TimeSpan timeWaited = TimeSpan.Zero;
+
+            while (!hostManager.CanInvoke() &&
+                    hostManager.State != ScriptHostState.Error &&
+                    (timeWaited < timeout))
+            {
+                await Task.Delay(delay);
+                timeWaited += delay;
+            }
+
+            bool hostReady = hostManager.CanInvoke();
+
+            if (throwOnFailure && !hostReady)
+            {
+                throw new HttpException(HttpStatusCode.ServiceUnavailable, "Function host is not running.");
+            }
+
+            return hostReady;
         }
     }
 }

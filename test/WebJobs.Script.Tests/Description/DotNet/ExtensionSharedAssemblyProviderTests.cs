@@ -3,9 +3,9 @@
 
 using System.Collections.ObjectModel;
 using System.Reflection;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestBindingProvider : ScriptBindingProvider
         {
-            public TestBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
+            public TestBindingProvider(JobHostConfiguration config, JObject hostMetadata, ILogger traceWriter)
                 : base(config, hostMetadata, traceWriter)
             {
             }

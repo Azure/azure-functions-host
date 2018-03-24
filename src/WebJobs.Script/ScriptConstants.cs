@@ -14,27 +14,37 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsHttpRequestAuthorizationDisabledKey = "MS_AzureFunctionsAuthorizationDisabled";
         public const string AzureFunctionsHttpFunctionKey = "MS_AzureFunctionsHttpFunction";
         public const string AzureFunctionsRequestIdKey = "MS_AzureFunctionsRequestID";
+        public const string AzureFunctionsColdStartKey = "MS_AzureFunctionsColdStart";
         public const string AzureFunctionsHttpRequestKey = "MS_AzureFunctionsHttpRequest";
         public const string AzureProxyFunctionExecutorKey = "MS_AzureProxyFunctionExecutor";
+        public const string AzureFunctionsHostManagerKey = "MS_AzureFunctionsHostManager";
 
-        public const string TracePropertyPrimaryHostKey = "MS_PrimaryHost";
-        public const string TracePropertyFunctionNameKey = "MS_FunctionName";
-        public const string TracePropertyEventNameKey = "MS_EventName";
-        public const string TracePropertyEventDetailsKey = "MS_EventDetails";
-        public const string TracePropertyIsUserTraceKey = "MS_IsUserTrace";
-        public const string TracePropertyIsSystemTraceKey = "MS_IsSystemTrace";
+        public const string LogPropertyPrimaryHostKey = "MS_PrimaryHost";
+        public const string LogPropertySourceKey = "MS_Source";
+        public const string LogPropertyFunctionNameKey = "MS_FunctionName";
+        public const string LogPropertyEventNameKey = "MS_EventName";
+        public const string LogPropertyEventDetailsKey = "MS_EventDetails";
+        public const string LogPropertyIsUserLogKey = "MS_IsUserLog";
+        public const string LogPropertyIsSystemLogKey = "MS_IsSystemLog";
+        public const string LogPropertyFunctionInvocationIdKey = "MS_FunctionInvocationId";
+        public const string LogPropertyHostInstanceIdKey = "HostInstanceId";
+        public const string LogPropertyActivityIdKey = "MS_ActivityId";
 
         public const string TraceSourceSecretManagement = "SecretManagement";
         public const string TraceSourceHostAdmin = "HostAdmin";
         public const string TraceSourceFileWatcher = "FileWatcher";
         public const string TraceSourceHttpHandler = "HttpRequestTraceHandler";
 
-        public const string LoggerFunctionNameKey = "MS_FunctionName";
         public const string LoggerHttpRequest = "MS_HttpRequest";
 
-        public const string LogCategoryAdminController = "Host.Controllers.Admin";
+        public const string LogCategoryHostController = "Host.Controllers.Host";
+        public const string LogCategoryFunctionsController = "Host.Controllers.Functions";
         public const string LogCategoryKeysController = "Host.Controllers.Keys";
         public const string LogCategoryHostGeneral = "Host.General";
+        public const string LogCategoryHostMetrics = "Host.Metrics";
+        public const string LogCategoryHost = "Host";
+        public const string LogCategoryFunction = "Function";
+        public const string LogCategoryWorker = "Worker";
 
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters
@@ -51,11 +61,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionMetadataFileName = "function.json";
         public const string ProxyMetadataFileName = "proxies.json";
         public const string ExtensionsMetadataFileName = "extensions.json";
+        public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
+        public const string ColdStartEventName = "ColdStart";
 
         public const string AntaresLogIdHeaderName = "X-ARR-LOG-ID";
         public const string AntaresScaleOutHeaderName = "X-FUNCTION-SCALEOUT";
+        public const string AntaresColdStartHeaderName = "X-MS-COLDSTART";
         public const string DynamicSku = "Dynamic";
         public const string DefaultProductionSlotName = "production";
 
@@ -66,9 +79,13 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
 
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
-        public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public const string HttpMethodConstraintName = "httpMethod";
-        public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
+        public const string Snapshot = "snapshot";
+        public const string Runtime = "runtime";
+        public const string NugetFallbackFolderRootName = "FuncNuGetFallback";
+        public const string NugetXmlDocModeSettingName = "NUGET_XMLDOC_MODE";
+        public const string NugetXmlDocSkipMode = "skip";
+
 
         public const int MaximumHostIdLength = 32;
         public const int DynamicSkuConnectionLimit = 50;
@@ -77,5 +94,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ExtensionsPackageId = "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator";
         public const string PackageReferenceElementName = "PackageReference";
         public const string PackageReferenceVersionElementName = "Version";
+        public const int HostTimeoutSeconds = 30;
+        public const int HostPollingIntervalMilliseconds = 25;
+        public const int MaximumSecretBackupCount = 10;
+
+        public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
+        public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
     }
 }

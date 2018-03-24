@@ -1,0 +1,22 @@
+﻿{
+    "bindings": [
+        {
+            "type": "serviceBusTrigger",
+            "name": "trigger",
+            "direction": "in",
+            "queueName": "core-test-queue1"
+        },
+        {
+            "type": "serviceBus",
+            "name": "output",
+            "direction": "out",
+            "queueName": "core-test-queue2"
+        },
+        {
+            "type": "blob",
+            "name": "completed",
+            "direction": "out",
+            "path": "test-output-node/servicebuse2e-queue-completed"
+        }
+    ]
+}

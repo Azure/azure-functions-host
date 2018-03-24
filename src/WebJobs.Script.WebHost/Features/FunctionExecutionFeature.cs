@@ -3,11 +3,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
 {
@@ -15,32 +21,63 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
     {
         private readonly ScriptHost _host;
         private readonly FunctionDescriptor _descriptor;
+        private readonly ScriptSettingsManager _settingsManager;
+        private readonly ILogger _logger;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="FunctionExecutionFeature"/> class.
-        /// </summary>
-        /// <param name="host">The instacne of the <see cref="ScriptHost"/> to use for execution.</param>
-        /// <param name="descriptor">The target <see cref="FunctionDescriptor"/> or <see cref="null"/> if there is no function target.</param>
-        public FunctionExecutionFeature(ScriptHost host, FunctionDescriptor descriptor)
+        public FunctionExecutionFeature(ScriptHost host, FunctionDescriptor descriptor, ScriptSettingsManager settingsManager, ILoggerFactory loggerFactory)
         {
             _host = host ?? throw new ArgumentNullException(nameof(host));
             _descriptor = descriptor;
+            _settingsManager = settingsManager;
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostMetrics);
         }
 
         public bool CanExecute => _descriptor != null;
 
         public FunctionDescriptor Descriptor => _descriptor;
 
-        public Task ExecuteAsync(HttpRequest request, CancellationToken cancellationToken)
+        public async Task ExecuteAsync(HttpRequest request, CancellationToken cancellationToken)
         {
             if (!CanExecute)
             {
                 throw new InvalidOperationException("Unable to execute function without a target.");
             }
 
-            Dictionary<string, object> arguments = GetFunctionArguments(_descriptor, request);
+            JObject coldStartData = null;
+            if (request.IsColdStart())
+            {
+                coldStartData = new JObject
+                {
+                    { "requestId", request.GetRequestId() },
+                    { "language", Descriptor.Metadata.ScriptType.ToString() },
+                    { "sku", _settingsManager.WebsiteSku }
+                };
 
-            return _host.CallAsync(_descriptor.Name, arguments, cancellationToken);
+                var dispatchStopwatch = request.GetItemOrDefault<Stopwatch>(ScriptConstants.AzureFunctionsColdStartKey);
+                if (dispatchStopwatch != null)
+                {
+                    dispatchStopwatch.Stop();
+                    coldStartData.Add("dispatchDuration", dispatchStopwatch.ElapsedMilliseconds);
+                }
+            }
+
+            var functionStopwatch = new Stopwatch();
+            functionStopwatch.Start();
+            var arguments = GetFunctionArguments(_descriptor, request);
+            await _host.CallAsync(_descriptor.Name, arguments, cancellationToken);
+            functionStopwatch.Stop();
+
+            if (coldStartData != null)
+            {
+                coldStartData.Add("functionDuration", functionStopwatch.ElapsedMilliseconds);
+
+                var logData = new Dictionary<string, object>
+                {
+                    [ScriptConstants.LogPropertyEventNameKey] = ScriptConstants.ColdStartEventName,
+                    [ScriptConstants.LogPropertyActivityIdKey] = request.GetRequestId()
+                };
+                _logger.Log(LogLevel.Information, 0, logData, null, (s, e) => coldStartData.ToString(Formatting.None));
+            }
         }
 
         private static Dictionary<string, object> GetFunctionArguments(FunctionDescriptor function, HttpRequest request)

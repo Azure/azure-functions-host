@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly CancellationTokenSource _cancellationTokenSource;
-        private readonly ILogger<WebJobsScriptHostService> _logger;
+        private readonly ILogger _logger;
         private bool _disposed = false;
         private Task _hostTask;
 
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _cancellationTokenSource = new CancellationTokenSource();
             _hostTask = Task.CompletedTask;
-            _logger = loggerFactory.CreateLogger<WebJobsScriptHostService>();
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)

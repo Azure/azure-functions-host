@@ -1,0 +1,25 @@
+﻿{
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "name": "input",
+            "queueName": "mobiletables-input",
+            "direction": "in"
+        },
+        {
+            "type": "mobileTable",
+            "name": "itemIn",
+            "direction": "in",
+            "tableName": "Item",
+            "id": "{recordId}",
+            "connection": "AzureWebJobs_TestMobileUri"
+        },
+        {
+            "type": "mobileTable",
+            "direction": "out",
+            "name": "itemOut",
+            "tableName": "Item",
+            "connection": "AzureWebJobs_TestMobileUri"
+        }
+    ]
+}

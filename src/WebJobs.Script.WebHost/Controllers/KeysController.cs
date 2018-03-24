@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             _scriptHostManager = scriptHostManager;
             _secretManager = secretManager;
-            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryKeysController);
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryKeysController);
         }
 
         [HttpGet]
@@ -108,11 +108,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPut]
         [Route("admin/functions/{name}/keys/{keyName}")]
-        public Task<IActionResult> Put(string name, string keyName, Key key) => PutKeyAsync(keyName, key, name, ScriptSecretsType.Function);
+        public Task<IActionResult> Put(string name, string keyName, [FromBody] Key key) => PutKeyAsync(keyName, key, name, ScriptSecretsType.Function);
 
         [HttpPut]
         [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{keyName}")]
-        public Task<IActionResult> Put(string keyName, Key key) => PutKeyAsync(keyName, key, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
+        public Task<IActionResult> Put(string keyName, [FromBody] Key key) => PutKeyAsync(keyName, key, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
 
         [HttpDelete]
         [Route("admin/functions/{name}/keys/{keyName}")]
@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 operationResult = await _secretManager.AddOrUpdateFunctionSecretAsync(keyName, value, keyScope, secretsType);
             }
 
-            _logger?.LogDebug(string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", operationResult.Result));
+            _logger.LogDebug(string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", operationResult.Result));
 
             switch (operationResult.Result)
             {
@@ -238,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return NotFound();
             }
 
-            _logger?.LogDebug(string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", "Deleted"));
+            _logger.LogDebug(string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", "Deleted"));
 
             return StatusCode(StatusCodes.Status204NoContent);
         }

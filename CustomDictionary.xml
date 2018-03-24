@@ -75,6 +75,8 @@
       <Word>Debounce</Word>
       <Word>ScriptHost</Word>
       <Word>EventHub</Word>
+      <Word>Non</Word>
+      <Word>Decryptable</Word>
 	</Recognized>
     <Deprecated/>
     <Compound>

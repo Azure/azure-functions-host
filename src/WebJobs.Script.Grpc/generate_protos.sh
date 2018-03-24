@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Copyright 2016, Google Inc.
 # All rights reserved.
@@ -33,15 +33,28 @@
 
 # enter Script.Rpc directory
 
+echo "OS: $OSTYPE"
 if [[ $OSTYPE == "darwin"* ]]; then
      PLATFORM="macosx_x86"
 elif [[ $OSTYPE == "linux"* ]];then
-    PLATFORM="linux_x64"
+     PLATFORM="linux_x64"
+else
+     echo "Platform not recognized!"
+	 exit 1
 fi
 
-NUGET_PATH=$HOME/.nuget/packages/grpc.tools/1.4.1/tools/$PLATFORM
+if [ -z "$NUGET_ROOT" ]; then
+	NUGET_PATH=$HOME/.nuget/packages/grpc.tools/1.4.1/tools/$PLATFORM
+else
+	NUGET_PATH=$NUGET_ROOT/packages/grpc.tools/1.4.1/tools/$PLATFORM
+fi
 PROTO=./Proto/FunctionRpc.proto
 MSGDIR=./Messages
+
+if [ ! -d "$NUGET_PATH" ]; then
+	echo "Could not find grpc.tools package. Try setting \$NUGET_PATH to your NUGET directory root and checking you've installed the grpc.tools nuget"
+	exit 1
+fi
 
 rm -rf $MSGDIR
 mkdir $MSGDIR
@@ -49,3 +62,19 @@ mkdir $MSGDIR
 OUTDIR=$MSGDIR/DotNet
 mkdir $OUTDIR
 $NUGET_PATH/protoc $PROTO --csharp_out $OUTDIR --grpc_out=$OUTDIR --plugin=protoc-gen-grpc=$NUGET_PATH/grpc_csharp_plugin --proto_path=./Proto
+
+# add #pragma warning disable labels
+
+cd $OUTDIR
+
+for f in *.cs; do
+	echo '#pragma warning disable' > "$f.temp"
+done
+for f in *.cs; do
+	cat $f >> "$f.temp"
+done
+for f in *.cs; do
+	mv -f "$f.temp" $f
+done 
+
+cd ../..

@@ -3,11 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
-using Microsoft.Azure.WebJobs.Host;
+using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.Implementation;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -21,8 +19,9 @@ namespace Microsoft.Azure.WebJobs.Script
             FileLoggingMode = FileLoggingMode.Never;
             RootScriptPath = Environment.CurrentDirectory;
             RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
+            TestDataPath = Path.Combine(Path.GetTempPath(), "FunctionsData");
             LogFilter = new LogCategoryFilter();
-            HostHealthMonitorEnabled = true;
+            HostHealthMonitor = new HostHealthMonitorConfiguration();
         }
 
         /// <summary>
@@ -36,14 +35,19 @@ namespace Microsoft.Azure.WebJobs.Script
         public string RootScriptPath { get; set; }
 
         /// <summary>
+        /// Gets or sets NugetFallBackPath
+        /// </summary>
+        public string NugetFallBackPath { get; set; }
+
+        /// <summary>
         /// Gets or sets the root path for log files.
         /// </summary>
         public string RootLogPath { get; set; }
 
         /// <summary>
-        /// Gets or sets the custom TraceWriter to add to the trace pipeline
+        /// Gets or sets the root path for sample test data.
         /// </summary>
-        public TraceWriter TraceWriter { get; set; }
+        public string TestDataPath { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the <see cref="ScriptHost"/> should
@@ -83,12 +87,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public TimeSpan? FunctionTimeout { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether the hosting environment will be monitored
-        /// for health (e.g. socket thresholds, etc.). Default is true.
-        /// </summary>
-        public bool HostHealthMonitorEnabled { get; set; }
-
-        /// <summary>
         /// Gets or sets a value indicating whether the host is running
         /// outside of the normal Azure hosting environment. E.g. when running
         /// locally or via CLI.
@@ -102,6 +100,12 @@ namespace Microsoft.Azure.WebJobs.Script
         public LogCategoryFilter LogFilter { get; set; }
 
         /// <summary>
+        /// Gets or sets the <see cref="SamplingPercentageEstimatorSettings"/> to be used for Application
+        /// Insights client-side sampling. If null, client-side sampling is disabled.
+        /// </summary>
+        public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
+
+        /// <summary>
         /// Gets or sets the set of <see cref="ScriptBindingProviders"/> to use when loading functions.
         /// </summary>
         internal ICollection<ScriptBindingProvider> BindingProviders { get; set; }
@@ -110,5 +114,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets a test hook for modifying the configuration after host.json has been processed.
         /// </summary>
         internal Action<ScriptHostConfiguration> OnConfigurationApplied { get; set; }
+
+        /// <summary>
+        /// Gets the <see cref="HostHealthMonitorConfiguration"/> to use.
+        /// </summary>
+        public HostHealthMonitorConfiguration HostHealthMonitor { get; }
     }
 }

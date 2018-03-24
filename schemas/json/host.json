@@ -161,25 +161,6 @@
             }
         },
 
-        "tracing": {
-            "description": "Configuration settings for logging/tracing behavior.",
-            "type": "object",
-
-            "properties": {
-                "consoleLevel": {
-                    "description": "The tracing level used for console logging.",
-                    "enum": [ "off", "error", "warning", "info", "verbose" ],
-                    "default": "verbose"
-                },
-
-                "fileLoggingMode": {
-                    "description": "Value determining what level of file logging is enabled.",
-                    "enum": [ "never", "always", "debugOnly" ],
-                    "default": "debugOnly"
-                }
-            }
-        },
-
         "singleton": {
             "description": "Configuration settings for Singleton lock behavior.",
             "type": "object",
@@ -234,6 +215,12 @@
                     "additionalProperties": {
                         "enum": [ "Critical", "Debug", "Error", "Information", "None", "Trace", "Warning" ]
                     }
+                },
+
+                "fileLoggingMode": {
+                    "description": "Value determining what level of file logging is enabled.",
+                    "enum": [ "never", "always", "debugOnly" ],
+                    "default": "debugOnly"
                 }
             }
         },

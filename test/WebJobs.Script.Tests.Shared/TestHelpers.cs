@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -11,16 +10,15 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.WindowsAzure.Storage.Blob;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public static class TestHelpers
+    public static partial class TestHelpers
     {
+        private const string Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        private static readonly Random Random = new Random();
+
         /// <summary>
         /// Gets the common root directory that functions tests create temporary directories under.
         /// This enables us to clean up test files by deleting this single directory.
@@ -33,12 +31,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static Task Await(Func<bool> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000, bool throwWhenDebugging = false)
+        public static string NewRandomString(int length = 10)
         {
-            return Await(() => Task.FromResult(condition()), timeout, pollingInterval, throwWhenDebugging);
+            return new string(
+                Enumerable.Repeat('x', length)
+                    .Select(c => Chars[Random.Next(Chars.Length)])
+                    .ToArray());
         }
 
-        public static async Task Await(Func<Task<bool>> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000, bool throwWhenDebugging = false)
+        public static Task Await(Func<bool> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000, bool throwWhenDebugging = false, Func<string> userMessageCallback = null)
+        {
+            return Await(() => Task.FromResult(condition()), timeout, pollingInterval, throwWhenDebugging, userMessageCallback);
+        }
+
+        public static async Task Await(Func<Task<bool>> condition, int timeout = 60 * 1000, int pollingInterval = 2 * 1000, bool throwWhenDebugging = false, Func<string> userMessageCallback = null)
         {
             DateTime start = DateTime.Now;
             while (!await condition())
@@ -48,16 +54,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 bool shouldThrow = !Debugger.IsAttached || (Debugger.IsAttached && throwWhenDebugging);
                 if (shouldThrow && (DateTime.Now - start).TotalMilliseconds > timeout)
                 {
-                    throw new ApplicationException("Condition not reached within timeout.");
+                    string error = "Condition not reached within timeout.";
+                    if (userMessageCallback != null)
+                    {
+                        error += " " + userMessageCallback();
+                    }
+                    throw new ApplicationException(error);
                 }
             }
         }
 
-        public static string RemoveByteOrderMarkAndWhitespace(string s) => Utility.RemoveUtf8ByteOrderMark(s).Trim().Replace(" ", string.Empty);
-
-        public static async Task<string> WaitForBlobAndGetStringAsync(CloudBlockBlob blob)
+        public static async Task<string> WaitForBlobAndGetStringAsync(CloudBlockBlob blob, Func<string> userMessageCallback = null)
         {
-            await WaitForBlobAsync(blob);
+            await WaitForBlobAsync(blob, userMessageCallback: userMessageCallback);
 
             string result = await blob.DownloadTextAsync(Encoding.UTF8,
                 null, new BlobRequestOptions(), new Microsoft.WindowsAzure.Storage.OperationContext());
@@ -65,12 +74,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return result;
         }
 
-        public static async Task WaitForBlobAsync(CloudBlockBlob blob)
+        public static async Task WaitForBlobAsync(CloudBlockBlob blob, Func<string> userMessageCallback = null)
         {
             await TestHelpers.Await(async () =>
             {
                 return await blob.ExistsAsync();
-            });
+            }, userMessageCallback: userMessageCallback);
         }
 
         public static void ClearFunctionLogs(string functionName)
@@ -128,63 +137,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static async Task<IList<string>> GetFunctionLogsAsync(string functionName, bool throwOnNoLogs = true, bool waitForFlush = true)
-        {
-            if (waitForFlush)
-            {
-                await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
-            }
-
-            DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
-            FileInfo lastLogFile = directory.GetFiles("*.log").OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
-
-            if (lastLogFile != null)
-            {
-                string[] logs = await ReadAllLinesSafeAsync(lastLogFile.FullName);
-                return new Collection<string>(logs.ToList());
-            }
-            else if (throwOnNoLogs)
-            {
-                throw new InvalidOperationException("No logs written!");
-            }
-
-            return new Collection<string>();
-        }
-
-        public static async Task<IList<string>> GetHostLogsAsync(bool throwOnNoLogs = true)
-        {
-            await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
-
-            DirectoryInfo directory = GetHostLogFileDirectory();
-            FileInfo lastLogFile = directory.GetFiles("*.log").OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
-
-            if (lastLogFile != null)
-            {
-                string[] logs = File.ReadAllLines(lastLogFile.FullName);
-                return new Collection<string>(logs.ToList());
-            }
-            else if (throwOnNoLogs)
-            {
-                throw new InvalidOperationException("No logs written!");
-            }
-
-            return new Collection<string>();
-        }
-
         // Deleting and recreating a container can result in a 409 as the container name is not
         // immediately available. Instead, use this helper to clear a container.
-        public static async Task ClearContainer(CloudBlobContainer container)
+        public static async Task ClearContainerAsync(CloudBlobContainer container)
         {
-            BlobResultSegment blobs = await container.ListBlobsSegmentedAsync(null);
-
-            foreach (IListBlobItem blobItem in blobs.Results)
+            foreach (var blob in await ListBlobsAsync(container))
             {
-                CloudBlockBlob blockBlob = blobItem as CloudBlockBlob;
-                if (blockBlob != null)
-                {
-                    await container.GetBlobReference(blockBlob.Name).DeleteIfExistsAsync();
-                }
+                await blob.DeleteIfExistsAsync();
             }
+        }
+
+        public static async Task<IEnumerable<CloudBlockBlob>> ListBlobsAsync(CloudBlobContainer container)
+        {
+            List<CloudBlockBlob> blobs = new List<CloudBlockBlob>();
+            BlobContinuationToken token = null;
+
+            do
+            {
+                BlobResultSegment blobSegment = await container.ListBlobsSegmentedAsync(token);
+                token = blobSegment.ContinuationToken;
+                blobs.AddRange(blobSegment.Results.Cast<CloudBlockBlob>());
+            } while (token != null);
+
+            return blobs;
         }
 
         public static DirectoryInfo GetFunctionLogFileDirectory(string functionName)
@@ -197,17 +172,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string path = Path.Combine(Path.GetTempPath(), "Functions", "Host");
             return new DirectoryInfo(path);
-        }
-
-        public static FunctionBinding CreateTestBinding(JObject json)
-        {
-            ScriptBindingContext context = new ScriptBindingContext(json);
-            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(new JobHostConfiguration(), new JObject(), new TestTraceWriter(TraceLevel.Verbose));
-            ScriptBinding scriptBinding = null;
-            provider.TryCreate(context, out scriptBinding);
-            BindingMetadata bindingMetadata = BindingMetadata.Create(json);
-            ScriptHostConfiguration config = new ScriptHostConfiguration();
-            return new ExtensionBinding(config, scriptBinding, bindingMetadata);
         }
 
         private static async Task<string[]> ReadAllLinesSafeAsync(string logFile)

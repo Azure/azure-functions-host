@@ -1,4 +1,10 @@
 version: 2.0.{build}
+init:
+- ps: | 
+    if ($env:FUNCTIONS_NIGHTLY -eq "1") {
+      $version = Get-Date -Format "yyyyMMdd-HHmm"
+      Update-AppveyorBuild -Version $version -Message "Functions Scheduled Build"
+    }
 pull_requests:
   do_not_increment_build_number: true
 branches:
@@ -7,23 +13,17 @@ branches:
   - master
   - core
 image: Visual Studio 2017
+max_jobs: 1
 clone_folder: c:\azure-webjobs-sdk-script
 install:
 - ps: >-
     $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
-
-    mkdir c:\tools\php | out-null
-
-    Invoke-WebRequest https://azfunc.blob.core.windows.net/public/php-7.1.3-Win32-VC14-x86.zip -OutFile c:\tools\php\php.zip
-
-    Add-Type -AssemblyName System.IO.Compression.FileSystem;
-
-    [System.IO.Compression.ZipFile]::ExtractToDirectory("c:\tools\php\php.zip", "c:\tools\php")
-
+    
     Install-Product node 8.4.0 x86
 build_script:
-- ps: >
-    .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER"
+- ps: |
+    $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
+    .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeVersion (!$hasTag)
 after_build:
 - ps: >
     Get-ChildItem buildoutput\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
@@ -47,10 +47,8 @@ test_script:
 
     $success = $success -and $?
 
-    dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build --filter "(FullyQualifiedName~Tests.NodeEndToEndTests|FullyQualifiedName~NodeContentTests|FullyQualifiedName~Tests.SecretsRepositoryTests|FullyQualifiedName~StandbyModeTests)"
-
+    dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
+    
     $success = $success -and $?
-
-    # Skipping integration tests for initial build # dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
 
     if (-not $success) { exit 1 }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -18,11 +18,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static IApplicationBuilder UseWebJobsScriptHost(this IApplicationBuilder builder, IApplicationLifetime applicationLifetime, Action<WebJobsRouteBuilder> routes)
         {
+            builder.UseMiddleware<HttpExceptionMiddleware>();
             builder.UseMiddleware<FunctionInvocationMiddleware>();
-            builder.UseWhen(context => !context.Request.Path.StartsWithSegments("/admin/host/status"), config =>
+            builder.UseMiddleware<HostWarmupMiddleware>();
+
+            builder.UseWhen(context => !context.Request.Path.StartsWithSegments("/admin"), config =>
             {
-                config.UseMiddleware<ScriptHostCheckMiddleware>();
+                config.UseMiddleware<HostAvailabilityCheckMiddleware>();
             });
+
+            // Register /admin/vfs, and /admin/zip to the VirtualFileSystem middleware.
+            builder.UseWhen(VirtualFileSystemMiddleware.IsVirtualFileSystemRequest, config => config.UseMiddleware<VirtualFileSystemMiddleware>());
 
             // Ensure the HTTP binding routing is registered after all middleware
             builder.UseHttpBindingRouting(applicationLifetime, routes);

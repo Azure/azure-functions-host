@@ -3,9 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,11 +15,13 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
 using Xunit;
-using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -50,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var secretsRepository = new FileSystemSecretsRepository(_secretsDirectory.Path);
-            SecretManager secretManager = new SecretManager(_settingsManager, secretsRepository, null);
+            SecretManager secretManager = new SecretManager(_settingsManager, secretsRepository, NullLogger.Instance);
             WebHostSettings webHostSettings = new WebHostSettings
             {
                 SecretsPath = _secretsDirectory.Path
@@ -61,8 +63,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             IWebJobsRouter router = fixture.CreateRouter();
 
             _hostManager = new WebScriptHostManager(_config, new TestSecretManagerFactory(secretManager), mockEventManager.Object,
-                _settingsManager, webHostSettings, router, secretsRepositoryFactory: new DefaultSecretsRepositoryFactory(),
-                hostTimeoutSeconds: 2,  hostPollingIntervalMilliseconds: 500, scriptHostFactory: _mockScriptHostFactory.Object);
+                _settingsManager, webHostSettings, router, NullLoggerFactory.Instance, secretsRepositoryFactory: new DefaultSecretsRepositoryFactory(),
+                hostTimeoutSeconds: 2, hostPollingIntervalMilliseconds: 500, scriptHostFactory: _mockScriptHostFactory.Object);
         }
 
         [Fact(Skip = "Investigate test failure (tracked by https://github.com/Azure/azure-webjobs-sdk-script/issues/2022)")]
@@ -151,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             webHostSettings.SecretsPath = _secretsDirectory.Path;
             var mockEventManager = new Mock<IScriptEventManager>();
             IWebJobsRouter router = _fixture.CreateRouter();
-            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings, router);
+            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings, router, NullLoggerFactory.Instance);
 
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
 
@@ -161,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(ScriptHostState.Default, hostManager.State);
 
             // give some time for the logs to be flushed fullly
-            await Task.Delay(FileTraceWriter.LogFlushIntervalMs * 3);
+            await Task.Delay(FileWriter.LogFlushIntervalMs * 3);
 
             string hostLogFilePath = Directory.EnumerateFiles(Path.Combine(logDir, "Host")).Single();
             string hostLogs = File.ReadAllText(hostLogFilePath);
@@ -177,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             int count = 0;
             _mockScriptHostFactory
-                .Setup(p => p.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, _config, It.IsAny<ILoggerFactoryBuilder>()))
+                .Setup(p => p.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), _settingsManager, _config, It.IsAny<ILoggerProviderFactory>()))
                 .Callback(() =>
                 {
                     count++;
@@ -197,7 +199,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // regression test: previously on multiple restarts we were recomposing
             // the writer on each restart, resulting in a nested chain of writers
             // increasing on each restart
-            Assert.Equal(typeof(SystemTraceWriter), _config.TraceWriter.GetType());
+
+            //Assert.Equal(typeof(SystemTraceWriter), _config.TraceWriter.GetType());
+        }
+
+        [Fact]
+        public async Task DelayUntilHostReady_HostInErrorState_ThrowsImmediately()
+        {
+            var settingsManager = ScriptSettingsManager.Instance;
+            var eventManager = new Mock<IScriptEventManager>();
+            var managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new TestSecretManagerFactory(),
+                eventManager.Object, settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, null, NullLoggerFactory.Instance, null, null, null, null, 1, 50);
+
+            managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Error);
+            managerMock.SetupGet(p => p.LastError).Returns(new Exception());
+
+            var ex = await Assert.ThrowsAsync<HttpException>(async () => await WebScriptHostManager.DelayUntilHostReady(managerMock.Object, 1, 50));
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, (HttpStatusCode)ex.StatusCode);
+            managerMock.VerifyGet(p => p.State, Times.Exactly(5));
+        }
+
+        [Fact]
+        public async Task DelayUntilHostReady_HostNotRunning_Returns503()
+        {
+            var settingsManager = ScriptSettingsManager.Instance;
+            var eventManager = new Mock<IScriptEventManager>();
+            var managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(),
+                new TestSecretManagerFactory(), eventManager.Object, settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path },
+                null, NullLoggerFactory.Instance, null, null, null, null, 1, 50);
+
+            managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Default);
+            managerMock.SetupGet(p => p.LastError).Returns((Exception)null);
+
+            var ex = await Assert.ThrowsAsync<HttpException>(async () => await WebScriptHostManager.DelayUntilHostReady(managerMock.Object, 1, 50));
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, (HttpStatusCode)ex.StatusCode);
         }
 
         public void Dispose()
@@ -251,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 };
 
                 ISecretsRepository repository = new FileSystemSecretsRepository(SecretsPath);
-                ISecretManager secretManager = new SecretManager(_settingsManager, repository, null);
+                ISecretManager secretManager = new SecretManager(_settingsManager, repository, NullLogger.Instance);
                 WebHostSettings webHostSettings = new WebHostSettings();
                 webHostSettings.SecretsPath = SecretsPath;
 
@@ -261,11 +296,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 hostConfig.AddService<IEventGenerator>(EventGenerator);
                 var mockEventManager = new Mock<IScriptEventManager>();
                 var mockRouter = CreateRouter();
-                var mockHostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings, mockRouter, new DefaultLoggerFactoryBuilder());
+                var mockHostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings, mockRouter, NullLoggerFactory.Instance, null);
                 HostManager = mockHostManager;
 
                 _initializationTask = EnsureInitialized();
-                
+
             }
 
             internal Task InitializationTask => _initializationTask;
@@ -284,7 +319,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     "Info Host configuration file read",
                     "Info Host lock lease acquired by instance ID '(.+)'",
                     @"Info Generating ([0-9]+) job function\(s\)",
-                    @"Info Starting Host \(HostId=function-tests-node, Version=(.+), ProcessId=[0-9]+, Debug=False, ConsecutiveErrors=0, StartupCount=1, FunctionsExtensionVersion=\)",
+                    @"Info Starting Host \(HostId=function-tests-node, Version=(.+), ProcessId=[0-9]+, AppDomainId=[0-9]+, Debug=False, ConsecutiveErrors=0, StartupCount=1, FunctionsExtensionVersion=\)",
                     "Info WebJobs.Indexing Found the following functions:",
                     "Info The next 5 occurrences of the schedule will be:",
                     "Info WebJobs.Host Job host started",
@@ -349,9 +384,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             private void CreateTestFunctionLogs(string logRoot, string functionName)
             {
                 string functionLogPath = Path.Combine(logRoot, functionName);
-                FileTraceWriter traceWriter = new FileTraceWriter(functionLogPath, TraceLevel.Verbose);
-                traceWriter.Verbose("Test log message");
-                traceWriter.Flush();
+                FileWriter fileWriter = new FileWriter(functionLogPath);
+                fileWriter.AppendLine("Test log message");
+                fileWriter.Flush();
             }
 
             public class TestSystemEventGenerator : IEventGenerator
@@ -365,9 +400,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 public List<string> Events { get; private set; }
 
-                public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary)
+                public void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exType, string exMessage, string functionInvocationId, string hostInstanceId, string activityId)
                 {
-                    var elements = new string[] { level.ToString(), subscriptionId, appName, functionName, eventName, source, summary, details };
+                    var elements = new string[] { level.ToString(), subscriptionId, appName, functionName, eventName, source, summary, details, exType, exMessage };
                     string evt = string.Join(" ", elements.Where(p => !string.IsNullOrEmpty(p)));
                     lock (_syncLock)
                     {

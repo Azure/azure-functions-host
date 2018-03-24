@@ -3,10 +3,9 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
 
-public static IActionResult Run(HttpRequest req)
+public static IActionResult Run(HttpRequest req, ILogger log)
 {
     string response = new Test().Response;
-    req.HttpContext.Items["LoadedScriptResponse"] = response;
-
+    log.LogInformation("response: " + response);
     return new OkObjectResult(response);
 }

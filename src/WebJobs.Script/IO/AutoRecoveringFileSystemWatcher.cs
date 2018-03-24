@@ -2,12 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.IO
 {
@@ -17,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.IO
         private readonly string _filter;
         private readonly bool _includeSubdirectories;
         private readonly WatcherChangeTypes _changeTypes;
-        private readonly TraceWriter _traceWriter;
+        private readonly ILogger _logger;
         private readonly Action<ErrorEventArgs> _handleFileError;
         private readonly CancellationToken _cancellationToken;
         private readonly object _syncRoot = new object();
@@ -27,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.IO
         private int _recovering = 0;
 
         public AutoRecoveringFileSystemWatcher(string path, string filter = "*.*",
-            bool includeSubdirectories = true, WatcherChangeTypes changeTypes = WatcherChangeTypes.All, TraceWriter traceWriter = null)
+            bool includeSubdirectories = true, WatcherChangeTypes changeTypes = WatcherChangeTypes.All, ILoggerFactory loggerFactory = null)
         {
             _path = path;
             _filter = filter;
@@ -37,10 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script.IO
             _cancellationToken = _cancellationTokenSource.Token;
             _handleFileError = new Action<ErrorEventArgs>(OnFileWatcherError).Debounce();
 
-            if (traceWriter != null)
-            {
-                _traceWriter = traceWriter.WithSource(ScriptConstants.TraceSourceFileWatcher);
-            }
+            loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
+            _logger = loggerFactory.CreateLogger("Host." + ScriptConstants.TraceSourceFileWatcher);
 
             InitializeWatcher();
         }
@@ -110,27 +107,27 @@ namespace Microsoft.Azure.WebJobs.Script.IO
             }
 
             string errorMessage = args.GetException()?.Message ?? "Unknown";
-            Trace($"Failure detected '{errorMessage}'. Initiating recovery...", TraceLevel.Warning);
+            Log($"Failure detected '{errorMessage}'. Initiating recovery...", LogLevel.Warning);
 
             Recover().ContinueWith(t =>
             {
                 if (t.IsFaulted || t.IsCanceled)
                 {
                     t.Exception?.Handle(e => true);
-                    Trace($"Recovery process aborted.", TraceLevel.Error);
+                    Log($"Recovery process aborted.", LogLevel.Error);
                 }
                 else
                 {
-                    Trace("File watcher recovered.", TraceLevel.Info);
+                    Log("File watcher recovered.", LogLevel.Information);
                 }
 
                 Interlocked.Exchange(ref _recovering, 0);
             });
         }
 
-        private void Trace(string message, TraceLevel level)
+        private void Log(string message, LogLevel level)
         {
-            _traceWriter?.Trace($"{message} (path: '{_path}')", level, null);
+            _logger.Log(level, 0, $"{message} (path: '{_path}')", null, (s, e) => s);
         }
 
         private async Task Recover(int attempt = 1)
@@ -144,13 +141,13 @@ namespace Microsoft.Azure.WebJobs.Script.IO
 
             try
             {
-                Trace($"Attempting to recover...", TraceLevel.Warning);
+                Log($"Attempting to recover...", LogLevel.Warning);
                 ReleaseCurrentFileWatcher();
                 InitializeWatcher();
             }
             catch (Exception exc) when (!(exc is TaskCanceledException) && !exc.IsFatal())
             {
-                Trace($"Unable to recover - {exc.ToString()}", TraceLevel.Error);
+                Log($"Unable to recover - {exc.ToString()}", LogLevel.Error);
 
                 await Recover(++attempt);
             }

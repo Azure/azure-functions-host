@@ -8,7 +8,7 @@
         "maxConcurrentRequests": 5,
         "maxOutstandingRequests": 30
     },
-    "tracing": {
+    "logger": {
         "fileLoggingMode": "always"
     },
     "queues": {
@@ -22,6 +22,12 @@
         "prefetchCount": 1000,
         "batchCheckpointFrequency": 1
     },
-    "functionTimeout": "00:05:00",
-    "functions": ["HttpTrigger-CSharp"]
+    "healthMonitor": {
+        "enabled": true,
+        "healthCheckInterval": "00:00:10",
+        "healthCheckWindow": "00:02:00",
+        "healthCheckThreshold": 6,
+        "counterThreshold": 0.80
+    },
+    "functionTimeout": "00:05:00"
 }

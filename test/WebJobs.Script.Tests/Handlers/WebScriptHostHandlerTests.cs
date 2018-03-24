@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _settingsManager = ScriptSettingsManager.Instance;
             var eventManager = new Mock<IScriptEventManager>();
             _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new TestSecretManagerFactory(), eventManager.Object,
-                _settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path });
+                _settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, null, null, null, 1, 50);
 
             _managerMock.SetupGet(p => p.Initialized).Returns(true);
             Mock<IDependencyResolver> mockResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             HttpConfiguration config = new HttpConfiguration();
             config.DependencyResolver = mockResolver.Object;
-            WebScriptHostHandler handler = new WebScriptHostHandler(config, hostTimeoutSeconds: 1, hostPollingIntervalMilliseconds: 50)
+            WebScriptHostHandler handler = new WebScriptHostHandler(config)
             {
                 InnerHandler = new TestHandler()
             };
@@ -81,21 +81,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task SendAsync_HostNotRunning_Returns503()
-        {
-            _managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Default);
-            _managerMock.SetupGet(p => p.LastError).Returns((Exception)null);
-
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/api/test");
-            var ex = await Assert.ThrowsAsync<HttpResponseException>(async () =>
-            {
-                await _invoker.SendAsync(request, CancellationToken.None);
-            });
-            HttpResponseMessage response = ex.Response;
-            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-        }
-
-        [Fact]
         public async Task SendAsync_HostRunning_ReturnsOk()
         {
             _managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
@@ -103,22 +88,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/api/test");
             HttpResponseMessage response = await _invoker.SendAsync(request, CancellationToken.None);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        }
-
-        [Fact]
-        public async Task SendAsync_HostInErrorState_Returns503Immediately()
-        {
-            _managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Error);
-            _managerMock.SetupGet(p => p.LastError).Returns(new Exception());
-
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "http://functions.test.com/api/test");
-            var ex = await Assert.ThrowsAsync<HttpResponseException>(async () =>
-            {
-                await _invoker.SendAsync(request, CancellationToken.None);
-            });
-            HttpResponseMessage response = ex.Response;
-            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-            _managerMock.VerifyGet(p => p.State, Times.Exactly(5));
         }
 
         protected virtual void Dispose(bool disposing)

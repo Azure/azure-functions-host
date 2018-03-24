@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.IO.Abstractions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,11 +12,20 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class FileUtility
     {
+        private static IFileSystem _default = new FileSystem();
+        private static IFileSystem _instance;
+
+        public static IFileSystem Instance
+        {
+            get { return _instance ?? _default; }
+            set { _instance = value; }
+        }
+
         public static void EnsureDirectoryExists(string path)
         {
-            if (!Directory.Exists(path))
+            if (!Instance.Directory.Exists(path))
             {
-                Directory.CreateDirectory(path);
+                Instance.Directory.CreateDirectory(path);
             }
         }
 
@@ -22,9 +33,9 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             return Task.Run(() =>
             {
-                if (Directory.Exists(path))
+                if (Instance.Directory.Exists(path))
                 {
-                    Directory.Delete(path, recursive);
+                    Instance.Directory.Delete(path, recursive);
                 }
             });
         }
@@ -33,9 +44,9 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             return Task.Run(() =>
             {
-                if (File.Exists(path))
+                if (Instance.File.Exists(path))
                 {
-                    File.Delete(path);
+                    Instance.File.Delete(path);
                     return true;
                 }
                 return false;
@@ -55,7 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             encoding = encoding ?? Encoding.UTF8;
-            using (var writer = new StreamWriter(path, false, encoding, 4096))
+            using (Stream fileStream = OpenFile(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
+            using (var writer = new StreamWriter(fileStream, encoding, 4096))
             {
                 await writer.WriteAsync(contents);
             }
@@ -69,10 +81,16 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             encoding = encoding ?? Encoding.UTF8;
-            using (var reader = new StreamReader(path, encoding, true, 4096))
+            using (var fileStream = OpenFile(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            using (var reader = new StreamReader(fileStream, encoding, true, 4096))
             {
                 return await reader.ReadToEndAsync();
             }
+        }
+
+        public static Stream OpenFile(string path, FileMode mode, FileAccess access = FileAccess.ReadWrite, FileShare share = FileShare.None)
+        {
+            return Instance.File.Open(path, mode, access, share);
         }
 
         public static string GetRelativePath(string path1, string path2)
@@ -110,16 +128,121 @@ namespace Microsoft.Azure.WebJobs.Script
             return relativePath;
         }
 
-        public static void CopyDirectory(string sourcePath, string targetPath)
+        public static Task<string[]> GetFilesAsync(string path, string prefix)
         {
-            foreach (string dirPath in Directory.GetDirectories(sourcePath, "*", SearchOption.AllDirectories))
+            if (path == null)
             {
-                Directory.CreateDirectory(dirPath.Replace(sourcePath, targetPath));
+                throw new ArgumentNullException(nameof(path));
             }
 
-            foreach (string filePath in Directory.GetFiles(sourcePath, "*.*", SearchOption.AllDirectories))
+            if (prefix == null)
             {
-                File.Copy(filePath, filePath.Replace(sourcePath, targetPath), true);
+                throw new ArgumentNullException(nameof(prefix));
+            }
+
+            return Task.Run(() =>
+            {
+                return Instance.Directory.GetFiles(path, prefix);
+            });
+        }
+
+        public static void CopyDirectory(string sourcePath, string targetPath)
+        {
+            foreach (string dirPath in Instance.Directory.GetDirectories(sourcePath, "*", SearchOption.AllDirectories))
+            {
+                Instance.Directory.CreateDirectory(dirPath.Replace(sourcePath, targetPath));
+            }
+
+            foreach (string filePath in Instance.Directory.GetFiles(sourcePath, "*.*", SearchOption.AllDirectories))
+            {
+                Instance.File.Copy(filePath, filePath.Replace(sourcePath, targetPath), true);
+            }
+        }
+
+        public static bool FileExists(string path) => Instance.File.Exists(path);
+
+        public static bool DirectoryExists(string path) => Instance.Directory.Exists(path);
+
+        public static DirectoryInfoBase DirectoryInfoFromDirectoryName(string localSiteRootPath) => Instance.DirectoryInfo.FromDirectoryName(localSiteRootPath);
+
+        public static FileInfoBase FileInfoFromFileName(string localFilePath) => Instance.FileInfo.FromFileName(localFilePath);
+
+        public static string GetFullPath(string path) => Instance.Path.GetFullPath(path);
+
+        private static void DeleteDirectoryContentsSafe(DirectoryInfoBase directoryInfo, bool ignoreErrors)
+        {
+            try
+            {
+                if (directoryInfo.Exists)
+                {
+                    foreach (var fsi in directoryInfo.GetFileSystemInfos())
+                    {
+                        DeleteFileSystemInfo(fsi, ignoreErrors);
+                    }
+                }
+            }
+            catch when (ignoreErrors)
+            {
+            }
+        }
+
+        private static void DeleteFileSystemInfo(FileSystemInfoBase fileSystemInfo, bool ignoreErrors)
+        {
+            if (!fileSystemInfo.Exists)
+            {
+                return;
+            }
+
+            try
+            {
+                fileSystemInfo.Attributes = FileAttributes.Normal;
+            }
+            catch when (ignoreErrors)
+            {
+            }
+
+            if (fileSystemInfo is DirectoryInfoBase directoryInfo)
+            {
+                DeleteDirectoryContentsSafe(directoryInfo, ignoreErrors);
+            }
+
+            DoSafeAction(fileSystemInfo.Delete, ignoreErrors);
+        }
+
+        public static void DeleteDirectoryContentsSafe(string path, bool ignoreErrors = true)
+        {
+            try
+            {
+                var directoryInfo = DirectoryInfoFromDirectoryName(path);
+                if (directoryInfo.Exists)
+                {
+                    foreach (var fsi in directoryInfo.GetFileSystemInfos())
+                    {
+                        DeleteFileSystemInfo(fsi, ignoreErrors);
+                    }
+                }
+            }
+            catch when (ignoreErrors)
+            {
+            }
+        }
+
+        public static void DeleteFileSafe(string path)
+        {
+            var info = FileInfoFromFileName(path);
+            DeleteFileSystemInfo(info, ignoreErrors: true);
+        }
+
+        public static IEnumerable<string> EnumerateDirectories(string path) => Instance.Directory.EnumerateDirectories(path);
+
+        private static void DoSafeAction(Action action, bool ignoreErrors)
+        {
+            try
+            {
+                action();
+            }
+            catch when (ignoreErrors)
+            {
             }
         }
     }

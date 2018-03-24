@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "WebJobs.Script.Tests.Integration": {
+      "commandName": "Project"
+    }
+  }
+}

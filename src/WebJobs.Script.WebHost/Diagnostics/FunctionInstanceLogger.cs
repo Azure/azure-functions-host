@@ -4,11 +4,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -28,22 +28,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             Func<string, FunctionDescriptor> funcLookup,
             IMetricsLogger metrics,
             string hostName,
-            string accountConnectionString, // May be null
-            TraceWriter trace) : this(funcLookup, metrics)
+            string accountConnectionString,
+            ILoggerFactory loggerFactory)
+            : this(funcLookup, metrics)
         {
-            if (trace == null)
-            {
-                throw new ArgumentNullException(nameof(trace));
-            }
-
             if (accountConnectionString != null)
             {
                 CloudStorageAccount account = CloudStorageAccount.Parse(accountConnectionString);
                 var client = account.CreateCloudTableClient();
                 var tableProvider = LogFactory.NewLogTableProvider(client);
 
+                ILogger logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+
                 string containerName = Environment.MachineName;
-                this._writer = LogFactory.NewWriter(hostName, containerName, tableProvider, (e) => OnException(e, trace));
+                this._writer = LogFactory.NewWriter(hostName, containerName, tableProvider, (e) => OnException(e, logger));
             }
         }
 
@@ -79,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         // This exception will cause the function to not get executed.
                         throw new InvalidOperationException($"Missing function.json for '{shortName}'.");
                     }
-                    state = new FunctionInstanceMonitor(descr.Metadata, _metrics, item.FunctionInstanceId, descr.Invoker.FunctionLogger);
+                    state = new FunctionInstanceMonitor(descr.Metadata, _metrics, item.FunctionInstanceId);
 
                     item.Properties[Key] = state;
 
@@ -113,10 +111,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             return _writer.FlushAsync();
         }
 
-        public static void OnException(Exception exception, TraceWriter trace)
+        public static void OnException(Exception exception, ILogger logger)
         {
             string errorString = $"Error writing logs to table storage: {exception.ToString()}";
-            trace.Error(errorString, exception);
+            logger.LogError(errorString, exception);
         }
     }
 }

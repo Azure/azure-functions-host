@@ -11,8 +11,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteOwnerName = "WEBSITE_OWNER_NAME";
         public const string AzureWebsiteInstanceId = "WEBSITE_INSTANCE_ID";
         public const string AzureWebsiteSku = "WEBSITE_SKU";
+        public const string AzureWebsiteZipDeployment = "WEBSITE_USE_ZIP";
         public const string RemoteDebuggingPort = "REMOTEDEBUGGINGPORT";
         public const string AzureWebsitePlaceholderMode = "WEBSITE_PLACEHOLDER_MODE";
+        public const string AzureWebsiteContainerReady = "WEBSITE_CONTAINER_READY";
         public const string AzureWebsiteHomePath = "HOME";
         public const string AzureWebJobsScriptRoot = "AzureWebJobsScriptRoot";
         public const string AzureWebJobsEnvironment = "AzureWebJobsEnv";

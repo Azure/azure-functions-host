@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,16 +25,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     public class FunctionInvocationMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly ILoggerFactory _loggerFactory;
 
-        public FunctionInvocationMiddleware(RequestDelegate next, ILoggerFactory loggerFactory)
+        public FunctionInvocationMiddleware(RequestDelegate next)
         {
             _next = next;
-            _loggerFactory = loggerFactory;
         }
 
-        public async Task Invoke(HttpContext context)
+        public async Task Invoke(HttpContext context, WebScriptHostManager manager)
         {
+            // flow required context through the request pipeline
+            // downstream middleware and filters rely on this
+            context.Items.Add(ScriptConstants.AzureFunctionsHostManagerKey, manager);
+            SetRequestId(context.Request);
             await _next(context);
 
             IFunctionExecutionFeature functionExecution = context.Features.Get<IFunctionExecutionFeature>();
@@ -57,6 +61,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 return new NotFoundResult();
             }
 
+            if (context.Request.IsColdStart())
+            {
+                // for cold start requests we want to measure the request
+                // pipeline dispatch time
+                // important that this stopwatch is started as early as possible
+                // in the pipeline (in this case, in our first middleware)
+                var sw = new Stopwatch();
+                sw.Start();
+                context.Request.HttpContext.Items.Add(ScriptConstants.AzureFunctionsColdStartKey, sw);
+            }
+
             // Add route data to request info
             // TODO: Keeping this here for now as other code depend on this property, but this can be done in the HTTP binding.
             var routingFeature = context.Features.Get<IRoutingFeature>();
@@ -79,10 +94,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             {
                 // Add the request to the logging scope. This allows the App Insights logger to
                 // record details about the request.
-                ILogger logger = _loggerFactory.CreateLogger(LogCategories.Function);
+                ILoggerFactory loggerFactory = context.RequestServices.GetService<ILoggerFactory>();
+                ILogger logger = loggerFactory.CreateLogger(LogCategories.CreateFunctionCategory(functionExecution.Descriptor.Name));
                 var scopeState = new Dictionary<string, object>()
                 {
-                    [ScriptConstants.LoggerHttpRequest] = context.Request
+                    [ScriptConstants.LoggerHttpRequest] = context.Request,
                 };
 
                 using (logger.BeginScope(scopeState))
@@ -112,6 +128,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             var authorizeResult = await policyEvaluator.AuthorizeAsync(policy, authenticateResult, context, descriptor);
 
             return authorizeResult.Succeeded;
+        }
+
+        internal static void SetRequestId(HttpRequest request)
+        {
+            string requestID = request.GetHeaderValueOrDefault(ScriptConstants.AntaresLogIdHeaderName) ?? Guid.NewGuid().ToString();
+            request.HttpContext.Items[ScriptConstants.AzureFunctionsRequestIdKey] = requestID;
         }
     }
 }

@@ -1,29 +1,29 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Diagnostics;
 using Microsoft.CodeAnalysis;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public static class DiagnosticSeverityExtensions
     {
-        public static TraceLevel ToTraceLevel(this DiagnosticSeverity severity)
+        public static LogLevel ToLogLevel(this DiagnosticSeverity severity)
         {
-            var level = TraceLevel.Off;
+            var level = LogLevel.None;
             switch (severity)
             {
                 case DiagnosticSeverity.Hidden:
-                    level = TraceLevel.Verbose;
+                    level = LogLevel.Trace;
                     break;
                 case DiagnosticSeverity.Info:
-                    level = TraceLevel.Info;
+                    level = LogLevel.Information;
                     break;
                 case DiagnosticSeverity.Warning:
-                    level = TraceLevel.Warning;
+                    level = LogLevel.Warning;
                     break;
                 case DiagnosticSeverity.Error:
-                    level = TraceLevel.Error;
+                    level = LogLevel.Error;
                     break;
             }
 

@@ -2,24 +2,25 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
+using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class StandbyModeTests : IDisposable
     {
         private readonly WebHostResolver _webHostResolver;
-        private readonly TestTraceWriter _traceWriter;
         private readonly ScriptSettingsManager _settingsManager;
+        private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
 
         public StandbyModeTests()
         {
@@ -27,9 +28,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var eventManagerMock = new Mock<IScriptEventManager>();
             var routerMock = new Mock<IWebJobsRouter>();
 
-            _webHostResolver = new WebHostResolver(_settingsManager, new TestSecretManagerFactory(false),
-               eventManagerMock.Object, WebHostSettings.CreateDefault(_settingsManager), routerMock.Object, new DefaultLoggerFactoryBuilder());
-            _traceWriter = new TestTraceWriter(TraceLevel.Info);
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(_loggerProvider);
+
+            _webHostResolver = new WebHostResolver(_settingsManager, new TestSecretManagerFactory(false), eventManagerMock.Object,
+                new WebHostSettings(), routerMock.Object, new TestLoggerProviderFactory(_loggerProvider),
+                loggerFactory);
 
             WebScriptHostManager.ResetStandbyMode();
         }
@@ -80,16 +84,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (new TestEnvironment())
             {
-                _traceWriter.Traces.Clear();
-
                 var settings = GetWebHostSettings();
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                 Assert.False(WebScriptHostManager.InStandbyMode);
                 _webHostResolver.EnsureInitialized(settings);
 
                 // ensure specialization message is NOT written
-                var traces = _traceWriter.Traces.ToArray();
-                var traceEvent = traces.SingleOrDefault(p => p.Message.Contains(Resources.HostSpecializationTrace));
+                var traces = _loggerProvider.GetAllLogMessages().ToArray();
+                var traceEvent = traces.SingleOrDefault(p => p.FormattedMessage.Contains(Resources.HostSpecializationTrace));
                 Assert.Null(traceEvent);
             }
         }
@@ -99,21 +101,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (new TestEnvironment())
             {
-                _traceWriter.Traces.Clear();
-
                 var settings = GetWebHostSettings();
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
                 Assert.True(WebScriptHostManager.InStandbyMode);
                 _webHostResolver.EnsureInitialized(settings);
 
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
                 Assert.False(WebScriptHostManager.InStandbyMode);
                 _webHostResolver.EnsureInitialized(settings);
 
-                var traces = _traceWriter.Traces.ToArray();
+                var traces = _loggerProvider.GetAllLogMessages().ToArray();
                 var traceEvent = traces.Last();
-                Assert.Equal(Resources.HostSpecializationTrace, traceEvent.Message);
-                Assert.Equal(TraceLevel.Info, traceEvent.Level);
+                Assert.Equal(Resources.HostSpecializationTrace, traceEvent.FormattedMessage);
+                Assert.Equal(LogLevel.Information, traceEvent.Level);
             }
         }
 
@@ -133,6 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     Assert.NotNull(prev);
 
                     _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                    _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
                     current = func(settings);
                     Assert.NotNull(current);
                     Assert.NotSame(prev, current);
@@ -160,8 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(home, @"site\wwwroot"),
                 LogPath = Path.Combine(home, @"LogFiles\Application\Functions"),
-                SecretsPath = Path.Combine(home, @"data\Functions\secrets"),
-                TraceWriter = _traceWriter
+                SecretsPath = Path.Combine(home, @"data\Functions\secrets")
             };
         }
 

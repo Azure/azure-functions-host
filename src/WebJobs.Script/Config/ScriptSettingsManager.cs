@@ -34,7 +34,15 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public bool IsRemoteDebuggingEnabled => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.RemoteDebuggingPort));
 
-        public bool IsDynamicSku => GetSetting(EnvironmentSettingNames.AzureWebsiteSku) == ScriptConstants.DynamicSku;
+        public virtual bool IsZipDeployment => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteZipDeployment));
+
+        public virtual bool ContainerReady => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady));
+
+        public string WebsiteSku => GetSetting(EnvironmentSettingNames.AzureWebsiteSku);
+
+        public bool IsDynamicSku => WebsiteSku == ScriptConstants.DynamicSku;
+
+        public virtual bool FileSystemIsReadOnly => IsZipDeployment;
 
         public virtual string AzureWebsiteDefaultSubdomain
         {
@@ -75,6 +83,17 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 return name?.ToLowerInvariant();
             }
         }
+
+        public virtual string InstanceId
+         {
+             get
+             {
+                 string instanceId = GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId)
+                     ?? Environment.MachineName.GetHashCode().ToString("X").PadLeft(32, '0');
+
+                 return instanceId.Substring(0, Math.Min(instanceId.Length, 32));
+             }
+         }
 
         public virtual string ApplicationInsightsInstrumentationKey
         {

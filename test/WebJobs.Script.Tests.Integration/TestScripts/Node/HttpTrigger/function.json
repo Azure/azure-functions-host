@@ -4,7 +4,8 @@
             "type": "httpTrigger",
             "name": "request",
             "direction": "in",
-            "methods": [ "get", "post" ]
+            "methods": [ "get", "post" ],
+            "authLevel": "anonymous"
         },
         {
             "type": "http",

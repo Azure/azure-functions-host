@@ -7,7 +7,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.Extensions.Logging;
 
@@ -20,6 +19,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly string _secretsPath;
         private readonly string _hostSecretsPath;
+        private readonly int _retryCount = 5;
+        private readonly int _retryDelay = 100;
         private readonly AutoRecoveringFileSystemWatcher _fileWatcher;
         private bool _disposed = false;
 
@@ -41,11 +42,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public event EventHandler<SecretsChangedEventArgs> SecretsChanged;
 
-        private string GetSecretsFilePath(ScriptSecretsType secretsType, string functionName = null)
+        private string GetSecretsFilePath(ScriptSecretsType secretsType, string functionName = null, bool isSnapshot = false)
         {
-            return secretsType == ScriptSecretsType.Host
+            string result = secretsType == ScriptSecretsType.Host
                 ? _hostSecretsPath
                 : GetFunctionSecretsFilePath(functionName);
+
+            if (isSnapshot)
+            {
+                result = SecretsUtility.GetNonDecryptableName(result);
+            }
+
+            return result;
         }
 
         private string GetFunctionSecretsFilePath(string functionName)
@@ -77,8 +85,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             string secretsContent = null;
             if (File.Exists(filePath))
             {
-                // load the secrets file
-                secretsContent = await FileUtility.ReadAsync(filePath);
+                for (int currentRetry = 0; ; currentRetry++)
+                {
+                    try
+                    {
+                        // load the secrets file
+                        secretsContent = await FileUtility.ReadAsync(filePath);
+                        break;
+                    }
+                    catch (IOException)
+                    {
+                        if (currentRetry > _retryCount)
+                        {
+                            throw;
+                        }
+                    }
+                    await Task.Delay(_retryDelay);
+                }
             }
             return secretsContent;
         }
@@ -86,10 +109,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public async Task WriteAsync(ScriptSecretsType type, string functionName, string secretsContent)
         {
             string filePath = GetSecretsFilePath(type, functionName);
+            for (int currentRetry = 0; ; currentRetry++)
+            {
+                try
+                {
+                    await FileUtility.WriteAsync(filePath, secretsContent);
+                    break;
+                }
+                catch (IOException)
+                {
+                    if (currentRetry > _retryCount)
+                    {
+                        throw;
+                    }
+                }
+                await Task.Delay(_retryDelay);
+            }
+        }
+
+        public async Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, string secretsContent)
+        {
+            string filePath = GetSecretsFilePath(type, functionName, true);
             await FileUtility.WriteAsync(filePath, secretsContent);
         }
 
-        public async Task PurgeOldSecretsAsync(IList<string> currentFunctions, TraceWriter traceWriter, ILogger logger)
+        public async Task PurgeOldSecretsAsync(IList<string> currentFunctions, ILogger logger)
         {
             try
             {
@@ -101,7 +145,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 foreach (var secretFile in secretsDirectory.GetFiles("*.json"))
                 {
-                    if (string.Compare(secretFile.Name, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0)
+                    if (string.Compare(secretFile.Name, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0
+                        || secretFile.Name.Contains(ScriptConstants.Snapshot))
                     {
                         // the secrets directory contains the host secrets file in addition
                         // to function secret files
@@ -115,8 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         {
                             // destructive operation, thus log
                             string removeSecretsMessage = $"Deleting secret file {secretFile.FullName}";
-                            traceWriter.Verbose(removeSecretsMessage);
-                            logger?.LogDebug(removeSecretsMessage);
+                            logger.LogDebug(removeSecretsMessage);
                             await FileUtility.DeleteIfExistsAsync(secretFile.FullName);
                         }
                         catch
@@ -130,9 +174,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 // Purge is best effort
                 string message = "An error occurred while purging secret files";
-                traceWriter.Error(message, ex);
-                logger?.LogError(0, ex, message);
+                logger.LogError(0, ex, message);
             }
+        }
+
+        public async Task<string[]> GetSecretSnapshots(ScriptSecretsType type, string functionName)
+        {
+            string prefix = Path.GetFileNameWithoutExtension(GetSecretsFilePath(type, functionName)) + $".{ScriptConstants.Snapshot}*";
+
+            return await FileUtility.GetFilesAsync(Path.GetDirectoryName(_hostSecretsPath), prefix);
         }
 
         private void Dispose(bool disposing)

@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
         /// - FE should return success regardless if worker belongs.
         /// - Any unexpected error will throw.
         /// </summary>
-        public async Task RemoveWorker(string activityId, IWorkerInfo worker)
+        public async Task<bool> RemoveWorker(string activityId, IWorkerInfo worker)
         {
             var stampHostName = GetStampHostName(worker.StampName);
             var details = string.Format("Remove worker request from {0}:{1}", AppServiceSettings.CurrentStampName, AppServiceSettings.WorkerName);
@@ -189,7 +189,13 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling
 
             using (var response = await SendAsync(activityId, HttpMethod.Delete, pathAndQuery, worker, details))
             {
+                if (response.StatusCode == HttpStatusCode.NotModified)
+                {
+                    return false;
+                }
+
                 response.EnsureSuccessStatusCode();
+                return true;
             }
         }
 

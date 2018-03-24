@@ -25,6 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _secretManager = secretManager;
         }
 
-        public ISecretManager Create(ScriptSettingsManager settingsManager, ILoggerFactory loggerFactory, ISecretsRepository secretsRepository) => _secretManager ?? new SecretManager();
+        public ISecretManager Create(ScriptSettingsManager settingsManager, ILogger logger, ISecretsRepository secretsRepository) => _secretManager ?? new SecretManager();
     }
 }

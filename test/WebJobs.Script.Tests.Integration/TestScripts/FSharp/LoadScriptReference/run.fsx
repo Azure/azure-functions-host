@@ -13,7 +13,5 @@ open Microsoft.Azure.WebJobs.Host
 let Run(req: HttpRequestMessage) : Task<HttpResponseMessage>  = 
     async {
         let response = Class.Test().Response
-        req.Properties.["LoadedScriptResponse"] <- response
-
         return new HttpResponseMessage(HttpStatusCode.OK, Content = new StringContent(response)) 
     } |> Async.StartAsTask

@@ -9,7 +9,6 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text.RegularExpressions;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
@@ -97,9 +96,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
             ParameterDescriptor triggerParameter = CreateTriggerParameter(triggerMetadata);
             parameters.Add(triggerParameter);
-
-            // Add a TraceWriter for logging
-            parameters.Add(new ParameterDescriptor(ScriptConstants.SystemLogParameterName, typeof(TraceWriter)));
 
             // Add an IBinder to support the binding programming model
             parameters.Add(new ParameterDescriptor(ScriptConstants.SystemBinderParameterName, typeof(IBinder)));

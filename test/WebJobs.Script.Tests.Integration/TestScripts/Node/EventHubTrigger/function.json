@@ -1,0 +1,18 @@
+﻿{
+    "bindings": [
+        {
+            "type": "eventHubTrigger",
+            "name": "workItem",
+            "direction": "in",
+            "connection": "AzureWebJobsEventHubReceiver",
+            "eventHubName": "%AzureWebJobsEventHubPath%",
+            "consumerGroup": "$Default"
+        },
+        {
+            "type": "blob",
+            "name": "$return",
+            "direction": "out",
+            "path": "test-output-node/{id}"
+        }
+    ]
+}

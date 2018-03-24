@@ -1,0 +1,15 @@
+﻿{
+    "bindings": [
+        {
+            "type": "manualTrigger",
+            "name": "input",
+            "direction": "in"
+        },
+        {
+            "type": "table",
+            "name": "items",
+            "direction": "out",
+            "tableName": "testoutput"
+        }
+    ]
+}

@@ -11,7 +11,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description.DotNet;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -25,14 +24,14 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
     public class ExtensionsManager : IExtensionsManager
     {
         private readonly string _scriptRootPath;
-        private readonly TraceWriter _traceWriter;
         private readonly ILogger _logger;
+        private string _nugetFallbackPath;
 
-        public ExtensionsManager(string scriptRootPath, TraceWriter traceWriter, ILogger logger)
+        public ExtensionsManager(string scriptRootPath, ILogger logger, string nugetFallbackPath = null)
         {
             _scriptRootPath = scriptRootPath;
-            _traceWriter = traceWriter;
             _logger = logger;
+            _nugetFallbackPath = nugetFallbackPath;
         }
 
         internal string ProjectPath => Path.Combine(_scriptRootPath, ExtensionsProjectFileName);
@@ -102,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
             var tcs = new TaskCompletionSource<object>();
 
-            _traceWriter.Info("Restoring extension packages");
+            _logger.LogInformation("Restoring extension packages");
 
             try
             {
@@ -133,6 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                 }
 
                 SetupProcessEnvironment(startInfo);
+                ApplyNugetFallbackFolderConfiguration(startInfo);
 
                 var process = new Process { StartInfo = startInfo };
                 process.ErrorDataReceived += (s, e) => logBuilder.Append(e.Data);
@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                                 else
                                 {
                                     tcs.SetResult(null);
-                                    _traceWriter.Info("Extensions packages restore succeeded.");
+                                    _logger.LogInformation("Extensions packages restore succeeded.");
                                 }
                             });
                     }
@@ -188,6 +188,30 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             }
 
             startInfo.EnvironmentVariables.Add("DOTNET_SKIP_FIRST_TIME_EXPERIENCE", "true");
+            startInfo.EnvironmentVariables.Add(NugetXmlDocModeSettingName, NugetXmlDocSkipMode);
+        }
+
+        private void ApplyNugetFallbackFolderConfiguration(ProcessStartInfo startInfo)
+        {
+            string nugetFallbackFolderRootPath = Path.Combine(Environment.ExpandEnvironmentVariables("%programfiles(x86)%"), NugetFallbackFolderRootName);
+            if (string.IsNullOrEmpty(_nugetFallbackPath) && FileUtility.DirectoryExists(nugetFallbackFolderRootPath))
+            {
+                _nugetFallbackPath = FileUtility.EnumerateDirectories(nugetFallbackFolderRootPath)
+                    .Select(directoryPath =>
+                    {
+                        var directoryName = FileUtility.DirectoryInfoFromDirectoryName(directoryPath).Name;
+                        Version.TryParse(directoryName, out Version version);
+                        return new Tuple<string, Version>(directoryPath, version);
+                    })
+                    .Where(p => p.Item2 != null)
+                    .OrderByDescending(p => p.Item2)
+                    .FirstOrDefault()?.Item1?.ToString();
+            }
+
+            if (FileUtility.DirectoryExists(_nugetFallbackPath))
+            {
+                startInfo.Arguments += $" /p:RestoreFallbackFolders=\"{_nugetFallbackPath}\"";
+            }
         }
 
         private Exception CreateRestoreException(StringBuilder logBuilder, Exception innerException = null)
