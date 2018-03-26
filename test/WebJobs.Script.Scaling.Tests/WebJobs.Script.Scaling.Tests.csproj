@@ -8,7 +8,7 @@
     <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\WebJobs.Script.Tests.Shared\TestScopedEnvironmentVariable.cs" Link="Properties\TestScopedEnvironmentVariable.cs" />
+    <Compile Include="..\WebJobs.Script.Tests.Shared\TestScopedEnvironmentVariable.cs" Link="TestScopedEnvironmentVariable.cs" />
   </ItemGroup>
 
   <ItemGroup>
