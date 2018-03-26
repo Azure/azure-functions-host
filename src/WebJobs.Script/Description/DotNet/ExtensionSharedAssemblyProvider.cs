@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.Loader;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 
@@ -25,13 +26,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _bindingProviders = bindingProviders;
         }
 
-        public bool TryResolveAssembly(string assemblyName, out Assembly assembly)
+        public bool TryResolveAssembly(string assemblyName, AssemblyLoadContext targetContext, out Assembly assembly)
         {
             assembly = null;
 
             foreach (var bindingProvider in _bindingProviders)
             {
-                if (bindingProvider.TryResolveAssembly(assemblyName, out assembly) ||
+                if (bindingProvider.TryResolveAssembly(assemblyName, targetContext, out assembly) ||
                     TryResolveExtensionAssembly(bindingProvider, assemblyName, out assembly))
                 {
                     break;

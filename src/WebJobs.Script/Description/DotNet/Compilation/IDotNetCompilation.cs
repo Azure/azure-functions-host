@@ -10,8 +10,8 @@ using Microsoft.CodeAnalysis;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public interface IDotNetCompilation : ICompilation<Assembly>
+    public interface IDotNetCompilation : ICompilation<DotNetCompilationResult>
     {
-        FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver);
+        FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver, Assembly functionAssembly);
     }
 }

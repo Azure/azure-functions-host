@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -47,10 +48,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Create the invoker dependencies and setup the appropriate method to throw the exception
             RunDependencies dependencies = CreateDependencies();
-            dependencies.Compilation.Setup(c => c.GetEntryPointSignature(It.IsAny<IFunctionEntryPointResolver>()))
+            dependencies.Compilation.Setup(c => c.GetEntryPointSignature(It.IsAny<IFunctionEntryPointResolver>(), It.IsAny<Assembly>()))
                 .Throws(exception);
             dependencies.Compilation.Setup(c => c.EmitAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(typeof(object).Assembly);
+                .ReturnsAsync(DotNetCompilationResult.FromPath(typeof(DotNetFunctionInvokerTests).Assembly.Location));
 
             string functionName = Guid.NewGuid().ToString();
             string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), functionName);
@@ -71,8 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             metadata.Bindings.Add(new BindingMetadata() { Name = "Test", Type = "ManualTrigger" });
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<Script.Binding.FunctionBinding>(),
-                new Collection<FunctionBinding>(), dependencies.EntrypointResolver.Object, new FunctionAssemblyLoader(string.Empty),
-                dependencies.CompilationServiceFactory.Object);
+                new Collection<FunctionBinding>(), dependencies.EntrypointResolver.Object, dependencies.CompilationServiceFactory.Object);
 
             // Send file change notification to trigger a reload
             var fileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetTempPath(), Path.Combine(Path.GetFileName(rootFunctionsFolder), Path.GetFileName(filePath)));
@@ -129,8 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
-                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                    new DotNetCompilationServiceFactory(null));
+                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new DotNetCompilationServiceFactory(null));
 
                 try
                 {
@@ -188,8 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
-                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                    new DotNetCompilationServiceFactory(null));
+                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new DotNetCompilationServiceFactory(null));
                 try
                 {
                     await invoker.GetFunctionTargetAsync();
@@ -280,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             compilationFactory.Setup(f => f.CreateService(ScriptType.CSharp, It.IsAny<IFunctionMetadataResolver>())).Returns(dotnetCompilationService.Object);
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
-                new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
+                new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(),
                 compilationFactory.Object, new Mock<IFunctionMetadataResolver>().Object);
 
             var arguments = new object[]
@@ -340,7 +338,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
-                  new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
+                  new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(),
                   new DotNetCompilationServiceFactory(null), metadataResolver.Object);
 
                 await invoker.RestorePackagesAsync(true);
