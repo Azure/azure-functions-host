@@ -3,6 +3,7 @@
 
 using System.Collections.ObjectModel;
 using System.Reflection;
+using System.Runtime.Loader;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
@@ -24,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var provider = new ExtensionSharedAssemblyProvider(bindingProviders);
 
             Assembly assembly;
-            bool result = provider.TryResolveAssembly(typeof(TestBindingProvider).Assembly.GetName().Name, out assembly);
+            bool result = provider.TryResolveAssembly(typeof(TestBindingProvider).Assembly.GetName().Name, AssemblyLoadContext.Default, out assembly);
 
             Assert.True(result);
             Assert.NotNull(assembly);

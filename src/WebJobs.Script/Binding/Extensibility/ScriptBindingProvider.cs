@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Reflection;
+using System.Runtime.Loader;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
@@ -64,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         /// <param name="assemblyName">The name of the assembly to resolve.</param>
         /// <param name="assembly">The assembly if we were able to resolve.</param>
         /// <returns>True if the assembly could be resolved, false otherwise.</returns>
-        public virtual bool TryResolveAssembly(string assemblyName, out Assembly assembly)
+        public virtual bool TryResolveAssembly(string assemblyName, AssemblyLoadContext targetContext, out Assembly assembly)
         {
             assembly = null;
             return false;

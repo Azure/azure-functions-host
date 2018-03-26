@@ -21,6 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class Utility
     {
+        // Prefix that uniquely identifies our assemblies
+        // i.e.: "f-<functionname>"
+        public const string AssemblyPrefix = "f-";
+        public const string AssemblySeparator = "__";
+
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         public const string AzureWebsiteSku = "WEBSITE_SKU";
         public const string DynamicSku = "Dynamic";
@@ -460,6 +465,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 return value.ToString();
             }
             return null;
+        }
+
+        public static string GetAssemblyNameFromMetadata(Description.FunctionMetadata metadata, string suffix)
+        {
+            return AssemblyPrefix + metadata.Name + AssemblySeparator + suffix.GetHashCode().ToString();
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter

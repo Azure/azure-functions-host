@@ -10,6 +10,14 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="runtimeassemblies.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="runtimeassemblies.json">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FSharp.Compiler.Service" Version="13.0.0" />

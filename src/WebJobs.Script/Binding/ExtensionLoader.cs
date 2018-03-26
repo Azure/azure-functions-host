@@ -72,7 +72,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     string extensionName = item.Name ?? item.TypeName;
                     _logger.LogInformation($"Loading custom extension '{extensionName}'");
-
                     Type extensionType = Type.GetType(item.TypeName,
                         assemblyName =>
                         {

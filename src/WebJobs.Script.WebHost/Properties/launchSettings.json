@@ -18,8 +18,8 @@
     "WebJobs.Script.WebHost.Core": {
       "commandName": "Project",
       "launchBrowser": true,
-      "launchUrl": "",
       "environmentVariables": {
+        "AzureWebJobsScriptRoot": "C:\\Users\\facaval\\source\\repos\\AssemblyLoadTest\\AssemblyLoadTest\\bin\\Debug\\netstandard2.0",
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "applicationUrl": "http://localhost:44347/"

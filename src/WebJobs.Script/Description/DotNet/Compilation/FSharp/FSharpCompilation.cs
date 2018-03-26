@@ -18,13 +18,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal class FSharpCompilation : IDotNetCompilation
     {
-        private FSharpErrorInfo[] _errors;
-        private FSharpOption<Assembly> _assemblyOption;
+        private readonly FSharpErrorInfo[] _errors;
+        private readonly byte[] _assemblyBytes;
+        private readonly byte[] _pdbBytes;
 
-        public FSharpCompilation(FSharpErrorInfo[] errors, FSharpOption<Assembly> assemblyOption)
+        public FSharpCompilation(FSharpErrorInfo[] errors, byte[] assemblyBytes, byte[] pdbBytes)
         {
             _errors = errors;
-            _assemblyOption = assemblyOption;
+            _assemblyBytes = assemblyBytes;
+            _pdbBytes = pdbBytes;
         }
 
         public ImmutableArray<Diagnostic> GetDiagnostics()
@@ -46,13 +48,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return result.ToImmutable();
         }
 
-        public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver)
+        public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver, Assembly functionAssembly)
         {
             EnsureAssemblyOption(false);
 
             // Scrape the compiled assembly for entry points
             IList<MethodReference<MethodInfo>> methods =
-                            _assemblyOption.Value.GetTypes().SelectMany(t =>
+                            functionAssembly.GetTypes().SelectMany(t =>
                                 t.GetMethods().Select(m =>
                                     new MethodReference<MethodInfo>(m.Name, m.IsPublic, m))).ToList();
 
@@ -84,16 +86,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         async Task<object> ICompilation.EmitAsync(CancellationToken cancellationToken) => await EmitAsync(cancellationToken);
 
-        public Task<Assembly> EmitAsync(CancellationToken cancellationToken)
+        public Task<DotNetCompilationResult> EmitAsync(CancellationToken cancellationToken)
         {
             EnsureAssemblyOption();
 
-            return Task.FromResult(_assemblyOption.Value);
+            return Task.FromResult(DotNetCompilationResult.FromBytes(_assemblyBytes, _pdbBytes));
         }
 
         private void EnsureAssemblyOption(bool includeDiagnostics = true)
         {
-            if (_assemblyOption == null)
+            if (_assemblyBytes == null)
             {
                 throw new CompilationErrorException("Script compilation failed.", includeDiagnostics ? this.GetDiagnostics() : ImmutableArray<Diagnostic>.Empty);
             }
