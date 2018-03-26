@@ -13,6 +13,7 @@ Publish
 *.Cache
 msbuild.log
 package-lock.json
+**/Properties/launchSettings.json
 
 /packages
 /TestResults

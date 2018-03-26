@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 .AddSyntaxTrees(scriptTree);
 
             return compilation.WithOptions(compilation.Options.WithOptimizationLevel(_optimizationLevel))
-                .WithAssemblyName(FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, compilation.AssemblyName));
+                .WithAssemblyName(Utility.GetAssemblyNameFromMetadata(functionMetadata, compilation.AssemblyName));
         }
     }
 }

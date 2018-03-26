@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return _compilation.WithAnalyzers(GetAnalyzers()).GetAllDiagnosticsAsync().Result;
         }
 
-        public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver)
+        public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver, Assembly functionAssembly)
         {
             if (!_compilation.SyntaxTrees.Any())
             {
@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         async Task<object> ICompilation.EmitAsync(CancellationToken cancellationToken) => await EmitAsync(cancellationToken);
 
-        public async Task<Assembly> EmitAsync(CancellationToken cancellationToken)
+        public async Task<DotNetCompilationResult> EmitAsync(CancellationToken cancellationToken)
         {
             try
             {
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     // and if so quit here.
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    return Assembly.Load(assemblyStream.GetBuffer(), pdbStream.GetBuffer());
+                    return DotNetCompilationResult.FromBytes(assemblyStream.GetBuffer(), pdbStream.GetBuffer());
                 }
             }
             catch (Exception exc) when (!(exc is CompilationErrorException))

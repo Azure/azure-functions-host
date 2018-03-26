@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Loader;
 using System.Text.RegularExpressions;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -44,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return binPath ?? AppDomain.CurrentDomain.BaseDirectory;
         }
 
-        public bool TryResolveAssembly(string assemblyName, out Assembly assembly)
+        public bool TryResolveAssembly(string assemblyName, AssemblyLoadContext targetContext, out Assembly assembly)
         {
             assembly = null;
 

@@ -22,7 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public sealed class DotNetFunctionInvoker : FunctionInvokerBase
     {
-        private readonly FunctionAssemblyLoader _assemblyLoader;
         private readonly string _triggerInputName;
         private readonly FunctionMetadata _functionMetadata;
         private readonly Collection<FunctionBinding> _inputBindings;
@@ -45,14 +44,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Collection<FunctionBinding> inputBindings,
             Collection<FunctionBinding> outputBindings,
             IFunctionEntryPointResolver functionEntryPointResolver,
-            FunctionAssemblyLoader assemblyLoader,
             ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory,
             IFunctionMetadataResolver metadataResolver = null)
             : base(host, functionMetadata)
         {
             _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
             _functionEntryPointResolver = functionEntryPointResolver;
-            _assemblyLoader = assemblyLoader;
             _metadataResolver = metadataResolver ?? CreateMetadataResolver(host, functionMetadata, FunctionLogger);
             _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);
             _inputBindings = inputBindings;
@@ -76,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private static IFunctionMetadataResolver CreateMetadataResolver(ScriptHost host, FunctionMetadata functionMetadata, ILogger logger)
         {
-            return new FunctionMetadataResolver(functionMetadata.ScriptFile, host.ScriptConfig.BindingProviders, logger);
+            return new ScriptFunctionMetadataResolver(functionMetadata.ScriptFile, host.ScriptConfig.BindingProviders, logger);
         }
 
         private void InitializeFileWatcher()
@@ -120,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             string error = Utility.FlattenException(ex, s =>
             {
-                string baseAssemblyName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(Metadata, string.Empty);
+                string baseAssemblyName = Utility.GetAssemblyNameFromMetadata(Metadata, string.Empty);
                 if (s != null && s.StartsWith(baseAssemblyName))
                 {
                     return Metadata.Name;
@@ -147,7 +144,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 IDotNetCompilation compilation = await _compilationService.GetFunctionCompilationAsync(Metadata);
                 compilationResult = compilation.GetDiagnostics();
 
-                signature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
+                // TODO: Invoking this without the assembly is not supported by all compilations
+                signature = compilation.GetEntryPointSignature(_functionEntryPointResolver, null);
                 compilationResult = ValidateFunctionBindingArguments(signature, _triggerInputName, _inputBindings, _outputBindings, compilationResult.ToBuilder());
             }
             catch (CompilationErrorException exc)
@@ -283,10 +281,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     IDotNetCompilation compilation = await _compilationService.GetFunctionCompilationAsync(Metadata);
 
-                    Assembly assembly = await compilation.EmitAsync(cancellationToken);
-                    _assemblyLoader.CreateOrUpdateContext(Metadata, assembly, _metadataResolver, FunctionLogger);
+                    DotNetCompilationResult compilationResult = await compilation.EmitAsync(cancellationToken);
+                    Assembly assembly = compilationResult.Load(Metadata, _metadataResolver, FunctionLogger);
 
-                    FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver);
+                    FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver, assembly);
 
                     ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, _triggerInputName, _inputBindings, _outputBindings, throwIfFailed: true);
                     TraceCompilationDiagnostics(bindingDiagnostics);

@@ -17,7 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly Regex _entryPointRegex = new Regex("^(?<typename>.*)\\.(?<methodname>\\S*)$", RegexOptions.Compiled);
         private readonly string _assemblyFilePath;
         private readonly string _entryPointName;
-        private Assembly _functionAssembly;
 
         public RawAssemblyCompilation(string assemblyFilePath, string entryPointName)
         {
@@ -25,18 +24,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _entryPointName = entryPointName;
         }
 
-        public Assembly FunctionAssembly => _functionAssembly ?? (_functionAssembly = Assembly.LoadFrom(_assemblyFilePath));
+        async Task<object> ICompilation.EmitAsync(CancellationToken cancellationToken)
+             => await EmitAsync(cancellationToken);
 
-        async Task<object> ICompilation.EmitAsync(CancellationToken cancellationToken) => await EmitAsync(cancellationToken);
-
-        public Task<Assembly> EmitAsync(CancellationToken cancellationToken)
+        public Task<DotNetCompilationResult> EmitAsync(CancellationToken cancellationToken)
         {
-            return Task.FromResult(FunctionAssembly);
+            return Task.FromResult(DotNetCompilationResult.FromPath(_assemblyFilePath));
         }
 
         public ImmutableArray<Diagnostic> GetDiagnostics() => ImmutableArray<Diagnostic>.Empty;
 
-        public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver)
+        public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver, Assembly functionAssembly)
         {
             var entryPointMatch = _entryPointRegex.Match(_entryPointName);
             if (!entryPointMatch.Success)
@@ -47,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string typeName = entryPointMatch.Groups["typename"].Value;
             string methodName = entryPointMatch.Groups["methodname"].Value;
 
-            Type functionType = FunctionAssembly.GetType(typeName);
+            Type functionType = functionAssembly.GetType(typeName);
             if (functionType == null)
             {
                 throw new InvalidOperationException($"The function type name '{typeName}' is invalid.");

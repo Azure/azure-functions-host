@@ -16,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal sealed class DotNetFunctionDescriptorProvider : FunctionDescriptorProvider, IDisposable
     {
-        private readonly FunctionAssemblyLoader _assemblyLoader;
         private readonly ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> _compilationServiceFactory;
 
         public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
@@ -28,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory)
             : base(host, config)
         {
-            _assemblyLoader = new FunctionAssemblyLoader(config.RootScriptPath);
             _compilationServiceFactory = compilationServiceFactory;
         }
 
@@ -41,7 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (disposing)
             {
-                _assemblyLoader.Dispose();
             }
         }
 
@@ -65,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            return new DotNetFunctionInvoker(Host, functionMetadata, inputBindings, outputBindings, new FunctionEntryPointResolver(functionMetadata.EntryPoint), _assemblyLoader, _compilationServiceFactory);
+            return new DotNetFunctionInvoker(Host, functionMetadata, inputBindings, outputBindings, new FunctionEntryPointResolver(functionMetadata.EntryPoint), _compilationServiceFactory);
         }
 
         protected override Collection<ParameterDescriptor> GetFunctionParameters(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,

@@ -960,7 +960,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string path = metadata.ScriptFile;
                 var typeName = Utility.GetFullClassName(metadata.EntryPoint);
 
-                Assembly assembly = Assembly.LoadFrom(path);
+                Assembly assembly = FunctionAssemblyLoadContext.Shared.LoadFromAssemblyPath(path);
                 var type = assembly.GetType(typeName);
                 if (type != null)
                 {
@@ -1022,8 +1022,6 @@ namespace Microsoft.Azure.WebJobs.Script
             // General purpose binder that works directly against SDK.
             // This should eventually replace all other ScriptBindingProvider
             bindingProviderTypes.Add(typeof(GeneralScriptBindingProvider));
-
-            bindingProviderTypes.Add(typeof(BuiltinExtensionBindingProvider));
 
             // Create the binding providers
             var bindingProviders = new Collection<ScriptBindingProvider>();
