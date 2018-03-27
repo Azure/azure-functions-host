@@ -263,17 +263,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
             }
 
-            // Proxy routes will take precedence over http trigger functions
-            // so they will be added first to the router.
+            IRouter proxyRouter = null;
+            IRouter functionRouter = null;
+
             if (proxiesRoutesBuilder.Count > 0)
             {
-                _router.AddFunctionRoute(proxiesRoutesBuilder.Build());
+                 proxyRouter = proxiesRoutesBuilder.Build();
             }
 
             if (routesBuilder.Count > 0)
             {
-                _router.AddFunctionRoute(routesBuilder.Build());
+                functionRouter = routesBuilder.Build();
             }
+
+            _router.AddFunctionRoutes(functionRouter, proxyRouter);
         }
 
         public override void Shutdown()
