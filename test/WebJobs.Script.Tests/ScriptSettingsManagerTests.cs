@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -35,6 +36,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (var tempVariables = new TestScopedEnvironmentVariable(variables))
             {
                 Assert.Equal(expectedValue, ScriptSettingsManager.Instance.AzureWebsiteUniqueSlotName);
+            }
+        }
+
+        [Fact]
+        public void Reset_ReloadsEnvironmentChanges()
+        {
+            using (var variable = new TestScopedEnvironmentVariable(nameof(Reset_ReloadsEnvironmentChanges), "foo"))
+            {
+                var configuration = new ConfigurationBuilder()
+                    .AddEnvironmentVariables()
+                    .Build();
+
+                ScriptSettingsManager.Instance.SetConfigurationFactory(() => configuration);
+                Assert.Equal("foo", ScriptSettingsManager.Instance.GetSetting(nameof(Reset_ReloadsEnvironmentChanges)));
+
+                Environment.SetEnvironmentVariable(nameof(Reset_ReloadsEnvironmentChanges), "bar");
+                ScriptSettingsManager.Instance.Reset();
+                Assert.Equal("bar", ScriptSettingsManager.Instance.GetSetting(nameof(Reset_ReloadsEnvironmentChanges)));
             }
         }
     }
