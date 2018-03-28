@@ -129,7 +129,8 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public virtual void Reset()
         {
-            _configuration = new Lazy<IConfiguration>(_configurationFactory);
+            Lazy<IConfiguration> current = _configuration;
+            _configuration = new Lazy<IConfiguration>(() => InitializeConfiguration(current));
 
             _settingsCache.Clear();
         }
@@ -151,6 +152,24 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 Environment.SetEnvironmentVariable(settingKey, settingValue);
                 Reset();
             }
+        }
+
+        private IConfiguration InitializeConfiguration(Lazy<IConfiguration> currentConfiguration)
+        {
+            var configuration = _configurationFactory();
+
+            // If the factory returned a cached instance
+            // that is the same as the instance we previously had,
+            // reload the configuration on that instance.
+            if (configuration is IConfigurationRoot root &&
+                currentConfiguration != null &&
+                currentConfiguration.IsValueCreated &&
+                object.ReferenceEquals(currentConfiguration.Value, root))
+            {
+                root.Reload();
+            }
+
+            return configuration;
         }
 
         private static IConfigurationRoot BuildConfiguration()
