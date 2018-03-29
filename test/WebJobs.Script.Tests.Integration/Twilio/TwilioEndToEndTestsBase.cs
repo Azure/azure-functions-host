@@ -25,13 +25,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Twilio
 
             await TestHelpers.Await(() =>
             {
-                // Wait until input has been processed
+                // Wait until input has been processed, fail if missing
                 logs = _fixture.Host.GetLog();
                 return logs.Contains(testData);
             });
-
-            // Make sure the input string made it all the way through
-            Assert.True(logs.Contains(testData));
         }
 
         public class TestFixture : EndToEndTestFixture

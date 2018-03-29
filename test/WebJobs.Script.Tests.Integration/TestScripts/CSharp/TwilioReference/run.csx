@@ -5,6 +5,6 @@ using Twilio.Types;
 
 public static void Run(string input, TraceWriter log)
 {
-    log.Info(input);
     var message = new CreateMessageOptions(new PhoneNumber("+1704XXXXXXX"));
+    log.Info(input);
 }
