@@ -34,13 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await QueueTriggerToBlobTest();
         }
 
-
-        [Fact(Skip = "Not yet enabled.")]
-        public void TwilioReferenceInvokeSucceeds()
-        {
-            // await TwilioReferenceInvokeSucceedsImpl(isDotNet: true);
-        }
-
         [Fact(Skip = "Not yet enabled.")]
         public void MobileTables()
         {
