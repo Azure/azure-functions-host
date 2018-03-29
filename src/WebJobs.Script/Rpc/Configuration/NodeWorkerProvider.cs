@@ -26,9 +26,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             var options = new DefaultWorkerOptions();
             config.GetSection("workers:node").Bind(options);
-            if (options.TryGetDebugPort(out int debugPort))
+
+            if (!string.IsNullOrWhiteSpace(options.Debug))
             {
-                args.ExecutableArguments.Add($"--inspect={debugPort}");
+                args.ExecutableArguments.Add($"--inspect={options.Debug}");
             }
             return true;
         }
