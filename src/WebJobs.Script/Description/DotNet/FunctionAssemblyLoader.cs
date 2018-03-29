@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 return ResolveAssemblyCore(sender, args);
             }
-            catch
+            catch (Exception exc) when (!exc.IsFatal())
             {
                 // Do not allow an exception to prevent other registered handlers from attempting to resolve the assembly.
                 return null;
