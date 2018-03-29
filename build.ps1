@@ -127,9 +127,9 @@ function BuildPackages([string] $runtime, [bool] $isSelfContained) {
     $privateSiteExtensionPath = "$siteExtensionPath\Functions"
     
     if ($isSelfContained) {    
-        dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj  -r $runtime -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber
+        dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj  -r $runtime -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false
     } else {
-        dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber
+        dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false
     }        
 
     # replace IL dlls with crossgen dlls
