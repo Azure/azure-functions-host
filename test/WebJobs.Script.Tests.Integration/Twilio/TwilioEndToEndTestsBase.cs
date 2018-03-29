@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Twilio
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() :
-                base(@"TestScripts\CSharp", "csharp")
+                base(@"TestScripts\CSharp", "csharp", "Microsoft.Azure.WebJobs.Extensions.Twilio", "3.0.0-beta5")
             {
             }
 
