@@ -5,7 +5,7 @@
     <AssemblyName>Microsoft.Azure.WebJobs.Script.WebHost</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.WebHost</RootNamespace>
     <PackageId>Microsoft.Azure.WebJobs.Script.WebHost</PackageId>
-    <IsPackable>false</IsPackable>
+    <IsPackable Condition="'$(IsPackable)' != ''">true</IsPackable>
   </PropertyGroup>
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
