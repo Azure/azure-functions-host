@@ -9,13 +9,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal static class StatusResultExtensions
     {
-        public static bool IsFailure(this StatusResult status, out Exception exception)
+        public static bool IsFailure(this StatusResult statusResult, out Exception exception)
         {
-            switch (status.Status)
+            switch (statusResult.Status)
             {
                 case StatusResult.Types.Status.Failure:
-                    var exc = status.Exception;
-                    exception = new RpcException(status.Result, exc.Message, exc.StackTrace);
+                    exception = GetRpcException(statusResult);
                     return true;
 
                 case StatusResult.Types.Status.Cancelled:
@@ -33,8 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             switch (status.Status)
             {
                 case StatusResult.Types.Status.Failure:
-                    var exc = status.Exception;
-                    tcs.SetException(new RpcException(status.Result, exc.Message, exc.StackTrace));
+                    tcs.SetException(GetRpcException(status));
                     return false;
 
                 case StatusResult.Types.Status.Cancelled:
@@ -44,6 +42,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 default:
                     return true;
             }
+        }
+
+        public static RpcException GetRpcException(StatusResult statusResult)
+        {
+            var ex = statusResult?.Exception;
+            var status = statusResult?.Status.ToString();
+            if (ex != null)
+            {
+                return new RpcException(status, ex.Message, ex.StackTrace);
+            }
+            return new RpcException(status, string.Empty, string.Empty);
         }
     }
 }
