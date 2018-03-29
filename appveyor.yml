@@ -23,7 +23,7 @@ install:
 build_script:
 - ps: |
     $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
-    .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeVersion (!$hasTag)
+    .\build.ps1 -buildNumber "11651" -includeVersion (!$hasTag)
 after_build:
 - ps: >
     Get-ChildItem buildoutput\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
