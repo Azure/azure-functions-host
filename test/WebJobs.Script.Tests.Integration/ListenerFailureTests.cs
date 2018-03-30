@@ -42,6 +42,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return logs.Any(l => l.Contains(logToFind));
             });
 
+            // assert that the host is retrying to start the
+            // listener in the background
+            await TestHelpers.Await(() =>
+            {
+                logs = TestHelpers.GetHostLogsAsync().Result;
+                string logToFind = "Retrying to start listener for function 'Functions.ListenerStartupException' (Attempt 2)";
+                return logs.Any(l => l.Contains(logToFind));
+            });
+
             // assert that Stop does not throw error
             Fixture.Host.Stop();
         }
