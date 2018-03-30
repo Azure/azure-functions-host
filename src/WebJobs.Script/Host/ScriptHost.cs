@@ -1527,6 +1527,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 hostConfig.HostId = (string)hostId;
             }
 
+            // Default AllowHostPartialStartup to true, but allow it
+            // to be overridden by config
+            hostConfig.AllowPartialHostStartup = true;
+            JToken allowPartialHostStartup = (JToken)config["allowPartialHostStartup"];
+            if (allowPartialHostStartup != null && allowPartialHostStartup.Type == JTokenType.Boolean)
+            {
+                hostConfig.AllowPartialHostStartup = (bool)allowPartialHostStartup;
+            }
+
             JToken fileWatchingEnabled = (JToken)config["fileWatchingEnabled"];
             if (fileWatchingEnabled != null && fileWatchingEnabled.Type == JTokenType.Boolean)
             {
@@ -1795,9 +1804,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Also notify the invoker so the error can also be written to the function
                 // log file
                 NotifyInvoker(functionException.MethodName, functionException);
-
-                // Mark the error as handled so execution will continue with this function disabled
-                functionException.Handled = true;
             }
             else
             {
