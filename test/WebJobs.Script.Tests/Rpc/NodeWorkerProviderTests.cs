@@ -15,12 +15,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     public class NodeWorkerProviderTests
     {
         [Fact]
-        public void SetsDebugPort()
+        public void SetsDebugAddress()
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new List<KeyValuePair<string, string>>()
                 {
-                    new KeyValuePair<string, string>("workers:node:debug", "2020"),
+                    new KeyValuePair<string, string>("workers:node:debug", "localhost:2020"),
                 })
                 .Build();
 
@@ -29,7 +29,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var result = provider.TryConfigureArguments(args, config, new TestLogger("test"));
 
             Assert.True(result);
-            Assert.Contains(args.ExecutableArguments, (exeArgs) => exeArgs.Contains("--inspect=2020"));
+            Assert.Contains(args.ExecutableArguments, (exeArgs) => exeArgs.Contains("--inspect=localhost:2020"));
+        }
+
+        [Fact]
+        public void DisablesDebugIfNotConfigured()
+        {
+            var config = new ConfigurationBuilder().Build();
+
+            var provider = new NodeWorkerProvider();
+            var args = new ArgumentsDescription();
+            var result = provider.TryConfigureArguments(args, config, new TestLogger("test"));
+
+            Assert.True(result);
+            Assert.DoesNotContain(args.ExecutableArguments, (exeArgs) => exeArgs.Contains("--inspect"));
         }
     }
 }

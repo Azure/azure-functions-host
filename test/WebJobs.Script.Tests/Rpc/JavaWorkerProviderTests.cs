@@ -14,13 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     public class JavaWorkerProviderTests
     {
         [Fact]
-        public void SetsDebugPort()
+        public void SetsDebugAddress()
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new List<KeyValuePair<string, string>>()
                 {
                     new KeyValuePair<string, string>("JAVA_HOME", "asdf"),
-                    new KeyValuePair<string, string>("workers:java:debug", "1000")
+                    new KeyValuePair<string, string>("workers:java:debug", "localhost:1000")
                 })
                 .Build();
 
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var result = provider.TryConfigureArguments(args, config, new TestLogger("test"));
 
             Assert.True(result);
-            Assert.Contains(args.ExecutableArguments, (exeArg) => exeArg.Contains("1000"));
+            Assert.Contains(args.ExecutableArguments, (exeArg) => exeArg.Contains("address=localhost:1000"));
         }
 
         [Fact]
@@ -54,13 +54,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
-        public void DisablesDebugIfInvalid()
+        public void DisablesDebugIfNotConfigured()
         {
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new List<KeyValuePair<string, string>>()
                 {
                     new KeyValuePair<string, string>("JAVA_HOME", "asdf"),
-                    new KeyValuePair<string, string>("workers:java:debug", "false")
                 })
                 .Build();
 

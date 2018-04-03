@@ -11,10 +11,8 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
         public string Path { get; set; } = string.Empty;
 
         /// <summary>
-        /// Gets or sets the debugging port
+        /// Gets or sets the debugging address
         /// </summary>
         public string Debug { get; set; } = string.Empty;
-
-        public bool TryGetDebugPort(out int result) => int.TryParse(Debug, out result);
     }
 }

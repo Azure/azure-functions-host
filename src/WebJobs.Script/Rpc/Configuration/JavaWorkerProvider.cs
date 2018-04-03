@@ -35,16 +35,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             args.ExecutablePath = Path.GetFullPath(Path.Combine(env.ResolveJavaHome(), "bin", "java"));
             args.ExecutableArguments.Add("-jar");
 
-            if (options.TryGetDebugPort(out int debugPort))
+            if (!string.IsNullOrWhiteSpace(options.Debug))
             {
                 if (!env.HasJavaOpts)
                 {
-                    var debugOpts = $"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address={debugPort}";
+                    var debugOpts = $"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address={options.Debug}";
                     args.ExecutableArguments.Add(debugOpts);
                 }
                 else
                 {
-                    logger.LogWarning("Both JAVA_OPTS and debug port settings found. Defaulting to JAVA_OPTS.");
+                    logger.LogWarning("Both JAVA_OPTS and debug address settings found. Defaulting to JAVA_OPTS.");
                 }
             }
 
