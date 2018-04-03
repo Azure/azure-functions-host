@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string hostVersion = ScriptHost.Version;
             FunctionsSystemLogsEventSource.Instance.SetActivityId(activityId);
 
-            _writeEvent($"{ScriptConstants.LinuxLogEventStreamName} {level},{subscriptionId},{appName},{functionName},{eventName},{source},{QuoteString(details)},{QuoteString(summary)},{hostVersion},{eventTimestamp},{exceptionType},{QuoteString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId}");
+            _writeEvent($"{ScriptConstants.LinuxLogEventStreamName} {level},{subscriptionId},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{eventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId}");
         }
 
         public void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp)
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void LogFunctionDetailsEvent(string siteName, string functionName, string inputBindings, string outputBindings, string scriptType, bool isDisabled)
         {
-            _writeEvent($"{ScriptConstants.LinuxFunctionDetailsEventStreamName} {siteName},{functionName},{QuoteString(inputBindings)},{QuoteString(outputBindings)},{scriptType},{(isDisabled ? 1 : 0)}");
+            _writeEvent($"{ScriptConstants.LinuxFunctionDetailsEventStreamName} {siteName},{functionName},{NormalizeString(inputBindings)},{NormalizeString(outputBindings)},{scriptType},{(isDisabled ? 1 : 0)}");
         }
 
         public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
@@ -56,8 +56,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             Console.WriteLine(evt);
         }
 
-        internal static string QuoteString(string value)
+        internal static string NormalizeString(string value)
         {
+            // need to remove newlines for csv output
+            value = value.Replace(Environment.NewLine, " ");
+
             // Wrap string literals in enclosing quotes
             // For string columns that may contain quotes and/or
             // our delimiter ',', before writing the value we
