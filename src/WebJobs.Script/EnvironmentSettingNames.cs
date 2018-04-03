@@ -10,6 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteSlotName = "WEBSITE_SLOT_NAME";
         public const string AzureWebsiteOwnerName = "WEBSITE_OWNER_NAME";
         public const string AzureWebsiteInstanceId = "WEBSITE_INSTANCE_ID";
+        public const string AzureWebsiteResourceGroup = "WEBSITE_RESOURCE_GROUP";
         public const string AzureWebsiteSku = "WEBSITE_SKU";
         public const string AzureWebsiteZipDeployment = "WEBSITE_USE_ZIP";
         public const string RemoteDebuggingPort = "REMOTEDEBUGGINGPORT";
@@ -25,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
         public const string ProxySiteExtensionEnabledKey = "ROUTING_EXTENSION_VERSION";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
+        public const string RegionName = "REGION_NAME";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to

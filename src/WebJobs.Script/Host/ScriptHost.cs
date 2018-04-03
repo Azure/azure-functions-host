@@ -809,20 +809,54 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _hostConfig.Tracing.Tracers.Add(_traceMonitor);
             var hostTraceLevel = _hostConfig.Tracing.ConsoleLevel;
+            IList<TraceWriter> traceWriters = new List<TraceWriter>();
             if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
             {
                 // Host file logging is only done conditionally
                 string hostLogFilePath = Path.Combine(ScriptConfig.RootLogPath, "Host");
                 TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, hostTraceLevel, LogType.Host).Conditional(p => FileLoggingEnabled);
+                traceWriters.Add(fileTraceWriter);
+            }
 
+            // See if there is any registered TraceWriterFactory. This will create an additional TraceWriter to add to this host.
+            IHostTraceWriterFactory hostTraceWriterFactory = ScriptConfig.HostConfig.GetService<IHostTraceWriterFactory>();
+            if (hostTraceWriterFactory != null)
+            {
+                // Pre-parse the host.json to apply the ConsoleLevel value here. Default to Info if nothing is found.
+                // Any parse errors are ignored and will be caught and logged later.
+                TraceLevel level = TraceLevel.Info;
+                try
+                {
+                    string json = File.ReadAllText(_hostConfigFilePath);
+                    JObject hostConfigObject = JObject.Parse(json);
+
+                    var traceLevelStr = hostConfigObject["tracing"]?["consoleLevel"]?.ToString();
+                    if (Enum.TryParse(traceLevelStr, true, out TraceLevel parsedLevel))
+                    {
+                        level = parsedLevel;
+                    }
+                }
+                catch
+                {
+                }
+
+                TraceWriter hostTraceWriter = hostTraceWriterFactory.Create(level);
+
+                if (hostTraceWriter != null)
+                {
+                    traceWriters.Add(hostTraceWriter);
+                }
+            }
+
+            if (traceWriters.Any())
+            {
                 if (TraceWriter != null)
                 {
-                    // create a composite writer so our host logs are written to both
-                    TraceWriter = new CompositeTraceWriter(new[] { TraceWriter, fileTraceWriter });
+                    TraceWriter = new CompositeTraceWriter(traceWriters.Append(TraceWriter));
                 }
                 else
                 {
-                    TraceWriter = fileTraceWriter;
+                    TraceWriter = new CompositeTraceWriter(traceWriters);
                 }
             }
 

@@ -3,15 +3,13 @@
 
 using System;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Tracing;
-using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class EventGenerator : IEventGenerator
     {
         private const string EventTimestamp = "MM/dd/yyyy hh:mm:ss.fff tt";
+        private const string DefaultProductionSlotName = "production";
 
         public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId)
         {
@@ -51,6 +49,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
             FunctionsEventSource.Instance.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, (ulong)executionTimeSpan, success);
+        }
+
+        public void LogFunctionDiagnosticEvent(TraceLevel level, string resourceId, string operationName, string category, string regionName, string properties)
+        {
+            // Azure Monitor has no "Verbose" setting, so we map that to "Informational". We're controlling this logic here to minimize
+            // the amount of logic we have deployed with our monitoring configuration.
+            switch (level)
+            {
+                case TraceLevel.Verbose:
+                    FunctionsDiagnosticLogsEventSource.Instance.RaiseFunctionsDiagnosticEventVerbose(resourceId, operationName, category, regionName, "Informational", properties);
+                    break;
+                case TraceLevel.Info:
+                    FunctionsDiagnosticLogsEventSource.Instance.RaiseFunctionsDiagnosticEventInformational(resourceId, operationName, category, regionName, "Informational", properties);
+                    break;
+                case TraceLevel.Warning:
+                    FunctionsDiagnosticLogsEventSource.Instance.RaiseFunctionsDiagnosticEventWarning(resourceId, operationName, category, regionName, "Warning", properties);
+                    break;
+                case TraceLevel.Error:
+                    FunctionsDiagnosticLogsEventSource.Instance.RaiseFunctionsDiagnosticEventError(resourceId, operationName, category, regionName, "Error", properties);
+                    break;
+            }
         }
     }
 }

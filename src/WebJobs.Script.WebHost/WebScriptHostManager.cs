@@ -48,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly int _hostTimeoutSeconds;
         private readonly int _hostRunningPollIntervalMilliseconds;
         private readonly WebJobsSdkExtensionHookProvider _bindingWebHookProvider;
+        private readonly IHostTraceWriterFactory _hostTraceWriterFactory;
 
         private bool _hostStarted = false;
         private HttpRouteCollection _httpRoutes;
@@ -75,6 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _hostRunningPollIntervalMilliseconds = hostPollingIntervalMilliseconds;
 
             var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
+            _hostTraceWriterFactory = new WebHostTraceWriterFactory(systemEventGenerator, settingsManager);
             _systemTraceWriter = new SystemTraceWriter(systemEventGenerator, settingsManager, TraceLevel.Verbose);
             if (config.TraceWriter != null)
             {
@@ -362,6 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             hostConfig.AddService<IMetricsLogger>(_metricsLogger);
             hostConfig.AddService<IWebHookProvider>(this._bindingWebHookProvider);
             hostConfig.AddService<IWebJobsExceptionHandler>(_exceptionHandler);
+            hostConfig.AddService<IHostTraceWriterFactory>(_hostTraceWriterFactory);
 
             // HostId may be missing in local test scenarios.
             var hostId = hostConfig.HostId ?? "default";

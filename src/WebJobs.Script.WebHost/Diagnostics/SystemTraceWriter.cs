@@ -1,9 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Diagnostics;
-using System.Reflection;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -61,47 +59,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             if (string.IsNullOrEmpty(details) && traceEvent.Exception != null)
             {
-                details = Sanitizer.Sanitize(traceEvent.Exception.ToFormattedString());
                 if (string.IsNullOrEmpty(functionName) && traceEvent.Exception is FunctionInvocationException fex)
                 {
                     functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName.Replace("Host.Functions.", string.Empty);
                 }
-                Exception innerException = traceEvent.Exception.InnerException;
-                while (innerException != null && innerException.InnerException != null)
-                {
-                    innerException = innerException.InnerException;
-                }
-                if (innerException != null)
-                {
-                    GetExceptionDetails(innerException, out innerExceptionType, out innerExceptionMessage);
-                }
-                else
-                {
-                    GetExceptionDetails(traceEvent.Exception, out innerExceptionType, out innerExceptionMessage);
-                }
+
+                (innerExceptionType, innerExceptionMessage, details) = traceEvent.GetExceptionDetails();
+                innerExceptionMessage = innerExceptionMessage ?? string.Empty;
             }
 
             _eventGenerator.LogFunctionTraceEvent(traceEvent.Level, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, functionInvocationId, hostInstanceId, activityId);
         }
 
-        private static void GetExceptionDetails(Exception exception, out string exceptionType, out string exceptionMessage)
+        private static string GetTraceEventProperty(TraceEvent traceEvent, string tracePropertyFunctionNameKey)
         {
-            if (exception == null)
-            {
-                throw new ArgumentNullException(nameof(exception));
-            }
-            exceptionType = exception.GetType().ToString();
-            exceptionMessage = Sanitizer.Sanitize(exception.Message) ?? string.Empty;
-        }
-
-        private static string GetTraceEventProperty(TraceEvent traceEvent, string key)
-        {
-            object value;
-            if (traceEvent != null && traceEvent.Properties.TryGetValue(key, out value) && value != null)
-            {
-                return value.ToString();
-            }
-            return string.Empty;
+            return traceEvent.GetPropertyValueOrNull(tracePropertyFunctionNameKey) ?? string.Empty;
         }
     }
 }

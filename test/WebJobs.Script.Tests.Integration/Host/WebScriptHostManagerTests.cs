@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task FunctionInvoke_SystemTraceEventsAreEmitted()
         {
-            _fixture.EventGenerator.Events.Clear();
+            _fixture.EventGenerator.SystemEvents.Clear();
 
             var host = _fixture.HostManager.Instance;
             var input = Guid.NewGuid().ToString();
@@ -82,15 +82,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // it's possible that the TimerTrigger fires during this so filter them out.
 
-            string[] events = _fixture.EventGenerator.Events.Where(e => !e.Contains("TimerTrigger")).ToArray();
+            string[] events = _fixture.EventGenerator.SystemEvents.Where(e => !e.Contains("TimerTrigger")).ToArray();
             Assert.True(events.Length == 4, $"Expected 4 events. Actual: {events.Length}. Actual events: {Environment.NewLine}{string.Join(Environment.NewLine, events)}");
-            Assert.StartsWith($"Info ManualTrigger {ScriptConstants.TraceSourceScriptHost} Function started (Id=", events[0]); // From fast-logger pre-bind notification, FunctionLogEntry.IsStart
-            Assert.StartsWith($"Info ManualTrigger WebJobs.Execution Executing 'Functions.ManualTrigger' (Reason='This function was programmatically called via the host APIs.', Id=", events[1]); // from TraceWriterFunctionInstanceLogger
-            Assert.StartsWith($"Info ManualTrigger {ScriptConstants.TraceSourceScriptHost} Function completed (Success, Id=", events[2]); // From fast-logger, FunctionLogEntry.IsComplete
-            Assert.StartsWith($"Info ManualTrigger WebJobs.Execution Executed 'Functions.ManualTrigger' (Succeeded, Id=", events[3]);
+            Assert.StartsWith($"Info {_fixture.SubscriptionId} ManualTrigger {ScriptConstants.TraceSourceScriptHost} Function started (Id=", events[0]); // From fast-logger pre-bind notification, FunctionLogEntry.IsStart
+            Assert.StartsWith($"Info {_fixture.SubscriptionId} ManualTrigger WebJobs.Execution Executing 'Functions.ManualTrigger' (Reason='This function was programmatically called via the host APIs.', Id=", events[1]); // from TraceWriterFunctionInstanceLogger
+            Assert.StartsWith($"Info {_fixture.SubscriptionId} ManualTrigger {ScriptConstants.TraceSourceScriptHost} Function completed (Success, Id=", events[2]); // From fast-logger, FunctionLogEntry.IsComplete
+            Assert.StartsWith($"Info {_fixture.SubscriptionId} ManualTrigger WebJobs.Execution Executed 'Functions.ManualTrigger' (Succeeded, Id=", events[3]);
 
             // make sure the user log wasn't traced
-            Assert.False(_fixture.EventGenerator.Events.Any(p => p.Contains("ManualTrigger function invoked!")));
+            Assert.False(_fixture.EventGenerator.SystemEvents.Any(p => p.Contains("ManualTrigger function invoked!")));
+        }
+
+        [Fact]
+        public async Task FunctionInvokeDiagnosticTraceEventsAreEmitted()
+        {
+            _fixture.EventGenerator.DiagnosticEvents.Clear();
+
+            var host = _fixture.HostManager.Instance;
+            var input = Guid.NewGuid().ToString();
+            var parameters = new Dictionary<string, object>
+            {
+                { "input", input }
+            };
+            await host.CallAsync("ManualTrigger", parameters);
+
+            // it's possible that the TimerTrigger fires during this so filter them out.
+
+            string[] events = _fixture.EventGenerator.DiagnosticEvents.Where(e => !e.Contains("TimerTrigger")).ToArray();
+            string metadata = $"Info /subscriptions/{_fixture.SubscriptionId}/resourceGroups/MyResourceGroup/providers/Microsoft.Web/sites/ Microsoft.Web/sites/functions/execution FunctionExecutionEvent Anywhere";
+            Assert.True(events.Length == 5, $"Expected 5 events. Actual: {events.Length}. Actual events: {Environment.NewLine}{string.Join(Environment.NewLine, events)}");
+
+            // Validate the wire-up and the messages. The log payload is verified in other tests.
+            Assert.StartsWith($"{metadata} {{\"message\":\"Function started ", events[0]);
+            Assert.StartsWith($"{metadata} {{\"message\":\"Executing 'Functions.ManualTrigger' (Reason='This function was programmatically called via the host APIs.'", events[1]);
+
+            // Make sure that the user log *was* traced
+            Assert.StartsWith($"{metadata} {{\"message\":\"ManualTrigger function invoked!", events[2]);
+
+            Assert.StartsWith($"{metadata} {{\"message\":\"Function completed (Success, ", events[3]);
+            Assert.StartsWith($"{metadata} {{\"message\":\"Executed 'Functions.ManualTrigger' (Succeeded, ", events[4]);
         }
 
         [Fact]
@@ -326,6 +356,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 EventGenerator = new TestSystemEventGenerator();
                 _settingsManager = ScriptSettingsManager.Instance;
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteResourceGroup, "MyResourceGroup");
+                _settingsManager.SetSetting(EnvironmentSettingNames.RegionName, "Anywhere");
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName, $"{SubscriptionId}+mywebspace");
 
                 TestFunctionRoot = Path.Combine(TestHelpers.FunctionsTestDirectory, "Functions");
                 TestLogsRoot = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs");
@@ -382,16 +415,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // verify startup system trace logs
                 string[] expectedPatterns = new string[]
                 {
-                    $"Info {ScriptConstants.TraceSourceScriptHost} Reading host configuration file",
-                    $"Info {ScriptConstants.TraceSourceScriptHost} Host configuration file read",
-                    $"Info {ScriptConstants.TraceSourceScriptHost} Host lock lease acquired by instance ID '(.+)'",
-                    $"Info Excluded {ScriptConstants.TraceSourceScriptHost} Function 'Excluded' is marked as excluded",
-                    $@"Info {ScriptConstants.TraceSourceScriptHost} Generating ([0-9]+) job function\(s\)",
-                    $@"Info {ScriptConstants.TraceSourceScriptHost} Starting Host \(HostId=function-tests-node, Version=(.+), InstanceId=(.*), ProcessId=[0-9]+, AppDomainId=[0-9]+, Debug=False, ConsecutiveErrors=0, StartupCount=1, FunctionsExtensionVersion=\)",
-                    "Info WebJobs.Indexing Found the following functions:",
-                    $"Info {ScriptConstants.TraceSourceScriptHost} The next 5 occurrences of the schedule will be:",
-                    "Info WebJobs.Host Job host started",
-                    $"Error {ScriptConstants.TraceSourceScriptHost} The following 1 functions are in error:"
+                    $"Info {SubscriptionId} {ScriptConstants.TraceSourceScriptHost} Reading host configuration file",
+                    $"Info {SubscriptionId} {ScriptConstants.TraceSourceScriptHost} Host configuration file read",
+                    $"Info {SubscriptionId} {ScriptConstants.TraceSourceScriptHost} Host lock lease acquired by instance ID '(.+)'",
+                    $"Info {SubscriptionId} Excluded {ScriptConstants.TraceSourceScriptHost} Function 'Excluded' is marked as excluded",
+                    $@"Info {SubscriptionId} {ScriptConstants.TraceSourceScriptHost} Generating ([0-9]+) job function\(s\)",
+                    $@"Info {SubscriptionId} {ScriptConstants.TraceSourceScriptHost} Starting Host \(HostId=function-tests-node, Version=(.+), InstanceId=(.*), ProcessId=[0-9]+, AppDomainId=[0-9]+, Debug=False, ConsecutiveErrors=0, StartupCount=1, FunctionsExtensionVersion=\)",
+                    $"Info {SubscriptionId} WebJobs.Indexing Found the following functions:",
+                    $"Info {SubscriptionId} {ScriptConstants.TraceSourceScriptHost} The next 5 occurrences of the schedule will be:",
+                    $"Info {SubscriptionId} WebJobs.Host Job host started",
+                    $"Error {SubscriptionId} {ScriptConstants.TraceSourceScriptHost} The following 1 functions are in error:"
                 };
                 foreach (string pattern in expectedPatterns)
                 {
@@ -412,6 +445,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public string TestLogsRoot { get; private set; }
 
             public string TestSecretsRoot { get; private set; }
+
+            public string SubscriptionId { get; private set; } = Guid.NewGuid().ToString();
 
             public void Dispose()
             {
@@ -434,6 +469,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
 
                 _secretsDirectory.Dispose();
+
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteResourceGroup, null);
+                _settingsManager.SetSetting(EnvironmentSettingNames.RegionName, null);
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName, null);
             }
 
             private void CreateTestFunctionLogs(string logRoot, string functionName)
@@ -450,10 +489,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 public TestSystemEventGenerator()
                 {
-                    Events = new List<string>();
+                    SystemEvents = new List<string>();
+                    DiagnosticEvents = new List<string>();
                 }
 
-                public List<string> Events { get; private set; }
+                public List<string> SystemEvents { get; private set; }
+
+                public List<string> DiagnosticEvents { get; private set; }
 
                 public void LogFunctionTraceEvent(TraceLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId)
                 {
@@ -461,7 +503,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     string evt = string.Join(" ", elements.Where(p => !string.IsNullOrEmpty(p)));
                     lock (_syncLock)
                     {
-                        Events.Add(evt);
+                        SystemEvents.Add(evt);
                     }
                 }
 
@@ -483,6 +525,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
                 {
                     throw new NotImplementedException();
+                }
+
+                public void LogFunctionDiagnosticEvent(TraceLevel level, string resourceId, string operationName, string category, string regionName, string properties)
+                {
+                    var elements = new string[] { level.ToString(), resourceId, operationName, category, regionName, properties };
+                    string evt = string.Join(" ", elements.Where(p => !string.IsNullOrEmpty(p)));
+                    lock (_syncLock)
+                    {
+                        DiagnosticEvents.Add(evt);
+                    }
                 }
             }
         }
