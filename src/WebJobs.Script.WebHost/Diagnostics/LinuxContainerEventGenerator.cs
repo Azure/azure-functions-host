@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _writeEvent = writeEvent ?? StdOutWriter;
         }
 
-        public static string TraceEventRegex { get; } = $"^{ScriptConstants.LinuxLogEventStreamName} (?<Level>[^,]+),(?<SubscriptionId>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Source>[^,]*),\"(?<Details>.*)\",\"(?<Summary>.*)\",(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<ExceptionType>[^,]*),\"(?<ExceptionMessage>.*)\",(?<FunctionInvocationId>[^,]*),(?<HostInstanceId>[^,]*),(?<ActivityId>[^,]*)$";
+        public static string TraceEventRegex { get; } = $"^{ScriptConstants.LinuxLogEventStreamName} (?<Level>[^,]+),(?<SubscriptionId>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Source>[^,]*),\"(?<Details>.*)\",\"(?<Summary>.*)\",(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<InnerExceptionType>[^,]*),\"(?<InnerExceptionMessage>.*)\",(?<FunctionInvocationId>[^,]*),(?<HostInstanceId>[^,]*),(?<ActivityId>[^,]*)$";
 
         public static string MetricEventRegex { get; } = $"^{ScriptConstants.LinuxMetricEventStreamName} (?<SubscriptionId>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Average>\\d*),(?<Min>\\d*),(?<Max>\\d*),(?<Count>\\d*),(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+)$";
 
