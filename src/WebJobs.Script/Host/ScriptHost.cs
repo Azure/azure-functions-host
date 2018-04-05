@@ -1647,13 +1647,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 scriptConfig.FunctionTimeout = requestedTimeout;
-                scriptConfig.HostConfig.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
             }
             else if (ScriptSettingsManager.Instance.IsDynamicSku)
             {
                 // Apply a default if this is running on Dynamic.
                 scriptConfig.FunctionTimeout = DefaultFunctionTimeout;
             }
+            scriptConfig.HostConfig.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
 
             // apply swagger configuration
             scriptConfig.SwaggerEnabled = false;
