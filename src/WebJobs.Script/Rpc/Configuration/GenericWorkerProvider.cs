@@ -13,33 +13,40 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class GenericWorkerProvider : IWorkerProvider
     {
-        private WorkerDescription workerDescription;
-        private List<string> arguments;
+        private WorkerDescription _workerDescription;
+        private List<string> _arguments;
+        private string _pathToWorkerDir;
 
-        public GenericWorkerProvider(WorkerDescription workerDescription, List<string> arguments)
+        public GenericWorkerProvider(WorkerDescription workerDescription, List<string> arguments, string pathToWorkerDir)
         {
-            this.workerDescription = workerDescription ?? throw new ArgumentNullException(nameof(workerDescription));
-            this.arguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
+            _workerDescription = workerDescription ?? throw new ArgumentNullException(nameof(workerDescription));
+            _arguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
+            _pathToWorkerDir = pathToWorkerDir ?? throw new ArgumentNullException(nameof(pathToWorkerDir));
         }
 
         public WorkerDescription GetDescription()
         {
-            return this.workerDescription;
+            return this._workerDescription;
         }
 
         public bool TryConfigureArguments(ArgumentsDescription args, IConfiguration config, ILogger logger)
         {
-            args.ExecutableArguments.AddRange(arguments);
+            args.ExecutableArguments.AddRange(_arguments);
             return true;
         }
 
-        public static List<IWorkerProvider> ReadWorkerProviderFromConfig(ScriptHostConfiguration config, ILogger logger, ScriptSettingsManager settingsManager = null)
+        public string GetWorkerDirectoryPath()
+        {
+            return _pathToWorkerDir;
+        }
+
+        public static List<IWorkerProvider> ReadWorkerProviderFromConfig(ScriptHostConfiguration config, ILogger logger, ScriptSettingsManager settingsManager = null, string language = null)
         {
             var providers = new List<IWorkerProvider>();
             settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
             var assemblyDir = Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath);
 
-            var workerDirPath = settingsManager.Configuration.GetSection("workers:config:path").Value ?? Path.Combine(assemblyDir, "workers");
+            var workerDirPath = settingsManager.Configuration.GetSection("workers:config:path").Value ?? Path.Combine(assemblyDir, ScriptConstants.DefaultWorkersDirectoryName);
 
             foreach (var workerDir in Directory.EnumerateDirectories(workerDirPath))
             {
@@ -59,10 +66,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     WorkerDescription description = workerConfig.Property("Description").Value.ToObject<WorkerDescription>();
                     // var workerSettings = settingsManager.Configuration.GetSection($"workers:{description.Language}");
 
+                    // if we're only loading 1 language, skip if the language is not equal to the target language
+                    if (!string.IsNullOrEmpty(language) && !string.Equals(description.Language, language, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
                     var arguments = new List<string>();
                     arguments.AddRange(workerConfig.Property("Arguments").Value.ToObject<string[]>());
 
-                    var provider = new GenericWorkerProvider(description, arguments);
+                    var provider = new GenericWorkerProvider(description, arguments, workerDir);
 
                     providers.Add(provider);
                 }

@@ -13,9 +13,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class JavaWorkerProvider : IWorkerProvider
     {
+        private string pathToWorkerDir = WorkerProviderHelper.BuildWorkerDirectoryPath(ScriptConstants.JavaLanguageName);
+
         public WorkerDescription GetDescription() => new WorkerDescription
         {
-            Language = "Java",
+            Language = ScriptConstants.JavaLanguageName,
             Extension = ".jar",
             DefaultWorkerPath = "azure-functions-java-worker.jar",
         };
@@ -53,6 +55,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 args.ExecutableArguments.Add(env.JAVA_OPTS);
             }
             return true;
+        }
+
+        public string GetWorkerDirectoryPath()
+        {
+            return pathToWorkerDir;
         }
 
         private class JavaEnvironment

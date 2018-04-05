@@ -298,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 ApplyEnvironmentSettings();
                 var hostConfig = ApplyHostConfiguration();
                 InitializeFileWatchers();
-                InitializeWorkers();
+                InitializeWorkers(_settingsManager.Configuration.GetSection(ScriptConstants.SingleLanguageModeSettingName).Value);
 
                 var functionMetadata = LoadFunctionMetadata();
                 var directTypes = LoadBindingExtensions(functionMetadata, hostConfig);
@@ -494,11 +494,21 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void InitializeFunctionDescriptors(Collection<FunctionMetadata> functionMetadata)
         {
-            _descriptorProviders = new List<FunctionDescriptorProvider>()
+            var language = _settingsManager.Configuration.GetSection(ScriptConstants.SingleLanguageModeSettingName).Value;
+            _descriptorProviders = new List<FunctionDescriptorProvider>();
+            if (string.IsNullOrEmpty(language))
             {
-                new DotNetFunctionDescriptorProvider(this, ScriptConfig),
-                new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher),
-            };
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
+                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher));
+            }
+            else if (language.Equals(ScriptConstants.DotNetLanguageName, StringComparison.OrdinalIgnoreCase))
+            {
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
+            }
+            else
+            {
+                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher));
+            }
 
             Collection<FunctionDescriptor> functions;
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
@@ -685,7 +695,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return hostConfigObject;
         }
 
-        private void InitializeWorkers()
+        private void InitializeWorkers(string language)
         {
             var serverImpl = new FunctionRpcService(EventManager);
             var server = new GrpcServer(serverImpl);
@@ -715,13 +725,34 @@ namespace Microsoft.Azure.WebJobs.Script
                     server.Uri,
                     _hostConfig.LoggerFactory);
             };
-            var providers = new List<IWorkerProvider>()
-                {
-                    new NodeWorkerProvider(),
-                    new JavaWorkerProvider()
-                };
 
-            providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, _startupLogger));
+            var providers = new List<IWorkerProvider>();
+
+            if (!string.IsNullOrEmpty(language))
+            {
+                _startupLogger.LogInformation($"Single language mode enabled, only {language} will be enabled");
+                // TODO: We still have some hard coded languages, so we need to handle them. Remove this switch once we've moved away from that.
+                switch (language)
+                {
+                    case ScriptConstants.NodeLanguageName:
+                        providers.Add(new NodeWorkerProvider());
+                        break;
+                    case ScriptConstants.JavaLanguageName:
+                        providers.Add(new JavaWorkerProvider());
+                        break;
+                    default:
+                        // Pass the language to the provider loader to filter
+                        providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, _startupLogger, language: language));
+                        break;
+                }
+            }
+            else
+            {
+                // load all providers if no specific language is specified
+                providers.Add(new NodeWorkerProvider()); // TODO: Should move these worker providers to Generic model
+                providers.Add(new JavaWorkerProvider());
+                providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, _startupLogger));
+            }
 
             var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
             var workerConfigs = configFactory.GetConfigs(providers);
@@ -1366,11 +1397,14 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                     }
 
-                    ValidateFunction(descriptor, httpFunctions);
-
                     if (descriptor != null)
                     {
+                        ValidateFunction(descriptor, httpFunctions);
                         functionDescriptors.Add(descriptor);
+                    }
+                    else
+                    {
+                        throw new Exception("Could not find a valid provider. Check that you have the correct language provider installed and enabled.");
                     }
                 }
                 catch (Exception ex)
