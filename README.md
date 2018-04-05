@@ -1,12 +1,36 @@
 # Azure Functions Languge Worker Protobuf
 
-This repository contains the protobuf definition file which defines the gRPC service which is used between the Azure WebJobs Script host and the Azure Functions language workers. 
+This repository contains the protobuf definition file which defines the gRPC service which is used between the Azure WebJobs Script host and the Azure Functions language workers. This repo is shared across many repos in many languages (for each worker) by using git commands.
+
+To use this repo in Azure Functions language workers, follow steps below to add this repo as a subtree (*Adding This Repo*). If this repo is already embedded in a language worker repo, follow the steps to update the consumed file (*Pulling Updates*).
 
 Learn more about Azure Function's projects on the [meta](https://github.com/azure/azure-functions) repo.
 
-## Using the protobufs
+## Adding This Repo
 
-Download the contents from the latest (or specific) release. Release will follow semver guidelines.
+From within the Azure Functions language worker repo:
+1.	Define remote branch for cleaner git commands
+    -	`git remote add proto-file https://github.com/azure/azure-functions-language-worker-protobuf.git`
+    -	`git fetch proto-file`
+2.	Index contents of azure-functions-worker-protobuf to language worker repo
+    -	`git read-tree  --prefix=<path in language worker repo> -u proto-file/<version branch>`
+3.	Add new path in language worker repo to .gitignore file
+    -   In .gitignore, add path in language worker repo
+4.	Finalize with commit
+    -	`git commit -m “Added subtree from https://github.com/azure/azure-functions-language-worker-protobuf. Branch: <version branch>. Commit: <latest protobuf commit hash>”`
+    -	`git push`
+
+## Pulling Updates
+
+From within the Azure Functions language worker repo:
+1.	Define remote branch for cleaner git commands
+    -	`git remote add proto-file https://github.com/mhoeger/azure-functions-language-worker-protobuf.git`
+    -	`git fetch proto-file`
+2.	Merge updates
+    -	`git merge -X subtree=<path in language worker repo> --squash proto-file/<version branch>`
+3.	Finalize with commit
+    -	`git commit -m "Updated subtree from https://github.com/azure/azure-functions-language-worker-protobuf. Branch: <version branch>. Commit: <latest protobuf commit hash>”`
+    -	`git push`
 
 ## Contributing
 
