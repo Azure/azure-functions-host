@@ -122,6 +122,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                 ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
 
+                Assert.False(WebScriptHostManager.InStandbyMode);
+                Assert.True(ScriptSettingsManager.Instance.ContainerReady);
+
                 // give time for the specialization to happen
                 string[] logLines = null;
                 await TestHelpers.Await(() =>
