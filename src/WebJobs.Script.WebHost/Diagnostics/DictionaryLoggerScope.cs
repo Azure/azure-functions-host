@@ -12,11 +12,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     /// This class is identical to the internal class in WebJobs.Host. It is copied here so we can
     /// keep it internal.
     /// </summary>
-    internal class DictionaryLoggerScope
+    internal class DictionaryLoggerScope<T>
     {
-        private static AsyncLocal<DictionaryLoggerScope> _value = new AsyncLocal<DictionaryLoggerScope>();
+        private static AsyncLocal<DictionaryLoggerScope<T>> _value = new AsyncLocal<DictionaryLoggerScope<T>>();
 
-        private DictionaryLoggerScope(IReadOnlyDictionary<string, object> state, DictionaryLoggerScope parent)
+        private DictionaryLoggerScope(IReadOnlyDictionary<string, object> state, DictionaryLoggerScope<T> parent)
         {
             State = state;
             Parent = parent;
@@ -24,9 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal IReadOnlyDictionary<string, object> State { get; private set; }
 
-        internal DictionaryLoggerScope Parent { get; private set; }
+        internal DictionaryLoggerScope<T> Parent { get; private set; }
 
-        public static DictionaryLoggerScope Current
+        public static DictionaryLoggerScope<T> Current
         {
             get
             {
@@ -59,13 +59,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return null;
             }
 
-            Current = new DictionaryLoggerScope(new ReadOnlyDictionary<string, object>(stateValues), Current);
+            Current = new DictionaryLoggerScope<T>(new ReadOnlyDictionary<string, object>(stateValues), Current);
             return new DisposableScope();
         }
 
         // Builds a state dictionary of all scopes. If an inner scope
         // contains the same key as an outer scope, it overwrites the value.
-        public static IDictionary<string, object> GetMergedStateDictionary()
+        public static IDictionary<string, object> GetCurrentScopeValues()
         {
             IDictionary<string, object> scopeInfo = new Dictionary<string, object>();
 

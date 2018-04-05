@@ -65,5 +65,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // groups based on quotes for these values.
             return $"\"{value}\"";
         }
+
+        public void LogFunctionDiagnosticEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
+        {
+        }
     }
 }

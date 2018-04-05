@@ -242,5 +242,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 WriteEventCore(eventNum, count, data);
             }
         }
+
+        // RaiseFunctionsDiagnostic
+        [NonEvent]
+        [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
+        protected void WriteEvent(int eventNum, string a, string b, string c, string d, string e, string f)
+        {
+            int count = MethodBase.GetCurrentMethod().GetParameters().Length;
+            fixed (char* aPtr = a,
+                bPtr = b,
+                cPtr = c,
+                dPtr = d,
+                ePtr = e,
+                fPtr = f)
+            {
+                EventData* data = stackalloc EventData[count];
+                data[0].DataPointer = (IntPtr)aPtr;
+                data[0].Size = (a.Length + 1) * sizeof(char);
+                data[1].DataPointer = (IntPtr)bPtr;
+                data[1].Size = (b.Length + 1) * sizeof(char);
+                data[2].DataPointer = (IntPtr)cPtr;
+                data[2].Size = (c.Length + 1) * sizeof(char);
+                data[3].DataPointer = (IntPtr)dPtr;
+                data[3].Size = (d.Length + 1) * sizeof(char);
+                data[4].DataPointer = (IntPtr)ePtr;
+                data[4].Size = (e.Length + 1) * sizeof(char);
+                data[5].DataPointer = (IntPtr)fPtr;
+                data[5].Size = (f.Length + 1) * sizeof(char);
+                WriteEventCore(eventNum, count, data);
+            }
+        }
     }
 }

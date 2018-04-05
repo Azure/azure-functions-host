@@ -17,5 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         void LogFunctionDetailsEvent(string siteName, string functionName, string inputBindings, string outputBindings, string scriptType, bool isDisabled);
 
         void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success);
+
+        void LogFunctionDiagnosticEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties);
     }
 }

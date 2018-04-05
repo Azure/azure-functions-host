@@ -429,6 +429,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     throw new NotImplementedException();
                 }
+
+                public void LogFunctionDiagnosticEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
+                {
+                    throw new NotImplementedException();
+                }
             }
         }
     }

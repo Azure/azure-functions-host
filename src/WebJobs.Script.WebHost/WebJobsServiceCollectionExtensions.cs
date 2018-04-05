@@ -134,8 +134,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var systemLoggerProvider = new SystemLoggerProvider(hostInstanceId, eventGenerator, settingsManager);
             loggerFactory.AddProvider(systemLoggerProvider);
 
-            // This loggerFactory logs everything to host files. No filter is applied because it is created
-            // before we parse host.json.
+            // No filter is applied to these loggers as they are created before we parse host.json
+            var diagnosticLoggerProvider = new DiagnosticLoggerProvider(eventGenerator, settingsManager, (s, e) => true);
+            loggerFactory.AddProvider(diagnosticLoggerProvider);
+
+            // This loggerFactory logs everything to host files. 
             var hostFileLogger = new HostFileLoggerProvider(hostInstanceId, settings.LogPath, () => true);
             loggerFactory.AddProvider(hostFileLogger);
 

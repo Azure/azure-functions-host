@@ -51,5 +51,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             FunctionsEventSource.Instance.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, (ulong)executionTimeSpan, success);
         }
+
+        public void LogFunctionDiagnosticEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
+        {
+            // Azure Monitor has no "Verbose" setting, so we map that to "Informational". We're controlling this logic here to minimize
+            // the amount of logic we have deployed with our monitoring configuration.
+            switch (level)
+            {
+                case LogLevel.Trace:
+                case LogLevel.Debug:
+                    FunctionsDiagnosticLogsEventSource.Instance.RaiseFunctionsDiagnosticEventVerbose(resourceId, operationName, category, regionName, "Informational", properties);
+                    break;
+                case LogLevel.Information:
+                    FunctionsDiagnosticLogsEventSource.Instance.RaiseFunctionsDiagnosticEventInformational(resourceId, operationName, category, regionName, "Informational", properties);
+                    break;
+                case LogLevel.Warning:
+                    FunctionsDiagnosticLogsEventSource.Instance.RaiseFunctionsDiagnosticEventWarning(resourceId, operationName, category, regionName, "Warning", properties);
+                    break;
+                case LogLevel.Error:
+                case LogLevel.Critical:
+                    FunctionsDiagnosticLogsEventSource.Instance.RaiseFunctionsDiagnosticEventError(resourceId, operationName, category, regionName, "Error", properties);
+                    break;
+            }
+        }
     }
 }

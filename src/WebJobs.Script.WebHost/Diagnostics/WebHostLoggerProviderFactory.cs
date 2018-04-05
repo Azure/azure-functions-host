@@ -23,8 +23,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override IEnumerable<ILoggerProvider> CreateLoggerProviders(string hostInstanceId, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary)
         {
             ILoggerProvider systemProvider = new SystemLoggerProvider(hostInstanceId, _eventGenerator, _settingsManager);
+            ILoggerProvider diagnosticProvider = new DiagnosticLoggerProvider(_eventGenerator, settingsManager, scriptConfig.LogFilter.Filter);
 
-            return base.CreateLoggerProviders(hostInstanceId, scriptConfig, settingsManager, isFileLoggingEnabled, isPrimary).Append(systemProvider);
+            return base.CreateLoggerProviders(hostInstanceId, scriptConfig, settingsManager, isFileLoggingEnabled, isPrimary)
+                .Append(systemProvider)
+                .Append(diagnosticProvider);
         }
     }
 }

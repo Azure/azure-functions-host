@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _hostInstanceId = hostInstanceId;
         }
 
-        public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope.Push(state);
+        public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope<SystemLogger>.Push(state);
 
         public bool IsEnabled(LogLevel logLevel)
         {
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            IDictionary<string, object> scopeProps = DictionaryLoggerScope.GetMergedStateDictionary() ?? new Dictionary<string, object>();
+            IDictionary<string, object> scopeProps = DictionaryLoggerScope<SystemLogger>.GetCurrentScopeValues() ?? new Dictionary<string, object>();
 
             // Apply standard event properties
             // Note: we must be sure to default any null values to empty string
@@ -90,39 +90,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string details = string.Empty;
             if (exception != null)
             {
-                details = Sanitizer.Sanitize(exception.ToFormattedString());
                 if (string.IsNullOrEmpty(functionName) && exception is FunctionInvocationException fex)
                 {
                     functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName.Replace("Host.Functions.", string.Empty);
                 }
 
-                Exception innerException = exception.InnerException;
-                while (innerException != null && innerException.InnerException != null)
-                {
-                    innerException = innerException.InnerException;
-                }
-
-                if (innerException != null)
-                {
-                    GetExceptionDetails(innerException, out innerExceptionType, out innerExceptionMessage);
-                }
-                else
-                {
-                    GetExceptionDetails(exception, out innerExceptionType, out innerExceptionMessage);
-                }
+                (innerExceptionType, innerExceptionMessage, details) = exception.GetExceptionDetails();
+                innerExceptionMessage = innerExceptionMessage ?? string.Empty;
             }
 
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, functionInvocationId, hostInstanceId, activityId);
-        }
-
-        private void GetExceptionDetails(Exception exception, out string exceptionType, out string exceptionMessage)
-        {
-            if (exception == null)
-            {
-                throw new ArgumentNullException(nameof(exception));
-            }
-            exceptionType = exception.GetType().ToString();
-            exceptionMessage = Sanitizer.Sanitize(exception.Message) ?? string.Empty;
         }
     }
 }
