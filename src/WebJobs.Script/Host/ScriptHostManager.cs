@@ -170,16 +170,16 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     newInstance = _scriptHostFactory.Create(_environment, EventManager, _settingsManager, _config);
                     _currentInstance = newInstance;
-                    lock (_liveInstances)
-                    {
-                        _liveInstances.Add(newInstance);
-                        _hostStartCount++;
-                    }
 
                     newInstance.HostInitializing += OnHostInitializing;
                     newInstance.HostInitialized += OnHostInitialized;
                     newInstance.HostStarted += OnHostStarted;
                     newInstance.Initialize();
+
+                    lock (_liveInstances)
+                    {
+                        _liveInstances.Add(newInstance);
+                    }
 
                     newInstance.StartAsync(cancellationToken).GetAwaiter().GetResult();
 
@@ -286,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script
             var host = (ScriptHost)sender;
             string extensionVersion = _settingsManager.GetSetting(EnvironmentSettingNames.FunctionsExtensionVersion);
             string hostId = host.ScriptConfig.HostConfig.HostId;
-            string message = $"Starting Host (HostId={hostId}, Version={ScriptHost.Version}, InstanceId={host.InstanceId}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={host.InDebugMode}, ConsecutiveErrors={_consecutiveErrorCount}, StartupCount={_hostStartCount}, FunctionsExtensionVersion={extensionVersion})";
+            string message = $"Starting Host (HostId={hostId}, Version={ScriptHost.Version}, InstanceId={host.InstanceId}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={host.InDebugMode}, ConsecutiveErrors={_consecutiveErrorCount}, StartupCount={++_hostStartCount}, FunctionsExtensionVersion={extensionVersion})";
             host.TraceWriter.Info(message);
             host.Logger.LogInformation(message);
 
