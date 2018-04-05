@@ -780,6 +780,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
                 ScriptHost.ApplyConfiguration(config, scriptConfig);
                 Assert.Equal(ScriptHost.DefaultFunctionTimeout, scriptConfig.FunctionTimeout);
+
+                var timeoutConfig = scriptConfig.HostConfig.FunctionTimeout;
+                Assert.NotNull(timeoutConfig);
+                Assert.True(timeoutConfig.ThrowOnTimeout);
+                Assert.Equal(scriptConfig.FunctionTimeout.Value, timeoutConfig.Timeout);
             }
             finally
             {
