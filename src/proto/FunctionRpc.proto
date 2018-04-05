@@ -353,6 +353,6 @@ message RpcHttp {
   map<string,string> params = 10;
   string status_code = 12;
   map<string,string> query = 15;
-  bool is_raw = 16;
+  bool enable_content_negotiation= 16;
   TypedData rawBody = 17;
 }
