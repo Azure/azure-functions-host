@@ -26,6 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             DefaultWorkerPath = this.DefaultWorkerPath,
         };
 
+        public string GetWorkerDirectoryPath()
+        {
+            return string.Empty;
+        }
+
         public bool TryConfigureArguments(ArgumentsDescription args, IConfiguration config, ILogger logger)
         {
             // make no modifications

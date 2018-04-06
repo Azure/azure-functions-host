@@ -297,12 +297,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 PreInitialize();
                 ApplyEnvironmentSettings();
                 var hostConfig = ApplyHostConfiguration();
+                string functionLanguage = _settingsManager.Configuration[ScriptConstants.FunctionWorkerRuntimeSettingName];
                 InitializeFileWatchers();
-                InitializeWorkers();
+                InitializeWorkers(functionLanguage);
 
                 var functionMetadata = LoadFunctionMetadata();
                 var directTypes = LoadBindingExtensions(functionMetadata, hostConfig);
-                InitializeFunctionDescriptors(functionMetadata);
+                InitializeFunctionDescriptors(functionMetadata, functionLanguage);
                 GenerateFunctions(directTypes);
 
                 InitializeServices();
@@ -492,13 +493,22 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Initialize function descriptors from metadata.
         /// </summary>
-        private void InitializeFunctionDescriptors(Collection<FunctionMetadata> functionMetadata)
+        internal void InitializeFunctionDescriptors(Collection<FunctionMetadata> functionMetadata, string language)
         {
-            _descriptorProviders = new List<FunctionDescriptorProvider>()
+            _descriptorProviders = new List<FunctionDescriptorProvider>();
+            if (string.IsNullOrEmpty(language))
             {
-                new DotNetFunctionDescriptorProvider(this, ScriptConfig),
-                new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher),
-            };
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
+                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher));
+            }
+            else if (language.Equals(ScriptConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
+            }
+            else
+            {
+                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher));
+            }
 
             Collection<FunctionDescriptor> functions;
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
@@ -685,7 +695,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return hostConfigObject;
         }
 
-        private void InitializeWorkers()
+        private void InitializeWorkers(string language)
         {
             var serverImpl = new FunctionRpcService(EventManager);
             var server = new GrpcServer(serverImpl);
@@ -715,13 +725,36 @@ namespace Microsoft.Azure.WebJobs.Script
                     server.Uri,
                     _hostConfig.LoggerFactory);
             };
-            var providers = new List<IWorkerProvider>()
-                {
-                    new NodeWorkerProvider(),
-                    new JavaWorkerProvider()
-                };
 
-            providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, _startupLogger));
+            var providers = new List<IWorkerProvider>();
+            if (!string.IsNullOrEmpty(language))
+            {
+                _startupLogger.LogInformation($"{ScriptConstants.FunctionWorkerRuntimeSettingName} is specified, only {language} will be enabled");
+                // TODO: We still have some hard coded languages, so we need to handle them. Remove this switch once we've moved away from that.
+                switch (language.ToLower())
+                {
+                    case ScriptConstants.NodeLanguageWrokerName:
+                        providers.Add(new NodeWorkerProvider());
+                        break;
+                    case ScriptConstants.JavaLanguageWrokerName:
+                        providers.Add(new JavaWorkerProvider());
+                        break;
+                    case ScriptConstants.DotNetLanguageWorkerName:
+                        // No-Op
+                        break;
+                    default:
+                        // Pass the language to the provider loader to filter
+                        providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, _startupLogger, language: language));
+                        break;
+                }
+            }
+            else
+            {
+                // load all providers if no specific language is specified
+                providers.Add(new NodeWorkerProvider());
+                providers.Add(new JavaWorkerProvider());
+                providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, _startupLogger));
+            }
 
             var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
             var workerConfigs = configFactory.GetConfigs(providers);
@@ -1366,11 +1399,15 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                     }
 
-                    ValidateFunction(descriptor, httpFunctions);
-
                     if (descriptor != null)
                     {
+                        ValidateFunction(descriptor, httpFunctions);
                         functionDescriptors.Add(descriptor);
+                    }
+                    else
+                    {
+                        string functionLanguage = _settingsManager.Configuration[ScriptConstants.FunctionWorkerRuntimeSettingName];
+                        throw new ArgumentException($"Could not find a valid provider. {ScriptConstants.FunctionWorkerRuntimeSettingName} Appsetting is set to {functionLanguage}. Check that you have the correct language provider enabled and installed");
                     }
                 }
                 catch (Exception ex)

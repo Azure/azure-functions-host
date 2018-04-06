@@ -220,6 +220,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             internal TestFixture(bool startHost) : base(@"TestScripts\Node", "node", null, startHost)
             {
             }
+            internal TestFixture(ICollection<string> functions, string functionsWorkerLanguage = null) 
+                : base(@"TestScripts\Node", "node", null, true, functions, functionsWorkerLanguage)
+            {
+            }
         }
     }
 }

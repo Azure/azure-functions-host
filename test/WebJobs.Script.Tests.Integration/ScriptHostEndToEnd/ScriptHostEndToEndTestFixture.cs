@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,8 +28,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptSettingsManager _settingsManager;
         private readonly ManualResetEventSlim _hostStartedEvent = new ManualResetEventSlim();
 
-        protected ScriptHostEndToEndTestFixture(string rootPath, string testId, ProxyClientExecutor proxyClient = null, bool startHost = true)
+        protected ScriptHostEndToEndTestFixture(string rootPath, string testId, ProxyClientExecutor proxyClient = null, bool startHost = true, ICollection<string> functions = null, string functionsWorkerLanguage = null)
         {
+            if (!string.IsNullOrEmpty(functionsWorkerLanguage))
+            {
+                Environment.SetEnvironmentVariable(ScriptConstants.FunctionWorkerRuntimeSettingName, functionsWorkerLanguage);
+            }
             _settingsManager = ScriptSettingsManager.Instance;
             FixtureId = testId;
             string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
@@ -44,8 +49,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
                 RootScriptPath = rootPath,
-                FileLoggingMode = FileLoggingMode.Always
+                FileLoggingMode = FileLoggingMode.Always,
             };
+            if (functions != null)
+            {
+                config.Functions = functions;
+            }
 
             RequestConfiguration = new HttpConfiguration();
 

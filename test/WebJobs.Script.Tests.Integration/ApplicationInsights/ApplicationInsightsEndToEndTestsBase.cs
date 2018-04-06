@@ -217,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // slightly out-of-order or on different threads
             TraceTelemetry[] traces = null;
 
-            int expectedCount = 11;
+            int expectedCount = 12;
 
             await TestHelpers.Await(() =>
             {
@@ -244,8 +244,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTrace(traces[6], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
             ValidateTrace(traces[7], "Host started (", LogCategories.Startup);
             ValidateTrace(traces[8], "Job host started", LogCategories.Startup);
-            ValidateTrace(traces[9], "Reading host configuration file", LogCategories.Startup);
-            ValidateTrace(traces[10], "Starting Host (HostId=function-tests-", ScriptConstants.LogCategoryHostGeneral);
+            ValidateTrace(traces[9], "Loading all the worker providers from the default workers directory", LogCategories.Startup);
+            ValidateTrace(traces[10], "Reading host configuration file", LogCategories.Startup);
+            ValidateTrace(traces[11], "Starting Host (HostId=function-tests-", ScriptConstants.LogCategoryHostGeneral);
         }
 
         private static void ValidateMetric(MetricTelemetry telemetry, string expectedOperationId, string expectedOperationName)
