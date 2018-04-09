@@ -50,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Give the manager and all running tasks some time to shut down gracefully.
             await Task.Delay(timeoutGracePeriod);
 
+            // TODO: FACAVAL - PASS ENVIRONMENT AND INITIATE SHUTDWON
             Program.InitiateShutdown();
         }
 
