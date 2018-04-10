@@ -753,9 +753,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // now the configuration has been read and applied re-create the logger
             // factory and loggers ensuring that filters and settings have been applied
+            ILoggerFactory oldLoggerFactory = _hostConfig.LoggerFactory;
             ConfigureLoggerFactory(recreate: true);
             _startupLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
             Logger = _hostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+            oldLoggerFactory.Dispose();
 
             // Allow tests to modify anything initialized by host.json
             ScriptConfig.OnConfigurationApplied?.Invoke(ScriptConfig);
