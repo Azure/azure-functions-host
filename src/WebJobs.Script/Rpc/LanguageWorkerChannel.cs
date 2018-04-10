@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
@@ -37,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private string _workerId;
         private Process _process;
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new Dictionary<string, BufferBlock<ScriptInvocationContext>>();
+        private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
 
         private IObservable<InboundEvent> _inboundWorkerEvents;
@@ -213,55 +215,61 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void LoadResponse(FunctionLoadResponse loadResponse)
         {
-            if (loadResponse.Result.IsFailure(out Exception e))
+            if (loadResponse.Result.IsFailure(out Exception ex))
             {
-                _logger.LogError($"Function {loadResponse.FunctionId} failed to load", e);
+                //Cache function load errors to replay error messages on invoking failed functions
+                _functionLoadErrors[loadResponse.FunctionId] = ex;
             }
-            else
-            {
-                var inputBuffer = _functionInputBuffers[loadResponse.FunctionId];
-
-                // link the invocation inputs to the invoke call
-                var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => Invoke(ctx));
-                var disposableLink = inputBuffer.LinkTo(invokeBlock);
-                _inputLinks.Add(disposableLink);
-            }
+            var inputBuffer = _functionInputBuffers[loadResponse.FunctionId];
+            // link the invocation inputs to the invoke call
+            var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => Invoke(ctx));
+            var disposableLink = inputBuffer.LinkTo(invokeBlock);
+            _inputLinks.Add(disposableLink);
         }
 
         public void Invoke(ScriptInvocationContext context)
         {
-            if (context.CancellationToken.IsCancellationRequested)
+            if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.FunctionId))
             {
-                context.ResultSource.SetCanceled();
-                return;
+                _logger.LogTrace($"Function {context.FunctionMetadata.Name} failed to load");
+                context.ResultSource.TrySetException(_functionLoadErrors[context.FunctionMetadata.FunctionId]);
+                _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
             }
-
-            var functionMetadata = context.FunctionMetadata;
-
-            InvocationRequest invocationRequest = new InvocationRequest()
+            else
             {
-                FunctionId = functionMetadata.FunctionId,
-                InvocationId = context.ExecutionContext.InvocationId.ToString(),
-            };
-            foreach (var pair in context.BindingData)
-            {
-                invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc());
-            }
-            foreach (var input in context.Inputs)
-            {
-                invocationRequest.InputData.Add(new ParameterBinding()
+                if (context.CancellationToken.IsCancellationRequested)
                 {
-                    Name = input.name,
-                    Data = input.val.ToRpc()
+                    context.ResultSource.SetCanceled();
+                    return;
+                }
+
+                var functionMetadata = context.FunctionMetadata;
+
+                InvocationRequest invocationRequest = new InvocationRequest()
+                {
+                    FunctionId = functionMetadata.FunctionId,
+                    InvocationId = context.ExecutionContext.InvocationId.ToString(),
+                };
+                foreach (var pair in context.BindingData)
+                {
+                    invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc());
+                }
+                foreach (var input in context.Inputs)
+                {
+                    invocationRequest.InputData.Add(new ParameterBinding()
+                    {
+                        Name = input.name,
+                        Data = input.val.ToRpc()
+                    });
+                }
+
+                _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
+
+                Send(new StreamingMessage
+                {
+                    InvocationRequest = invocationRequest
                 });
             }
-
-            _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
-
-            Send(new StreamingMessage
-            {
-                InvocationRequest = invocationRequest
-            });
         }
 
         internal void InvokeResponse(InvocationResponse invokeResponse)
@@ -293,11 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     if (rpcLog.Exception != null)
                     {
                         var exception = new Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
-
                         context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
-
-                        context.ResultSource.TrySetException(exception);
-                        _executingInvocations.TryRemove(rpcLog.InvocationId, out ScriptInvocationContext _);
                     }
                     else
                     {
