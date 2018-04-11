@@ -1,18 +1,16 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Net;
-using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
-using Microsoft.Extensions.Primitives;
 using Moq;
 using Xunit;
 
@@ -22,6 +20,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
     {
         private const string SiteRootPath = @"C:\DWASFiles\Sites\SiteName\VirtualDirectory0";
         private static readonly string LocalSiteRootPath = Path.GetFullPath(Path.Combine(SiteRootPath, @".."));
+
+        public static IEnumerable<object[]> MapRouteToLocalPathData
+        {
+            get
+            {
+                yield return new object[] { "https://localhost/vfs", SiteRootPath };
+                yield return new object[] { "https://localhost/vfs/LogFiles/kudu", SiteRootPath + @"\LogFiles\kudu" };
+
+                yield return new object[] { "https://localhost/vfs/SystemDrive", "%SystemDrive%" };
+                yield return new object[] { "https://localhost/vfs/SystemDrive/windows", @"%SystemDrive%\windows" };
+                yield return new object[] { "https://localhost/vfs/SystemDrive/Program Files (x86)", @"%ProgramFiles(x86)%" };
+
+                yield return new object[] { "https://localhost/vfs/LocalSiteRoot", LocalSiteRootPath };
+                yield return new object[] { "https://localhost/vfs/LocalSiteRoot/Temp", LocalSiteRootPath + @"\Temp" };
+            }
+        }
+
+        public static IEnumerable<object[]> DeleteItemDeletesFileIfETagMatchesData
+        {
+            get
+            {
+                yield return new object[] { EntityTagHeaderValue.Any };
+                yield return new object[] { new EntityTagHeaderValue("\"00c0b16b2129cf08\"") };
+            }
+        }
 
         [Fact]
         public async Task DeleteRequestReturnsNotFoundIfItemDoesNotExist()
@@ -133,17 +156,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(HttpStatusCode.PreconditionFailed, response.StatusCode);
         }
 
-        public static IEnumerable<object[]> DeleteItemDeletesFileIfETagMatchesData
-        {
-            get
-            {
-                yield return new object[] { EntityTagHeaderValue.Any };
-                yield return new object[] { new EntityTagHeaderValue("\"00c0b16b2129cf08\"") };
-            }
-        }
-
         [Theory]
-        [MemberData("DeleteItemDeletesFileIfETagMatchesData")]
+        [MemberData(nameof(DeleteItemDeletesFileIfETagMatchesData))]
         public async Task DeleteItemDeletesFileIfETagMatches(EntityTagHeaderValue etag)
         {
             // Arrange
@@ -167,22 +181,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             fileInfo.Verify(f => f.Delete());
-        }
-
-        public static IEnumerable<object[]> MapRouteToLocalPathData
-        {
-            get
-            {
-                yield return new object[] { "https://localhost/vfs", SiteRootPath };
-                yield return new object[] { "https://localhost/vfs/LogFiles/kudu", SiteRootPath + @"\LogFiles\kudu" };
-
-                yield return new object[] { "https://localhost/vfs/SystemDrive", "%SystemDrive%" };
-                yield return new object[] { "https://localhost/vfs/SystemDrive/windows", @"%SystemDrive%\windows" };
-                yield return new object[] { "https://localhost/vfs/SystemDrive/Program Files (x86)", @"%ProgramFiles(x86)%" };
-
-                yield return new object[] { "https://localhost/vfs/LocalSiteRoot", LocalSiteRootPath };
-                yield return new object[] { "https://localhost/vfs/LocalSiteRoot/Temp", LocalSiteRootPath + @"\Temp" };
-            }
         }
 
         private static HttpRequest CreateRequest(string path)

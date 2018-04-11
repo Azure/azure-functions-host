@@ -14,7 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Func<string, LogLevel, bool> _filter;
         private IList<LogMessage> _logMessages = new List<LogMessage>();
 
-
         public TestLogger(string category, Func<string, LogLevel, bool> filter = null)
         {
             Category = category;

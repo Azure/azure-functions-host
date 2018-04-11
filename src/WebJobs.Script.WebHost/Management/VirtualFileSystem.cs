@@ -321,7 +321,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 info.Create();
             }
-            catch (IOException ex)
+            catch (IOException)
             {
                 // TODO: log ex
                 HttpResponseMessage conflictDirectoryResponse = CreateResponse(HttpStatusCode.Conflict);

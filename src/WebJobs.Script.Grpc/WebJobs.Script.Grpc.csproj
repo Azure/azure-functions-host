@@ -8,6 +8,10 @@
     <Ext Condition="'$(OS)' == 'Windows_NT'">bat</Ext>
     <Ext Condition="'$(OS)' != 'Windows_NT'">sh</Ext>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+  </PropertyGroup>
   
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.3.0" />
