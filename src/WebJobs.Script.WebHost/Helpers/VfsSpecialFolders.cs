@@ -55,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
 
                 return _localSiteRootPath;
             }
+
             // internal for testing purpose
             internal set
             {

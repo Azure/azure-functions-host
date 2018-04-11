@@ -609,6 +609,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact(Skip = "Not currently supported.")]
         public async Task ServiceBusQueueTrigger_Succeeds()
         {
+            await Task.CompletedTask;
             //string queueName = "samples-input";
             //string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
             //var namespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);

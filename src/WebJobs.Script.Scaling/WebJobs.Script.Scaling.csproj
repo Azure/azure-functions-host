@@ -5,6 +5,10 @@
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Scaling</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Scaling</RootNamespace>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Win32.Registry" Version="4.4.0" />

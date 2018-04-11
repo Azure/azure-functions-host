@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             return context.Request.Path.StartsWithSegments("/admin/vfs");
         }
 
-        public async Task InvokeAsync(HttpContext context, RequestDelegate _)
+        public async Task InvokeAsync(HttpContext context, RequestDelegate requestDelegate)
         {
             var authorized = await AuthenticateAndAuthorize(context);
 

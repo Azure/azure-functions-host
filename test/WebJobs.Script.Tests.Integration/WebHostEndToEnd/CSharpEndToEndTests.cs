@@ -218,12 +218,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(expectedValue, Utility.RemoveUtf8ByteOrderMark(result));
         }
 
-        [Theory(Skip = "Not yet enabled.")]
-        [InlineData("application/json", "\"Name: Fabio Cavalcante, Location: Seattle\"")]
-        [InlineData("application/xml", "<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">Name: Fabio Cavalcante, Location: Seattle</string>")]
-        [InlineData("text/plain", "Name: Fabio Cavalcante, Location: Seattle")]
-        public async Task HttpTrigger_GetWithAccept_NegotiatesContent(string accept, string expectedBody)
-        {
+        //[Theory(Skip = "Not yet enabled.")]
+        //[InlineData("application/json", "\"Name: Fabio Cavalcante, Location: Seattle\"")]
+        //[InlineData("application/xml", "<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">Name: Fabio Cavalcante, Location: Seattle</string>")]
+        //[InlineData("text/plain", "Name: Fabio Cavalcante, Location: Seattle")]
+        //public async Task HttpTrigger_GetWithAccept_NegotiatesContent(string accept, string expectedBody)
+        //{
             //var input = new JObject
             //{
             //    { "name", "Fabio Cavalcante" },
@@ -254,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             //string body = await response.Content.ReadAsStringAsync();
             //Assert.Equal(expectedBody, body);
-        }
+        //}
 
         public class TestFixture : EndToEndTestFixture
         {

@@ -71,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         {
             return !string.IsNullOrEmpty(request.GetHeaderValueOrDefault(ScriptConstants.AntaresColdStartHeaderName));
         }
+
         public static Uri GetRequestUri(this HttpRequest request) => new Uri(request.GetDisplayUrl());
     }
 }

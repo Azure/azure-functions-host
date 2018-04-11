@@ -123,7 +123,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.True(match.Success);
             Assert.Equal(7, match.Groups.Count);
 
-            bool b;
             var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
             Assert.Collection(groupMatches,
                 p => Assert.Equal(siteName, p),

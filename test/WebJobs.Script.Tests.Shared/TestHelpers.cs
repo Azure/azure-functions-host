@@ -157,7 +157,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 BlobResultSegment blobSegment = await container.ListBlobsSegmentedAsync(token);
                 token = blobSegment.ContinuationToken;
                 blobs.AddRange(blobSegment.Results.Cast<CloudBlockBlob>());
-            } while (token != null);
+            }
+            while (token != null);
 
             return blobs;
         }
