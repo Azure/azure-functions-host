@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             // we read these in the ctor (not static ctor) since it can change on the fly
             appName = GetNormalizedString(settingsManager.AzureWebsiteUniqueSlotName);
-            subscriptionId = Utility.GetSubscriptionId() ?? string.Empty;
+            subscriptionId = Utility.GetSubscriptionId(settingsManager) ?? string.Empty;
 
             _eventGenerator = generator;
             _functionActivityFlushIntervalSeconds = functionActivityFlushIntervalSeconds;

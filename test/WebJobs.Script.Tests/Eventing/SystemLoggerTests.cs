@@ -6,13 +6,14 @@ using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class SystemLoggerTests : IDisposable
+    public class SystemLoggerTests
     {
         private readonly SystemLogger _logger;
         private readonly Mock<IEventGenerator> _mockEventGenerator;
@@ -25,16 +26,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public SystemLoggerTests()
         {
-            _settingsManager = ScriptSettingsManager.Instance;
-
             _subscriptionId = "e3235165-1600-4819-85f0-2ab362e909e4";
             _hostInstanceId = Guid.NewGuid().ToString();
-            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName, $"{_subscriptionId}+westuswebspace");
-
             _websiteName = "functionstest";
-            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteName, _websiteName);
 
             _mockEventGenerator = new Mock<IEventGenerator>(MockBehavior.Strict);
+
+            _settingsManager = new ScriptSettingsManager();
+            _settingsManager.SetConfigurationFactory(() =>
+            {
+                var configurationBuilder = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", optional: true)
+                .AddEnvironmentVariables()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { EnvironmentSettingNames.AzureWebsiteOwnerName,  $"{_subscriptionId}+westuswebspace"},
+                    { EnvironmentSettingNames.AzureWebsiteName,  _websiteName},
+                });
+
+                return configurationBuilder.Build();
+            });
 
             _category = LogCategories.CreateFunctionCategory(_functionName);
             _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, _settingsManager);
@@ -150,12 +161,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Make sure it's never been called.
             _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), string.Empty, string.Empty, string.Empty, string.Empty, string.Empty), Times.Never);
-        }
-
-        public void Dispose()
-        {
-            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName, null);
-            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteName, null);
         }
     }
 }
