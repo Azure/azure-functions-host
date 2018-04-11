@@ -115,9 +115,9 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static string GetSubscriptionId()
+        public static string GetSubscriptionId(ScriptSettingsManager settingsManager)
         {
-            string ownerName = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName) ?? string.Empty;
+            string ownerName = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName) ?? string.Empty;
             if (!string.IsNullOrEmpty(ownerName))
             {
                 int idx = ownerName.IndexOf('+');

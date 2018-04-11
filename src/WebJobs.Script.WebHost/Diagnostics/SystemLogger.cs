@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             _settingsManager = settingsManager;
             _appName = _settingsManager.AzureWebsiteUniqueSlotName;
-            _subscriptionId = Utility.GetSubscriptionId();
+            _subscriptionId = Utility.GetSubscriptionId(settingsManager);
             _eventGenerator = eventGenerator;
             _categoryName = categoryName ?? string.Empty;
             _functionName = LogCategories.IsFunctionCategory(_categoryName) ? _categoryName.Split('.')[1] : string.Empty;
