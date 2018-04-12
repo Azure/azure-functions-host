@@ -198,16 +198,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public static string VfsUriToFilePath(Uri uri, ScriptHostConfiguration config, bool isDirectory = false)
         {
-            var home = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            if (uri != null)
+            {
+                var home = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                 ? ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath) ?? config.RootScriptPath
                 : Path.DirectorySeparatorChar.ToString();
 
-            var filePath = uri.AbsolutePath.Split("/admin/vfs").LastOrDefault();
-            filePath = string.IsNullOrEmpty(filePath)
-                ? home
-                : Path.Combine(home, filePath.TrimStart('/'));
+                var filePath = uri.AbsolutePath.Split("/admin/vfs").LastOrDefault();
+                filePath = string.IsNullOrEmpty(filePath)
+                    ? home
+                    : Path.Combine(home, filePath.TrimStart('/'));
 
-            return filePath.Replace('/', Path.DirectorySeparatorChar);
+                return filePath.Replace('/', Path.DirectorySeparatorChar);
+            }
+            else
+            {
+                return null;
+            }
         }
 
         protected virtual Task<HttpResponseMessage> CreateDirectoryGetResponse(HttpRequest request, DirectoryInfoBase info, string localFilePath)

@@ -143,7 +143,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             try
             {
-                FileUtility.DeleteDirectoryContentsSafe(function.GetFunctionPath(_config));
+                var functionPath = function.GetFunctionPath(_config);
+                if (!string.IsNullOrEmpty(functionPath))
+                {
+                    FileUtility.DeleteDirectoryContentsSafe(functionPath);
+                }
+
                 DeleteFunctionArtifacts(function);
                 return (true, string.Empty);
             }
@@ -157,7 +162,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             // TODO: clear secrets
             // TODO: clear logs
-            FileUtility.DeleteFileSafe(function.GetFunctionTestDataFilePath(_config));
+            var testDataPath = function.GetFunctionTestDataFilePath(_config);
+
+            if (!string.IsNullOrEmpty(testDataPath))
+            {
+                FileUtility.DeleteFileSafe(testDataPath);
+            }
         }
     }
 }
