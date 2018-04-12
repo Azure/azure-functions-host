@@ -79,7 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var compiler = new SimpleSourceCodeServices(msbuildEnabled: FSharpOption<bool>.Some(false));
 
             FSharpErrorInfo[] errors = null;
-            FSharpOption<Assembly> assemblyOption = null;
+            byte[] assemblyBytes = null;
+            byte[] pdbBytes = null;
 
             string scriptPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 
@@ -87,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             string scriptFilePath = Path.Combine(scriptPath, Path.GetFileName(functionMetadata.ScriptFile));
 
-            var assemblyName = FunctionAssemblyLoader.GetAssemblyNameFromMetadata(functionMetadata, Guid.NewGuid().ToString());
+            var assemblyName = Utility.GetAssemblyNameFromMetadata(functionMetadata, Guid.NewGuid().ToString());
             var assemblyFileName = Path.Combine(scriptPath, assemblyName + ".dll");
             var pdbName = Path.ChangeExtension(assemblyFileName, PlatformHelper.IsWindows ? "pdb" : "dll.mdb");
 
@@ -182,14 +183,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 if (code == 0)
                 {
-                    var assemblyBytes = File.ReadAllBytes(assemblyFileName);
-                    byte[] pdbBytes = null;
+                    assemblyBytes = File.ReadAllBytes(assemblyFileName);
+                    pdbBytes = null;
                     if (File.Exists(pdbName))
                     {
                         pdbBytes = File.ReadAllBytes(pdbName);
                     }
-                    var assembly = Assembly.Load(assemblyBytes, pdbBytes);
-                    assemblyOption = FSharpOption<Assembly>.Some(assembly);
                 }
                 else
                 {
@@ -209,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }), TaskContinuationOptions.OnlyOnFaulted);
             }
 
-            return Task.FromResult<IDotNetCompilation>(new FSharpCompilation(errors, assemblyOption));
+            return Task.FromResult<IDotNetCompilation>(new FSharpCompilation(errors, assemblyBytes, pdbBytes));
         }
 
         private static string GetFunctionSource(FunctionMetadata functionMetadata)

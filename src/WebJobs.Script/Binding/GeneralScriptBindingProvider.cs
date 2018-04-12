@@ -5,6 +5,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
+using System.Runtime.Loader;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -60,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return true;
         }
 
-        public override bool TryResolveAssembly(string assemblyName, out Assembly assembly)
+        public override bool TryResolveAssembly(string assemblyName, AssemblyLoadContext targetContext, out Assembly assembly)
         {
             return _metadataProvider.TryResolveAssembly(assemblyName, out assembly);
         }

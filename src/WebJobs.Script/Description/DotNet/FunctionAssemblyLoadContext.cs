@@ -2,65 +2,95 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using System.Runtime.Loader;
+using System.Threading;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.DependencyModel;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     /// <summary>
-    /// Establishes an assembly load context for a given function.
-    /// Assemblies loaded from this context are loaded using the <see cref="IFunctionMetadataResolver"/> associated
-    /// with a given function.
+    /// Establishes an assembly load context for a extensions, functions and their dependencies.
     /// </summary>
-    public sealed class FunctionAssemblyLoadContext
+    public partial class FunctionAssemblyLoadContext : AssemblyLoadContext
     {
-        private readonly IFunctionMetadataResolver _metadataResolver;
-        private readonly ILogger _logger;
-        private ImmutableArray<Assembly> _loadedAssemblies;
-        private Uri _functionBaseUri;
+        private readonly string _baseProbingPath;
+        private static readonly Lazy<string[]> _runtimeAssemblies = new Lazy<string[]>(GetRuntimeAssemblies);
 
-        public FunctionAssemblyLoadContext(FunctionMetadata functionMetadata, Assembly functionAssembly, IFunctionMetadataResolver resolver, ILogger logger)
+        private static Lazy<FunctionAssemblyLoadContext> _defaultContext = new Lazy<FunctionAssemblyLoadContext>(() => new FunctionAssemblyLoadContext(ResolveFunctionAppRoot()), true);
+
+        public FunctionAssemblyLoadContext(string functionAppRoot)
         {
-            _metadataResolver = resolver;
-            _loadedAssemblies = ImmutableArray<Assembly>.Empty;
-            _logger = logger;
-            FunctionAssembly = functionAssembly;
-            Metadata = functionMetadata;
-        }
-
-        public ImmutableArray<Assembly> LoadedAssemblies => _loadedAssemblies;
-
-        public ILogger Logger => _logger;
-
-        public Uri FunctionBaseUri
-        {
-            get
+            if (functionAppRoot == null)
             {
-                if (_functionBaseUri == null)
-                {
-                    _functionBaseUri = new Uri(Path.GetDirectoryName(Metadata.ScriptFile) + Path.DirectorySeparatorChar, UriKind.RelativeOrAbsolute);
-                }
-
-                return _functionBaseUri;
-            }
-        }
-
-        public Assembly FunctionAssembly { get; private set; }
-
-        public FunctionMetadata Metadata { get; private set; }
-
-        internal Assembly ResolveAssembly(string name)
-        {
-            Assembly assembly = _metadataResolver.ResolveAssembly(name);
-
-            if (assembly != null)
-            {
-                _loadedAssemblies = _loadedAssemblies.Add(assembly);
+                throw new ArgumentNullException(nameof(functionAppRoot));
             }
 
-            return assembly;
+            _baseProbingPath = Path.Combine(functionAppRoot, "bin");
+        }
+
+        public static FunctionAssemblyLoadContext Shared => _defaultContext.Value;
+
+        protected virtual Assembly OnResolvingAssembly(AssemblyLoadContext arg1, AssemblyName assemblyName)
+        {
+            // Log/handle failure
+            return null;
+        }
+
+        protected override Assembly Load(AssemblyName assemblyName)
+        {
+            if (_runtimeAssemblies.Value.Contains(assemblyName.Name))
+            {
+                return null;
+            }
+
+            string path = Path.Combine(_baseProbingPath, assemblyName.Name + ".dll");
+
+            if (File.Exists(path))
+            {
+                return LoadFromAssemblyPath(path);
+            }
+
+            return null;
+        }
+
+        protected static string ResolveFunctionAppRoot()
+        {
+            var settingsManager = ScriptSettingsManager.Instance;
+            if (settingsManager.IsAzureEnvironment)
+            {
+                string home = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
+                return Path.Combine(home, "site", "wwwroot");
+            }
+
+            return settingsManager.GetSetting(EnvironmentSettingNames.AzureWebJobsScriptRoot);
+        }
+
+        private static string[] GetRuntimeAssemblies()
+        {
+            string assembliesJson = GetRuntimeAssembliesJson();
+            JObject assemblies = JObject.Parse(assembliesJson);
+
+            return assemblies["runtimeAssemblies"].ToObject<string[]>();
+        }
+
+        private static string GetRuntimeAssembliesJson()
+        {
+            var assembly = typeof(FunctionAssemblyLoadContext).Assembly;
+            using (Stream resource = assembly.GetManifestResourceStream(assembly.GetName().Name + ".runtimeassemblies.json"))
+            using (var reader = new StreamReader(resource))
+            {
+                return reader.ReadToEnd();
+            }
         }
     }
 }

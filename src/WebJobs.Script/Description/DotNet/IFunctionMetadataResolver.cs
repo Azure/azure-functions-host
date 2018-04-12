@@ -17,9 +17,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         IReadOnlyCollection<string> GetCompilationReferences();
 
-        Assembly ResolveAssembly(string assemblyName);
-
         ImmutableArray<PortableExecutableReference> ResolveReference(string reference, string baseFilePath, MetadataReferenceProperties properties);
+
+        Assembly ResolveAssembly(AssemblyName assemblyName, FunctionAssemblyLoadContext targetContext);
 
         Task<PackageRestoreResult> RestorePackagesAsync();
 

@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return _compilation.WithAnalyzers(GetAnalyzers()).GetAllDiagnosticsAsync().Result;
         }
 
-        public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver)
+        public FunctionSignature GetEntryPointSignature(IFunctionEntryPointResolver entryPointResolver, Assembly functionAssembly)
         {
             if (!_compilation.SyntaxTrees.Any())
             {
@@ -90,31 +90,29 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         async Task<object> ICompilation.EmitAsync(CancellationToken cancellationToken) => await EmitAsync(cancellationToken);
 
-        public async Task<Assembly> EmitAsync(CancellationToken cancellationToken)
+        public async Task<DotNetCompilationResult> EmitAsync(CancellationToken cancellationToken)
         {
             try
             {
-                using (var assemblyStream = new MemoryStream())
-                using (var pdbStream = new MemoryStream())
+                var assemblyStream = new MemoryStream();
+                var pdbStream = new MemoryStream();
+                var compilationWithAnalyzers = _compilation.WithAnalyzers(GetAnalyzers());
+                var diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
+                var emitOptions = new EmitOptions().WithDebugInformationFormat(PlatformHelper.IsWindows ? DebugInformationFormat.Pdb : DebugInformationFormat.PortablePdb);
+                var emitResult = compilationWithAnalyzers.Compilation.Emit(assemblyStream, pdbStream, options: emitOptions, cancellationToken: cancellationToken);
+
+                diagnostics = diagnostics.AddRange(emitResult.Diagnostics);
+
+                if (diagnostics.Any(di => di.Severity == DiagnosticSeverity.Error))
                 {
-                    var compilationWithAnalyzers = _compilation.WithAnalyzers(GetAnalyzers());
-                    var diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
-                    var emitOptions = new EmitOptions().WithDebugInformationFormat(PlatformHelper.IsWindows ? DebugInformationFormat.Pdb : DebugInformationFormat.PortablePdb);
-                    var emitResult = compilationWithAnalyzers.Compilation.Emit(assemblyStream, pdbStream, options: emitOptions, cancellationToken: cancellationToken);
-
-                    diagnostics = diagnostics.AddRange(emitResult.Diagnostics);
-
-                    if (diagnostics.Any(di => di.Severity == DiagnosticSeverity.Error))
-                    {
-                        throw new CompilationErrorException("Script compilation failed.", diagnostics);
-                    }
-
-                    // Check if cancellation was requested while we were compiling,
-                    // and if so quit here.
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    return Assembly.Load(assemblyStream.GetBuffer(), pdbStream.GetBuffer());
+                    throw new CompilationErrorException("Script compilation failed.", diagnostics);
                 }
+
+                // Check if cancellation was requested while we were compiling,
+                // and if so quit here.
+                cancellationToken.ThrowIfCancellationRequested();
+
+                return DotNetCompilationResult.FromBytes(assemblyStream.GetBuffer(), pdbStream.GetBuffer());
             }
             catch (Exception exc) when (!(exc is CompilationErrorException))
             {
