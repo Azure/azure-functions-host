@@ -146,7 +146,7 @@ NuGetPack: Creates a nuget package.
       <NuGetPackOptions Condition="'$(NuGetPackOptions)' == '' AND '$(NuGetPackSymbols)' == 'true'">-NoPackageAnalysis -symbols</NuGetPackOptions>
       <NuGetCommand>"$(NuGetExePath)"</NuGetCommand>
       <PackageOutputDir Condition="$(PackageOutputDir) == ''">$(TargetDir.Trim('\\'))</PackageOutputDir>
-      <BuildCommand>$(NuGetCommand) pack "$(ProjectPath)" -p Configuration=$(Configuration) -o "$(PackageOutputDir)"</BuildCommand>
+      <BuildCommand>$(NuGetCommand) pack "$(ProjectPath)" -p Configuration=$(Configuration) -OutputDirectory "$(PackageOutputDir)"</BuildCommand>
       <BuildCommand Condition="'$(NuSpecProperties)' != ''">$(BuildCommand) -Properties "$(NuSpecProperties)" $(NuGetPackOptions)</BuildCommand>
     </PropertyGroup>
     <!-- Invalidate outputs to force a full build in case of failure -->
