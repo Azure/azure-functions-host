@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Security.Claims;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 
 namespace Microsoft.Azure.WebJobs.Script.Host
@@ -120,10 +122,29 @@ namespace Microsoft.Azure.WebJobs.Script.Host
         {
             var authorizationResult = await AuthorizationLevelAttribute.GetAuthorizationResultAsync(request, _secretManager, functionName: _function.Name);
             var authorizationLevel = authorizationResult.AuthorizationLevel;
+            if (authorizationLevel > AuthorizationLevel.Anonymous && authorizationLevel < AuthorizationLevel.User)
+            {
+                AddKeyAuthorizationIdentity(request, authorizationResult);
+            }
+
+            request.SetProperty(ScriptConstants.AzureFunctionsHasEasyAuthUser, HasEasyAuthIdentity(request));
             request.SetAuthorizationLevel(authorizationLevel);
-            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestKeyNameKey, authorizationResult.KeyName);
+            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestKeyNameKey, authorizationResult.KeyId);
 
             return authorizationLevel;
+        }
+
+        private static void AddKeyAuthorizationIdentity(HttpRequestMessage request, KeyAuthorizationResult result)
+        {
+            var identity = new ClaimsIdentity(ScriptConstants.AzureFunctionsKeyAuthenticationType);
+            identity.AddClaim(new Claim(ScriptConstants.AzureFunctionsAuthLevelClaimType, result.AuthorizationLevel.ToString()));
+            identity.AddClaim(new Claim(ScriptConstants.AzureFunctionsKeyIdClaimType, result.KeyId));
+            ClaimsIdentityHelper.AddIdentityToHttpRequest(request, identity, ScriptConstants.AzureFunctionsKeyIdentityHeaderName);
+        }
+
+        private static bool HasEasyAuthIdentity(HttpRequestMessage req)
+        {
+            return ClaimsIdentityHelper.GetIdentityFromHttpRequest(req, ScriptConstants.EasyAuthIdentityHeaderName) != null;
         }
     }
 }

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Security.Claims;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 
@@ -16,5 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public TraceWriter TraceWriter { get; set; }
 
         public ILogger Logger { get; set; }
+
+        public ClaimsPrincipal Principal { get; set; }
     }
 }

@@ -83,6 +83,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 return true;
             }
 
+            if (levelToCheck == AuthorizationLevel.User)
+            {
+                return request.GetPropertyOrDefault<bool>(ScriptConstants.AzureFunctionsHasEasyAuthUser);
+            }
+
             var requestAuthorizationLevel = request.GetAuthorizationLevel();
             if (requestAuthorizationLevel == AuthorizationLevel.Admin)
             {

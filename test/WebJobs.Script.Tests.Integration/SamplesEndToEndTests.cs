@@ -291,6 +291,83 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task HttpTrigger_CSharp_UserAuth()
+        {
+            string uri = $"api/httptrigger-csharp-userauth?code={MasterKey}";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            MockEasyAuth(request, "facebook", "Connor McMahon", "10241897674253170");
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string responseContent = await response.Content.ReadAsStringAsync();
+            string[] identityStrings = StripBookendQuotations(responseContent).Split(';');
+            Assert.Equal("Identity: (facebook, Connor McMahon, 10241897674253170)", identityStrings[0]);
+            Assert.Equal("Identity: (key, Admin, master)", identityStrings[1]);
+
+            // verify that a request fails if it is totally unauthenticated
+            request = new HttpRequestMessage(HttpMethod.Get, "api/httptrigger-csharp-userauth");
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // verify that a request also fails using a function key
+            // when no user identity is provided
+            request = new HttpRequestMessage(HttpMethod.Get, $"api/httptrigger-csharp-userauth?code={MasterKey}");
+            response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task HttpTrigger_UserAuth()
+        {
+            string uri = $"api/httptrigger-userauth?code={MasterKey}";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            MockEasyAuth(request, "facebook", "Connor McMahon", "10241897674253170");
+
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string responseContent = await response.Content.ReadAsStringAsync();
+            string[] identityStrings = StripBookendQuotations(responseContent).Split(';');
+            Assert.Equal("Identity: (facebook, Connor McMahon, 10241897674253170)", identityStrings[0]);
+            Assert.Equal("Identity: (key, Admin, master)", identityStrings[1]);
+        }
+
+        private static string StripBookendQuotations(string response)
+        {
+            if (response.StartsWith("\"") && response.EndsWith("\""))
+            {
+                return response.Substring(1, response.Length - 2);
+            }
+            return response;
+        }
+
+        private static void MockEasyAuth(HttpRequestMessage request, string provider, string name, string id)
+        {
+            string userIdentityJson = @"{
+  ""auth_typ"": """ + provider + @""",
+  ""claims"": [
+    {
+      ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"",
+      ""val"": """ + name + @"""
+    },
+    {
+      ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn"",
+      ""val"": """ + name + @"""
+    },
+    {
+      ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"",
+      ""val"": """ + id + @"""
+    }
+  ],
+  ""name_typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"",
+  ""role_typ"": ""http://schemas.microsoft.com/ws/2008/06/identity/claims/role""
+}";
+            string easyAuthHeaderValue = Convert.ToBase64String(Encoding.UTF8.GetBytes(userIdentityJson));
+            request.Headers.Add("x-ms-client-principal", easyAuthHeaderValue);
+        }
+
+        [Fact]
         public async Task HttpTrigger_Get_Succeeds()
         {
             string uri = "api/httptrigger?code=hyexydhln844f2mb7hgsup2yf8dowlb0885mbiq1&name=Mathew";

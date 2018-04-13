@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using EdgeJs;
@@ -368,10 +369,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             };
 
             var bindings = new Dictionary<string, object>();
+            var identities = invocationContext.Principal.Identities.Select(CreateIdentity).ToArray<object>();
+
             var context = new Dictionary<string, object>()
             {
                 { "invocationId", invocationContext.ExecutionContext.InvocationId },
                 { "executionContext", executionContext },
+                { "identities", identities },
                 { "bindings", bindings },
                 { "log", log },
                 { "_metric", metric }
@@ -440,6 +444,28 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             context.Add("_triggerType", _trigger.Type);
 
             return context;
+        }
+
+        private static Dictionary<string, object> CreateIdentity(ClaimsIdentity identity)
+        {
+            var result = new Dictionary<string, object>
+            {
+                { "auth_typ", identity.AuthenticationType },
+                { "name_typ", identity.NameClaimType },
+                { "role_type", identity.RoleClaimType },
+            };
+
+            result.Add("claims", identity.Claims.Select(CreateClaim).ToArray<object>());
+            return result;
+        }
+
+        private static Dictionary<string, object> CreateClaim(Claim claim)
+        {
+            return new Dictionary<string, object>
+            {
+                { "val", claim.Value },
+                { "typ", claim.Type },
+            };
         }
 
         private static ScriptFunc CreateLoggerFunc(WeakReference<TraceWriter> traceWriterReference, WeakReference<FunctionInvocationContext> invocationContextReference)

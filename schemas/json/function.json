@@ -270,7 +270,7 @@
             "authLevel": {
               "type": "string",
               "default": "function",
-              "enum": [ "anonymous", "function", "admin" ],
+              "enum": [ "anonymous", "function", "admin", "user" ],
               "description": "The function HTTP authorization level."
             },
             "methods": {
