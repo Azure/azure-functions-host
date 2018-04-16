@@ -8,7 +8,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         Javascript,
         CSharp,
         FSharp,
-        [System.Obsolete("The legacy .NET assembly raw reference model has been removed. Use the direct load model instead. For more information, see https://go.microsoft.com/fwlink/?linkid=871978")]
         DotNetAssembly,
         TypeScript,
         JavaArchive,

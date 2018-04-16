@@ -62,8 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 case ScriptType.FSharp:
                     return new FSharpCompilationService(metadata, OptimizationLevel, _loggerFactory);
                 case ScriptType.DotNetAssembly:
-                    throw new NotSupportedException("The raw .NET assembly pre-compiled mode was deprecated and is no longer supported in this version of the Azure Functions runtime." +
-                        "Pre-compiled functions require use of the 'direct load' model with attributes applied to your function. For more information, see https://go.microsoft.com/fwlink/?linkid=871978");
+                    return new RawAssemblyCompilationService();
                 default:
                     throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture,
                         "The script type {0} is not supported by the {1}", scriptType, typeof(DotNetCompilationServiceFactory).Name));
