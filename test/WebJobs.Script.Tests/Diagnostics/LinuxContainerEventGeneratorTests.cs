@@ -5,9 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
@@ -53,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             _generator.LogFunctionTraceEvent(level, subscriptionId, appName, functionName, eventName, source, details, summary, exceptionType, exceptionMessage, functionInvocationId, hostInstanceId, activityId);
 
             string evt = _events.Single();
+            evt = JsonSerializeEvent(evt);
 
             Regex regex = new Regex(LinuxContainerEventGenerator.TraceEventRegex);
             var match = regex.Match(evt);
@@ -69,15 +71,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(functionName, p),
                 p => Assert.Equal(eventName, p),
                 p => Assert.Equal(source, p),
-                p => Assert.Equal(details, p),
-                p => Assert.Equal(summary, p),
+                p => Assert.Equal(details, JsonUnescape(p)),
+                p => Assert.Equal(summary, JsonUnescape(p)),
                 p => Assert.Equal(ScriptHost.Version, p),
                 p => Assert.True(DateTime.TryParse(p, out dt)),
                 p => Assert.Equal(exceptionType, p),
-                p => Assert.Equal(exceptionMessage, p),
+                p => Assert.Equal(exceptionMessage, JsonUnescape(p)),
                 p => Assert.Equal(functionInvocationId, p),
                 p => Assert.Equal(hostInstanceId, p),
                 p => Assert.Equal(activityId, p));
+        }
+
+        private string JsonUnescape(string value)
+        {
+            // Because the log data is being JSON serialized it ends up getting
+            // escaped. This function reverses that escaping.
+            return value.Replace("\\", string.Empty);
+        }
+
+        private string JsonSerializeEvent(string evt)
+        {
+            // the logging pipeline currently wraps our raw log data with JSON
+            // schema like the below
+            JObject attribs = new JObject
+            {
+                { "ApplicationName", "TestApp" },
+                { "CodePackageName", "TestCodePackage" }
+            };
+            JObject jo = new JObject
+            {
+                { "log", evt },
+                { "stream", "stdout" },
+                { "attrs", attribs },
+                { "time", DateTime.UtcNow.ToString("o") }
+            };
+
+            return jo.ToString(Formatting.None);
         }
 
         [Theory]
@@ -87,6 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             _generator.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, DateTime.Now);
 
             string evt = _events.Single();
+            evt = JsonSerializeEvent(evt);
 
             Regex regex = new Regex(LinuxContainerEventGenerator.MetricEventRegex);
             var match = regex.Match(evt);
@@ -116,6 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             _generator.LogFunctionDetailsEvent(siteName, functionName, inputBindings, outputBindings, scriptType, isDisabled);
 
             string evt = _events.Single();
+            evt = JsonSerializeEvent(evt);
 
             Regex regex = new Regex(LinuxContainerEventGenerator.DetailsEventRegex);
             var match = regex.Match(evt);
@@ -127,8 +158,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.Collection(groupMatches,
                 p => Assert.Equal(siteName, p),
                 p => Assert.Equal(functionName, p),
-                p => Assert.Equal(inputBindings, p),
-                p => Assert.Equal(outputBindings, p),
+                p => Assert.Equal(inputBindings, JsonUnescape(p)),
+                p => Assert.Equal(outputBindings, JsonUnescape(p)),
                 p => Assert.Equal(scriptType, p),
                 p => Assert.Equal(isDisabled ? "1" : "0", p));
         }
