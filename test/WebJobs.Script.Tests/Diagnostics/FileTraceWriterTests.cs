@@ -255,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Trace_LogFileDeleted_CreatesNewFile()
         {
-            var traceWriter = new FileTraceWriter(_logFilePath, TraceLevel.Info, LogType.Host);
+            var traceWriter = new TestFileTraceWriter(_logFilePath, TraceLevel.Info, LogType.Host, true);
 
             traceWriter.Info("test trace");
             traceWriter.Flush();
@@ -283,9 +283,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(logLine.EndsWith("[Info] test trace"));
         }
 
-        private void WriteLogs(string logFilePath, int numLogs)
+        private void WriteLogs(string logFilePath, int numLogs, Action<bool, object> flushCallback = null, bool disableTimers = true, object state = null)
         {
-            FileTraceWriter traceWriter = new FileTraceWriter(logFilePath, TraceLevel.Verbose, LogType.Host);
+            FileTraceWriter traceWriter = new TestFileTraceWriter(logFilePath, TraceLevel.Verbose, LogType.Host, disableTimers, flushCallback, state);
 
             for (int i = 0; i < numLogs; i++)
             {
@@ -293,6 +293,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             traceWriter.Flush();
+        }
+
+        private class TestFileTraceWriter : FileTraceWriter
+        {
+            private readonly bool _disableTimers;
+            private readonly Action<bool, object> _flushCallback;
+            private readonly object _state;
+
+            public TestFileTraceWriter(
+                string logFilePath,
+                TraceLevel level,
+                LogType logType,
+                bool disableTimers,
+                Action<bool, object> flushCallback = null,
+                object state = null)
+                : base(logFilePath, level, logType)
+            {
+                _disableTimers = disableTimers;
+                _flushCallback = flushCallback;
+                _state = state;
+            }
+
+            public object State => _state;
+
+            private protected override bool Flush(bool fromTimer)
+            {
+                var result = base.Flush(fromTimer);
+
+                _flushCallback?.Invoke(result, _state);
+
+                return result;
+            }
+
+            private protected override void StartFlushTimer()
+            {
+                if (!_disableTimers)
+                {
+                    base.StartFlushTimer();
+                }
+            }
         }
     }
 }
