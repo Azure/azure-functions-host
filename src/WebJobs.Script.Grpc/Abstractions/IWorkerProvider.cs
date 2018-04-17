@@ -25,5 +25,11 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
         /// <param name="logger">The startup ILogger.</param>
         /// <returns>A bool that indicates if the args were configured successfully.</returns>
         bool TryConfigureArguments(ArgumentsDescription args, IConfiguration config, ILogger logger);
+
+        /// <summary>
+        /// Get the worker directory path
+        /// </summary>
+        /// <returns>A string which is the full path to the worker directory</returns>
+        string GetWorkerDirectoryPath();
     }
 }

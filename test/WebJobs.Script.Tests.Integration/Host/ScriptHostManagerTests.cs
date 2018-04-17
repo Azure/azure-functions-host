@@ -351,7 +351,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Unable to parse host.json file.", ex.Message);
 
             var logger = loggerProvider.CreatedLoggers.Last();
-            Assert.Equal(3, logger.GetLogMessages().Count);
+            Assert.Equal(2, logger.GetLogMessages().Count);
             Assert.StartsWith("A ScriptHost error has occurred", logger.GetLogMessages()[1].FormattedMessage);
             Assert.Equal("Unable to parse host.json file.", logger.GetLogMessages()[1].Exception.Message);
         }

@@ -13,66 +13,88 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class GenericWorkerProvider : IWorkerProvider
     {
-        private WorkerDescription workerDescription;
-        private List<string> arguments;
+        private WorkerDescription _workerDescription;
+        private List<string> _arguments;
+        private string _pathToWorkerDir;
 
-        public GenericWorkerProvider(WorkerDescription workerDescription, List<string> arguments)
+        public GenericWorkerProvider(WorkerDescription workerDescription, List<string> arguments, string pathToWorkerDir)
         {
-            this.workerDescription = workerDescription ?? throw new ArgumentNullException(nameof(workerDescription));
-            this.arguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
+            _workerDescription = workerDescription ?? throw new ArgumentNullException(nameof(workerDescription));
+            _arguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
+            _pathToWorkerDir = pathToWorkerDir ?? throw new ArgumentNullException(nameof(pathToWorkerDir));
         }
 
         public WorkerDescription GetDescription()
         {
-            return this.workerDescription;
+            return _workerDescription;
         }
 
         public bool TryConfigureArguments(ArgumentsDescription args, IConfiguration config, ILogger logger)
         {
-            args.ExecutableArguments.AddRange(arguments);
+            args.ExecutableArguments.AddRange(_arguments);
             return true;
         }
 
-        public static List<IWorkerProvider> ReadWorkerProviderFromConfig(ScriptHostConfiguration config, ILogger logger, ScriptSettingsManager settingsManager = null)
+        public string GetWorkerDirectoryPath()
+        {
+            return _pathToWorkerDir;
+        }
+
+        public static List<IWorkerProvider> ReadWorkerProviderFromConfig(ScriptHostConfiguration config, ILogger logger, ScriptSettingsManager settingsManager = null, string language = null)
         {
             var providers = new List<IWorkerProvider>();
             settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
-            var assemblyDir = Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath);
+            var workerDirPath = settingsManager.Configuration.GetSection("workers:config:path").Value ?? WorkerProviderHelper.GetDefaultWorkerDirectoryPath();
 
-            var workerDirPath = settingsManager.Configuration.GetSection("workers:config:path").Value ?? Path.Combine(assemblyDir, "workers");
-
-            foreach (var workerDir in Directory.EnumerateDirectories(workerDirPath))
+            if (!string.IsNullOrEmpty(language))
             {
-                try
+                logger.LogInformation($"Reading Worker config for the lanuage: {language}");
+                string languageWorkerDirectory = Path.Combine(workerDirPath, language);
+                var provider = GetProviderFromConfig(languageWorkerDirectory, logger);
+                if (provider != null)
                 {
-                    // check if worker config exists
-                    string workerConfigPath = Path.Combine(workerDir, ScriptConstants.WorkerConfigFileName); // TODO: Move to constant
-                    if (!File.Exists(workerConfigPath))
-                    {
-                        // not a worker directory
-                        continue;
-                    }
-
-                    string json = File.ReadAllText(workerConfigPath);
-                    JObject workerConfig = JObject.Parse(json);
-
-                    WorkerDescription description = workerConfig.Property("Description").Value.ToObject<WorkerDescription>();
-                    // var workerSettings = settingsManager.Configuration.GetSection($"workers:{description.Language}");
-
-                    var arguments = new List<string>();
-                    arguments.AddRange(workerConfig.Property("Arguments").Value.ToObject<string[]>());
-
-                    var provider = new GenericWorkerProvider(description, arguments);
-
                     providers.Add(provider);
-                }
-                catch (Exception e)
-                {
-                    logger.LogCritical(e, $"Failed to initialize worker provider for: {workerDir}");
+                    logger.LogTrace($"Successfully added WorkerProvider for: {language}");
                 }
             }
-
+            else
+            {
+                logger.LogInformation($"Loading all the worker providers from the default workers directory: {workerDirPath}");
+                foreach (var workerDir in Directory.EnumerateDirectories(workerDirPath))
+                {
+                    var provider = GetProviderFromConfig(workerDir, logger);
+                    if (provider != null)
+                    {
+                        providers.Add(provider);
+                    }
+                }
+            }
             return providers;
+        }
+
+        public static IWorkerProvider GetProviderFromConfig(string workerDir, ILogger logger)
+        {
+            try
+            {
+                string workerConfigPath = Path.Combine(workerDir, ScriptConstants.WorkerConfigFileName);
+                if (File.Exists(workerConfigPath))
+                {
+                    logger.LogInformation($"Found worker config: {workerConfigPath}");
+                    string json = File.ReadAllText(workerConfigPath);
+                    JObject workerConfig = JObject.Parse(json);
+                    WorkerDescription workerDescription = workerConfig.Property(WorkerConstants.Description).Value.ToObject<WorkerDescription>();
+                    var arguments = new List<string>();
+                    arguments.AddRange(workerConfig.Property(WorkerConstants.Arguments).Value.ToObject<string[]>());
+                    logger.LogInformation($"Will load worker provider for language: {workerDescription.Language}");
+                    return new GenericWorkerProvider(workerDescription, arguments, workerDir);
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, $"Failed to initialize worker provider for: {workerDir}");
+                return null;
+            }
         }
     }
 }

@@ -1,21 +1,20 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class JavaWorkerProvider : IWorkerProvider
     {
+        private string pathToWorkerDir = WorkerProviderHelper.BuildWorkerDirectoryPath(ScriptConstants.JavaLanguageWrokerName);
+
         public WorkerDescription GetDescription() => new WorkerDescription
         {
-            Language = "Java",
+            Language = ScriptConstants.JavaLanguageWrokerName,
             Extension = ".jar",
             DefaultWorkerPath = "azure-functions-java-worker.jar",
         };
@@ -28,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             config.Bind(env);
             if (string.IsNullOrEmpty(env.JAVA_HOME))
             {
-                logger.LogError("Unable to configure java worker. Could not find JAVA_HOME app setting.");
+                logger.LogTrace("Unable to configure java worker. Could not find JAVA_HOME app setting.");
                 return false;
             }
 
@@ -53,6 +52,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 args.ExecutableArguments.Add(env.JAVA_OPTS);
             }
             return true;
+        }
+
+        public string GetWorkerDirectoryPath()
+        {
+            return pathToWorkerDir;
         }
 
         private class JavaEnvironment
