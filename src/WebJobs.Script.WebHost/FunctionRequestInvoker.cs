@@ -118,10 +118,22 @@ namespace Microsoft.Azure.WebJobs.Script.Host
 
         private async Task<AuthorizationLevel> DetermineAuthorizationLevelAsync(HttpRequestMessage request)
         {
-            var authorizationResult = await AuthorizationLevelAttribute.GetAuthorizationResultAsync(request, _secretManager, functionName: _function.Name);
-            var authorizationLevel = authorizationResult.AuthorizationLevel;
+            AuthorizationLevel authorizationLevel = AuthorizationLevel.Anonymous;
+
+            if (_function.Metadata.IsProxy)
+            {
+                // There is no authorization for proxies. Bypass the logic that probes
+                // for secrets using the secret manager and just return anonymous:
+                authorizationLevel = AuthorizationLevel.Anonymous;
+            }
+            else
+            {
+                var authorizationResult = await AuthorizationLevelAttribute.GetAuthorizationResultAsync(request, _secretManager, functionName: _function.Name);
+                authorizationLevel = authorizationResult.AuthorizationLevel;
+                request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestKeyNameKey, authorizationResult.KeyName);
+            }
+
             request.SetAuthorizationLevel(authorizationLevel);
-            request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestKeyNameKey, authorizationResult.KeyName);
 
             return authorizationLevel;
         }
