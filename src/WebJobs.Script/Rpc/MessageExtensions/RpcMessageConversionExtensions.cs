@@ -17,6 +17,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal static class RpcMessageConversionExtensions
     {
+        private static readonly JsonSerializerSettings _datetimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
+
         public static object ToObject(this TypedData typedData)
         {
             switch (typedData.DataCase)
@@ -27,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 case RpcDataType.String:
                     return typedData.String;
                 case RpcDataType.Json:
-                    return JsonConvert.DeserializeObject(typedData.Json);
+                    return JsonConvert.DeserializeObject(typedData.Json, _datetimeSerializerSettings);
                 case RpcDataType.Http:
                     return Utilities.ConvertFromHttpMessageToExpando(typedData.Http);
                 case RpcDataType.Int:

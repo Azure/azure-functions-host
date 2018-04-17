@@ -311,6 +311,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Theory(Skip = "Needs investigation")]
         [InlineData("application/json", "{\"name\": \"test\" }", "rawresponse")]
         [InlineData("application/json", 1, "rawresponse")]
+        [InlineData("application/json", "{\"test_time\": \"2026-04-20T00:00:00.000Z\", \"test_bool\": \"true\" }", "rawresponse")]
+        [InlineData("application/json", "{\"test_time\": \"2016-03-31T07:02:00+07:00\", \"test_bool\": \"true\" }", "rawresponse")]
         [InlineData("application/xml", "<root>XML payload</string>", "rawresponse")]
         [InlineData("text/plain", "plain text input", "rawresponse")]
         [InlineData("text/plain", "{\"name\": \"test\" }", "rawresponsenocontenttype")]
