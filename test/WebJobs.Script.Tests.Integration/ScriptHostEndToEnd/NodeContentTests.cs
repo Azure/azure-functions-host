@@ -313,9 +313,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             headers.Add("accept", contentType);
             headers.Add("type", contentType);
             headers.Add("scenario", "content");
-            if (isRaw)
+            if (!isRaw)
             {
-                headers.Add("raw", "true");
+                headers.Add("negotiation", "true");
             }
             if (isReturn)
             {

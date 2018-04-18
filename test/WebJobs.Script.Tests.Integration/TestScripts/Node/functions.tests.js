@@ -111,13 +111,6 @@ describe('http', () => {
             expect(res.get('HEADER')).to.equal('val');
             expect(context.isDone).to.be.false;
         });
-
-        it('raw', () => {
-            res.raw('test');
-            expect(res.body).to.equal('test');
-            expect(res.isRaw).to.be.true;
-            expect(context.isDone).to.be.true;
-        });
     });
 
     describe('request', () => {
