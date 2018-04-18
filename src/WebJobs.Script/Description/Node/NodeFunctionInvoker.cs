@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly ICompilationService<IJavaScriptCompilation> _compilationService;
         private readonly BindingMetadata _trigger;
+        private readonly FunctionMetadata _functionMetadata;
         private readonly string _entryPoint;
         private readonly IMetricsLogger _metricsLogger;
 
@@ -62,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             : base(host, functionMetadata)
         {
             _trigger = trigger;
+            _functionMetadata = functionMetadata;
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _entryPoint = functionMetadata.EntryPoint;
@@ -128,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             string eventName = string.Format(MetricEventNames.FunctionCompileLatencyByLanguageFormat, _compilationService.Language);
 
-            using (_metricsLogger.LatencyEvent(eventName))
+            using (_metricsLogger.LatencyEvent(eventName, _functionMetadata.Name))
             {
                 IJavaScriptCompilation compilation = await CompileAndTraceAsync(LogTargets.System, suppressCompilationSummary: true);
 

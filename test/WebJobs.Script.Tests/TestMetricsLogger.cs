@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void LogEvent(string eventName, string functionName = null)
         {
-            LoggedEvents.Add(MetricsEventManager.GetAggregateKey(eventName, functionName));
+            LoggedEvents.Add(eventName.ToLowerInvariant());
         }
 
         public void LogEvent(MetricEvent metricEvent)
