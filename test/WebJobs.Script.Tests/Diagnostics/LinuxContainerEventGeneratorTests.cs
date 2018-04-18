@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             DateTime dt;
             var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
             Assert.Collection(groupMatches,
-                p => Assert.Equal(level.ToString(), p),
+                p => Assert.Equal((int)level, int.Parse(p)),
                 p => Assert.Equal(subscriptionId, p),
                 p => Assert.Equal(appName, p),
                 p => Assert.Equal(functionName, p),
