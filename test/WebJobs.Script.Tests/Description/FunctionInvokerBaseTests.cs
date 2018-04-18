@@ -83,11 +83,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal($"{MetricEventNames.FunctionInvokeLatency}_testfunction", (string)invokeLatencyEvent);
 
             Assert.Equal(5, metrics.LoggedEvents.Count);
-            Assert.Equal("function.binding.httptrigger", metrics.LoggedEvents[0]);
-            Assert.Equal("function.binding.blob.in", metrics.LoggedEvents[1]);
-            Assert.Equal("function.binding.blob.out", metrics.LoggedEvents[2]);
-            Assert.Equal("function.binding.table.in", metrics.LoggedEvents[3]);
-            Assert.Equal("function.binding.table.in", metrics.LoggedEvents[4]);
+            Assert.Equal("function.binding.httptrigger_testfunction", metrics.LoggedEvents[0]);
+            Assert.Equal("function.binding.blob.in_testfunction", metrics.LoggedEvents[1]);
+            Assert.Equal("function.binding.blob.out_testfunction", metrics.LoggedEvents[2]);
+            Assert.Equal("function.binding.table.in_testfunction", metrics.LoggedEvents[3]);
+            Assert.Equal("function.binding.table.in_testfunction", metrics.LoggedEvents[4]);
         }
 
         [Fact]
