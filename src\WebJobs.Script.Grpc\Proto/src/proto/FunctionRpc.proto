@@ -1,0 +1,358 @@
+syntax = "proto3";
+// protobuf vscode extension: https://marketplace.visualstudio.com/items?itemName=zxh404.vscode-proto3
+
+option java_multiple_files = true;
+option java_package = "com.microsoft.azure.webjobs.script.rpc.messages";
+option java_outer_classname = "FunctionProto";
+option objc_class_prefix = "FunctionRpc";
+option csharp_namespace = "Microsoft.Azure.WebJobs.Script.Grpc.Messages";
+
+package FunctionRpc;
+
+import "google/protobuf/duration.proto";
+
+// Interface exported by the server.
+service FunctionRpc {
+ rpc EventStream (stream StreamingMessage) returns (stream StreamingMessage) {}
+}
+
+message StreamingMessage {
+  // Used to identify message between host and worker
+  string request_id = 1;
+
+  // Payload of the message
+  oneof content {
+
+    // Worker initiates stream
+    StartStream start_stream = 20; 
+
+    // Host sends capabilities/init data to worker
+    WorkerInitRequest worker_init_request = 17;
+    // Worker responds after initializing with its capabilities & status
+    WorkerInitResponse worker_init_response = 16;
+
+    // Worker periodically sends empty heartbeat message to host
+    WorkerHeartbeat worker_heartbeat = 15;
+
+    // Host sends terminate message to worker.
+    // Worker terminates if it can, otherwise host terminates after a grace period
+    WorkerTerminate worker_terminate = 14;
+
+    // Add any worker relevant status to response
+    WorkerStatusRequest worker_status_request = 12;
+    WorkerStatusResponse worker_status_response = 13;
+
+    // On file change event, host sends notification to worker
+    FileChangeEventRequest file_change_event_request = 6;
+
+    // Worker requests a desired action (restart worker, reload function)
+    WorkerActionResponse worker_action_response = 7;
+    
+    // Host sends required metadata to worker to load function
+    FunctionLoadRequest function_load_request = 8;
+    // Worker responds after loading with the load result
+    FunctionLoadResponse function_load_response = 9;
+    
+    // Host requests a given invocation
+    InvocationRequest invocation_request = 4;
+
+    // Worker responds to a given invocation
+    InvocationResponse invocation_response = 5;
+
+    // Host sends cancel message to attempt to cancel an invocation. 
+    // If an invocation is cancelled, host will receive an invocation response with status cancelled.
+    InvocationCancel invocation_cancel = 21;
+
+    // Worker logs a message back to the host
+    RpcLog rpc_log = 2;
+  }
+}
+
+// Process.Start required info
+//   connection details
+//   protocol type
+//   protocol version 
+
+// Worker sends the host information identifying itself
+message StartStream {
+  // id of the worker
+  string worker_id = 2;
+}
+
+// Host requests the worker to initialize itself 
+message WorkerInitRequest {
+  // version of the host sending init request
+  string host_version = 1;
+
+  // A map of host supported features/capabilities
+  map<string, string> capabilities = 2;
+
+  // inform worker of supported categories and their levels
+  // i.e. Worker = Verbose, Function.MyFunc = None
+  map<string, RpcLog.Level> log_categories = 3;
+}
+
+// Worker responds with the result of initializing itself
+message WorkerInitResponse {
+  // Version of worker
+  string worker_version = 1;
+  // A map of worker supported features/capabilities
+  map<string, string> capabilities = 2;
+
+  // Status of the response
+  StatusResult result = 3;
+}
+
+// Used by the host to determine success/failure/cancellation
+message StatusResult {
+  // Indicates Failure/Success/Cancelled
+  enum Status {
+    Failure = 0;
+    Success = 1;
+    Cancelled = 2;
+  }
+  // Status for the given result
+  Status status = 4;
+
+  // Specific message about the result
+  string result = 1;
+
+  // Exception message (if exists) for the status
+  RpcException exception = 2;
+
+  // Captured logs or relevant details can use the logs property
+  repeated RpcLog logs = 3;
+}
+
+// TODO: investigate grpc heartbeat - don't limit to grpc implemention
+
+// Message is empty by design - Will add more fields in future if needed
+message WorkerHeartbeat {}
+
+// Warning before killing the process after grace_period
+// Worker self terminates ..no response on this
+message WorkerTerminate {
+  google.protobuf.Duration grace_period = 1;
+}
+
+// Host notifies worker of file content change
+message FileChangeEventRequest {
+  // Types of File change operations (See link for more info: https://msdn.microsoft.com/en-us/library/t6xf43e0(v=vs.110).aspx)
+  enum Type {
+	  Unknown = 0;
+    Created = 1;
+    Deleted = 2;
+    Changed = 4;
+    Renamed = 8;
+    All = 15;
+  }
+
+  // type for this event
+  Type type = 1;
+
+  // full file path for the file change notification
+  string full_path = 2;
+
+  // Name of the function affected
+  string name = 3;
+}
+
+// Indicates whether worker reloaded successfully or needs a restart
+message WorkerActionResponse {
+  // indicates whether a restart is needed, or reload succesfully
+  enum Action {
+    Restart = 0;
+    Reload = 1;
+  }
+  
+  // action for this response
+  Action action = 1;
+
+  // text reason for the response
+  string reason = 2;
+}
+
+// NOT USED
+message WorkerStatusRequest{
+}
+
+// NOT USED
+message WorkerStatusResponse {
+}
+
+// Host tells the worker to load a Function
+message FunctionLoadRequest {
+  // unique function identifier (avoid name collisions, facilitate reload case)
+  string function_id = 1;
+
+  // Metadata for the request
+  RpcFunctionMetadata metadata = 2;
+}
+
+// Worker tells host result of reload
+message FunctionLoadResponse {
+  // unique function identifier
+  string function_id = 1;
+
+  // Result of load operation
+  StatusResult result = 2;
+  // TODO: return type expected?
+}
+
+// Information on how a Function should be loaded and its bindings
+message RpcFunctionMetadata {
+  // TODO: do we want the host's name - the language worker might do a better job of assignment than the host
+  string name = 4;
+
+  // base directory for the Function
+  string directory = 1;
+  
+  // Script file specified
+  string script_file = 2;
+
+  // Entry point specified
+  string entry_point = 3;
+
+  // Bindings info
+  map<string, BindingInfo> bindings = 6;
+}
+
+// Host requests worker to invoke a Function
+message InvocationRequest {
+  // Unique id for each invocation
+  string invocation_id = 1;
+
+  // Unique id for each Function
+  string function_id = 2;
+
+  // Input bindings (include trigger)
+  repeated ParameterBinding input_data = 3;
+
+  // binding metadata from trigger
+  map<string, TypedData> trigger_metadata = 4;
+}
+
+// Host requests worker to cancel invocation
+message InvocationCancel {
+  // Unique id for invocation
+  string invocation_id = 2;
+
+  // Time period before force shutdown
+  google.protobuf.Duration grace_period = 1; // could also use absolute time
+}
+
+// Worker responds with status of Invocation
+message InvocationResponse {
+  // Unique id for invocation
+  string invocation_id = 1;
+
+  // Output binding data
+  repeated ParameterBinding output_data = 2;
+
+  // data returned from Function (for $return and triggers with return support)
+  TypedData return_value = 4;
+
+  // Status of the invocation (success/failure/canceled)
+  StatusResult result = 3;
+}
+
+// Used to encapsulate data which could be a variety of types
+message TypedData {
+  oneof data {
+    string string = 1;
+    string json = 2;
+    bytes bytes = 3;
+    bytes stream = 4;
+    RpcHttp http = 5;
+	  sint64 int = 6;
+    double double = 7;
+  }
+}
+
+// Used to describe a given binding on invocation
+message ParameterBinding {
+  // Name for the binding
+  string name = 1;
+
+  // Data for the binding
+  TypedData data = 2;
+}
+
+// Used to describe a given binding on load
+message BindingInfo {
+    // Indicates whether it is an input or output binding (or a fancy inout binding)
+    enum Direction {
+      in = 0;
+      out = 1;
+      inout = 2;
+    }
+
+  // Type of binding (e.g. HttpTrigger)
+  string type = 2;
+
+  // Direction of the given binding
+  Direction direction = 3;
+}
+
+// Used to send logs back to the Host 
+message RpcLog {
+  // Matching ILogger semantics
+  // https://github.com/aspnet/Logging/blob/9506ccc3f3491488fe88010ef8b9eb64594abf95/src/Microsoft.Extensions.Logging/Logger.cs
+  // Level for the Log
+  enum Level {
+    Trace = 0;
+    Debug = 1;
+    Information = 2;
+    Warning = 3;
+    Error = 4;
+    Critical = 5;
+    None = 6;
+  }
+
+  // Unique id for invocation (if exists)
+  string invocation_id = 1;
+
+  // TOD: This should be an enum
+  // Category for the log (startup, load, invocation, etc.)
+  string category = 2;
+
+  // Level for the given log message
+  Level level = 3;
+
+  // Message for the given log
+  string message = 4;
+
+  // Id for the even associated with this log (if exists)
+  string event_id = 5;
+
+  // Exception (if exists)
+  RpcException exception = 6;
+
+  // json serialized property bag, or could use a type scheme like map<string, TypedData>
+  string properties = 7;
+}
+
+// Encapsulates an Exception 
+message RpcException {
+  // Source of the exception
+  string source = 3;
+
+  // Stack trace for the exception
+  string stack_trace = 1;
+
+  // Textual message describing hte exception
+  string message = 2;
+}
+
+// TODO - solidify this or remove it
+message RpcHttp {
+  string method = 1;
+  string url = 2; 
+  map<string,string> headers = 3;
+  TypedData body = 4;
+  map<string,string> params = 10;
+  string status_code = 12;
+  map<string,string> query = 15;
+  bool enable_content_negotiation= 16;
+  TypedData rawBody = 17;
+}
