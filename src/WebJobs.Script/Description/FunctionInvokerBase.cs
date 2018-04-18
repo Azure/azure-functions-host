@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 string eventName = binding.IsTrigger ?
                     string.Format(MetricEventNames.FunctionBindingTypeFormat, binding.Type) :
                     string.Format(MetricEventNames.FunctionBindingTypeDirectionFormat, binding.Type, binding.Direction);
-                metrics.LogEvent(eventName);
+                metrics.LogEvent(eventName, metadata.Name);
             }
 
             return metrics.BeginEvent(MetricEventNames.FunctionInvokeLatency, metadata.Name);
