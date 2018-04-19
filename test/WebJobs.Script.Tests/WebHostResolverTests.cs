@@ -95,21 +95,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var hostManager = resolver.GetWebScriptHostManager(settings);
                 Assert.Null(hostManager.Instance?.TraceWriter);
 
-                // verify the internals of the composite writer
-                var fieldInfo = typeof(CompositeTraceWriter).GetField("_innerTraceWriters", BindingFlags.Instance | BindingFlags.NonPublic);
-                TraceWriter[] innerWriters = ((IEnumerable<TraceWriter>)fieldInfo.GetValue(traceWriter)).ToArray();
-                Assert.Equal(2, innerWriters.Length);
-                Assert.Equal(typeof(SystemTraceWriter), innerWriters[0].GetType());
-                Assert.Equal(typeof(FileTraceWriter), innerWriters[1].GetType());
-
-                // write a log and verify
-                TestHelpers.ClearHostLogs();
-                var id = Guid.NewGuid().ToString();
-                traceWriter.Info(id);
-                traceWriter.Flush();
-                var logs = await TestHelpers.GetHostLogsAsync();
-                Assert.True(logs.Single().Contains(id));
-
                 // ensure that the returned logger factory isn't null even though the host
                 // hasn't been initialized yet
                 var loggerFactory = resolver.GetLoggerFactory(settings);

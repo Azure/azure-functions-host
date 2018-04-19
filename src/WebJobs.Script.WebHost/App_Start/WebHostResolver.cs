@@ -353,7 +353,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _activeHostManager?.Dispose();
             _activeReceiverManager?.Dispose();
-            ((IDisposable)_defaultTraceWriter)?.Dispose();
+            (_defaultTraceWriter as IDisposable)?.Dispose();
             _defaultLoggerFactory?.Dispose();
         }
     }
