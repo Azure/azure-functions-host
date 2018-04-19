@@ -240,19 +240,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private TraceWriter CreateDefaultTraceWriter(WebHostSettings settings)
         {
-            // need to set up a default trace writer that logs both host logs and system logs
+            // need to set up a default trace writer that logs to system logs
             var config = GetScriptHostConfiguration(settings);
             var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
             TraceWriter systemTraceWriter = new SystemTraceWriter(systemEventGenerator, _settingsManager, TraceLevel.Verbose);
 
-            // Note that we're creating a logger here that is independent of log configuration settings
-            // since we haven't read config yet. This logger is independent on the host having been started.
-            // That does mean that even if file logging is disabled, some logs might get written to the file system
-            // but that's ok.
-            string hostLogFilePath = Path.Combine(config.RootLogPath, "Host");
-            TraceWriter fileTraceWriter = new FileTraceWriter(hostLogFilePath, config.HostConfig.Tracing.ConsoleLevel, LogType.Host);
-
-            return new CompositeTraceWriter(new[] { systemTraceWriter, fileTraceWriter });
+            return systemTraceWriter;
         }
 
         private ILoggerFactory CreateDefaultLoggerFactory(WebHostSettings settings)
