@@ -3,7 +3,7 @@
 
 using System;
 using System.Security.Cryptography;
-using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Helpers

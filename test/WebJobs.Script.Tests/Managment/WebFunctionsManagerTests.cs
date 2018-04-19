@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             FileUtility.Instance = fileSystem;
             HttpClientUtility.Instance = httpClient;
 
-            Environment.SetEnvironmentVariable("WEBSITE_AUTH_ENCRYPTION_KEY", SimpleWebTokenTests.GenerateKeyHexString());
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, SimpleWebTokenTests.GenerateKeyHexString());
             Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", "appName");
 
             // Act
@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             // Clean up mock IFileSystem
             FileUtility.Instance = null;
-            Environment.SetEnvironmentVariable("WEBSITE_AUTH_ENCRYPTION_KEY", string.Empty);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, string.Empty);
             Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", string.Empty);
             HttpClientUtility.Instance = null;
         }

@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
 
         private static void AddScriptAuthenticationSchemes(this AuthorizationPolicyBuilder builder)
         {
+            builder.AuthenticationSchemes.Add(ArmAuthenticationDefaults.AuthenticationScheme);
             builder.AuthenticationSchemes.Add(AuthLevelAuthenticationDefaults.AuthenticationScheme);
             builder.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
         }

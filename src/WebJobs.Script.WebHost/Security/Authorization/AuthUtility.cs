@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -35,18 +36,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
                 return true;
             }
 
-            AuthorizationLevel level = AuthorizationLevel.Anonymous;
-            if (Enum.TryParse(principal.FindFirstValue(SecurityConstants.AuthLevelClaimType), out level))
+            var claimLevels = principal
+                .FindAll(SecurityConstants.AuthLevelClaimType)
+                .Select(c => Enum.TryParse(c.Value, out AuthorizationLevel claimLevel) ? claimLevel : AuthorizationLevel.Anonymous)
+                .ToArray();
+
+            if (claimLevels.Length > 0)
             {
-                // True if the identity is authenticated with Admin level, regardless of whether a name is required.
-                if (level == AuthorizationLevel.Admin)
+                // If we have a claim with Admin level, regardless of whether a name is required, return true.
+                if (claimLevels.Any(claimLevel => claimLevel == AuthorizationLevel.Admin))
                 {
                     return true;
                 }
 
                 // Ensure we match the expected level and key name, if one is required
-                if (level == requiredLevel &&
-                    (keyName == null || string.Equals(principal.FindFirstValue(SecurityConstants.AuthLevelKeyNameClaimType), keyName, StringComparison.OrdinalIgnoreCase)))
+                if (claimLevels.Any(l => l == requiredLevel) &&
+                   (keyName == null || string.Equals(principal.FindFirstValue(SecurityConstants.AuthLevelKeyNameClaimType), keyName, StringComparison.OrdinalIgnoreCase)))
                 {
                     return true;
                 }
