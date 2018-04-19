@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             public DisposableEvent(string eventName, string functionName, IMetricsLogger metricsLogger)
             {
-                _metricEvent = metricsLogger.BeginEvent(eventName);
+                _metricEvent = metricsLogger.BeginEvent(eventName, functionName);
                 _metricsLogger = metricsLogger;
             }
 
