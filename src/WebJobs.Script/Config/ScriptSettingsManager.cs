@@ -30,7 +30,21 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             set { _instance = value; }
         }
 
-        public virtual bool IsAzureEnvironment => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId));
+        /// <summary>
+        /// Gets a value indicating whether we are running in App Service
+        /// </summary>
+        public virtual bool IsAppServiceEnvironment => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId));
+
+        /// <summary>
+        /// Gets a value indicating whether we are running in a Linux container
+        /// </summary>
+        public bool IsLinuxContainerEnvironment
+        {
+            get
+            {
+                return !IsAppServiceEnvironment && !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.ContainerName));
+            }
+        }
 
         public bool IsRemoteDebuggingEnabled => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.RemoteDebuggingPort));
 
@@ -43,14 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         public bool IsDynamicSku => WebsiteSku == ScriptConstants.DynamicSku;
 
         public virtual bool FileSystemIsReadOnly => IsZipDeployment;
-
-        public bool IsLinuxContainer
-        {
-            get
-            {
-                return !IsAzureEnvironment && !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.ContainerName));
-            }
-        }
 
         public virtual string AzureWebsiteDefaultSubdomain
         {

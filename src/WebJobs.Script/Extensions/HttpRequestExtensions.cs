@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 
         public static bool IsAntaresInternalRequest(this HttpRequest request)
         {
-            if (!ScriptSettingsManager.Instance.IsAzureEnvironment)
+            if (!ScriptSettingsManager.Instance.IsAppServiceEnvironment)
             {
                 return false;
             }

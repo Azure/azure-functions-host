@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.Tracing;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -30,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string hostVersion = ScriptHost.Version;
             FunctionsSystemLogsEventSource.Instance.SetActivityId(activityId);
 
-            _writeEvent($"{ScriptConstants.LinuxLogEventStreamName} {(int)level},{subscriptionId},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{eventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId}");
+            _writeEvent($"{ScriptConstants.LinuxLogEventStreamName} {(int)ToEventLevel(level)},{subscriptionId},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{eventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId}");
         }
 
         public void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp)
@@ -69,6 +70,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // enclose in quotes. This allows us to define matching
             // groups based on quotes for these values.
             return $"\"{value}\"";
+        }
+
+        /// <summary>
+        /// Performs the same mapping from <see cref="LogLevel"/> to <see cref="EventLevel"/>
+        /// that is performed for ETW event logging in <see cref="EtwEventGenerator"/>, so we
+        /// have consistent log levels across platforms.
+        /// </summary>
+        internal static EventLevel ToEventLevel(LogLevel level)
+        {
+            switch (level)
+            {
+                case LogLevel.Trace:
+                case LogLevel.Debug:
+                    return EventLevel.Verbose;
+                case LogLevel.Information:
+                    return EventLevel.Informational;
+                case LogLevel.Warning:
+                    return EventLevel.Warning;
+                case LogLevel.Error:
+                    return EventLevel.Error;
+                case LogLevel.Critical:
+                    return EventLevel.Critical;
+                default:
+                    return EventLevel.LogAlways;
+            }
         }
     }
 }

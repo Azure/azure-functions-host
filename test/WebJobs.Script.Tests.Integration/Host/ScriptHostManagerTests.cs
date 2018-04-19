@@ -385,7 +385,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environmentMock.Setup(p => p.Shutdown());
 
             var mockSettings = new Mock<ScriptSettingsManager>();
-            mockSettings.Setup(p => p.IsAzureEnvironment).Returns(true);
+            mockSettings.Setup(p => p.IsAppServiceEnvironment).Returns(true);
 
             var eventManagerMock = new Mock<IScriptEventManager>();
             var hostHealthConfig = new HostHealthMonitorConfiguration();
@@ -495,7 +495,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Returns(() => isUnderHighLoad);
 
             bool isAzureEnvironment = false;
-            mockSettings.Setup(p => p.IsAzureEnvironment).Returns(() => isAzureEnvironment);
+            mockSettings.Setup(p => p.IsAppServiceEnvironment).Returns(() => isAzureEnvironment);
             mockSettings.Setup(p => p.FileSystemIsReadOnly).Returns(false);
 
             config.HostHealthMonitor.Enabled = false;

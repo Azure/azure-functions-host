@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp, functionInvocationId, hostInstanceId);
                     break;
                 case LogLevel.Error:
+                case LogLevel.Critical:
                     FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp, exceptionType, exceptionMessage, functionInvocationId, hostInstanceId);
                     break;
             }
