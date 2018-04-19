@@ -31,8 +31,24 @@ $x= [Environment]::ExpandEnvironmentVariables("%ProgramFiles(x86)%\Microsoft Vis
 if(![System.IO.File]::Exists($x)){
     Write-Host "    VSWhere is missing. Is VS 2017 installed? See https://www.visualstudio.com/downloads/ " -ForegroundColor Red
 } else {
-    $actualVersion = & $x -property catalog_buildVersion   
-    $ok = Check "VS 2017" $actualVersion ([Version]::Parse("15.5.0"))
+    $installedVersions = & $x -property catalog_buildVersion   
+    
+    # could be either a string or an array of strings. 
+    if ($installedVersions  -is [array]) {
+        # as an array, take the latest version on the machine
+        $latest =  [Version]::Parse($installedVersions[0])
+        foreach($ver in $installedVersions) {
+            $verCurrent = [Version]::Parse($ver)
+            if ($verCurrent -gt $latest) {
+                $latest = $verCurrent
+            }
+        }    
+    } else {
+        $latest = $installedVersions;
+    }
+
+
+    $ok = Check "VS 2017" ($latest.ToString()) ([Version]::Parse("15.5.0"))
     if (-Not $ok) {
         Write-Host "    You can update VS from the Tools | Extensions and Updates menu."
     }
