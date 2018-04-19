@@ -6,8 +6,9 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.AspNetCore.Authentication;
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 {
     public static class SimpleWebTokenHelper
     {
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
             }
         }
 
-        internal static string Decrypt(byte[] encryptionKey, string value)
+        public static string Decrypt(byte[] encryptionKey, string value)
         {
             var parts = value.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length != 2 && parts.Length != 3)
@@ -77,6 +78,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
             }
         }
 
+        public static bool TryValidateToken(string token, ISystemClock systemClock)
+        {
+            try
+            {
+                return ValidateToken(token, systemClock);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static bool ValidateToken(string token, ISystemClock systemClock)
+        {
+            var data = Decrypt(GetWebSiteAuthEncryptionKey(), token);
+
+            var parsedToken = data
+                // token = key1=value1;key2=value2
+                .Split(';', StringSplitOptions.RemoveEmptyEntries)
+                 // ["key1=value1", "key2=value2"]
+                 .Select(v => v.Split('=', StringSplitOptions.RemoveEmptyEntries))
+                 // [["key1", "value1"], ["key2", "value2"]]
+                 .ToDictionary(k => k[0], v => v[1]);
+
+            return parsedToken.ContainsKey("exp") && systemClock.UtcNow.UtcDateTime < new DateTime(long.Parse(parsedToken["exp"]));
+        }
+
         private static string GetSHA256Base64String(byte[] key)
         {
             using (var sha256 = new SHA256Managed())
@@ -87,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
 
         private static byte[] GetWebSiteAuthEncryptionKey()
         {
-            var hexOrBase64 = Environment.GetEnvironmentVariable("WEBSITE_AUTH_ENCRYPTION_KEY");
+            var hexOrBase64 = Environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey);
             if (string.IsNullOrEmpty(hexOrBase64))
             {
                 throw new InvalidOperationException("No WEBSITE_AUTH_ENCRYPTION_KEY defined in the environment");
