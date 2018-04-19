@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private readonly FunctionAssemblyLoader _assemblyLoader;
         private readonly string _triggerInputName;
+        private readonly FunctionMetadata _functionMetadata;
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
@@ -57,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _triggerInputName = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger).Name;
+            _functionMetadata = functionMetadata;
 
             InitializeFileWatcher();
 
@@ -277,7 +279,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 await VerifyPackageReferencesAsync();
 
                 string eventName = string.Format(MetricEventNames.FunctionCompileLatencyByLanguageFormat, _compilationService.Language);
-                using (_metricsLogger.LatencyEvent(eventName))
+                using (_metricsLogger.LatencyEvent(eventName, _functionMetadata.Name))
                 {
                     IDotNetCompilation compilation = await _compilationService.GetFunctionCompilationAsync(Metadata);
 
