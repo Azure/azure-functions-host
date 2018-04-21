@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 
         /// <summary>
         /// This method converts a FunctionMetadata into a JObject
-        /// the scale conteller understands. It's mainly the trigger binding
+        /// the scale controller understands. It's mainly the trigger binding
         /// with functionName inserted in it.
         /// </summary>
         /// <param name="functionMetadata">FunctionMetadata object to convert to a JObject.</param>
@@ -71,7 +71,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 var functionConfig = await GetFunctionConfig(functionMetadataFilePath);
 
                 // Find the trigger and add functionName to it
-                // Q: Do we plan on supporting multiple triggers?
                 foreach (JObject binding in (JArray)functionConfig["bindings"])
                 {
                     var type = (string)binding["type"];
@@ -99,10 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             {
                 if (FileUtility.FileExists(path))
                 {
-                    using (var reader = File.OpenText(path))
-                    {
-                        return JObject.Parse(await reader.ReadToEndAsync());
-                    }
+                    return JObject.Parse(await FileUtility.ReadAsync(path));
                 }
             }
             catch

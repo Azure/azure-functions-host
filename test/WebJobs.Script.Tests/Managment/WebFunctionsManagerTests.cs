@@ -11,8 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Tests.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
-using Microsoft.Extensions.Logging;
-using NSubstitute;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
@@ -23,29 +22,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task VerifyDurableTaskHubNameIsAdded()
         {
             // Setup
+            const string expectedSyncTriggersPayload = "[{\"authLevel\":\"anonymous\",\"type\":\"httpTrigger\",\"direction\":\"in\",\"name\":\"req\",\"functionName\":\"function1\"}," +
+                "{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"\",\"functionName\":\"function2\",\"taskHubName\":\"TestHubValue\"}]";
             var settings = CreateWebSettings();
             var fileSystem = CreateFileSystem(settings.ScriptPath);
             var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
-            var webManager = new WebFunctionsManager(settings, loggerFactory);
-            var httpClient = CreateHttpClient();
+            var contentBuilder = new StringBuilder();
+            var httpClient = CreateHttpClient(contentBuilder);
+            var webManager = new WebFunctionsManager(settings, loggerFactory, httpClient);
 
             FileUtility.Instance = fileSystem;
-            HttpClientUtility.Instance = httpClient;
 
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, SimpleWebTokenTests.GenerateKeyHexString());
             Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", "appName");
 
             // Act
             (var success, var error) = await webManager.TrySyncTriggers();
+            var content = contentBuilder.ToString();
 
             // Assert
             Assert.True(success, "SyncTriggers should return success true");
             Assert.True(string.IsNullOrEmpty(error), "Error should be null or empty");
+            Assert.Equal(expectedSyncTriggersPayload, content);
         }
 
-        private static HttpClient CreateHttpClient()
+        private static HttpClient CreateHttpClient(StringBuilder writeContent)
         {
-            return new HttpClient(new MockHttpHandler());
+            return new HttpClient(new MockHttpHandler(writeContent));
         }
 
         private static WebHostSettings CreateWebSettings()
@@ -63,22 +66,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         private static IFileSystem CreateFileSystem(string rootPath)
         {
-            var fileSystem = Substitute.For<IFileSystem>();
-            fileSystem.File.Exists(Arg.Is(Path.Combine(rootPath, "host.json"))).Returns(true);
+            var fullFileSystem = new FileSystem();
+            var fileSystem = new Mock<IFileSystem>();
+            var fileBase = new Mock<FileBase>();
+            var dirBase = new Mock<DirectoryBase>();
 
-            var hostJson = new MemoryStream(Encoding.UTF8.GetBytes(@"{}"));
-            fileSystem.File
-                .Open(Arg.Is(Path.Combine(rootPath, @"host.json")), Arg.Any<FileMode>(), Arg.Any<FileAccess>(), Arg.Any<FileShare>())
-                .Returns(hostJson);
+            fileSystem.SetupGet(f => f.Path).Returns(fullFileSystem.Path);
+            fileSystem.SetupGet(f => f.File).Returns(fileBase.Object);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "host.json"))).Returns(true);
 
-            fileSystem.Directory.EnumerateDirectories(Arg.Is(rootPath))
+            var hostJson = new MemoryStream(Encoding.UTF8.GetBytes(@"{ ""durableTask"": { ""HubName"": ""TestHubValue"" }}"));
+            hostJson.Position = 0;
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"host.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(hostJson);
+
+            fileSystem.SetupGet(f => f.Directory).Returns(dirBase.Object);
+
+            dirBase.Setup(d => d.EnumerateDirectories(rootPath))
                 .Returns(new[]
                 {
                     @"x:\root\function1",
                     @"x:\root\function2"
                 });
 
-            var function1 = new MemoryStream(Encoding.UTF8.GetBytes(@"{
+            var function1 = @"{
   ""scriptFile"": ""main.py"",
   ""disabled"": false,
   ""bindings"": [
@@ -94,28 +104,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
       ""name"": ""$return""
     }
   ]
-}"));
-            var function2 = new MemoryStream(Encoding.UTF8.GetBytes(@"{
+}";
+            var function2 = @"{
   ""disabled"": false,
+  ""scriptFile"": ""main.js"",
   ""bindings"": [
     {
       ""name"": ""myQueueItem"",
-      ""type"": ""queueTrigger"",
+      ""type"": ""orchestrationTrigger"",
       ""direction"": ""in"",
       ""queueName"": ""myqueue-items"",
       ""connection"": """"
     }
   ]
-}"));
-            fileSystem.File
-                .Open(Arg.Is(Path.Combine(rootPath, @"function1\function.json")), Arg.Any<FileMode>(), Arg.Any<FileAccess>(), Arg.Any<FileShare>())
-                .Returns(function1);
+}";
+            var function1Stream = new MemoryStream(Encoding.UTF8.GetBytes(function1));
+            function1Stream.Position = 0;
+            var function2Stream = new MemoryStream(Encoding.UTF8.GetBytes(function2));
+            function2Stream.Position = 0;
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\function.json"))).Returns(true);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\main.py"))).Returns(true);
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function1\function.json"))).Returns(function1);
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function1\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(function1Stream);
 
-            fileSystem.File
-                .Open(Arg.Is(Path.Combine(rootPath, @"function1\function.json")), Arg.Any<FileMode>(), Arg.Any<FileAccess>(), Arg.Any<FileShare>())
-                .Returns(function2);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2\function.json"))).Returns(true);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2\main.js"))).Returns(true);
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function2\function.json"))).Returns(function2);
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function2\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(function2Stream);
 
-            return fileSystem;
+            return fileSystem.Object;
         }
 
         public void Dispose()
@@ -124,14 +141,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             FileUtility.Instance = null;
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, string.Empty);
             Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", string.Empty);
-            HttpClientUtility.Instance = null;
         }
 
         private class MockHttpHandler : HttpClientHandler
         {
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            private StringBuilder _content;
+
+            public MockHttpHandler(StringBuilder content)
             {
-                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK));
+                _content = content;
+            }
+
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                _content.Append(await request.Content.ReadAsStringAsync());
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK);
             }
         }
     }

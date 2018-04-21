@@ -1086,7 +1086,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionMetadata;
         }
 
-        public static Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<string> functionDirectories, ILogger logger, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null)
+        public static Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<string> functionDirectories, ILogger logger, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null, IFileSystem fileSystem = null)
         {
             var functions = new Collection<FunctionMetadata>();
             settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
@@ -1098,7 +1098,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (var scriptDir in functionDirectories)
             {
-                var function = ReadFunctionMetadata(scriptDir, functionErrors, settingsManager, functionWhitelist);
+                var function = ReadFunctionMetadata(scriptDir, functionErrors, settingsManager, functionWhitelist, fileSystem);
                 if (function != null)
                 {
                     functions.Add(function);
@@ -1108,7 +1108,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functions;
         }
 
-        public static FunctionMetadata ReadFunctionMetadata(string scriptDir, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null)
+        public static FunctionMetadata ReadFunctionMetadata(string scriptDir, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null, IFileSystem fileSystem = null)
         {
             string functionName = null;
 
@@ -1119,8 +1119,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 string json = null;
                 try
                 {
-                    // This should be async
-                    json = FileUtility.ReadAllText(functionConfigPath);
+                    json = fileSystem != null
+                        ? fileSystem.File.ReadAllText(functionConfigPath)
+                        : FileUtility.ReadAllText(functionConfigPath);
                 }
                 catch (FileNotFoundException)
                 {
@@ -1143,7 +1144,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 string functionError = null;
                 FunctionMetadata functionMetadata = null;
-                if (!TryParseFunctionMetadata(functionName, functionConfig, scriptDir, settingsManager, out functionMetadata, out functionError))
+                if (!TryParseFunctionMetadata(functionName, functionConfig, scriptDir, settingsManager, out functionMetadata, out functionError, fileSystem))
                 {
                     // for functions in error, log the error and don't
                     // add to the functions collection

@@ -11,7 +11,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
@@ -26,11 +25,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
     {
         private readonly ScriptHostConfiguration _config;
         private readonly ILogger _logger;
+        private readonly HttpClient _client;
 
-        public WebFunctionsManager(WebHostSettings webSettings, ILoggerFactory loggerFactory)
+        public WebFunctionsManager(WebHostSettings webSettings, ILoggerFactory loggerFactory, HttpClient client)
         {
             _config = WebHostResolver.CreateScriptHostConfiguration(webSettings);
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryKeysController);
+            _client = client;
         }
 
         /// <summary>
@@ -125,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <returns>(success, FunctionMetadataResponse)</returns>
         public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request)
         {
-            var functionMetadata = ScriptHost.ReadFunctionMetadata(Path.Combine(_config.RootScriptPath, name), new Dictionary<string, Collection<string>>());
+            var functionMetadata = ScriptHost.ReadFunctionMetadata(Path.Combine(_config.RootScriptPath, name), new Dictionary<string, Collection<string>>(), fileSystem: FileUtility.Instance);
             if (functionMetadata != null)
             {
                 return (true, await functionMetadata.ToFunctionMetadataResponse(request, _config));
@@ -211,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 request.Headers.Add("x-ms-site-restricted-token", token);
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
 
-                var response = await HttpClientUtility.Instance.SendAsync(request);
+                var response = await _client.SendAsync(request);
                 return response.IsSuccessStatusCode
                     ? (true, string.Empty)
                     : (false, $"Sync triggers failed with: {response.StatusCode}");
@@ -221,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
         {
             return ScriptHost
-                .ReadFunctionsMetadata(FileUtility.EnumerateDirectories(_config.RootScriptPath), _logger, new Dictionary<string, Collection<string>>());
+                .ReadFunctionsMetadata(FileUtility.EnumerateDirectories(_config.RootScriptPath), _logger, new Dictionary<string, Collection<string>>(), fileSystem: FileUtility.Instance);
         }
 
         private async Task<string> GetDurableTaskHubName()
@@ -244,8 +245,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private void DeleteFunctionArtifacts(FunctionMetadataResponse function)
         {
-            // TODO: clear secrets
-            // TODO: clear logs
             var testDataPath = function.GetFunctionTestDataFilePath(_config);
 
             if (!string.IsNullOrEmpty(testDataPath))

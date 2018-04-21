@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Net.Http;
 using Autofac;
 using Autofac.Core;
 using Autofac.Extensions.DependencyInjection;
@@ -114,6 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.Register<ISecretManager>(c => c.Resolve<WebHostResolver>().GetSecretManager()).ExternallyOwned();
             builder.RegisterType<WebFunctionsManager>().As<IWebFunctionsManager>().SingleInstance();
             builder.RegisterType<InstanceManager>().As<IInstanceManager>().SingleInstance();
+            builder.Register(_ => new HttpClient()).SingleInstance();
             builder.RegisterType<VirtualFileSystem>();
             builder.RegisterType<VirtualFileSystemMiddleware>();
 
