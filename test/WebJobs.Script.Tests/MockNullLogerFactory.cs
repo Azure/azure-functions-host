@@ -3,7 +3,7 @@
 
 using System;
 using Microsoft.Extensions.Logging;
-using NSubstitute;
+using Moq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -11,21 +11,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         public static ILoggerFactory CreateLoggerFactory()
         {
-            var loggerFactory = Substitute.For<ILoggerFactory>();
+            var loggerFactory = new Mock<ILoggerFactory>();
             var logger = CreateLogger();
-            loggerFactory.CreateLogger(Arg.Any<string>()).Returns(logger);
-            return loggerFactory;
+            loggerFactory.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(logger);
+            return loggerFactory.Object;
         }
 
         public static ILogger CreateLogger()
         {
-            var logger = Substitute.For<ILogger>();
-            logger.Log(Arg.Any<LogLevel>(),
-                Arg.Any<EventId>(),
-                Arg.Any<object>(),
-                Arg.Any<Exception>(),
-                Arg.Any<Func<object, Exception, string>>());
-            return logger;
+            var logger = new Mock<ILogger>();
+            logger.Setup(l => l.Log(It.IsAny<LogLevel>(),
+                It.IsAny<EventId>(),
+                It.IsAny<object>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<object, Exception, string>>()));
+            return logger.Object;
         }
     }
 }

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
@@ -19,12 +20,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly ScriptHostManager _scriptHostManager;
         private readonly WebHostSettings _webHostSettings;
         private readonly ILogger _logger;
+        private readonly HttpClient _client;
 
-        public InstanceManager(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory)
+        public InstanceManager(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory, HttpClient client)
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
             _logger = loggerFactory.CreateLogger(nameof(InstanceManager));
+            _client = client;
         }
 
         public bool StartAssignment(HostAssignmentContext assignmentContext)
@@ -83,9 +86,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        private static async Task DownloadAsync(Uri requestUri, string filePath)
+        private async Task DownloadAsync(Uri requestUri, string filePath)
         {
-            var response = await HttpClientUtility.Instance.GetAsync(requestUri);
+            var response = await _client.GetAsync(requestUri);
             if (!response.IsSuccessStatusCode)
             {
                 throw new InvalidDataException($"Error downloading zip content {requestUri.Authority}/{requestUri.AbsolutePath}");

@@ -11,7 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
-using NSubstitute;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
@@ -22,29 +22,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task StartAssignmentShouldUpdateEnvironmentVariables()
         {
             var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
-            var scriptHostManager = Substitute.For<WebScriptHostManager>(new ScriptHostConfiguration(),
-                Substitute.For<ISecretManagerFactory>(),
-                Substitute.For<IScriptEventManager>(),
+            var scriptHostManager = new Mock<WebScriptHostManager>(new ScriptHostConfiguration(),
+                Mock.Of<ISecretManagerFactory>(),
+                Mock.Of<IScriptEventManager>(),
                 new ScriptSettingsManager(),
                 new WebHostSettings { SecretsPath = Path.GetTempPath() },
-                Substitute.For<IWebJobsRouter>(),
+                Mock.Of<IWebJobsRouter>(),
                 loggerFactory,
                 null, null, null, null, null, 30, 500);
 
-            var scriptSettingManager = Substitute.For<ScriptSettingsManager>();
+            var scriptSettingManager = new Mock<ScriptSettingsManager>();
             var restartCalled = false;
             var resetCalled = false;
 
             scriptHostManager
-                .When(m => m.RestartHost())
-                .Do(_ => restartCalled = true);
+                .Setup(m => m.RestartHost())
+                .Callback(() => restartCalled = true);
 
             scriptSettingManager
-                .When(m => m.Reset())
-                .Do(_ => resetCalled = true);
+                .Setup(m => m.Reset())
+                .Callback(() => resetCalled = true);
 
-            ScriptSettingsManager.Instance = scriptSettingManager;
-            var instanceManager = new InstanceManager(scriptHostManager, null, loggerFactory);
+            ScriptSettingsManager.Instance = scriptSettingManager.Object;
+            var instanceManager = new InstanceManager(scriptHostManager.Object, null, loggerFactory, null);
 
             var envValue = new
             {
