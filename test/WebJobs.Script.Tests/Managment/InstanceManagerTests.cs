@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
     public class InstanceManagerTests : IDisposable
     {
         [Fact]
-        public async Task TryAssignShouldUpdateEnvironmentVariables()
+        public async Task StartAssignmentShouldUpdateEnvironmentVariables()
         {
             var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
             var scriptHostManager = Substitute.For<WebScriptHostManager>(new ScriptHostConfiguration(),
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Value = Guid.NewGuid().ToString()
             };
 
-            instanceManager.TryAssign(new HostAssignmentContext
+            instanceManager.StartAssignment(new HostAssignmentContext
             {
                 Environment = new Dictionary<string, string>
                 {
