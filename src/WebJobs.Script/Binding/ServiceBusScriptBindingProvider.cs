@@ -16,8 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     internal class ServiceBusScriptBindingProvider : ScriptBindingProvider
     {
-        private EventHubConfiguration _eventHubConfiguration;
-
         public ServiceBusScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, TraceWriter traceWriter)
             : base(config, hostMetadata, traceWriter)
         {
@@ -65,32 +63,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 }
             }
 
-            EventProcessorOptions eventProcessorOptions = EventProcessorOptions.DefaultOptions;
-            eventProcessorOptions.MaxBatchSize = 1000;
-            int batchCheckpointFrequency = 1;
-            configSection = (JObject)Metadata.GetValue("eventHub", StringComparison.OrdinalIgnoreCase);
-            if (configSection != null)
-            {
-                if (configSection.TryGetValue("maxBatchSize", StringComparison.OrdinalIgnoreCase, out value))
-                {
-                    eventProcessorOptions.MaxBatchSize = (int)value;
-                }
-
-                if (configSection.TryGetValue("prefetchCount", StringComparison.OrdinalIgnoreCase, out value))
-                {
-                    eventProcessorOptions.PrefetchCount = (int)value;
-                }
-
-                if (configSection.TryGetValue("batchCheckpointFrequency", StringComparison.OrdinalIgnoreCase, out value))
-                {
-                    batchCheckpointFrequency = (int)value;
-                }
-            }
-            _eventHubConfiguration = new EventHubConfiguration(eventProcessorOptions);
-            _eventHubConfiguration.BatchCheckpointFrequency = batchCheckpointFrequency;
+            var eventHubConfiguration = new EventHubConfiguration();
 
             Config.UseServiceBus(serviceBusConfig);
-            Config.UseEventHub(_eventHubConfiguration);
+            Config.UseEventHub(eventHubConfiguration);
         }
 
         public override bool TryResolveAssembly(string assemblyName, out Assembly assembly)
