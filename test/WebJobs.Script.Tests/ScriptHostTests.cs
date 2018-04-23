@@ -23,7 +23,9 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.Extensions.Logging;
+using Microsoft.ServiceBus.Messaging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -522,6 +524,83 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(true, httpConfig.DynamicThrottlesEnabled);
             Assert.Equal(5, httpConfig.MaxConcurrentRequests);
             Assert.Equal(10, httpConfig.MaxOutstandingRequests);
+        }
+
+        [Fact]
+        public void ApplyConfiguration_EventHubs_UsesWebJobsDefaults()
+        {
+            JObject config = new JObject();
+            JObject eventHub = new JObject();
+            config["eventHub"] = eventHub;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            scriptConfig.HostConfig.HostConfigMetadata = config;
+            TraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+
+            var provider = new ServiceBusScriptBindingProvider(scriptConfig.HostConfig, config, traceWriter);
+            provider.Initialize();
+
+            new JobHost(scriptConfig.HostConfig).CreateMetadataProvider(); // will cause extensions to initialize and consume config metadata.
+
+            IExtensionRegistry extensions = scriptConfig.HostConfig.GetService<IExtensionRegistry>();
+            var eventHubConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<EventHubConfiguration>().Single();
+
+            // I don't want to update any of the V1 public surface area, so I'll just use reflection for this test.
+            var getOptionsMethod = typeof(EventHubConfiguration)
+                    .GetMethod("GetOptions", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.NotNull(getOptionsMethod);
+
+            var eventHubOptions = (EventProcessorOptions)getOptionsMethod.Invoke(eventHubConfig, new object[] { });
+
+            // Now lets find out what the defaults should be
+            var defaultEventHubConfiguration = new EventHubConfiguration();
+            var defaultOptions = (EventProcessorOptions)getOptionsMethod.Invoke(defaultEventHubConfiguration, new object[] { });
+
+            // And verify they match
+            Assert.Equal(defaultOptions.MaxBatchSize, eventHubOptions.MaxBatchSize);
+            Assert.Equal(defaultOptions.PrefetchCount, eventHubOptions.PrefetchCount);
+            Assert.Equal(defaultEventHubConfiguration.BatchCheckpointFrequency, eventHubConfig.BatchCheckpointFrequency);
+        }
+
+        [Fact]
+        public void ApplyConfiguration_EventHubs_UsesCustomConfiguration()
+        {
+            JObject config = new JObject();
+            JObject eventHub = new JObject();
+            config["eventHub"] = eventHub;
+
+            var customBatchSize = 33;
+            var customPrefetchCount = 99;
+            var customCheckpointFrequency = 4;
+
+            eventHub["maxBatchSize"] = customBatchSize;
+            eventHub["prefetchCount"] = customPrefetchCount;
+            eventHub["batchCheckpointFrequency"] = customCheckpointFrequency;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            scriptConfig.HostConfig.HostConfigMetadata = config;
+            TraceWriter traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+
+            var provider = new ServiceBusScriptBindingProvider(scriptConfig.HostConfig, config, traceWriter);
+            provider.Initialize();
+
+            new JobHost(scriptConfig.HostConfig).CreateMetadataProvider(); // will cause extensions to initialize and consume config metadata.
+
+            IExtensionRegistry extensions = scriptConfig.HostConfig.GetService<IExtensionRegistry>();
+            var eventHubConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<EventHubConfiguration>().Single();
+
+            // I don't want to update any of the V1 public surface area, so I'll just use reflection for this test.
+            var getOptionsMethod = typeof(EventHubConfiguration)
+                    .GetMethod("GetOptions", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.NotNull(getOptionsMethod);
+
+            var eventHubOptions = (EventProcessorOptions)getOptionsMethod.Invoke(eventHubConfig, new object[] { });
+
+            Assert.Equal(customBatchSize, eventHubOptions.MaxBatchSize);
+            Assert.Equal(customPrefetchCount, eventHubOptions.PrefetchCount);
+            Assert.Equal(customCheckpointFrequency, eventHubConfig.BatchCheckpointFrequency);
         }
 
         [Fact]
