@@ -27,9 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Fixture = fixture;
         }
         [Theory]
-        [InlineData("httptrigger", false)]
-        [InlineData("httptriggershared", false)]
-        public async Task HttpTrigger_Get(string functionName, bool enableContentNegotiation)
+        [InlineData("httptrigger")]
+        [InlineData("httptriggershared")]
+        public async Task HttpTrigger_Get(string functionName)
         {
             string userAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36";
             string accept = "text/html, application/xhtml+xml, application/xml; q=0.9, */*; q=0.8";
