@@ -40,8 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .AddEnvironmentVariables()
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
-                    { EnvironmentSettingNames.AzureWebsiteOwnerName,  $"{_subscriptionId}+westuswebspace"},
-                    { EnvironmentSettingNames.AzureWebsiteName,  _websiteName},
+                    { EnvironmentSettingNames.AzureWebsiteOwnerName,  $"{_subscriptionId}+westuswebspace" },
+                    { EnvironmentSettingNames.AzureWebsiteName,  _websiteName },
                 });
 
                 return configurationBuilder.Build();

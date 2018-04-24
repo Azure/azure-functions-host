@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             if (!string.IsNullOrEmpty(language))
             {
-                logger.LogInformation($"Reading Worker config for the lanuage: {language}");
+                logger.LogInformation($"Reading Worker config for the language: {language}");
                 string languageWorkerDirectory = Path.Combine(workerDirPath, language);
                 var provider = GetProviderFromConfig(languageWorkerDirectory, logger);
                 if (provider != null)

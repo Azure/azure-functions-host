@@ -72,6 +72,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex ProxyNameValidationRegex = new Regex(@"[^a-zA-Z0-9_-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
+        internal static readonly int DefaultMaxMessageLengthBytesDynamicSku = 32 * 1024 * 1024;
+        internal static readonly int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
         private ScriptSettingsManager _settingsManager;
         private bool _shutdownScheduled;
         private ILogger _startupLogger;
@@ -498,16 +500,22 @@ namespace Microsoft.Azure.WebJobs.Script
             _descriptorProviders = new List<FunctionDescriptorProvider>();
             if (string.IsNullOrEmpty(language))
             {
+                _startupLogger.LogTrace("Adding all the Function descriptors.");
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
                 _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher));
-            }
-            else if (language.Equals(ScriptConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-            {
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
             }
             else
             {
-                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher));
+                _startupLogger.LogTrace($"Adding Function descriptor for language {language}.");
+                switch (language.ToLower())
+                {
+                    case ScriptConstants.DotNetLanguageWorkerName:
+                        _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
+                        break;
+                    default:
+                        _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher));
+                        break;
+                }
             }
 
             Collection<FunctionDescriptor> functions;
@@ -645,7 +653,7 @@ namespace Microsoft.Azure.WebJobs.Script
             string sanitizedJson = SanitizeHostJson(hostConfigObject);
             string readFileMessage = $"Host configuration file read:{Environment.NewLine}{sanitizedJson}";
 
-            ApplyConfiguration(hostConfigObject, ScriptConfig);
+            ApplyConfiguration(hostConfigObject, ScriptConfig, _startupLogger);
 
             if (_settingsManager.FileSystemIsReadOnly)
             {
@@ -698,7 +706,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private void InitializeWorkers(string language)
         {
             var serverImpl = new FunctionRpcService(EventManager);
-            var server = new GrpcServer(serverImpl);
+            var server = new GrpcServer(serverImpl, ScriptConfig.MaxMessageLengthBytes);
 
             // TODO: async initialization of script host - hook into startasync method?
             server.StartAsync().GetAwaiter().GetResult();
@@ -733,7 +741,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // TODO: We still have some hard coded languages, so we need to handle them. Remove this switch once we've moved away from that.
                 switch (language.ToLower())
                 {
-                    case ScriptConstants.NodeLanguageWrokerName:
+                    case ScriptConstants.NodeLanguageWorkerName:
                         providers.Add(new NodeWorkerProvider());
                         break;
                     case ScriptConstants.JavaLanguageWrokerName:
@@ -1405,11 +1413,6 @@ namespace Microsoft.Azure.WebJobs.Script
                         ValidateFunction(descriptor, httpFunctions);
                         functionDescriptors.Add(descriptor);
                     }
-                    else
-                    {
-                        string functionLanguage = _settingsManager.Configuration[ScriptConstants.FunctionWorkerRuntimeSettingName];
-                        throw new ArgumentException($"Could not find a valid provider. {ScriptConstants.FunctionWorkerRuntimeSettingName} Appsetting is set to {functionLanguage}. Check that you have the correct language provider enabled and installed");
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -1491,7 +1494,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return httpTrigger.Methods.Intersect(otherHttpTrigger.Methods).Any();
         }
 
-        internal static void ApplyConfiguration(JObject config, ScriptHostConfiguration scriptConfig)
+        internal static void ApplyConfiguration(JObject config, ScriptHostConfiguration scriptConfig, ILogger logger = null)
         {
             var hostConfig = scriptConfig.HostConfig;
 
@@ -1600,6 +1603,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
+            value = null;
             if (config.TryGetValue("functionTimeout", out value))
             {
                 TimeSpan requestedTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
@@ -1620,8 +1624,42 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             scriptConfig.HostConfig.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
 
+            ApplyLanguageWorkerConfig(config, scriptConfig, logger);
             ApplyLoggerConfig(config, scriptConfig);
             ApplyApplicationInsightsConfig(config, scriptConfig);
+        }
+
+        private static void ApplyLanguageWorkerConfig(JObject config, ScriptHostConfiguration scriptConfig, ILogger logger)
+        {
+            JToken value = null;
+            JObject languageWorkerSection = (JObject)config["languageWorker"];
+            int requestedGrpcMaxMessageLength = ScriptSettingsManager.Instance.IsDynamicSku ? DefaultMaxMessageLengthBytesDynamicSku : DefaultMaxMessageLengthBytes;
+            if (languageWorkerSection != null)
+            {
+                if (languageWorkerSection.TryGetValue("maxMessageLength", out value))
+                {
+                    int valueInBytes = int.Parse((string)value) * 1024 * 1024;
+                    if (ScriptSettingsManager.Instance.IsDynamicSku)
+                    {
+                        string message = $"Cannot set {nameof(scriptConfig.MaxMessageLengthBytes)} on Consumption plan. Default MaxMessageLength: {DefaultMaxMessageLengthBytesDynamicSku} will be used";
+                        logger?.LogWarning(message);
+                    }
+                    else
+                    {
+                        if (valueInBytes < 0 || valueInBytes > 2000 * 1024 * 1024)
+                        {
+                            // Current grpc max message limits
+                            string message = $"MaxMessageLength must be between 4MB and 2000MB.Default MaxMessageLength: {DefaultMaxMessageLengthBytes} will be used";
+                            logger?.LogWarning(message);
+                        }
+                        else
+                        {
+                            requestedGrpcMaxMessageLength = valueInBytes;
+                        }
+                    }
+                }
+            }
+            scriptConfig.MaxMessageLengthBytes = requestedGrpcMaxMessageLength;
         }
 
         internal static void ApplyLoggerConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
