@@ -9,12 +9,11 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
@@ -41,7 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0" },
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, null }
             };
-            ScriptSettingsManager.Instance.Reset();
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
@@ -62,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact(Skip = "Investigate test failure")]
+        [Fact]
         public async Task StandbyMode_EndToEnd()
         {
             var vars = new Dictionary<string, string>
@@ -76,9 +74,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 var httpConfig = new HttpConfiguration();
 
-                var settingsManager = ScriptSettingsManager.Instance;
                 var testRootPath = Path.Combine(Path.GetTempPath(), "StandbyModeTest");
                 await FileUtility.DeleteDirectoryAsync(testRootPath, true);
+
                 var loggerProvider = new TestLoggerProvider();
                 var loggerProviderFactory = new TestLoggerProviderFactory(loggerProvider);
                 var webHostSettings = new WebHostSettings
@@ -89,10 +87,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     ScriptPath = Path.Combine(testRootPath, "WWWRoot")
                 };
 
-                var webHostBuilder = new WebHostBuilder()
-                    .UseStartup<Startup>()
-                    .ConfigureAppConfiguration(c => c.AddEnvironmentVariables())
-                    .ConfigureServices(c => c.AddSingleton(webHostSettings).AddSingleton<ILoggerProviderFactory>(loggerProviderFactory));
+                var loggerFactory = new LoggerFactory();
+                loggerFactory.AddProvider(loggerProvider);
+
+                var webHostBuilder = Program.CreateWebHostBuilder()
+                    .ConfigureServices(c => {
+                        c.AddSingleton(webHostSettings)
+                        .AddSingleton<ILoggerProviderFactory>(loggerProviderFactory)
+                        .AddSingleton<ILoggerFactory>(loggerFactory);
+                        });
 
                 var httpServer = new TestServer(webHostBuilder);
                 var httpClient = httpServer.CreateClient();
@@ -130,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await TestHelpers.Await(() =>
                 {
                     // wait for the trace indicating that the host has been specialized
-                    logLines = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+                    logLines = loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
                     return logLines.Contains("Generating 0 job function(s)");
                 }, userMessageCallback: () => string.Join(Environment.NewLine, loggerProvider.GetAllLogMessages().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.FormattedMessage}")));
 
@@ -160,7 +163,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void Dispose()
         {
-            ScriptSettingsManager.Instance.Reset();
         }
     }
 }

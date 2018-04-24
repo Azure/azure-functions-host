@@ -323,7 +323,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void GetDefaultHostId_AzureHost_ReturnsExpectedResult(string input, string expected)
         {
             var config = new ScriptHostConfiguration();
-            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
+            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict, null);
             scriptSettingsManagerMock.SetupGet(p => p.AzureWebsiteUniqueSlotName).Returns(() => input);
 
             string hostId = Utility.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
@@ -339,7 +339,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = @"c:\testing\FUNCTIONS-TEST\test$#"
             };
 
-            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
+            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict, null);
 
             string hostId = Utility.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
 

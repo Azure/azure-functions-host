@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public void GetCounters_ReturnsExpectedResult()
         {
-            var mockSettings = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
+            var mockSettings = new Mock<ScriptSettingsManager>(MockBehavior.Strict, null);
             string value = string.Empty;
             var logger = new TestLogger("Test");
             mockSettings.Setup(p => p.GetSetting(EnvironmentSettingNames.AzureWebsiteAppCountersName)).Returns(() => value);

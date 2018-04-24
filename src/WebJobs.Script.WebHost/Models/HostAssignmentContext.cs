@@ -53,12 +53,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         public void ApplyAppSettings()
         {
-            // apply app settings
             foreach (var pair in Environment)
             {
                 System.Environment.SetEnvironmentVariable(pair.Key, pair.Value);
             }
-            ScriptSettingsManager.Instance.Reset();
         }
     }
 }

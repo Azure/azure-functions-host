@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return;
             }
 
-            _logMessages.Add(new LogMessage
+            var logMessage = new LogMessage
             {
                 Level = logLevel,
                 EventId = eventId,
@@ -52,7 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 FormattedMessage = formatter(state, exception),
                 Category = Category,
                 Timestamp = DateTime.UtcNow
-            });
+            };
+
+            _logMessages.Add(logMessage);
         }
     }
 

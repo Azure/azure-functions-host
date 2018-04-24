@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
@@ -10,19 +9,16 @@ namespace Microsoft.Azure.WebJobs.Script.Config
     public class ScriptSettingsManager
     {
         private static ScriptSettingsManager _instance = new ScriptSettingsManager();
-        private readonly ConcurrentDictionary<string, string> _settingsCache = new ConcurrentDictionary<string, string>();
-        private Func<IConfiguration> _configurationFactory = BuildConfiguration;
-        private Lazy<IConfiguration> _configuration = new Lazy<IConfiguration>(BuildConfiguration);
 
-        // for testing
-        public ScriptSettingsManager()
+        public ScriptSettingsManager(IConfiguration config = null)
         {
+            Configuration = config ?? BuildDefaultConfiguration();
         }
 
         /// <summary>
         /// Gets the underlying configuration object used by this instance of the <see cref="ScriptSettingsManager"/>.
         /// </summary>
-        internal IConfiguration Configuration => _configuration.Value;
+        internal IConfiguration Configuration { get;  }
 
         public static ScriptSettingsManager Instance
         {
@@ -62,19 +58,15 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             get
             {
-                return _settingsCache.GetOrAdd(nameof(AzureWebsiteDefaultSubdomain), k =>
+                string siteHostName = GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
+
+                int? periodIndex = siteHostName?.IndexOf('.');
+                if (periodIndex != null && periodIndex > 0)
                 {
-                    string siteHostName = GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
+                    return siteHostName.Substring(0, periodIndex.Value);
+                }
 
-                    int? periodIndex = siteHostName?.IndexOf('.');
-
-                    if (periodIndex != null && periodIndex > 0)
-                    {
-                        return siteHostName.Substring(0, periodIndex.Value);
-                    }
-
-                    return null;
-                });
+                return null;
             }
         }
 
@@ -111,42 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public virtual string ApplicationInsightsInstrumentationKey
         {
-            get => GetSettingFromCache(EnvironmentSettingNames.AppInsightsInstrumentationKey);
-            set => UpdateSettingInCache(EnvironmentSettingNames.AppInsightsInstrumentationKey, value);
-        }
-
-        public void SetConfigurationFactory(Func<IConfiguration> configurationRootFactory)
-        {
-            _configurationFactory = configurationRootFactory;
-            Reset();
-        }
-
-        private string GetSettingFromCache(string settingKey)
-        {
-            if (string.IsNullOrEmpty(settingKey))
-            {
-                throw new ArgumentNullException(nameof(settingKey));
-            }
-
-            return _settingsCache.GetOrAdd(settingKey, (key) => GetSetting(key));
-        }
-
-        private void UpdateSettingInCache(string settingKey, string settingValue)
-        {
-            if (string.IsNullOrEmpty(settingKey))
-            {
-                throw new ArgumentNullException(nameof(settingKey));
-            }
-
-            _settingsCache.AddOrUpdate(settingKey, settingValue, (a, b) => settingValue);
-        }
-
-        public virtual void Reset()
-        {
-            Lazy<IConfiguration> current = _configuration;
-            _configuration = new Lazy<IConfiguration>(() => InitializeConfiguration(current));
-
-            _settingsCache.Clear();
+            get => GetSetting(EnvironmentSettingNames.AppInsightsInstrumentationKey);
+            set => SetSetting(EnvironmentSettingNames.AppInsightsInstrumentationKey, value);
         }
 
         public virtual string GetSetting(string settingKey)
@@ -164,35 +122,19 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             if (!string.IsNullOrEmpty(settingKey))
             {
                 Environment.SetEnvironmentVariable(settingKey, settingValue);
-                Reset();
             }
         }
 
-        private IConfiguration InitializeConfiguration(Lazy<IConfiguration> currentConfiguration)
+        public static IConfiguration BuildDefaultConfiguration()
         {
-            var configuration = _configurationFactory();
-
-            // If the factory returned a cached instance
-            // that is the same as the instance we previously had,
-            // reload the configuration on that instance.
-            if (configuration is IConfigurationRoot root &&
-                currentConfiguration != null &&
-                currentConfiguration.IsValueCreated &&
-                object.ReferenceEquals(currentConfiguration.Value, root))
-            {
-                root.Reload();
-            }
-
-            return configuration;
+            return CreateDefaultConfigurationBuilder().Build();
         }
 
-        private static IConfigurationRoot BuildConfiguration()
+        internal static IConfigurationBuilder CreateDefaultConfigurationBuilder()
         {
-            var configurationBuilder = new ConfigurationBuilder()
+            return new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", optional: true)
-                .AddEnvironmentVariables();
-
-            return configurationBuilder.Build();
+                .Add(new ScriptEnvironmentVariablesConfigurationSource());
         }
     }
 }

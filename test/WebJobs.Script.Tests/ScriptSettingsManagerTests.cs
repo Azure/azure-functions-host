@@ -25,8 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var settingsManager = ScriptSettingsManager.Instance;
 
-            settingsManager.Reset();
-
             var variables = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsiteName, siteName },
@@ -40,20 +38,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Reset_ReloadsEnvironmentChanges()
+        public void SettingsAreNotCached()
         {
-            using (var variable = new TestScopedEnvironmentVariable(nameof(Reset_ReloadsEnvironmentChanges), "foo"))
+            using (var variable = new TestScopedEnvironmentVariable(nameof(SettingsAreNotCached), "foo"))
             {
-                var configuration = new ConfigurationBuilder()
-                    .AddEnvironmentVariables()
-                    .Build();
+                Assert.Equal("foo", ScriptSettingsManager.Instance.GetSetting(nameof(SettingsAreNotCached)));
 
-                ScriptSettingsManager.Instance.SetConfigurationFactory(() => configuration);
-                Assert.Equal("foo", ScriptSettingsManager.Instance.GetSetting(nameof(Reset_ReloadsEnvironmentChanges)));
-
-                Environment.SetEnvironmentVariable(nameof(Reset_ReloadsEnvironmentChanges), "bar");
-                ScriptSettingsManager.Instance.Reset();
-                Assert.Equal("bar", ScriptSettingsManager.Instance.GetSetting(nameof(Reset_ReloadsEnvironmentChanges)));
+                Environment.SetEnvironmentVariable(nameof(SettingsAreNotCached), "bar");
+                Assert.Equal("bar", ScriptSettingsManager.Instance.GetSetting(nameof(SettingsAreNotCached)));
             }
         }
     }

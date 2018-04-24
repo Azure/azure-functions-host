@@ -32,20 +32,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _mockEventGenerator = new Mock<IEventGenerator>(MockBehavior.Strict);
 
-            _settingsManager = new ScriptSettingsManager();
-            _settingsManager.SetConfigurationFactory(() =>
-            {
-                var configurationBuilder = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", optional: true)
-                .AddEnvironmentVariables()
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
                     { EnvironmentSettingNames.AzureWebsiteOwnerName,  $"{_subscriptionId}+westuswebspace" },
                     { EnvironmentSettingNames.AzureWebsiteName,  _websiteName },
                 });
-
-                return configurationBuilder.Build();
-            });
+            var config = configBuilder.Build();
+            _settingsManager = new ScriptSettingsManager(config);
 
             _category = LogCategories.CreateFunctionCategory(_functionName);
             _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, _settingsManager);

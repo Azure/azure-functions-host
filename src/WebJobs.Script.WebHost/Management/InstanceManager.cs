@@ -17,14 +17,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private static HostAssignmentContext _assignmentContext;
         private static object _assignmentLock = new object();
 
-        private readonly ScriptHostManager _scriptHostManager;
         private readonly WebHostSettings _webHostSettings;
         private readonly ILogger _logger;
         private readonly HttpClient _client;
 
-        public InstanceManager(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory, HttpClient client)
+        public InstanceManager(WebHostSettings webHostSettings, ILoggerFactory loggerFactory, HttpClient client)
         {
-            _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
             _logger = loggerFactory.CreateLogger(nameof(InstanceManager));
             _client = client;
@@ -77,8 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     assignmentContext.ApplyAppSettings();
                 }
 
-                // Restart runtime.
-                _scriptHostManager.RestartHost();
+                // TODO: specialize
             }
             catch (Exception ex)
             {

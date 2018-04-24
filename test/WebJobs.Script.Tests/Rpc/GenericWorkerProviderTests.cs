@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -103,21 +104,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             try
             {
-                foreach (var config in configs)
+                foreach (var workerConfig in configs)
                 {
-                    string workerPath = Path.Combine(rootPath, config.Language);
+                    string workerPath = Path.Combine(rootPath, workerConfig.Language);
                     Directory.CreateDirectory(workerPath);
-                    File.WriteAllText(Path.Combine(workerPath, ScriptConstants.WorkerConfigFileName), config.Json);
+                    File.WriteAllText(Path.Combine(workerPath, ScriptConstants.WorkerConfigFileName), workerConfig.Json);
                 }
 
+                var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        ["workers:config:path"] = rootPath
+                    });
+                var config = configBuilder.Build();
+
                 var scriptHostConfig = new ScriptHostConfiguration();
-                var scriptSettingsManager = new ScriptSettingsManager();
-                var settings = new Dictionary<string, string>
-                {
-                    { "workers:config:path", rootPath }
-                };
-                scriptSettingsManager.SetConfigurationFactory(() => new ConfigurationBuilder()
-                    .AddInMemoryCollection(settings).Build());
+                var scriptSettingsManager = new ScriptSettingsManager(config);
+
                 return GenericWorkerProvider.ReadWorkerProviderFromConfig(scriptHostConfig, testLogger, scriptSettingsManager, language: language);
             }
             finally

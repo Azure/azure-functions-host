@@ -1664,7 +1664,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new Mock<IScriptHostEnvironment>();
                 var eventManager = new Mock<IScriptEventManager>();
 
-                ScriptSettingsManager.Instance.Reset();
                 Host = new ScriptHost(environment.Object, eventManager.Object, config);
                 Host.Initialize();
             }

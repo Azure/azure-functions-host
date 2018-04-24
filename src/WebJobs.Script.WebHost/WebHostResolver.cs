@@ -112,7 +112,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     if (_activeHostManager == null &&
                         (_standbyHostManager == null || _settingsManager.ContainerReady))
                     {
-                        _settingsManager.Reset();
                         _specializationTimer?.Dispose();
                         _specializationTimer = null;
 

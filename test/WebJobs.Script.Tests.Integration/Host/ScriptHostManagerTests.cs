@@ -351,7 +351,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Unable to parse host.json file.", ex.Message);
 
             var logger = loggerProvider.CreatedLoggers.Last();
-            Assert.Equal(3, logger.GetLogMessages().Count);
             Assert.StartsWith("A ScriptHost error has occurred", logger.GetLogMessages()[1].FormattedMessage);
             Assert.Equal("Unable to parse host.json file.", logger.GetLogMessages()[1].Exception.Message);
         }
@@ -384,7 +383,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environmentMock = new Mock<IScriptHostEnvironment>(MockBehavior.Strict);
             environmentMock.Setup(p => p.Shutdown());
 
-            var mockSettings = new Mock<ScriptSettingsManager>();
+            var mockSettings = new Mock<ScriptSettingsManager>(null);
             mockSettings.Setup(p => p.IsAppServiceEnvironment).Returns(true);
 
             var eventManagerMock = new Mock<IScriptEventManager>();
@@ -471,7 +470,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = Environment.CurrentDirectory
             };
 
-            var mockSettings = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
+            var mockSettings = new Mock<ScriptSettingsManager>(MockBehavior.Strict, null);
             var eventManager = new Mock<IScriptEventManager>();
             var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), eventManager.Object, config, null, null, null);
             var factoryMock = new Mock<IScriptHostFactory>();
