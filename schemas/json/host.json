@@ -282,6 +282,23 @@
           }
         }
       }
+    },
+
+    "durableTask": {
+      "description": "Configuration settings for 'orchestration'/'activity' triggers.",
+      "type": "object",
+
+      "properties": {
+        "hubName": {
+          "description": "The logical container for Azure Storage resources that are used for orchestrations.",
+          "type": "string",
+          "default": "DurableFunctionsHub"
+        },
+
+        "azureStorageConnectionStringName": {
+          "description": "An app setting (or environment variable) with the storage connection string to be used by the orchestration/activity trigger.",
+          "type": "string"
+        }
+      }
     }
-  }
 }

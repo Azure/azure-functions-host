@@ -23,7 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             // Setup
             const string expectedSyncTriggersPayload = "[{\"authLevel\":\"anonymous\",\"type\":\"httpTrigger\",\"direction\":\"in\",\"name\":\"req\",\"functionName\":\"function1\"}," +
-                "{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"\",\"functionName\":\"function2\",\"taskHubName\":\"TestHubValue\"}]";
+                "{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"DurableStorage\",\"functionName\":\"function2\",\"taskHubName\":\"TestHubValue\"}," +
+                "{\"name\":\"myQueueItem\",\"type\":\"activityTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"DurableStorage\",\"functionName\":\"function3\",\"taskHubName\":\"TestHubValue\"}]";
             var settings = CreateWebSettings();
             var fileSystem = CreateFileSystem(settings.ScriptPath);
             var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
@@ -75,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             fileSystem.SetupGet(f => f.File).Returns(fileBase.Object);
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "host.json"))).Returns(true);
 
-            var hostJson = new MemoryStream(Encoding.UTF8.GetBytes(@"{ ""durableTask"": { ""HubName"": ""TestHubValue"" }}"));
+            var hostJson = new MemoryStream(Encoding.UTF8.GetBytes(@"{ ""durableTask"": { ""HubName"": ""TestHubValue"", ""azureStorageConnectionStringName"": ""DurableStorage"" }}"));
             hostJson.Position = 0;
             fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"host.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(hostJson);
 
@@ -85,7 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 .Returns(new[]
                 {
                     @"x:\root\function1",
-                    @"x:\root\function2"
+                    @"x:\root\function2",
+                    @"x:\root\function3"
                 });
 
             var function1 = @"{
@@ -118,10 +120,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
     }
   ]
 }";
+
+            var function3 = @"{
+  ""disabled"": false,
+  ""scriptFile"": ""main.js"",
+  ""bindings"": [
+    {
+      ""name"": ""myQueueItem"",
+      ""type"": ""activityTrigger"",
+      ""direction"": ""in"",
+      ""queueName"": ""myqueue-items"",
+      ""connection"": """"
+    }
+  ]
+}";
             var function1Stream = new MemoryStream(Encoding.UTF8.GetBytes(function1));
             function1Stream.Position = 0;
             var function2Stream = new MemoryStream(Encoding.UTF8.GetBytes(function2));
             function2Stream.Position = 0;
+            var function3Stream = new MemoryStream(Encoding.UTF8.GetBytes(function3));
+            function3Stream.Position = 0;
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\function.json"))).Returns(true);
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\main.py"))).Returns(true);
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function1\function.json"))).Returns(function1);
@@ -131,6 +149,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2\main.js"))).Returns(true);
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function2\function.json"))).Returns(function2);
             fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function2\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(function2Stream);
+
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3\function.json"))).Returns(true);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3\main.js"))).Returns(true);
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function3\function.json"))).Returns(function3);
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function3\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(function3Stream);
 
             return fileSystem.Object;
         }
