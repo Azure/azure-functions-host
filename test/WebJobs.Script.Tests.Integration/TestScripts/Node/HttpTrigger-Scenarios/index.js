@@ -30,15 +30,14 @@ module.exports = function (context, req) {
             };
             break;
 
+        case "return-content":
+            context.res = req.body;
+            context.res.enableContentNegotiation = enableContentNegotiation;
+            break;
+
         case "content":
-            if (req.headers.return) {
-                context.res = req.body;
-                context.res.enableContentNegotiation = enableContentNegotiation;
-                context.done();
-            } else {
-                context.res.enableContentNegotiation = enableContentNegotiation;
-                context.res.type(req.headers.type)[`send`](req.body);
-            }
+            context.res.enableContentNegotiation = enableContentNegotiation;
+            context.res.type(req.headers.type)[`send`](req.body);
             break;
 
         case "resbinding":
