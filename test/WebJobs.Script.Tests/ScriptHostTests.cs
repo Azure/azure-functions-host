@@ -821,11 +821,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public void ApplyLanguageWorkerConfiguration_DefaultMaxMessageLengthBytesDynamicSku_IfDynamic()
+        [Fact]
+        public void ApplyLanguageWorkerConfiguration_Default_IfDynamic_NoMaxMessageLength()
         {
             JObject config = new JObject();
             config["id"] = ID;
             var testLogger = new TestLogger("test");
+            JObject languageWorkerConfig = new JObject();
+            config["languageWorker"] = languageWorkerConfig;
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
             try
             {
@@ -837,6 +840,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, null);
             }
+        }
+
+        [Fact]
+        public void ApplyLanguageWorkerConfiguration_Default_IfNotDynamic_NoMaxMessageLength()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+            var testLogger = new TestLogger("test");
+            JObject languageWorkerConfig = new JObject();
+            config["languageWorker"] = languageWorkerConfig;
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyConfiguration(config, scriptConfig, testLogger);
+            Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytes, scriptConfig.MaxMessageLengthBytes);
         }
 
         [Fact]
