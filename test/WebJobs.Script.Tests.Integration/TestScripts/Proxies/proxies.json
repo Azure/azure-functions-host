@@ -123,7 +123,7 @@
       "responseOverrides": {
         "response.statusCode": "201",
         "response.statusReason": "test",
-        "response.body": "{\"test\":\"123\"}"
+        "response.body": "{\"test\":\"{{{b}}}{{123}}{1}\"}"
       }
     },
     "ExternalCallBodyOverride": {
@@ -139,7 +139,35 @@
         "response.statusReason": "test",
         "response.body": "{\"test\":\"123\"}"
       }
+    },
+    "staticBackendUrlTest": {
+      "matchCondition": {
+        "route": "staticBackendUrlTest/{*path}"
+      },
+      "backendUri": "http://localhost/api/myroute/mysubroute?a=1",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
+    },
+    "wildcardBackendUrlTest": {
+      "matchCondition": {
+        "route": "wildcardBackendUrlTest/{*path}"
+      },
+      "backendUri": "http://localhost/api/{path}?a=1",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
+    },
+    "simpleParamBackendUrlTest": {
+      "matchCondition": {
+        "route": "simpleParamBackendUrlTest/myroute/{path}"
+      },
+      "backendUri": "http://localhost/api/myroute/{path}?a=1",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
     }
+
   }
 }
   
