@@ -61,7 +61,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Repository has more than {0} non-decryptable secrets backups ({1})..
+        ///   Looks up a localized string similar to Two or more function apps are sharing the same secrets ({0}).
+        /// </summary>
+        internal static string ErrorSameSecrets {
+            get {
+                return ResourceManager.GetString("ErrorSameSecrets", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Repository has more than {0} non-decryptable secrets backups ({1}). {2}.
         /// </summary>
         internal static string ErrorTooManySecretBackups {
             get {

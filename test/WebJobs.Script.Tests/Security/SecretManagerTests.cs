@@ -589,7 +589,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             using (var directory = new TempDirectory())
             {
                 string functionName = "testfunction";
-                string expectedTraceMessage = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, functionName);
+                string expectedTraceMessage = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, functionName,
+                    string.Format(Resources.ErrorSameSecrets, "test0,test1"));
                 string functionSecretsJson =
                      @"{
     'keys': [
@@ -625,12 +626,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                                 await Task.Delay(500);
                             }
 
+                            string hostName = "test" + (i % 2).ToString();
+                            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHostName, hostName);
                             functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                         }
                     }
                     catch (InvalidOperationException ex)
                     {
                         ioe = ex;
+                    }
+                    finally
+                    {
+                        _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHostName, null);
                     }
 
                     Assert.True(ioe != null, string.Join(Environment.NewLine, traceWriter.GetTraces()));
