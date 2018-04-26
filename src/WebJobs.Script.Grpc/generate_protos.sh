@@ -48,7 +48,7 @@ if [ -z "$NUGET_ROOT" ]; then
 else
 	NUGET_PATH=$NUGET_ROOT/packages/grpc.tools/1.4.1/tools/$PLATFORM
 fi
-PROTO=./Proto/src/proto/FunctionRpc.proto
+PROTO=./azure-functions-language-worker-protobuf/src/proto/FunctionRpc.proto
 MSGDIR=./Messages
 
 if [ ! -d "$NUGET_PATH" ]; then
