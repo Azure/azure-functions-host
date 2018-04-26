@@ -82,20 +82,20 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             int statusCode = StatusCodes.Status200OK;
             IDictionary<string, object> responseHeaders = null;
-            bool isRawResponse = false;
+            bool enableContentNegotiation = false;
             if (responseObject != null)
             {
-                ParseResponseObject(responseObject, ref content, out responseHeaders, out statusCode, out isRawResponse);
+                ParseResponseObject(responseObject, ref content, out responseHeaders, out statusCode, out enableContentNegotiation);
             }
 
-            return CreateResult(request, statusCode, content, responseHeaders, isRawResponse);
+            return CreateResult(request, statusCode, content, responseHeaders, enableContentNegotiation);
         }
 
-        internal static void ParseResponseObject(IDictionary<string, object> responseObject, ref object content, out IDictionary<string, object> headers, out int statusCode, out bool isRawResponse)
+        internal static void ParseResponseObject(IDictionary<string, object> responseObject, ref object content, out IDictionary<string, object> headers, out int statusCode, out bool enableContentNegotiation)
         {
             headers = null;
             statusCode = StatusCodes.Status200OK;
-            isRawResponse = false;
+            enableContentNegotiation = false;
 
             // TODO: Improve this logic
             // Sniff the object to see if it looks like a response object
@@ -116,9 +116,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     statusCode = responseStatusCode.Value;
                 }
 
-                if (responseObject.TryGetValue<bool>("isRaw", out bool isRawValue, ignoreCase: true))
+                if (responseObject.TryGetValue<bool>("enableContentNegotiation", out bool enableContentNegotiationValue, ignoreCase: true))
                 {
-                    isRawResponse = isRawValue;
+                    enableContentNegotiation = enableContentNegotiationValue;
                 }
             }
         }
@@ -161,17 +161,17 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return false;
         }
 
-        private static IActionResult CreateResult(HttpRequest request, int statusCode, object content, IDictionary<string, object> headers, bool isRawResponse)
+        private static IActionResult CreateResult(HttpRequest request, int statusCode, object content, IDictionary<string, object> headers, bool enableContentNegotiation)
         {
-            if (isRawResponse)
+            if (enableContentNegotiation)
             {
                 // We only write the response through one of the formatters if
-                // the function hasn't indicated that it wants to write the raw response
-                return new RawScriptResult(statusCode, content) { Headers = headers };
+                // the function has indicated that it wants to enable content negotiation
+                return new ScriptObjectResult(content, headers) { StatusCode = statusCode };
             }
             else
             {
-                return new ScriptObjectResult(content, headers) { StatusCode = statusCode };
+                return new RawScriptResult(statusCode, content) { Headers = headers };
             }
         }
 

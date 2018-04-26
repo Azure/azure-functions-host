@@ -30,7 +30,7 @@
     <Folder Include="Messages\DotNet\" />
   </ItemGroup>
 
-  <Target Name="GenerateProtoFiles" BeforeTargets="BeforeBuild" Inputs="Proto/FunctionRpc.proto" Outputs="Messages/DotNet/FunctionRpc.cs;Messages/DotNet/FunctionRpcGrpc.cs">
+  <Target Name="GenerateProtoFiles" BeforeTargets="BeforeBuild" Inputs="Proto/src/proto/FunctionRpc.proto" Outputs="Messages/DotNet/FunctionRpc.cs;Messages/DotNet/FunctionRpcGrpc.cs">
     <Exec Command="./generate_protos.$(Ext)" />
     <ItemGroup>
       <Compile Include="**/*$(DefaultLanguageSourceExtension)" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);$(BaseIntermediateOutputPath)**;$(BaseOutputPath)**;@(Compile)" />
