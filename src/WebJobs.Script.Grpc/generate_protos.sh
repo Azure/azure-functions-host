@@ -61,7 +61,7 @@ mkdir $MSGDIR
 
 OUTDIR=$MSGDIR/DotNet
 mkdir $OUTDIR
-$NUGET_PATH/protoc $PROTO --csharp_out $OUTDIR --grpc_out=$OUTDIR --plugin=protoc-gen-grpc=$NUGET_PATH/grpc_csharp_plugin --proto_path=./Proto/src/proto
+$NUGET_PATH/protoc $PROTO --csharp_out $OUTDIR --grpc_out=$OUTDIR --plugin=protoc-gen-grpc=$NUGET_PATH/grpc_csharp_plugin --proto_path=./azure-functions-language-worker-protobuf/src/proto
 
 # add #pragma warning disable labels
 
