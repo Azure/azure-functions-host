@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -29,6 +30,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 return Path.Combine(Path.GetTempPath(), "FunctionsTest");
             }
+        }
+
+        public static byte[] GenerateKeyBytes()
+        {
+            using (var aes = new AesManaged())
+            {
+                aes.GenerateKey();
+                return aes.Key;
+            }
+        }
+
+        public static string GenerateKeyHexString(byte[] key = null)
+        {
+            return BitConverter.ToString(key ?? GenerateKeyBytes()).Replace("-", string.Empty);
         }
 
         public static string NewRandomString(int length = 10)

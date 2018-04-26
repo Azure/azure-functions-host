@@ -21,9 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
         /// <returns>a SWT signed by this app</returns>
         public static string CreateToken(DateTime validUntil) => Encrypt($"exp={validUntil.Ticks}");
 
-        internal static string Encrypt(string value)
+        internal static string Encrypt(string value, byte[] key = null)
         {
-            using (var aes = new AesManaged { Key = GetWebSiteAuthEncryptionKey() })
+            key = key ?? GetWebSiteAuthEncryptionKey();
+
+            using (var aes = new AesManaged { Key = key })
             {
                 // IV is always generated for the key every time
                 aes.GenerateIV();

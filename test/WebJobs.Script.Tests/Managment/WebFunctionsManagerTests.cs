@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             FileUtility.Instance = fileSystem;
 
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, SimpleWebTokenTests.GenerateKeyHexString());
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString());
             Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", "appName");
 
             // Act

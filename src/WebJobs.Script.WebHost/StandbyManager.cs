@@ -36,9 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static bool IsWarmUpRequest(HttpRequest request)
         {
-            return ScriptSettingsManager.Instance.IsAppServiceEnvironment &&
-                WebScriptHostManager.InStandbyMode &&
-                request.IsAntaresInternalRequest() &&
+            return WebScriptHostManager.InStandbyMode &&
+                ((ScriptSettingsManager.Instance.IsAppServiceEnvironment && request.IsAntaresInternalRequest()) || ScriptSettingsManager.Instance.IsLinuxContainerEnvironment) &&
                 (request.Path.StartsWithSegments(new PathString($"/api/{WarmUpFunctionName}")) ||
                 request.Path.StartsWithSegments(new PathString($"/api/{WarmUpAlternateRoute}")));
         }
