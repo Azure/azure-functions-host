@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -64,29 +65,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void GetScriptHostConfiguration_ReturnsExpectedValue()
+        public async Task GetScriptHostConfiguration_ReturnsExpectedValue()
         {
-            TestGetter(_webHostResolver.GetScriptHostConfiguration);
+            await TestGetter(_webHostResolver.GetScriptHostConfiguration);
         }
 
         [Fact]
-        public void GetSecretManager_ReturnsExpectedValue()
+        public async Task GetSecretManager_ReturnsExpectedValue()
         {
-            TestGetter(_webHostResolver.GetSecretManager);
+            await TestGetter(_webHostResolver.GetSecretManager);
         }
 
         [Fact]
-        public void GetWebScriptHostManager_ReturnsExpectedValue()
+        public async Task GetWebScriptHostManager_ReturnsExpectedValue()
         {
-            TestGetter(_webHostResolver.GetWebScriptHostManager);
+            await TestGetter(_webHostResolver.GetWebScriptHostManager);
         }
 
         [Fact]
-        public void EnsureInitialized_NonPlaceholderMode()
+        public async Task EnsureInitialized_NonPlaceholderMode()
         {
             using (new TestEnvironment())
             {
-                var settings = GetWebHostSettings();
+                var settings = await GetWebHostSettings();
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                 Assert.False(WebScriptHostManager.InStandbyMode);
                 _webHostResolver.EnsureInitialized(settings);
@@ -99,11 +100,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void EnsureInitialized_PlaceholderMode()
+        public async Task EnsureInitialized_PlaceholderMode()
         {
             using (new TestEnvironment())
             {
-                var settings = GetWebHostSettings();
+                var settings = await GetWebHostSettings();
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
                 Assert.True(WebScriptHostManager.InStandbyMode);
                 _webHostResolver.EnsureInitialized(settings);
@@ -120,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private void TestGetter<T>(Func<WebHostSettings, T> func)
+        private async Task TestGetter<T>(Func<WebHostSettings, T> func)
         {
             using (new TestEnvironment())
             {
@@ -131,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
-                    var settings = GetWebHostSettings();
+                    var settings = await GetWebHostSettings();
                     prev = func(settings);
                     Assert.NotNull(prev);
 
@@ -156,16 +157,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private WebHostSettings GetWebHostSettings()
+        private Task<WebHostSettings> GetWebHostSettings()
         {
             var home = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
-            return new WebHostSettings
+            var settings = new WebHostSettings
             {
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(home, @"site\wwwroot"),
                 LogPath = Path.Combine(home, @"LogFiles\Application\Functions"),
                 SecretsPath = Path.Combine(home, @"data\Functions\secrets")
             };
+
+            Directory.CreateDirectory(settings.ScriptPath);
+            Directory.CreateDirectory(settings.LogPath);
+            Directory.CreateDirectory(settings.SecretsPath);
+
+            return Task.Delay(200)
+                .ContinueWith(t => settings);
         }
 
         public void Dispose()
