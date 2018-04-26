@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authentication
         [Fact]
         public async Task AuthenticateAsync_WithToken_PerformsAuthentication()
         {
-            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, SimpleWebTokenTests.GenerateKeyHexString()))
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString()))
             {
                 // Arrange
                 DefaultHttpContext context = GetContext();
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authentication
         [Fact]
         public async Task AuthenticateAsync_WithInvalidToken_FailsAuthentication()
         {
-            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, SimpleWebTokenTests.GenerateKeyHexString()))
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString()))
             {
                 // Arrange
                 DefaultHttpContext context = GetContext();
@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authentication
         [Fact]
         public async Task AuthenticateAsync_WithExpiredToken_FailsAuthentication()
         {
-            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, SimpleWebTokenTests.GenerateKeyHexString()))
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString()))
             {
                 DefaultHttpContext context = GetContext();
 

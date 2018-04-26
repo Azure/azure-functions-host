@@ -31,8 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Helpers
         [InlineData("value")]
         public void EncryptShouldGenerateDecryptableValues(string valueToEncrypt)
         {
-            var key = GenerateBytesKey();
-            var stringKey = GenerateKeyHexString(key);
+            var key = TestHelpers.GenerateKeyBytes();
+            var stringKey = TestHelpers.GenerateKeyHexString(key);
             Environment.SetEnvironmentVariable("WEBSITE_AUTH_ENCRYPTION_KEY", stringKey);
 
             var encrypted = SimpleWebTokenHelper.Encrypt(valueToEncrypt);
@@ -45,8 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Helpers
         [Fact]
         public void CreateTokenShouldCreateAValidToken()
         {
-            var key = GenerateBytesKey();
-            var stringKey = GenerateKeyHexString(key);
+            var key = TestHelpers.GenerateKeyBytes();
+            var stringKey = TestHelpers.GenerateKeyHexString(key);
             var timeStamp = DateTime.UtcNow;
             Environment.SetEnvironmentVariable("WEBSITE_AUTH_ENCRYPTION_KEY", stringKey);
 
@@ -54,20 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Helpers
             var decrypted = SimpleWebTokenHelper.Decrypt(key, token);
 
             Assert.Equal($"exp={timeStamp.Ticks}", decrypted);
-        }
-
-        public static byte[] GenerateBytesKey()
-        {
-            using (var aes = new AesManaged())
-            {
-                aes.GenerateKey();
-                return aes.Key;
-            }
-        }
-
-        public static string GenerateKeyHexString(byte[] key = null)
-        {
-                return BitConverter.ToString(key ?? GenerateBytesKey()).Replace("-", string.Empty);
         }
 
         public void Dispose()

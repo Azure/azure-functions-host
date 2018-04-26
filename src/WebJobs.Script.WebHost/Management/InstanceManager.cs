@@ -7,6 +7,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 
@@ -19,10 +20,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private readonly WebHostSettings _webHostSettings;
         private readonly ILogger _logger;
+        private readonly ScriptSettingsManager _settingsManager;
         private readonly HttpClient _client;
 
-        public InstanceManager(WebHostSettings webHostSettings, ILoggerFactory loggerFactory, HttpClient client)
+        public InstanceManager(ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory, HttpClient client)
         {
+            _settingsManager = settingsManager;
             _webHostSettings = webHostSettings;
             _logger = loggerFactory.CreateLogger(nameof(InstanceManager));
             _client = client;
@@ -30,6 +33,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public bool StartAssignment(HostAssignmentContext assignmentContext)
         {
+            if (!WebScriptHostManager.InStandbyMode)
+            {
+                return false;
+            }
+
             if (_assignmentContext == null)
             {
                 lock (_assignmentLock)
@@ -57,11 +65,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             try
             {
-                // download zip
                 var zip = assignmentContext.ZipUrl;
-
                 if (!string.IsNullOrEmpty(zip))
                 {
+                    // download zip and extract
                     var filePath = Path.GetTempFileName();
 
                     await DownloadAsync(new Uri(zip), filePath);
@@ -75,7 +82,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     assignmentContext.ApplyAppSettings();
                 }
 
-                // TODO: specialize
+                // set flags which will trigger specialization
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             }
             catch (Exception ex)
             {
