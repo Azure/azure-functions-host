@@ -57,14 +57,14 @@ function CrossGen([string] $runtime, [bool] $isSelfContained, [string] $publishT
             }
         }
 
-        $prm = "/JITPath", "$publishTarget\download\clrjit\clrjit.dll", "/Platform_Assemblies_Paths", "$selfContained", "/nologo","/in", $_.FullName
+        $prm = "/JITPath", "$publishTarget\download\clrjit\clrjit.dll", "/Platform_Assemblies_Paths", "$selfContained", "/nologo", "/in", $_.FullName
         # output for Microsoft.Azure.WebJobs.Script.WebHost.dll is Microsoft.Azure.WebJobs.Script.WebHost.exe.dll by default
         if ($_.FullName -like "*Microsoft.Azure.WebJobs.Script.WebHost.dll") {
             $prm += "/out"        
             $prm += Join-Path $privateSiteExtensionPath "Microsoft.Azure.WebJobs.Script.WebHost.ni.dll"
         }
 
-        & $crossGen $prm
+        & $crossGen $prm >> $buildOutput\crossgenout.$runtime.txt
 
         $niDll = Join-Path $privateSiteExtensionPath $([io.path]::GetFileNameWithoutExtension($_.FullName) + ".ni.dll")
         if ([System.IO.File]::Exists($niDll)) {
@@ -91,7 +91,8 @@ function CrossGen([string] $runtime, [bool] $isSelfContained, [string] $publishT
     }         
 
     #read-host "Press ENTER to continue..."
-    Remove-Item -Recurse -Force $selfContained -ErrorAction SilentlyContinue    
+    Remove-Item -Recurse -Force $selfContained -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $publishTarget\download -ErrorAction SilentlyContinue
 }
 
 function DownloadNupkg([string] $nupkgPath, [string[]]$from, [string[]]$to) {
