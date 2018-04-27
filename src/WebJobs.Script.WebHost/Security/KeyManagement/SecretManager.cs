@@ -387,7 +387,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 if (secretBackups.Length >= ScriptConstants.MaximumSecretBackupCount)
                 {
-                    string message = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, string.IsNullOrEmpty(keyScope) ? "host" : keyScope);
+                    string message = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, string.IsNullOrEmpty(keyScope) ? "host" : keyScope, await AnalizeSnapshots<T>(secretBackups));
                     _logger?.LogDebug(message);
                     throw new InvalidOperationException(message);
                 }
@@ -449,6 +449,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 Dictionary<string, string> secrets;
                 _secretsMap.TryRemove(e.Name, out secrets);
             }
+        }
+
+        private async Task<string> AnalizeSnapshots<T>(string[] secretBackups) where T : ScriptSecrets
+        {
+            string analizeResult = string.Empty;
+            try
+            {
+                List<T> shapShots = new List<T>();
+                foreach (string secretPath in secretBackups)
+                {
+                    string secretString = await _repository.ReadAsync(ScriptSecretsType.Function, Path.GetFileNameWithoutExtension(secretPath));
+                    shapShots.Add(ScriptSecretSerializer.DeserializeSecrets<T>(secretString));
+                }
+                string[] hosts = shapShots.Select(x => x.HostName).Distinct().ToArray();
+                if (hosts.Length > 1)
+                {
+                    analizeResult = string.Format(Resources.ErrorSameSecrets, string.Join(",", hosts));
+                }
+            }
+            catch
+            {
+                // best effort
+            }
+            return analizeResult;
         }
 
         public async Task PurgeOldSecretsAsync(string rootScriptPath, ILogger logger)
