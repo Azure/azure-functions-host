@@ -48,7 +48,7 @@ if [ -z "$NUGET_ROOT" ]; then
 else
 	NUGET_PATH=$NUGET_ROOT/packages/grpc.tools/1.4.1/tools/$PLATFORM
 fi
-PROTO=./azure-functions-language-worker-protobuf/src/proto/FunctionRpc.proto
+PROTO=./Proto/FunctionRpc.proto
 MSGDIR=./Messages
 
 if [ ! -d "$NUGET_PATH" ]; then
@@ -61,7 +61,7 @@ mkdir $MSGDIR
 
 OUTDIR=$MSGDIR/DotNet
 mkdir $OUTDIR
-$NUGET_PATH/protoc $PROTO --csharp_out $OUTDIR --grpc_out=$OUTDIR --plugin=protoc-gen-grpc=$NUGET_PATH/grpc_csharp_plugin --proto_path=./azure-functions-language-worker-protobuf/src/proto
+$NUGET_PATH/protoc $PROTO --csharp_out $OUTDIR --grpc_out=$OUTDIR --plugin=protoc-gen-grpc=$NUGET_PATH/grpc_csharp_plugin --proto_path=./Proto
 
 # add #pragma warning disable labels
 

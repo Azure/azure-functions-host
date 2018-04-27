@@ -682,7 +682,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void ApplyConfiguration_AppliesDefaults_IfDynamic()
+        public void ApplyConfiguration_AppliesDefaultTimeout_IfDynamic()
         {
             JObject config = new JObject();
             config["id"] = ID;
@@ -694,6 +694,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
                 ScriptHost.ApplyConfiguration(config, scriptConfig);
                 Assert.Equal(ScriptHost.DefaultFunctionTimeout, scriptConfig.FunctionTimeout);
+
                 var timeoutConfig = scriptConfig.HostConfig.FunctionTimeout;
                 Assert.NotNull(timeoutConfig);
                 Assert.True(timeoutConfig.ThrowOnTimeout);

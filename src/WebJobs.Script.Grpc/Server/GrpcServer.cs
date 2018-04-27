@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Grpc.Core;
@@ -18,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl)
         {
-            _server = new Server()
+            _server = new Server
             {
                 Services = { FunctionRpc.BindService(serviceImpl) },
                 Ports = { new ServerPort("127.0.0.1", ServerPort.PickUnused, ServerCredentials.Insecure) }
