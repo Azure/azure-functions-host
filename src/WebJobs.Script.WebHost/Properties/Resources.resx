@@ -117,8 +117,11 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="ErrorSameSecrets" xml:space="preserve">
+    <value>Two or more function apps are sharing the same secrets ({0})</value>
+  </data>
   <data name="ErrorTooManySecretBackups" xml:space="preserve">
-    <value>Repository has more than {0} non-decryptable secrets backups ({1}).</value>
+    <value>Repository has more than {0} non-decryptable secrets backups ({1}). {2}</value>
   </data>
   <data name="FunctionSecretsSchemaV0" xml:space="preserve">
     <value>{

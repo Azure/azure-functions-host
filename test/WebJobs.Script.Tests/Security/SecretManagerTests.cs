@@ -7,10 +7,13 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json;
 using WebJobs.Script.Tests;
@@ -548,7 +551,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             using (var directory = new TempDirectory())
             {
                 string functionName = "testfunction";
-                string expectedTraceMessage = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, functionName);
+                string expectedTraceMessage = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, functionName,
+                    string.Format(Resources.ErrorSameSecrets, "test0,test1"));
                 string functionSecretsJson =
                      @"{
     'keys': [
@@ -564,13 +568,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
     ]
 }";
-
+                ILoggerFactory loggerFactory = new LoggerFactory();
+                TestLoggerProvider loggerProvider = new TestLoggerProvider();
+                loggerFactory.AddProvider(loggerProvider);
+                var logger = loggerFactory.CreateLogger(LogCategories.CreateFunctionCategory("Test1"));
                 IDictionary<string, string> functionSecrets;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
 
-                using (var secretManager = new SecretManager(_settingsManager, repository, null))
+                using (var secretManager = new SecretManager(_settingsManager, repository, logger))
                 {
-                    await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                    InvalidOperationException ioe = null;
+                    try
                     {
                         for (int i = 0; i < ScriptConstants.MaximumSecretBackupCount + 20; i++)
                         {
@@ -582,12 +590,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                                 await Task.Delay(500);
                             }
 
+                            string hostName = "test" + (i % 2).ToString();
+                            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHostName, hostName);
                             functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                         }
-                    });
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        ioe = ex;
+                    }
+                    finally
+                    {
+                        _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHostName, null);
+                    }
                 }
 
                 Assert.True(Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length >= ScriptConstants.MaximumSecretBackupCount);
+                Assert.True(loggerProvider.GetAllLogMessages().Any(
+                    t => t.Level == LogLevel.Debug && t.FormattedMessage.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
+                    "Expected Trace message not found");
+
             }
         }
 
