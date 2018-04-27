@@ -2,7 +2,6 @@
 
 module.exports = function (context, req) {
     var scenario = (req.headers && req.headers.scenario) || req.body.scenario;
-    var enableContentNegotiation = (req.headers.negotiation == `true`);
 
     switch (scenario) {
         case "echo":
@@ -19,25 +18,27 @@ module.exports = function (context, req) {
                 body: req.body.value,
                 headers: {
                     'Content-Type': req.body.contenttype
-                }
+                },
+                isRaw: true
             };
             break;
 
         case "rawresponsenocontenttype":
             context.res = {
                 status: 200,
-                body: req.body.value
+                body: req.body.value,
+                isRaw: true
             };
             break;
 
-        case "return-content":
-            context.res = req.body;
-            context.res.enableContentNegotiation = enableContentNegotiation;
-            break;
-
         case "content":
-            context.res.enableContentNegotiation = enableContentNegotiation;
-            context.res.type(req.headers.type)[`send`](req.body);
+            if (req.headers.return) {
+                context.res = req.body;
+                context.done();
+            } else {
+                var sendFunc = req.headers.raw ? 'raw' : 'send';
+                context.res.type(req.headers.type)[sendFunc](req.body);
+            }
             break;
 
         case "resbinding":
@@ -52,7 +53,8 @@ module.exports = function (context, req) {
             logAppInsightsPayload(context, req.body.value);
             context.res = {
                 status: 200,
-                body: context.invocationId
+                body: context.invocationId,
+                isRaw: true
             };
             break;
 
@@ -60,7 +62,8 @@ module.exports = function (context, req) {
             logAppInsightsPayload(context, req.body.value);
             context.res = {
                 status: 409,
-                body: context.invocationId
+                body: context.invocationId,
+                isRaw: true
             };
             break;
 

@@ -72,8 +72,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex ProxyNameValidationRegex = new Regex(@"[^a-zA-Z0-9_-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
-        internal static readonly int DefaultMaxMessageLengthBytesDynamicSku = 32 * 1024 * 1024;
-        internal static readonly int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
         private ScriptSettingsManager _settingsManager;
         private bool _shutdownScheduled;
         private ILogger _startupLogger;
@@ -706,7 +704,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private void InitializeWorkers(string language)
         {
             var serverImpl = new FunctionRpcService(EventManager);
-            var server = new GrpcServer(serverImpl, ScriptConfig.MaxMessageLengthBytes);
+            var server = new GrpcServer(serverImpl);
 
             // TODO: async initialization of script host - hook into startasync method?
             server.StartAsync().GetAwaiter().GetResult();
@@ -1623,42 +1621,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             scriptConfig.HostConfig.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
 
-            ApplyLanguageWorkerConfig(config, scriptConfig, logger);
             ApplyLoggerConfig(config, scriptConfig);
             ApplyApplicationInsightsConfig(config, scriptConfig);
-        }
-
-        private static void ApplyLanguageWorkerConfig(JObject config, ScriptHostConfiguration scriptConfig, ILogger logger)
-        {
-            JToken value = null;
-            JObject languageWorkerSection = (JObject)config["languageWorker"];
-            int requestedGrpcMaxMessageLength = ScriptSettingsManager.Instance.IsDynamicSku ? DefaultMaxMessageLengthBytesDynamicSku : DefaultMaxMessageLengthBytes;
-            if (languageWorkerSection != null)
-            {
-                if (languageWorkerSection.TryGetValue("maxMessageLength", out value))
-                {
-                    int valueInBytes = int.Parse((string)value) * 1024 * 1024;
-                    if (ScriptSettingsManager.Instance.IsDynamicSku)
-                    {
-                        string message = $"Cannot set {nameof(scriptConfig.MaxMessageLengthBytes)} on Consumption plan. Default MaxMessageLength: {DefaultMaxMessageLengthBytesDynamicSku} will be used";
-                        logger?.LogWarning(message);
-                    }
-                    else
-                    {
-                        if (valueInBytes < 0 || valueInBytes > 2000 * 1024 * 1024)
-                        {
-                            // Current grpc max message limits
-                            string message = $"MaxMessageLength must be between 4MB and 2000MB.Default MaxMessageLength: {DefaultMaxMessageLengthBytes} will be used";
-                            logger?.LogWarning(message);
-                        }
-                        else
-                        {
-                            requestedGrpcMaxMessageLength = valueInBytes;
-                        }
-                    }
-                }
-            }
-            scriptConfig.MaxMessageLengthBytes = requestedGrpcMaxMessageLength;
         }
 
         internal static void ApplyLoggerConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
