@@ -35,8 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
-                    { EnvironmentSettingNames.AzureWebsiteOwnerName,  $"{_subscriptionId}+westuswebspace"},
-                    { EnvironmentSettingNames.AzureWebsiteName,  _websiteName},
+                    { EnvironmentSettingNames.AzureWebsiteOwnerName,  $"{_subscriptionId}+westuswebspace" },
+                    { EnvironmentSettingNames.AzureWebsiteName,  _websiteName },
                 });
             var config = configBuilder.Build();
             _settingsManager = new ScriptSettingsManager(config);
