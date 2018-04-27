@@ -13,13 +13,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         {
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/2760")]
+        [Fact]
         public Task CosmosDBTrigger()
         {
             return CosmosDBTriggerToBlobTest();
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/2760")]
+        [Fact]
         public Task CosmosDB()
         {
             return CosmosDBTest();

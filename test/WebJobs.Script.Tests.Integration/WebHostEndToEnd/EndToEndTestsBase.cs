@@ -347,7 +347,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var docUri = UriFactory.CreateDocumentUri("ItemDb", "ItemCollection", itemId);
 
             // We know the tests are using the default INameResolver and the default setting.
-            var connectionString = _nameResolver.Resolve("AzureWebJobsDocumentDBConnectionString");
+            var connectionString = _nameResolver.Resolve("AzureWebJobsCosmosDBConnectionString");
             var builder = new DbConnectionStringBuilder();
             builder.ConnectionString = connectionString;
             var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
