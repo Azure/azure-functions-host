@@ -156,9 +156,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         protected static string ResolveFunctionBaseProbingPath()
         {
             string basePath = null;
-            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)))
+            string home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+            if (ScriptSettingsManager.Instance.IsAppServiceEnvironment && !string.IsNullOrEmpty(home))
             {
-                string home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
                 basePath = Path.Combine(home, "site", "wwwroot");
             }
             else
