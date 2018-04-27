@@ -1,17 +1,17 @@
 ![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-functions-cli/master/src/Azure.Functions.Cli/npm/assets/azure-functions-logo-color-raster.png)
 
-|Branch|Windows|Linux|
-|---|---|---|
-|master|[![Build status](https://ci.appveyor.com/api/projects/status/a6j46j1tawdfs3js?svg=true&branch=master)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-script-y8o14?branch=master)|[![Build status](https://ci.appveyor.com/api/projects/status/03j5j88yk9489y33/branch/master?svg=true)](https://ci.appveyor.com/project/appsvc/azure-functions-host-l70a7/branch/master)|
-|dev|[![Build status](https://ci.appveyor.com/api/projects/status/a6j46j1tawdfs3js?svg=true&branch=dev)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-script-y8o14?branch=dev)|[![Build status](https://ci.appveyor.com/api/projects/status/03j5j88yk9489y33/branch/dev?svg=true)](https://ci.appveyor.com/project/appsvc/azure-functions-host-l70a7/branch/dev)|
-|v1.x|[![Build status](https://ci.appveyor.com/api/projects/status/a6j46j1tawdfs3js?svg=true&branch=v1.x)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-script-y8o14?branch=v1.x)| `NA` |
+|Branch|Status|
+|---|---|
+|master|[![Build status](https://ci.appveyor.com/api/projects/status/a6j46j1tawdfs3js?svg=true&branch=master)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-script-y8o14?branch=master)|
+|dev|[![Build status](https://ci.appveyor.com/api/projects/status/a6j46j1tawdfs3js?svg=true&branch=dev)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-script-y8o14?branch=dev)|
+|v1.x|[![Build status](https://ci.appveyor.com/api/projects/status/a6j46j1tawdfs3js?svg=true&branch=v1.x)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-script-y8o14?branch=v1.x)|
 
 WebJobs.Script
 ===
 
 This repo contains libraries that enable a **light-weight scripting model** for the [Azure WebJobs SDK](http://github.com/Azure/azure-webjobs-sdk). You simply provide job function **scripts** written in various languages (e.g. Javascript/[Node.js](http://nodejs.org), C#, Python, F#, PowerShell, PHP, CMD, BAT, BASH scripts, etc.) along with a simple **function.json** metadata file that indicates how those functions should be invoked, and the scripting library does the work necessary to plug those scripts into the [Azure WebJobs SDK](https://github.com/Azure/azure-webjobs-sdk) runtime.
 
-These libraries are the runtime used by [Azure Functions](https://azure.microsoft.com/en-us/services/functions/). The runtime builds upon the tried and true [Azure WebJobs SDK](https://github.com/Azure/azure-webjobs-sdk) - this library just layers on top to allow you to "**script the WebJobs SDK**". So you get the full benefits and the power of the WebJobs SDK, including the [WebJobs Dashboard](http://azure.microsoft.com/en-us/documentation/videos/azure-webjobs-dashboard-site-extension/). 
+These libraries are the runtime used by [Azure Functions](https://azure.microsoft.com/en-us/services/functions/). The runtime builds upon the tried and true [Azure WebJobs SDK](https://github.com/Azure/azure-webjobs-sdk) - this library just layers on top to allow you to "**script the WebJobs SDK**". So you get the full benefits and the power of the WebJobs SDK, including the [WebJobs Dashboard](http://azure.microsoft.com/en-us/documentation/videos/azure-webjobs-dashboard-site-extension/).
 
 **An important note on language support levels** - while many languages are supported, their level of support differs in important ways, making some languages more suitable than others for certain workloads. The **first class** languages are C#, F# and Javascript/Node.js. Functions written in these languages are run **in process** and are suitable for any workload. The remaining languages are considered **experimental**. Functions written in these languages are scripts that are run **out of process**. While there are many scenarios where this is acceptable, it won't be acceptable for high load scenarios where the overhead of a new process for each invocation won't scale.
 
