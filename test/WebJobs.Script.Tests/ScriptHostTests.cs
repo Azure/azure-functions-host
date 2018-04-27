@@ -682,7 +682,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void ApplyConfiguration_AppliesDefaults_IfDynamic()
+        public void ApplyConfiguration_AppliesDefaultTimeout_IfDynamic()
         {
             JObject config = new JObject();
             config["id"] = ID;
@@ -694,7 +694,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
                 ScriptHost.ApplyConfiguration(config, scriptConfig);
                 Assert.Equal(ScriptHost.DefaultFunctionTimeout, scriptConfig.FunctionTimeout);
-                Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytesDynamicSku, scriptConfig.MaxMessageLengthBytes);
+
                 var timeoutConfig = scriptConfig.HostConfig.FunctionTimeout;
                 Assert.NotNull(timeoutConfig);
                 Assert.True(timeoutConfig.ThrowOnTimeout);
@@ -750,109 +750,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, null);
             }
-        }
-
-        [Fact]
-        public void ApplyLanguageWorkerConfiguration_DefaultMaxMessageLength_IfNotDynamic()
-        {
-            JObject config = new JObject();
-            config["id"] = ID;
-
-            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
-            Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytes, scriptConfig.MaxMessageLengthBytes);
-        }
-
-        [Fact]
-        public void ApplyLanguageWorkerConfiguration_SetMaxMessageLength_IfNotDynamic()
-        {
-            JObject config = new JObject();
-            config["id"] = ID;
-            JObject languageWorkerConfig = new JObject();
-            languageWorkerConfig["maxMessageLength"] = 20;
-            config["languageWorker"] = languageWorkerConfig;
-
-            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
-            Assert.Equal(20 * 1024 * 1024, scriptConfig.MaxMessageLengthBytes);
-        }
-
-        [Fact]
-        public void ApplyLanguageWorkerConfiguration_SetMaxMessageLength_DafaultIfExceedsLimit()
-        {
-            JObject config = new JObject();
-            config["id"] = ID;
-            JObject languageWorkerConfig = new JObject();
-            languageWorkerConfig["maxMessageLength"] = 2500;
-            config["languageWorker"] = languageWorkerConfig;
-
-            var testLogger = new TestLogger("test");
-            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            ScriptHost.ApplyConfiguration(config, scriptConfig, testLogger);
-            var logMessage = testLogger.GetLogMessages().Single(l => l.FormattedMessage.StartsWith("MaxMessageLength must be between 4MB and 2000MB")).FormattedMessage;
-            Assert.Equal($"MaxMessageLength must be between 4MB and 2000MB.Default MaxMessageLength: {ScriptHost.DefaultMaxMessageLengthBytes} will be used", logMessage);
-            Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytes, scriptConfig.MaxMessageLengthBytes);
-        }
-
-        [Fact]
-        public void ApplyLanguageWorkerConfiguration_DefaultMaxMessageLength_IfDynamic()
-        {
-            JObject config = new JObject();
-            config["id"] = ID;
-            JObject languageWorkerConfig = new JObject();
-            languageWorkerConfig["maxMessageLength"] = 250;
-            config["languageWorker"] = languageWorkerConfig;
-
-            var testLogger = new TestLogger("test");
-            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-
-            try
-            {
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
-                ScriptHost.ApplyConfiguration(config, scriptConfig, testLogger);
-                string message = $"Cannot set {nameof(scriptConfig.MaxMessageLengthBytes)} on Consumption plan. Default MaxMessageLength: {ScriptHost.DefaultMaxMessageLengthBytesDynamicSku} will be used";
-                var logs = testLogger.GetLogMessages().Where(log => log.FormattedMessage.Contains(message)).FirstOrDefault();
-                Assert.NotNull(logs);
-                Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytesDynamicSku, scriptConfig.MaxMessageLengthBytes);
-            }
-            finally
-            {
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, null);
-            }
-        }
-
-        [Fact]
-        public void ApplyLanguageWorkerConfiguration_Default_IfDynamic_NoMaxMessageLength()
-        {
-            JObject config = new JObject();
-            config["id"] = ID;
-            var testLogger = new TestLogger("test");
-            JObject languageWorkerConfig = new JObject();
-            config["languageWorker"] = languageWorkerConfig;
-            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            try
-            {
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
-                ScriptHost.ApplyConfiguration(config, scriptConfig, testLogger);
-                Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytesDynamicSku, scriptConfig.MaxMessageLengthBytes);
-            }
-            finally
-            {
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, null);
-            }
-        }
-
-        [Fact]
-        public void ApplyLanguageWorkerConfiguration_Default_IfNotDynamic_NoMaxMessageLength()
-        {
-            JObject config = new JObject();
-            config["id"] = ID;
-            var testLogger = new TestLogger("test");
-            JObject languageWorkerConfig = new JObject();
-            config["languageWorker"] = languageWorkerConfig;
-            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            ScriptHost.ApplyConfiguration(config, scriptConfig, testLogger);
-            Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytes, scriptConfig.MaxMessageLengthBytes);
         }
 
         [Fact]

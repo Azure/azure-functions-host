@@ -39,8 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
                 {
                     await fixture.Host.CallAsync(functionName, arguments);
                     var result = (IActionResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
-                    Assert.IsType<RawScriptResult>(result);
-                    var objResult = result as RawScriptResult;
+                    Assert.IsType<ScriptObjectResult>(result);
+                    var objResult = result as ScriptObjectResult;
                     Assert.Equal(200, objResult.StatusCode);
                 }
                 else
