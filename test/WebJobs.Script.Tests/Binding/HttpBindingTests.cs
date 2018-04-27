@@ -33,16 +33,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             responseObject.body = "Test Body";
             responseObject.headers = inputHeaders;
             responseObject.status = 202;
-            responseObject.isRaw = false;
+            responseObject.enableContentNegotiation = false;
 
             object content = null;
             int statusCode = StatusCodes.Status200OK;
-            HttpBinding.ParseResponseObject(responseObject, ref content, out IDictionary<string, object> headers, out statusCode, out bool isRawResponse);
+            HttpBinding.ParseResponseObject(responseObject, ref content, out IDictionary<string, object> headers, out statusCode, out bool enableContentNegotiationResponse);
 
             Assert.Equal("Test Body", content);
             Assert.Same(headers, headers);
             Assert.Equal(StatusCodes.Status202Accepted, statusCode);
-            Assert.False(isRawResponse);
+            Assert.False(enableContentNegotiationResponse);
 
             // verify case insensitivity
             responseObject = new ExpandoObject();
@@ -50,18 +50,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             responseObject.Headers = inputHeaders;
             responseObject.StatusCode = "202";  // verify string works as well
             responseObject.Status = "404"; // verify that StatusCode takes precidence over Status if both are specified
-            responseObject.isRaw = true;
+            responseObject.enableContentNegotiation = true;
 
             content = null;
             headers = null;
             statusCode = StatusCodes.Status200OK;
-            isRawResponse = false;
-            HttpBinding.ParseResponseObject(responseObject, ref content, out headers, out statusCode, out isRawResponse);
+            enableContentNegotiationResponse = false;
+            HttpBinding.ParseResponseObject(responseObject, ref content, out headers, out statusCode, out enableContentNegotiationResponse);
 
             Assert.Equal("Test Body", content);
             Assert.Same(headers, headers);
             Assert.Equal(StatusCodes.Status202Accepted, statusCode);
-            Assert.True(isRawResponse);
+            Assert.True(enableContentNegotiationResponse);
         }
 
         [Fact]
@@ -74,8 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             object content = null;
             IDictionary<string, object> headers = null;
             int statusCode = StatusCodes.Status200OK;
-            bool isRawResponse = false;
-            HttpBinding.ParseResponseObject(responseObject, ref content, out headers, out statusCode, out isRawResponse);
+            bool enableContentNegotiationResponse = false;
+            HttpBinding.ParseResponseObject(responseObject, ref content, out headers, out statusCode, out enableContentNegotiationResponse);
 
             Assert.Equal(null, content);
             Assert.Equal(StatusCodes.Status202Accepted, statusCode);

@@ -55,17 +55,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = (IActionResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
 
-            Assert.IsType<ScriptObjectResult>(result);
+            Assert.IsType<RawScriptResult>(result);
 
-            var objResult = result as ScriptObjectResult;
+            var objResult = result as RawScriptResult;
 
             Assert.Equal(200, objResult.StatusCode);
 
             Assert.Equal("Test Response Header", objResult.Headers["test-header"]);
-            Assert.Equal("application/json; charset=utf-8", objResult.ContentTypes.First());
+            Assert.Equal("application/json; charset=utf-8", objResult.Headers["Content-Type"]);
 
-            Assert.IsType<JObject>(objResult.Value);
-            var resultObject = objResult.Value as JObject;
+            Assert.IsType<JObject>(objResult.Content);
+            var resultObject = objResult.Content as JObject;
             Assert.Equal("undefined", (string)resultObject["reqBodyType"]);
             Assert.Null((string)resultObject["reqBody"]);
             Assert.Equal("undefined", (string)resultObject["reqRawBodyType"]);
@@ -111,11 +111,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = (IActionResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
 
-            ObjectResult objectResult = result as ObjectResult;
+            RawScriptResult objectResult = result as RawScriptResult;
             Assert.NotNull(objectResult);
             Assert.Equal(200, objectResult.StatusCode);
 
-            JObject body = (JObject)objectResult.Value;
+            JObject body = (JObject)objectResult.Content;
             Assert.True((bool)body["isBuffer"]);
             Assert.Equal(5, body["length"]);
 
