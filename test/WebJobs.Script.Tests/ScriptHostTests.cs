@@ -614,6 +614,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ApplyConfiguration_AllowPartialHostStartup()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            Assert.False(scriptConfig.HostConfig.AllowPartialHostStartup);
+
+            // we default it to true
+            scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.True(scriptConfig.HostConfig.AllowPartialHostStartup);
+
+            // explicit setting can override our default
+            scriptConfig = new ScriptHostConfiguration();
+            config["allowPartialHostStartup"] = new JValue(true);
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.True(scriptConfig.HostConfig.AllowPartialHostStartup);
+
+            // explicit setting can override our default
+            scriptConfig = new ScriptHostConfiguration();
+            config["allowPartialHostStartup"] = new JValue(false);
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.False(scriptConfig.HostConfig.AllowPartialHostStartup);
+        }
+
+        [Fact]
         public void ApplyConfiguration_AppliesFunctionsFilter()
         {
             JObject config = new JObject();
