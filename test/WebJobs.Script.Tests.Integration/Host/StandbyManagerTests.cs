@@ -306,6 +306,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void Dispose()
         {
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, string.Empty);
         }
     }
 }
