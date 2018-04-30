@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             expando.query = inputMessage.Query as IDictionary<string, string>;
             expando.statusCode = inputMessage.StatusCode;
             expando.headers = inputMessage.Headers.ToDictionary(p => p.Key, p => (object)p.Value);
-            expando.isRaw = inputMessage.IsRaw;
+            expando.enableContentNegotiation = inputMessage.EnableContentNegotiation;
 
             if (inputMessage.Body != null)
             {

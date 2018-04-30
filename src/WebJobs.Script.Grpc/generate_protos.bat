@@ -35,7 +35,7 @@ setlocal
 cd /d %~dp0
 
 set NUGET_PATH=%UserProfile%\.nuget\packages\grpc.tools\1.4.1\tools\windows_x86
-set PROTO=.\Proto\FunctionRpc.proto
+set PROTO=.\azure-functions-language-worker-protobuf\src\proto\FunctionRpc.proto
 set MSGDIR=.\Messages
 
 if exist %MSGDIR% rmdir /s /q %MSGDIR%
@@ -43,7 +43,7 @@ mkdir %MSGDIR%
 
 set OUTDIR=%MSGDIR%\DotNet
 mkdir %OUTDIR%
-%NUGET_PATH%\protoc.exe %PROTO% --csharp_out %OUTDIR% --grpc_out=%OUTDIR% --plugin=protoc-gen-grpc=%NUGET_PATH%\grpc_csharp_plugin.exe --proto_path=.\Proto
+%NUGET_PATH%\protoc.exe %PROTO% --csharp_out %OUTDIR% --grpc_out=%OUTDIR% --plugin=protoc-gen-grpc=%NUGET_PATH%\grpc_csharp_plugin.exe --proto_path=.\azure-functions-language-worker-protobuf\src\proto
 
 @rem add pragma warning disable labels to generated files
 
