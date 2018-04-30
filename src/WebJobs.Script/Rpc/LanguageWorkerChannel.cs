@@ -122,7 +122,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             var workerContext = new WorkerCreateContext()
             {
                 RequestId = Guid.NewGuid().ToString(),
-                MaxMessageLength = _scriptConfig.MaxMessageLengthBytes,
                 WorkerId = _workerId,
                 Arguments = _workerConfig.Arguments,
                 WorkingDirectory = _scriptConfig.RootScriptPath,

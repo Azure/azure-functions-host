@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Grpc.Core;
@@ -16,13 +15,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private Server _server;
         private bool _disposed = false;
 
-        public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl, int grpcMaxMessageLength)
+        public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl)
         {
-            ChannelOption maxReceiveMessageLength = new ChannelOption(ChannelOptions.MaxReceiveMessageLength, grpcMaxMessageLength);
-            ChannelOption maxSendMessageLength = new ChannelOption(ChannelOptions.MaxSendMessageLength, grpcMaxMessageLength);
-            ChannelOption[] grpcChannelOptions = { maxReceiveMessageLength, maxSendMessageLength };
-
-            _server = new Server(grpcChannelOptions)
+            _server = new Server
             {
                 Services = { FunctionRpc.BindService(serviceImpl) },
                 Ports = { new ServerPort("127.0.0.1", ServerPort.PickUnused, ServerCredentials.Insecure) }
