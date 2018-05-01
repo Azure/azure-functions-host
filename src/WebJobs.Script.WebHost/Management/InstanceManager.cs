@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _client = client;
         }
 
-        public bool StartAssignment(HostAssignmentContext assignmentContext)
+        public bool StartAssignment(HostAssignmentContext context)
         {
             if (!WebScriptHostManager.InStandbyMode)
             {
@@ -44,20 +44,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     if (_assignmentContext != null)
                     {
-                        return _assignmentContext.Equals(assignmentContext);
+                        return _assignmentContext.Equals(context);
                     }
-                    _assignmentContext = assignmentContext;
+                    _assignmentContext = context;
                 }
 
-                // Queue the task in background, and return to caller immediately
-                Task.Run(() => Specialize(assignmentContext));
+                // start the specialization process in the background
+                Task.Run(async () => await Specialize(context));
 
                 return true;
             }
             else
             {
                 // No lock needed here since _assignmentContext is not null when we are here
-                return _assignmentContext.Equals(assignmentContext);
+                return _assignmentContext.Equals(context);
             }
         }
 
@@ -65,30 +65,41 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             try
             {
-                var zip = assignmentContext.ZipUrl;
-                if (!string.IsNullOrEmpty(zip))
-                {
-                    // download zip and extract
-                    var filePath = Path.GetTempFileName();
+                // set a flag which will cause any incoming http requests to buffer
+                // until specialization is complete
+                WebScriptHostManager.DelayRequests = true;
 
-                    await DownloadAsync(new Uri(zip), filePath);
+                // first make all environment and file system changes required for
+                // the host to be specialized
+                await ApplyContext(assignmentContext);
 
-                    assignmentContext.ApplyAppSettings();
-
-                    ZipFile.ExtractToDirectory(filePath, _webHostSettings.ScriptPath, overwriteFiles: true);
-                }
-                else
-                {
-                    assignmentContext.ApplyAppSettings();
-                }
-
-                // set flags which will trigger specialization
+                // all assignment settings/files have been applied so we can flip
+                // the switch now on specialization
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error calling {nameof(Specialize)}");
+                _logger.LogError(ex, $"Specialization failed.");
+                throw;
+            }
+            finally
+            {
+                WebScriptHostManager.DelayRequests = false;
+            }
+        }
+
+        private async Task ApplyContext(HostAssignmentContext assignmentContext)
+        {
+            assignmentContext.ApplyAppSettings();
+
+            var zipUrl = assignmentContext.ZipUrl;
+            if (!string.IsNullOrEmpty(zipUrl))
+            {
+                // download zip and extract
+                var filePath = Path.GetTempFileName();
+                await DownloadAsync(new Uri(zipUrl), filePath);
+                ZipFile.ExtractToDirectory(filePath, _webHostSettings.ScriptPath, overwriteFiles: true);
             }
         }
 

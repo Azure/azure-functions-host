@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
+            Assert.True(WebScriptHostManager.InStandbyMode);
 
             // specialization is done in the background
             await Task.Delay(500);

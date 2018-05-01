@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
         {
             private readonly FunctionAssemblyLoadContext _sharedContext;
 
-            public TestDynamicAssemblyLoadContext(WebJobs.Script.Description.FunctionMetadata functionMetadata, 
+            public TestDynamicAssemblyLoadContext(WebJobs.Script.Description.FunctionMetadata functionMetadata,
                 IFunctionMetadataResolver resolver, ILogger logger, FunctionAssemblyLoadContext sharedContext)
                 : base(functionMetadata, resolver, logger)
             {

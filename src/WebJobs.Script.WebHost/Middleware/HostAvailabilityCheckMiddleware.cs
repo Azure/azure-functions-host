@@ -1,12 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
@@ -22,14 +18,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _logger = loggerFactory.CreateLogger<HostAvailabilityCheckMiddleware>();
         }
 
-        public async Task Invoke(HttpContext httpContext, WebScriptHostManager manager)
+        public async Task Invoke(HttpContext httpContext, WebHostResolver resolver)
         {
             using (Logger.VerifyingHostAvailabilityScope(_logger, httpContext.TraceIdentifier))
             {
                 Logger.InitiatingHostAvailabilityCheck(_logger);
 
-                bool hostReady = await manager.DelayUntilHostReady(throwOnFailure: false);
-
+                bool hostReady = await WebScriptHostManager.DelayUntilHostReady(resolver);
                 if (!hostReady)
                 {
                     Logger.HostUnavailableAfterCheck(_logger);

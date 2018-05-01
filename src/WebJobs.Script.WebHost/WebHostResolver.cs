@@ -245,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // concurrently by incoming http requests, but the initialization
             // here ensures that it takes place in the absence of any http
             // traffic.
-            _activeHostManager?.RunAsync(CancellationToken.None);
+            _activeHostManager?.EnsureHostStarted(CancellationToken.None);
         }
 
         private static void InitializeFileSystem(WebHostSettings settings, bool readOnlyFileSystem)
