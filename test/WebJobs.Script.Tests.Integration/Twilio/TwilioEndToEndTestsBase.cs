@@ -1,44 +1,47 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Xunit;
+﻿//// Copyright (c) .NET Foundation. All rights reserved.
+//// Licensed under the MIT License. See License.txt in the project root for license information.
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Twilio
-{
-    public class TwilioEndToEndTestsBase : IClassFixture<TwilioEndToEndTestsBase.TestFixture>
-    {
-        private EndToEndTestFixture _fixture;
+//using System;
+//using System.Collections.Generic;
+//using System.Threading.Tasks;
+//using Xunit;
 
-        public TwilioEndToEndTestsBase(TestFixture fixture)
-        {
-            _fixture = fixture;
-        }
+//namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Twilio
+//{
+//    public class TwilioEndToEndTestsBase : IClassFixture<TwilioEndToEndTestsBase.TestFixture>
+//    {
+//        private EndToEndTestFixture _fixture;
 
-        [Fact]
-        public async Task TwilioReference()
-        {
-            string testData = Guid.NewGuid().ToString();
+//        public TwilioEndToEndTestsBase(TestFixture fixture)
+//        {
+//            _fixture = fixture;
+//        }
 
-            // Run function that references Twilio Api
-            await _fixture.Host.BeginFunctionAsync("TwilioReference", testData);
-            string logs = "";
+//        [Fact]
+//        public async Task TwilioReference()
+//        {
+//            string testData = Guid.NewGuid().ToString();
 
-            await TestHelpers.Await(() =>
-            {
-                // Wait until input has been processed, fail if missing
-                logs = _fixture.Host.GetLog();
-                return logs.Contains(testData);
-            });
-        }
+//            // Run function that references Twilio Api
+//            await _fixture.Host.BeginFunctionAsync("TwilioReference", testData);
+//            string logs = "";
 
-        public class TestFixture : EndToEndTestFixture
-        {
-            public TestFixture() :
-                base(@"TestScripts\CSharp", "csharp", "Microsoft.Azure.WebJobs.Extensions.Twilio", "3.0.0-beta5")
-            {
-            }
+//            await TestHelpers.Await(() =>
+//            {
+//                // Wait until input has been processed, fail if missing
+//                logs = _fixture.Host.GetLog();
+//                return logs.Contains(testData);
+//            });
+//        }
 
-            protected override IEnumerable<string> GetActiveFunctions() => new[] { "TwilioReference" };
-        }
-    }
-}
+//        public class TestFixture : EndToEndTestFixture
+//        {
+//            public TestFixture() :
+//                base(@"TestScripts\CSharp", "csharp", "Microsoft.Azure.WebJobs.Extensions.Twilio", "3.0.0-beta5")
+//            {
+//            }
+
+//            protected override IEnumerable<string> GetActiveFunctions() => new[] { "TwilioReference" };
+//        }
+//    }
+//}
