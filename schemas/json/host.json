@@ -258,29 +258,41 @@
         },
 
         "applicationInsights": {
-            "description": "Configuration settings for Application Insights logging.",
-            "type": "object",
+          "description": "Configuration settings for Application Insights logging.",
+          "type": "object",
 
-            "properties": {
-                "sampling": {
-                    "description": "Configuration settings for Application Insights client-side adaptive sampling.",
-                    "type": "object",
+          "properties": {
+            "sampling": {
+              "description": "Configuration settings for Application Insights client-side adaptive sampling.",
+              "type": "object",
 
-                    "properties": {
-                        "isEnabled": {
-                            "description": "If true, client-side adaptive sampling is enabled.",
-                            "type": "boolean",
-                            "default": true
-                        },
+              "properties": {
+                "isEnabled": {
+                  "description": "If true, client-side adaptive sampling is enabled.",
+                  "type": "boolean",
+                  "default": true
+                },
 
-                        "maxTelemetryItemsPerSecond": {
-                            "description": "The target rate that the adaptive algorithm aims for on each instance",
-                            "type": "integer",
-                            "default": 5
-                        }
-                    }
+                "maxTelemetryItemsPerSecond": {
+                  "description": "The target rate that the adaptive algorithm aims for on each instance",
+                  "type": "integer",
+                  "default": 5
                 }
+              }
             }
+          }
+        },
+
+        "documentDB": {
+          "description": "Configuration settings for Azure Cosmos DB bindings and triggers.",
+          "type": "object",
+          "properties": {
+            "connectionMode": {
+              "description": "ConnectionMode to be used on the DocumentClients.",
+              "enum": [ "Gateway", "Direct" ],
+              "default": "Gateway"
+            }
+          }
         }
     }
 }

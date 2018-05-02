@@ -56,6 +56,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     documentDBConfiguration.LeaseOptions = leaseOptions.ToObject<ChangeFeedHostOptions>();
                 }
+
+                JToken connectionMode = configSection["connectionMode"];
+                if (connectionMode != null)
+                {
+                    if (Enum.TryParse<ConnectionMode>(connectionMode.Value<string>(), out ConnectionMode connectionModeValue))
+                    {
+                        documentDBConfiguration.ConnectionMode = connectionModeValue;
+                    }
+                }
             }
 
             Config.UseDocumentDB(documentDBConfiguration);
