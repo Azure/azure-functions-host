@@ -49,6 +49,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerFactory.AddProvider(_loggerProvider);
         }
 
+        [Fact]
+        public void LoadHostConfig_DefaultsConfig_WhenFileMissing()
+        {
+            var path = Path.Combine(Path.GetTempPath(), @"does\not\exist\host.json");
+            Assert.False(File.Exists(path));
+            var logger = _loggerFactory.CreateLogger(LogCategories.Startup);
+            var config = ScriptHost.LoadHostConfig(path, logger);
+            Assert.Equal(0, config.Properties().Count());
+
+            var logMessage = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).Single();
+            Assert.Equal("No host configuration file found. Using default.", logMessage);
+        }
+
+        [Fact]
+        public void LoadHostConfig_LoadsConfigFile()
+        {
+            var path = Path.Combine(Path.GetTempPath(), @"FunctionsTest\host.json");
+            File.WriteAllText(path, "{ id: '123xyz' }");
+            var logger = _loggerFactory.CreateLogger(LogCategories.Startup);
+            var config = ScriptHost.LoadHostConfig(path, logger);
+            Assert.Equal(1, config.Properties().Count());
+            Assert.Equal("123xyz", (string)config["id"]);
+        }
+
+        [Fact]
+        public void LoadHostConfig_ParseError_Throws()
+        {
+            var path = Path.Combine(Path.GetTempPath(), @"FunctionsTest\host.json");
+            File.WriteAllText(path, "{ blah");
+            JObject config = null;
+            var logger = _loggerFactory.CreateLogger(LogCategories.Startup);
+            var ex = Assert.Throws<FormatException>(() =>
+            {
+                config = ScriptHost.LoadHostConfig(path, logger);
+            });
+            Assert.Equal($"Unable to parse host configuration file '{path}'.", ex.Message);
+        }
+
         [Theory]
         [InlineData(@"C:\Functions\Scripts\Shared\Test.csx", "Shared")]
         [InlineData(@"C:\Functions\Scripts\Shared\Sub1\Sub2\Test.csx", "Shared")]
@@ -389,7 +427,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 host.Initialize();
             });
 
-            Assert.Equal(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex.Message);
+            var configFilePath = Path.Combine(rootPath, "host.json");
+            Assert.Equal($"Unable to parse host configuration file '{configFilePath}'.", ex.Message);
             Assert.Equal("Invalid property identifier character: ~. Path '', line 2, position 4.", ex.InnerException.Message);
         }
 

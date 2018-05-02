@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _hostLogPath;
         private readonly string _hostConfigFilePath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
+        private readonly string _language;
 
         private static readonly string[] WellKnownHostJsonProperties = new[]
         {
@@ -120,6 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
             _hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, ScriptConstants.HostMetadataFileName);
+            _language = _settingsManager.Configuration[ScriptConstants.FunctionWorkerRuntimeSettingName];
 
             _loggerProviderFactory = loggerProviderFactory ?? new DefaultLoggerProviderFactory();
         }
@@ -299,13 +301,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 PreInitialize();
                 ApplyEnvironmentSettings();
                 var hostConfig = ApplyHostConfiguration();
-                string functionLanguage = _settingsManager.Configuration[ScriptConstants.FunctionWorkerRuntimeSettingName];
                 InitializeFileWatchers();
-                InitializeWorkers(functionLanguage);
+                InitializeWorkers();
 
                 var functionMetadata = LoadFunctionMetadata();
                 var directTypes = LoadBindingExtensions(functionMetadata, hostConfig);
-                InitializeFunctionDescriptors(functionMetadata, functionLanguage);
+                InitializeFunctionDescriptors(functionMetadata);
                 GenerateFunctions(directTypes);
 
                 InitializeServices();
@@ -461,12 +462,6 @@ namespace Microsoft.Azure.WebJobs.Script
             if (!_settingsManager.FileSystemIsReadOnly)
             {
                 FileUtility.EnsureDirectoryExists(ScriptConfig.RootScriptPath);
-
-                if (!File.Exists(_hostConfigFilePath))
-                {
-                    // if the host config file doesn't exist, create an empty one
-                    File.WriteAllText(_hostConfigFilePath, "{}");
-                }
             }
         }
 
@@ -495,19 +490,19 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Initialize function descriptors from metadata.
         /// </summary>
-        internal void InitializeFunctionDescriptors(Collection<FunctionMetadata> functionMetadata, string language)
+        internal void InitializeFunctionDescriptors(Collection<FunctionMetadata> functionMetadata)
         {
             _descriptorProviders = new List<FunctionDescriptorProvider>();
-            if (string.IsNullOrEmpty(language))
+            if (string.IsNullOrEmpty(_language))
             {
-                _startupLogger.LogTrace("Adding all the Function descriptors.");
+                _startupLogger.LogTrace("Adding Function descriptor providers for all languages.");
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
                 _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher));
             }
             else
             {
-                _startupLogger.LogTrace($"Adding Function descriptor for language {language}.");
-                switch (language.ToLower())
+                _startupLogger.LogTrace($"Adding Function descriptor provider for language {_language}.");
+                switch (_language.ToLower())
                 {
                     case ScriptConstants.DotNetLanguageWorkerName:
                         _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
@@ -522,7 +517,7 @@ namespace Microsoft.Azure.WebJobs.Script
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
             {
                 functions = GetFunctionDescriptors(functionMetadata);
-                _startupLogger.LogTrace("Function descriptors read.");
+                _startupLogger.LogTrace("Function descriptors created.");
             }
 
             Functions = functions;
@@ -636,20 +631,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Logger = _startupLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
 
             string readingFileMessage = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", _hostConfigFilePath);
-            string json = File.ReadAllText(_hostConfigFilePath);
-            JObject hostConfigObject;
-            try
-            {
-                hostConfigObject = JObject.Parse(json);
-            }
-            catch (JsonException ex)
-            {
-                // If there's a parsing error, write out the previous messages without filters to ensure
-                // they're logged
-                _startupLogger.LogInformation(readingFileMessage);
-                throw new FormatException(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex);
-            }
-
+            JObject hostConfigObject = LoadHostConfig(_hostConfigFilePath, _startupLogger);
             string sanitizedJson = SanitizeHostJson(hostConfigObject);
             string readFileMessage = $"Host configuration file read:{Environment.NewLine}{sanitizedJson}";
 
@@ -703,7 +685,29 @@ namespace Microsoft.Azure.WebJobs.Script
             return hostConfigObject;
         }
 
-        private void InitializeWorkers(string language)
+        internal static JObject LoadHostConfig(string configFilePath, ILogger logger)
+        {
+            JObject hostConfigObject;
+            try
+            {
+                string json = File.ReadAllText(configFilePath);
+                hostConfigObject = JObject.Parse(json);
+            }
+            catch (JsonException ex)
+            {
+                throw new FormatException($"Unable to parse host configuration file '{configFilePath}'.", ex);
+            }
+            catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
+            {
+                // if no file exists we default the config
+                logger.LogInformation("No host configuration file found. Using default.");
+                hostConfigObject = new JObject();
+            }
+
+            return hostConfigObject;
+        }
+
+        private void InitializeWorkers()
         {
             var serverImpl = new FunctionRpcService(EventManager);
             var server = new GrpcServer(serverImpl, ScriptConfig.MaxMessageLengthBytes);
@@ -735,11 +739,11 @@ namespace Microsoft.Azure.WebJobs.Script
             };
 
             var providers = new List<IWorkerProvider>();
-            if (!string.IsNullOrEmpty(language))
+            if (!string.IsNullOrEmpty(_language))
             {
-                _startupLogger.LogInformation($"{ScriptConstants.FunctionWorkerRuntimeSettingName} is specified, only {language} will be enabled");
+                _startupLogger.LogInformation($"{ScriptConstants.FunctionWorkerRuntimeSettingName} is specified, only {_language} will be enabled");
                 // TODO: We still have some hard coded languages, so we need to handle them. Remove this switch once we've moved away from that.
-                switch (language.ToLower())
+                switch (_language.ToLowerInvariant())
                 {
                     case ScriptConstants.NodeLanguageWorkerName:
                         providers.Add(new NodeWorkerProvider());
@@ -752,7 +756,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         break;
                     default:
                         // Pass the language to the provider loader to filter
-                        providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, _startupLogger, language: language));
+                        providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, _startupLogger, language: _language));
                         break;
                 }
             }

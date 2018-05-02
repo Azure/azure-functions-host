@@ -327,7 +327,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Directory.CreateDirectory(rootPath);
             }
 
-            File.WriteAllText(Path.Combine(rootPath, "host.json"), @"{<unparseable>}");
+            var configPath = Path.Combine(rootPath, "host.json");
+            File.WriteAllText(configPath, @"{<unparseable>}");
 
             var config = new ScriptHostConfiguration()
             {
@@ -348,11 +349,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = hostManager.LastError;
             Assert.True(ex is FormatException);
-            Assert.Equal("Unable to parse host.json file.", ex.Message);
+            var expectedMessage = $"Unable to parse host configuration file '{configPath}'.";
+            Assert.Equal(expectedMessage, ex.Message);
 
             var logger = loggerProvider.CreatedLoggers.Last();
-            Assert.StartsWith("A ScriptHost error has occurred", logger.GetLogMessages()[1].FormattedMessage);
-            Assert.Equal("Unable to parse host.json file.", logger.GetLogMessages()[1].Exception.Message);
+            var logMessage = logger.GetLogMessages()[0];
+            Assert.StartsWith("A ScriptHost error has occurred", logMessage.FormattedMessage);
+            Assert.Equal(expectedMessage, logMessage.Exception.Message);
         }
 
         [Fact]
@@ -424,12 +427,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(LogLevel.Error, log.Level);
         }
 
-        [Fact(Skip = "Fix this")]
+        [Fact]
         public async Task RunAndBlock_SetsLastError_WhenExceptionIsThrown()
         {
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = @"TestScripts\Empty"
+                RootScriptPath = @"TestScripts\Empty",
+                IsSelfHost = true
             };
 
             var factoryMock = new Mock<IScriptHostFactory>();
