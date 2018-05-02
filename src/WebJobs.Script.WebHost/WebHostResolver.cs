@@ -271,12 +271,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                         if (!readOnlyFileSystem)
                         {
-                            string toolsPath = Path.Combine(home, @"site\tools");
                             // Create the tools folder if it doesn't exist
+                            string toolsPath = Path.Combine(home, @"site\tools");
                             Directory.CreateDirectory(toolsPath);
 
                             // Create the test data folder
-                            Directory.CreateDirectory(settings.TestDataPath);
+                            if (!string.IsNullOrEmpty(settings.TestDataPath))
+                            {
+                                Directory.CreateDirectory(settings.TestDataPath);
+                            }
                         }
 
                         var folders = new List<string>();

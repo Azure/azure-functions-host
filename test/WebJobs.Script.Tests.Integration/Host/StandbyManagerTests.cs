@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private HttpClient _httpClient;
         private TestServer _httpServer;
         private string _expectedHostId;
+        private WebHostSettings _webHostSettings;
 
         public StandbyManagerTests()
         {
@@ -103,6 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
                 { EnvironmentSettingNames.AzureWebsiteSku, "Dynamic" },
+                { EnvironmentSettingNames.AzureWebsiteHomePath, null },
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, "87654639876900123453445678890144" },
                 { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" }
             };
@@ -223,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _loggerProvider = new TestLoggerProvider();
             var loggerProviderFactory = new TestLoggerProviderFactory(_loggerProvider);
-            var webHostSettings = new WebHostSettings
+            _webHostSettings = new WebHostSettings
             {
                 IsSelfHost = true,
                 LogPath = Path.Combine(testRootPath, "Logs"),
@@ -231,13 +233,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ScriptPath = Path.Combine(testRootPath, "WWWRoot")
             };
 
+            if (_settingsManager.IsAppServiceEnvironment)
+            {
+                // if the test is mocking App Service environment, we need
+                // to also set the HOME variable
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, testRootPath);
+            }
+
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
 
             var webHostBuilder = Program.CreateWebHostBuilder()
                 .ConfigureServices(c =>
                 {
-                    c.AddSingleton(webHostSettings)
+                    c.AddSingleton(_webHostSettings)
                     .AddSingleton<ILoggerProviderFactory>(loggerProviderFactory)
                     .AddSingleton<ILoggerFactory>(loggerFactory);
                 });
@@ -252,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Starting Host (HostId=placeholder-host")));
             Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Host is in standby mode")));
 
-            var hostConfig = WebHostResolver.CreateScriptHostConfiguration(webHostSettings, true);
+            var hostConfig = WebHostResolver.CreateScriptHostConfiguration(_webHostSettings, true);
             _expectedHostId = hostConfig.HostConfig.HostId;
         }
 
