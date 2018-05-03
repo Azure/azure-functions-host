@@ -214,9 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var content = JsonConvert.SerializeObject(triggers);
             var token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
 
-            // This will be a problem for national clouds. However, Antares isn't injecting the
-            // WEBSITE_HOSTNAME yet for linux apps. So until then will use this.
-            var url = $"https://{Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME")}.azurewebsites.net/operations/settriggers";
+            var url = $"https://{Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)}/operations/settriggers";
 
             using (var request = new HttpRequestMessage(HttpMethod.Post, url))
             {

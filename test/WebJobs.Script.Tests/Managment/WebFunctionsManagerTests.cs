@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             FileUtility.Instance = fileSystem;
 
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString());
-            Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", "appName");
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "appName.azurewebsites.net");
 
             // Act
             (var success, var error) = await webManager.TrySyncTriggers();

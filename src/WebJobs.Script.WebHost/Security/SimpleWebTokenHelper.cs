@@ -18,12 +18,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
         /// The SWT is then returned as an encrypted string
         /// </summary>
         /// <param name="validUntil">Datetime for when the token should expire</param>
+        /// <param name="key">Optional key to encrypt the token with</param>
         /// <returns>a SWT signed by this app</returns>
-        public static string CreateToken(DateTime validUntil) => Encrypt($"exp={validUntil.Ticks}");
+        public static string CreateToken(DateTime validUntil, byte[] key = null) => Encrypt($"exp={validUntil.Ticks}", key);
 
         internal static string Encrypt(string value, byte[] key = null)
         {
-            key = key ?? GetWebSiteAuthEncryptionKey();
+            if (key == null)
+            {
+                TryGetEncryptionKey(EnvironmentSettingNames.WebSiteAuthEncryptionKey, out key);
+            }
 
             using (var aes = new AesManaged { Key = key })
             {
@@ -94,7 +98,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 
         public static bool ValidateToken(string token, ISystemClock systemClock)
         {
-            var data = Decrypt(GetWebSiteAuthEncryptionKey(), token);
+            // Use ContainerEncryptionKey if available else fallback to WebSiteAuthEncryptionKey.
+            // Until the container is specialized to a specific site WebSiteAuthEncryptionKey will not be available.
+            byte[] key;
+            if (!TryGetEncryptionKey(EnvironmentSettingNames.ContainerEncryptionKey, out key, false))
+            {
+                TryGetEncryptionKey(EnvironmentSettingNames.WebSiteAuthEncryptionKey, out key);
+            }
+
+            var data = Decrypt(key, token);
 
             var parsedToken = data
                 // token = key1=value1;key2=value2
@@ -115,24 +127,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             }
         }
 
-        private static byte[] GetWebSiteAuthEncryptionKey()
+        private static bool TryGetEncryptionKey(string keyName, out byte[] encryptionKey, bool throwIfFailed = true)
         {
-            var hexOrBase64 = Environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey);
+            encryptionKey = null;
+            var hexOrBase64 = Environment.GetEnvironmentVariable(keyName);
             if (string.IsNullOrEmpty(hexOrBase64))
             {
-                throw new InvalidOperationException("No WEBSITE_AUTH_ENCRYPTION_KEY defined in the environment");
+                if (throwIfFailed)
+                {
+                    throw new InvalidOperationException($"No {keyName} defined in the environment");
+                }
+
+                return false;
             }
 
             // only support 32 bytes (256 bits) key length
             if (hexOrBase64.Length == 64)
             {
-                return Enumerable.Range(0, hexOrBase64.Length)
-                                 .Where(x => x % 2 == 0)
-                                 .Select(x => Convert.ToByte(hexOrBase64.Substring(x, 2), 16))
-                                 .ToArray();
+                encryptionKey = Enumerable.Range(0, hexOrBase64.Length)
+                    .Where(x => x % 2 == 0)
+                    .Select(x => Convert.ToByte(hexOrBase64.Substring(x, 2), 16))
+                    .ToArray();
+            }
+            else
+            {
+                encryptionKey = Convert.FromBase64String(hexOrBase64);
             }
 
-            return Convert.FromBase64String(hexOrBase64);
+            return true;
         }
     }
 }
