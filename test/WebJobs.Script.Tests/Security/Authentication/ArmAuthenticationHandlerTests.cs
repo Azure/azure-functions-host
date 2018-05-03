@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -46,6 +47,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authentication
             Assert.True(result.None);
             Assert.Null(result.Failure);
             Assert.Null(result.Principal);
+        }
+
+        [Fact]
+        public async Task AuthenticateAsync_WithToken_PerformsAuthentication_UsingContainerEncryptionKeyIfAvailable()
+        {
+            var websiteAuthEncryptionKeyBytes = TestHelpers.GenerateKeyBytes();
+            var containerEncryptionKeyBytes = TestHelpers.GenerateKeyBytes();
+
+            var vars = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString(websiteAuthEncryptionKeyBytes) },
+                { EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.GenerateKeyHexString(containerEncryptionKeyBytes) }
+            };
+
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                // Arrange
+                DefaultHttpContext context = GetContext();
+
+                string token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(2), containerEncryptionKeyBytes);
+                context.Request.Headers.Add(ArmAuthenticationHandler.ArmTokenHeaderName, token);
+
+                // Act
+                AuthenticateResult result = await context.AuthenticateAsync();
+
+                // Assert
+                Assert.True(result.Succeeded);
+                Assert.True(result.Principal.Identity.IsAuthenticated);
+                Assert.True(result.Principal.HasClaim(SecurityConstants.AuthLevelClaimType, AuthorizationLevel.Admin.ToString()));
+            }
         }
 
         [Fact]
