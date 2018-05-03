@@ -135,7 +135,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }, userMessageCallback: () => string.Join(Environment.NewLine, _loggerProvider.GetAllLogMessages().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.FormattedMessage}")));
 
                 // verify the rest of the expected logs
-                string text = string.Join(Environment.NewLine, logLines);
                 Assert.True(logLines.Count(p => p.Contains("Stopping Host")) >= 1);
                 Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
@@ -195,7 +194,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // verify the expected logs
                 var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
-                string text = string.Join(Environment.NewLine, logLines);
                 Assert.True(logLines.Count(p => p.Contains("Stopping Host")) >= 1);
                 Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
