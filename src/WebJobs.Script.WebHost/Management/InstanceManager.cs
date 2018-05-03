@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             if (!WebScriptHostManager.InStandbyMode)
             {
+                _logger.LogError("Assign called while host is not in placeholder mode");
                 return false;
             }
 
@@ -50,7 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
 
                 // start the specialization process in the background
-                Task.Run(async () => await Specialize(context));
+                _logger.LogError("Starting Assignment");
+                Task.Run(async () => await Assign(context));
 
                 return true;
             }
@@ -61,7 +63,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        private async Task Specialize(HostAssignmentContext assignmentContext)
+        public async Task<string> ValidateContext(HostAssignmentContext assignmentContext)
+        {
+            _logger.LogInformation($"Validating host assignment context (SiteId: {assignmentContext.SiteId}, SiteName: '{assignmentContext.SiteName}')");
+
+            var zipUrl = assignmentContext.ZipUrl;
+            if (!string.IsNullOrEmpty(zipUrl))
+            {
+                // make sure the zip uri is valid and accessible
+                var request = new HttpRequestMessage(HttpMethod.Head, zipUrl);
+                var response = await _client.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    string error = $"Invalid zip url specified (StatusCode: {response.StatusCode})";
+                    _logger.LogError(error);
+                    return error;
+                }
+            }
+
+            return null;
+        }
+
+        private async Task Assign(HostAssignmentContext assignmentContext)
         {
             try
             {
@@ -75,12 +98,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 // all assignment settings/files have been applied so we can flip
                 // the switch now on specialization
+                _logger.LogInformation("Triggering specialization");
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Specialization failed.");
+                _logger.LogError(ex, $"Assign failed");
                 throw;
             }
             finally
@@ -91,24 +115,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private async Task ApplyContext(HostAssignmentContext assignmentContext)
         {
+            _logger.LogInformation($"Applying {assignmentContext.Environment.Count} app setting(s)");
             assignmentContext.ApplyAppSettings();
 
-            var zipUrl = assignmentContext.ZipUrl;
-            if (!string.IsNullOrEmpty(zipUrl))
+            if (!string.IsNullOrEmpty(assignmentContext.ZipUrl))
             {
                 // download zip and extract
+                var zipUri = new Uri(assignmentContext.ZipUrl);
                 var filePath = Path.GetTempFileName();
-                await DownloadAsync(new Uri(zipUrl), filePath);
+                await DownloadAsync(zipUri, filePath);
+
+                _logger.LogInformation($"Extracting files to '{_webHostSettings.ScriptPath}'");
                 ZipFile.ExtractToDirectory(filePath, _webHostSettings.ScriptPath, overwriteFiles: true);
+                _logger.LogInformation($"Zip extraction complete");
             }
         }
 
-        private async Task DownloadAsync(Uri requestUri, string filePath)
+        private async Task DownloadAsync(Uri zipUri, string filePath)
         {
-            var response = await _client.GetAsync(requestUri);
+            var zipPath = $"{zipUri.Authority}{zipUri.AbsolutePath}";
+            _logger.LogInformation($"Downloading zip contents from '{zipPath}' to temp file '{filePath}'");
+
+            var response = await _client.GetAsync(zipUri);
             if (!response.IsSuccessStatusCode)
             {
-                throw new InvalidDataException($"Error downloading zip content {requestUri.Authority}/{requestUri.AbsolutePath}");
+                string error = $"Error downloading zip content {zipPath}";
+                _logger.LogError(error);
+                throw new InvalidDataException(error);
             }
 
             using (var content = await response.Content.ReadAsStreamAsync())
@@ -116,6 +149,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 await content.CopyToAsync(stream);
             }
+
+            _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes downloaded");
         }
 
         public IDictionary<string, string> GetInstanceInfo()

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -32,10 +33,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/instance/assign")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public IActionResult Assign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext)
+        public async Task<IActionResult> Assign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext)
         {
             var containerKey = _settingsManager.GetSetting(EnvironmentSettingNames.ContainerEncryptionKey);
             var assignmentContext = encryptedAssignmentContext.Decrypt(containerKey);
+
+            // before starting the assignment we want to perform as much
+            // up front validation on the context as possible
+            string error = await _instanceManager.ValidateContext(assignmentContext);
+            if (error != null)
+            {
+                return StatusCode(StatusCodes.Status400BadRequest, error);
+            }
+
             var result = _instanceManager.StartAssignment(assignmentContext);
 
             return result
