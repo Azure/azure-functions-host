@@ -577,14 +577,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(hostConfig, config, null);
             provider.Initialize();
 
-            Assert.True(hostConfig.Blobs.CentralizedPoisonQueue);
+            Assert.False(hostConfig.Blobs.CentralizedPoisonQueue);
 
-            blobsConfig["centralizedPoisonQueue"] = false;
+            blobsConfig["centralizedPoisonQueue"] = true;
 
             provider = new WebJobsCoreScriptBindingProvider(hostConfig, config, null);
             provider.Initialize();
 
-            Assert.False(hostConfig.Blobs.CentralizedPoisonQueue);
+            Assert.True(hostConfig.Blobs.CentralizedPoisonQueue);
         }
 
         [Fact]
