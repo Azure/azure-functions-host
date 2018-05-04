@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public JobObjectRegistry()
         {
-            _handle = CreateJobObject(IntPtr.Zero, null);
+            _handle = CreateJobObject(null, null);
 
             var info = new JOBOBJECT_BASIC_LIMIT_INFORMATION
             {
