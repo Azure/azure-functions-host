@@ -1268,7 +1268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Make sure no App Insights is configured
             var settingsManager = ScriptSettingsManager.Instance;
-            settingsManager.SetSetting("host:logger:consoleLoggingMode", consoleLoggingEnabled);
+            settingsManager.SetSetting(ScriptConstants.ConsoleLoggingMode, consoleLoggingEnabled);
             settingsManager.ApplicationInsightsInstrumentationKey = "Some_Instrumentation_Key";
 
             var metricsLogger = new TestMetricsLogger();
