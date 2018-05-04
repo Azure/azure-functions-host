@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void LoadHostConfig_LoadsConfigFile()
         {
-            var path = Path.Combine(Path.GetTempPath(), @"FunctionsTest\host.json");
+            var path = Path.Combine(TestHelpers.FunctionsTestDirectory, "host.json");
             File.WriteAllText(path, "{ id: '123xyz' }");
             var logger = _loggerFactory.CreateLogger(LogCategories.Startup);
             var config = ScriptHost.LoadHostConfig(path, logger);
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void LoadHostConfig_ParseError_Throws()
         {
-            var path = Path.Combine(Path.GetTempPath(), @"FunctionsTest\host.json");
+            var path = Path.Combine(TestHelpers.FunctionsTestDirectory, "host.json");
             File.WriteAllText(path, "{ blah");
             JObject config = null;
             var logger = _loggerFactory.CreateLogger(LogCategories.Startup);
@@ -1725,6 +1725,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             public TestFixture()
             {
+                Directory.CreateDirectory(TestHelpers.FunctionsTestDirectory);
                 ScriptHostConfiguration config = new ScriptHostConfiguration();
                 config.HostConfig.HostId = ID;
                 var environment = new Mock<IScriptHostEnvironment>();
