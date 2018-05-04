@@ -39,9 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         // TODO: FACAVAL
-       
-
-        // TODO: FACAVAL
         //[Fact]
         //public void ResolveAssembly_WithIndirectPrivateDependency_LogsIfResolutionFails()
         //{
@@ -67,7 +64,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         //    Assert.Equal(1, testLogger.GetLogMessages().Count);
         //    Assert.Contains("MyTestAssembly.dll", testLogger.GetLogMessages()[0].FormattedMessage);
         //}
-
-      
     }
 }

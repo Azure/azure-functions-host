@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ServiceBus
 {
-    public class ServiceBusCSharpEndToEndTests:
+    public class ServiceBusCSharpEndToEndTests :
         ServiceBusEndToEndTestsBase<ServiceBusCSharpEndToEndTests.TestFixture>
     {
         public ServiceBusCSharpEndToEndTests(TestFixture fixture) : base(fixture)

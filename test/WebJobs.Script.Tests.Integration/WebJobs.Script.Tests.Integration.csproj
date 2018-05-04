@@ -12,6 +12,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>TRACE;DEBUG;SCRIPT_TEST;NETCOREAPP2_0</DefineConstants>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="ScriptHostEndToEnd\ListenerFailureTests.cs" />
+    <Compile Remove="ServiceBus\ServiceBusEndToEndTestBase.cs" />
+    <Compile Remove="ServiceBus\ServiceBusTriggerCSharpEndToEndTests.cs" />
+    <Compile Remove="ServiceBus\ServiceBusTriggerNodeEndToEndTests.cs" />
+    <Compile Remove="Twilio\TwilioEndToEndTestsBase.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
@@ -71,6 +78,14 @@
   
   <ItemGroup>
     <Folder Include="TestScripts\Empty\" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Include="ScriptHostEndToEnd\ListenerFailureTests.cs" />
+    <None Include="ServiceBus\ServiceBusEndToEndTestBase.cs" />
+    <None Include="ServiceBus\ServiceBusTriggerCSharpEndToEndTests.cs" />
+    <None Include="ServiceBus\ServiceBusTriggerNodeEndToEndTests.cs" />
+    <None Include="Twilio\TwilioEndToEndTestsBase.cs" />
   </ItemGroup>
    
   <Import Project="..\..\build\GrpcTestFix.targets" />

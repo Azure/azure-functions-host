@@ -609,7 +609,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.True(loggerProvider.GetAllLogMessages().Any(
                     t => t.Level == LogLevel.Debug && t.FormattedMessage.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
                     "Expected Trace message not found");
-
             }
         }
 
