@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Helpers
         }
 
         [Fact]
-        public void ValidateTokenUsesContainerEncryptionKeyIfAvailable()
+        public void Validate_Token_Uses_WebSiteAuthEncryptionKey_If_Available()
         {
             var containerEncryptionKey = TestHelpers.GenerateKeyBytes();
             var containerEncryptionStringKey = TestHelpers.GenerateKeyHexString(containerEncryptionKey);
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Helpers
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, containerEncryptionStringKey);
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, websiteAuthEncryptionStringKey);
 
-            var token = SimpleWebTokenHelper.CreateToken(timeStamp, containerEncryptionKey);
+            var token = SimpleWebTokenHelper.CreateToken(timeStamp, websiteAuthEncryptionKey);
             Assert.True(SimpleWebTokenHelper.TryValidateToken(token, new SystemClock()));
         }
 
