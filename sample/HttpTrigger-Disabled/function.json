@@ -1,5 +1,4 @@
 ﻿{
-    "disabled": true,
     "bindings": [
         {
             "type": "httpTrigger",

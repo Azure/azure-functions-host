@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
@@ -39,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             {
                 IActionResult result = null;
 
-                if (IsHomepageDisabled)
+                if (IsHomepageDisabled || context.Request.IsAntaresInternalRequest())
                 {
                     result = new NoContentResult();
                 }

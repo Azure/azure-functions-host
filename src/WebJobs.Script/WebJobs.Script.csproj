@@ -36,8 +36,8 @@
       <PrivateAssets>None</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta6-11301" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="3.0.0-beta6-10614" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.0-beta6-10614">
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="3.0.0-beta6-10615" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.0-beta6-10615">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.0-beta6-11301" />
