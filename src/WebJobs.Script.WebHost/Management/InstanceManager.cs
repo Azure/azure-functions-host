@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
 
                 // start the specialization process in the background
-                _logger.LogError("Starting Assignment");
+                _logger.LogInformation("Starting Assignment");
                 Task.Run(async () => await Assign(context));
 
                 return true;

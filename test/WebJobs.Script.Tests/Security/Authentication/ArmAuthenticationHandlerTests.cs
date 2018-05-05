@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authentication
         }
 
         [Fact]
-        public async Task AuthenticateAsync_WithToken_PerformsAuthentication_UsingContainerEncryptionKeyIfAvailable()
+        public async Task AuthenticateAsync_WithToken_PerformsAuthentication_Using_WebSiteAuthEncryptionKey_IfAvailable()
         {
             var websiteAuthEncryptionKeyBytes = TestHelpers.GenerateKeyBytes();
             var containerEncryptionKeyBytes = TestHelpers.GenerateKeyBytes();
@@ -58,6 +58,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authentication
             var vars = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString(websiteAuthEncryptionKeyBytes) },
+                { EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.GenerateKeyHexString(containerEncryptionKeyBytes) }
+            };
+
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                // Arrange
+                DefaultHttpContext context = GetContext();
+
+                string token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(2), websiteAuthEncryptionKeyBytes);
+                context.Request.Headers.Add(ArmAuthenticationHandler.ArmTokenHeaderName, token);
+
+                // Act
+                AuthenticateResult result = await context.AuthenticateAsync();
+
+                // Assert
+                Assert.True(result.Succeeded);
+                Assert.True(result.Principal.Identity.IsAuthenticated);
+                Assert.True(result.Principal.HasClaim(SecurityConstants.AuthLevelClaimType, AuthorizationLevel.Admin.ToString()));
+            }
+        }
+
+        [Fact]
+        public async Task AuthenticateAsync_WithToken_PerformsAuthentication_Using_ContainerEncryptionKey_If_WebSiteAuthEncryptionKey_Not_Available()
+        {
+            var containerEncryptionKeyBytes = TestHelpers.GenerateKeyBytes();
+
+            var vars = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.WebSiteAuthEncryptionKey, string.Empty },
                 { EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.GenerateKeyHexString(containerEncryptionKeyBytes) }
             };
 

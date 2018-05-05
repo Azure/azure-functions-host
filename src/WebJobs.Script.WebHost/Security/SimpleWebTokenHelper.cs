@@ -98,12 +98,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 
         public static bool ValidateToken(string token, ISystemClock systemClock)
         {
-            // Use ContainerEncryptionKey if available else fallback to WebSiteAuthEncryptionKey.
+            // Use WebSiteAuthEncryptionKey if available else fallback to ContainerEncryptionKey.
             // Until the container is specialized to a specific site WebSiteAuthEncryptionKey will not be available.
             byte[] key;
-            if (!TryGetEncryptionKey(EnvironmentSettingNames.ContainerEncryptionKey, out key, false))
+            if (!TryGetEncryptionKey(EnvironmentSettingNames.WebSiteAuthEncryptionKey, out key, false))
             {
-                TryGetEncryptionKey(EnvironmentSettingNames.WebSiteAuthEncryptionKey, out key);
+                TryGetEncryptionKey(EnvironmentSettingNames.ContainerEncryptionKey, out key);
             }
 
             var data = Decrypt(key, token);
