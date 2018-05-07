@@ -30,6 +30,9 @@ for:
         $version = Get-Date -Format "yyyyMMdd-HHmm"
         Update-AppveyorBuild -Version $version -Message "Functions Scheduled Build"
       }
+  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+    
+  
   max_jobs: 1
   clone_folder: c:\azure-webjobs-sdk-script
   install:
@@ -37,6 +40,16 @@ for:
       $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
 
       Install-Product node 8.4.0 x86
+  install_dotnet_script_x86:
+  - ps: |
+      $dotnetversion = 2.1.200
+      $architechture = x86
+      .\dotnet-install.ps1 -Version $dotnetversion -Architechture $architechture
+  install_dotnet_script_x64:
+  - ps: |
+      $dotnetversion = 2.1.200
+      $architechture = x64
+      .\dotnet-install.ps1 -Version $dotnetversion -Architechture $architechture
   build_script:
   - ps: |
       $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
@@ -48,6 +61,7 @@ for:
       Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
   test_script:
   - ps: >
+      $dotnetx86 = ${env:ProgramFiles(x86)}+"\dotnet\dotnet.exe"
       $success = $true
 
       # dotnet test .\test\WebJobs.Script.Scaling.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
@@ -56,15 +70,15 @@ for:
 
       # see results in app insights AntaresDemo 'functionse2eai'
 
-      dotnet test .\test\WebJobs.Script.Tests -v q --no-build
+      & $dotnetx86 test .\test\WebJobs.Script.Tests -v q --no-build
 
       $success = $success -and $?
 
-      dotnet test .\test\WebJobs.Script.Scaling.Tests -v q --no-build
+      & $dotnetx86 test .\test\WebJobs.Script.Scaling.Tests -v q --no-build
 
       $success = $success -and $?
 
-      dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
+      & $dotnetx86 test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
 
       $success = $success -and $?
 
