@@ -39,9 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact(Skip = "Not yet enabled.")]
-        public void FileLogging_Succeeds()
+        public void FunctionLogging_Succeeds()
         {
-            // await FileLogging_SucceedsTest();
+            // await FunctionLogging_SucceedsTest();
         }
 
         [Fact]

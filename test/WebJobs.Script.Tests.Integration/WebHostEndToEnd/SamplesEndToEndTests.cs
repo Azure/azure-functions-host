@@ -214,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
-        [Fact(Skip = "Node language worker isn't handling duplicate query params properly")]
+        [Fact]
         public async Task HttpTrigger_DuplicateQueryParams_Succeeds()
         {
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger");
@@ -226,7 +226,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("Hello Amy", body);
+            Assert.Equal("Hello Mathew,Amy", body);
+        }
+
+        [Fact]
+        public async Task HttpTrigger_CSharp_DuplicateQueryParams_Succeeds()
+        {
+            string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger-csharp");
+            string uri = $"api/httptrigger-csharp?code={functionKey}&name=Mathew&name=Amy";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
+            Assert.Equal("Hello, Mathew,Amy", body);
         }
 
         [Fact]
@@ -287,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.NotNull(log);
         }
 
-        [Fact(Skip = "Needs investigation")]
+        [Fact(Skip = "http://github.com/Azure/azure-functions-host/issues/2812")]
         public async Task HttpTrigger_CustomRoute_Post_ReturnsExpectedResponse()
         {
             string id = Guid.NewGuid().ToString();
@@ -300,7 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { "category", "Housewares" }
             };
 
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri)
+            var request = new HttpRequestMessage(HttpMethod.Post, uri)
             {
                 Content = new StringContent(product.ToString())
             };

@@ -2,13 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Tests.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Moq;
@@ -21,30 +21,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public async Task VerifyDurableTaskHubNameIsAdded()
         {
-            // Setup
-            const string expectedSyncTriggersPayload = "[{\"authLevel\":\"anonymous\",\"type\":\"httpTrigger\",\"direction\":\"in\",\"name\":\"req\",\"functionName\":\"function1\"}," +
+            var vars = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString() },
+                { EnvironmentSettingNames.AzureWebsiteHostName, "appName.azurewebsites.net" }
+            };
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                // Setup
+                const string expectedSyncTriggersPayload = "[{\"authLevel\":\"anonymous\",\"type\":\"httpTrigger\",\"direction\":\"in\",\"name\":\"req\",\"functionName\":\"function1\"}," +
                 "{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"DurableStorage\",\"functionName\":\"function2\",\"taskHubName\":\"TestHubValue\"}," +
                 "{\"name\":\"myQueueItem\",\"type\":\"activityTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"DurableStorage\",\"functionName\":\"function3\",\"taskHubName\":\"TestHubValue\"}]";
-            var settings = CreateWebSettings();
-            var fileSystem = CreateFileSystem(settings.ScriptPath);
-            var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
-            var contentBuilder = new StringBuilder();
-            var httpClient = CreateHttpClient(contentBuilder);
-            var webManager = new WebFunctionsManager(settings, loggerFactory, httpClient);
+                var settings = CreateWebSettings();
+                var fileSystem = CreateFileSystem(settings.ScriptPath);
+                var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
+                var contentBuilder = new StringBuilder();
+                var httpClient = CreateHttpClient(contentBuilder);
+                var webManager = new WebFunctionsManager(settings, loggerFactory, httpClient);
 
-            FileUtility.Instance = fileSystem;
+                FileUtility.Instance = fileSystem;
 
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString());
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "appName.azurewebsites.net");
+                // Act
+                (var success, var error) = await webManager.TrySyncTriggers();
+                var content = contentBuilder.ToString();
 
-            // Act
-            (var success, var error) = await webManager.TrySyncTriggers();
-            var content = contentBuilder.ToString();
-
-            // Assert
-            Assert.True(success, "SyncTriggers should return success true");
-            Assert.True(string.IsNullOrEmpty(error), "Error should be null or empty");
-            Assert.Equal(expectedSyncTriggersPayload, content);
+                // Assert
+                Assert.True(success, "SyncTriggers should return success true");
+                Assert.True(string.IsNullOrEmpty(error), "Error should be null or empty");
+                Assert.Equal(expectedSyncTriggersPayload, content);
+            }
         }
 
         private static HttpClient CreateHttpClient(StringBuilder writeContent)

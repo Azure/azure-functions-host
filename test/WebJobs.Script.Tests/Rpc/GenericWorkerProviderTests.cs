@@ -127,7 +127,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 if (Directory.Exists(rootPath))
                 {
-                    Directory.Delete(rootPath, true);
+                    try
+                    {
+                        Directory.Delete(rootPath, true);
+                    }
+                    catch
+                    {
+                        // best effort cleanup
+                    }
                 }
             }
         }

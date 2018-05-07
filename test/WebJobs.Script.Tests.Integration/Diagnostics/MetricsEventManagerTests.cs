@@ -414,7 +414,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(0, _metricsEventManager.QueuedEvents.Count);
         }
 
-        [Fact(Skip = "Investigate test failure")]
+        [Fact]
         public async Task MetricsEventManager_BasicTest()
         {
             var taskList = new List<Task>();
@@ -439,7 +439,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, concurrency);
         }
 
-        [Fact(Skip = "Investigate test failure")]
+        [Fact]
         public async Task MetricsEventManager_MultipleConcurrentLongFunctionExecutions()
         {
             var taskList = new List<Task>();
@@ -650,14 +650,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var unprocessedEvents = functionValidationTrackerList.Where(e => !e.HasBeenProcessed).ToList();
             if (unprocessedEvents.Count > 0)
             {
-                invalidElement = unprocessedEvents[0].EventArguments;
+                invalidElement = unprocessedEvents.FirstOrDefault()?.EventArguments;
                 errorMessage = string.Format("There are unprocessed events: {0}", SerializeFunctionExecutionEventArguments(unprocessedEvents.Select(e => e.EventArguments).ToList()));
                 return false;
             }
 
             if (hashes.Count != noOfFuncExecutions)
             {
-                invalidElement = unprocessedEvents[0].EventArguments;
+                invalidElement = unprocessedEvents.FirstOrDefault()?.EventArguments;
                 errorMessage = string.Format("No of finished events does not match with number of function executions: Expected:{0} Actual:{1}", noOfFuncExecutions, hashes.Count);
                 return false;
             }

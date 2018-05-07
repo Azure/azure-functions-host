@@ -378,20 +378,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return JObject.Parse(json);
         }
 
-        public static bool TryMatchAssembly(string assemblyName, Type type, out Assembly matchedAssembly)
-        {
-            matchedAssembly = null;
-
-            var candidateAssembly = type.Assembly;
-            if (string.Compare(assemblyName, AssemblyNameCache.GetName(candidateAssembly).Name, StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                matchedAssembly = candidateAssembly;
-                return true;
-            }
-
-            return false;
-        }
-
         public static IJobHostMetadataProvider CreateMetadataProvider(this JobHost host)
         {
             return (IJobHostMetadataProvider)host.Services.GetService(typeof(IJobHostMetadataProvider));

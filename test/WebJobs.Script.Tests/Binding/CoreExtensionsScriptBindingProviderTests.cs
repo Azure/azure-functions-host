@@ -2,8 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Newtonsoft.Json.Linq;
@@ -13,14 +13,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class CoreExtensionsScriptBindingProviderTests
     {
-        [Fact(Skip = "Disabling due to issues with CI")]
+        [Fact(Skip = "https://github.com/Azure/azure-webjobs-sdk/issues/1689")]
         public void GetAttributes_DynamicSku_ValidatesScheduleExpression()
         {
-            Environment.SetEnvironmentVariable("TEST_SCHEDULE_CRON", "0 * * * * *");
-            Environment.SetEnvironmentVariable("TEST_SCHEDULE_TIMESPAN", "00:00:15");
-            Environment.SetEnvironmentVariable("WEBSITE_SKU", "Dynamic");
-
-            try
+            var vars = new Dictionary<string, string>
+            {
+                { "TEST_SCHEDULE_CRON", "0 * * * * *" },
+                { "TEST_SCHEDULE_TIMESPAN", "00:00:15" },
+                { "WEBSITE_SKU", "Dynamic" },
+            };
+            using (var env = new TestScopedEnvironmentVariable(vars))
             {
                 var triggerMetadata = new JObject
                 {
@@ -50,10 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 triggerMetadata["schedule"] = "%TEST_SCHEDULE_CRON%";
                 timerAttribute = (TimerTriggerAttribute)binding.GetAttributes().Single();
                 Assert.Equal("0 * * * * *", timerAttribute.ScheduleExpression);
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("WEBSITE_SKU", null);
             }
         }
     }
