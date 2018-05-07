@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script
             providers.Add(new FunctionFileLoggerProvider(hostInstanceId, scriptConfig.RootLogPath, isFileLoggingEnabled, isPrimary));
             providers.Add(new HostFileLoggerProvider(hostInstanceId, scriptConfig.RootLogPath, isFileLoggingEnabled));
 
-            if (settingsManager.Configuration.GetSection("host:logger:consoleLoggingMode").Value == "always")
+            if (settingsManager.Configuration.GetSection(ScriptConstants.ConsoleLoggingMode).Value == "always")
             {
                 providers.Add(new ConsoleLoggerProvider(scriptConfig.LogFilter.Filter, includeScopes: true));
             }
