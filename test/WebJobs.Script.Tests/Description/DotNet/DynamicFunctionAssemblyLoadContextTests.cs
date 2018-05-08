@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
     public class DynamicFunctionAssemblyLoadContextTests
     {
         [Fact]
-        public void SharedAssembly_IsLoadedIntoSharedContext()
+        public void DefaultContextAssembly_LoadedIntoSharedContext_UsesRuntimeAssembly()
         {
             using (var tempFolder = new TempDirectory(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString())))
             using (var env = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot, tempFolder.Path))
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
 
                 // Assert
                 Assert.NotNull(result);
-                Assert.Same(sharedContext, AssemblyLoadContext.GetLoadContext(result));
+                Assert.Same(AssemblyLoadContext.Default, AssemblyLoadContext.GetLoadContext(result));
             }
         }
 
