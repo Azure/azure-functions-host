@@ -41,12 +41,35 @@ namespace Microsoft.Azure.WebJobs.Script
             providers.Add(new FunctionFileLoggerProvider(hostInstanceId, scriptConfig.RootLogPath, isFileLoggingEnabled, isPrimary));
             providers.Add(new HostFileLoggerProvider(hostInstanceId, scriptConfig.RootLogPath, isFileLoggingEnabled));
 
-            if (settingsManager.Configuration.GetSection(ScriptConstants.ConsoleLoggingMode).Value == "always")
+            // console logging defaults to false, except for self host
+            bool enableConsole = scriptConfig.IsSelfHost;
+            string configValue = settingsManager.Configuration.GetSection(ScriptConstants.ConsoleLoggingMode).Value;
+            if (!string.IsNullOrEmpty(configValue))
+            {
+                // if it has been explicitly configured that value overrides default
+                enableConsole = string.CompareOrdinal(configValue, "always") == 0 ? true : false;
+            }
+            if (ConsoleLoggingEnabled(scriptConfig, settingsManager))
             {
                 providers.Add(new ConsoleLoggerProvider(scriptConfig.LogFilter.Filter, includeScopes: true));
             }
 
             return providers;
+        }
+
+        internal static bool ConsoleLoggingEnabled(ScriptHostConfiguration config, ScriptSettingsManager settingsManager)
+        {
+            // console logging defaults to false, except for self host
+            bool enableConsole = config.IsSelfHost;
+
+            string configValue = settingsManager.Configuration.GetSection(ScriptConstants.ConsoleLoggingMode).Value;
+            if (!string.IsNullOrEmpty(configValue))
+            {
+                // if it has been explicitly configured that value overrides default
+                enableConsole = string.Compare(configValue, "always", StringComparison.OrdinalIgnoreCase) == 0 ? true : false;
+            }
+
+            return enableConsole;
         }
     }
 }

@@ -22,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.WebJobs.Script.Tests;
@@ -1295,6 +1296,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(1, metricsLogger.LoggedEvents.Count);
             Assert.Equal(MetricEventNames.ApplicationInsightsEnabled, metricsLogger.LoggedEvents[0]);
+        }
+
+        [Fact]
+        public void DefaultLoggerFactory_ConsoleLoggingEnabled_ReturnsExpectedResult()
+        {
+            try
+            {
+                var config = new ScriptHostConfiguration();
+                var settings = ScriptSettingsManager.Instance;
+                Environment.SetEnvironmentVariable(ScriptConstants.ConsoleLoggingMode, null);
+                var enabled = DefaultLoggerProviderFactory.ConsoleLoggingEnabled(config, settings);
+                Assert.False(enabled);
+
+                config.IsSelfHost = true;
+                enabled = DefaultLoggerProviderFactory.ConsoleLoggingEnabled(config, settings);
+                Assert.True(enabled);
+
+                config.IsSelfHost = true;
+                Environment.SetEnvironmentVariable(ScriptConstants.ConsoleLoggingMode, "always");
+                enabled = DefaultLoggerProviderFactory.ConsoleLoggingEnabled(config, settings);
+                Assert.True(enabled);
+
+                config.IsSelfHost = true;
+                Environment.SetEnvironmentVariable(ScriptConstants.ConsoleLoggingMode, "never");
+                enabled = DefaultLoggerProviderFactory.ConsoleLoggingEnabled(config, settings);
+                Assert.False(enabled);
+
+                Environment.SetEnvironmentVariable(ScriptConstants.ConsoleLoggingMode, "ALwayS");
+                enabled = DefaultLoggerProviderFactory.ConsoleLoggingEnabled(config, settings);
+                Assert.True(enabled);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(ScriptConstants.ConsoleLoggingMode, null);
+            }
         }
 
         [Fact]

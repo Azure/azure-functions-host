@@ -467,6 +467,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task RunAndBlock_SelfHost_Succeeds()
+        {
+            var loggerProvider = new TestLoggerProvider();
+            var loggerProviderFactory = new TestLoggerProviderFactory(loggerProvider);
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = Environment.CurrentDirectory,
+                IsSelfHost = true
+            };
+
+            ScriptHostManager manager = null;
+            LogMessage[] logs = null;
+            using (manager = new ScriptHostManager(config, loggerProviderFactory: loggerProviderFactory));
+            {
+                var tIgnore = Task.Run(() => manager.RunAndBlock());
+
+                await TestHelpers.Await(() =>
+                {
+                    logs = loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).ToArray();
+                    return manager.State == ScriptHostState.Error || logs.Any(p => p.FormattedMessage.Contains("Job host started"));
+                });
+
+                Assert.Equal(ScriptHostState.Running, manager.State);
+                Assert.Equal(0, logs.Count(p => p.Level == LogLevel.Error));
+            }
+        }
+
+        [Fact]
         public void IsHostHealthy_ReturnsExpectedResult()
         {
             var config = new ScriptHostConfiguration()
