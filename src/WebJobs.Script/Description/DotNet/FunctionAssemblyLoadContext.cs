@@ -10,7 +10,9 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.DependencyModel;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -60,12 +62,46 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override Assembly Load(AssemblyName assemblyName)
         {
+            // If the assembly being requested matches a runtime assembly,
+            // we'll use the runtime assembly instead of loading it in this context:
+            if (TryLoadRuntimeAssembly(assemblyName, out Assembly assembly))
+            {
+                return assembly;
+            }
+
             if (IsRuntimeAssembly(assemblyName))
             {
+                // If there was a failure loading a runtime assembly, ensure we gracefuly unify to
+                // the runtime version of the assembly if the version falls within a safe range.
+                if (TryLoadRuntimeAssembly(new AssemblyName(assemblyName.Name), out assembly))
+                {
+                    AssemblyName runtimeAssemblyName = AssemblyNameCache.GetName(assembly);
+
+                    if (runtimeAssemblyName.Version.Major == assemblyName.Version.Major &&
+                        runtimeAssemblyName.Version.Minor == assemblyName.Version.Minor)
+                    {
+                        return assembly;
+                    }
+                }
+
                 return null;
             }
 
             return LoadInternal(assemblyName);
+        }
+
+        private bool TryLoadRuntimeAssembly(AssemblyName assemblyName, out Assembly assembly)
+        {
+            assembly = null;
+            try
+            {
+                assembly = AssemblyLoadContext.Default.LoadFromAssemblyName(assemblyName);
+            }
+            catch (FileNotFoundException)
+            {
+            }
+
+            return assembly != null;
         }
 
         public Assembly LoadFromAssemblyPath(string assemblyPath, bool addProbingPath)
