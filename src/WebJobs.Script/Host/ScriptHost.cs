@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script
 #if FEATURE_NODE
             NodeFunctionInvoker.UnhandledException += OnUnhandledException;
 #endif
-            TraceWriter = ScriptConfig.TraceWriter.WithDefaults(ScriptConstants.TraceSourceScriptHost, _instanceId);
+            TraceWriter = ScriptConfig.TraceWriter;
             EventManager = eventManager;
 
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
@@ -558,7 +558,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // taking this snapshot once and reusing at various points during initialization allows us to
             // minimize disk operations
             _directorySnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).ToImmutableArray();
-            TraceWriter.Verbose("Created directory snapshot.");
+            TraceWriter?.Verbose("Created directory snapshot.");
         }
 
         /// <summary>
@@ -799,6 +799,11 @@ namespace Microsoft.Azure.WebJobs.Script
             _traceMonitor = new TraceMonitor()
                 .Filter(p => { return true; })
                 .Subscribe(HandleHostError);
+
+            if (TraceWriter != null)
+            {
+                TraceWriter = TraceWriter.WithDefaults(ScriptConstants.TraceSourceScriptHost, _instanceId);
+            }
 
             _hostConfig.Tracing.Tracers.Add(_traceMonitor);
             var hostTraceLevel = _hostConfig.Tracing.ConsoleLevel;

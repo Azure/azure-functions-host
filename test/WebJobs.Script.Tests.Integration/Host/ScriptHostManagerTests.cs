@@ -485,6 +485,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task RunAndBlock_SelfHost_Succeeds()
+        {
+            var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = Environment.CurrentDirectory,
+                TraceWriter = traceWriter,
+                IsSelfHost = true
+            };
+
+            TraceEvent[] traces = null;
+            using (var manager = new ScriptHostManager(config, _settingsManager))
+            {
+                var tIgnore = Task.Run(() => manager.RunAndBlock());
+
+                await TestHelpers.Await(() =>
+                {
+                    traces = traceWriter.GetTraces().ToArray();
+                    return manager.State == ScriptHostState.Error || traces.Any(p => p.Message.Contains("Job host started"));
+                });
+
+                Assert.Equal(ScriptHostState.Running, manager.State);
+                Assert.Equal(0, traces.Count(p => p.Level == TraceLevel.Error));
+            }
+        }
+
+        [Fact]
         public void IsHostHealthy_ReturnsExpectedResult()
         {
             var config = new ScriptHostConfiguration()
@@ -553,12 +580,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             File.WriteAllText(Path.Combine(functionDir, ScriptConstants.HostMetadataFileName), hostConfig.ToString());
 
+            var testTraceWriter = new TestTraceWriter(TraceLevel.Info);
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
                 RootScriptPath = functionDir,
                 RootLogPath = logDir,
                 FileLoggingMode = FileLoggingMode.Always,
-                TraceWriter = new TestTraceWriter(TraceLevel.Info)
+                TraceWriter = testTraceWriter
             };
 
             var eventManagerMock = new Mock<IScriptEventManager>();
@@ -577,15 +605,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             hostManager.Stop();
             Assert.Equal(ScriptHostState.Default, hostManager.State);
 
-            await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
-
-            string hostLogFilePath = Directory.EnumerateFiles(Path.Combine(logDir, "Host")).Single();
-            string hostLogs = File.ReadAllText(hostLogFilePath);
-
-            Assert.Contains("Generating 0 job function(s)", hostLogs);
-            Assert.Contains("No job functions found.", hostLogs);
-            Assert.Contains("Job host started", hostLogs);
-            Assert.Contains("Job host stopped", hostLogs);
+            var logs = testTraceWriter.GetTraces().Select(p => p.Message).ToArray();
+            Assert.True(logs.Any(p => p == "Generating 0 job function(s)"));
+            Assert.True(logs.Any(p => p.StartsWith("No job functions found.")));
+            Assert.True(logs.Any(p => p == "Job host started"));
+            Assert.True(logs.Any(p => p == "Job host stopped"));
         }
 
         [Fact]
