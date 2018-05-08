@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Logging;
@@ -160,8 +161,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { "Id", id },
                 { "Value", "Testing" }
             };
-            request.Content = new StringContent(requestBody.ToString());
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            request.Content = new StringContent(requestBody.ToString(), Encoding.UTF8, "application/json");
 
             HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);

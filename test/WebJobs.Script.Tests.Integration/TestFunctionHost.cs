@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using Microsoft.AspNetCore.Hosting;
@@ -47,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
                 }));
 
-            HttpClient = _testServer.CreateClient();
+            HttpClient = new HttpClient(new UpdateContentLengthHandler(_testServer.CreateHandler()));
             HttpClient.BaseAddress = new Uri("https://localhost/");
         }
 
@@ -207,6 +209,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     return response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.NotFound;
                 }
+            }
+        }
+
+        private class UpdateContentLengthHandler : DelegatingHandler
+        {
+            public UpdateContentLengthHandler(HttpMessageHandler innerHandler)
+                : base(innerHandler)
+            {
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                // Force reading the content-length to ensure the header is populated.
+                if (request.Content != null)
+                {
+                    Trace.Write(request.Content.Headers.ContentLength);
+                }
+
+                return base.SendAsync(request, cancellationToken);
             }
         }
     }
