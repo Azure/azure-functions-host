@@ -6,7 +6,7 @@ These changes list where the experience differs between Functions versions.
 #### Function.json
 Topic         | V1      | V2 
 ---         | ---       | --- 
-Disabling functions | Set `disabled: false` in function.json  | Set environment/App Settings variable `<FunctionName>.Disabled = true` 
+Disabling functions | Set `disabled: true` in function.json  | Set environment/App Settings variable `<FunctionName>.Disabled = true` 
 
 
 ### Behavior changes 
@@ -16,7 +16,8 @@ Using triggers and bindings (except HTTP, Timer, and Azure Storage) | N/A  | See
 
 ### External Dependency Changes
 Some changes are due to changes in our dependencies.
+
 Topic         | V1      | V2 
----         | ---       | --- 
+---          | ---       | --- 
 ServiceBus SDK binding object in C# | [`BrokeredMessage`](https://docs.microsoft.com/en-us/dotnet/api/microsoft.servicebus.messaging.brokeredmessage?view=azure-dotnet) class  | [`Message`](https://docs.microsoft.com/en-us/dotnet/api/microsoft.azure.servicebus.message?view=azure-dotnet) class
 Twilio SDK binding object in C# | `SMSMessage` class | [`CreateMessageOptions`](https://www.twilio.com/docs/libraries/reference/twilio-php/5.7.3/class-Twilio.Rest.Api.V2010.Account.CreateMessageOptions.html) class
