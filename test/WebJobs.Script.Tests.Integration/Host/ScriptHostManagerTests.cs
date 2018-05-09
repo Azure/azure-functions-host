@@ -479,7 +479,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHostManager manager = null;
             LogMessage[] logs = null;
-            using (manager = new ScriptHostManager(config, loggerProviderFactory: loggerProviderFactory));
+            using (manager = new ScriptHostManager(config, loggerProviderFactory: loggerProviderFactory))
             {
                 var tIgnore = Task.Run(() => manager.RunAndBlock());
 
