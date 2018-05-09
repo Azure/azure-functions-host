@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Extensions.Logging;
-using WebJobs.Script.WebHost.Core;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
