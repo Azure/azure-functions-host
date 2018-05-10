@@ -1,13 +1,9 @@
-﻿using System.Net;
+﻿using Microsoft.AspNetCore.Mvc;
 
-public static Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
+public static IActionResult Run(HttpRequest req, TraceWriter log)
 {
     log.Info("WarmUp function invoked.");
 
-    var res = new HttpResponseMessage(HttpStatusCode.OK)
-    {
-        Content = new StringContent("WarmUp complete.")
-    };
+    return (ActionResult)new OkObjectResult("WarmUp complete.");
 
-    return Task.FromResult(res);
 }
