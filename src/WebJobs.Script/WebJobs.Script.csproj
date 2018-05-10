@@ -24,8 +24,8 @@
   <ItemGroup>
     <PackageReference Include="FSharp.Compiler.Service" Version="13.0.0" />
     <PackageReference Include="FSharp.Core" Version="4.2.2" />
-    <PackageReference Include="Google.Protobuf" Version="3.3.0" />
-    <PackageReference Include="Grpc.Core" Version="1.4.1" />
+    <PackageReference Include="Google.Protobuf" Version="3.5.1" />
+    <PackageReference Include="Grpc.Core" Version="1.12.0" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.5.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.1.0">
       <NoWarn>NU1701</NoWarn>
