@@ -8,6 +8,7 @@ using Autofac;
 using Autofac.Core;
 using Autofac.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -62,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public static IServiceProvider AddWebJobsScriptHost(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddWebJobsScriptHostRouting();
-            services.AddMvc()
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1)
                 .AddJsonOptions(options => options.SerializerSettings.ContractResolver = new DefaultContractResolver())
                 .AddXmlDataContractSerializerFormatters();
 
