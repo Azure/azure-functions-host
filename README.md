@@ -31,6 +31,34 @@ From within the Azure Functions language worker repo:
 3.	Finalize with commit
     -	`git commit -m "Updated subtree from https://github.com/azure/azure-functions-language-worker-protobuf. Branch: <version branch>. Commit: <latest protobuf commit hash>”`
     -	`git push`
+	
+## Consuming FunctionRPC.proto
+*Note: Update versionNumber before running following commands*
+
+## CSharp
+```
+set NUGET_PATH=%UserProfile%\.nuget\packages
+set GRPC_TOOLS_PATH=%NUGET_PATH%\grpc.tools\<versionNumber>\tools\windows_x86
+set PROTO_PATH=.\azure-functions-language-worker-protobuf\src\proto
+set PROTO=.\azure-functions-language-worker-protobuf\src\proto\FunctionRpc.proto
+set PROTOBUF_TOOLS=%NUGET_PATH%\google.protobuf.tools\<versionNumber>\tools
+set MSGDIR=.\Messages
+
+if exist %MSGDIR% rmdir /s /q %MSGDIR%
+mkdir %MSGDIR%
+
+set OUTDIR=%MSGDIR%\DotNet
+mkdir %OUTDIR%
+%GRPC_TOOLS_PATH%\protoc.exe %PROTO% --csharp_out %OUTDIR% --grpc_out=%OUTDIR% --plugin=protoc-gen-grpc=%GRPC_TOOLS_PATH%\grpc_csharp_plugin.exe --proto_path=%PROTO_PATH% --proto_path=%PROTOBUF_TOOLS% 
+```
+## Java
+--TODO--
+
+## JavaScript
+--TODO--
+
+## Python
+--TODO
 
 ## Contributing
 
