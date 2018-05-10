@@ -30,6 +30,9 @@ for:
         $version = Get-Date -Format "yyyyMMdd-HHmm"
         Update-AppveyorBuild -Version $version -Message "Functions Scheduled Build"
       }
+      
+  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+  
   max_jobs: 1
   clone_folder: c:\azure-webjobs-sdk-script
   install:

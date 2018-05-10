@@ -44,14 +44,18 @@ else
 fi
 
 if [ -z "$NUGET_ROOT" ]; then
-	NUGET_PATH=$HOME/.nuget/packages/grpc.tools/1.4.1/tools/$PLATFORM
+	NUGET_PATH=$HOME/.nuget/packages
 else
-	NUGET_PATH=$NUGET_ROOT/packages/grpc.tools/1.4.1/tools/$PLATFORM
+	NUGET_PATH=$NUGET_ROOT/packages
 fi
+
+GRPC_TOOLS_PATH=$NUGET_PATH/grpc.tools/1.11.0/tools/$PLATFORM
+PROTO_PATH=./azure-functions-language-worker-protobuf/src/proto
+PROTOBUF_TOOLS=$NUGET_PATH/google.protobuf.tools/3.5.1/tools
 PROTO=./azure-functions-language-worker-protobuf/src/proto/FunctionRpc.proto
 MSGDIR=./Messages
 
-if [ ! -d "$NUGET_PATH" ]; then
+if [ ! -d "$GRPC_TOOLS_PATH" ]; then
 	echo "Could not find grpc.tools package. Try setting \$NUGET_PATH to your NUGET directory root and checking you've installed the grpc.tools nuget"
 	exit 1
 fi
@@ -61,7 +65,7 @@ mkdir $MSGDIR
 
 OUTDIR=$MSGDIR/DotNet
 mkdir $OUTDIR
-$NUGET_PATH/protoc $PROTO --csharp_out $OUTDIR --grpc_out=$OUTDIR --plugin=protoc-gen-grpc=$NUGET_PATH/grpc_csharp_plugin --proto_path=./azure-functions-language-worker-protobuf/src/proto
+$GRPC_TOOLS_PATH/protoc $PROTO --csharp_out $OUTDIR --grpc_out=$OUTDIR --plugin=protoc-gen-grpc=$GRPC_TOOLS_PATH/grpc_csharp_plugin --proto_path=$PROTO_PATH --proto_path=$PROTOBUF_TOOLS
 
 # add #pragma warning disable labels
 
