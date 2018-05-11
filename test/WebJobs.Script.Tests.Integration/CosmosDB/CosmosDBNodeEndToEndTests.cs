@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             return CosmosDBTriggerToBlobTest();
         }
 
-        [Fact]
+        [Fact(Skip = "Frequent failures when running in CI. Passes locally needs to be investigated https://github.com/Azure/azure-functions-host/issues/2837")]
         public Task CosmosDB()
         {
             return CosmosDBTest();
