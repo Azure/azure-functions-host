@@ -26,14 +26,22 @@ namespace Microsoft.Azure.WebJobs.Script
 
             public override bool TryGet(string key, out string value)
             {
-                value = Environment.GetEnvironmentVariable(key);
-
-                return value != null;
+                return
+                    (value = Environment.GetEnvironmentVariable(key)) != null ||
+                    (value = Environment.GetEnvironmentVariable(NormalizeKey(key))) != null;
             }
 
             public override void Set(string key, string value)
             {
                 Environment.SetEnvironmentVariable(key, value);
+            }
+
+            private static string NormalizeKey(string key)
+            {
+                // For hierarchical config values specified in environment variables,
+                // a colon(:) may not work on all platforms. Double underscore(__) is
+                // supported by all platforms.
+                return key.Replace(ConfigurationPath.KeyDelimiter, "__");
             }
         }
     }
