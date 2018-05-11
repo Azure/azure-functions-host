@@ -1,11 +1,12 @@
 ﻿{
     "bindings": [
         {
-            "type": "serviceBusTrigger",
-            "name": "inMessage",
+            "type": "eventHubTrigger",
+            "name": "input",
+            "cardinality": "many",
             "direction": "in",
-            "queueName": "samples-input-nonexistent",
-            "accessRights": "listen"
+            "connection": "AzureWebJobsEventHubReceiver",
+            "eventHubName": "InvalidHubName"
         }
     ]
 }

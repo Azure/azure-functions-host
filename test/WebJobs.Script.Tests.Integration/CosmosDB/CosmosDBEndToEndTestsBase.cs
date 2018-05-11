@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         protected async Task CosmosDBTest()
         {
             // DocumentDB tests need the following environment vars:
-            // "AzureWebJobsDocumentDBConnectionString" -- the connection string to the account
+            // "AzureWebJobsCosmosDBConnectionString" -- the connection string to the account
             string id = Guid.NewGuid().ToString();
 
             await Fixture.Host.BeginFunctionAsync("CosmosDBOut", id);
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             if (DocumentClient == null)
             {
                 var builder = new System.Data.Common.DbConnectionStringBuilder();
-                builder.ConnectionString = AmbientConnectionStringProvider.Instance.GetConnectionString("AzureWebJobsDocumentDBConnectionString");
+                builder.ConnectionString = AmbientConnectionStringProvider.Instance.GetConnectionString("AzureWebJobsCosmosDBConnectionString");
                 var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
 
                 DocumentClient = new DocumentClient(serviceUri, builder["AccountKey"].ToString());

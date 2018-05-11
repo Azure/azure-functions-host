@@ -12,6 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteInstanceId = "WEBSITE_INSTANCE_ID";
         public const string AzureWebsiteSku = "WEBSITE_SKU";
         public const string AzureWebsiteZipDeployment = "WEBSITE_USE_ZIP";
+        public const string AzureWebsiteAltZipDeployment = "WEBSITE_RUN_FROM_ZIP";
         public const string RemoteDebuggingPort = "REMOTEDEBUGGINGPORT";
         public const string AzureWebsitePlaceholderMode = "WEBSITE_PLACEHOLDER_MODE";
         public const string AzureWebsiteContainerReady = "WEBSITE_CONTAINER_READY";
@@ -27,5 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ProxySiteExtensionEnabledKey = "ROUTING_EXTENSION_VERSION";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
         public const string ContainerName = "CONTAINER_NAME";
+        public const string WebSiteAuthEncryptionKey = "WEBSITE_AUTH_ENCRYPTION_KEY";
+        public const string ContainerEncryptionKey = "CONTAINER_ENCRYPTION_KEY";
     }
 }

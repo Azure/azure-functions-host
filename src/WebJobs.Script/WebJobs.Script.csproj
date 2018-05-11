@@ -10,6 +10,14 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="runtimeassemblies.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="runtimeassemblies.json">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FSharp.Compiler.Service" Version="13.0.0" />
@@ -20,22 +28,23 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.0.2">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.0.4100001-beta-d5a48cb8" />
-    <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="1.1.0-beta2-10014">
+    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.0.4780001-beta-0fed1b79" />
+    <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="1.1.0-beta2-10028">
       <PrivateAssets>None</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="1.0.0-beta1-10026">
+    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="1.0.0-beta1-10031">
       <PrivateAssets>None</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta5" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="3.0.0-beta5-10609" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.0-beta5-10609">
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta6-11308" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="3.0.0-beta6-10618" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.0-beta6-10618">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.0-beta5" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.0-beta5" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.0-beta6-11308" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.0-beta6-11308" />
     <PackageReference Include="Microsoft.Build" Version="15.3.409" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="2.4.0" />
+    <PackageReference Include="Microsoft.DotNet.PlatformAbstractions" Version="2.0.4" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="2.0.0" />

@@ -110,6 +110,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public ISecretManager SecretManager => _secretManager;
 
+        /// <summary>
+        /// Gets or sets a value indicating whether http requests should be
+        /// temporarily delayed due to host state.
+        /// </summary>
+        public static bool DelayRequests { get; set; }
+
         public static bool InStandbyMode
         {
             get
@@ -135,14 +141,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// Ensures that the host has been fully initialized and startup
         /// has been initiated. This method is idempotent.
         /// </summary>
-        public Task RunAsync(CancellationToken cancellationToken)
+        public Task EnsureHostStarted(CancellationToken cancellationToken)
         {
-            lock (_syncLock)
+            if (!_hostStarted)
             {
-                if (!_hostStarted)
+                lock (_syncLock)
                 {
-                    _runTask = Task.Run(() => RunAndBlock(cancellationToken));
-                    _hostStarted = true;
+                    if (!_hostStarted)
+                    {
+                        _runTask = Task.Run(() => RunAndBlock(cancellationToken));
+                        _hostStarted = true;
+                    }
                 }
             }
 
@@ -303,17 +312,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal static async Task<bool> DelayUntilHostReady(ScriptHostManager hostManager, int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
         {
-            TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
-            TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);
-            TimeSpan timeWaited = TimeSpan.Zero;
-
-            while (!hostManager.CanInvoke() &&
-                    hostManager.State != ScriptHostState.Error &&
-                    (timeWaited < timeout))
+            await Utility.DelayAsync(timeoutSeconds, pollingIntervalMilliseconds, () =>
             {
-                await Task.Delay(delay);
-                timeWaited += delay;
-            }
+                return !hostManager.CanInvoke() &&
+                        hostManager.State != ScriptHostState.Error;
+            });
 
             bool hostReady = hostManager.CanInvoke();
 
@@ -323,6 +326,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             return hostReady;
+        }
+
+        internal static async Task<bool> DelayUntilHostReady(WebHostResolver resolver)
+        {
+            if (DelayRequests)
+            {
+                // delay until we're ready to start processing requests
+                await Utility.DelayAsync(ScriptConstants.HostTimeoutSeconds, ScriptConstants.HostPollingIntervalMilliseconds, () =>
+                {
+                    return DelayRequests;
+                });
+            }
+
+            // need to ensure the host startup has been initiated
+            var manager = resolver.GetWebScriptHostManager();
+            var tIgnore = manager.EnsureHostStarted(CancellationToken.None);
+
+            // wait for the host to get into a running state
+            return await manager.DelayUntilHostReady(throwOnFailure: false);
         }
     }
 }

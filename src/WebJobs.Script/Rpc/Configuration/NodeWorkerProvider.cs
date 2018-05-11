@@ -14,11 +14,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class NodeWorkerProvider : IWorkerProvider
     {
-        private string pathToWorkerDir = WorkerProviderHelper.BuildWorkerDirectoryPath(ScriptConstants.NodeLanguageWrokerName);
+        private string pathToWorkerDir = WorkerProviderHelper.BuildWorkerDirectoryPath(ScriptConstants.NodeLanguageWorkerName);
 
         public WorkerDescription GetDescription() => new WorkerDescription
         {
-            Language = ScriptConstants.NodeLanguageWrokerName,
+            Language = ScriptConstants.NodeLanguageWorkerName,
             Extension = ".js",
             DefaultExecutablePath = "node",
             DefaultWorkerPath = Path.Combine("dist", "src", "nodejsWorker.js"),

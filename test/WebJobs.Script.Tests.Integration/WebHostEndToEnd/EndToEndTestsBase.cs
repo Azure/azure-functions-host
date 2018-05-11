@@ -148,43 +148,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }, userMessageCallback: Fixture.Host.GetLog);
         }
 
-        //public async Task FileLogging_SucceedsTest()
-        //{
-        //    string functionName = "Scenarios";
-        //    TestHelpers.ClearFunctionLogs(functionName);
+        public async Task FunctionLogging_SucceedsTest()
+        {
+            Fixture.Host.ClearLogMessages();
 
-        //    string guid1 = Guid.NewGuid().ToString();
-        //    string guid2 = Guid.NewGuid().ToString();
+            string functionName = "Scenarios";
+            string guid1 = Guid.NewGuid().ToString();
+            string guid2 = Guid.NewGuid().ToString();
 
-        //    ScenarioInput input = new ScenarioInput
-        //    {
-        //        Scenario = "fileLogging",
-        //        Container = "scenarios-output",
-        //        Value = $"{guid1};{guid2}"
-        //    };
-        //    Dictionary<string, object> arguments = new Dictionary<string, object>
-        //        {
-        //            { "input", JsonConvert.SerializeObject(input) }
-        //        };
+            var inputObject = new JObject
+            {
+                { "Scenario", "logging" },
+                { "Container", "scenarios-output" },
+                { "Value", $"{guid1};{guid2}" }
+            };
+            await Fixture.Host.BeginFunctionAsync(functionName, inputObject);
 
-        //    await Fixture.Host.CallAsync(functionName, arguments);
+            IList<string> logs = null;
+            await TestHelpers.Await(() =>
+            {
+                logs = Fixture.Host.GetLogMessages().Select(p => p.FormattedMessage).Where(p => p != null).ToArray();
+                return logs.Any(p => p.Contains(guid2));
+            });
 
-        //    // wait for logs to flush
-        //    await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
+            Assert.True(logs.Count == 4, string.Join(Environment.NewLine, logs));
 
-        //    IList<string> logs = null;
-        //    await TestHelpers.Await(() =>
-        //    {
-        //        logs = TestHelpers.GetFunctionLogsAsync(functionName, throwOnNoLogs: false).Result;
-        //        return logs.Count > 0;
-        //    });
-
-        //    Assert.True(logs.Count == 4, string.Join(Environment.NewLine, logs));
-
-        //    // No need for assert; this will throw if there's not one and only one
-        //    logs.Single(p => p.EndsWith($"From TraceWriter: {guid1}"));
-        //    logs.Single(p => p.EndsWith($"From ILogger: {guid2}"));
-        //}
+            // No need for assert; this will throw if there's not one and only one
+            logs.Single(p => p.EndsWith($"From TraceWriter: {guid1}"));
+            logs.Single(p => p.EndsWith($"From ILogger: {guid2}"));
+        }
 
         public async Task QueueTriggerToBlobTest()
         {
@@ -347,7 +339,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var docUri = UriFactory.CreateDocumentUri("ItemDb", "ItemCollection", itemId);
 
             // We know the tests are using the default INameResolver and the default setting.
-            var connectionString = _nameResolver.Resolve("AzureWebJobsDocumentDBConnectionString");
+            var connectionString = _nameResolver.Resolve("AzureWebJobsCosmosDBConnectionString");
             var builder = new DbConnectionStringBuilder();
             builder.ConnectionString = connectionString;
             var serviceUri = new Uri(builder["AccountEndpoint"].ToString());

@@ -112,7 +112,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     if (_activeHostManager == null &&
                         (_standbyHostManager == null || _settingsManager.ContainerReady))
                     {
-                        _settingsManager.Reset();
                         _specializationTimer?.Dispose();
                         _specializationTimer = null;
 
@@ -246,14 +245,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // concurrently by incoming http requests, but the initialization
             // here ensures that it takes place in the absence of any http
             // traffic.
-            _activeHostManager?.RunAsync(CancellationToken.None);
+            _activeHostManager?.EnsureHostStarted(CancellationToken.None);
         }
 
         private static void InitializeFileSystem(WebHostSettings settings, bool readOnlyFileSystem)
         {
-            if (ScriptSettingsManager.Instance.IsAzureEnvironment)
+            if (ScriptSettingsManager.Instance.IsAppServiceEnvironment)
             {
-                // When running on Azure, we kick this off on the background
+                // When running on App Service, we kick this off on the background
                 Task.Run(() =>
                 {
                     string home = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
@@ -272,12 +271,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                         if (!readOnlyFileSystem)
                         {
-                            string toolsPath = Path.Combine(home, @"site\tools");
                             // Create the tools folder if it doesn't exist
+                            string toolsPath = Path.Combine(home, @"site\tools");
                             Directory.CreateDirectory(toolsPath);
 
                             // Create the test data folder
-                            Directory.CreateDirectory(settings.TestDataPath);
+                            if (!string.IsNullOrEmpty(settings.TestDataPath))
+                            {
+                                Directory.CreateDirectory(settings.TestDataPath);
+                            }
                         }
 
                         var folders = new List<string>();

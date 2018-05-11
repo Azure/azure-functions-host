@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ServiceBus
         {
             var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("servicebuse2e-topic-completed");
             await resultBlob.DeleteIfExistsAsync();
-            
+
             await Fixture.CleanUpEntity(Fixture.TestTopicName1);
             // trigger
             await Fixture.SendTopicMessage(Fixture.TestTopicName1, "test-topic");
@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ServiceBus
         {
         }
 
-        protected override IEnumerable<string> GetActiveFunctions() => new[] { "ServiceBusQueueTriggerAndOutput", "ServiceBusTopicTrigger", "ServiceBusTopicOutput"};
+        protected override IEnumerable<string> GetActiveFunctions() => new[] { "ServiceBusQueueTriggerAndOutput", "ServiceBusTopicTrigger", "ServiceBusTopicOutput" };
 
         public async Task<List<string>> CleanUpEntity(string entityPath)
         {

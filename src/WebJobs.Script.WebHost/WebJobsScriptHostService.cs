@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Initializing WebScriptHostManager.");
-            _hostTask = _scriptHostManager.RunAsync(_cancellationTokenSource.Token);
+            _hostTask = _scriptHostManager.EnsureHostStarted(_cancellationTokenSource.Token);
 
             return Task.CompletedTask;
         }

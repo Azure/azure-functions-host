@@ -48,24 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
     public class UtilityTests
     {
-        [Fact(Skip = "Direct depedency on SendGrid. Remove dependency or re-enable once this is pulled back in")]
-        public void TryMatchAssembly_ReturnsExpectedResult()
-        {
-            //Assembly assembly = null;
-            //bool result = Utility.TryMatchAssembly("Microsoft.Azure.WebJobs.Extensions.SendGrid", typeof(SendGridAttribute), out assembly);
-            //Assert.True(result);
-            //Assert.Same(typeof(SendGridAttribute).Assembly, assembly);
-
-            //result = Utility.TryMatchAssembly("MICROSOFT.AZURE.WEBJOBS.EXTENSIONS.SENDGRID", typeof(SendGridAttribute), out assembly);
-            //Assert.True(result);
-            //Assert.Same(typeof(SendGridAttribute).Assembly, assembly);
-
-            //result = Utility.TryMatchAssembly("Microsoft.Azure.WebJobs.FooBar", typeof(SendGridAttribute), out assembly);
-            //Assert.False(result);
-            //Assert.Null(assembly);
-        }
-
-        [Fact(Skip = "skipping due to longer delays than expected")]
+        [Fact]
         public async Task DelayWithBackoffAsync_Returns_WhenCancelled()
         {
             var tokenSource = new CancellationTokenSource();
@@ -323,7 +306,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void GetDefaultHostId_AzureHost_ReturnsExpectedResult(string input, string expected)
         {
             var config = new ScriptHostConfiguration();
-            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
+            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict, null);
             scriptSettingsManagerMock.SetupGet(p => p.AzureWebsiteUniqueSlotName).Returns(() => input);
 
             string hostId = Utility.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
@@ -339,7 +322,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = @"c:\testing\FUNCTIONS-TEST\test$#"
             };
 
-            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
+            var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict, null);
 
             string hostId = Utility.GetDefaultHostId(scriptSettingsManagerMock.Object, config);
 

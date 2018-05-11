@@ -25,8 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var settingsManager = ScriptSettingsManager.Instance;
 
-            settingsManager.Reset();
-
             var variables = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsiteName, siteName },
@@ -40,20 +38,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Reset_ReloadsEnvironmentChanges()
+        public void SettingsAreNotCached()
         {
-            using (var variable = new TestScopedEnvironmentVariable(nameof(Reset_ReloadsEnvironmentChanges), "foo"))
+            using (var variable = new TestScopedEnvironmentVariable(nameof(SettingsAreNotCached), "foo"))
             {
-                var configuration = new ConfigurationBuilder()
-                    .AddEnvironmentVariables()
-                    .Build();
+                Assert.Equal("foo", ScriptSettingsManager.Instance.GetSetting(nameof(SettingsAreNotCached)));
 
-                ScriptSettingsManager.Instance.SetConfigurationFactory(() => configuration);
-                Assert.Equal("foo", ScriptSettingsManager.Instance.GetSetting(nameof(Reset_ReloadsEnvironmentChanges)));
+                Environment.SetEnvironmentVariable(nameof(SettingsAreNotCached), "bar");
+                Assert.Equal("bar", ScriptSettingsManager.Instance.GetSetting(nameof(SettingsAreNotCached)));
+            }
+        }
 
-                Environment.SetEnvironmentVariable(nameof(Reset_ReloadsEnvironmentChanges), "bar");
-                ScriptSettingsManager.Instance.Reset();
-                Assert.Equal("bar", ScriptSettingsManager.Instance.GetSetting(nameof(Reset_ReloadsEnvironmentChanges)));
+        [Theory]
+        [InlineData("Foo__Bar__Baz", "Foo__Bar__Baz")]
+        [InlineData("Foo__Bar__Baz", "foo__bar__baz")]
+        [InlineData("Foo__Bar__Baz", "Foo:Bar:Baz")]
+        [InlineData("Foo__Bar__Baz", "foo:bar:baz")]
+        [InlineData("Foo:Bar:Baz", "Foo:Bar:Baz")]
+        [InlineData("Foo:Bar:Baz", "foo:bar:baz")]
+        [InlineData("Foo_Bar_Baz", "Foo_Bar_Baz")]
+        [InlineData("Foo_Bar_Baz", "foo_bar_baz")]
+        [InlineData("FooBarBaz", "FooBarBaz")]
+        [InlineData("FooBarBaz", "foobarbaz")]
+        public void GetSetting_NormalizesKeys(string key, string lookup)
+        {
+            try
+            {
+                string value = Guid.NewGuid().ToString();
+                Environment.SetEnvironmentVariable(key, value);
+
+                string result = ScriptSettingsManager.Instance.GetSetting(lookup);
+                Assert.Equal(value, result);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(key, null);
             }
         }
     }

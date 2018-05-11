@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
@@ -17,51 +16,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _fixture = fixture;
         }
 
-        [Fact(Skip = "Investigate test failure")]
+        /// <summary>
+        /// This test uses an EventHub triggered function that references an
+        /// invalid hub name.
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
         public async Task ListenerError_LogsAndDoesNotStopHost()
         {
-            IList<string> logs = null;
+            string[] logs = null;
 
             await TestHelpers.Await(() =>
             {
-                logs = TestHelpers.GetFunctionLogsAsync("ListenerStartupException", false).Result;
+                logs = _fixture.Host.GetLogMessages().Select(p => p.FormattedMessage).Where(p => p != null).ToArray();
 
                 string logToFind = "The listener for function 'Functions.ListenerStartupException' was unable to start.";
                 return logs.Any(l => l.Contains(logToFind));
             });
 
-            TestHelpers.ClearFunctionLogs("TimerTrigger");
-
             // assert that timer function is still running
             await TestHelpers.Await(() =>
             {
-                logs = TestHelpers.GetFunctionLogsAsync("TimerTrigger", false).Result;
+                logs = _fixture.Host.GetLogMessages().Select(p => p.FormattedMessage).Where(p => p != null).ToArray();
 
                 string logToFind = "Timer function ran!";
                 return logs.Any(l => l.Contains(logToFind));
             });
 
-            // assert that Stop does not throw error
-            _fixture.Host.Stop();
+            // assert that the host is retrying to start the
+            // listener in the background
+            await TestHelpers.Await(() =>
+            {
+                logs = _fixture.Host.GetLogMessages().Select(p => p.FormattedMessage).Where(p => p != null).ToArray();
+                string logToFind = "Retrying to start listener for function 'Functions.ListenerStartupException' (Attempt 2)";
+                return logs.Any(l => l.Contains(logToFind));
+            });
         }
 
-        public class TestFixture : ScriptHostEndToEndTestFixture
+        public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\ListenerExceptions", "listeners")
+            private const string ScriptRoot = @"TestScripts\ListenerExceptions";
+
+            public TestFixture() : base(ScriptRoot, "node", "Microsoft.Azure.WebJobs.Extensions.EventHubs", "3.0.0-beta6-11300")
             {
             }
 
-            public override void Dispose()
+            protected override Task CreateTestStorageEntities()
             {
-                // host should already be stopped from test
-                try
-                {
-                    Host.Stop();
-                }
-                catch
-                {
-                }
-                Host.Dispose();
+                return Task.CompletedTask;
             }
         }
     }

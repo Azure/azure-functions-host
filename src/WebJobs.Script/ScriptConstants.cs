@@ -41,12 +41,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string LogCategoryHostController = "Host.Controllers.Host";
         public const string LogCategoryFunctionsController = "Host.Controllers.Functions";
+        public const string LogCategoryInstanceController = "Host.Controllers.Instance";
         public const string LogCategoryKeysController = "Host.Controllers.Keys";
         public const string LogCategoryHostGeneral = "Host.General";
         public const string LogCategoryHostMetrics = "Host.Metrics";
         public const string LogCategoryHost = "Host";
         public const string LogCategoryFunction = "Function";
         public const string LogCategoryWorker = "Worker";
+        public const string ConsoleLoggingMode = "consoleLoggingMode";
 
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters
@@ -69,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ColdStartEventName = "ColdStart";
         public const string FunctionWorkerRuntimeSettingName = "FUNCTIONS_WORKER_RUNTIME";
         public const string DotNetLanguageWorkerName = "dotnet";
-        public const string NodeLanguageWrokerName = "node";
+        public const string NodeLanguageWorkerName = "node";
         public const string JavaLanguageWrokerName = "java";
         public const string DefaultWorkersDirectoryName = "workers";
 
@@ -110,6 +112,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LinuxLogEventStreamName = "MS_FUNCTION_LOGS";
         public const string LinuxMetricEventStreamName = "MS_FUNCTION_METRICS";
         public const string LinuxFunctionDetailsEventStreamName = "MS_FUNCTION_DETAILS";
+
+        public const string DurableTaskPropertyName = "durableTask";
+        public const string DurableTaskHubName = "HubName";
 
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");

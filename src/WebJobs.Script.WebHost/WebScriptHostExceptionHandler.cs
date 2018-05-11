@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             await Task.Delay(timeoutGracePeriod);
 
             // TODO: FACAVAL - PASS ENVIRONMENT AND INITIATE SHUTDWON
-            // HostingEnvironment.InitiateShutdown();
+            Program.InitiateShutdown();
         }
 
         public Task OnUnhandledExceptionAsync(ExceptionDispatchInfo exceptionInfo)

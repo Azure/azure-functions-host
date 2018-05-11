@@ -43,7 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             if (Directory.Exists(_runPath))
             {
-                Directory.Delete(_runPath, true);
+                try
+                {
+                    Directory.Delete(_runPath, true);
+                }
+                catch
+                {
+                    // best effort cleanup
+                }
             }
 
             _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHomePath, _oldHomeEnv);

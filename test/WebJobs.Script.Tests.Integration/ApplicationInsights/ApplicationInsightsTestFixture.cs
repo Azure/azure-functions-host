@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -30,28 +29,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 SecretsPath = Environment.CurrentDirectory // not used
             };
 
-            _testServer = new TestServer(
-                AspNetCore.WebHost.CreateDefaultBuilder()
-                .UseStartup<Startup>()
+            var hostBuilder = Program.CreateWebHostBuilder()
+                .ConfigureAppConfiguration((builderContext, config) =>
+                {
+                    config.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        [EnvironmentSettingNames.AppInsightsInstrumentationKey] = TestChannelLoggerProviderFactory.ApplicationInsightsKey
+                    });
+                })
                 .ConfigureServices(services =>
                 {
-                    var settingsManager = new ScriptSettingsManager();
-                    settingsManager.SetConfigurationFactory(() =>
-                    {
-                        return new ConfigurationBuilder()
-                            .AddInMemoryCollection(new Dictionary<string, string>
-                            {
-                                [EnvironmentSettingNames.AppInsightsInstrumentationKey] = TestChannelLoggerProviderFactory.ApplicationInsightsKey
-                            })
-                            .AddEnvironmentVariables()
-                            .Build();
-                    });
-
-                    services.Replace(new ServiceDescriptor(typeof(ScriptSettingsManager), settingsManager));
                     services.Replace(new ServiceDescriptor(typeof(WebHostSettings), HostSettings));
                     services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestChannelLoggerProviderFactory(Channel)));
                     services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
-                }));
+                });
+
+            _testServer = new TestServer(hostBuilder);
 
             var scriptConfig = _testServer.Host.Services.GetService<WebHostResolver>().GetScriptHostConfiguration(HostSettings);
 
@@ -90,7 +83,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
         {
             _testServer?.Dispose();
             HttpClient?.Dispose();
-            ScriptSettingsManager.Instance.Reset();
         }
     }
 }

@@ -40,7 +40,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             DirectoryInfo directory = GetFunctionLogFileDirectory(functionName);
-            FileInfo lastLogFile = directory.GetFiles("*.log").OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
+            FileInfo lastLogFile = null;
+
+            if (directory.Exists)
+            {
+                lastLogFile = directory.GetFiles("*.log").OrderByDescending(p => p.LastWriteTime).FirstOrDefault();
+            }
 
             if (lastLogFile != null)
             {

@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Logging;
@@ -130,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
-        [Fact(Skip = "Needs investigation")]
+        [Fact]
         public async Task Home_Get_InAzureEnvironment_AsInternalRequest_ReturnsNoContent()
         {
             // Pings to the site root should not return the homepage content if they are internal requests.
@@ -146,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
-        [Fact(Skip = "Needs investigation")]
+        [Fact]
         public async Task HttpTrigger_CSharp_Poco_Post_Succeeds()
         {
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CSharp-POCO");
@@ -160,8 +161,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { "Id", id },
                 { "Value", "Testing" }
             };
-            request.Content = new StringContent(requestBody.ToString());
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            request.Content = new StringContent(requestBody.ToString(), Encoding.UTF8, "application/json");
 
             HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -174,29 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
         }
 
-        [Fact(Skip = "Needs investigation")]
-        public async Task HttpTrigger_CSharp_Poco_Post_Xml_Succeeds()
-        {
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CSharp-POCO");
-
-            string uri = $"api/httptrigger-csharp-poco?code={functionKey}";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-            string id = Guid.NewGuid().ToString();
-            request.Content = new StringContent(string.Format("<RequestData xmlns=\"http://functions\"><Id>{0}</Id><Value>Testing</Value></RequestData>", id));
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("text/xml");
-
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-            // wait for function to execute and produce its result blob
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
-
-            Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
-        }
-
-        [Fact(Skip = "Needs investigation")]
+        [Fact]
         public async Task HttpTrigger_CSharp_Poco_Get_Succeeds()
         {
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CSharp-Poco");
@@ -236,7 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
-        [Fact(Skip = "Needs investigation")]
+        [Fact]
         public async Task HttpTrigger_DuplicateQueryParams_Succeeds()
         {
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger");
@@ -248,7 +227,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("Hello Amy", body);
+            Assert.Equal("Hello Mathew,Amy", body);
+        }
+
+        [Fact]
+        public async Task HttpTrigger_CSharp_DuplicateQueryParams_Succeeds()
+        {
+            string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger-csharp");
+            string uri = $"api/httptrigger-csharp?code={functionKey}&name=Mathew&name=Amy";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
+            Assert.Equal("Hello, Mathew,Amy", body);
         }
 
         [Fact]
@@ -309,7 +303,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.NotNull(log);
         }
 
-        [Fact(Skip = "Needs investigation")]
+        [Fact(Skip = "http://github.com/Azure/azure-functions-host/issues/2812")]
         public async Task HttpTrigger_CustomRoute_Post_ReturnsExpectedResponse()
         {
             string id = Guid.NewGuid().ToString();
@@ -322,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { "category", "Housewares" }
             };
 
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri)
+            var request = new HttpRequestMessage(HttpMethod.Post, uri)
             {
                 Content = new StringContent(product.ToString())
             };
@@ -377,7 +371,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(initialTimestamp, timestamp);
         }
 
-        [Fact(Skip = "Needs investigation. JSON is coming back lower-case.")]
+        [Fact]
         public async Task HttpTrigger_CSharp_CustomRoute_ReturnsExpectedResponse()
         {
             string functionName = "HttpTrigger-CSharp-CustomRoute";
@@ -430,7 +424,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.True(logs.Any(p => p.FormattedMessage.Contains("ProductInfo: Category=electronics Id=123")));
         }
 
-        [Fact(Skip = "Needs investigation.")]
+        [Fact]
         public async Task HttpTrigger_Disabled_SucceedsWithAdminKey()
         {
             // first try with function key only - expect 404
@@ -499,7 +493,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("Unresolved", jsonObject["status"]);
         }
 
-        [Fact(Skip = "Needs investigation")]
+        [Fact]
         public async Task HttpTriggerWithObject_CSharp_Post_Succeeds()
         {
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTriggerWithObject-CSharp");
@@ -845,7 +839,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Contains(error, "An array of log entry objects is expected.");
         }
 
-        [Fact(Skip = "Needs investigation")]
+        [Fact]
         public async Task HostStatus_AdminLevel_Succeeds()
         {
             string uri = "admin/host/status";
@@ -858,13 +852,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string content = await response.Content.ReadAsStringAsync();
             JObject jsonContent = JObject.Parse(content);
 
-            Assert.Equal(3, jsonContent.Properties().Count());
+            Assert.Equal(4, jsonContent.Properties().Count());
             AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
-            string expectedVersion = fileVersionAttr.Version;
             Assert.True(((string)jsonContent["id"]).Length > 0);
-            Assert.Equal(expectedVersion, jsonContent["version"].ToString());
+            string expectedVersion = fileVersionAttr.Version;
+            Assert.Equal(expectedVersion, (string)jsonContent["version"]);
+            string expectedVersionDetails = Utility.GetInformationalVersion(typeof(ScriptHost));
+            Assert.Equal(expectedVersionDetails, (string)jsonContent["versionDetails"]);
             var state = (string)jsonContent["state"];
-            Assert.True(state == "Running" || state == "Created");
+            Assert.True(state == "Running" || state == "Created" || state == "Initialized");
 
             // Now ensure XML content works
             request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -878,10 +874,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             XDocument doc = XDocument.Parse(content);
             var node = doc.Descendants(XName.Get("Version", ns)).Single();
             Assert.Equal(expectedVersion, node.Value);
+            node = doc.Descendants(XName.Get("VersionDetails", ns)).Single();
+            Assert.Equal(expectedVersionDetails, node.Value);
             node = doc.Descendants(XName.Get("Id", ns)).Single();
             Assert.True(node.Value.Length > 0);
             node = doc.Descendants(XName.Get("State", ns)).Single();
-            Assert.True(node.Value == "Running" || node.Value == "Created");
+            Assert.True(node.Value == "Running" || node.Value == "Created" || node.Value == "Initialized");
 
             node = doc.Descendants(XName.Get("Errors", ns)).Single();
             Assert.True(node.IsEmpty);
@@ -907,12 +905,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         public class TestFixture : EndToEndTestFixture
         {
+            static TestFixture()
+            {
+                Environment.SetEnvironmentVariable("AzureWebJobs.HttpTrigger-Disabled.Disabled", "1");
+            }
+
             public TestFixture() :
                 base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"), "samples")
             {
             }
-
-            // public NamespaceManager NamespaceManager { get; set; }
 
             protected override async Task CreateTestStorageEntities()
             {
@@ -929,10 +930,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 batch.InsertOrReplace(new TestEntity { PartitionKey = "samples-python", RowKey = "6", Title = "Test Entity 6", Status = 0 });
                 batch.InsertOrReplace(new TestEntity { PartitionKey = "samples-python", RowKey = "7", Title = "Test Entity 7", Status = 0 });
                 await table.ExecuteBatchAsync(batch);
-
-                // TODO: This currently throws
-                // string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
-                // NamespaceManager = NamespaceManager.CreateFromConnectionString(connectionString);
             }
 
             private class TestEntity : TableEntity

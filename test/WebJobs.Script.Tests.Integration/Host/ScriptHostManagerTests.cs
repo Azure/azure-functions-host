@@ -327,7 +327,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Directory.CreateDirectory(rootPath);
             }
 
-            File.WriteAllText(Path.Combine(rootPath, "host.json"), @"{<unparseable>}");
+            var configPath = Path.Combine(rootPath, "host.json");
+            File.WriteAllText(configPath, @"{<unparseable>}");
 
             var config = new ScriptHostConfiguration()
             {
@@ -348,12 +349,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = hostManager.LastError;
             Assert.True(ex is FormatException);
-            Assert.Equal("Unable to parse host.json file.", ex.Message);
+            var expectedMessage = $"Unable to parse host configuration file '{configPath}'.";
+            Assert.Equal(expectedMessage, ex.Message);
 
             var logger = loggerProvider.CreatedLoggers.Last();
-            Assert.Equal(2, logger.GetLogMessages().Count);
-            Assert.StartsWith("A ScriptHost error has occurred", logger.GetLogMessages()[1].FormattedMessage);
-            Assert.Equal("Unable to parse host.json file.", logger.GetLogMessages()[1].Exception.Message);
+            var logMessage = logger.GetLogMessages()[0];
+            Assert.StartsWith("A ScriptHost error has occurred", logMessage.FormattedMessage);
+            Assert.Equal(expectedMessage, logMessage.Exception.Message);
         }
 
         [Fact]
@@ -384,8 +386,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environmentMock = new Mock<IScriptHostEnvironment>(MockBehavior.Strict);
             environmentMock.Setup(p => p.Shutdown());
 
-            var mockSettings = new Mock<ScriptSettingsManager>();
-            mockSettings.Setup(p => p.IsAzureEnvironment).Returns(true);
+            var mockSettings = new Mock<ScriptSettingsManager>(null);
+            mockSettings.Setup(p => p.IsAppServiceEnvironment).Returns(true);
 
             var eventManagerMock = new Mock<IScriptEventManager>();
             var hostHealthConfig = new HostHealthMonitorConfiguration();
@@ -425,12 +427,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(LogLevel.Error, log.Level);
         }
 
-        [Fact(Skip = "Fix this")]
+        [Fact]
         public async Task RunAndBlock_SetsLastError_WhenExceptionIsThrown()
         {
             ScriptHostConfiguration config = new ScriptHostConfiguration()
             {
-                RootScriptPath = @"TestScripts\Empty"
+                RootScriptPath = @"TestScripts\Empty",
+                IsSelfHost = true
             };
 
             var factoryMock = new Mock<IScriptHostFactory>();
@@ -464,6 +467,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task RunAndBlock_SelfHost_Succeeds()
+        {
+            var loggerProvider = new TestLoggerProvider();
+            var loggerProviderFactory = new TestLoggerProviderFactory(loggerProvider);
+            ScriptHostConfiguration config = new ScriptHostConfiguration()
+            {
+                RootScriptPath = Environment.CurrentDirectory,
+                IsSelfHost = true
+            };
+
+            ScriptHostManager manager = null;
+            LogMessage[] logs = null;
+            using (manager = new ScriptHostManager(config, loggerProviderFactory: loggerProviderFactory))
+            {
+                var tIgnore = Task.Run(() => manager.RunAndBlock());
+
+                await TestHelpers.Await(() =>
+                {
+                    logs = loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).ToArray();
+                    return manager.State == ScriptHostState.Error || logs.Any(p => p.FormattedMessage.Contains("Job host started"));
+                });
+
+                Assert.Equal(ScriptHostState.Running, manager.State);
+                Assert.Equal(0, logs.Count(p => p.Level == LogLevel.Error));
+            }
+        }
+
+        [Fact]
         public void IsHostHealthy_ReturnsExpectedResult()
         {
             var config = new ScriptHostConfiguration()
@@ -471,7 +502,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = Environment.CurrentDirectory
             };
 
-            var mockSettings = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
+            var mockSettings = new Mock<ScriptSettingsManager>(MockBehavior.Strict, null);
             var eventManager = new Mock<IScriptEventManager>();
             var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), eventManager.Object, config, null, null, null);
             var factoryMock = new Mock<IScriptHostFactory>();
@@ -495,7 +526,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Returns(() => isUnderHighLoad);
 
             bool isAzureEnvironment = false;
-            mockSettings.Setup(p => p.IsAzureEnvironment).Returns(() => isAzureEnvironment);
+            mockSettings.Setup(p => p.IsAppServiceEnvironment).Returns(() => isAzureEnvironment);
             mockSettings.Setup(p => p.FileSystemIsReadOnly).Returns(false);
 
             config.HostHealthMonitor.Enabled = false;

@@ -1,10 +1,4 @@
 version: 2.0.{build}
-init:
-- ps: | 
-    if ($env:FUNCTIONS_NIGHTLY -eq "1") {
-      $version = Get-Date -Format "yyyyMMdd-HHmm"
-      Update-AppveyorBuild -Version $version -Message "Functions Scheduled Build"
-    }
 pull_requests:
   do_not_increment_build_number: true
 branches:
@@ -12,43 +6,66 @@ branches:
   - dev
   - master
   - core
-image: Visual Studio 2017
-max_jobs: 1
-clone_folder: c:\azure-webjobs-sdk-script
-install:
-- ps: >-
-    $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
-    
-    Install-Product node 8.4.0 x86
-build_script:
-- ps: |
-    $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
-    .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeVersion (!$hasTag)
-after_build:
-- ps: >
-    Get-ChildItem buildoutput\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
 
-    Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
-test_script:
-- ps: >
-    $success = $true
+image:
+- Visual Studio 2017
+- Ubuntu
 
-    # dotnet test .\test\WebJobs.Script.Scaling.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
+for:
+-
+  matrix:
+    only:
+      - image: Ubuntu
+  build_script:
+  - sh: dotnet build WebJobs.Script.sln
+  test: off
 
-    # dotnet test .\test\WebJobs.Script.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
+-
+  matrix:
+    only:
+      - image: Visual Studio 2017
+  init:
+  - ps: |
+      if ($env:FUNCTIONS_NIGHTLY -eq "1") {
+        $version = Get-Date -Format "yyyyMMdd-HHmm"
+        Update-AppveyorBuild -Version $version -Message "Functions Scheduled Build"
+      }
+  max_jobs: 1
+  clone_folder: c:\azure-webjobs-sdk-script
+  install:
+  - ps: >-
+      $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
 
-    # see results in app insights AntaresDemo 'functionse2eai'
+      Install-Product node 8.4.0 x86
+  build_script:
+  - ps: |
+      $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
+      .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeVersion (!$hasTag)
+  after_build:
+  - ps: >
+      Get-ChildItem buildoutput\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
 
-    dotnet test .\test\WebJobs.Script.Tests -v q --no-build
+      Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
+  test_script:
+  - ps: >
+      $success = $true
 
-    $success = $success -and $?
+      # dotnet test .\test\WebJobs.Script.Scaling.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
 
-    dotnet test .\test\WebJobs.Script.Scaling.Tests -v q --no-build
+      # dotnet test .\test\WebJobs.Script.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
 
-    $success = $success -and $?
+      # see results in app insights AntaresDemo 'functionse2eai'
 
-    dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
-    
-    $success = $success -and $?
+      dotnet test .\test\WebJobs.Script.Tests -v q --no-build
 
-    if (-not $success) { exit 1 }
+      $success = $success -and $?
+
+      dotnet test .\test\WebJobs.Script.Scaling.Tests -v q --no-build
+
+      $success = $success -and $?
+
+      dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
+
+      $success = $success -and $?
+
+      if (-not $success) { exit 1 }

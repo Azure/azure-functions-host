@@ -1,0 +1,38 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Extensions.Primitives;
+
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
+{
+    public class AppServiceHeaderFixupMiddleware
+    {
+        private const string DisguisedHostHeader = "DISGUISED-HOST";
+        private const string HostHeader = "HOST";
+        private const string ForwardedProtocolHeader = "X-Forwarded-Proto";
+        private readonly RequestDelegate _next;
+
+        public AppServiceHeaderFixupMiddleware(RequestDelegate next)
+        {
+            _next = next;
+        }
+
+        public async Task Invoke(HttpContext httpContext)
+        {
+            if (httpContext.Request.Headers.TryGetValue(DisguisedHostHeader, out StringValues value))
+            {
+                httpContext.Request.Headers[HostHeader] = value;
+            }
+
+            if (httpContext.Request.Headers.TryGetValue(ForwardedProtocolHeader, out value))
+            {
+                httpContext.Request.Scheme = value;
+            }
+
+            await _next(httpContext);
+        }
+    }
+}

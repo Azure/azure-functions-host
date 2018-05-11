@@ -26,8 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public override void Initialize()
         {
             // Apply Blobs configuration
-            // TODO: FACAVAL - Follow up on TEMP comment below
-            Config.Blobs.CentralizedPoisonQueue = true;   // TEMP : In the next release we'll remove this and accept the core SDK default
             var configSection = (JObject)Metadata["blobs"];
             JToken value = null;
             if (configSection != null)

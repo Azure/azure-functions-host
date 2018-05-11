@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>7.2</LangVersion>
     <BuildNumber Condition=" '$(BuildNumber)' == '' ">1</BuildNumber>
     <MajorMinorProductVersion>2.0</MajorMinorProductVersion>
     <Version>$(MajorMinorProductVersion).0-beta2$(VersionSuffix)</Version>

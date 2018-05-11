@@ -22,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.WebJobs.Script.Tests;
@@ -47,6 +48,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _settingsManager = ScriptSettingsManager.Instance;
 
             _loggerFactory.AddProvider(_loggerProvider);
+        }
+
+        [Fact]
+        public void LoadHostConfig_DefaultsConfig_WhenFileMissing()
+        {
+            var path = Path.Combine(Path.GetTempPath(), @"does\not\exist\host.json");
+            Assert.False(File.Exists(path));
+            var logger = _loggerFactory.CreateLogger(LogCategories.Startup);
+            var config = ScriptHost.LoadHostConfig(path, logger);
+            Assert.Equal(0, config.Properties().Count());
+
+            var logMessage = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).Single();
+            Assert.Equal("No host configuration file found. Using default.", logMessage);
+        }
+
+        [Fact]
+        public void LoadHostConfig_LoadsConfigFile()
+        {
+            var path = Path.Combine(TestHelpers.FunctionsTestDirectory, "host.json");
+            File.WriteAllText(path, "{ id: '123xyz' }");
+            var logger = _loggerFactory.CreateLogger(LogCategories.Startup);
+            var config = ScriptHost.LoadHostConfig(path, logger);
+            Assert.Equal(1, config.Properties().Count());
+            Assert.Equal("123xyz", (string)config["id"]);
+        }
+
+        [Fact]
+        public void LoadHostConfig_ParseError_Throws()
+        {
+            var path = Path.Combine(TestHelpers.FunctionsTestDirectory, "host.json");
+            File.WriteAllText(path, "{ blah");
+            JObject config = null;
+            var logger = _loggerFactory.CreateLogger(LogCategories.Startup);
+            var ex = Assert.Throws<FormatException>(() =>
+            {
+                config = ScriptHost.LoadHostConfig(path, logger);
+            });
+            Assert.Equal($"Unable to parse host configuration file '{path}'.", ex.Message);
         }
 
         [Theory]
@@ -389,7 +428,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 host.Initialize();
             });
 
-            Assert.Equal(string.Format("Unable to parse {0} file.", ScriptConstants.HostMetadataFileName), ex.Message);
+            var configFilePath = Path.Combine(rootPath, "host.json");
+            Assert.Equal($"Unable to parse host configuration file '{configFilePath}'.", ex.Message);
             Assert.Equal("Invalid property identifier character: ~. Path '', line 2, position 4.", ex.InnerException.Message);
         }
 
@@ -538,14 +578,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(hostConfig, config, null);
             provider.Initialize();
 
-            Assert.True(hostConfig.Blobs.CentralizedPoisonQueue);
+            Assert.False(hostConfig.Blobs.CentralizedPoisonQueue);
 
-            blobsConfig["centralizedPoisonQueue"] = false;
+            blobsConfig["centralizedPoisonQueue"] = true;
 
             provider = new WebJobsCoreScriptBindingProvider(hostConfig, config, null);
             provider.Initialize();
 
-            Assert.False(hostConfig.Blobs.CentralizedPoisonQueue);
+            Assert.True(hostConfig.Blobs.CentralizedPoisonQueue);
         }
 
         [Fact]
@@ -611,6 +651,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("node_modules", scriptConfig.WatchDirectories.ElementAt(0));
             Assert.Equal("Shared", scriptConfig.WatchDirectories.ElementAt(1));
             Assert.Equal("Tools", scriptConfig.WatchDirectories.ElementAt(2));
+        }
+
+        [Fact]
+        public void ApplyConfiguration_AllowPartialHostStartup()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            Assert.False(scriptConfig.HostConfig.AllowPartialHostStartup);
+
+            // we default it to true
+            scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.True(scriptConfig.HostConfig.AllowPartialHostStartup);
+
+            // explicit setting can override our default
+            scriptConfig = new ScriptHostConfiguration();
+            config["allowPartialHostStartup"] = new JValue(true);
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.True(scriptConfig.HostConfig.AllowPartialHostStartup);
+
+            // explicit setting can override our default
+            scriptConfig = new ScriptHostConfiguration();
+            config["allowPartialHostStartup"] = new JValue(false);
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.False(scriptConfig.HostConfig.AllowPartialHostStartup);
         }
 
         [Fact]
@@ -682,7 +749,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void ApplyConfiguration_AppliesDefaultTimeout_IfDynamic()
+        public void ApplyConfiguration_AppliesDefaults_IfDynamic()
         {
             JObject config = new JObject();
             config["id"] = ID;
@@ -694,7 +761,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
                 ScriptHost.ApplyConfiguration(config, scriptConfig);
                 Assert.Equal(ScriptHost.DefaultFunctionTimeout, scriptConfig.FunctionTimeout);
-
+                Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytesDynamicSku, scriptConfig.MaxMessageLengthBytes);
                 var timeoutConfig = scriptConfig.HostConfig.FunctionTimeout;
                 Assert.NotNull(timeoutConfig);
                 Assert.True(timeoutConfig.ThrowOnTimeout);
@@ -750,6 +817,109 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, null);
             }
+        }
+
+        [Fact]
+        public void ApplyLanguageWorkerConfiguration_DefaultMaxMessageLength_IfNotDynamic()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytes, scriptConfig.MaxMessageLengthBytes);
+        }
+
+        [Fact]
+        public void ApplyLanguageWorkerConfiguration_SetMaxMessageLength_IfNotDynamic()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+            JObject languageWorkerConfig = new JObject();
+            languageWorkerConfig["maxMessageLength"] = 20;
+            config["languageWorker"] = languageWorkerConfig;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal(20 * 1024 * 1024, scriptConfig.MaxMessageLengthBytes);
+        }
+
+        [Fact]
+        public void ApplyLanguageWorkerConfiguration_SetMaxMessageLength_DafaultIfExceedsLimit()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+            JObject languageWorkerConfig = new JObject();
+            languageWorkerConfig["maxMessageLength"] = 2500;
+            config["languageWorker"] = languageWorkerConfig;
+
+            var testLogger = new TestLogger("test");
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyConfiguration(config, scriptConfig, testLogger);
+            var logMessage = testLogger.GetLogMessages().Single(l => l.FormattedMessage.StartsWith("MaxMessageLength must be between 4MB and 2000MB")).FormattedMessage;
+            Assert.Equal($"MaxMessageLength must be between 4MB and 2000MB.Default MaxMessageLength: {ScriptHost.DefaultMaxMessageLengthBytes} will be used", logMessage);
+            Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytes, scriptConfig.MaxMessageLengthBytes);
+        }
+
+        [Fact]
+        public void ApplyLanguageWorkerConfiguration_DefaultMaxMessageLength_IfDynamic()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+            JObject languageWorkerConfig = new JObject();
+            languageWorkerConfig["maxMessageLength"] = 250;
+            config["languageWorker"] = languageWorkerConfig;
+
+            var testLogger = new TestLogger("test");
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+
+            try
+            {
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
+                ScriptHost.ApplyConfiguration(config, scriptConfig, testLogger);
+                string message = $"Cannot set {nameof(scriptConfig.MaxMessageLengthBytes)} on Consumption plan. Default MaxMessageLength: {ScriptHost.DefaultMaxMessageLengthBytesDynamicSku} will be used";
+                var logs = testLogger.GetLogMessages().Where(log => log.FormattedMessage.Contains(message)).FirstOrDefault();
+                Assert.NotNull(logs);
+                Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytesDynamicSku, scriptConfig.MaxMessageLengthBytes);
+            }
+            finally
+            {
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, null);
+            }
+        }
+
+        [Fact]
+        public void ApplyLanguageWorkerConfiguration_Default_IfDynamic_NoMaxMessageLength()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+            var testLogger = new TestLogger("test");
+            JObject languageWorkerConfig = new JObject();
+            config["languageWorker"] = languageWorkerConfig;
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            try
+            {
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
+                ScriptHost.ApplyConfiguration(config, scriptConfig, testLogger);
+                Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytesDynamicSku, scriptConfig.MaxMessageLengthBytes);
+            }
+            finally
+            {
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, null);
+            }
+        }
+
+        [Fact]
+        public void ApplyLanguageWorkerConfiguration_Default_IfNotDynamic_NoMaxMessageLength()
+        {
+            JObject config = new JObject();
+            config["id"] = ID;
+            var testLogger = new TestLogger("test");
+            JObject languageWorkerConfig = new JObject();
+            config["languageWorker"] = languageWorkerConfig;
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            ScriptHost.ApplyConfiguration(config, scriptConfig, testLogger);
+            Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytes, scriptConfig.MaxMessageLengthBytes);
         }
 
         [Fact]
@@ -1099,7 +1269,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Make sure no App Insights is configured
             var settingsManager = ScriptSettingsManager.Instance;
-            settingsManager.SetSetting("host:logger:consoleLoggingMode", consoleLoggingEnabled);
+            settingsManager.SetSetting(ScriptConstants.ConsoleLoggingMode, consoleLoggingEnabled);
             settingsManager.ApplicationInsightsInstrumentationKey = "Some_Instrumentation_Key";
 
             var metricsLogger = new TestMetricsLogger();
@@ -1126,6 +1296,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(1, metricsLogger.LoggedEvents.Count);
             Assert.Equal(MetricEventNames.ApplicationInsightsEnabled, metricsLogger.LoggedEvents[0]);
+        }
+
+        [Fact]
+        public void DefaultLoggerFactory_ConsoleLoggingEnabled_ReturnsExpectedResult()
+        {
+            try
+            {
+                var config = new ScriptHostConfiguration();
+                var settings = ScriptSettingsManager.Instance;
+                Environment.SetEnvironmentVariable(ScriptConstants.ConsoleLoggingMode, null);
+                var enabled = DefaultLoggerProviderFactory.ConsoleLoggingEnabled(config, settings);
+                Assert.False(enabled);
+
+                config.IsSelfHost = true;
+                enabled = DefaultLoggerProviderFactory.ConsoleLoggingEnabled(config, settings);
+                Assert.True(enabled);
+
+                config.IsSelfHost = true;
+                Environment.SetEnvironmentVariable(ScriptConstants.ConsoleLoggingMode, "always");
+                enabled = DefaultLoggerProviderFactory.ConsoleLoggingEnabled(config, settings);
+                Assert.True(enabled);
+
+                config.IsSelfHost = true;
+                Environment.SetEnvironmentVariable(ScriptConstants.ConsoleLoggingMode, "never");
+                enabled = DefaultLoggerProviderFactory.ConsoleLoggingEnabled(config, settings);
+                Assert.False(enabled);
+
+                Environment.SetEnvironmentVariable(ScriptConstants.ConsoleLoggingMode, "ALwayS");
+                enabled = DefaultLoggerProviderFactory.ConsoleLoggingEnabled(config, settings);
+                Assert.True(enabled);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(ScriptConstants.ConsoleLoggingMode, null);
+            }
         }
 
         [Fact]
@@ -1556,12 +1761,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             public TestFixture()
             {
+                Directory.CreateDirectory(TestHelpers.FunctionsTestDirectory);
                 ScriptHostConfiguration config = new ScriptHostConfiguration();
                 config.HostConfig.HostId = ID;
                 var environment = new Mock<IScriptHostEnvironment>();
                 var eventManager = new Mock<IScriptEventManager>();
 
-                ScriptSettingsManager.Instance.Reset();
                 Host = new ScriptHost(environment.Object, eventManager.Object, config);
                 Host.Initialize();
             }

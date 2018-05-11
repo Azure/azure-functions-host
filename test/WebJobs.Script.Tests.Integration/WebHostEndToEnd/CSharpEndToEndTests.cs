@@ -72,10 +72,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             //await WaitForMobileTableRecordAsync("Item", id);
         }
 
-        [Fact(Skip = "Not yet enabled.")]
-        public void FileLogging_Succeeds()
+        [Fact]
+        public async Task FunctionLogging_Succeeds()
         {
-            // await FileLogging_SucceedsTest();
+            await FunctionLogging_SucceedsTest();
         }
 
         [Fact]
@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("Name: Mathew Charles, Location: Seattle", body);
         }
 
-        [Fact(Skip = "Investigate test failure")]
+        [Fact]
         public async Task HttpTriggerToBlob()
         {
             var request = new HttpRequestMessage

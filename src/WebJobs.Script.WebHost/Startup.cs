@@ -4,6 +4,7 @@
 using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
+
+            if (ScriptSettingsManager.Instance.IsLinuxContainerEnvironment)
+            {
+                // Linux containers always start out in placeholder mode
+                ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            }
         }
 
         public IConfiguration Configuration { get; }

@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             Assert.DoesNotContain(messages, t => t.FormattedMessage == "A function timeout has occurred. Host is shutting down.");
         }
 
+
         private async Task RunTimeoutExceptionTest(bool handleCancellation)
         {
             TimeSpan gracePeriod = TimeSpan.FromMilliseconds(5000);

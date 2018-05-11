@@ -12,6 +12,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>TRACE;DEBUG;SCRIPT_TEST;NETCOREAPP2_0</DefineConstants>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="ScriptHostEndToEnd\ListenerFailureTests.cs" />
+    <Compile Remove="ServiceBus\ServiceBusEndToEndTestBase.cs" />
+    <Compile Remove="ServiceBus\ServiceBusTriggerCSharpEndToEndTests.cs" />
+    <Compile Remove="ServiceBus\ServiceBusTriggerNodeEndToEndTests.cs" />
+    <Compile Remove="Twilio\TwilioEndToEndTestsBase.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
@@ -19,11 +26,11 @@
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="2.0.1" />
-    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.0.4100001-beta-d5a48cb8" />
+    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.0.4780001-beta-0fed1b79" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="1.9.1" />
     <PackageReference Include="Microsoft.Azure.EventHubs" Version="1.0.3" />
-    <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="1.1.0-beta2-10014" />
-    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="1.0.0-beta1-10026" />
+    <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="1.1.0-beta2-10028" />
+    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="1.0.0-beta1-10031" />
     <PackageReference Include="Microsoft.Azure.Mobile.Client" Version="4.0.2" />
     <PackageReference Include="Microsoft.Azure.ServiceBus" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.0.0" />
@@ -67,6 +74,18 @@
     <None Update="xunit.runner.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Folder Include="TestScripts\Empty\" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Include="ScriptHostEndToEnd\ListenerFailureTests.cs" />
+    <None Include="ServiceBus\ServiceBusEndToEndTestBase.cs" />
+    <None Include="ServiceBus\ServiceBusTriggerCSharpEndToEndTests.cs" />
+    <None Include="ServiceBus\ServiceBusTriggerNodeEndToEndTests.cs" />
+    <None Include="Twilio\TwilioEndToEndTestsBase.cs" />
   </ItemGroup>
    
   <Import Project="..\..\build\GrpcTestFix.targets" />

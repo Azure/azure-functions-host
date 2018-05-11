@@ -122,7 +122,9 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             get
             {
-                return _config.HostHealthMonitor.Enabled && _settingsManager.IsAzureEnvironment;
+                // Not currently enabled for Linux containers (since the sandbox environment
+                // setting for perf counters isn't present)
+                return _config.HostHealthMonitor.Enabled && _settingsManager.IsAppServiceEnvironment;
             }
         }
 
@@ -242,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // We need to keep the host running, so we catch and log any errors
                     // then restart the host
                     string message = "A ScriptHost error has occurred";
-                    Instance?.Logger.LogError(0, ex, message);
+                    Instance?.Logger?.LogError(0, ex, message);
 
                     if (ShutdownHostIfUnhealthy())
                     {

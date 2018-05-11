@@ -9,6 +9,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Loader;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.CodeAnalysis;
@@ -18,10 +19,10 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     /// <summary>
-    /// Provides runtime and compile-time assembly/metadata resolution for a given assembly, loading privately deployed
+    /// Provides runtime and compile-time assembly/metadata resolution for compilations using the script model, loading privately deployed
     /// or package assemblies.
     /// </summary>
-    public sealed class FunctionMetadataResolver : MetadataReferenceResolver, IFunctionMetadataResolver
+    public sealed class ScriptFunctionMetadataResolver : MetadataReferenceResolver, IFunctionMetadataResolver
     {
         private readonly string _privateAssembliesPath;
         private readonly string _scriptFileDirectory;
@@ -70,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "Microsoft.AspNetCore.Http"
             };
 
-        public FunctionMetadataResolver(string scriptFilePath, ICollection<ScriptBindingProvider> bindingProviders, ILogger logger)
+        public ScriptFunctionMetadataResolver(string scriptFilePath, ICollection<ScriptBindingProvider> bindingProviders, ILogger logger)
         {
             _scriptFileDirectory = Path.GetDirectoryName(scriptFilePath);
             _scriptFilePath = scriptFilePath;
@@ -105,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public override bool Equals(object other)
         {
-            var otherResolver = other as FunctionMetadataResolver;
+            var otherResolver = other as ScriptFunctionMetadataResolver;
             return otherResolver != null && string.Compare(_id, otherResolver._id, StringComparison.Ordinal) == 0;
         }
 
@@ -163,8 +164,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     Assembly assembly = null;
 
-                    if (SharedAssemblyProviders.Any(p => p.TryResolveAssembly(reference, out assembly)) ||
-                        _extensionSharedAssemblyProvider.TryResolveAssembly(reference, out assembly))
+                    if (SharedAssemblyProviders.Any(p => p.TryResolveAssembly(reference, AssemblyLoadContext.Default, out assembly)) ||
+                        _extensionSharedAssemblyProvider.TryResolveAssembly(reference, AssemblyLoadContext.Default, out assembly))
                     {
                         result = ImmutableArray.Create(MetadataReference.CreateFromFile(assembly.Location));
                     }
@@ -211,29 +212,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return ImmutableArray<PortableExecutableReference>.Empty;
         }
 
-        public Assembly ResolveAssembly(string assemblyName)
+        public Assembly ResolveAssembly(AssemblyName assemblyName, FunctionAssemblyLoadContext targetContext)
         {
             Assembly assembly = null;
-            string assemblyPath = null;
-
-            if (_externalReferences.TryGetValue(assemblyName, out assemblyPath))
+            if (_externalReferences.TryGetValue(assemblyName.FullName, out string assemblyPath))
             {
-                // When loading shared assemblies, load into the load-from context and load assembly dependencies
-                assembly = Assembly.LoadFrom(assemblyPath);
+                // For external references, we load the assemblies into the shared context:
+                assembly = FunctionAssemblyLoadContext.Shared.LoadFromAssemblyPath(assemblyPath, true);
             }
-            else if (TryResolvePrivateAssembly(assemblyName, out assemblyPath))
+            else if (TryResolvePrivateAssembly(assemblyName.FullName, out assemblyPath))
             {
-                assembly = Assembly.Load(File.ReadAllBytes(assemblyPath));
-                assembly.MapCodeBase(assemblyPath);
+                assembly = targetContext.LoadFromStream(new MemoryStream(File.ReadAllBytes(assemblyPath)));
             }
-            else if (_packageAssemblyResolver.TryResolveAssembly(assemblyName, out assemblyPath))
+            else if (_packageAssemblyResolver.TryResolveAssembly(assemblyName.FullName, out assemblyPath))
             {
-                // Use LoadFile here to load into the correct context
-                assembly = Assembly.LoadFile(assemblyPath);
+                assembly = targetContext.LoadFromAssemblyPath(assemblyPath);
             }
-            else if (_extensionSharedAssemblyProvider.TryResolveAssembly(assemblyName, out assembly))
+            else
             {
-                return assembly;
+                _extensionSharedAssemblyProvider.TryResolveAssembly(assemblyName.FullName, FunctionAssemblyLoadContext.Shared, out assembly);
             }
 
             return assembly;

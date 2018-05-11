@@ -39,11 +39,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             WebHostSettings settings = new WebHostSettings
             {
-                IsSelfHost = !settingsManager.IsAzureEnvironment
+                IsSelfHost = !settingsManager.IsAppServiceEnvironment && !settingsManager.IsLinuxContainerEnvironment
             };
 
-            if (settingsManager.IsAzureEnvironment)
+            if (settingsManager.IsAppServiceEnvironment)
             {
+                // Running in App Service
                 string home = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
                 settings.ScriptPath = Path.Combine(home, "site", "wwwroot");
                 settings.LogPath = Path.Combine(home, "LogFiles", "Application", "Functions");
@@ -52,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             else
             {
+                // Local hosting or Linux container scenarios
                 settings.ScriptPath = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebJobsScriptRoot);
                 settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
                 settings.TestDataPath = Path.Combine(Path.GetTempPath(), @"FunctionsData");

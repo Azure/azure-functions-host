@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             var apimodel = new ApiModel();
             apimodel.Merge(result);
 
-            if (result["links"] != null)
+            if (result?["links"] != null)
             {
                 apimodel.Links = result["links"].ToObject<Collection<Link>>();
             }

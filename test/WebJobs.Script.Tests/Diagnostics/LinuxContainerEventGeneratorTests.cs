@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -65,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             DateTime dt;
             var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
             Assert.Collection(groupMatches,
-                p => Assert.Equal((int)level, int.Parse(p)),
+                p => Assert.Equal((int)LinuxContainerEventGenerator.ToEventLevel(level), int.Parse(p)),
                 p => Assert.Equal(subscriptionId, p),
                 p => Assert.Equal(appName, p),
                 p => Assert.Equal(functionName, p),
@@ -162,6 +163,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(outputBindings, JsonUnescape(p)),
                 p => Assert.Equal(scriptType, p),
                 p => Assert.Equal(isDisabled ? "1" : "0", p));
+        }
+
+        [Theory]
+        [InlineData(LogLevel.Trace, EventLevel.Verbose)]
+        [InlineData(LogLevel.Debug, EventLevel.Verbose)]
+        [InlineData(LogLevel.Information, EventLevel.Informational)]
+        [InlineData(LogLevel.Warning, EventLevel.Warning)]
+        [InlineData(LogLevel.Error, EventLevel.Error)]
+        [InlineData(LogLevel.Critical, EventLevel.Critical)]
+        [InlineData(LogLevel.None, EventLevel.LogAlways)]
+        public void ToEventLevel_ReturnsExpectedValue(LogLevel logLevel, EventLevel eventLevel)
+        {
+            Assert.Equal(eventLevel, LinuxContainerEventGenerator.ToEventLevel(logLevel));
         }
     }
 }

@@ -35,12 +35,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
                 {
                     { "request", request }
                 };
-                if (string.Equals(ScriptConstants.NodeLanguageWrokerName, functionsWorkerLanguage, System.StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(functionsWorkerLanguage))
+                if (string.Equals(ScriptConstants.NodeLanguageWorkerName, functionsWorkerLanguage, System.StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(functionsWorkerLanguage))
                 {
                     await fixture.Host.CallAsync(functionName, arguments);
                     var result = (IActionResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
-                    Assert.IsType<ScriptObjectResult>(result);
-                    var objResult = result as ScriptObjectResult;
+                    Assert.IsType<RawScriptResult>(result);
+                    var objResult = result as RawScriptResult;
                     Assert.Equal(200, objResult.StatusCode);
                 }
                 else

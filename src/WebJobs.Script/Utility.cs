@@ -21,6 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class Utility
     {
+        // Prefix that uniquely identifies our assemblies
+        // i.e.: "f-<functionname>"
+        public const string AssemblyPrefix = "f-";
+        public const string AssemblySeparator = "__";
+
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         public const string AzureWebsiteSku = "WEBSITE_SKU";
         public const string DynamicSku = "Dynamic";
@@ -36,6 +41,26 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 string value = ScriptSettingsManager.Instance.GetSetting(AzureWebsiteSku);
                 return string.Compare(value, DynamicSku, StringComparison.OrdinalIgnoreCase) == 0;
+            }
+        }
+
+        /// <summary>
+        /// Delays while the specified condition remains true.
+        /// </summary>
+        /// <param name="timeoutSeconds">The maximum number of seconds to delay.</param>
+        /// <param name="pollingIntervalMilliseconds">The polling interval.</param>
+        /// <param name="condition">The condition to check</param>
+        /// <returns>A Task representing the delay.</returns>
+        internal static async Task DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<bool> condition)
+        {
+            TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
+            TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);
+            TimeSpan timeWaited = TimeSpan.Zero;
+
+            while (condition() && (timeWaited < timeout))
+            {
+                await Task.Delay(delay);
+                timeWaited += delay;
             }
         }
 
@@ -353,20 +378,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return JObject.Parse(json);
         }
 
-        public static bool TryMatchAssembly(string assemblyName, Type type, out Assembly matchedAssembly)
-        {
-            matchedAssembly = null;
-
-            var candidateAssembly = type.Assembly;
-            if (string.Compare(assemblyName, AssemblyNameCache.GetName(candidateAssembly).Name, StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                matchedAssembly = candidateAssembly;
-                return true;
-            }
-
-            return false;
-        }
-
         public static IJobHostMetadataProvider CreateMetadataProvider(this JobHost host)
         {
             return (IJobHostMetadataProvider)host.Services.GetService(typeof(IJobHostMetadataProvider));
@@ -460,6 +471,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 return value.ToString();
             }
             return null;
+        }
+
+        public static string GetAssemblyNameFromMetadata(Description.FunctionMetadata metadata, string suffix)
+        {
+            return AssemblyPrefix + metadata.Name + AssemblySeparator + suffix.GetHashCode().ToString();
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter

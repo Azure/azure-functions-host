@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
@@ -56,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 
         public static bool IsAntaresInternalRequest(this HttpRequest request)
         {
-            if (!ScriptSettingsManager.Instance.IsAzureEnvironment)
+            if (!ScriptSettingsManager.Instance.IsAppServiceEnvironment)
             {
                 return false;
             }

@@ -72,7 +72,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Func<string, FunctionDescriptor> funcLookup = (name) => this.Host.GetFunctionOrNull(name);
             var fastLogger = new FunctionInstanceLogger(funcLookup, new MetricsLogger());
             config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
-            _settingsManager.Reset();
             Host = new ScriptHost(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager,
                 proxyClient: proxyClient, loggerProviderFactory: loggerProviderFactory);
             Host.Initialize();

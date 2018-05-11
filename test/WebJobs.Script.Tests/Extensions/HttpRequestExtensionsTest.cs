@@ -28,8 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
-                ScriptSettingsManager.Instance.Reset();
-
                 // with header
                 var headers = new HeaderDictionary();
                 headers.Add(ScriptConstants.AntaresLogIdHeaderName, "123");

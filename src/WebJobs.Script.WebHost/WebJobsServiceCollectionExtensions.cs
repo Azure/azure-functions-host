@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Net.Http;
 using Autofac;
 using Autofac.Core;
 using Autofac.Extensions.DependencyInjection;
@@ -22,6 +23,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -38,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public static IServiceCollection AddWebJobsScriptHostAuthentication(this IServiceCollection services)
         {
             services.AddAuthentication()
+                .AddArmToken()
                 .AddScriptAuthLevel()
                 .AddScriptJwtBearer();
 
@@ -60,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             services.AddWebJobsScriptHostRouting();
             services.AddMvc()
+                .AddJsonOptions(options => options.SerializerSettings.ContractResolver = new DefaultContractResolver())
                 .AddXmlDataContractSerializerFormatters();
 
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WebJobsScriptHostService>());
@@ -70,13 +74,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // ScriptSettingsManager should be replaced. We're setting this here as a temporary step until
             // broader configuaration changes are made:
-            var settingsManager = ScriptSettingsManager.Instance;
-            settingsManager.SetConfigurationFactory(() => configuration);
-            builder.RegisterInstance(settingsManager);
+            builder.RegisterType<ScriptSettingsManager>().SingleInstance();
 
             builder.Register<IEventGenerator>(c =>
             {
-                if (settingsManager.IsLinuxContainer)
+                var settingsManager = c.Resolve<ScriptSettingsManager>();
+                if (settingsManager.IsLinuxContainerEnvironment)
                 {
                     return new LinuxContainerEventGenerator();
                 }
@@ -90,13 +93,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.RegisterType<ScriptEventManager>().As<IScriptEventManager>().SingleInstance();
             builder.Register(c => WebHostSettings.CreateDefault(c.Resolve<ScriptSettingsManager>()));
 
-            // Pass a specially-constructed LoggerFactory to the WebHostResolver. This LoggerFactory is only used
-            // when there is no host available.
+            // Pass a specially-constructed LoggerFactory to the WebHostResolver, if there isn't already a service instance
+            // registered. This LoggerFactory is only used when there is no host available.
             // Only use this LoggerFactory for this constructor; use the registered ILoggerFactory below everywhere else.
+            // TODO: This default logger factory is a TEMP workaround. Fix this.
+            var defaultLoggerFactory = services.Where(p => p.ServiceType == typeof(ILoggerFactory) && p.ImplementationInstance != null).Select(p => p.ImplementationInstance).FirstOrDefault();
             builder.RegisterType<WebHostResolver>().SingleInstance()
-                .WithParameter(new ResolvedParameter(
-                    (pi, ctx) => pi.ParameterType == typeof(ILoggerFactory),
-                    (pi, ctx) => CreateLoggerFactory(string.Empty, ctx.Resolve<ScriptSettingsManager>(), ctx.Resolve<IEventGenerator>(), ctx.Resolve<WebHostSettings>())));
+                    .WithParameter(new ResolvedParameter(
+                        (pi, ctx) => pi.ParameterType == typeof(ILoggerFactory),
+                        (pi, ctx) => defaultLoggerFactory ?? CreateLoggerFactory(string.Empty, ctx.Resolve<ScriptSettingsManager>(), ctx.Resolve<IEventGenerator>(), ctx.Resolve<WebHostSettings>())));
 
             // Register the LoggerProviderFactory, which defines the ILoggerProviders for the host.
             builder.RegisterType<WebHostLoggerProviderFactory>().As<ILoggerProviderFactory>().SingleInstance();
@@ -112,6 +117,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.Register<WebScriptHostManager>(c => c.Resolve<WebHostResolver>().GetWebScriptHostManager()).ExternallyOwned();
             builder.Register<ISecretManager>(c => c.Resolve<WebHostResolver>().GetSecretManager()).ExternallyOwned();
             builder.RegisterType<WebFunctionsManager>().As<IWebFunctionsManager>().SingleInstance();
+            builder.RegisterType<InstanceManager>().As<IInstanceManager>().SingleInstance();
+            builder.Register(_ => new HttpClient()).SingleInstance();
             builder.RegisterType<VirtualFileSystem>();
             builder.RegisterType<VirtualFileSystemMiddleware>();
 
@@ -120,6 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // override the registrations above
             builder.Populate(services);
 
+            // we want all ILoggerFactory resolution to go through WebHostResolver
             builder.Register(ct => ct.Resolve<WebHostResolver>().GetLoggerFactory(ct.Resolve<WebHostSettings>())).As<ILoggerFactory>().ExternallyOwned();
 
             var applicationContainer = builder.Build();

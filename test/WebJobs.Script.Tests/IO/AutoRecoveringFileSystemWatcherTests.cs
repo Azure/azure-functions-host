@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
             await RecoveryTest(4, false);
         }
 
-        [Fact(Skip = "Test failing in CI. Needs investigation")]
+        [Fact]
         public async Task AutoRecovery_StopsWhenDisposed()
         {
             await RecoveryTest(4, true);

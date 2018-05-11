@@ -12,7 +12,7 @@ public static void Run(ScenarioInput input, out string blob, TraceWriter trace, 
     {
         blob = input.Value;
     }
-    else if (input.Scenario == "fileLogging")
+    else if (input.Scenario == "logging")
     {
         // we'll get two guids as the payload; split them
         var guids = input.Value.Split(';');
