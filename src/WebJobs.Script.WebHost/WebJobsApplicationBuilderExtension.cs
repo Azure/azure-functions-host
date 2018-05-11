@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Buffering;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -19,6 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static IApplicationBuilder UseWebJobsScriptHost(this IApplicationBuilder builder, IApplicationLifetime applicationLifetime, Action<WebJobsRouteBuilder> routes)
         {
+            if (!ScriptSettingsManager.Instance.IsAppServiceEnvironment)
+            {
+                builder.UseMiddleware<AppServiceHeaderFixupMiddleware>();
+            }
+
             builder.UseMiddleware<HttpExceptionMiddleware>();
             builder.UseMiddleware<ResponseBufferingMiddleware>();
             builder.UseMiddleware<HomepageMiddleware>();
