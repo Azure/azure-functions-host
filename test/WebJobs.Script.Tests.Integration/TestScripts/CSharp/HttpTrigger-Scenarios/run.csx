@@ -10,23 +10,29 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, Execut
     string bodyJson = await req.Content.ReadAsStringAsync();
     JObject body = JObject.Parse(bodyJson);
     string scenario = body["scenario"].ToString();
-    string value = body["value"].ToString();
-
-    string logPayload = JObject.FromObject(new { invocationId = context.InvocationId, trace = value }).ToString(Formatting.None);
 
     switch (scenario)
     {
+        case "appServiceFixupMiddleware":
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(req.RequestUri.ToString()) };
         case "appInsights-Success":
-            logger.LogInformation(logPayload);
+            LogPayload(body, context, logger);
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(context.InvocationId.ToString()) };
         case "appInsights-Failure":
-            logger.LogInformation(logPayload);
+            LogPayload(body, context, logger);
             return new HttpResponseMessage(HttpStatusCode.Conflict) { Content = new StringContent(context.InvocationId.ToString()) };
         case "appInsights-Throw":
-            logger.LogInformation(logPayload);
+            LogPayload(body, context, logger);
             throw new InvalidOperationException(context.InvocationId.ToString());
         default:
             throw new InvalidOperationException();
             break;
-    }    
+    }
+}
+
+private static void LogPayload(JObject body, ExecutionContext context, ILogger logger)
+{
+    string value = body["value"].ToString();
+    string logPayload = JObject.FromObject(new { invocationId = context.InvocationId, trace = value }).ToString(Formatting.None);
+    logger.LogInformation(logPayload);
 }
