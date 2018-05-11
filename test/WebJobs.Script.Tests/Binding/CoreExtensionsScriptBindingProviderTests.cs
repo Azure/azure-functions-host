@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class CoreExtensionsScriptBindingProviderTests
     {
-        [Fact(Skip = "https://github.com/Azure/azure-webjobs-sdk/issues/1689")]
+        [Fact]
         public void GetAttributes_DynamicSku_ValidatesScheduleExpression()
         {
             var vars = new Dictionary<string, string>
