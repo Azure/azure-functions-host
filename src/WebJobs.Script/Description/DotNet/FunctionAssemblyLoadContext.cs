@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyModel;
 using Newtonsoft.Json.Linq;
+using static Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -140,19 +141,33 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
         {
-            // For now, we'll attempt to resolve unmanaged DLLs from the base probing path
-
-            // Directory resolution is be simple for now, we'll assume the base probing
-            // path (usually, the bin folder in the function app root) and combine with
-            // the file name resolved from the native DLL reference:
             string fileName = GetUnmanagedLibraryFileName(unmanagedDllName);
+            string filePath = GetRuntimeAssetPath(fileName, true);
 
-            if (File.Exists(fileName))
+            if (filePath != null)
             {
-                LoadUnmanagedDllFromPath(fileName);
+                return LoadUnmanagedDllFromPath(filePath);
             }
 
             return base.LoadUnmanagedDll(unmanagedDllName);
+        }
+
+        private string GetRuntimeAssetPath(string assetFileName, bool isNativeAsset)
+        {
+            string basePath = _probingPaths[0];
+            string ridSubFolder = isNativeAsset ? "native" : string.Empty;
+            string runtimesPath = Path.Combine(basePath, "runtimes");
+
+            string currentRuntimeIdentifier = GetRuntimeIdentifier();
+            RuntimeFallbacks fallbacks = DependencyContext.Default
+                .RuntimeGraph
+                .FirstOrDefault(f => string.Equals(f.Runtime, currentRuntimeIdentifier, StringComparison.OrdinalIgnoreCase));
+
+            var rids = new List<string> { fallbacks.Runtime };
+            rids.AddRange(fallbacks.Fallbacks);
+
+            return rids.Select(r => Path.Combine(runtimesPath, r, ridSubFolder, assetFileName))
+                .FirstOrDefault(p => File.Exists(p));
         }
 
         internal string GetUnmanagedLibraryFileName(string unmanagedLibraryName)
