@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -90,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                             if (File.Exists(path))
                             {
-                                return Assembly.LoadFrom(path);
+                                return FunctionAssemblyLoadContext.Shared.LoadFromAssemblyPath(path);
                             }
 
                             return null;
