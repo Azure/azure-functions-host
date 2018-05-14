@@ -1,15 +1,25 @@
-﻿using System.Net;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Primitives;
+﻿#r "../bin/Microsoft.Xrm.Sdk.dll"
 
-public static IActionResult Run(HttpRequest req, TraceWriter log)
+using System;
+using Microsoft.Xrm.Sdk;
+
+ public static void Run(IExecutionContext context, IOrganizationService service, TraceWriter log)
 {
-    log.Info("C# HTTP trigger function processed a request.");
+    log.Info("got service");
+    string msg = $"[{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}]:  ****************** It works!!!";
+    log.Info(msg);
 
-    if (req.Query.TryGetValue("name", out StringValues value))
+    try
     {
-        return new OkObjectResult($"Hello, {value.ToString()}");
-    }
+        Entity e = new Entity("account");
+        e["name"] = "test";
 
-    return new BadRequestObjectResult("Please pass a name on the query string or in the request body");
+        service.Create(e);
+        log.Info("Created entity");
+    }
+    catch (Exception ex)
+    {
+        log.Error("Encountered error " + ex.ToString());
+        throw;
+    }
 }

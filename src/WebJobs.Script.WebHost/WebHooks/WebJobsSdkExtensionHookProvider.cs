@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         // Map from an extension name to a http handler.
         private IDictionary<string, HttpHandler> _customHttpHandlers = new Dictionary<string, HttpHandler>(StringComparer.OrdinalIgnoreCase);
+        private IDictionary<string, IWebSocketExtension> _customWebsocketHandlers = new Dictionary<string, IWebSocketExtension>(StringComparer.OrdinalIgnoreCase);
 
         public WebJobsSdkExtensionHookProvider(ISecretManager secretManager)
         {
@@ -33,18 +34,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return handler;
         }
 
+        public IWebSocketExtension GetWebSocketExtensionOrNull(string name)
+        {
+            IWebSocketExtension extension;
+            _customWebsocketHandlers.TryGetValue(name, out extension);
+            return extension;
+        }
+
         // Exposed to extensions to get the URL for their http handler.
         public Uri GetUrl(IExtensionConfigProvider extension)
         {
             var extensionType = extension.GetType();
+            string name = extensionType.Name;
             var handler = extension as HttpHandler;
-            if (handler == null)
+            if (handler != null)
             {
-                throw new InvalidOperationException($"Extension must implement IAsyncConverter<HttpRequestMessage, HttpResponseMessage> in order to receive webhooks");
+                _customHttpHandlers[name] = handler;
             }
 
-            string name = extensionType.Name;
-            _customHttpHandlers[name] = handler;
+            var websocketHandler = extension as IWebSocketExtension;
+            if (websocketHandler != null)
+            {
+                _customWebsocketHandlers[name] = websocketHandler;
+            }
+
+            if (handler == null && websocketHandler == null)
+            {
+                throw new InvalidOperationException("Provider must implement either IAsyncConverter<HttpRequestMessage, HttpResponseMessage> or IWebSocketExtension");
+            }
 
             return GetExtensionWebHookRoute(name);
         }
