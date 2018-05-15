@@ -348,7 +348,7 @@ message RpcException {
 message RpcHttp {
   string method = 1;
   string url = 2; 
-  map<string,string> headers = 3;
+  map<string,TypedData> headers = 3;
   TypedData body = 4;
   map<string,string> params = 10;
   string status_code = 12;
