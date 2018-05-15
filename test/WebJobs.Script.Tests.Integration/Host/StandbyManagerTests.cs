@@ -200,6 +200,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Equal(2, logLines.Count(p => p.Contains("Starting Host (HostId=placeholder-host")));
                 Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
                 Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
+                Assert.Equal(1, logLines.Count(p => p.Contains("Validating host assignment context")));
+                Assert.Equal(1, logLines.Count(p => p.Contains("Starting Assignment")));
+                Assert.Equal(1, logLines.Count(p => p.Contains("Applying 1 app setting(s)")));
+                Assert.Equal(1, logLines.Count(p => p.Contains($"Extracting files to '{_webHostSettings.ScriptPath}'")));
+                Assert.Equal(1, logLines.Count(p => p.Contains("Zip extraction complete")));
+                Assert.Equal(1, logLines.Count(p => p.Contains("Triggering specialization")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
                 Assert.Equal(1, logLines.Count(p => p.Contains($"Starting Host (HostId={_expectedHostId}")));
                 Assert.Contains("Node.js HttpTrigger function invoked.", logLines);

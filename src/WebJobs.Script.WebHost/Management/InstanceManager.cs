@@ -7,6 +7,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
@@ -27,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             _settingsManager = settingsManager;
             _webHostSettings = webHostSettings;
-            _logger = loggerFactory.CreateLogger(nameof(InstanceManager));
+            _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _client = client;
         }
 
