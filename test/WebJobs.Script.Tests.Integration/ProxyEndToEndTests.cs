@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpResponseMessage response = await _fixture.HttpClient.SendAsync(req);
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal("200", response.StatusCode.ToString("D"));
-            Assert.Equal(@"http://localhost/api/myroute/mysubroute/?a=1", content);
+            Assert.Equal(@"http://localhost/api/myroute%2Fmysubroute/?a=1", content);
         }
 
         [Fact]
@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var response = await _fixture.HttpClient.SendAsync(req);
             var content = await response.Content.ReadAsStringAsync();
             Assert.Equal("200", response.StatusCode.ToString("D"));
-            Assert.Equal(@"http://localhost/api/myroute/mysubroute?a=1", content);
+            Assert.Equal(@"http://localhost/api/myroute%2Fmysubroute?a=1", content);
         }
 
         [Fact]
