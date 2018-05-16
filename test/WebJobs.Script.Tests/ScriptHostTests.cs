@@ -1266,109 +1266,128 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ConfigureLoggerFactory_ApplicationInsights()
         {
-            var config = new ScriptHostConfiguration();
-            var mockTraceFactory = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
-            var loggerFactory = new TestLoggerFactory();
-            config.HostConfig.LoggerFactory = loggerFactory;
+            try
+            {
+                var config = new ScriptHostConfiguration();
+                var mockTraceFactory = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
+                var loggerFactory = new TestLoggerFactory();
+                config.HostConfig.LoggerFactory = loggerFactory;
 
-            // Make sure no App Insights is configured
-            var settingsManager = ScriptSettingsManager.Instance;
-            settingsManager.ApplicationInsightsInstrumentationKey = "Some_Instrumentation_Key";
+                // configure via AppSettings, because the test project has configured an
+                // empty value in app.config which we need to override
+                var settingsManager = ScriptSettingsManager.Instance;
+                ConfigurationManager.AppSettings[EnvironmentSettingNames.AppInsightsInstrumentationKey] = "Some_Instrumentation_Key";
 
-            var metricsLogger = new TestMetricsLogger();
-            config.HostConfig.AddService<IMetricsLogger>(metricsLogger);
+                var metricsLogger = new TestMetricsLogger();
+                config.HostConfig.AddService<IMetricsLogger>(metricsLogger);
 
-            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, () => true);
+                ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, () => true);
 
-            Assert.Equal(2, loggerFactory.Providers.Count);
+                Assert.Equal(2, loggerFactory.Providers.Count);
 
-            Assert.Equal(1, loggerFactory.Providers.OfType<FileLoggerProvider>().Count());
+                Assert.Equal(1, loggerFactory.Providers.OfType<FileLoggerProvider>().Count());
 
-            // The app insights logger is internal, so just check the name
-            ILoggerProvider appInsightsProvider = loggerFactory.Providers.Last();
-            Assert.Equal("ApplicationInsightsLoggerProvider", appInsightsProvider.GetType().Name);
+                // The app insights logger is internal, so just check the name
+                ILoggerProvider appInsightsProvider = loggerFactory.Providers.Last();
+                Assert.Equal("ApplicationInsightsLoggerProvider", appInsightsProvider.GetType().Name);
 
-            Assert.Equal(1, metricsLogger.LoggedEvents.Count);
-            Assert.Equal(MetricEventNames.ApplicationInsightsEnabled, metricsLogger.LoggedEvents[0]);
+                Assert.Equal(1, metricsLogger.LoggedEvents.Count);
+                Assert.Equal(MetricEventNames.ApplicationInsightsEnabled, metricsLogger.LoggedEvents[0]);
+            }
+            finally
+            {
+                // restore the empty value configured for tests in app.config
+                ConfigurationManager.AppSettings[EnvironmentSettingNames.AppInsightsInstrumentationKey] = string.Empty;
+            }
         }
 
         [Fact]
         public void DefaultLoggerFactory_BeginScope()
         {
-            var trace = new TestTraceWriter(TraceLevel.Info);
-            var config = new ScriptHostConfiguration();
-            var mockTraceFactory = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
-            mockTraceFactory
-                .Setup(f => f.Create("Test", null))
-                .Returns(trace);
-
-            var channel = new TestTelemetryChannel();
-            var builder = new TestChannelLoggerFactoryBuilder(channel);
-
-            config.LoggerFactoryBuilder = builder;
-            config.HostConfig.LoggerFactory = new LoggerFactory();
-
-            var settingsManager = ScriptSettingsManager.Instance;
-            settingsManager.ApplicationInsightsInstrumentationKey = TestChannelLoggerFactoryBuilder.ApplicationInsightsKey;
-
-            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, () => true);
-
-            // Create a logger and try out the configured factory. We need to pretend that it is coming from a
-            // function, so set the function name and the category appropriately.
-            var logger = config.HostConfig.LoggerFactory.CreateLogger(LogCategories.Function);
-
-            using (logger.BeginScope(new Dictionary<string, object>
+            try
             {
-                [ScriptConstants.LoggerFunctionNameKey] = "Test"
-            }))
-            {
-                // Now log as if from within a function.
+                var trace = new TestTraceWriter(TraceLevel.Info);
+                var config = new ScriptHostConfiguration();
+                var mockTraceFactory = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
+                mockTraceFactory
+                    .Setup(f => f.Create("Test", null))
+                    .Returns(trace);
 
-                // Test that both dictionaries and structured logs work as state
-                // and that nesting works as expected.
-                using (logger.BeginScope("{customKey1}", "customValue1"))
+                var channel = new TestTelemetryChannel();
+                var builder = new TestChannelLoggerFactoryBuilder(channel);
+
+                config.LoggerFactoryBuilder = builder;
+                config.HostConfig.LoggerFactory = new LoggerFactory();
+
+                // configure via AppSettings, because the test project has configured an
+                // empty value in app.config which we need to override
+                var settingsManager = ScriptSettingsManager.Instance;
+                ConfigurationManager.AppSettings[EnvironmentSettingNames.AppInsightsInstrumentationKey] = TestChannelLoggerFactoryBuilder.ApplicationInsightsKey;
+
+                ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, () => true);
+
+                // Create a logger and try out the configured factory. We need to pretend that it is coming from a
+                // function, so set the function name and the category appropriately.
+                var logger = config.HostConfig.LoggerFactory.CreateLogger(LogCategories.Function);
+
+                using (logger.BeginScope(new Dictionary<string, object>
                 {
-                    logger.LogInformation("1");
+                    [ScriptConstants.LoggerFunctionNameKey] = "Test"
+                }))
+                {
+                    // Now log as if from within a function.
 
-                    using (logger.BeginScope(new Dictionary<string, object>
+                    // Test that both dictionaries and structured logs work as state
+                    // and that nesting works as expected.
+                    using (logger.BeginScope("{customKey1}", "customValue1"))
                     {
-                        ["customKey2"] = "customValue2"
-                    }))
-                    {
-                        logger.LogInformation("2");
+                        logger.LogInformation("1");
+
+                        using (logger.BeginScope(new Dictionary<string, object>
+                        {
+                            ["customKey2"] = "customValue2"
+                        }))
+                        {
+                            logger.LogInformation("2");
+                        }
+
+                        logger.LogInformation("3");
                     }
 
-                    logger.LogInformation("3");
+                    using (logger.BeginScope("should not throw"))
+                    {
+                        logger.LogInformation("4");
+                    }
                 }
 
-                using (logger.BeginScope("should not throw"))
-                {
-                    logger.LogInformation("4");
-                }
+                Assert.Equal(4, trace.GetTraces().Count);
+                Assert.Equal(4, channel.Telemetries.Count);
+
+                var traces = channel.Telemetries.Cast<TraceTelemetry>().OrderBy(t => t.Message).ToArray();
+
+                // Every telemetry will have {originalFormat}, Category, Level, but we validate those elsewhere.
+                // We're only interested in the custom properties.
+                Assert.Equal("1", traces[0].Message);
+                Assert.Equal(4, traces[0].Properties.Count);
+                Assert.Equal("customValue1", traces[0].Properties["prop__customKey1"]);
+
+                Assert.Equal("2", traces[1].Message);
+                Assert.Equal(5, traces[1].Properties.Count);
+                Assert.Equal("customValue1", traces[1].Properties["prop__customKey1"]);
+                Assert.Equal("customValue2", traces[1].Properties["prop__customKey2"]);
+
+                Assert.Equal("3", traces[2].Message);
+                Assert.Equal(4, traces[2].Properties.Count);
+                Assert.Equal("customValue1", traces[2].Properties["prop__customKey1"]);
+
+                Assert.Equal("4", traces[3].Message);
+                Assert.Equal(3, traces[3].Properties.Count);
             }
-
-            Assert.Equal(4, trace.GetTraces().Count);
-            Assert.Equal(4, channel.Telemetries.Count);
-
-            var traces = channel.Telemetries.Cast<TraceTelemetry>().OrderBy(t => t.Message).ToArray();
-
-            // Every telemetry will have {originalFormat}, Category, Level, but we validate those elsewhere.
-            // We're only interested in the custom properties.
-            Assert.Equal("1", traces[0].Message);
-            Assert.Equal(4, traces[0].Properties.Count);
-            Assert.Equal("customValue1", traces[0].Properties["prop__customKey1"]);
-
-            Assert.Equal("2", traces[1].Message);
-            Assert.Equal(5, traces[1].Properties.Count);
-            Assert.Equal("customValue1", traces[1].Properties["prop__customKey1"]);
-            Assert.Equal("customValue2", traces[1].Properties["prop__customKey2"]);
-
-            Assert.Equal("3", traces[2].Message);
-            Assert.Equal(4, traces[2].Properties.Count);
-            Assert.Equal("customValue1", traces[2].Properties["prop__customKey1"]);
-
-            Assert.Equal("4", traces[3].Message);
-            Assert.Equal(3, traces[3].Properties.Count);
+            finally
+            {
+                // restore the empty value configured for tests in app.config
+                ConfigurationManager.AppSettings[EnvironmentSettingNames.AppInsightsInstrumentationKey] = string.Empty;
+            }
         }
 
         [Fact]

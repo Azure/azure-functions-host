@@ -2,14 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
     public class ScriptSettingsManager
     {
         private static ScriptSettingsManager _instance = new ScriptSettingsManager();
-        private readonly ConcurrentDictionary<string, string> _settingsCache = new ConcurrentDictionary<string, string>();
 
         // for testing
         public ScriptSettingsManager()
@@ -40,19 +38,16 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             get
             {
-                return _settingsCache.GetOrAdd(nameof(AzureWebsiteDefaultSubdomain), k =>
+                string siteHostName = GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
+
+                int? periodIndex = siteHostName?.IndexOf('.');
+
+                if (periodIndex != null && periodIndex > 0)
                 {
-                    string siteHostName = GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
+                    return siteHostName.Substring(0, periodIndex.Value);
+                }
 
-                    int? periodIndex = siteHostName?.IndexOf('.');
-
-                    if (periodIndex != null && periodIndex > 0)
-                    {
-                        return siteHostName.Substring(0, periodIndex.Value);
-                    }
-
-                    return null;
-                });
+                return null;
             }
         }
 
@@ -89,52 +84,28 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public virtual string ApplicationInsightsInstrumentationKey
         {
-            get => GetSettingFromCache(EnvironmentSettingNames.AppInsightsInstrumentationKey);
-            set => UpdateSettingInCache(EnvironmentSettingNames.AppInsightsInstrumentationKey, value);
-        }
-
-        private string GetSettingFromCache(string settingKey)
-        {
-            if (string.IsNullOrEmpty(settingKey))
-            {
-                throw new ArgumentNullException(nameof(settingKey));
-            }
-
-            return _settingsCache.GetOrAdd(settingKey, (key) => Utility.GetSettingFromConfigOrEnvironment(key));
-        }
-
-        private void UpdateSettingInCache(string settingKey, string settingValue)
-        {
-            if (string.IsNullOrEmpty(settingKey))
-            {
-                throw new ArgumentNullException(nameof(settingKey));
-            }
-
-            _settingsCache.AddOrUpdate(settingKey, settingValue, (a, b) => settingValue);
-        }
-
-        public virtual void Reset()
-        {
-            _settingsCache.Clear();
+            get => Utility.GetSettingFromConfigOrEnvironment(EnvironmentSettingNames.AppInsightsInstrumentationKey);
+            set => SetSetting(EnvironmentSettingNames.AppInsightsInstrumentationKey, value);
         }
 
         public virtual string GetSetting(string settingKey)
         {
-            string settingValue = null;
-            if (!string.IsNullOrEmpty(settingKey))
+            if (string.IsNullOrEmpty(settingKey))
             {
-                settingValue = Environment.GetEnvironmentVariable(settingKey);
+                throw new ArgumentNullException(nameof(settingKey));
             }
 
-            return settingValue;
+            return Environment.GetEnvironmentVariable(settingKey);
         }
 
         public virtual void SetSetting(string settingKey, string settingValue)
         {
-            if (!string.IsNullOrEmpty(settingKey))
+            if (string.IsNullOrEmpty(settingKey))
             {
-                Environment.SetEnvironmentVariable(settingKey, settingValue);
+                throw new ArgumentNullException(nameof(settingKey));
             }
+
+            Environment.SetEnvironmentVariable(settingKey, settingValue);
         }
     }
 }

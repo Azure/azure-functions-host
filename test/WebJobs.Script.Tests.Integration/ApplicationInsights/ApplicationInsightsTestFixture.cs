@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using System.Net.Http;
 using System.Web.Http;
@@ -41,7 +42,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             var resolver = _config.DependencyResolver;
             var hostConfig = resolver.GetService<WebHostResolver>().GetScriptHostConfiguration(HostSettings);
 
-            _settingsManager.ApplicationInsightsInstrumentationKey = TestChannelLoggerFactoryBuilder.ApplicationInsightsKey;
+            // configure via AppSettings, because the test project has configured an
+            // empty value in app.config which we need to override
+            ConfigurationManager.AppSettings[EnvironmentSettingNames.AppInsightsInstrumentationKey] = TestChannelLoggerFactoryBuilder.ApplicationInsightsKey;
 
             InitializeConfig(hostConfig);
 
@@ -74,6 +77,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public void Dispose()
         {
+            ConfigurationManager.AppSettings[EnvironmentSettingNames.AppInsightsInstrumentationKey] = string.Empty;
+
             _httpServer?.Dispose();
             HttpClient?.Dispose();
         }
