@@ -17,7 +17,7 @@ From within the Azure Functions language worker repo:
 3.	Add new path in language worker repo to .gitignore file
     -   In .gitignore, add path in language worker repo
 4.	Finalize with commit
-    -	`git commit -m “Added subtree from https://github.com/azure/azure-functions-language-worker-protobuf. Branch: <version branch>. Commit: <latest protobuf commit hash>”`
+    -	`git commit -m "Added subtree from https://github.com/azure/azure-functions-language-worker-protobuf. Branch: <version branch>. Commit: <latest protobuf commit hash>"`
     -	`git push`
 
 ## Pulling Updates
@@ -27,9 +27,10 @@ From within the Azure Functions language worker repo:
     -	`git remote add proto-file https://github.com/mhoeger/azure-functions-language-worker-protobuf.git`
     -	`git fetch proto-file`
 2.	Merge updates
-    -	`git merge -X subtree=<path in language worker repo> --squash proto-file/<version branch>`
+    -   `git merge -s subtree proto-file/<version branch> --squash --allow-unrelated-histories` 
+        -   You can also merge with an explicit path to subtree: `git merge -X subtree=<path in language worker repo> --squash proto-file/<version branch> --allow-unrelated-histories`
 3.	Finalize with commit
-    -	`git commit -m "Updated subtree from https://github.com/azure/azure-functions-language-worker-protobuf. Branch: <version branch>. Commit: <latest protobuf commit hash>”`
+    -	`git commit -m "Updated subtree from https://github.com/azure/azure-functions-language-worker-protobuf. Branch: <version branch>. Commit: <latest protobuf commit hash>"`
     -	`git push`
 	
 ## Consuming FunctionRPC.proto
