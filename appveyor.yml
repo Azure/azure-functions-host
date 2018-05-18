@@ -40,16 +40,12 @@ for:
       $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
 
       Install-Product node 8.4.0 x86
-  install_dotnet_script_x86:
   - ps: |
-      $dotnetversion = 2.1.200
-      $architechture = x86
-      .\dotnet-install.ps1 -Version $dotnetversion -Architechture $architechture
-  install_dotnet_script_x64:
+       $architechture = x86
+      .\dotnet-install.ps1 -Version -Architechture $architechture
   - ps: |
-      $dotnetversion = 2.1.200
       $architechture = x64
-      .\dotnet-install.ps1 -Version $dotnetversion -Architechture $architechture
+      .\dotnet-install.ps1 -Version -Architechture $architechture
   build_script:
   - ps: |
       $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
