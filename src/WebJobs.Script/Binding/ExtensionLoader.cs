@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         private void LoadExtensions(Assembly assembly, string locationHint)
         {
-            foreach (var type in assembly.ExportedTypes)
+            foreach (var type in assembly.ExportedTypes.Where(p => !p.IsAbstract))
             {
                 LoadIfExtensionType(type, locationHint);
             }
