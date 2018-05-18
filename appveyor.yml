@@ -42,10 +42,10 @@ for:
       Install-Product node 8.4.0 x86
   - ps: |
        $architechture = x86
-      .\dotnet-install.ps1 -Version -Architechture $architechture
+      .\dotnet-install.ps1 -Architechture $architechture
   - ps: |
       $architechture = x64
-      .\dotnet-install.ps1 -Version -Architechture $architechture
+      .\dotnet-install.ps1 -Architechture $architechture
   build_script:
   - ps: |
       $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
