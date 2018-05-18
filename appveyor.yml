@@ -29,9 +29,7 @@ for:
       if ($env:FUNCTIONS_NIGHTLY -eq "1") {
         $version = Get-Date -Format "yyyyMMdd-HHmm"
         Update-AppveyorBuild -Version $version -Message "Functions Scheduled Build"
-      }
-  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
-    
+      }    
   
   max_jobs: 1
   clone_folder: c:\azure-webjobs-sdk-script
@@ -40,9 +38,6 @@ for:
       $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
 
       Install-Product node 8.4.0 x86
-  - ps: 
-      # https://github.com/dotnet/cli/blob/master/scripts/obtain/dotnet-install.ps1
-      .\dotnet-install.ps1 -Version 2.1.200 -Architecture x64
   - ps: 
       # https://github.com/dotnet/cli/blob/master/scripts/obtain/dotnet-install.ps1
       .\dotnet-install.ps1 -Version 2.1.200 -Architecture x86
