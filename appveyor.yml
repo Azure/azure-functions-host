@@ -57,7 +57,7 @@ for:
       Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
   test_script:
   - ps: >
-      $dotnetx86 = ${env:ProgramFiles(x86)}+"\dotnet\dotnet.exe"
+      $dotnetx86 = Join-Path ${env:ProgramFiles(x86)} dotnet\dotnet.exe
       $success = $true
       
 
