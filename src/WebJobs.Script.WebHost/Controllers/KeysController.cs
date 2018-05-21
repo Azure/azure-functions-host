@@ -23,14 +23,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private const string MasterKeyName = "_master";
 
         private static readonly Lazy<Dictionary<string, string>> EmptyKeys = new Lazy<Dictionary<string, string>>(() => new Dictionary<string, string>());
-        private readonly WebScriptHostManager _scriptHostManager;
         private readonly ISecretManager _secretManager;
         private readonly TraceWriter _traceWriter;
         private readonly ILogger _logger;
 
-        public KeysController(WebScriptHostManager scriptHostManager, ISecretManager secretManager, TraceWriter traceWriter, ILoggerFactory loggerFactory)
+        public KeysController(ISecretManager secretManager, TraceWriter traceWriter, ILoggerFactory loggerFactory)
         {
-            _scriptHostManager = scriptHostManager;
             _secretManager = secretManager;
             _traceWriter = traceWriter.WithDefaults($"{ScriptConstants.TraceSourceSecretManagement}.Api");
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryKeysController);
@@ -40,8 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/functions/{name}/keys")]
         public async Task<IHttpActionResult> Get(string name)
         {
-            IDictionary<string, string> functionKeys = await GetFunctionKeys(name);
-            return GetKeysResult(functionKeys);
+            var keys = await GetFunctionKeys(name);
+            return GetKeysResult(keys);
         }
 
         [HttpGet]
@@ -50,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             string hostKeyScope = GetHostKeyScopeForRequest();
 
-            Dictionary<string, string> keys = await GetHostSecretsByScope(hostKeyScope);
+            var keys = await GetHostSecretsByScope(hostKeyScope);
             return GetKeysResult(keys);
         }
 
@@ -59,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public async Task<IHttpActionResult> Get(string functionName, string name)
         {
             IDictionary<string, string> functionKeys = await GetFunctionKeys(functionName);
-            if (functionKeys.TryGetValue(name, out string keyValue))
+            if (functionKeys != null && functionKeys.TryGetValue(name, out string keyValue))
             {
                 var keyResponse = ApiModelUtility.CreateApiModel(new { name = name, value = keyValue }, Request);
                 return Ok(keyResponse);
@@ -88,11 +86,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private async Task<IDictionary<string, string>> GetFunctionKeys(string functionName)
         {
-            if (!_scriptHostManager.Instance.IsFunction(functionName))
-            {
-                throw new HttpResponseException(HttpStatusCode.NotFound);
-            }
-
             return await _secretManager.GetFunctionSecretsAsync(functionName);
         }
 
@@ -134,6 +127,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private IHttpActionResult GetKeysResult(IDictionary<string, string> keys)
         {
+            if (keys == null)
+            {
+                return NotFound();
+            }
+
             keys = keys ?? EmptyKeys.Value;
             var keysContent = new
             {
@@ -157,11 +155,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private async Task<IHttpActionResult> AddOrUpdateSecretAsync(string keyName, string value, string keyScope, ScriptSecretsType secretsType)
         {
-            if (secretsType == ScriptSecretsType.Function && keyScope != null && !_scriptHostManager.Instance.IsFunction(keyScope))
-            {
-                return NotFound();
-            }
-
             KeyOperationResult operationResult;
             if (secretsType == ScriptSecretsType.Host && string.Equals(keyName, MasterKeyName, StringComparison.OrdinalIgnoreCase))
             {
@@ -231,10 +224,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return BadRequest("Invalid key name.");
             }
 
-            if ((secretsType == ScriptSecretsType.Function && !_scriptHostManager.Instance.IsFunction(keyScope)) ||
-                !await _secretManager.DeleteSecretAsync(keyName, keyScope, secretsType))
+            if (!await _secretManager.DeleteSecretAsync(keyName, keyScope, secretsType))
             {
-                // Either the function or the key were not found
+                // the key was not found
                 return NotFound();
             }
 
