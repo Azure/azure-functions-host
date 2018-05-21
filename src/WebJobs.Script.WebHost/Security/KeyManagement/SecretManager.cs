@@ -69,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 if (hostSecrets == null)
                 {
+                    // host secrets do not yet exist so generate them
                     _logger.LogDebug(Resources.TraceHostSecretGeneration);
                     hostSecrets = GenerateHostSecrets();
                     await PersistSecretsAsync(hostSecrets);
@@ -122,6 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 FunctionSecrets secrets = await LoadFunctionSecretsAsync(functionName);
                 if (secrets == null)
                 {
+                    // no secrets exist for this function so generate them
                     string message = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
                     _logger.LogDebug(message);
                     secrets = new FunctionSecrets
