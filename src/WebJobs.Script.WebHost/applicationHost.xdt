@@ -10,4 +10,9 @@
       </site>
     </sites>
   </system.applicationHost>
+  <system.webServer>
+    <globalModules>
+      <add name="AspNetCoreModule" image="%XDT_EXTENSIONPATH%\ancm\aspnetcore.dll" xdt:Transform="SetAttributes" xdt:Locator="Match(name)" />
+    </globalModules>
+  </system.webServer>
 </configuration>
