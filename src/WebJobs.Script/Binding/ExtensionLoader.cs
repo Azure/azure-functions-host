@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                             if (File.Exists(path))
                             {
-                                return Assembly.LoadFrom(path);
+                                return FunctionAssemblyLoadContext.Shared.LoadFromAssemblyPath(path, true);
                             }
 
                             return null;
