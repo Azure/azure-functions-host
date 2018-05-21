@@ -51,10 +51,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if (extensionName != null && extensionVersion != null)
             {
                 Host.SetNugetPackageSources("http://www.myget.org/F/azure-appservice/api/v2", "https://api.nuget.org/v3/index.json");
-                Host.InstallBindingExtension(extensionName, extensionVersion).Wait();
+                Host.InstallBindingExtension(extensionName, extensionVersion).Wait(TimeSpan.FromSeconds(30));
             }
 
-            Host.StartAsync().Wait();
+            Host.StartAsync().Wait(TimeSpan.FromSeconds(30));
         }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
