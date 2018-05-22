@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Net.Http;
 using Autofac;
@@ -119,6 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.RegisterType<WebFunctionsManager>().As<IWebFunctionsManager>().SingleInstance();
             builder.RegisterType<InstanceManager>().As<IInstanceManager>().SingleInstance();
             builder.Register(_ => new HttpClient()).SingleInstance();
+            builder.Register<IFileSystem>(_ => FileUtility.Instance).SingleInstance();
             builder.RegisterType<VirtualFileSystem>();
             builder.RegisterType<VirtualFileSystemMiddleware>();
 

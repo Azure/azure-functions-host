@@ -1117,15 +1117,8 @@ namespace Microsoft.Azure.WebJobs.Script
             try
             {
                 // read the function config
-                string functionConfigPath = Path.Combine(scriptDir, ScriptConstants.FunctionMetadataFileName);
                 string json = null;
-                try
-                {
-                    json = fileSystem != null
-                        ? fileSystem.File.ReadAllText(functionConfigPath)
-                        : FileUtility.ReadAllText(functionConfigPath);
-                }
-                catch (FileNotFoundException)
+                if (!TryReadFunctionConfig(scriptDir, out json, fileSystem))
                 {
                     // not a function directory
                     return null;
@@ -1193,6 +1186,27 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return null;
+        }
+
+        internal static bool TryReadFunctionConfig(string scriptDir, out string json, IFileSystem fileSystem = null)
+        {
+            json = null;
+            fileSystem = fileSystem ?? FileUtility.Instance;
+
+            // read the function config
+            string functionConfigPath = Path.Combine(scriptDir, ScriptConstants.FunctionMetadataFileName);
+            try
+            {
+                json = fileSystem.File.ReadAllText(functionConfigPath);
+            }
+            catch (IOException ex) when
+                (ex is FileNotFoundException || ex is DirectoryNotFoundException)
+            {
+                // not a function directory
+                return false;
+            }
+
+            return true;
         }
 
         private Collection<FunctionMetadata> LoadProxyRoutes(string proxiesJson)

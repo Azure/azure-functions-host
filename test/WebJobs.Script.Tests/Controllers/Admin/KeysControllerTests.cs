@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.IO.Abstractions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -36,16 +38,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testFunctions = new Collection<FunctionDescriptor>();
             _testFunctionErrors = new Dictionary<string, Collection<string>>();
 
-            var config = new ScriptHostConfiguration();
+            string rootScriptPath = @"c:\test\functions";
             var environment = new NullScriptHostEnvironment();
             var eventManager = new Mock<IScriptEventManager>();
             var mockRouter = new Mock<IWebJobsRouter>();
 
-            WebHostSettings settings = new WebHostSettings();
-            settings.SecretsPath = _secretsDirectory.Path;
+            var settings = new WebHostSettings()
+            {
+                ScriptPath = rootScriptPath,
+                SecretsPath = _secretsDirectory.Path
+            };
             _secretsManagerMock = new Mock<ISecretManager>(MockBehavior.Strict);
 
-            _testController = new KeysController(_secretsManagerMock.Object, new LoggerFactory());
+            var fileSystem = new Mock<IFileSystem>();
+            var fileBase = new Mock<FileBase>();
+            var dirBase = new Mock<DirectoryBase>();
+
+            fileSystem.SetupGet(f => f.File).Returns(fileBase.Object);
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "TestFunction1", ScriptConstants.FunctionMetadataFileName))).Returns("{}");
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "TestFunction2", ScriptConstants.FunctionMetadataFileName))).Returns("{}");
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "DNE", ScriptConstants.FunctionMetadataFileName))).Throws(new DirectoryNotFoundException());
+
+            _testController = new KeysController(settings, _secretsManagerMock.Object, new LoggerFactory(), fileSystem.Object);
 
             var keys = new Dictionary<string, string>
             {
@@ -76,10 +90,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetKeys_NoSecrets_ReturnsNotFound()
+        public async Task GetKeys_NotAFunction_ReturnsNotFound()
         {
             var result = (StatusCodeResult)await _testController.Get("DNE");
 
+            Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetKeys_NotAKey_ReturnsNotFound()
+        {
+            var result = (StatusCodeResult)await _testController.Get("TestFunction1", "dne");
+
+            Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+        }
+
+        [Fact]
+        public async Task PutKey_NotAFunction_ReturnsNotFound()
+        {
+            var key = new Key("key2", "secret2");
+
+            var result = (StatusCodeResult)(await _testController.Put("DNE", key.Name, key));
             Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
         }
 
@@ -103,6 +134,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = (StatusCodeResult)(await _testController.Delete("TestFunction1", "key2"));
             Assert.Equal(StatusCodes.Status204NoContent, result.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeleteKey_NotAFunction_ReturnsNotFound()
+        {
+            var result = (StatusCodeResult)(await _testController.Delete("DNE", "key2"));
+            Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+        }
+
+
+        [Fact]
+        public async Task DeleteKey_NotAKey_ReturnsNotFound()
+        {
+            _secretsManagerMock.Setup(p => p.DeleteSecretAsync("dne", "TestFunction1", ScriptSecretsType.Function)).ReturnsAsync(false);
+
+            var result = (StatusCodeResult)(await _testController.Delete("TestFunction1", "dne"));
+            Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeleteKey_InvalidKeyName_ReturnsBadRequest()
+        {
+            var result = (BadRequestObjectResult)(await _testController.Delete("TestFunction1", "_test"));
+            Assert.Equal("Invalid key name.", result.Value);
         }
 
         protected virtual void Dispose(bool disposing)
