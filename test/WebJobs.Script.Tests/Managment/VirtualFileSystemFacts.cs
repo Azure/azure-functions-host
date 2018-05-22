@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -219,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             return new VirtualFileSystem(new WebHostSettings
             {
                 ScriptPath = SiteRootPath
-            });
+            }, NullLoggerFactory.Instance);
         }
 
         public void Dispose()
