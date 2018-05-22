@@ -52,6 +52,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Theory]
+        [InlineData(1, "http://sitename/operations/settriggers")]
+        [InlineData(0, "https://sitename/operations/settriggers")]
+        public void Disables_Ssl_If_SkipSslValidation_Enabled(int skipSslValidation, string syncTriggersUri)
+        {
+            var vars = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.SkipSslValidation, skipSslValidation.ToString() },
+                { EnvironmentSettingNames.AzureWebsiteHostName, "sitename" },
+            };
+
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                var httpRequest = WebFunctionsManager.BuildSyncTriggersRequest();
+                Assert.Equal(syncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
+                Assert.Equal(HttpMethod.Post, httpRequest.Method);
+            }
+        }
+
         private static HttpClient CreateHttpClient(StringBuilder writeContent)
         {
             return new HttpClient(new MockHttpHandler(writeContent));
