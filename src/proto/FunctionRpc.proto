@@ -2,7 +2,7 @@ syntax = "proto3";
 // protobuf vscode extension: https://marketplace.visualstudio.com/items?itemName=zxh404.vscode-proto3
 
 option java_multiple_files = true;
-option java_package = "com.microsoft.azure.webjobs.script.rpc.messages";
+option java_package = "com.microsoft.azure.functions.rpc.messages";
 option java_outer_classname = "FunctionProto";
 option objc_class_prefix = "FunctionRpc";
 option csharp_namespace = "Microsoft.Azure.WebJobs.Script.Grpc.Messages";

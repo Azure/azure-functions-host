@@ -56,7 +56,9 @@ mkdir %OUTDIR%
 --TODO--
 
 ## JavaScript
---TODO--
+Maven plugin : [protobuf-maven-plugin](https://www.xolstice.org/protobuf-maven-plugin/)
+In pom.xml add following under configuration for this plugin
+<protoSourceRoot>${basedir}/<path to this repo>/azure-functions-language-worker-protobuf/src/proto</protoSourceRoot>
 
 ## Python
 --TODO
