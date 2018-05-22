@@ -111,6 +111,33 @@
         "route": "/api/{*path}"
       },
       "backendUri": "https://localhost/api/{path}"
+    },
+    "staticBackendUrlTest": {
+      "matchCondition": {
+        "route": "staticBackendUrlTest/{*path}"
+      },
+      "backendUri": "http://localhost/api/myroute/mysubroute?a=1",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
+    },
+    "wildcardBackendUrlTest": {
+      "matchCondition": {
+        "route": "wildcardBackendUrlTest/{*path}"
+      },
+      "backendUri": "http://localhost/api/{path}?a=1",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
+    },
+    "simpleParamBackendUrlTest": {
+      "matchCondition": {
+        "route": "simpleParamBackendUrlTest/myroute/{path}"
+      },
+      "backendUri": "http://localhost/api/myroute/{path}?a=1",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
     }
   }
 }

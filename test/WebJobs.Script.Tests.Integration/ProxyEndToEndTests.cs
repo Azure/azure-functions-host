@@ -124,6 +124,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task TrailingSlashRemoved()
+        {
+            HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, $"staticBackendUrlTest/blahblah/");
+            req.Headers.Add("return_incoming_url", "1");
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(req);
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("200", response.StatusCode.ToString("D"));
+            Assert.Equal(@"http://localhost/api/myroute/mysubroute?a=1", content);
+        }
+
+        [Fact]
+        public async Task TrailingSlashRemoved2()
+        {
+            HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, $"simpleParamBackendUrlTest/myroute/mysubroute/");
+            req.Headers.Add("return_incoming_url", "1");
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(req);
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("200", response.StatusCode.ToString("D"));
+            Assert.Equal(@"http://localhost/api/myroute/mysubroute?a=1", content);
+        }
+
+        [Fact]
+        public async Task TrailingSlashKept()
+        {
+            HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, $"wildcardBackendUrlTest/myroute/mysubroute/");
+            req.Headers.Add("return_incoming_url", "1");
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(req);
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("200", response.StatusCode.ToString("D"));
+            Assert.Equal(@"http://localhost/api/myroute%2Fmysubroute/?a=1", content);
+        }
+
+        [Fact]
+        public async Task TrailingSlashKept2()
+        {
+            var req = new HttpRequestMessage(HttpMethod.Get, $"wildcardBackendUrlTest/myroute/mysubroute");
+            req.Headers.Add("return_incoming_url", "1");
+            var response = await _fixture.HttpClient.SendAsync(req);
+            var content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("200", response.StatusCode.ToString("D"));
+            Assert.Equal(@"http://localhost/api/myroute%2Fmysubroute?a=1", content);
+        }
+
+        [Fact]
         public async Task CatchAllWithCustomRoutes()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"proxy/api/myroute/mysubroute");
