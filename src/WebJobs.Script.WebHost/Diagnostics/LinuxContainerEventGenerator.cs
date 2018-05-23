@@ -11,16 +11,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {
         private const string EventTimestampFormat = "MM/dd/yyyy hh:mm:ss.fff tt";
         private readonly Action<string> _writeEvent;
-        private readonly bool _consoleEnabled = true;
 
         public LinuxContainerEventGenerator(Action<string> writeEvent = null)
         {
             _writeEvent = writeEvent ?? ConsoleWriter;
-
-            if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingDisabled) == "1")
-            {
-                _consoleEnabled = false;
-            }
         }
 
         // Note: the strange escaping of backslashes in these expressions for string literals (e.g. '\\\\\"') is because
@@ -60,12 +54,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
         }
 
-        private void ConsoleWriter(string evt)
+        private static void ConsoleWriter(string evt)
         {
-            if (_consoleEnabled)
+            if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingDisabled) == "1")
             {
-                Console.WriteLine(evt);
+                return;
             }
+            Console.WriteLine(evt);
         }
 
         internal static string NormalizeString(string value)
