@@ -71,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         private ScriptSettingsManager _settingsManager;
         private bool _shutdownScheduled;
+        private bool _restartdScheduled;
         private ILogger _startupLogger;
         private FileWatcherEventSource _fileEventSource;
         private IDisposable _fileEventsSubscription;
@@ -1933,6 +1934,20 @@ namespace Microsoft.Azure.WebJobs.Script
                 ScheduleRestartAsync(shutdown).ContinueWith(t => TraceWriter.Error($"Error restarting host (full shutdown: {shutdown})", t.Exception),
                     TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
             }
+            else
+            {
+                // If there's file system activity still on the fly, delay shutdown/restart
+                if (_shutdownScheduled)
+                {
+                    ScheduleRestartAsync(true).ContinueWith(t => TraceWriter.Error($"Error restarting host (full shutdown: {true})", t.Exception),
+                        TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+                }
+                else if (_restartdScheduled)
+                {
+                    ScheduleRestartAsync(false).ContinueWith(t => TraceWriter.Error($"Error restarting host (full shutdown: {false})", t.Exception),
+                        TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+                }
+            }
         }
 
         private async Task ScheduleRestartAsync(bool shutdown)
@@ -1944,6 +1959,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
+                _restartdScheduled = true;
                 await _restart();
             }
         }
