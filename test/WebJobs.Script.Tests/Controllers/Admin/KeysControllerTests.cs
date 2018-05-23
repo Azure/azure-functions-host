@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Abstractions;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -35,18 +37,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _settingsManager = ScriptSettingsManager.Instance;
             _testFunctions = new Collection<FunctionDescriptor>();
 
-            var config = new ScriptHostConfiguration();
-            config.TraceWriter = new TestTraceWriter(TraceLevel.Info);
+            string rootScriptPath = @"c:\test\functions";
             var environment = new NullScriptHostEnvironment();
             var eventManager = new Mock<IScriptEventManager>();
 
-            WebHostSettings settings = new WebHostSettings();
-            settings.SecretsPath = _secretsDirectory.Path;
+            var settings = new WebHostSettings()
+            {
+                ScriptPath = rootScriptPath,
+                SecretsPath = _secretsDirectory.Path
+            };
             _secretsManagerMock = new Mock<ISecretManager>(MockBehavior.Strict);
 
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            var fileSystem = new Mock<IFileSystem>();
+            var fileBase = new Mock<FileBase>();
+            var dirBase = new Mock<DirectoryBase>();
 
-            _testController = new KeysController(_secretsManagerMock.Object, traceWriter, null);
+            fileSystem.SetupGet(f => f.File).Returns(fileBase.Object);
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "TestFunction1", ScriptConstants.FunctionMetadataFileName))).Returns("{}");
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "TestFunction2", ScriptConstants.FunctionMetadataFileName))).Returns("{}");
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "DNE", ScriptConstants.FunctionMetadataFileName))).Throws(new DirectoryNotFoundException());
+
+            _testController = new KeysController(settings, _secretsManagerMock.Object, traceWriter, null, fileSystem.Object);
 
             var keys = new Dictionary<string, string>
             {
@@ -76,10 +88,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetKeys_NoSecrets_ReturnsNotFound()
+        public async Task GetKeys_NotAFunction_ReturnsNotFound()
         {
             var result = await _testController.Get("DNE");
+            Assert.True(result is NotFoundResult);
+        }
 
+        [Fact]
+        public async Task GetKeys_NotAKey_ReturnsNotFound()
+        {
+            var result = await _testController.Get("TestFunction1", "dne");
+            Assert.True(result is NotFoundResult);
+        }
+
+        [Fact]
+        public async Task PutKey_NotAFunction_ReturnsNotFound()
+        {
+            var key = new Key("key2", "secret2");
+
+            var result = await _testController.Put("DNE", key.Name, key);
             Assert.True(result is NotFoundResult);
         }
 
@@ -107,6 +134,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = (StatusCodeResult)(await _testController.Delete("TestFunction1", "key2"));
             Assert.Equal(HttpStatusCode.NoContent, result.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeleteKey_NotAFunction_ReturnsNotFound()
+        {
+            var result = await _testController.Delete("DNE", "key2");
+            Assert.True(result is NotFoundResult);
+        }
+
+        [Fact]
+        public async Task DeleteKey_NotAKey_ReturnsNotFound()
+        {
+            _secretsManagerMock.Setup(p => p.DeleteSecretAsync("dne", "TestFunction1", ScriptSecretsType.Function)).ReturnsAsync(false);
+
+            var result = await _testController.Delete("TestFunction1", "dne");
+            Assert.True(result is NotFoundResult);
+        }
+
+        [Fact]
+        public async Task DeleteKey_InvalidKeyName_ReturnsBadRequest()
+        {
+            var result = (BadRequestErrorMessageResult)(await _testController.Delete("TestFunction1", "_test"));
+            Assert.Equal("Invalid key name.", result.Message);
         }
 
         protected virtual void Dispose(bool disposing)

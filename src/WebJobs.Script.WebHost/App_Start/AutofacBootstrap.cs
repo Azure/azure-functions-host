@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.IO.Abstractions;
 using Autofac;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -16,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             builder.RegisterInstance(settingsManager);
             builder.RegisterInstance(settings);
+            builder.Register<IFileSystem>(_ => FileUtility.Instance).SingleInstance();
 
             builder.RegisterType<WebHostResolver>().SingleInstance();
             builder.RegisterType<DefaultSecretManagerFactory>().As<ISecretManagerFactory>().SingleInstance();

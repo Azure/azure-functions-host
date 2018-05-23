@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.IO.Abstractions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,11 +11,20 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class FileUtility
     {
+        private static IFileSystem _default = new FileSystem();
+        private static IFileSystem _instance;
+
+        public static IFileSystem Instance
+        {
+            get { return _instance ?? _default; }
+            set { _instance = value; }
+        }
+
         public static void EnsureDirectoryExists(string path)
         {
-            if (!Directory.Exists(path))
+            if (!Instance.Directory.Exists(path))
             {
-                Directory.CreateDirectory(path);
+                Instance.Directory.CreateDirectory(path);
             }
         }
 
@@ -22,9 +32,9 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             return Task.Run(() =>
             {
-                if (Directory.Exists(path))
+                if (Instance.Directory.Exists(path))
                 {
-                    Directory.Delete(path, recursive);
+                    Instance.Directory.Delete(path, recursive);
                 }
             });
         }
@@ -33,9 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             return Task.Run(() =>
             {
-                if (File.Exists(path))
+                if (Instance.File.Exists(path))
                 {
-                    File.Delete(path);
+                    Instance.File.Delete(path);
                     return true;
                 }
                 return false;
@@ -55,7 +65,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             encoding = encoding ?? Encoding.UTF8;
-            using (var writer = new StreamWriter(path, false, encoding, 4096))
+            using (Stream fileStream = OpenFile(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
+            using (var writer = new StreamWriter(fileStream, encoding, 4096))
             {
                 await writer.WriteAsync(contents);
             }
@@ -69,10 +80,18 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             encoding = encoding ?? Encoding.UTF8;
-            using (var reader = new StreamReader(path, encoding, true, 4096))
+            using (var fileStream = OpenFile(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            using (var reader = new StreamReader(fileStream, encoding, true, 4096))
             {
                 return await reader.ReadToEndAsync();
             }
+        }
+
+        public static string ReadAllText(string path) => Instance.File.ReadAllText(path);
+
+        public static Stream OpenFile(string path, FileMode mode, FileAccess access = FileAccess.ReadWrite, FileShare share = FileShare.None)
+        {
+            return Instance.File.Open(path, mode, access, share);
         }
 
         public static string GetRelativePath(string path1, string path2)
@@ -124,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             return Task.Run(() =>
             {
-                return Directory.GetFiles(path, prefix);
+                return Instance.Directory.GetFiles(path, prefix);
             });
         }
     }

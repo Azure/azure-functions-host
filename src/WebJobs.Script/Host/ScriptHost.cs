@@ -1093,59 +1093,66 @@ namespace Microsoft.Azure.WebJobs.Script
                 traceWriter.Info(msg);
             }
 
-            foreach (var scriptDir in functionDirectories)
+            foreach (var functionDirectory in functionDirectories)
             {
-                string functionName = null;
-                try
+                var function = ReadFunctionMetadata(functionDirectory, traceWriter, logger, functionErrors, settingsManager, functionWhitelist);
+                if (function != null)
                 {
-                    // read the function config
-                    string functionConfigPath = Path.Combine(scriptDir, ScriptConstants.FunctionMetadataFileName);
-                    string json = null;
-                    try
-                    {
-                        json = File.ReadAllText(functionConfigPath);
-                    }
-                    catch (FileNotFoundException)
-                    {
-                        // not a function directory
-                        continue;
-                    }
-
-                    functionName = Path.GetFileName(scriptDir);
-                    if (functionWhitelist != null &&
-                        !functionWhitelist.Contains(functionName, StringComparer.OrdinalIgnoreCase))
-                    {
-                        // a functions filter has been specified and the current function is
-                        // not in the filter list
-                        continue;
-                    }
-
-                    ValidateName(functionName);
-
-                    JObject functionConfig = JObject.Parse(json);
-
-                    string functionError = null;
-                    FunctionMetadata functionMetadata = null;
-                    if (!TryParseFunctionMetadata(functionName, functionConfig, traceWriter, logger, scriptDir, settingsManager, out functionMetadata, out functionError))
-                    {
-                        // for functions in error, log the error and don't
-                        // add to the functions collection
-                        AddFunctionError(functionErrors, functionName, functionError);
-                        continue;
-                    }
-                    else if (functionMetadata != null)
-                    {
-                        functions.Add(functionMetadata);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // log any unhandled exceptions and continue
-                    AddFunctionError(functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
+                    functions.Add(function);
                 }
             }
 
             return functions;
+        }
+
+        public static FunctionMetadata ReadFunctionMetadata(string functionDirectory, TraceWriter traceWriter, ILogger logger, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null)
+        {
+            string functionName = null;
+
+            try
+            {
+                // read the function config
+                string json = null;
+                if (!TryReadFunctionConfig(functionDirectory, out json))
+                {
+                    // not a function directory
+                    return null;
+                }
+
+                functionName = Path.GetFileName(functionDirectory);
+                if (functionWhitelist != null &&
+                    !functionWhitelist.Contains(functionName, StringComparer.OrdinalIgnoreCase))
+                {
+                    // a functions filter has been specified and the current function is
+                    // not in the filter list
+                    return null;
+                }
+
+                ValidateName(functionName);
+
+                JObject functionConfig = JObject.Parse(json);
+
+                string functionError = null;
+                FunctionMetadata functionMetadata = null;
+                if (!TryParseFunctionMetadata(functionName, functionConfig, traceWriter, logger, functionDirectory, settingsManager, out functionMetadata, out functionError))
+                {
+                    // for functions in error, log the error and don't
+                    // add to the functions collection
+                    AddFunctionError(functionErrors, functionName, functionError);
+                    return null;
+                }
+                else if (functionMetadata != null)
+                {
+                    return functionMetadata;
+                }
+            }
+            catch (Exception ex)
+            {
+                // log any unhandled exceptions and continue
+                AddFunctionError(functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
+            }
+
+            return null;
         }
 
         internal Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, ScriptSettingsManager settingsManager = null)
@@ -1175,6 +1182,27 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return null;
+        }
+
+        internal static bool TryReadFunctionConfig(string scriptDir, out string json, IFileSystem fileSystem = null)
+        {
+            json = null;
+            fileSystem = fileSystem ?? FileUtility.Instance;
+
+            // read the function config
+            string functionConfigPath = Path.Combine(scriptDir, ScriptConstants.FunctionMetadataFileName);
+            try
+            {
+                json = fileSystem.File.ReadAllText(functionConfigPath);
+            }
+            catch (IOException ex) when
+                (ex is FileNotFoundException || ex is DirectoryNotFoundException)
+            {
+                // not a function directory
+                return false;
+            }
+
+            return true;
         }
 
         private Collection<FunctionMetadata> LoadProxyRoutes(string proxiesJson)

@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -26,12 +28,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly ISecretManager _secretManager;
         private readonly TraceWriter _traceWriter;
         private readonly ILogger _logger;
+        private readonly WebHostSettings _settings;
+        private readonly IFileSystem _fileSystem;
 
-        public KeysController(ISecretManager secretManager, TraceWriter traceWriter, ILoggerFactory loggerFactory)
+        public KeysController(WebHostSettings settings, ISecretManager secretManager, TraceWriter traceWriter, ILoggerFactory loggerFactory, IFileSystem fileSystem)
         {
+            _settings = settings;
             _secretManager = secretManager;
             _traceWriter = traceWriter.WithDefaults($"{ScriptConstants.TraceSourceSecretManagement}.Api");
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryKeysController);
+            _fileSystem = fileSystem;
         }
 
         [HttpGet]
@@ -86,6 +92,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private async Task<IDictionary<string, string>> GetFunctionKeys(string functionName)
         {
+            if (!IsFunction(functionName))
+            {
+                return null;
+            }
+
             return await _secretManager.GetFunctionSecretsAsync(functionName);
         }
 
@@ -155,6 +166,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private async Task<IHttpActionResult> AddOrUpdateSecretAsync(string keyName, string value, string keyScope, ScriptSecretsType secretsType)
         {
+            if (secretsType == ScriptSecretsType.Function && keyScope != null && !IsFunction(keyScope))
+            {
+                return NotFound();
+            }
+
             KeyOperationResult operationResult;
             if (secretsType == ScriptSecretsType.Host && string.Equals(keyName, MasterKeyName, StringComparison.OrdinalIgnoreCase))
             {
@@ -224,7 +240,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return BadRequest("Invalid key name.");
             }
 
-            if (!await _secretManager.DeleteSecretAsync(keyName, keyScope, secretsType))
+            if ((secretsType == ScriptSecretsType.Function && keyScope != null && !IsFunction(keyScope)) || 
+                !await _secretManager.DeleteSecretAsync(keyName, keyScope, secretsType))
             {
                 // the key was not found
                 return NotFound();
@@ -235,6 +252,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _logger?.LogDebug(message);
 
             return StatusCode(HttpStatusCode.NoContent);
+        }
+
+        private bool IsFunction(string functionName)
+        {
+            string json = null;
+            string functionPath = Path.Combine(_settings.ScriptPath, functionName);
+            return ScriptHost.TryReadFunctionConfig(functionPath, out json, _fileSystem);
         }
     }
 }
