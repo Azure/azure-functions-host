@@ -66,6 +66,11 @@ function CrossGen([string] $runtime, [bool] $isSelfContained, [string] $publishT
             $prm += "/out"        
             $prm += Join-Path $privateSiteExtensionPath "Microsoft.Azure.WebJobs.Script.WebHost.ni.dll"
         }
+        # Fix output for System.Private.CoreLib.dll
+        if ($_.FullName -like "*System.Private.CoreLib.dll") {
+            $prm += "/out"        
+            $prm += Join-Path $privateSiteExtensionPath "System.Private.CoreLib.ni.dll"
+        }
 
         & $crossGen $prm >> $buildOutput\crossgenout.$runtime.txt 2>&1
 
@@ -83,7 +88,7 @@ function CrossGen([string] $runtime, [bool] $isSelfContained, [string] $publishT
     $successfullDllsCount = $successfullDlls.length
     $failedDllsCount = $failedDlls.length
     $skippedDllsCount = $skippedDlls.length
-    Write-Host "CrossGen($runtime) results: Successfull: $successfullDllsCount, Failed: $failedDllsCount, Skipped: $skippedDllsCount"
+    Write-Host "CrossGen($runtime) results: Successfull: $successfullDllsCount, Failed: $failedDllsCount, Skipped: $skippedDllsCount"    
     if ($failedDlls.length -gt 0) {
         Write-Host "Failed CrossGen dlls:"
         Write-Host $failedDlls
