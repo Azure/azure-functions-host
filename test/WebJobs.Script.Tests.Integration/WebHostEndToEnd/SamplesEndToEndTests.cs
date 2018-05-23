@@ -383,8 +383,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string json = await response.Content.ReadAsStringAsync();
             var product = JObject.Parse(json);
-            Assert.Equal("electronics", (string)product["Category"]);
-            Assert.Equal(123, (int?)product["Id"]);
+            Assert.Equal("electronics", (string)product["category"]);
+            Assert.Equal(123, (int?)product["id"]);
 
             // test optional id parameter
             uri = $"api/csharp/products/electronics?code={functionKey}";
@@ -393,8 +393,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             json = await response.Content.ReadAsStringAsync();
             product = JObject.Parse(json);
-            Assert.Equal("electronics", (string)product["Category"]);
-            Assert.Null((int?)product["Id"]);
+            Assert.Equal("electronics", (string)product["category"]);
+            Assert.Null((int?)product["id"]);
 
             // test optional category parameter
             uri = $"api/csharp/products?code={functionKey}";
@@ -403,8 +403,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             json = await response.Content.ReadAsStringAsync();
             product = JObject.Parse(json);
-            Assert.Null((string)product["Category"]);
-            Assert.Null((int?)product["Id"]);
+            Assert.Null((string)product["category"]);
+            Assert.Null((int?)product["id"]);
 
             // test a constraint violation (invalid id)
             uri = $"api/csharp/products/electronics/1x3?code={functionKey}";
@@ -508,7 +508,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
             string body = await response.Content.ReadAsStringAsync();
             JObject jsonObject = JObject.Parse(body);
-            Assert.Equal("Hello, Fabio", jsonObject["Greeting"]);
+            Assert.Equal("Hello, Fabio", jsonObject["greeting"]);
         }
 
         [Fact(Skip = "Not currently supported.")]

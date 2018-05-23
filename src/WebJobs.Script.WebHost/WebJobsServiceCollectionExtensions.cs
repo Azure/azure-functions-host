@@ -64,7 +64,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             services.AddWebJobsScriptHostRouting();
             services.AddMvc()
-                .AddJsonOptions(options => options.SerializerSettings.ContractResolver = new DefaultContractResolver())
                 .AddXmlDataContractSerializerFormatters();
 
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WebJobsScriptHostService>());
