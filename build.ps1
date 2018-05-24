@@ -26,7 +26,10 @@ function CrossGen([string] $runtime, [bool] $isSelfContained, [string] $publishT
 
     $selfContained = Join-Path $publishTarget "self-contained"
     $regular = Join-Path $publishTarget "regular"
+    $symbolsPath = Join-Path $publishTarget "Symbols"
     $crossGen = "$publishTarget\download\crossgen\crossgen.exe"
+
+    new-item -itemtype directory -path $symbolsPath
 
     DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.microsoft.netcore.jit/2.1.0-preview3-26413-06" @("runtimes\$runtime\native\clrjit.dll")  @("$publishTarget\download\clrjit")
     DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.Microsoft.NETCore.Runtime.CoreCLR/2.1.0-preview3-26413-06"  @("tools\crossgen.exe")  @("$publishTarget\download\crossgen")
@@ -78,6 +81,9 @@ function CrossGen([string] $runtime, [bool] $isSelfContained, [string] $publishT
         if ([System.IO.File]::Exists($niDll)) {
             Remove-Item $_.FullName
             Rename-Item -Path $niDll -NewName $_.FullName
+
+            & $crossGen "/Platform_Assemblies_Paths", "$selfContained", "/CreatePDB", "$symbolsPath", $_.FullName >> $buildOutput\crossgenout.$runtime.txt 2>&1
+
             $successfullDlls+=[io.path]::GetFileName($_.FullName)
         } else {
             $failedDlls+=[io.path]::GetFileName($_.FullName)
