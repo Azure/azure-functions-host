@@ -24,10 +24,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
         [InlineData("dotNet")]
         public async Task HttpTrigger_Get(string functionsWorkerLanguage)
         {
+            NodeScriptHostTests.TestFixture fixture = null;
+
             try
             {
                 string functionName = "HttpTrigger";
-                var fixture = new NodeScriptHostTests.TestFixture(new Collection<string> { functionName }, functionsWorkerLanguage);
+                fixture = new NodeScriptHostTests.TestFixture(new Collection<string> { functionName }, functionsWorkerLanguage);
+
                 string url = $"http://localhost/api/{functionName}?name=test";
                 var request = HttpTestHelpers.CreateHttpRequest("GET", url);
 
@@ -51,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
             finally
             {
                 Environment.SetEnvironmentVariable(ScriptConstants.FunctionWorkerRuntimeSettingName, string.Empty);
+                fixture?.Dispose();
             }
         }
     }

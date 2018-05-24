@@ -51,9 +51,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = rootPath,
                 FileLoggingMode = FileLoggingMode.Always,
             };
+
             if (functions != null)
             {
-                config.Functions = functions;
+                config.OnConfigurationApplied = c => c.Functions = functions;
             }
 
             RequestConfiguration = new HttpConfiguration();
