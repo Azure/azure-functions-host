@@ -1,34 +1,34 @@
 {
-    "watchDirectories": [ "Shared" ],
-    "sendGrid": {
-        "from": "Azure Functions <samples@functions.com>"
-    },
-    "http": {
-        "routePrefix": "api",
-        "maxConcurrentRequests": 5,
-        "maxOutstandingRequests": 30
-    },
-    "logger": {
-        "fileLoggingMode": "always"
-    },
-    "queues": {
-        "visibilityTimeout": "00:00:10"
-    },
-    "swagger": {
-        "enabled": true
-    },
-    "eventHub": {
-        "maxBatchSize": 1000,
-        "prefetchCount": 1000,
-        "batchCheckpointFrequency": 1
-    },
-    "healthMonitor": {
-        "enabled": true,
-        "healthCheckInterval": "00:00:10",
-        "healthCheckWindow": "00:02:00",
-        "healthCheckThreshold": 6,
-        "counterThreshold": 0.80
-    },
+  "watchDirectories": [ "Shared" ],
+  "sendGrid": {
+    "from": "Azure Functions <samples@functions.com>"
+  },
+  "http": {
+    "routePrefix": "api",
+    "maxConcurrentRequests": 5,
+    "maxOutstandingRequests": 30
+  },
+  "logger": {
+    "fileLoggingMode": "always"
+  },
+  "queues": {
+    "visibilityTimeout": "00:00:10"
+  },
+  "swagger": {
+    "enabled": true
+  },
+  "eventHub": {
+    "maxBatchSize": 1000,
+    "prefetchCount": 1000,
+    "batchCheckpointFrequency": 1
+  },
+  "healthMonitor": {
+    "enabled": true,
+    "healthCheckInterval": "00:00:10",
+    "healthCheckWindow": "00:02:00",
+    "healthCheckThreshold": 6,
+    "counterThreshold": 0.80
+  },
   "functionTimeout": "00:05:00",
-  "functions": ["XrmTrigger-CSharp"]
+  "functions": [ "XrmTrigger-CSharp" ]
 }

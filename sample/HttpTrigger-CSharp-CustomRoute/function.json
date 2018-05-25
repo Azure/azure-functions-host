@@ -1,13 +1,12 @@
 {
     "bindings": [
-      {
-        "authLevel": "anonymous",
-        "type": "httpTrigger",
-        "name": "info",
-        "direction": "in",
-        "methods": [ "get" ],
-        "route": "csharp/products/{category:alpha?}/{id:int?}"
-      },
+        {
+            "type": "httpTrigger",
+            "name": "info",
+            "direction": "in",
+            "methods": [ "get" ],
+            "route": "csharp/products/{category:alpha?}/{id:int?}"
+        },
         {
             "type": "http",
             "name": "res",
