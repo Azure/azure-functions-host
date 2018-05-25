@@ -39,15 +39,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             var provider = _scriptHostManager.BindingWebHookProvider;
             try
             {
-                IWebSocketExtension extension = provider.GetWebSocketExtensionOrNull(name);
-                DelayedFunctionExecution functionExecution = await extension.GetWebSocketFunctionAsync(websocket);
-                await functionExecution.Execute();
-                await websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "OK", token);
+                IWebSocketConsumer extension = provider.GetWebSocketConsumerOrNull(name);
+                DelayedFunctionExecution functionExecution = await extension.GetFunctionExecutionAsync(websocket, token);
+                await functionExecution.ExecuteAsync(token);
+                // The websocket currently closes with an exception. There is no harm caused by the exception at this point in the execution pipepine.
+                // It seems connected to https://github.com/aspnet/AspNetCoreModule/issues/77 so we can test it without the try-catch after upgrading
+                // to .NET Core 2.1.
+                try
+                {
+                    await websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "OK", token);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogTrace(ex, "Websocket close encountered this exception");
+                }
             }
             catch (Exception ex)
             {
                 await websocket.CloseAsync(WebSocketCloseStatus.InternalServerError, ex.ToString(), token);
-                _logger.LogError(ex.StackTrace);
+                _logger.LogError(ex, "Websocket triggered execution failed.");
             }
             finally
             {
