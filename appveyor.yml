@@ -30,7 +30,6 @@ for:
         $version = Get-Date -Format "yyyyMMdd-HHmm"
         Update-AppveyorBuild -Version $version -Message "Functions Scheduled Build"
       }
-      
   max_jobs: 1
   clone_folder: c:\azure-webjobs-sdk-script
   install:
