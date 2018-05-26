@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task EventHubTrigger()
         {
-            TestHelpers.ClearFunctionLogs("EventHubTrigger");
+            _fixture.TraceWriter.ClearTraces();
 
             // write 3 events
             List<EventData> events = new List<EventData>();
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 // wait until all of the 3 of the unique IDs sent
                 // above have been processed
-                logs = string.Join("\r\n", TestHelpers.GetFunctionLogsAsync("EventHubTrigger", throwOnNoLogs: false).Result);
+                logs = string.Join("\r\n", _fixture.GetFunctionLogs("EventHubTrigger"));
                 return ids.All(p => logs.Contains(p));
             });
 
@@ -350,7 +350,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task HttpTrigger_CustomRoute_Get_ReturnsExpectedResponse()
         {
-            TestHelpers.ClearFunctionLogs("HttpTrigger-CustomRoute-Get");
+            _fixture.TraceWriter.ClearTraces();
 
             var id = "4e2796ae-b865-4071-8a20-2a15cbaf856c";
             string functionKey = "82fprgh77jlbhcma3yr1zen8uv9yb0i7dwze3np2";
@@ -402,8 +402,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
             // verify route parameters were part of binding data
-            var logs = await TestHelpers.GetFunctionLogsAsync("HttpTrigger-CustomRoute-Get");
-            var log = logs.Single(p => p.Contains($"category: electronics id: {id}"));
+            var logs = _fixture.GetFunctionLogs("HttpTrigger-CustomRoute-Get");
+            var log = logs.SingleOrDefault(p => p.Contains($"category: electronics id: {id}"));
             Assert.NotNull(log);
         }
 
@@ -477,7 +477,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task HttpTrigger_CSharp_CustomRoute_ReturnsExpectedResponse()
         {
-            TestHelpers.ClearFunctionLogs("HttpTrigger-CSharp-CustomRoute");
+            _fixture.TraceWriter.ClearTraces();
 
             string functionKey = "68qkqlughacc6f9n6t4ubk0jq7r5er7pta13yh20";
             string uri = $"api/csharp/products/electronics/123?code={functionKey}";
@@ -523,7 +523,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
             // verify route parameters were part of binding data
-            var logs = await TestHelpers.GetFunctionLogsAsync("HttpTrigger-CSharp-CustomRoute");
+            var logs = _fixture.GetFunctionLogs("HttpTrigger-CSharp-CustomRoute");
             Assert.True(logs.Any(p => p.Contains("Parameters: category=electronics id=123")));
             Assert.True(logs.Any(p => p.Contains("ProductInfo: Category=electronics Id=123")));
         }
@@ -786,7 +786,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task QueueTriggerPython_Succeeds()
         {
-            TestHelpers.ClearFunctionLogs("QueueTrigger-Python");
+            _fixture.TraceWriter.ClearTraces();
 
             // write the input message
             CloudQueue inputQueue = _fixture.QueueClient.GetQueueReference("samples-python");
@@ -809,12 +809,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(id, (string)jsonObject["id"]);
 
             // verify the function output
-            var logs = await TestHelpers.GetFunctionLogsAsync("QueueTrigger-Python");
+            var logs = _fixture.GetFunctionLogs("QueueTrigger-Python").ToList();
 
-            // strip off the timestamps and [Info] from the beginning of each line
-            logs = logs.Select(l => l.Split(new[] { ' ' }, 3)[2]).ToList();
             int idx = logs.IndexOf("Read 5 Table entities");
-            for (int i = idx + 1; i < 5; i++)
+            logs = logs.Skip(idx + 1).Take(5).ToList();
+            for (int i = 0; i < 5; i++)
             {
                 string json = logs[i];
                 JObject entity = null;
@@ -1219,6 +1218,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public HttpClient HttpClient { get; set; }
 
             public HttpServer HttpServer { get; set; }
+
+            public TestTraceWriter TraceWriter => _traceWriter;
+
+            public IEnumerable<string> GetFunctionLogs(string functionName)
+            {
+                return _traceWriter.GetTraces()
+                    .Where(p => p.Properties.ContainsKey(ScriptConstants.LoggerFunctionNameKey) && string.Compare((string)p.Properties[ScriptConstants.LoggerFunctionNameKey], functionName) == 0)
+                    .Select(p => p.Message);
+            }
 
             public void Dispose()
             {
