@@ -44,6 +44,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" />
+    <ProjectReference Include="..\TestFunctions\TestFunctions.csproj">
+      <Private>true</Private>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>

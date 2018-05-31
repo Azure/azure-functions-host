@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

@@ -1784,10 +1784,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentNullException("exception");
             }
 
-            // First, ensure that we've logged to the host log
-            // Also ensure we flush immediately to ensure any buffered logs
-            // are written
-
             // Note: We do not log to ILogger here as any error has already been logged.
 
             if (exception is FunctionInvocationException)
@@ -1849,11 +1845,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return false;
         }
 
-        private void NotifyInvoker(string functionName, Exception ex)
+        private void NotifyInvoker(string methodName, Exception ex)
         {
-            functionName = Utility.GetFunctionShortName(functionName);
-
-            FunctionDescriptor functionDescriptor = this.Functions.SingleOrDefault(p => string.Compare(functionName, p.Name, StringComparison.OrdinalIgnoreCase) == 0);
+            var functionDescriptor = this.Functions.SingleOrDefault(p =>
+                    string.Compare(Utility.GetFunctionShortName(methodName), p.Name, StringComparison.OrdinalIgnoreCase) == 0 ||
+                    string.Compare(p.Metadata.EntryPoint, methodName, StringComparison.OrdinalIgnoreCase) == 0);
             if (functionDescriptor != null)
             {
                 functionDescriptor.Invoker.OnError(ex);
