@@ -261,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         if (!readOnlyFileSystem)
                         {
                             // Delete hostingstart.html if any. Azure creates that in all sites by default
-                            string siteRootPath = Path.Combine(home, @"site\wwwroot");
+                            string siteRootPath = Path.Combine(home, "site", "wwwroot");
                             string hostingStart = Path.Combine(siteRootPath, "hostingstart.html");
                             if (File.Exists(hostingStart))
                             {
@@ -272,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         if (!readOnlyFileSystem)
                         {
                             // Create the tools folder if it doesn't exist
-                            string toolsPath = Path.Combine(home, @"site\tools");
+                            string toolsPath = Path.Combine(home, "site", "tools");
                             Directory.CreateDirectory(toolsPath);
 
                             // Create the test data folder
@@ -283,15 +283,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
 
                         var folders = new List<string>();
-                        folders.Add(Path.Combine(home, @"site\tools"));
+                        folders.Add(Path.Combine(home, @"site", "tools"));
 
                         string path = Environment.GetEnvironmentVariable("PATH");
-                        string additionalPaths = string.Join(";", folders);
+                        // PathSeperator is ; on Windows and : on Unix
+                        string additionalPaths = string.Join(Path.PathSeparator, folders);
 
                         // Make sure we haven't already added them. This can happen if the appdomain restart (since it's still same process)
                         if (!path.Contains(additionalPaths))
                         {
-                            path = additionalPaths + ";" + path;
+                            path = additionalPaths + Path.PathSeparator + path;
 
                             Environment.SetEnvironmentVariable("PATH", path);
                         }
