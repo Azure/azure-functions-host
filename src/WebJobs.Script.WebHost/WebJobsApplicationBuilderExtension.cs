@@ -36,6 +36,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.UseMiddleware<HostAvailabilityCheckMiddleware>();
             });
 
+            builder.UseWhen(context => context.WebSockets.IsWebSocketRequest, config =>
+            {
+                config.UseMiddleware<WebSocketMiddleware>();
+            });
+
             // Register /admin/vfs, and /admin/zip to the VirtualFileSystem middleware.
             builder.UseWhen(VirtualFileSystemMiddleware.IsVirtualFileSystemRequest, config => config.UseMiddleware<VirtualFileSystemMiddleware>());
 

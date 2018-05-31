@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -18,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         // Map from an extension name to a http handler.
         private IDictionary<string, HttpHandler> _customHttpHandlers = new Dictionary<string, HttpHandler>(StringComparer.OrdinalIgnoreCase);
+        private IDictionary<string, IWebSocketConsumer> _customWebsocketHandlers = new Dictionary<string, IWebSocketConsumer>(StringComparer.OrdinalIgnoreCase);
 
         public WebJobsSdkExtensionHookProvider(ISecretManager secretManager)
         {
@@ -33,18 +35,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return handler;
         }
 
+        public IWebSocketConsumer GetWebSocketConsumerOrNull(string name)
+        {
+            IWebSocketConsumer extension;
+            _customWebsocketHandlers.TryGetValue(name, out extension);
+            return extension;
+        }
+
         // Exposed to extensions to get the URL for their http handler.
         public Uri GetUrl(IExtensionConfigProvider extension)
         {
             var extensionType = extension.GetType();
+            string name = extensionType.Name;
             var handler = extension as HttpHandler;
-            if (handler == null)
+            if (handler != null)
             {
-                throw new InvalidOperationException($"Extension must implement IAsyncConverter<HttpRequestMessage, HttpResponseMessage> in order to receive webhooks");
+                _customHttpHandlers[name] = handler;
             }
 
-            string name = extensionType.Name;
-            _customHttpHandlers[name] = handler;
+            var websocketHandler = extension as IWebSocketConsumer;
+            if (websocketHandler != null)
+            {
+                _customWebsocketHandlers[name] = websocketHandler;
+            }
+
+            if (handler == null && websocketHandler == null)
+            {
+                throw new InvalidOperationException($"Provider must implement either {nameof(IAsyncConverter<HttpRequestMessage, HttpResponseMessage>)} or {nameof(IWebSocketConsumer)}");
+            }
 
             return GetExtensionWebHookRoute(name);
         }

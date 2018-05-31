@@ -1,0 +1,15 @@
+{
+  "bindings": [
+    {
+      "type": "xrmSyncTrigger",
+      "name": "context",
+      "direction": "in",
+      "functionIdentifier": "account_create"
+    },
+    {
+      "type": "organizationService",
+      "name": "service",
+      "direction":  "in"
+    }
+  ]
+}
