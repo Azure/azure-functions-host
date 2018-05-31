@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -89,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
             public Task ExecuteAsync(ActionContext context, FileCallbackResult result)
             {
-                SetHeadersAndLog(context, result, null);
+                SetHeadersAndLog(context, result, null, true);
                 return result.Callback(context.HttpContext.Response.Body, context);
             }
         }

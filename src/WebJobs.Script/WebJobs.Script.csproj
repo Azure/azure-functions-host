@@ -25,7 +25,7 @@
     <PackageReference Include="Google.Protobuf" Version="3.3.0" />
     <PackageReference Include="Grpc.Core" Version="1.4.1" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.5.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.0.2">
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.1.0">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.0.4780001-beta-0fed1b79" />
@@ -39,14 +39,15 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.0-beta6-11316" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.0-beta6-11316" />
     <PackageReference Include="Microsoft.Build" Version="15.3.409" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="2.4.0" />
-    <PackageReference Include="Microsoft.DotNet.PlatformAbstractions" Version="2.0.4" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="2.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="2.0.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="2.8.2" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="2.8.2" />
+    <PackageReference Include="Microsoft.DotNet.PlatformAbstractions" Version="2.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="2.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="2.1.0" />
     <PackageReference Include="Microsoft.FSharp.Compiler" Version="4.2.0-rc-170621-0" />
     <PackageReference Include="ncrontab" Version="3.3.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
     <PackageReference Include="NuGet.Frameworks" Version="4.4.0" />
     <PackageReference Include="NuGet.LibraryModel" Version="4.4.0" />
     <PackageReference Include="NuGet.ProjectModel" Version="4.4.0" />

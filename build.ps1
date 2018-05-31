@@ -7,6 +7,9 @@
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $buildOutput = Join-Path $currentDir "buildoutput"
 
+# Disable .NET First run experience:
+$env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+
 function ZipContent([string] $sourceDirectory, [string] $target)
 {
   Write-Host $sourceDirectory
@@ -31,8 +34,8 @@ function CrossGen([string] $runtime, [bool] $isSelfContained, [string] $publishT
     #DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.microsoft.netcore.jit/2.1.0-preview2-26316-09" @("runtimes\$runtime\native\clrjit.dll")  @("$publishTarget\download\clrjit")
     #DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.Microsoft.NETCore.Runtime.CoreCLR/2.1.0-preview2-26316-09"  @("tools\crossgen.exe")  @("$publishTarget\download\crossgen")
 
-    DownloadNupkg "https://www.nuget.org/api/v2/package/runtime.$runtime.Microsoft.NETCore.Jit/2.0.5" @("runtimes\$runtime\native\clrjit.dll")  @("$publishTarget\download\clrjit")
-    DownloadNupkg "https://www.nuget.org/api/v2/package/runtime.$runtime.Microsoft.NETCore.Runtime.CoreCLR/2.0.5"  @("tools\crossgen.exe")  @("$publishTarget\download\crossgen")
+    DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.Microsoft.NETCore.Jit/2.1.0-rtm-26528-02" @("runtimes\$runtime\native\clrjit.dll")  @("$publishTarget\download\clrjit")
+    DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.Microsoft.NETCore.Runtime.CoreCLR/2.1.0-rtm-26528-02"  @("tools\crossgen.exe")  @("$publishTarget\download\crossgen")
     DownloadNupkg "https://www.nuget.org/api/v2/package/Microsoft.Build.Tasks.Core/15.1.1012" @("lib\netstandard1.3\Microsoft.Build.Tasks.Core.dll")  @("$selfContained")
     DownloadNupkg "https://www.nuget.org/api/v2/package/Microsoft.Build.Utilities.Core/15.1.1012" @("lib\netstandard1.3\Microsoft.Build.Utilities.Core.dll")  @("$selfContained")
 

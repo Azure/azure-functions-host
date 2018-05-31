@@ -18,6 +18,12 @@ for:
   matrix:
     only:
       - image: Ubuntu
+  install:
+  - sh: >-
+      mkdir .dotnet && 
+      chmod +x dotnet-install.sh && 
+      ./dotnet-install.sh --version 2.1.300 --install-dir .dotnet && 
+      PATH=".dotnet:"$PATH && dotnet --info 
   build_script:
   - sh: dotnet build WebJobs.Script.sln
   test: off
@@ -38,6 +44,8 @@ for:
       $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
 
       Install-Product node 8.4.0 x86
+
+      .\dotnet-install.ps1 -Version 2.1.300 -Architecture x86
   build_script:
   - ps: |
       $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME

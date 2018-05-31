@@ -26,4 +26,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)TestSecretManagerFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestWorkerProvider.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)xunit.runner.json" />
+  </ItemGroup>
 </Project>
