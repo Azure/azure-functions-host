@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
@@ -359,7 +360,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 HostConfig = new JobHostConfiguration(),
                 FileLoggingMode = FileLoggingMode.Always,
-                FileWatchingEnabled = true
+                FileWatchingEnabled = true,
+                BindingProviders = new List<ScriptBindingProvider>()
             };
 
             TestLoggerProvider loggerProvider = new TestLoggerProvider();
