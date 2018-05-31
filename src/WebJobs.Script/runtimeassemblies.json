@@ -3,197 +3,1481 @@
 // In addition to what is on this list, all System.* assemblies are restricted.
 {
   "runtimeAssemblies": [
-    "fsc",
-    "FSharp.Build",
-    "FSharp.Compiler.Interactive.Settings",
-    "FSharp.Compiler.Private",
-    "FSharp.Compiler.Service",
-    "FSharp.Core",
-    "fsi",
-    "Microsoft.AspNetCore",
-    "Microsoft.AspNetCore.Antiforgery",
-    "Microsoft.AspNetCore.ApplicationInsights.HostingStartup",
-    "Microsoft.AspNetCore.Authentication",
-    "Microsoft.AspNetCore.Authentication.Abstractions",
-    "Microsoft.AspNetCore.Authentication.Cookies",
-    "Microsoft.AspNetCore.Authentication.Core",
-    "Microsoft.AspNetCore.Authentication.Facebook",
-    "Microsoft.AspNetCore.Authentication.Google",
-    "Microsoft.AspNetCore.Authentication.JwtBearer",
-    "Microsoft.AspNetCore.Authentication.MicrosoftAccount",
-    "Microsoft.AspNetCore.Authentication.OAuth",
-    "Microsoft.AspNetCore.Authentication.OpenIdConnect",
-    "Microsoft.AspNetCore.Authentication.Twitter",
-    "Microsoft.AspNetCore.Authorization",
-    "Microsoft.AspNetCore.Authorization.Policy",
-    "Microsoft.AspNetCore.AzureAppServices.HostingStartup",
-    "Microsoft.AspNetCore.AzureAppServicesIntegration",
-    "Microsoft.AspNetCore.Buffering",
-    "Microsoft.AspNetCore.CookiePolicy",
-    "Microsoft.AspNetCore.Cors",
-    "Microsoft.AspNetCore.Cryptography.Internal",
-    "Microsoft.AspNetCore.Cryptography.KeyDerivation",
-    "Microsoft.AspNetCore.DataProtection",
-    "Microsoft.AspNetCore.DataProtection.Abstractions",
-    "Microsoft.AspNetCore.DataProtection.AzureStorage",
-    "Microsoft.AspNetCore.DataProtection.Extensions",
-    "Microsoft.AspNetCore.Diagnostics",
-    "Microsoft.AspNetCore.Diagnostics.Abstractions",
-    "Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore",
-    "Microsoft.AspNetCore.Hosting",
-    "Microsoft.AspNetCore.Hosting.Abstractions",
-    "Microsoft.AspNetCore.Hosting.Server.Abstractions",
-    "Microsoft.AspNetCore.Html.Abstractions",
-    "Microsoft.AspNetCore.Http",
-    "Microsoft.AspNetCore.Http.Abstractions",
-    "Microsoft.AspNetCore.Http.Extensions",
-    "Microsoft.AspNetCore.Http.Features",
-    "Microsoft.AspNetCore.HttpOverrides",
-    "Microsoft.AspNetCore.Identity",
-    "Microsoft.AspNetCore.Identity.EntityFrameworkCore",
-    "Microsoft.AspNetCore.JsonPatch",
-    "Microsoft.AspNetCore.Localization",
-    "Microsoft.AspNetCore.Localization.Routing",
-    "Microsoft.AspNetCore.MiddlewareAnalysis",
-    "Microsoft.AspNetCore.Mvc",
-    "Microsoft.AspNetCore.Mvc.Abstractions",
-    "Microsoft.AspNetCore.Mvc.ApiExplorer",
-    "Microsoft.AspNetCore.Mvc.Core",
-    "Microsoft.AspNetCore.Mvc.Cors",
-    "Microsoft.AspNetCore.Mvc.DataAnnotations",
-    "Microsoft.AspNetCore.Mvc.Formatters.Json",
-    "Microsoft.AspNetCore.Mvc.Formatters.Xml",
-    "Microsoft.AspNetCore.Mvc.Localization",
-    "Microsoft.AspNetCore.Mvc.Razor",
-    "Microsoft.AspNetCore.Mvc.Razor.Extensions",
-    "Microsoft.AspNetCore.Mvc.RazorPages",
-    "Microsoft.AspNetCore.Mvc.TagHelpers",
-    "Microsoft.AspNetCore.Mvc.ViewFeatures",
-    "Microsoft.AspNetCore.Mvc.WebApiCompatShim",
-    "Microsoft.AspNetCore.NodeServices",
-    "Microsoft.AspNetCore.Owin",
-    "Microsoft.AspNetCore.Razor",
-    "Microsoft.AspNetCore.Razor.Language",
-    "Microsoft.AspNetCore.Razor.Runtime",
-    "Microsoft.AspNetCore.ResponseCaching",
-    "Microsoft.AspNetCore.ResponseCaching.Abstractions",
-    "Microsoft.AspNetCore.ResponseCompression",
-    "Microsoft.AspNetCore.Rewrite",
-    "Microsoft.AspNetCore.Routing",
-    "Microsoft.AspNetCore.Routing.Abstractions",
-    "Microsoft.AspNetCore.Server.HttpSys",
-    "Microsoft.AspNetCore.Server.IISIntegration",
-    "Microsoft.AspNetCore.Server.Kestrel",
-    "Microsoft.AspNetCore.Server.Kestrel.Core",
-    "Microsoft.AspNetCore.Server.Kestrel.Https",
-    "Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions",
-    "Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv",
-    "Microsoft.AspNetCore.Session",
-    "Microsoft.AspNetCore.SpaServices",
-    "Microsoft.AspNetCore.StaticFiles",
-    "Microsoft.AspNetCore.WebSockets",
-    "Microsoft.AspNetCore.WebUtilities",
-    "Microsoft.Azure.AppService.Proxy.Client",
-    "Microsoft.Azure.AppService.Proxy.Common",
-    "Microsoft.Azure.AppService.Proxy.Runtime",
-    "Microsoft.Azure.KeyVault",
-    "Microsoft.Azure.KeyVault.WebKey",
-    "Microsoft.Azure.WebJobs",
-    "Microsoft.Azure.WebJobs.Extensions",
-    "Microsoft.Azure.WebJobs.Extensions.Http",
-    "Microsoft.Azure.WebJobs.Host",
-    "Microsoft.Azure.WebJobs.Logging",
-    "Microsoft.Azure.WebJobs.Logging.ApplicationInsights",
-    "Microsoft.Azure.WebJobs.Script",
-    "Microsoft.Azure.WebJobs.Script.Grpc",
-    "Microsoft.Azure.WebJobs.Script.WebHost",
-    "Microsoft.Azure.WebSites.DataProtection",
-    "Microsoft.Build",
-    "Microsoft.Build.Framework",
-    "Microsoft.CodeAnalysis",
-    "Microsoft.CSharp",
-    "Microsoft.Data.Edm",
-    "Microsoft.Data.OData",
-    "Microsoft.Data.Sqlite",
-    "Microsoft.DiaSymReader",
-    "Microsoft.DiaSymReader.PortablePdb",
-    "Microsoft.DotNet.PlatformAbstractions",
-    "Microsoft.Extensions.Caching.Abstractions",
-    "Microsoft.Extensions.Caching.Memory",
-    "Microsoft.Extensions.Caching.Redis",
-    "Microsoft.Extensions.Caching.SqlServer",
-    "Microsoft.Extensions.Configuration",
-    "Microsoft.Extensions.Configuration.Abstractions",
-    "Microsoft.Extensions.Configuration.AzureKeyVault",
-    "Microsoft.Extensions.Configuration.Binder",
-    "Microsoft.Extensions.Configuration.CommandLine",
-    "Microsoft.Extensions.Configuration.EnvironmentVariables",
-    "Microsoft.Extensions.Configuration.FileExtensions",
-    "Microsoft.Extensions.Configuration.Ini",
-    "Microsoft.Extensions.Configuration.Json",
-    "Microsoft.Extensions.Configuration.UserSecrets",
-    "Microsoft.Extensions.Configuration.Xml",
-    "Microsoft.Extensions.DependencyInjection",
-    "Microsoft.Extensions.DependencyInjection.Abstractions",
-    "Microsoft.Extensions.DependencyModel",
-    "Microsoft.Extensions.DiagnosticAdapter",
-    "Microsoft.Extensions.FileProviders.Abstractions",
-    "Microsoft.Extensions.FileProviders.Composite",
-    "Microsoft.Extensions.FileProviders.Embedded",
-    "Microsoft.Extensions.FileProviders.Physical",
-    "Microsoft.Extensions.FileSystemGlobbing",
-    "Microsoft.Extensions.Hosting.Abstractions",
-    "Microsoft.Extensions.Identity.Core",
-    "Microsoft.Extensions.Identity.Stores",
-    "Microsoft.Extensions.Localization",
-    "Microsoft.Extensions.Localization.Abstractions",
-    "Microsoft.Extensions.Logging",
-    "Microsoft.Extensions.Logging.Abstractions",
-    "Microsoft.Extensions.Logging.AzureAppServices",
-    "Microsoft.Extensions.Logging.Configuration",
-    "Microsoft.Extensions.Logging.Console",
-    "Microsoft.Extensions.Logging.Debug",
-    "Microsoft.Extensions.Logging.EventSource",
-    "Microsoft.Extensions.Logging.TraceSource",
-    "Microsoft.Extensions.ObjectPool",
-    "Microsoft.Extensions.Options",
-    "Microsoft.Extensions.Options.ConfigurationExtensions",
-    "Microsoft.Extensions.PlatformAbstractions",
-    "Microsoft.Extensions.Primitives",
-    "Microsoft.Extensions.WebEncoders",
-    "Microsoft.IdentityModel.Clients.ActiveDirectory",
-    "Microsoft.IdentityModel.Clients.ActiveDirectory.Platform",
-    "Microsoft.IdentityModel.Logging",
-    "Microsoft.IdentityModel.Protocols",
-    "Microsoft.IdentityModel.Protocols.OpenIdConnect",
-    "Microsoft.IdentityModel.Tokens",
-    "Microsoft.Net.Http.Headers",
-    "Microsoft.Rest.ClientRuntime",
-    "Microsoft.Rest.ClientRuntime.Azure",
-    "Microsoft.VisualBasic",
-    "Microsoft.VisualStudio.Web.BrowserLink",
-    "Microsoft.Win32.Primitives",
-    "Microsoft.Win32.Registry",
-    "Microsoft.WindowsAzure.Storage",
-    "mscorlib",
-    "NCrontab",
-    "netstandard",
-    "NuGet.Common",
-    "NuGet.Configuration",
-    "NuGet.DependencyResolver.Core",
-    "NuGet.Frameworks",
-    "NuGet.LibraryModel",
-    "NuGet.Packaging",
-    "NuGet.Packaging.Core",
-    "NuGet.ProjectModel",
-    "NuGet.Protocol",
-    "NuGet.Versioning",
-    "SOS.NETCore",
-    "SQLitePCLRaw.batteries_green",
-    "SQLitePCLRaw.batteries_v2",
-    "SQLitePCLRaw.core",
-    "SQLitePCLRaw.provider.e_sqlite3",
-    "StackExchange.Redis.StrongName",
-    "WindowsBase"
+    {
+      "name": "fsc",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "FSharp.Build",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "FSharp.Compiler.Interactive.Settings",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "FSharp.Compiler.Private",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "FSharp.Compiler.Service",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "FSharp.Core",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "fsi",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Antiforgery",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authentication",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authentication.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authentication.Cookies",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authentication.Core",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authentication.Facebook",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authentication.Google",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authentication.JwtBearer",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authentication.MicrosoftAccount",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authentication.OAuth",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authentication.OpenIdConnect",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authentication.Twitter",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authentication.WsFederation",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authorization",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Authorization.Policy",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Buffering",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Connections.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.CookiePolicy",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Cors",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Cryptography.Internal",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Cryptography.KeyDerivation",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.DataProtection",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.DataProtection.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.DataProtection.Extensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Diagnostics",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Diagnostics.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.HostFiltering",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Hosting",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Hosting.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Hosting.Server.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Html.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Http",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Http.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Http.Connections",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Http.Connections.Common",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Http.Extensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Http.Features",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.HttpOverrides",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.HttpsPolicy",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Identity",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Identity.EntityFrameworkCore",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Identity.UI",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Identity.UI.Views",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.JsonPatch",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Localization",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Localization.Routing",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.MiddlewareAnalysis",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.ApiExplorer",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.Core",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.Cors",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.DataAnnotations",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.Formatters.Json",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.Formatters.Xml",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.Localization",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.Razor",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.Razor.Extensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.RazorPages",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.TagHelpers",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.ViewFeatures",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.WebApiCompatShim",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.NodeServices",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Owin",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Razor",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Razor.Language",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Razor.Runtime",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.ResponseCaching",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.ResponseCaching.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.ResponseCompression",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Rewrite",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Routing",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Routing.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Server.HttpSys",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Server.IISIntegration",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Server.Kestrel",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Server.Kestrel.Core",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Server.Kestrel.Https",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Session",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.SignalR",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.SignalR.Common",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.SignalR.Core",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.SignalR.Protocols.Json",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.SpaServices",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.SpaServices.Extensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.StaticFiles",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.WebSockets",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.AspNetCore.WebUtilities",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.AppService.Proxy.Client",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.AppService.Proxy.Common",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.AppService.Proxy.Runtime",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.Extensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.Extensions.Http",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.Host",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.Logging",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.Logging.ApplicationInsights",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.Script",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.Script.Grpc",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.Script.WebHost",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebSites.DataProtection",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Build",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Build.Framework",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.CodeAnalysis",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.CodeAnalysis.Razor",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.CSharp",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Data.Edm",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Data.OData",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.DiaSymReader",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.DiaSymReader.PortablePdb",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.DotNet.PlatformAbstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Caching.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Caching.Memory",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Caching.SqlServer",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Configuration",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Configuration.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Configuration.Binder",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Configuration.CommandLine",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Configuration.EnvironmentVariables",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Configuration.FileExtensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Configuration.Ini",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Configuration.Json",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Configuration.KeyPerFile",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Configuration.UserSecrets",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Configuration.Xml",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.DependencyInjection",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.DependencyModel",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.DiagnosticAdapter",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.FileProviders.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.FileProviders.Composite",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.FileProviders.Embedded",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.FileProviders.Physical",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.FileSystemGlobbing",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Hosting",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Hosting.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Http",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Identity.Core",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Identity.Stores",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Localization",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Localization.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Logging",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Logging.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Logging.Configuration",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Logging.Console",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Logging.Debug",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Logging.EventSource",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Logging.TraceSource",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.ObjectPool",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Options",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Options.ConfigurationExtensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.PlatformAbstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Primitives",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.WebEncoders",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.IdentityModel.Logging",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.IdentityModel.Protocols",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.IdentityModel.Protocols.OpenIdConnect",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.IdentityModel.Protocols.WsFederation",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.IdentityModel.Tokens",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.IdentityModel.Tokens.Saml",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.IdentityModel.Xml",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Net.Http.Headers",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.VisualBasic",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Win32.Primitives",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Win32.Registry",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.WindowsAzure.Storage",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "mscorlib",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "NCrontab",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "netstandard",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Newtonsoft.Json",
+      "resolutionPolicy": "runtimeVersion"
+    },
+    {
+      "name": "Newtonsoft.Json.Bson",
+      "resolutionPolicy": "runtimeVersion"
+    },
+    {
+      "name": "NuGet.Common",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "NuGet.Configuration",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "NuGet.DependencyResolver.Core",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "NuGet.Frameworks",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "NuGet.LibraryModel",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "NuGet.Packaging",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "NuGet.Packaging.Core",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "NuGet.ProjectModel",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "NuGet.Protocol",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "NuGet.Versioning",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "SOS.NETCore",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.AppContext",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Buffers",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Collections",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Collections.Concurrent",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Collections.Immutable",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Collections.NonGeneric",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Collections.Specialized",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.ComponentModel",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.ComponentModel.Annotations",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.ComponentModel.DataAnnotations",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.ComponentModel.EventBasedAsync",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.ComponentModel.Primitives",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.ComponentModel.TypeConverter",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Composition.AttributedModel",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Composition.Convention",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Composition.Hosting",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Composition.Runtime",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Composition.TypedParts",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Configuration",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Configuration.ConfigurationManager",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Console",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Core",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Data",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Data.Common",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Data.SqlClient",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Diagnostics.Contracts",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Diagnostics.Debug",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Diagnostics.DiagnosticSource",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Diagnostics.FileVersionInfo",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Diagnostics.PerformanceCounter",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Diagnostics.Process",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Diagnostics.StackTrace",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Diagnostics.TextWriterTraceListener",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Diagnostics.Tools",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Diagnostics.TraceSource",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Diagnostics.Tracing",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Drawing",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Drawing.Primitives",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Dynamic.Runtime",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Globalization",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Globalization.Calendars",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Globalization.Extensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IdentityModel.Tokens.Jwt",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Interactive.Async",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.Compression",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.Compression.Brotli",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.Compression.FileSystem",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.Compression.ZipFile",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.FileSystem",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.FileSystem.AccessControl",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.FileSystem.DriveInfo",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.FileSystem.Primitives",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.FileSystem.Watcher",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.IsolatedStorage",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.MemoryMappedFiles",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.Pipelines",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.Pipes",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.Pipes.AccessControl",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.IO.UnmanagedMemoryStream",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Linq",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Linq.Expressions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Linq.Parallel",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Linq.Queryable",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Memory",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.Http",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.Http.Formatting",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.HttpListener",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.Mail",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.NameResolution",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.NetworkInformation",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.Ping",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.Primitives",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.Requests",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.Security",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.ServicePoint",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.Sockets",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.WebClient",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.WebHeaderCollection",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.WebProxy",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.WebSockets",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.WebSockets.Client",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.WebSockets.WebSocketProtocol",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Numerics",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Numerics.Vectors",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.ObjectModel",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Private.DataContractSerialization",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Private.Uri",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Private.Xml",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Private.Xml.Linq",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Reactive.Core",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Reactive.Interfaces",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Reactive.Linq",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Reactive.PlatformServices",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Reflection",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Reflection.DispatchProxy",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Reflection.Emit",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Reflection.Emit.ILGeneration",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Reflection.Emit.Lightweight",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Reflection.Extensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Reflection.Metadata",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Reflection.Primitives",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Reflection.TypeExtensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Resources.Reader",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Resources.ResourceManager",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Resources.Writer",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.CompilerServices.Unsafe",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.CompilerServices.VisualC",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.Extensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.Handles",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.InteropServices",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.InteropServices.RuntimeInformation",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.InteropServices.WindowsRuntime",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.Loader",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.Numerics",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.Serialization",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.Serialization.Formatters",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.Serialization.Json",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.Serialization.Primitives",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.Serialization.Xml",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.AccessControl",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Claims",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Cryptography.Algorithms",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Cryptography.Cng",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Cryptography.Csp",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Cryptography.Encoding",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Cryptography.OpenSsl",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Cryptography.Pkcs",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Cryptography.Primitives",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Cryptography.ProtectedData",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Cryptography.X509Certificates",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Cryptography.Xml",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Permissions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Principal",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Principal.Windows",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.SecureString",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.ServiceModel.Web",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.ServiceProcess",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Spatial",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Text.Encoding",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Text.Encoding.CodePages",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Text.Encoding.Extensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Text.Encodings.Web",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Text.RegularExpressions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Threading",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Threading.Channels",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Threading.Overlapped",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Threading.Tasks",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Threading.Tasks.Dataflow",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Threading.Tasks.Extensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Threading.Tasks.Parallel",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Threading.Thread",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Threading.ThreadPool",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Threading.Timer",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Transactions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Transactions.Local",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.ValueTuple",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Web",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Web.HttpUtility",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Windows",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Xml",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Xml.Linq",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Xml.ReaderWriter",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Xml.Serialization",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Xml.XDocument",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Xml.XmlDocument",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Xml.XmlSerializer",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Xml.XPath",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Xml.XPath.XDocument",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Xml.XPath.XmlDocument",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "WindowsBase",
+      "resolutionPolicy": "minorMatchOrLower"
+    }
   ]
 }
