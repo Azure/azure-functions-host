@@ -157,11 +157,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.ContainerName, "TestContainer" },
+                { EnvironmentSettingNames.ContainerName, "TestApp" },
+                { EnvironmentSettingNames.AzureWebsiteName, "TestApp" },
                 { EnvironmentSettingNames.ContainerEncryptionKey, encryptionKey },
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
                 { EnvironmentSettingNames.AzureWebsiteSku, "Dynamic" },
                 { EnvironmentSettingNames.AzureWebsiteZipDeployment, null },
+                { EnvironmentSettingNames.AzureWebJobsSecretStorageType, "Blob" },
                 { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" }
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
@@ -176,7 +178,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // immediately call a function - expect the call to block until
                 // the host is fully specialized
-                var request = new HttpRequestMessage(HttpMethod.Get, "api/httptrigger");
+                var secretManager = _httpServer.Host.Services.GetService<ISecretManager>();
+                var keys = await secretManager.GetFunctionSecretsAsync("HttpTrigger");
+                string key = keys.First().Value;
+                var request = new HttpRequestMessage(HttpMethod.Get, $"api/httptrigger?code={key}");
                 request.Headers.Add(ScriptConstants.AntaresColdStartHeaderName, "1");
                 var response = await _httpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -225,7 +230,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var httpConfig = new HttpConfiguration();
             var testRootPath = Path.Combine(Path.GetTempPath(), testDirName);
-            await FileUtility.DeleteDirectoryAsync(testRootPath, true);
+            try
+            {
+                await FileUtility.DeleteDirectoryAsync(testRootPath, true);
+            }
+            catch
+            {
+                // best effort cleanup
+            }
 
             _loggerProvider = new TestLoggerProvider();
             var loggerProviderFactory = new TestLoggerProviderFactory(_loggerProvider);
@@ -292,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var assignmentContext = new HostAssignmentContext
             {
                 SiteId = 1234,
-                SiteName = "TestSite",
+                SiteName = "TestApp",
                 Environment = environment
             };
             var encryptedAssignmentContext = EncryptedHostAssignmentContext.Create(assignmentContext, encryptionKey);
