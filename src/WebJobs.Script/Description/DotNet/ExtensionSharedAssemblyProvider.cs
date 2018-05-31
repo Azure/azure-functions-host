@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -23,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <param name="bindingProviders">The collection of <see cref="ScriptBindingProvider"/>s.</param>
         public ExtensionSharedAssemblyProvider(ICollection<ScriptBindingProvider> bindingProviders)
         {
-            _bindingProviders = bindingProviders;
+            _bindingProviders = bindingProviders ?? throw new ArgumentNullException(nameof(bindingProviders));
         }
 
         public bool TryResolveAssembly(string assemblyName, AssemblyLoadContext targetContext, out Assembly assembly)

@@ -143,7 +143,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
         }
 
-
         [Fact]
         public async Task DeleteKey_NotAKey_ReturnsNotFound()
         {

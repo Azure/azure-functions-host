@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyModel;
 using Newtonsoft.Json.Linq;
 using static Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment;
+using ResolutionPolicyEvaluator = System.Func<System.Reflection.AssemblyName, System.Reflection.Assembly, bool>;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -23,10 +24,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// </summary>
     public partial class FunctionAssemblyLoadContext : AssemblyLoadContext
     {
-        private readonly List<string> _probingPaths = new List<string>();
-        private static readonly Lazy<string[]> _runtimeAssemblies = new Lazy<string[]>(GetRuntimeAssemblies);
-
+        private static readonly Lazy<Dictionary<string, ScriptRuntimeAssembly>> _runtimeAssemblies = new Lazy<Dictionary<string, ScriptRuntimeAssembly>>(GetRuntimeAssemblies);
+        private static readonly Lazy<Dictionary<string, ResolutionPolicyEvaluator>> _resolutionPolicyEvaluators = new Lazy<Dictionary<string, ResolutionPolicyEvaluator>>(InitializeLoadPolycyEvaluators);
         private static Lazy<FunctionAssemblyLoadContext> _defaultContext = new Lazy<FunctionAssemblyLoadContext>(() => new FunctionAssemblyLoadContext(ResolveFunctionBaseProbingPath()), true);
+
+        private readonly List<string> _probingPaths = new List<string>();
 
         public FunctionAssemblyLoadContext(string basePath)
         {
@@ -40,13 +42,55 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public static FunctionAssemblyLoadContext Shared => _defaultContext.Value;
 
-        private bool IsRuntimeAssembly(AssemblyName assemblyName)
+        private static Dictionary<string, ResolutionPolicyEvaluator> InitializeLoadPolycyEvaluators()
         {
-            return _runtimeAssemblies.Value.Contains(assemblyName.Name) ||
-                assemblyName.Name.StartsWith("system.", StringComparison.OrdinalIgnoreCase);
+            return new Dictionary<string, ResolutionPolicyEvaluator>
+            {
+                { "minorMatchOrLower", IsMinorMatchOrLowerPolicyEvaluator },
+                { "runtimeVersion", RuntimeVersionPolicyEvaluator }
+            };
         }
 
-        private Assembly LoadInternal(AssemblyName assemblyName)
+        /// <summary>
+        /// A load policy evaluator that accepts the runtime assembly, regardless of version.
+        /// </summary>
+        /// <param name="requestedAssembly">The name of the requested assembly.</param>
+        /// <param name="runtimeAssembly">The runtime assembly.</param>
+        /// <returns>True if the evaluation succeeds.</returns>
+        private static bool RuntimeVersionPolicyEvaluator(AssemblyName requestedAssembly, Assembly runtimeAssembly) => true;
+
+        /// <summary>
+        /// A load policy evaluator that verifies if the runtime package is the same major and
+        /// newew minor version.
+        /// </summary>
+        /// <param name="requestedAssembly">The name of the requested assembly.</param>
+        /// <param name="runtimeAssembly">The runtime assembly.</param>
+        /// <returns>True if the evaluation succeeds.</returns>
+        private static bool IsMinorMatchOrLowerPolicyEvaluator(AssemblyName requestedAssembly, Assembly runtimeAssembly)
+        {
+            AssemblyName runtimeAssemblyName = AssemblyNameCache.GetName(runtimeAssembly);
+
+            return requestedAssembly.Version.Major == runtimeAssemblyName.Version.Major &&
+                requestedAssembly.Version.Minor <= runtimeAssemblyName.Version.Minor;
+        }
+
+        private bool IsRuntimeAssembly(AssemblyName assemblyName)
+            => _runtimeAssemblies.Value.ContainsKey(assemblyName.Name);
+
+        private bool TryGetRuntimeAssembly(AssemblyName assemblyName, out ScriptRuntimeAssembly assembly)
+            => _runtimeAssemblies.Value.TryGetValue(assemblyName.Name, out assembly);
+
+        private ResolutionPolicyEvaluator GetResolutionPolicyEvaluator(string policyName)
+        {
+            if (_resolutionPolicyEvaluators.Value.TryGetValue(policyName, out ResolutionPolicyEvaluator policy))
+            {
+                return policy;
+            }
+
+            throw new InvalidOperationException($"'{policyName}' is not a valid assembly resolution policy");
+        }
+
+        private Assembly LoadCore(AssemblyName assemblyName)
         {
             foreach (var probingPath in _probingPaths)
             {
@@ -70,16 +114,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return assembly;
             }
 
-            if (IsRuntimeAssembly(assemblyName))
+            if (TryGetRuntimeAssembly(assemblyName, out ScriptRuntimeAssembly scriptRuntimeAssembly))
             {
                 // If there was a failure loading a runtime assembly, ensure we gracefuly unify to
                 // the runtime version of the assembly if the version falls within a safe range.
                 if (TryLoadRuntimeAssembly(new AssemblyName(assemblyName.Name), out assembly))
                 {
-                    AssemblyName runtimeAssemblyName = AssemblyNameCache.GetName(assembly);
+                    var policyEvaluator = GetResolutionPolicyEvaluator(scriptRuntimeAssembly.ResolutionPolicy);
 
-                    if (runtimeAssemblyName.Version.Major == assemblyName.Version.Major &&
-                        runtimeAssemblyName.Version.Minor == assemblyName.Version.Minor)
+                    if (policyEvaluator.Invoke(assemblyName, assembly))
                     {
                         return assembly;
                     }
@@ -88,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return null;
             }
 
-            return LoadInternal(assemblyName);
+            return LoadCore(assemblyName);
         }
 
         private bool TryLoadRuntimeAssembly(AssemblyName assemblyName, out Assembly assembly)
@@ -221,12 +264,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return Path.Combine(basePath, "bin");
         }
 
-        private static string[] GetRuntimeAssemblies()
+        private static Dictionary<string, ScriptRuntimeAssembly> GetRuntimeAssemblies()
         {
             string assembliesJson = GetRuntimeAssembliesJson();
             JObject assemblies = JObject.Parse(assembliesJson);
 
-            return assemblies["runtimeAssemblies"].ToObject<string[]>();
+            return assemblies["runtimeAssemblies"]
+                .ToObject<ScriptRuntimeAssembly[]>()
+                .ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
 
         private static string GetRuntimeAssembliesJson()
