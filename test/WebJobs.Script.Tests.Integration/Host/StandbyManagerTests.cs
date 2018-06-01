@@ -36,11 +36,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private TestServer _httpServer;
         private string _expectedHostId;
         private WebHostSettings _webHostSettings;
+        private string _testRootPath;
 
         public StandbyManagerTests()
         {
             _settingsManager = ScriptSettingsManager.Instance;
+            _testRootPath = Path.Combine(Path.GetTempPath(), "StandbyManagerTests");
             ResetEnvironment();
+            CleanupTestDirectory();
         }
 
         [Fact]
@@ -110,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
-                await InitializeTestHost("StandbyModeTest");
+                InitializeTestHost("Windows");
 
                 await VerifyWarmupSucceeds();
                 await VerifyWarmupSucceeds(restart: true);
@@ -163,12 +166,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
                 { EnvironmentSettingNames.AzureWebsiteSku, "Dynamic" },
                 { EnvironmentSettingNames.AzureWebsiteZipDeployment, null },
-                { EnvironmentSettingNames.AzureWebJobsSecretStorageType, "Blob" },
                 { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" }
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
-                await InitializeTestHost("StandbyModeTest_Linux");
+                InitializeTestHost("Linux");
 
                 await VerifyWarmupSucceeds();
                 await VerifyWarmupSucceeds(restart: true);
@@ -178,12 +180,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // immediately call a function - expect the call to block until
                 // the host is fully specialized
+                // the Unauthorized is expected since we havne't specified the key
+                // it's enough here to ensure we don't get a 404
+                var request = new HttpRequestMessage(HttpMethod.Get, $"api/httptrigger");
+                request.Headers.Add(ScriptConstants.AntaresColdStartHeaderName, "1");
+                var response = await _httpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+                // now that the host is initialized, send a valid key
+                // and expect success
                 var secretManager = _httpServer.Host.Services.GetService<ISecretManager>();
                 var keys = await secretManager.GetFunctionSecretsAsync("HttpTrigger");
                 string key = keys.First().Value;
-                var request = new HttpRequestMessage(HttpMethod.Get, $"api/httptrigger?code={key}");
+                request = new HttpRequestMessage(HttpMethod.Get, $"api/httptrigger?code={key}");
                 request.Headers.Add(ScriptConstants.AntaresColdStartHeaderName, "1");
-                var response = await _httpClient.SendAsync(request);
+                response = await _httpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
                 Assert.False(WebScriptHostManager.InStandbyMode);
@@ -226,34 +237,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private async Task InitializeTestHost(string testDirName)
+        private void InitializeTestHost(string testDirName)
         {
             var httpConfig = new HttpConfiguration();
-            var testRootPath = Path.Combine(Path.GetTempPath(), testDirName);
-            try
-            {
-                await FileUtility.DeleteDirectoryAsync(testRootPath, true);
-            }
-            catch
-            {
-                // best effort cleanup
-            }
+            var uniqueTestRootPath = Path.Combine(_testRootPath, testDirName, Guid.NewGuid().ToString());
 
             _loggerProvider = new TestLoggerProvider();
             var loggerProviderFactory = new TestLoggerProviderFactory(_loggerProvider);
             _webHostSettings = new WebHostSettings
             {
                 IsSelfHost = true,
-                LogPath = Path.Combine(testRootPath, "Logs"),
-                SecretsPath = Path.Combine(testRootPath, "Secrets"),
-                ScriptPath = Path.Combine(testRootPath, "WWWRoot")
+                LogPath = Path.Combine(uniqueTestRootPath, "Logs"),
+                SecretsPath = Path.Combine(uniqueTestRootPath, "Secrets"),
+                ScriptPath = Path.Combine(uniqueTestRootPath, "WWWRoot")
             };
 
             if (_settingsManager.IsAppServiceEnvironment)
             {
                 // if the test is mocking App Service environment, we need
                 // to also set the HOME variable
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, testRootPath);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, uniqueTestRootPath);
             }
 
             var loggerFactory = new LoggerFactory();
@@ -373,12 +376,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Dispose()
         {
             ResetEnvironment();
+            CleanupTestDirectory();
+        }
+
+        private void CleanupTestDirectory()
+        {
+            var testRootPath = Path.Combine(Path.GetTempPath(), "StandbyManagerTests");
+            try
+            {
+                FileUtility.DeleteDirectoryAsync(testRootPath, true);
+            }
+            catch
+            {
+                // best effort cleanup
+            }
         }
 
         private void ResetEnvironment()
         {
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, string.Empty);
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, string.Empty);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, null);
             WebScriptHostManager.ResetStandbyMode();
         }
     }
