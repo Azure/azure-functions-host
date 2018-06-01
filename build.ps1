@@ -138,7 +138,7 @@ function BuildPackages([string] $runtime, [bool] $isSelfContained) {
 
     # replace IL dlls with crossgen dlls
     if (![string]::IsNullOrEmpty($runtime)) {
-        CrossGen $runtime $isSelfContained $publishTarget $privateSiteExtensionPath
+#        CrossGen $runtime $isSelfContained $publishTarget $privateSiteExtensionPath
     }
  
     ZipContent $privateSiteExtensionPath "$buildOutput\Functions.Binaries.$extensionVersion-alpha$runtimeSuffix.zip"
@@ -159,8 +159,8 @@ function BuildPackages([string] $runtime, [bool] $isSelfContained) {
 
 }
 
-dotnet --version
-dotnet build .\WebJobs.Script.sln -v q /p:BuildNumber="$buildNumber"
+dotnet --info
+dotnet build .\WebJobs.Script.sln -v m /p:BuildNumber="$buildNumber"
 
 $projects = 
   "WebJobs.Script",

@@ -57,24 +57,4 @@ for:
       Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
   test_script:
   - ps: >
-      $success = $true
-
-      # dotnet test .\test\WebJobs.Script.Scaling.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
-
-      # dotnet test .\test\WebJobs.Script.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
-
-      # see results in app insights AntaresDemo 'functionse2eai'
-
-      dotnet test .\test\WebJobs.Script.Tests -v q --no-build
-
-      $success = $success -and $?
-
-      dotnet test .\test\WebJobs.Script.Scaling.Tests -v q --no-build
-
-      $success = $success -and $?
-
-      dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
-
-      $success = $success -and $?
-
-      if (-not $success) { exit 1 }
+      .\run-tests.ps1
