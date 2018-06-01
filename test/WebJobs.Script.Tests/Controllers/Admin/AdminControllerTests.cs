@@ -97,10 +97,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             IActionResult response = testController.Invoke(testFunctionName, invocation);
             Assert.IsType<AcceptedResult>(response);
 
-            // allow the invoke task to run
-            await Task.Delay(200);
-
-            Assert.True(functionInvoked);
+            // wait for the invoke task to run
+            await TestHelpers.Await(() =>
+            {
+                return functionInvoked;
+            }, timeout: 2000);
         }
 
         protected virtual void Dispose(bool disposing)
