@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Http.Headers;
 using System.Text;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Http;
@@ -101,38 +100,29 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     object body = null;
                     string rawBody = null;
 
-                    MediaTypeHeaderValue mediaType = null;
-                    MediaTypeHeaderValue.TryParse(request.ContentType, out mediaType);
-
-                    if (string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
+                    switch (request.ContentType)
                     {
-                        var jsonReader = new StreamReader(request.Body, Encoding.UTF8);
-                        rawBody = jsonReader.ReadToEnd();
-                        try
-                        {
+                        case "application/json":
+                            var jsonReader = new StreamReader(request.Body, Encoding.UTF8);
+                            rawBody = jsonReader.ReadToEnd();
                             body = JsonConvert.DeserializeObject(rawBody);
-                        }
-                        catch (JsonException)
-                        {
-                            body = rawBody;
-                        }
-                    }
-                    else if (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
-                        mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        var length = Convert.ToInt32(request.ContentLength);
-                        var bytes = new byte[length];
-                        request.Body.Read(bytes, 0, length);
-                        body = bytes;
-                        rawBody = Encoding.UTF8.GetString(bytes);
-                    }
-                    else
-                    {
-                        var reader = new StreamReader(request.Body, Encoding.UTF8);
-                        body = rawBody = reader.ReadToEnd();
-                    }
+                            break;
 
+                        case "application/octet-stream":
+                        case string contentType when contentType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0:
+                            var length = Convert.ToInt32(request.ContentLength);
+                            var bytes = new byte[length];
+                            request.Body.Read(bytes, 0, length);
+                            body = bytes;
+                            rawBody = Encoding.UTF8.GetString(bytes);
+                            break;
+                        default:
+                            var reader = new StreamReader(request.Body, Encoding.UTF8);
+                            body = rawBody = reader.ReadToEnd();
+                            break;
+                    }
                     request.Body.Position = 0;
+
                     http.Body = body.ToRpc();
                     http.RawBody = rawBody.ToRpc();
                 }
