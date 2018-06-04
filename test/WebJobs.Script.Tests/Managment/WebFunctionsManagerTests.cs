@@ -81,7 +81,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             return new WebHostSettings
             {
                 ScriptPath = @"x:\root",
-                IsAuthDisabled = false,
                 IsSelfHost = false,
                 LogPath = @"x:\tmp\log",
                 SecretsPath = @"x:\secrets",

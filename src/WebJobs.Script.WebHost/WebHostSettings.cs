@@ -29,12 +29,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         public string TestDataPath { get; set; }
 
-        /// <summary>
-        /// Gets or sets a value indicating whether authentication/authorization
-        /// should be disabled. Useful for local debugging or CLI scenarios.
-        /// </summary>
-        public bool IsAuthDisabled { get; set; } = false;
-
         internal static WebHostSettings CreateDefault(ScriptSettingsManager settingsManager)
         {
             WebHostSettings settings = new WebHostSettings

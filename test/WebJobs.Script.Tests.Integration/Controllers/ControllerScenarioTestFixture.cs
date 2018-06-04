@@ -19,11 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         private HttpConfiguration _config;
 
         public ControllerScenarioTestFixture()
-            : this(isAuthDisabled: false)
-        {
-        }
-
-        public ControllerScenarioTestFixture(bool isAuthDisabled)
         {            
             _config = new HttpConfiguration();
             _settingsManager = ScriptSettingsManager.Instance;
@@ -33,8 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"),
                 LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
-                SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets"),
-                IsAuthDisabled = isAuthDisabled
+                SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets")
             };
 
 
