@@ -177,5 +177,69 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             Assert.Equal(eventLevel, LinuxContainerEventGenerator.ToEventLevel(logLevel));
         }
+
+        [Fact]
+        public void ParseLogEvents_Raw()
+        {
+            Regex regex = new Regex(LinuxContainerEventGenerator.TraceEventRegex);
+            var match = regex.Match("MS_FUNCTION_LOGS 4,balag02_sub,site1,,,Host.Startup,\\\"\\\",\\\"Found the following functions: FunctionAppVS2017v2.HelloHttp.Run FunctionAppVS2017v2.MyTimer.Run \\\",2.0.1.0,06/01/2018 08:12:18.336 PM,,\\\"\\\",,5ca5a9ac-2c69-41a0-b8d3-cab31715c98e,EFD0F0A3-31D8-4C48-BB77-ADA775665078");
+            Assert.True(match.Success);
+            Assert.Equal(16, match.Groups.Count);
+            var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            Assert.Equal("EFD0F0A3-31D8-4C48-BB77-ADA775665078", groupMatches.Last());
+
+            // make sure newline characters aren't matched
+            match = regex.Match("MS_FUNCTION_LOGS 4,balag02_sub,site1,,,Host.Startup,\\\"\\\",\\\"Found the following functions: FunctionAppVS2017v2.HelloHttp.Run FunctionAppVS2017v2.MyTimer.Run \\\",2.0.1.0,06/01/2018 08:12:18.336 PM,,\\\"\\\",,5ca5a9ac-2c69-41a0-b8d3-cab31715c98e,EFD0F0A3-31D8-4C48-BB77-ADA775665078\\n");
+            Assert.Equal(16, match.Groups.Count);
+            groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            Assert.Equal("EFD0F0A3-31D8-4C48-BB77-ADA775665078", groupMatches.Last());
+
+            match = regex.Match("MS_FUNCTION_LOGS 4,balag02_sub,site1,,,Host.Startup,\\\"\\\",\\\"Found the following functions: FunctionAppVS2017v2.HelloHttp.Run FunctionAppVS2017v2.MyTimer.Run \\\",2.0.1.0,06/01/2018 08:12:18.336 PM,,\\\"\\\",,5ca5a9ac-2c69-41a0-b8d3-cab31715c98e,\\n");
+            Assert.Equal(16, match.Groups.Count);
+            groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            Assert.Equal(string.Empty, groupMatches.Last());
+
+            match = regex.Match("MS_FUNCTION_LOGS 4,balag02_sub,site1,,,Host.Startup,\\\"\\\",\\\"Found the following functions: FunctionAppVS2017v2.HelloHttp.Run FunctionAppVS2017v2.MyTimer.Run \\\",2.0.1.0,06/01/2018 08:12:18.336 PM,,\\\"\\\",,5ca5a9ac-2c69-41a0-b8d3-cab31715c98e,\\r");
+            Assert.Equal(16, match.Groups.Count);
+            groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            Assert.Equal(string.Empty, groupMatches.Last());
+        }
+
+        [Fact]
+        public void ParseMetricEvents_Raw()
+        {
+            Regex regex = new Regex(LinuxContainerEventGenerator.MetricEventRegex);
+            var match = regex.Match("MS_FUNCTION_METRICS C37E3412-86D1-4B93-BC5A-A2AE09D26C2D,TestApp,TestFunction,TestEvent,15,2,18,5,2.0.1.0,06/04/2018 10:23:02.633 AM");
+            Assert.True(match.Success);
+            Assert.Equal(11, match.Groups.Count);
+            var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            Assert.Equal("06/04/2018 10:23:02.633 AM", groupMatches.Last());
+
+            regex = new Regex(LinuxContainerEventGenerator.MetricEventRegex);
+            match = regex.Match("MS_FUNCTION_METRICS C37E3412-86D1-4B93-BC5A-A2AE09D26C2D,TestApp,TestFunction,TestEvent,15,2,18,5,2.0.1.0,06/04/2018 10:23:02.633 AM\\n");
+            Assert.True(match.Success);
+            Assert.Equal(11, match.Groups.Count);
+            groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            Assert.Equal("06/04/2018 10:23:02.633 AM", groupMatches.Last());
+
+            regex = new Regex(LinuxContainerEventGenerator.MetricEventRegex);
+            match = regex.Match("MS_FUNCTION_METRICS C37E3412-86D1-4B93-BC5A-A2AE09D26C2D,TestApp,TestFunction,TestEvent,15,2,18,5,2.0.1.0,\\n");
+            Assert.True(match.Success);
+            Assert.Equal(11, match.Groups.Count);
+            groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            Assert.Equal(string.Empty, groupMatches.Last());
+        }
+
+        [Fact]
+        public void ParseDetailEvents_Raw()
+        {
+            Regex regex = new Regex(LinuxContainerEventGenerator.DetailsEventRegex);
+            var match = regex.Match("MS_FUNCTION_DETAILS TestApp,TestFunction,\\\"{ foo: 123, bar: \"Test\" }\\\",\\\"{ foo: \"Mathew\", bar: \"Charles\" }\\\",CSharp,0");
+            Assert.True(match.Success);
+            Assert.Equal(7, match.Groups.Count);
+            var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            Assert.Equal("0", groupMatches.Last());
+            Assert.Equal("{ foo: 123, bar: \"Test\" }", groupMatches[2]);
+        }
     }
 }
