@@ -11,6 +11,8 @@ image:
 - Visual Studio 2017
 - Ubuntu
 
+max_jobs: 1
+
 for:
 -
   matrix:
@@ -29,8 +31,7 @@ for:
       if ($env:FUNCTIONS_NIGHTLY -eq "1") {
         $version = Get-Date -Format "yyyyMMdd-HHmm"
         Update-AppveyorBuild -Version $version -Message "Functions Scheduled Build"
-      }
-  max_jobs: 1
+      }  
   clone_folder: c:\azure-webjobs-sdk-script
   install:
   - ps: >-
