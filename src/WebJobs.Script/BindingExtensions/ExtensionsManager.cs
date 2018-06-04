@@ -216,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
         private Exception CreateRestoreException(StringBuilder logBuilder, Exception innerException = null)
         {
-            return new Exception($"Extension package install failed{Environment.NewLine}{logBuilder.ToString()}", innerException);
+            return new Exception($"Extension package install failed: {logBuilder.ToString()}", innerException);
         }
 
         private void LogOutput(string data, StringBuilder logBuilder)

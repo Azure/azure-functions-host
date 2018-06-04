@@ -149,17 +149,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var response = await HttpClient.SendAsync(request);
             var jobStatusUri = response.Headers.Location;
             string status = null;
+            string error = null;
             do
             {
                 await Task.Delay(500);
                 response = await CheckExtensionInstallStatus(jobStatusUri);
                 var jobStatus = await response.Content.ReadAsAsync<JObject>();
                 status = jobStatus["status"].ToString();
+                error = jobStatus["error"]?.ToString();
             } while (status == "Started");
 
             if (status != "Succeeded")
             {
-                throw new InvalidOperationException("Failed to install extension.");
+                throw new InvalidOperationException($"Failed to install extension: {error}");
             }
 
             // TODO: Find a better way to ensure the site has restarted.

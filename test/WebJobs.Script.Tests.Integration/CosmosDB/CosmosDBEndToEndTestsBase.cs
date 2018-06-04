@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
     public abstract class CosmosDBTestFixture : EndToEndTestFixture
     {
         protected CosmosDBTestFixture(string rootPath, string testId) :
-            base(rootPath, testId, "Microsoft.Azure.WebJobs.Extensions.CosmosDB", "3.0.0-beta7-10602")
+            base(rootPath, testId, "Microsoft.Azure.WebJobs.Extensions.CosmosDB", "3.0.0-beta7")
         {
         }
 

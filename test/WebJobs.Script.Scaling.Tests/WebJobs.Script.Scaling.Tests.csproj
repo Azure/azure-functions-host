@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\build\common.props" />
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
     <IsPackable>false</IsPackable>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Scaling.Tests</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Scaling.Tests</RootNamespace>
@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.7.2" />
     <PackageReference Include="Moq" Version="4.7.145" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
     <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="2.1.0.175" />
