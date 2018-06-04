@@ -14,7 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteZipDeployment = "WEBSITE_USE_ZIP";
         public const string RemoteDebuggingPort = "REMOTEDEBUGGINGPORT";
         public const string AzureWebsitePlaceholderMode = "WEBSITE_PLACEHOLDER_MODE";
-        public const string AzureWebsiteContainerReady = "WEBSITE_CONTAINER_READY";
         public const string AzureWebsiteHomePath = "HOME";
         public const string AzureWebJobsScriptRoot = "AzureWebJobsScriptRoot";
         public const string CompilationReleaseMode = "AzureWebJobsDotNetReleaseCompilation";
@@ -26,5 +25,18 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
         public const string ProxySiteExtensionEnabledKey = "ROUTING_EXTENSION_VERSION";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
+
+        /// <summary>
+        /// Environment variable dynamically set by the platform when it is safe to
+        /// start specializing the host instance (e.g. file system is ready, etc.)
+        /// </summary>
+        public const string AzureWebsiteContainerReady = "WEBSITE_CONTAINER_READY";
+
+        /// <summary>
+        /// Environment variable dynamically set by the platform when configuration has been
+        /// completely initialized (e.g. EnvSettings module has ran) and it is safe to read
+        /// configuration values.
+        /// </summary>
+        public const string AzureWebsiteConfigurationReady = "WEBSITE_CONFIGURATION_READY";
     }
 }

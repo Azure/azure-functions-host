@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // 1) We _were_ in standby mode and now we're ready to specialize
                     // 2) We're doing non-specialization normal initialization
                     if (_activeHostManager == null && 
-                        (_standbyHostManager == null || _settingsManager.ContainerReady))
+                        (_standbyHostManager == null || (_settingsManager.ContainerReady && _settingsManager.ConfigurationReady)))
                     {
                         _specializationTimer?.Dispose();
                         _specializationTimer = null;
@@ -290,12 +290,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             EnsureInitialized((WebHostSettings)state);
 
-            // We know we've just specialized, since this timer only runs
-            // when in standby mode. We want to initialize the host manager
-            // immediately. Note that the host might also be initialized
-            // concurrently  by incoming http requests, but the initialization
-            // here ensures that it takes place in the absence of any http
-            // traffic.
+            // If the active manager is not null, we know we've just specialized,
+            // since this timer only runs when in standby mode. We want to initialize
+            // the host manager immediately.
+            // Note that the host might also be initialized concurrently by incoming
+            // http requests, but the initialization here ensures that it takes place
+            // in the absence of any http traffic.
             _activeHostManager?.EnsureInitialized();
         }
 
