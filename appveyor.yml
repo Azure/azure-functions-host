@@ -18,6 +18,12 @@ for:
   matrix:
     only:
       - image: Ubuntu
+  install:
+  - sh: >-
+      mkdir .dotnet && 
+      chmod +x dotnet-install.sh && 
+      ./dotnet-install.sh --version 2.1.300 --install-dir .dotnet && 
+      PATH=".dotnet:"$PATH && dotnet --info 
   build_script:
   - sh: dotnet build WebJobs.Script.sln
   test: off
