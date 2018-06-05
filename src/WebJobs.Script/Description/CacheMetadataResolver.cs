@@ -28,11 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return _innerResolver.GetHashCode();
         }
 
-        public override PortableExecutableReference ResolveMissingAssembly(MetadataReference definition, AssemblyIdentity referenceIdentity)
-        {
-            return base.ResolveMissingAssembly(definition, referenceIdentity);
-        }
-
         public override ImmutableArray<PortableExecutableReference> ResolveReference(string reference, string baseFilePath, MetadataReferenceProperties properties)
         {
             string cacheKey = $"{reference}:{baseFilePath}";
