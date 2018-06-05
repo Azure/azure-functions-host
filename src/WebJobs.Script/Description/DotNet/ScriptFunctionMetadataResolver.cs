@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.CodeAnalysis;
@@ -34,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ExtensionSharedAssemblyProvider _extensionSharedAssemblyProvider;
 
         private PackageAssemblyResolver _packageAssemblyResolver;
-        private ScriptMetadataResolver _scriptResolver;
+        private MetadataReferenceResolver _scriptResolver;
 
         private static readonly string[] DefaultAssemblyReferences =
            {
@@ -77,7 +78,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _scriptFilePath = scriptFilePath;
             _packageAssemblyResolver = new PackageAssemblyResolver(_scriptFileDirectory);
             _privateAssembliesPath = GetBinDirectory(_scriptFileDirectory);
-            _scriptResolver = ScriptMetadataResolver.Default.WithSearchPaths(_privateAssembliesPath);
+            var scriptResolver = ScriptMetadataResolver.Default.WithSearchPaths(_privateAssembliesPath);
+            _scriptResolver = new CacheMetadataResolver(scriptResolver);
             _extensionSharedAssemblyProvider = new ExtensionSharedAssemblyProvider(bindingProviders);
             _logger = logger;
         }
