@@ -176,9 +176,14 @@ foreach ($project in $projects)
   & dotnet $cmd  
 }
 
+$bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
 
-# build IL extensions
-BuildPackages "" $false
+if ($bypassPackaging){
+    Write-Host "Bypassing artifact packaging and CrossGen for pull request." -ForegroundColor Yellow
+} else {
+    # build IL extensions
+    BuildPackages "" $false
 
-#build win-x86 extensions
-BuildPackages "win-x86" $false
+    #build win-x86 extensions
+    BuildPackages "win-x86" $false
+}
