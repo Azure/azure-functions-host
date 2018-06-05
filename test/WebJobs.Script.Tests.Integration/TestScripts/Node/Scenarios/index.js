@@ -1,7 +1,7 @@
 var util = require('util');
 var assert = require('assert');
 
-﻿module.exports = function (context, input) {
+module.exports = function (context, input) {
     var scenario = input.scenario;
 
     if (scenario === 'nextTick') {

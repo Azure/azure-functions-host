@@ -64,12 +64,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal($"test-input-node/{name}", (string)blobMetadata["path"]);
 
             var metadata = (JObject)blobMetadata["metadata"];
-            Assert.Equal("TestMetadataValue", (string)metadata["TestMetadataKey"]);
+            Assert.Equal("TestMetadataValue", (string)metadata["testMetadataKey"]);
 
             var properties = (JObject)blobMetadata["properties"];
-            Assert.Equal("application/octet-stream", (string)properties["ContentType"]);
-            Assert.Equal("BlockBlob", Enum.Parse(typeof(BlobType), (string)properties["BlobType"]).ToString());
-            Assert.Equal(5, properties["Length"]);
+            Assert.Equal("application/octet-stream", (string)properties["contentType"]);
+            Assert.Equal("BlockBlob", Enum.Parse(typeof(BlobType), (string)properties["blobType"]).ToString());
+            Assert.Equal(5, properties["length"]);
 
             string invocationId = (string)testResult["invocationId"];
             Guid.Parse(invocationId);
