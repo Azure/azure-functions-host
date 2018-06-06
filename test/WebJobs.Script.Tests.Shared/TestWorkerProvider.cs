@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return string.Empty;
         }
 
-        public bool TryConfigureArguments(ArgumentsDescription args, IConfiguration config, ILogger logger)
+        public bool TryConfigureArguments(WorkerProcessArgumentsDescription args, IConfiguration config, ILogger logger)
         {
             // make no modifications
             return true;

@@ -10,19 +10,30 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class JavaWorkerProvider : IWorkerProvider
     {
-        private string pathToWorkerDir = WorkerProviderHelper.BuildWorkerDirectoryPath(ScriptConstants.JavaLanguageWrokerName);
+        private readonly string _pathToWorkerDir;
+
+        public JavaWorkerProvider(string workerDir)
+        {
+           _pathToWorkerDir = Path.Combine(workerDir, LanguageWorkerConstants.JavaLanguageWrokerName);
+        }
 
         public WorkerDescription GetDescription() => new WorkerDescription
         {
-            Language = ScriptConstants.JavaLanguageWrokerName,
+            Language = LanguageWorkerConstants.JavaLanguageWrokerName,
             Extension = ".jar",
             DefaultWorkerPath = "azure-functions-java-worker.jar",
         };
 
-        public bool TryConfigureArguments(ArgumentsDescription args, IConfiguration config, ILogger logger)
+        public bool TryConfigureArguments(WorkerProcessArgumentsDescription args, IConfiguration config, ILogger logger)
         {
+            if (!File.Exists(args.WorkerPath))
+            {
+                logger.LogError($"File {args.WorkerPath} does not exist.");
+                return false;
+            }
             var options = new DefaultWorkerOptions();
-            config.GetSection("workers:java").Bind(options);
+            var javaWorkerSection = $"{LanguageWorkerConstants.LanguageWorkerSectionName}:{LanguageWorkerConstants.JavaLanguageWrokerName}";
+            config.GetSection(javaWorkerSection).Bind(options);
             var env = new JavaEnvironment();
             config.Bind(env);
             if (string.IsNullOrEmpty(env.JAVA_HOME))
@@ -56,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public string GetWorkerDirectoryPath()
         {
-            return pathToWorkerDir;
+            return _pathToWorkerDir;
         }
 
         private class JavaEnvironment

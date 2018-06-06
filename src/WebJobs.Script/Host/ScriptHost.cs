@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
             _hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, ScriptConstants.HostMetadataFileName);
-            _language = _settingsManager.Configuration[ScriptConstants.FunctionWorkerRuntimeSettingName];
+            _language = _settingsManager.Configuration[LanguageWorkerConstants.FunctionWorkerRuntimeSettingName];
 
             _loggerProviderFactory = loggerProviderFactory ?? new DefaultLoggerProviderFactory();
         }
@@ -504,7 +504,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _startupLogger.LogTrace($"Adding Function descriptor provider for language {_language}.");
                 switch (_language.ToLower())
                 {
-                    case ScriptConstants.DotNetLanguageWorkerName:
+                    case LanguageWorkerConstants.DotNetLanguageWorkerName:
                         _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
                         break;
                     default:
@@ -738,37 +738,33 @@ namespace Microsoft.Azure.WebJobs.Script
                     _hostConfig.LoggerFactory);
             };
 
+            var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
             var providers = new List<IWorkerProvider>();
             if (!string.IsNullOrEmpty(_language))
             {
-                _startupLogger.LogInformation($"{ScriptConstants.FunctionWorkerRuntimeSettingName} is specified, only {_language} will be enabled");
+                _startupLogger.LogInformation($"{LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} is specified, only {_language} will be enabled");
                 // TODO: We still have some hard coded languages, so we need to handle them. Remove this switch once we've moved away from that.
                 switch (_language.ToLowerInvariant())
                 {
-                    case ScriptConstants.NodeLanguageWorkerName:
-                        providers.Add(new NodeWorkerProvider());
+                    case LanguageWorkerConstants.JavaLanguageWrokerName:
+                        providers.Add(new JavaWorkerProvider(configFactory.WorkerDirPath));
                         break;
-                    case ScriptConstants.JavaLanguageWrokerName:
-                        providers.Add(new JavaWorkerProvider());
-                        break;
-                    case ScriptConstants.DotNetLanguageWorkerName:
+                    case LanguageWorkerConstants.DotNetLanguageWorkerName:
                         // No-Op
                         break;
                     default:
                         // Pass the language to the provider loader to filter
-                        providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, _startupLogger, language: _language));
+                        providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, configFactory.WorkerDirPath, _startupLogger, language: _language));
                         break;
                 }
             }
             else
             {
                 // load all providers if no specific language is specified
-                providers.Add(new NodeWorkerProvider());
-                providers.Add(new JavaWorkerProvider());
-                providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, _startupLogger));
+                providers.Add(new JavaWorkerProvider(configFactory.WorkerDirPath));
+                providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, configFactory.WorkerDirPath, _startupLogger));
             }
 
-            var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
             var workerConfigs = configFactory.GetConfigs(providers);
 
             _functionDispatcher = new FunctionRegistry(EventManager, server, channelFactory, workerConfigs);

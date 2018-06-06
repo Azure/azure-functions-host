@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.WebJobs.Script.Tests;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
@@ -38,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
                 {
                     { "request", request }
                 };
-                if (string.Equals(ScriptConstants.NodeLanguageWorkerName, functionsWorkerLanguage, System.StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(functionsWorkerLanguage))
+                if (string.Equals(LanguageWorkerConstants.NodeLanguageWorkerName, functionsWorkerLanguage, System.StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(functionsWorkerLanguage))
                 {
                     await fixture.Host.CallAsync(functionName, arguments);
                     var result = (IActionResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
@@ -53,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
             }
             finally
             {
-                Environment.SetEnvironmentVariable(ScriptConstants.FunctionWorkerRuntimeSettingName, string.Empty);
+                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
                 fixture?.Dispose();
             }
         }

@@ -355,7 +355,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     if (process.ExitCode != 0)
                     {
-                        HandleWorkerError(new Exception($"Worker process with pid {process.Id} exited with code {process.ExitCode}"));
+                        HandleWorkerError(new Exception($"{process.StartInfo.FileName} Worker process with pid {process.Id} exited with code {process.ExitCode}"));
                     }
                     process.WaitForExit();
                     process.Close();
@@ -365,9 +365,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     HandleWorkerError(new Exception("Worker process is not attached"));
                 }
             };
-
             _logger.LogInformation($"Start Process: {process.StartInfo.FileName} {process.StartInfo.Arguments}");
-
             process.Start();
             process.BeginErrorReadLine();
             process.BeginOutputReadLine();

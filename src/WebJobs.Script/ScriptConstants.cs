@@ -65,15 +65,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionMetadataFileName = "function.json";
         public const string ProxyMetadataFileName = "proxies.json";
         public const string ExtensionsMetadataFileName = "extensions.json";
-        public const string WorkerConfigFileName = "worker.config.json";
+
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
         public const string ColdStartEventName = "ColdStart";
-        public const string FunctionWorkerRuntimeSettingName = "FUNCTIONS_WORKER_RUNTIME";
-        public const string DotNetLanguageWorkerName = "dotnet";
-        public const string NodeLanguageWorkerName = "node";
-        public const string JavaLanguageWrokerName = "java";
-        public const string DefaultWorkersDirectoryName = "workers";
 
         public const string AntaresLogIdHeaderName = "X-ARR-LOG-ID";
         public const string AntaresScaleOutHeaderName = "X-FUNCTION-SCALEOUT";

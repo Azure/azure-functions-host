@@ -1,8 +1,8 @@
 ﻿{
-    "title": "JSON schema for Azure Functions host.json files",
-    "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "JSON schema for Azure Functions host.json files",
+  "$schema": "http://json-schema.org/draft-04/schema#",
 
-    "type": "object",
+  "type": "object",
 
   "properties": {
     "id": {
@@ -254,6 +254,10 @@
           "type": "integer",
           "minimum": 4,
           "default": 32
+        },
+        "workersDirectory": {
+          "description": "Specifies full path of the directory for language workers",
+          "type": "string"
         }
       }
     },
@@ -301,4 +305,5 @@
         }
       }
     }
+  }
 }

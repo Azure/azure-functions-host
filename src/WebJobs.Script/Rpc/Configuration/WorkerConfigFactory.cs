@@ -20,19 +20,28 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _config = config;
             _logger = logger;
+            WorkerDirPath = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
+            var workersDirectorySection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkerSectionName}:{LanguageWorkerConstants.WorkersDirectorySectionName}");
+            if (!string.IsNullOrEmpty(workersDirectorySection.Value))
+            {
+                 WorkerDirPath = workersDirectorySection.Value;
+            }
         }
+
+        public string WorkerDirPath { get; }
 
         public IEnumerable<WorkerConfig> GetConfigs(IEnumerable<IWorkerProvider> providers)
         {
             foreach (var provider in providers)
             {
                 var description = provider.GetDescription();
-                var languageSection = _config.GetSection($"workers:{description.Language}");
 
                 // Can override the path we load from, or we use the default path from where we loaded the config
-                var workerPath = languageSection.GetSection("path").Value ?? Path.Combine(provider.GetWorkerDirectoryPath(), description.DefaultWorkerPath);
+                var languageSection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkerSectionName}:{description.Language}");
+                var workerPath = languageSection.GetSection("path").Value ?? Path.Combine(Path.Combine(WorkerDirPath, description.Language), description.DefaultWorkerPath);
+                _logger.LogTrace($"Worker path for language worker {description.Language}: {workerPath}");
 
-                var arguments = new ArgumentsDescription()
+                var arguments = new WorkerProcessArgumentsDescription()
                 {
                     ExecutablePath = description.DefaultExecutablePath,
                     WorkerPath = workerPath
@@ -48,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
                 else
                 {
-                    _logger.LogTrace($"Could not configure language worker {description.Language}.");
+                    _logger.LogError($"Could not configure language worker {description.Language}.");
                 }
             }
         }

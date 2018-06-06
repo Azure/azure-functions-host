@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.Abstractions
 {
-    public class ArgumentsDescription
+    public class WorkerProcessArgumentsDescription
     {
         /// <summary>
         /// Gets or sets the path to the executable (java, node, etc).
@@ -21,6 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
         /// Gets or sets the path to the worker file, i.e. nodejsWorker.js.
         /// </summary>
         public string WorkerPath { get; set; }
+
+        /// <summary>
+        /// Gets or sets arguments to be passed to the worker. Optional.
+        /// </summary>
+        public List<string> WorkerProcessArguments { get; set; } = new List<string>();
 
         /// <summary>
         /// Gets or sets arguments to be passed to the worker. Optional.
