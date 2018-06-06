@@ -102,6 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 _logger.LogInformation("Triggering specialization");
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteConfigurationReady, "1");
             }
             catch (Exception ex)
             {
