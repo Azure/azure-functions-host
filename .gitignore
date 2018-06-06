@@ -20,5 +20,7 @@ package-lock.json
 /node_modules
 /.output
 
+src/WebJobs.Script.WebHost/Properties/launchSettings.json
+
 # ignore generated grpc code from core branch
 src/WebJobs.Script.Grpc/Messages
