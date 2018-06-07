@@ -52,10 +52,19 @@ set OUTDIR=%MSGDIR%\DotNet
 mkdir %OUTDIR%
 %GRPC_TOOLS_PATH%\protoc.exe %PROTO% --csharp_out %OUTDIR% --grpc_out=%OUTDIR% --plugin=protoc-gen-grpc=%GRPC_TOOLS_PATH%\grpc_csharp_plugin.exe --proto_path=%PROTO_PATH% --proto_path=%PROTOBUF_TOOLS% 
 ```
-## Java
---TODO--
-
 ## JavaScript
+In package.json, add to the build script the following commands to build .js files and to build .ts files. Use and install npm package `protobufjs`.
+
+Generate JavaScript files:
+```
+pbjs -t json-module -w commonjs -o azure-functions-language-worker-protobuf/src/rpc.js azure-functions-language-worker-protobuf/src/proto/FunctionRpc.proto
+```
+Generate TypeScript files:
+```
+pbjs -t static-module azure-functions-language-worker-protobuf/src/proto/FunctionRpc.proto -o azure-functions-language-worker-protobuf/src/rpc_static.js && pbts -o azure-functions-language-worker-protobuf/src/rpc.d.ts azure-functions-language-worker-protobuf/src/rpc_static.js
+```
+
+## Java
 Maven plugin : [protobuf-maven-plugin](https://www.xolstice.org/protobuf-maven-plugin/)
 In pom.xml add following under configuration for this plugin
 <protoSourceRoot>${basedir}/<path to this repo>/azure-functions-language-worker-protobuf/src/proto</protoSourceRoot>

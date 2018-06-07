@@ -4,10 +4,9 @@ syntax = "proto3";
 option java_multiple_files = true;
 option java_package = "com.microsoft.azure.functions.rpc.messages";
 option java_outer_classname = "FunctionProto";
-option objc_class_prefix = "FunctionRpc";
 option csharp_namespace = "Microsoft.Azure.WebJobs.Script.Grpc.Messages";
 
-package FunctionRpc;
+package AzureFunctionsRpcMessages;
 
 import "google/protobuf/duration.proto";
 
