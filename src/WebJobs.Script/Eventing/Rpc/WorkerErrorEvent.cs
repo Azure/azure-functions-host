@@ -8,14 +8,14 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
     public class WorkerErrorEvent : ScriptEvent
     {
-        internal WorkerErrorEvent(ILanguageWorkerChannel worker, Exception exception)
+        internal WorkerErrorEvent(string workerId, Exception exception)
             : base(nameof(WorkerErrorEvent), EventSources.Worker)
         {
-            Worker = worker;
+            WorkerId = workerId;
             Exception = exception;
         }
 
-        internal ILanguageWorkerChannel Worker { get; private set; }
+        internal string WorkerId { get; private set; }
 
         public Exception Exception { get; private set; }
     }

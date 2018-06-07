@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private IDisposable _workerErrorSubscription;
         private List<ILanguageWorkerChannel> _erroredChannels = new List<ILanguageWorkerChannel>();
+        private ConcurrentDictionary<string, ILanguageWorkerChannel> _channelsDictionary = new ConcurrentDictionary<string, ILanguageWorkerChannel>();
         private bool disposedValue = false;
 
         public FunctionRegistry(
@@ -39,7 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _server = server;
             _channelFactory = channelFactory;
             _workerConfigs = workers?.ToList() ?? new List<WorkerConfig>();
-
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                 .Subscribe(WorkerError);
         }
@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             var state = new WorkerState();
             state.Channel = _channelFactory(config, state.Functions);
+            _channelsDictionary.GetOrAdd(state.Channel.Id, state.Channel);
             return state;
         }
 
@@ -66,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public void WorkerError(WorkerErrorEvent workerError)
         {
             // TODO: move retry logic, possibly into worker channel decorator
-            _channelState.AddOrUpdate(workerError.Worker.Config,
+            _channelState.AddOrUpdate(_channelsDictionary[workerError.WorkerId].Config,
                 CreateWorkerState,
                 (config, state) =>
                 {
