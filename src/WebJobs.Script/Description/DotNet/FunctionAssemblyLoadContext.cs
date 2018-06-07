@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// </summary>
     public partial class FunctionAssemblyLoadContext : AssemblyLoadContext
     {
-        private static readonly Lazy<Dictionary<string, ScriptRuntimeAssembly>> _runtimeAssemblies = new Lazy<Dictionary<string, ScriptRuntimeAssembly>>(GetRuntimeAssemblies);
+        private static readonly Lazy<Dictionary<string, ScriptRuntimeAssembly>> _runtimeAssemblies = new Lazy<Dictionary<string, ScriptRuntimeAssembly>>(DependencyHelper.GetRuntimeAssemblies);
         private static readonly Lazy<Dictionary<string, ResolutionPolicyEvaluator>> _resolutionPolicyEvaluators = new Lazy<Dictionary<string, ResolutionPolicyEvaluator>>(InitializeLoadPolicyEvaluators);
         private static Lazy<FunctionAssemblyLoadContext> _defaultContext = new Lazy<FunctionAssemblyLoadContext>(() => new FunctionAssemblyLoadContext(ResolveFunctionBaseProbingPath()), true);
 
@@ -201,16 +201,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string ridSubFolder = isNativeAsset ? "native" : string.Empty;
             string runtimesPath = Path.Combine(basePath, "runtimes");
 
+            List<string> rids = GetRuntimeFallbacks();
+
+            return rids.Select(r => Path.Combine(runtimesPath, r, ridSubFolder, assetFileName))
+                .Union(_probingPaths)
+                .FirstOrDefault(p => File.Exists(p));
+        }
+
+        private static List<string> GetRuntimeFallbacks()
+        {
             string currentRuntimeIdentifier = GetRuntimeIdentifier();
+
             RuntimeFallbacks fallbacks = DependencyContext.Default
                 .RuntimeGraph
-                .FirstOrDefault(f => string.Equals(f.Runtime, currentRuntimeIdentifier, StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(f => string.Equals(f.Runtime, currentRuntimeIdentifier, StringComparison.OrdinalIgnoreCase))
+                ?? DependencyHelper.GetDefaultRuntimeFallbacks(currentRuntimeIdentifier)
+                ?? new RuntimeFallbacks("any");
 
             var rids = new List<string> { fallbacks.Runtime };
             rids.AddRange(fallbacks.Fallbacks);
-
-            return rids.Select(r => Path.Combine(runtimesPath, r, ridSubFolder, assetFileName))
-                .FirstOrDefault(p => File.Exists(p));
+            return rids;
         }
 
         internal string GetUnmanagedLibraryFileName(string unmanagedLibraryName)
@@ -262,26 +272,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return Path.Combine(basePath, "bin");
-        }
-
-        private static Dictionary<string, ScriptRuntimeAssembly> GetRuntimeAssemblies()
-        {
-            string assembliesJson = GetRuntimeAssembliesJson();
-            JObject assemblies = JObject.Parse(assembliesJson);
-
-            return assemblies["runtimeAssemblies"]
-                .ToObject<ScriptRuntimeAssembly[]>()
-                .ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
-        }
-
-        private static string GetRuntimeAssembliesJson()
-        {
-            var assembly = typeof(FunctionAssemblyLoadContext).Assembly;
-            using (Stream resource = assembly.GetManifestResourceStream(assembly.GetName().Name + ".runtimeassemblies.json"))
-            using (var reader = new StreamReader(resource))
-            {
-                return reader.ReadToEnd();
-            }
         }
     }
 }

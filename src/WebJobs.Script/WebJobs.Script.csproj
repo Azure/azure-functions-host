@@ -12,11 +12,13 @@
   </PropertyGroup>
   <ItemGroup>
     <None Remove="runtimeassemblies.json" />
+    <None Remove="runtimes.json" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="runtimeassemblies.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
+    <EmbeddedResource Include="runtimes.json" />
   </ItemGroup>
 
   <ItemGroup>
