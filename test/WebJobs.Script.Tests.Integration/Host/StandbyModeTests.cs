@@ -18,6 +18,8 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, TestTraits.StandbyModeTests)]
     public class StandbyModeTests : IDisposable
     {
         private readonly WebHostResolver _webHostResolver;

@@ -33,14 +33,16 @@ $tests = @(
   @{project ="WebJobs.Script.Tests"; description="Unit Tests"},
   @{project ="WebJobs.Script.Scaling.Tests"; description="Scaling Tests"},
   @{project ="WebJobs.Script.Tests.Integration"; description="Non-E2E integration tests"; filter ="Category!=E2E"},
-  @{project ="WebJobs.Script.Tests.Integration"; description="C# end to end tests"; filter ="E2E=CSharpEndToEndTests"},
-  @{project ="WebJobs.Script.Tests.Integration"; description="Node end to end tests"; filter ="E2E=NodeEndToEndTests"},
-  @{project ="WebJobs.Script.Tests.Integration"; description="Direct load end to end tests"; filter ="E2E=DirectLoadEndToEndTests"},
-  @{project ="WebJobs.Script.Tests.Integration"; description="F# end to end tests"; filter ="E2E=FSharpEndToEndTests"},
-  @{project ="WebJobs.Script.Tests.Integration"; description="Language worker end to end tests"; filter ="E2E=LanguageWorkerSelectionEndToEndTests"},
-  @{project ="WebJobs.Script.Tests.Integration"; description="Node script host end to end tests"; filter ="E2E=NodeScriptHostTests"},
-  @{project ="WebJobs.Script.Tests.Integration"; description="Raw assembly end to end tests"; filter ="E2E=RawAssemblyEndToEndTests"},
-  @{project ="WebJobs.Script.Tests.Integration"; description="Samples end to end tests"; filter ="E2E=SamplesEndToEndTests"}
+  @{project ="WebJobs.Script.Tests.Integration"; description="C# end to end tests"; filter ="Group=CSharpEndToEndTests"},
+  @{project ="WebJobs.Script.Tests.Integration"; description="Node end to end tests"; filter ="Group=NodeEndToEndTests"},
+  @{project ="WebJobs.Script.Tests.Integration"; description="Direct load end to end tests"; filter ="Group=DirectLoadEndToEndTests"},
+  @{project ="WebJobs.Script.Tests.Integration"; description="F# end to end tests"; filter ="Group=FSharpEndToEndTests"},
+  @{project ="WebJobs.Script.Tests.Integration"; description="Language worker end to end tests"; filter ="Group=LanguageWorkerSelectionEndToEndTests"},
+  @{project ="WebJobs.Script.Tests.Integration"; description="Node script host end to end tests"; filter ="Group=NodeScriptHostTests"},
+  @{project ="WebJobs.Script.Tests.Integration"; description="Raw assembly end to end tests"; filter ="Group=RawAssemblyEndToEndTests"},
+  @{project ="WebJobs.Script.Tests.Integration"; description="Samples end to end tests"; filter ="Group=SamplesEndToEndTests"}
+  @{project ="WebJobs.Script.Tests.Integration"; description="Standby mode end to end tests"; filter ="Group=StandbyModeEndToEndTests"}
+  @{project ="WebJobs.Script.Tests.Integration"; description="InstanceManager end to end tests"; filter ="Group=InstanceManagerTests"}
 )
 
 $success = $true

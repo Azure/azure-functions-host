@@ -12,8 +12,8 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
 {
-    [Trait("Category", "E2E")]
-    [Trait("E2E", nameof(LanguageWorkerSelectionEndToEndTests))]
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, nameof(LanguageWorkerSelectionEndToEndTests))]
     public class LanguageWorkerSelectionEndToEndTests
     {
         [Theory]

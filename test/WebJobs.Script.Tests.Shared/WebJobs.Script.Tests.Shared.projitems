@@ -12,6 +12,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)HttpTestHelpers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SingleThreadedSynchronizationContext.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TempDirectory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestTraits.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHelpers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHelpers.Functions.cs" />

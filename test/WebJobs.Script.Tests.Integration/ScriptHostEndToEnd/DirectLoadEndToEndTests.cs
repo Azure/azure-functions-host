@@ -12,11 +12,12 @@ using Xunit;
 using Microsoft.Extensions.Logging;
 using System;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    [Trait("Category", "E2E")]
-    [Trait("E2E", nameof(DirectLoadEndToEndTests))]
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, nameof(DirectLoadEndToEndTests))]
     public class DirectLoadEndToEndTests : IClassFixture<DirectLoadEndToEndTests.TestFixture>
     {
         TestFixture Fixture;

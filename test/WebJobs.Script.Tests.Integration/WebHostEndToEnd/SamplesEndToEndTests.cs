@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
@@ -24,8 +25,8 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
-    [Trait("Category", "E2E")]
-    [Trait("E2E", nameof(SamplesEndToEndTests))]
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, nameof(SamplesEndToEndTests))]
     public class SamplesEndToEndTests : IClassFixture<SamplesEndToEndTests.TestFixture>
     {
         private readonly ScriptSettingsManager _settingsManager;

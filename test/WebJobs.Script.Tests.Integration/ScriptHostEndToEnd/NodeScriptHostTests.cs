@@ -16,8 +16,8 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    [Trait("Category", "E2E")]
-    [Trait("E2E", nameof(NodeScriptHostTests))]
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, nameof(NodeScriptHostTests))]
     public class NodeScriptHostTests : IClassFixture<NodeScriptHostTests.TestFixture>
     {
         private TestFixture Fixture;

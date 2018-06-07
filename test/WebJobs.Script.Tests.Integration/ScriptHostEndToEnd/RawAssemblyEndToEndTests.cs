@@ -13,12 +13,13 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Properties;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    [Trait("Category", "E2E")]
-    [Trait("E2E", nameof(RawAssemblyEndToEndTests))]
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, nameof(RawAssemblyEndToEndTests))]
     public class RawAssemblyEndToEndTests : IClassFixture<RawAssemblyEndToEndTests.TestFixture>
     {
         private TestFixture _fixture;

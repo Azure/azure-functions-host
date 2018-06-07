@@ -10,13 +10,14 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
-    [Trait("Category", "E2E")]
-    [Trait("E2E", nameof(CSharpEndToEndTests))]
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, nameof(CSharpEndToEndTests))]
     public class CSharpEndToEndTests : EndToEndTestsBase<CSharpEndToEndTests.TestFixture>
     {
         public CSharpEndToEndTests(TestFixture fixture) : base(fixture)
