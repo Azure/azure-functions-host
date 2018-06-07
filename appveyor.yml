@@ -50,12 +50,14 @@ for:
       .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeVersion (!$hasTag)
   after_build:
   - ps: >
-      if (!$env:APPVEYOR_PULL_REQUEST_NUMBER) {
+      $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
+
+      if ($bypassPackaging) {
+        Write-Host "Bypassing artifact publishing for pull request." -ForegroundColor Yellow
+      } else {
         Get-ChildItem buildoutput\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
 
         Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
-      } else {
-        Write-Host "Bypassing artifact publishing for pull request." -ForegroundColor Yellow
       }
   test_script:
   - ps: >
