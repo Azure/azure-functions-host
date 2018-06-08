@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private IDisposable _workerErrorSubscription;
         private List<ILanguageWorkerChannel> _erroredChannels = new List<ILanguageWorkerChannel>();
+        private ConcurrentDictionary<string, ILanguageWorkerChannel> _channelsDictionary = new ConcurrentDictionary<string, ILanguageWorkerChannel>();
         private bool disposedValue = false;
 
         public FunctionRegistry(
@@ -39,7 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _server = server;
             _channelFactory = channelFactory;
             _workerConfigs = workers?.ToList() ?? new List<WorkerConfig>();
-
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                 .Subscribe(WorkerError);
         }
@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             var state = new WorkerState();
             state.Channel = _channelFactory(config, state.Functions);
+            _channelsDictionary[state.Channel.Id] = state.Channel;
             return state;
         }
 
@@ -65,28 +66,32 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void WorkerError(WorkerErrorEvent workerError)
         {
-            // TODO: move retry logic, possibly into worker channel decorator
-            _channelState.AddOrUpdate(workerError.Worker.Config,
-                CreateWorkerState,
-                (config, state) =>
-                {
-                    _erroredChannels.Add(state.Channel);
-                    state.Errors.Add(workerError.Exception);
-                    if (state.Errors.Count < 3)
+            ILanguageWorkerChannel erroredChannel = _channelsDictionary[workerError.WorkerId];
+            if (erroredChannel != null)
+            {
+                // TODO: move retry logic, possibly into worker channel decorator
+                _channelState.AddOrUpdate(erroredChannel.Config,
+                    CreateWorkerState,
+                    (config, state) =>
                     {
-                        state.Channel = _channelFactory(config, state.Functions);
-                    }
-                    else
-                    {
-                        var exception = new AggregateException(state.Errors.ToList());
-                        var errorBlock = new ActionBlock<ScriptInvocationContext>(ctx =>
+                        _erroredChannels.Add(state.Channel);
+                        state.Errors.Add(workerError.Exception);
+                        if (state.Errors.Count < 3)
                         {
-                            ctx.ResultSource.TrySetException(exception);
-                        });
-                        state.Functions.Subscribe(reg => reg.InputBuffer.LinkTo(errorBlock));
-                    }
-                    return state;
-                });
+                            state.Channel = _channelFactory(config, state.Functions);
+                        }
+                        else
+                        {
+                            var exception = new AggregateException(state.Errors.ToList());
+                            var errorBlock = new ActionBlock<ScriptInvocationContext>(ctx =>
+                            {
+                                ctx.ResultSource.TrySetException(exception);
+                            });
+                            state.Functions.Subscribe(reg => reg.InputBuffer.LinkTo(errorBlock));
+                        }
+                        return state;
+                    });
+            }
         }
 
         protected virtual void Dispose(bool disposing)
