@@ -21,38 +21,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             bool exists = await Fixture.NamespaceManager.QueueExistsAsync(queueName);
             Assert.False(exists, $"This test expects the queue '{queueName}' to not exist, but it does.");
 
-            IList<string> logs = null;
+            IEnumerable<string> logs = null;
 
             await TestHelpers.Await(() =>
             {
-                logs = TestHelpers.GetFunctionLogsAsync("ListenerStartupException", false).Result;
-
+                logs = GetTracesForFunction("ListenerStartupException");
                 string logToFind = "The listener for function 'Functions.ListenerStartupException' was unable to start.";
                 return logs.Any(l => l.Contains(logToFind));
             });
 
-            TestHelpers.ClearFunctionLogs("TimerTrigger");
+            // see how many Timer logs we've seen so far. We'll make sure we see more below.
+            string timerLogToFind = "Timer function ran!";
+            int timerCount = GetTracesForFunction("TimerTrigger").Count(p => p.Contains(timerLogToFind));
 
             // assert that timer function is still running
             await TestHelpers.Await(() =>
             {
-                logs = TestHelpers.GetFunctionLogsAsync("TimerTrigger", false).Result;
-
-                string logToFind = "Timer function ran!";
-                return logs.Any(l => l.Contains(logToFind));
+                int newTimerCount = GetTracesForFunction("TimerTrigger").Count(p => p.Contains(timerLogToFind));
+                return newTimerCount > timerCount;
             });
 
             // assert that the host is retrying to start the
             // listener in the background
             await TestHelpers.Await(() =>
             {
-                logs = TestHelpers.GetHostLogsAsync().Result;
+                logs = Fixture.TraceWriter.GetTraces().Select(p => p.Message);
                 string logToFind = "Retrying to start listener for function 'Functions.ListenerStartupException' (Attempt 2)";
                 return logs.Any(l => l.Contains(logToFind));
             });
 
             // assert that Stop does not throw error
             Fixture.Host.Stop();
+        }
+
+        private IEnumerable<string> GetTracesForFunction(string functionName)
+        {
+            return Fixture.TraceWriter.GetTraces()
+                .Where(p =>
+                {
+                    return p.Properties.TryGetValue(ScriptConstants.TracePropertyFunctionNameKey, out string name) &&
+                           name == functionName;
+                })
+                .Select(p => p.Message);
         }
 
         public class TestFixture : EndToEndTestFixture
