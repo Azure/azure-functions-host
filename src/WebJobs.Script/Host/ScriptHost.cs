@@ -725,7 +725,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _startupLogger.LogWarning(e, "Unable to create process registry");
             }
 
-            CreateChannel channelFactory = (config, registrations) =>
+            CreateChannel channelFactory = (languageWorkerConfig, registrations) =>
             {
                 return new LanguageWorkerChannel(
                     ScriptConfig,
@@ -733,7 +733,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     processFactory,
                     _processRegistry,
                     registrations,
-                    config,
+                    languageWorkerConfig,
                     server.Uri,
                     _hostConfig.LoggerFactory);
             };

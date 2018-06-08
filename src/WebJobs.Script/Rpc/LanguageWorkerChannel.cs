@@ -9,7 +9,6 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks.Dataflow;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
@@ -327,7 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
 
             _logger.LogError(exc, $"Worker encountered an error.");
-            _eventManager.Publish(new WorkerErrorEvent(this, exc));
+            _eventManager.Publish(new WorkerErrorEvent(Id, exc));
         }
 
         // TODO: move this out of LanguageWorkerChannel to WorkerProcessFactory
