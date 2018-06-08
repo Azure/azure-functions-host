@@ -326,7 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
 
             _logger.LogError(exc, $"Worker encountered an error.");
-            _eventManager.Publish(new WorkerErrorEvent(this.Id, exc));
+            _eventManager.Publish(new WorkerErrorEvent(Id, exc));
         }
 
         // TODO: move this out of LanguageWorkerChannel to WorkerProcessFactory

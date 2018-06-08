@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
         internal WorkerErrorEvent(string workerId, Exception exception)
             : base(nameof(WorkerErrorEvent), EventSources.Worker)
         {
-            WorkerId = workerId;
+            WorkerId = workerId ?? throw new ArgumentNullException(nameof(workerId));
             Exception = exception;
         }
 
