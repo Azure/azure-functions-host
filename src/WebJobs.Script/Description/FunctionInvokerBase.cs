@@ -129,33 +129,43 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             IDictionary<string, object> properties = new Dictionary<string, object>(PrimaryHostLogProperties);
 
-            FunctionLogger.Log(LogLevel.Information, 0, properties, exception, (state, ex) => message);
+            FunctionLogger.Log(level, 0, properties, exception, (state, ex) => message);
         }
 
-        internal void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics, LogTargets logTarget = LogTargets.All)
+        internal void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics, LogTargets logTarget = LogTargets.All, bool isInvocation = false)
         {
             if (logTarget == LogTargets.None)
             {
                 return;
             }
 
-            IDictionary<string, object> hostTraceProperties = PrimaryHostLogProperties;
-
+            // build the log state based on inputs
+            Dictionary<string, object> logState = new Dictionary<string, object>();
+            if (!isInvocation)
+            {
+                // generally we only want to trace compilation diagnostics on the single primary
+                // host, to avoid duplicate log statements in the case of file save operations.
+                // however if the function is being invoked, we always want to output detailed
+                // information.
+                logState.Add(ScriptConstants.LogPropertyPrimaryHostKey, true);
+            }
             if (!logTarget.HasFlag(LogTargets.User))
             {
-                hostTraceProperties = PrimaryHostSystemLogProperties;
+                logState.Add(ScriptConstants.LogPropertyIsSystemLogKey, true);
             }
             else if (!logTarget.HasFlag(LogTargets.System))
             {
-                hostTraceProperties = PrimaryHostUserLogProperties;
+                logState.Add(ScriptConstants.LogPropertyIsUserLogKey, true);
             }
 
+            // log the diagnostics
             foreach (var diagnostic in diagnostics.Where(d => !d.IsSuppressed))
             {
-                FunctionLogger.Log(diagnostic.Severity.ToLogLevel(), 0, hostTraceProperties, null, (s, e) => diagnostic.ToString());
+                FunctionLogger.Log(diagnostic.Severity.ToLogLevel(), 0, logState, null, (s, e) => diagnostic.ToString());
             }
 
-            if (Host.InDebugMode && Host.IsPrimary)
+            // log structured logs
+            if (Host.InDebugMode && (Host.IsPrimary || isInvocation))
             {
                 Host.EventManager.Publish(new StructuredLogEntryEvent(() =>
                 {

@@ -40,9 +40,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task ReloadScript_WithInvalidCompilationAndMissingMethod_ReportsResults()
+        public async Task GetFunctionTargetAsync_CompilationError_ReportsResults()
         {
-            // Create the compilation exception we expect to throw during the reload
+            // Create the compilation exception we expect to throw
             var descriptor = new DiagnosticDescriptor(DotNetConstants.MissingFunctionEntryPointCompilationCode,
                 "Test compilation exception", "Test compilation error", "AzureFunctions", DiagnosticSeverity.Error, true);
             var exception = new CompilationErrorException("Test compilation exception", ImmutableArray.Create(Diagnostic.Create(descriptor, Location.None)));
@@ -79,25 +79,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetTempPath(), Path.Combine(Path.GetFileName(rootFunctionsFolder), Path.GetFileName(filePath)));
             dependencies.Host.Object.EventManager.Publish(new FileEvent(EventSources.ScriptFiles, fileEventArgs));
 
+            LogMessage[] logMessages = null;
+            var loggerProvider = dependencies.LoggerProvider;
             await TestHelpers.Await(() =>
             {
-                IEnumerable<LogMessage> logMessages = dependencies.LoggerProvider.GetAllLogMessages();
+                logMessages = loggerProvider.GetAllLogMessages().ToArray();
 
                 return logMessages.Any(t => t.FormattedMessage.Contains("Compilation failed.")) &&
-                 logMessages.Any(t => t.FormattedMessage.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
+                    logMessages.Any(t => t.FormattedMessage.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
             });
 
+            // verify expected logs when the function target is retrieved
+            // NOT on the invocation path
             dependencies.LoggerProvider.ClearAllLogMessages();
-
-            CompilationErrorException resultException = await Assert.ThrowsAsync<CompilationErrorException>(() => invoker.GetFunctionTargetAsync());
+            await Assert.ThrowsAsync<CompilationErrorException>(async () =>
+            {
+                await invoker.GetFunctionTargetAsync();
+            });
+            Assert.Equal(3, logMessages.Length);
+            Assert.Equal($"Script for function '{functionName}' changed. Reloading.", logMessages[0].FormattedMessage);
+            Assert.Equal(LogLevel.Information, logMessages[0].Level);
+            Assert.Equal("error AF001: Test compilation error", logMessages[1].FormattedMessage);
+            Assert.Equal(LogLevel.Error, logMessages[1].Level);
+            Assert.True(logMessages[1].State.Any(q => q.Key == ScriptConstants.LogPropertyIsUserLogKey));
+            Assert.Equal("Compilation failed.", logMessages[2].FormattedMessage);
+            Assert.Equal(LogLevel.Information, logMessages[2].Level);
+            Assert.True(logMessages.All(p => p.State.Any(q => q.Key == ScriptConstants.LogPropertyPrimaryHostKey)));
 
             await TestHelpers.Await(() =>
             {
-                IEnumerable<LogMessage> logMessages = dependencies.LoggerProvider.GetAllLogMessages();
+                logMessages = loggerProvider.GetAllLogMessages().ToArray();
 
                 return logMessages.Any(t => t.FormattedMessage.Contains("Function compilation error")) &&
-                 logMessages.Any(t => t.FormattedMessage.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
+                    logMessages.Any(t => t.FormattedMessage.Contains(DotNetConstants.MissingFunctionEntryPointCompilationCode));
             });
+
+            // now test the invoke path and verify that the compilation error
+            // details are written
+            loggerProvider.ClearAllLogMessages();
+            await Assert.ThrowsAsync<CompilationErrorException>(async () =>
+            {
+                await invoker.GetFunctionTargetAsync(isInvocation: true);
+            });
+            logMessages = loggerProvider.GetAllLogMessages().ToArray();
+            Assert.Equal(2, logMessages.Length);
+            Assert.Equal("Function compilation error", logMessages[0].FormattedMessage);
+            Assert.Equal(LogLevel.Error, logMessages[0].Level);
+            Assert.Same("Test compilation exception", logMessages[0].Exception.Message);
+            Assert.Equal("error AF001: Test compilation error", logMessages[1].FormattedMessage);
+            Assert.Equal(LogLevel.Error, logMessages[1].Level);
+            Assert.True(logMessages[1].State.Any(q => q.Key == ScriptConstants.LogPropertyIsUserLogKey));
+            Assert.True(logMessages.All(p => !(p.State != null && p.State.Any(q => q.Key == ScriptConstants.LogPropertyPrimaryHostKey))));
         }
 
         [Theory]

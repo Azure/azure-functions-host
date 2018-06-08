@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        internal async Task<MethodInfo> GetFunctionTargetAsync()
+        internal async Task<MethodInfo> GetFunctionTargetAsync(bool isInvocation = false)
         {
             try
             {
@@ -179,8 +179,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (CompilationErrorException exc)
             {
-                LogOnPrimaryHost("Function compilation error", LogLevel.Error);
-                TraceCompilationDiagnostics(exc.Diagnostics, LogTargets.User);
+                // on the invocation path we want to log detailed logs and all compilation diagnostics
+                var properties = isInvocation ? null : PrimaryHostLogProperties;
+                FunctionLogger.Log(LogLevel.Error, 0, properties, exc, (state, ex) => "Function compilation error");
+                TraceCompilationDiagnostics(exc.Diagnostics, LogTargets.User, isInvocation);
                 throw;
             }
             catch (CompilationServiceException)
@@ -245,10 +247,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
+            MethodInfo function = await GetFunctionTargetAsync(isInvocation: true);
+
             // Separate system parameters from the actual method parameters
             object[] originalParameters = parameters;
-            MethodInfo function = await GetFunctionTargetAsync();
-
             int actualParameterCount = function.GetParameters().Length;
             parameters = parameters.Take(actualParameterCount).ToArray();
 
