@@ -9,11 +9,13 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
@@ -22,8 +24,8 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
-    [Trait("Category", "E2E")]
-    [Trait("E2E", nameof(NodeEndToEndTests))]
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, nameof(NodeEndToEndTests))]
     public class NodeEndToEndTests : EndToEndTestsBase<NodeEndToEndTests.TestFixture>
     {
         public NodeEndToEndTests(TestFixture fixture) : base(fixture)
@@ -63,12 +65,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal($"test-input-node/{name}", (string)blobMetadata["path"]);
 
             var metadata = (JObject)blobMetadata["metadata"];
-            Assert.Equal("TestMetadataValue", (string)metadata["TestMetadataKey"]);
+            Assert.Equal("TestMetadataValue", (string)metadata["testMetadataKey"]);
 
             var properties = (JObject)blobMetadata["properties"];
-            Assert.Equal("application/octet-stream", (string)properties["ContentType"]);
-            Assert.Equal("BlockBlob", Enum.Parse(typeof(BlobType), (string)properties["BlobType"]).ToString());
-            Assert.Equal(5, properties["Length"]);
+            Assert.Equal("application/octet-stream", (string)properties["contentType"]);
+            Assert.Equal("BlockBlob", Enum.Parse(typeof(BlobType), (string)properties["blobType"]).ToString());
+            Assert.Equal(5, properties["length"]);
 
             string invocationId = (string)testResult["invocationId"];
             Guid.Parse(invocationId);
@@ -268,7 +270,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 log => log.FormattedMessage.Contains("Exports: IsObject=true, Count=1"));
         }
 
-        [Fact(Skip = "Needs investigation")]
+        [Fact]
         public async Task HttpTriggerToBlob()
         {
             var request = new HttpRequestMessage
@@ -308,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(expectedValue, result);
         }
 
-        [Theory(Skip = "Needs investigation")]
+        [Theory]
         [InlineData("application/json", "{\"name\": \"test\" }", "rawresponse")]
         [InlineData("application/json", 1, "rawresponse")]
         [InlineData("application/json", "{\"test_time\": \"2026-04-20T00:00:00.000Z\", \"test_bool\": \"true\" }", "rawresponse")]
@@ -345,7 +347,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(body.ToString(), responseBody);
         }
 
-        [Fact(Skip = "Needs investigation")]
+        [Fact]
         public async Task HttpTrigger_GetPlainText_WithLongResponse_ReturnsExpectedResult()
         {
             HttpRequestMessage request = new HttpRequestMessage
@@ -378,7 +380,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(2000, body.Length);
         }
 
-        [Theory(Skip = "Needs investigation")]
+        [Theory(Skip = "Content negotiation not working currently")]
         [InlineData("application/json", "\"testinput\"")]
         [InlineData("application/xml", "<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">testinput</string>")]
         [InlineData("text/plain", "testinput")]
@@ -414,12 +416,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(expectedBody, body);
         }
 
-        [Fact(Skip = "Needs investigation")]
-        public async Task HttpTriggerExpressApi_Get()
+        [Fact]
+        public async Task HttpTrigger_Get_Succeeds()
         {
+            string key = await Fixture.Host.GetFunctionSecretAsync("HttpTrigger");
             HttpRequestMessage request = new HttpRequestMessage
             {
-                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger?name=Mathew%20Charles&location=Seattle")),
+                RequestUri = new Uri($"http://localhost/api/httptrigger?code={key}&name=Mathew%20Charles&location=Seattle"),
                 Method = HttpMethod.Get,
             };
             request.Headers.Add("test-header", "Test Request Header");
@@ -447,28 +450,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("Test Request Header", reqHeaders["test-header"]);
         }
 
-        [Fact(Skip = "Needs investigation")]
-        public async Task HttpTriggerExpressApi_SendStatus()
+        [Fact]
+        public async Task HttpTrigger_MalformedJsonBody_Succeeds()
         {
+            string key = await Fixture.Host.GetFunctionSecretAsync("HttpTrigger");
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"http://localhost/api/httptrigger?code={key}"),
+                Method = HttpMethod.Post,
+            };
+            string json = "} not json";
+            request.Content = new StringContent(json, Encoding.UTF8, "AppLication/json");
+
+            var response = await Fixture.Host.HttpClient.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string body = await response.Content.ReadAsStringAsync();
+            JObject resultObject = JObject.Parse(body);
+            Assert.Equal("string", (string)resultObject["reqBodyType"]);
+            Assert.Equal(json, (string)resultObject["reqBody"]);
+            Assert.Equal("string", (string)resultObject["reqRawBodyType"]);
+            Assert.Equal(json, (string)resultObject["reqRawBody"]);
+        }
+
+        [Fact]
+        public async Task HttpTriggerExpressApi_SendStatus_Succeeds()
+        {
+            string key = await Fixture.Host.GetFunctionSecretAsync("HttpTriggerExpressApi");
             HttpRequestMessage request = new HttpRequestMessage
             {
-                RequestUri = new Uri(string.Format("http://localhost/api/httptrigger")),
+                RequestUri = new Uri($"http://localhost/api/httptriggerexpressapi?code={key}"),
                 Method = HttpMethod.Get
             };
             request.Headers.Add("scenario", "sendStatus");
 
             HttpResponseMessage response = await Fixture.Host.HttpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
 
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
-        [Fact(Skip = "Needs investigation")]
-        public async Task HttpTriggerPromise_TestBinding()
+        [Fact]
+        public async Task HttpTriggerPromise_ReturnFromPromise_Succeeds()
         {
+            string key = await Fixture.Host.GetFunctionSecretAsync("HttpTriggerPromise");
             HttpRequestMessage request = new HttpRequestMessage
             {
-                RequestUri = new Uri(string.Format("http://localhost/api/httptriggerpromise")),
+                RequestUri = new Uri($"http://localhost/api/httptriggerpromise?code={key}"),
                 Method = HttpMethod.Get,
             };
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));

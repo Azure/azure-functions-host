@@ -60,12 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task BadContentType_ThrowsExpectedException_Conneg()
+        public async Task NullContentType_Ignored_Conneg()
         {
-            await Assert.ThrowsAsync<FunctionInvocationException>(async () =>
-            {
-                var content = await ResponseWithConneg("asdf", null);
-            });
+            var str = "asdf";
+            var content = await ResponseWithConneg("asdf", null);
+            Assert.Equal(str, content);
         }
 
         [Fact]
@@ -342,7 +341,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 ObjectResult objResult = result as ObjectResult;
                 Assert.NotNull(objResult);
-                Assert.Equal(contentType, objResult.ContentTypes[0]);
+                if (contentType == null)
+                {
+                    Assert.Equal(0, objResult.ContentTypes.Count);
+                }
+                else
+                {
+                    Assert.Equal(contentType, objResult.ContentTypes[0]);
+                }
                 Assert.Equal(200, objResult.StatusCode);
                 if (content is byte[])
                 {

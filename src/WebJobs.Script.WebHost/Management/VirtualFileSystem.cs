@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
@@ -33,10 +34,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         protected const int BufferSize = 32 * 1024;
         private readonly ScriptHostConfiguration _config;
+        private readonly ILogger _logger;
 
-        public VirtualFileSystem(WebHostSettings settings)
+        public VirtualFileSystem(WebHostSettings settings, ILoggerFactory loggerFactory)
         {
             _config = settings.ToScriptHostConfiguration();
+            _logger = loggerFactory.CreateLogger<VirtualFileSystem>();
             MediaTypeMap = MediaTypeMap.Default;
         }
 
@@ -155,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
                 catch (Exception ex)
                 {
-                    // TODO: log ex
+                    _logger.LogError(ex, ex.Message);
                     var conflictDirectoryResponse = CreateResponse(HttpStatusCode.Conflict, ex);
                     return Task.FromResult(conflictDirectoryResponse);
                 }
@@ -233,7 +236,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             catch (Exception e)
             {
-                // TODO: log
+                _logger.LogError(e, e.Message);
                 HttpResponseMessage errorResponse = CreateResponse(HttpStatusCode.InternalServerError, e.Message);
                 return Task.FromResult(errorResponse);
             }
@@ -294,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 // The range request had no overlap with the current extend of the resource so generate a 416 (Requested Range Not Satisfiable)
                 // including a Content-Range header with the current size.
-                // TODO: log?
+                _logger.LogWarning(invalidByteRangeException.Message);
                 var invalidByteRangeResponse = CreateResponse(HttpStatusCode.RequestedRangeNotSatisfiable, invalidByteRangeException);
                 if (fileStream != null)
                 {
@@ -305,7 +308,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             catch (Exception ex)
             {
                 // Could not read the file
-                // TODO: log?
+                _logger.LogError(ex, "Unable to read file: " + ex.Message);
                 var errorResponse = CreateResponse(HttpStatusCode.NotFound, ex);
                 if (fileStream != null)
                 {
@@ -328,9 +331,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 info.Create();
             }
-            catch (IOException)
+            catch (IOException ex)
             {
-                // TODO: log ex
+                _logger.LogError(ex, ex.Message);
                 HttpResponseMessage conflictDirectoryResponse = CreateResponse(HttpStatusCode.Conflict);
                 return Task.FromResult(conflictDirectoryResponse);
             }
@@ -384,7 +387,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     }
                     catch (Exception ex)
                     {
-                        // TODO: log ex
+                        _logger.LogError(ex, ex.Message);
                         var conflictResponse = CreateResponse(HttpStatusCode.Conflict, ex);
                         return conflictResponse;
                     }
@@ -400,7 +403,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             catch (Exception ex)
             {
-                // TODO: log ex
+                _logger.LogError(ex, ex.Message);
                 var errorResponse = CreateResponse(HttpStatusCode.Conflict, ex);
                 return errorResponse;
             }
@@ -436,11 +439,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 var successResponse = CreateResponse(HttpStatusCode.OK);
                 return Task.FromResult(successResponse);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
                 // Could not delete the file
-                // TODO: log ex
-                var notFoundResponse = CreateResponse(HttpStatusCode.NotFound, e);
+                _logger.LogError(ex, ex.Message);
+                var notFoundResponse = CreateResponse(HttpStatusCode.NotFound, ex);
                 return Task.FromResult(notFoundResponse);
             }
         }

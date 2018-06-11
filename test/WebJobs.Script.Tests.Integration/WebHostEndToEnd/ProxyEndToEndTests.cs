@@ -262,8 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     IsSelfHost = true,
                     ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\TestScripts\Proxies"),
                     LogPath = Path.Combine(Path.GetTempPath(), @"ProxyTests\Logs"),
-                    SecretsPath = Path.Combine(Path.GetTempPath(), @"ProxyTests\Secrets"),
-                    IsAuthDisabled = true
+                    SecretsPath = Path.Combine(Path.GetTempPath(), @"ProxyTests\Secrets")
                 };
 
                _testServer = new TestServer(

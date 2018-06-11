@@ -725,7 +725,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _startupLogger.LogWarning(e, "Unable to create process registry");
             }
 
-            CreateChannel channelFactory = (config, registrations) =>
+            CreateChannel channelFactory = (languageWorkerConfig, registrations) =>
             {
                 return new LanguageWorkerChannel(
                     ScriptConfig,
@@ -733,7 +733,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     processFactory,
                     _processRegistry,
                     registrations,
-                    config,
+                    languageWorkerConfig,
                     server.Uri,
                     _hostConfig.LoggerFactory);
             };
@@ -1117,15 +1117,8 @@ namespace Microsoft.Azure.WebJobs.Script
             try
             {
                 // read the function config
-                string functionConfigPath = Path.Combine(scriptDir, ScriptConstants.FunctionMetadataFileName);
                 string json = null;
-                try
-                {
-                    json = fileSystem != null
-                        ? fileSystem.File.ReadAllText(functionConfigPath)
-                        : FileUtility.ReadAllText(functionConfigPath);
-                }
-                catch (FileNotFoundException)
+                if (!TryReadFunctionConfig(scriptDir, out json, fileSystem))
                 {
                     // not a function directory
                     return null;
@@ -1193,6 +1186,27 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return null;
+        }
+
+        internal static bool TryReadFunctionConfig(string scriptDir, out string json, IFileSystem fileSystem = null)
+        {
+            json = null;
+            fileSystem = fileSystem ?? FileUtility.Instance;
+
+            // read the function config
+            string functionConfigPath = Path.Combine(scriptDir, ScriptConstants.FunctionMetadataFileName);
+            try
+            {
+                json = fileSystem.File.ReadAllText(functionConfigPath);
+            }
+            catch (IOException ex) when
+                (ex is FileNotFoundException || ex is DirectoryNotFoundException)
+            {
+                // not a function directory
+                return false;
+            }
+
+            return true;
         }
 
         private Collection<FunctionMetadata> LoadProxyRoutes(string proxiesJson)
@@ -1770,10 +1784,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentNullException("exception");
             }
 
-            // First, ensure that we've logged to the host log
-            // Also ensure we flush immediately to ensure any buffered logs
-            // are written
-
             // Note: We do not log to ILogger here as any error has already been logged.
 
             if (exception is FunctionInvocationException)
@@ -1835,11 +1845,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return false;
         }
 
-        private void NotifyInvoker(string functionName, Exception ex)
+        private void NotifyInvoker(string methodName, Exception ex)
         {
-            functionName = Utility.GetFunctionShortName(functionName);
-
-            FunctionDescriptor functionDescriptor = this.Functions.SingleOrDefault(p => string.Compare(functionName, p.Name, StringComparison.OrdinalIgnoreCase) == 0);
+            var functionDescriptor = this.Functions.SingleOrDefault(p =>
+                    string.Compare(Utility.GetFunctionShortName(methodName), p.Name, StringComparison.OrdinalIgnoreCase) == 0 ||
+                    string.Compare(p.Metadata.EntryPoint, methodName, StringComparison.OrdinalIgnoreCase) == 0);
             if (functionDescriptor != null)
             {
                 functionDescriptor.Invoker.OnError(ex);

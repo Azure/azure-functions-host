@@ -346,29 +346,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var client = new DocumentClient(serviceUri, builder["AccountKey"].ToString());
 
             Document doc = null;
-            await TestHelpers.Await(() =>
+            await TestHelpers.Await(async () =>
             {
                 bool result = false;
+
                 try
                 {
-                    var response = Task.Run(() => client.ReadDocumentAsync(docUri)).Result;
+                    var response = await client.ReadDocumentAsync(docUri);
                     doc = response.Resource;
-
-                    if (textToMatch != null)
-                    {
-                        result = doc.GetPropertyValue<string>("text") == textToMatch;
-                    }
-                    else
-                    {
-                        result = true;
-                    }
                 }
-                catch (Exception)
+                catch (DocumentClientException ex) when (ex.Error.Code == "NotFound")
                 {
-                    string logs = string.Join(Environment.NewLine, Fixture.Host.GetLogMessages());
+                    return false;
+                }
+
+                if (textToMatch != null)
+                {
+                    result = doc.GetPropertyValue<string>("text") == textToMatch;
+                }
+                else
+                {
+                    result = true;
                 }
 
                 return result;
+            },
+            userMessageCallback: () =>
+            {
+                // AppVeyor only shows 4096 chars
+                var s = string.Join(Environment.NewLine, Fixture.Host.GetLogMessages());
+                return s.Length < 4096 ? s : s.Substring(s.Length - 4096);
             });
 
             return doc;

@@ -6,16 +6,18 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
-    [Trait("Category", "E2E")]
-    [Trait("E2E", nameof(CSharpEndToEndTests))]
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, nameof(CSharpEndToEndTests))]
     public class CSharpEndToEndTests : EndToEndTestsBase<CSharpEndToEndTests.TestFixture>
     {
         public CSharpEndToEndTests(TestFixture fixture) : base(fixture)
@@ -76,6 +78,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public async Task FunctionLogging_Succeeds()
         {
             await FunctionLogging_SucceedsTest();
+        }
+
+        [Fact]
+        public async Task VerifyHostHeader()
+        {
+            const string actualHost = "actual-host";
+            const string actualProtocol = "https";
+            const string path = "api/httptrigger-scenarios";
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format($"http://localhost/{path}")),
+                Method = HttpMethod.Post
+            };
+
+            request.Headers.TryAddWithoutValidation("DISGUISED-HOST", actualHost);
+            request.Headers.TryAddWithoutValidation("X-Forwarded-Proto", actualProtocol);
+
+            var input = new JObject
+            {
+                { "scenario", "appServiceFixupMiddleware" }
+            };
+            request.Content = new StringContent(input.ToString(), Encoding.UTF8, "application/json");
+            var response = await Fixture.Host.HttpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            var url = await response.Content.ReadAsStringAsync();
+            Assert.Equal($"{actualProtocol}://{actualHost}/{path}", url);
         }
 
         [Fact]

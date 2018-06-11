@@ -1,24 +1,23 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Internal;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Primitives;
+using System.Linq;
 using Xunit;
+using Microsoft.Extensions.Logging;
+using System;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    [Trait("Category", "E2E")]
-    [Trait("E2E", nameof(DirectLoadEndToEndTests))]
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, nameof(DirectLoadEndToEndTests))]
     public class DirectLoadEndToEndTests : IClassFixture<DirectLoadEndToEndTests.TestFixture>
     {
         TestFixture Fixture;
@@ -28,136 +27,86 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Fixture = fixture;
         }
 
-        [Fact(Skip = "Fix fixture compilation issue (tracked by https://github.com/Azure/azure-webjobs-sdk-script/issues/2023)")]
-        public async Task Invoke()
+        [Fact]
+        public async Task Invoke_Succeeds()
         {
-            // Verify the type is ls in the typelocator.
-            JobHostConfiguration config = this.Fixture.Host.ScriptConfig.HostConfig;
-            var tl = config.TypeLocator;
-            var userType = tl.GetTypes().Where(type => type.FullName == "TestFunction.DirectLoadFunction").First();
-            AssertUserType(userType);
-
-            await InvokeDotNetFunction("DotNetDirectFunction", "Hello from .NET DirectInvoker");
-        }
-
-        public async Task InvokeDotNetFunction(string functionName, string expectedResult)
-        {
-            var request = new HttpRequestMessage(HttpMethod.Get, "http://functions/myfunc");
-            Dictionary<string, object> arguments = new Dictionary<string, object>()
+            var context = new DefaultHttpContext();
+            var request = new DefaultHttpRequest(context)
+            {
+                Method = "GET",
+                Scheme = "http",
+                Host = new HostString("functions.com", 80),
+                Path = "/api/functions/function1",
+                QueryString = new QueryString("?name=Mathew")
+            };
+            var arguments = new Dictionary<string, object>()
             {
                 { "req", request }
             };
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-            request.SetConfiguration(Fixture.RequestConfiguration);
+            request.Headers.Add("Accept", new StringValues("text/plain"));
 
-            await Fixture.Host.CallAsync(functionName, arguments);
+            await Fixture.Host.CallAsync("Function1", arguments);
 
-            HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
+            var response = (OkObjectResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
 
-            Assert.Equal(expectedResult, await response.Content.ReadAsStringAsync());
+            Assert.Equal("Hello, Mathew!", (string)response.Value);
+
+            var log = Fixture.LoggerProvider.GetAllLogMessages().SingleOrDefault(p => p.FormattedMessage == "C# HTTP trigger function processed a request.");
+            Assert.NotNull(log);
+            Assert.Equal(LogLevel.Information, log.Level);
+            
         }
 
-        // Do validation on the type we compiled.
-        // Verify that it loads and binds against the propery runtime types.
-        private static void AssertUserType(Type type)
+        [Fact]
+        public async Task Invoke_ExceptionThrown_DetailsLogged()
         {
-            var method = type.GetMethod("Run");
-            var functionNameAttr = method.GetCustomAttribute<FunctionNameAttribute>();
-            Assert.NotNull(functionNameAttr);
-            Assert.Equal("DotNetDirectFunction", functionNameAttr.Name);
+            var context = new DefaultHttpContext();
+            var request = new DefaultHttpRequest(context)
+            {
+                Method = "GET",
+                Scheme = "http",
+                Host = new HostString("functions.com", 80),
+                Path = "/api/functions/function1",
+                QueryString = new QueryString("?action=throw")
+            };
+            var arguments = new Dictionary<string, object>()
+            {
+                { "req", request }
+            };
 
-            var parameters = method.GetParameters();
-            var p1 = parameters[0];
-            Assert.Equal(typeof(HttpRequestMessage), p1.ParameterType);
-            var parameterAttr = p1.GetCustomAttribute<HttpTriggerAttribute>();
-            Assert.NotNull(parameterAttr);
+            var ex = await Assert.ThrowsAsync<FunctionInvocationException>(async () =>
+            {
+                await Fixture.Host.CallAsync("Function1", arguments);
+            });
+
+            var response = request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
+
+            var errorLogs = Fixture.LoggerProvider.GetAllLogMessages().Where(p => p.Level == LogLevel.Error).ToArray();
+            Assert.Equal(3, errorLogs.Length);
+
+            // ensure the thrown exception was logged
+            var error = errorLogs[1];
+            Assert.Equal("System.Private.CoreLib: Exception while executing function: Function1. TestFunctions: Kaboom!.", error.FormattedMessage);
+
+            error = errorLogs[2];
+            var invocationException = (FunctionInvocationException)error.Exception;
+            Assert.Equal("Exception while executing function: Function1", invocationException.Message);
+            Assert.Equal("TestFunctions.Function1.Run", invocationException.MethodName);
         }
 
         public class TestFixture : ScriptHostEndToEndTestFixture
         {
-            private static readonly string ScriptRoot = @"TestScripts\DotNetDirect\" + Guid.NewGuid().ToString();
-            private static readonly string Function1Path;
-
             static TestFixture()
             {
-                Function1Path = Path.Combine(ScriptRoot, "DotNetDirectFunction");
-                CreateFunctionAssembly();
             }
 
-            public TestFixture() : base(ScriptRoot, "dotnet")
+            public TestFixture() : base(@"TestScripts\DirectLoad\", "dotnet")
             {
             }
 
             public override void Dispose()
             {
                 base.Dispose();
-
-                FileUtility.DeleteDirectoryAsync(ScriptRoot, true).Wait();
-            }
-
-            // Create the artifacts in the ScriptRoot folder.
-            private static void CreateFunctionAssembly()
-            {
-                Directory.CreateDirectory(Function1Path);
-
-                uint rand = (uint)Guid.NewGuid().GetHashCode();
-                string assemblyName = "Asm" + rand;
-                string assemblyNamePath = assemblyName + ".dll";
-
-                var source = GetResource("run.cs");
-
-                var syntaxTree = CSharpSyntaxTree.ParseText(source);
-                Compilation compilation = CSharpCompilation.Create(assemblyName, new[] { syntaxTree })
-                    .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
-                    .WithReferences(
-                    MetadataReference.CreateFromFile(typeof(TraceWriter).Assembly.Location),
-                    MetadataReference.CreateFromFile(typeof(FunctionNameAttribute).Assembly.Location),
-                    MetadataReference.CreateFromFile(typeof(HttpRequestMessage).Assembly.Location),
-                    MetadataReference.CreateFromFile(typeof(HttpTriggerAttribute).Assembly.Location),
-                    MetadataReference.CreateFromFile(typeof(HttpStatusCode).Assembly.Location),
-                    MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
-                    MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
-
-                var assemblyFullPath = Path.Combine(Function1Path, assemblyNamePath);
-                var result = compilation.Emit(assemblyFullPath);
-                Assert.True(result.Success);
-
-                var hostJson = @"
-{
-    'id': 'function-tests-dotnet-direct'
-}";
-                File.WriteAllText(Path.Combine(ScriptRoot, "host.json"), hostJson);
-
-                CreateFunctionMetadata(Function1Path, assemblyNamePath);
-
-                // Verify that assembly loads and binds against hte same runtime types.
-                {
-                    Assembly assembly = Assembly.LoadFrom(assemblyFullPath);
-                    var type = assembly.GetType("TestFunction.DirectLoadFunction");
-                    AssertUserType(type);
-                }
-            }
-
-            private static void CreateFunctionMetadata(
-                string path,
-                string scriptFilePath,
-                string entrypoint = "TestFunction.DirectLoadFunction.Run")
-            {
-                var content = GetResource("function.json");
-                content = string.Format(content, scriptFilePath, entrypoint);
-
-                File.WriteAllText(Path.Combine(path, "function.json"), content);
-            }
-
-            private static string GetResource(string name)
-            {
-                var resourceNamespace = "Microsoft.Azure.WebJobs.Script.Tests.TestFiles.CSharp_DirectLoad.";
-                var fullName = resourceNamespace + name;
-                using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(fullName))
-                using (var reader = new StreamReader(stream))
-                {
-                    return reader.ReadToEnd();
-                }
             }
         }
     }

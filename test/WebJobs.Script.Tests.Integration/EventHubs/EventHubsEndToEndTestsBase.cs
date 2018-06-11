@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
             var bindingData = payload["bindingData"];
             int sequenceNumber = (int)bindingData["sequenceNumber"];
             var systemProperties = bindingData["systemProperties"];
-            Assert.Equal(sequenceNumber, (int)systemProperties["SequenceNumber"]);
+            Assert.Equal(sequenceNumber, (int)systemProperties["sequenceNumber"]);
         }
 
         public class TestFixture : EndToEndTestFixture

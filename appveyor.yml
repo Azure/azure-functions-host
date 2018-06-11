@@ -11,11 +11,19 @@ image:
 - Visual Studio 2017
 - Ubuntu
 
+max_jobs: 1
+
 for:
 -
   matrix:
     only:
       - image: Ubuntu
+  install:
+  - sh: >-
+      mkdir .dotnet && 
+      chmod +x dotnet-install.sh && 
+      ./dotnet-install.sh --version 2.1.300 --install-dir .dotnet && 
+      PATH=".dotnet:"$PATH && dotnet --info 
   build_script:
   - sh: dotnet build WebJobs.Script.sln
   test: off
@@ -29,8 +37,7 @@ for:
       if ($env:FUNCTIONS_NIGHTLY -eq "1") {
         $version = Get-Date -Format "yyyyMMdd-HHmm"
         Update-AppveyorBuild -Version $version -Message "Functions Scheduled Build"
-      }
-  max_jobs: 1
+      }  
   clone_folder: c:\azure-webjobs-sdk-script
   install:
   - ps: >-
@@ -43,29 +50,15 @@ for:
       .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeVersion (!$hasTag)
   after_build:
   - ps: >
-      Get-ChildItem buildoutput\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
+      $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
 
-      Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
+      if ($bypassPackaging) {
+        Write-Host "Bypassing artifact publishing for pull request." -ForegroundColor Yellow
+      } else {
+        Get-ChildItem buildoutput\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
+
+        Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
+      }
   test_script:
   - ps: >
-      $success = $true
-
-      # dotnet test .\test\WebJobs.Script.Scaling.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
-
-      # dotnet test .\test\WebJobs.Script.Tests\ -v q --no-build -p:ParallelizeTestCollections=false
-
-      # see results in app insights AntaresDemo 'functionse2eai'
-
-      dotnet test .\test\WebJobs.Script.Tests -v q --no-build
-
-      $success = $success -and $?
-
-      dotnet test .\test\WebJobs.Script.Scaling.Tests -v q --no-build
-
-      $success = $success -and $?
-
-      dotnet test .\test\WebJobs.Script.Tests.Integration\ -v q --no-build
-
-      $success = $success -and $?
-
-      if (-not $success) { exit 1 }
+      .\run-tests.ps1

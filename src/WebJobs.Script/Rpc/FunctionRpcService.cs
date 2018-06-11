@@ -48,10 +48,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         .ObserveOn(NewThreadScheduler.Default)
                         .Subscribe(evt =>
                         {
-                            // WriteAsync only allows one pending write at a time
-                            // For each responseStream subscription, observe as a blocking write, in series, on a new thread
-                            // Alternatives - could wrap responseStream.WriteAsync with a SemaphoreSlim to control concurrent access
-                            responseStream.WriteAsync(evt.Message).GetAwaiter().GetResult();
+                            try
+                            {
+                                // WriteAsync only allows one pending write at a time
+                                // For each responseStream subscription, observe as a blocking write, in series, on a new thread
+                                // Alternatives - could wrap responseStream.WriteAsync with a SemaphoreSlim to control concurrent access
+                                responseStream.WriteAsync(evt.Message).GetAwaiter().GetResult();
+                            }
+                            catch (Exception subscribeEventEx)
+                            {
+                                _eventManager.Publish(new WorkerErrorEvent(workerId, subscribeEventEx));
+                            }
                         });
 
                     do
@@ -60,11 +67,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                     while (await messageAvailable());
                 }
-            }
-            catch (Exception exc)
-            {
-                // TODO: do this properly so it can be associated with workerid, if possible
-                _eventManager.Publish(new WorkerErrorEvent(null, exc));
             }
             finally
             {

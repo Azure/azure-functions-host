@@ -17,6 +17,8 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 {
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, nameof(InstanceManagerTests))]
     public class InstanceManagerTests : IDisposable
     {
         private readonly TestLoggerProvider _loggerProvider;

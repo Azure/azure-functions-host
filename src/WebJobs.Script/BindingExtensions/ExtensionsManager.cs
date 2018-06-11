@@ -18,6 +18,7 @@ using Microsoft.Build.Construction;
 using Microsoft.Build.Evaluation;
 using Microsoft.Extensions.Logging;
 using static Microsoft.Azure.WebJobs.Script.ScriptConstants;
+using static Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment;
 
 namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 {
@@ -105,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
             try
             {
-                string runtimeIdentifierParameter = GetRuntimeIdentifierParameter();
+                string runtimeIdentifierParameter = GetRuntimeIdentifier();
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = dotnetPath,
@@ -115,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                     UseShellExecute = false,
                     ErrorDialog = false,
                     WorkingDirectory = projectFolder,
-                    Arguments = $"build \"{ExtensionsProjectFileName}\" -o bin --force --no-incremental {runtimeIdentifierParameter}"
+                    Arguments = $"build \"{ExtensionsProjectFileName}\" -o bin --force --no-incremental -r {runtimeIdentifierParameter}"
                 };
 
                 string nugetPath = Path.Combine(Path.GetDirectoryName(ProjectPath), "nuget.config");
@@ -265,32 +266,6 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                 .AddMetadata(PackageReferenceVersionElementName, "1.0.0-beta2", true);
 
             return root;
-        }
-
-        private static string GetRuntimeIdentifierParameter()
-        {
-            string os = null;
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                os = "win";
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                os = "osx";
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                os = "linux";
-            }
-            else
-            {
-                return string.Empty;
-            }
-
-            string arch = RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant();
-
-            return $"-r {os}-{arch}";
         }
     }
 }

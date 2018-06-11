@@ -6,12 +6,13 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
-    [Trait("Category", "E2E")]
-    [Trait("E2E", nameof(FSharpEndToEndTests))]
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, nameof(FSharpEndToEndTests))]
     public class FSharpEndToEndTests : EndToEndTestsBase<FSharpEndToEndTests.TestFixture>
     {
         public FSharpEndToEndTests(TestFixture fixture) : base(fixture)
