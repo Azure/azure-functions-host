@@ -8,7 +8,14 @@ function Check([string] $componentName, [string] $verstr, [Version] $requiredVer
         $verStr = $verStr.Substring(1)
     }
 
-    $actualVersion = [Version]::Parse($verstr)
+    # Version could be a beta, like 2.1.200-preview-007576
+    $x = $verstr;
+    $idxDash = $x.IndexOf('-')
+    if ($idxDash -gt 0) {
+        $x = $x.Substring(0, $idxDash)
+    }
+
+    $actualVersion = [Version]::Parse($x)
 
     $msg = $componentName + " " + $verstr;
 
@@ -17,7 +24,8 @@ function Check([string] $componentName, [string] $verstr, [Version] $requiredVer
         Write-Host ("[X] " + $msg +". Error. Must be at least major version " + $requiredVersion) -ForegroundColor Red
         return $false
     } else {
-        Write-Host ("[*] " + $msg) -foreground "green"
+        Write-Host -NoNewline ("[*] " + $msg) -foreground "green"
+        Write-Host "    (must be at least" $requiredVersion ")"
         return $true
     }
 }
@@ -37,8 +45,10 @@ if(![System.IO.File]::Exists($x)){
     if ($installedVersions  -is [array]) {
         # as an array, take the latest version on the machine
         $latest =  [Version]::Parse($installedVersions[0])
+        Write-Host "    Multiple VS versions installed:"
         foreach($ver in $installedVersions) {
             $verCurrent = [Version]::Parse($ver)
+            Write-Host "      " $verCurrent
             if ($verCurrent -gt $latest) {
                 $latest = $verCurrent
             }
@@ -46,9 +56,9 @@ if(![System.IO.File]::Exists($x)){
     } else {
         $latest = $installedVersions;
     }
+    
 
-
-    $ok = Check "VS 2017" ($latest.ToString()) ([Version]::Parse("15.5.0"))
+    $ok = Check "VS 2017" ($latest.ToString()) ([Version]::Parse("15.7.0"))
     if (-Not $ok) {
         Write-Host "    You can update VS from the Tools | Extensions and Updates menu."
     }
@@ -58,13 +68,18 @@ if(![System.IO.File]::Exists($x)){
 # C:\dev\AFunc\script-core3>dotnet --version
 # 2.0.0
 $actualVersion = & "dotnet" --version
-$ok = Check "dotnet" $actualVersion ([Version]::Parse("2.0"))
+$ok = Check "dotnet" $actualVersion ([Version]::Parse("2.1.300"))
+if (-Not $ok) {
+    Write-Host "You can update by installing '.NET Core 2.1 SDK' from https://www.microsoft.com/net/download/windows"
+    Write-Host 
+}
 
 # Check Node
 $actualVersion = & "node" -v
 $ok = Check "node" $actualVersion ([Version]::Parse("8.4.0"))
 if (-Not $ok) {
     Write-Host "    You can update node by downloading the latest from https://nodejs.org"
+    Write-Host 
 }
 
 # Check NPM 
@@ -74,6 +89,7 @@ $ok = Check "npm" $actualVersion ([Version]::Parse("5.0"))
 if (-Not $ok) {
     Write-Host "You can upgrade npm by running: "
     Write-Host "    npm install -g npm@latest" 
+    Write-Host 
 }
 
 # See here for hints on doing Devenv detection:
