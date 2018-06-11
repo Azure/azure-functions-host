@@ -15,23 +15,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task GetEvents_RemovesExpiredItems()
         {
-            var window = new SlidingWindow<MyItem>(TimeSpan.FromSeconds(1));
+            var expiry = TimeSpan.FromSeconds(1);
+            var window = new SlidingWindow<MyItem>(expiry);
+            var initialEventCount = 5;
+            var insertionTimestamps = new DateTime[initialEventCount];
 
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < initialEventCount; i++)
             {
                 window.AddEvent(new MyItem { Data = i });
+                insertionTimestamps[i] = DateTime.Now;
                 await Task.Delay(100);
             }
 
             var evts = window.GetEvents().ToArray();
-            Assert.Equal(5, evts.Length);
-            for (int i = 0; i < 5; i++)
+
+            // How many items have expired? We're at the mercy of the task scheduler here.
+            // In theory we should have only waited 5 * 100 = 500ms and have zero expired items but we might have waited longer.
+            var insertionCompleteTimestamp = DateTime.Now;
+            var expiredCount = insertionTimestamps.Count(t => (insertionCompleteTimestamp - t) > expiry);
+            var expectedCount = initialEventCount - expiredCount;
+
+            // Check the total count and each of the non expired items
+            Assert.Equal(expectedCount, evts.Length);
+            for (int i = 0; i < expectedCount; i++)
             {
-                Assert.Equal(i, evts[i].Data);
+                Assert.Equal(i + expiredCount, evts[i].Data);
             }
 
             // now let the items expire
-            await Task.Delay(1000);
+            await Task.Delay(expiry);
 
             // add a new event that shouldn't be expired
             var evt = new MyItem { Data = 7 };
