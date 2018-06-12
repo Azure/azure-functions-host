@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = description.DefaultExecutablePath,
-                    WorkerPath = description.WorkerDirectory
+                    WorkerPath = description.GetWorkerPath()
                 };
 
                 if (provider.TryConfigureArguments(arguments, _config, _logger))

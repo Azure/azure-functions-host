@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.IO;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Abstractions
@@ -43,5 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
         /// </summary>
         [JsonProperty(PropertyName = "arguments")]
         public List<string> Arguments { get; set; }
+
+        public string GetWorkerPath()
+        {
+            return Path.Combine(WorkerDirectory, DefaultWorkerPath);
+        }
     }
 }

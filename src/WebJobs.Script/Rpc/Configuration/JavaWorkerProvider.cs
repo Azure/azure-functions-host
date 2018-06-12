@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             Language = LanguageWorkerConstants.JavaLanguageWorkerName,
             Extension = ".jar",
             DefaultWorkerPath = "azure-functions-java-worker.jar",
+            WorkerDirectory = _pathToWorkerDir
         };
 
         public bool TryConfigureArguments(WorkerProcessArguments args, IConfiguration config, ILogger logger)
