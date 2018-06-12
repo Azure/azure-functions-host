@@ -19,61 +19,62 @@ function ZipContent([string] $sourceDirectory, [string] $target)
   [IO.Compression.ZipFile]::CreateFromDirectory($sourceDirectory, $target)
 }
 
-function CrossGen([string] $runtime, [bool] $isSelfContained, [string] $publishTarget, [string] $privateSiteExtensionPath)
+function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateSiteExtensionPath)
 {
     Write-Host "publishTarget: " $publishTarget
     Write-Host "privateSiteExtensionPath: " $privateSiteExtensionPath
 
     $selfContained = Join-Path $publishTarget "self-contained"
-    $regular = Join-Path $publishTarget "regular"
     $crossGen = "$publishTarget\download\crossgen\crossgen.exe"
+	$symbolsPath = Join-Path $publishTarget "Symbols"
+    new-item -itemtype directory -path $symbolsPath
 
-    #DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.microsoft.netcore.jit/2.1.0-preview2-26316-09" @("runtimes\$runtime\native\clrjit.dll")  @("$publishTarget\download\clrjit")
-    #DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.Microsoft.NETCore.Runtime.CoreCLR/2.1.0-preview2-26316-09"  @("tools\crossgen.exe")  @("$publishTarget\download\crossgen")
-
-    DownloadNupkg "https://www.nuget.org/api/v2/package/runtime.$runtime.Microsoft.NETCore.Jit/2.0.5" @("runtimes\$runtime\native\clrjit.dll")  @("$publishTarget\download\clrjit")
-    DownloadNupkg "https://www.nuget.org/api/v2/package/runtime.$runtime.Microsoft.NETCore.Runtime.CoreCLR/2.0.5"  @("tools\crossgen.exe")  @("$publishTarget\download\crossgen")
+    DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.Microsoft.NETCore.Jit/2.1.0-rtm-26528-02" @("runtimes\$runtime\native\clrjit.dll")  @("$publishTarget\download\clrjit")
+    DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.Microsoft.NETCore.Runtime.CoreCLR/2.1.0-rtm-26528-02"  @("tools\crossgen.exe")  @("$publishTarget\download\crossgen")
     DownloadNupkg "https://www.nuget.org/api/v2/package/Microsoft.Build.Tasks.Core/15.1.1012" @("lib\netstandard1.3\Microsoft.Build.Tasks.Core.dll")  @("$selfContained")
     DownloadNupkg "https://www.nuget.org/api/v2/package/Microsoft.Build.Utilities.Core/15.1.1012" @("lib\netstandard1.3\Microsoft.Build.Utilities.Core.dll")  @("$selfContained")
+    if ($runtime -eq "win-x86") {
+        DownloadNupkg "https://dotnet.myget.org/F/aspnetcore-dev/api/v2/package/Microsoft.AspNetCore.AspNetCoreModuleV2/2.1.0-a-oob-2-1-oob-16914" @("contentFiles\any\any\x86\aspnetcorev2.dll", "contentFiles\any\any\x86\aspnetcorev2_inprocess.dll", "contentFiles\any\any\x64\aspnetcorev2_outofprocess.dll") @("$privateSiteExtensionPath\ancm", "$privateSiteExtensionPath\ancm", "$privateSiteExtensionPath\ancm")
+    } else {
+        DownloadNupkg "https://dotnet.myget.org/F/aspnetcore-dev/api/v2/package/Microsoft.AspNetCore.AspNetCoreModuleV2/2.1.0-a-oob-2-1-oob-16914" @("contentFiles\any\any\x64\aspnetcorev2.dll", "contentFiles\any\any\x64\aspnetcorev2_inprocess.dll", "contentFiles\any\any\x64\aspnetcorev2_outofprocess.dll") @("$privateSiteExtensionPath\ancm", "$privateSiteExtensionPath\ancm", "$privateSiteExtensionPath\ancm")
+    }
 
     # Publish self-contained app with all required dlls for crossgen
     dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -r $runtime -o "$selfContained" -v q /p:BuildNumber=$buildNumber    
 
-    # For self contained we want to process only IL ddls
-    if ($isSelfContained) {
-        dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o $regular -v q /p:BuildNumber=$buildNumber
-    }
+    # Modify web.config for inproc
+    dotnet tool install -g dotnet-xdt --version 2.1.0-rc.1
+    dotnet-xdt -s "$privateSiteExtensionPath\web.config" -t "$privateSiteExtensionPath\web.InProcess.xdt" -o "$privateSiteExtensionPath\web.config"
 
     $successfullDlls =@()
     $failedDlls = @()
     Get-ChildItem $privateSiteExtensionPath -Filter *.dll | 
-    Foreach-Object {
-
-        # For self contained we want to process only IL ddls
-        if ($isSelfContained) {
-            if (-Not [System.IO.File]::Exists($(Join-Path $regular $_.Name))) {
-                Write-Host "Skipping $_.Name"
-                Return
-            }
-        }
-
+    Foreach-Object {       
         $prm = "/JITPath", "$publishTarget\download\clrjit\clrjit.dll", "/Platform_Assemblies_Paths", "$selfContained", "/nologo", "/in", $_.FullName
         # output for Microsoft.Azure.WebJobs.Script.WebHost.dll is Microsoft.Azure.WebJobs.Script.WebHost.exe.dll by default
         if ($_.FullName -like "*Microsoft.Azure.WebJobs.Script.WebHost.dll") {
             $prm += "/out"        
             $prm += Join-Path $privateSiteExtensionPath "Microsoft.Azure.WebJobs.Script.WebHost.ni.dll"
         }
+        # Fix output for System.Private.CoreLib.dll
+        if ($_.FullName -like "*System.Private.CoreLib.dll") {
+            $prm += "/out"        
+            $prm += Join-Path $privateSiteExtensionPath "System.Private.CoreLib.ni.dll"
+        }
 
-        & $crossGen $prm >> $buildOutput\crossgenout.$runtime.txt
+        & $crossGen $prm >> $buildOutput\crossgenout.$runtime.txt  2>&1
 
         $niDll = Join-Path $privateSiteExtensionPath $([io.path]::GetFileNameWithoutExtension($_.FullName) + ".ni.dll")
         if ([System.IO.File]::Exists($niDll)) {
             Remove-Item $_.FullName
             Rename-Item -Path $niDll -NewName $_.FullName
+
+            & $crossGen "/Platform_Assemblies_Paths", "$selfContained", "/CreatePDB", "$symbolsPath", $_.FullName >> $buildOutput\crossgenout-PDBs.$runtime.txt 2>&1
+
             $successfullDlls+=[io.path]::GetFileName($_.FullName)
         } else {
             $failedDlls+=[io.path]::GetFileName($_.FullName)
-        }
+        }                
     }
 
     # print results of crossgen process
@@ -86,9 +87,8 @@ function CrossGen([string] $runtime, [bool] $isSelfContained, [string] $publishT
     }
     
     
-    if (-Not $isSelfContained) {
-        Copy-Item -Path $privateSiteExtensionPath\runtimes\win\native\*  -Destination $privateSiteExtensionPath -Force
-    }         
+    # If not self-contained
+    Copy-Item -Path $privateSiteExtensionPath\runtimes\win\native\*  -Destination $privateSiteExtensionPath -Force       
 
     #read-host "Press ENTER to continue..."
     Remove-Item -Recurse -Force $selfContained -ErrorAction SilentlyContinue
@@ -116,28 +116,31 @@ function DownloadNupkg([string] $nupkgPath, [string[]]$from, [string[]]$to) {
     }
 }
 
-
-function BuildPackages([string] $runtime, [bool] $isSelfContained) {
+function BuildPackages([string] $runtime<#, [bool] $isSelfContained#>) {
     $runtimeSuffix = ""
     if (![string]::IsNullOrEmpty($runtime)) {
         $runtimeSuffix = ".$runtime"
-    }   
+    } else {
+        $runtimeSuffix = ".no-runtime"
+    }
 
     $publishTarget = "$buildOutput\publish$runtimeSuffix"
     $siteExtensionPath = "$publishTarget\SiteExtensions"
     $privateSiteExtensionPath = "$siteExtensionPath\Functions"
     
-    if ($isSelfContained) {    
-        dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj  -r $runtime -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false
-    } else {
-        dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false
-    }        
+    dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false -c Release
+    #dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -r $runtime -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false -c Release
 
     # replace IL dlls with crossgen dlls
     if (![string]::IsNullOrEmpty($runtime)) {
-        CrossGen $runtime $isSelfContained $publishTarget $privateSiteExtensionPath
+        CrossGen $runtime $publishTarget $privateSiteExtensionPath
     }
- 
+
+    # Do not put siffux to win-x86 zips names
+    if ($runtime -eq "win-x86") {
+        $runtimeSuffix = "";
+    }
+
     ZipContent $privateSiteExtensionPath "$buildOutput\Functions.Binaries.$extensionVersion-alpha$runtimeSuffix.zip"
 
     # Project cleanup (trim some project files - this should be revisited)
@@ -182,8 +185,8 @@ if ($bypassPackaging){
     Write-Host "Bypassing artifact packaging and CrossGen for pull request." -ForegroundColor Yellow
 } else {
     # build IL extensions
-    BuildPackages "" $false
+    BuildPackages ""
 
     #build win-x86 extensions
-    BuildPackages "win-x86" $false
+    BuildPackages "win-x86"
 }
