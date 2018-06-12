@@ -22,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
@@ -857,7 +858,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             config["id"] = ID;
             JObject languageWorkerConfig = new JObject();
             languageWorkerConfig["maxMessageLength"] = 2500;
-            config["languageWorker"] = languageWorkerConfig;
+            config[$"{LanguageWorkerConstants.LanguageWorkersSectionName}"] = languageWorkerConfig;
 
             var testLogger = new TestLogger("test");
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
@@ -874,7 +875,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             config["id"] = ID;
             JObject languageWorkerConfig = new JObject();
             languageWorkerConfig["maxMessageLength"] = 250;
-            config["languageWorker"] = languageWorkerConfig;
+            config[$"{LanguageWorkerConstants.LanguageWorkersSectionName}"] = languageWorkerConfig;
 
             var testLogger = new TestLogger("test");
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
@@ -901,7 +902,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             config["id"] = ID;
             var testLogger = new TestLogger("test");
             JObject languageWorkerConfig = new JObject();
-            config["languageWorker"] = languageWorkerConfig;
+            config[$"{LanguageWorkerConstants.LanguageWorkersSectionName}"] = languageWorkerConfig;
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
             try
             {
@@ -922,7 +923,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             config["id"] = ID;
             var testLogger = new TestLogger("test");
             JObject languageWorkerConfig = new JObject();
-            config["languageWorker"] = languageWorkerConfig;
+            config[$"{LanguageWorkerConstants.LanguageWorkersSectionName}"] = languageWorkerConfig;
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
             ScriptHost.ApplyConfiguration(config, scriptConfig, testLogger);
             Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytes, scriptConfig.MaxMessageLengthBytes);

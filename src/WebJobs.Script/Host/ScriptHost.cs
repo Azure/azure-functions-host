@@ -754,7 +754,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         break;
                     default:
                         // Pass the language to the provider loader to filter
-                        providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, configFactory.WorkerDirPath, _startupLogger, language: _language));
+                        providers.AddRange(configFactory.GetWorkerProviders(_startupLogger, language: _language));
                         break;
                 }
             }
@@ -762,7 +762,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // load all providers if no specific language is specified
                 providers.Add(new JavaWorkerProvider(configFactory.WorkerDirPath));
-                providers.AddRange(GenericWorkerProvider.ReadWorkerProviderFromConfig(ScriptConfig, configFactory.WorkerDirPath, _startupLogger));
+                providers.AddRange(configFactory.GetWorkerProviders(_startupLogger));
             }
 
             var workerConfigs = configFactory.GetConfigs(providers);
@@ -1646,19 +1646,19 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             scriptConfig.HostConfig.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
 
-            ApplyLanguageWorkerConfig(config, scriptConfig, logger);
+            ApplyLanguageWorkersConfig(config, scriptConfig, logger);
             ApplyLoggerConfig(config, scriptConfig);
             ApplyApplicationInsightsConfig(config, scriptConfig);
         }
 
-        private static void ApplyLanguageWorkerConfig(JObject config, ScriptHostConfiguration scriptConfig, ILogger logger)
+        private static void ApplyLanguageWorkersConfig(JObject config, ScriptHostConfiguration scriptConfig, ILogger logger)
         {
             JToken value = null;
-            JObject languageWorkerSection = (JObject)config["languageWorker"];
+            JObject languageWorkersSection = (JObject)config[$"{LanguageWorkerConstants.LanguageWorkersSectionName}"];
             int requestedGrpcMaxMessageLength = ScriptSettingsManager.Instance.IsDynamicSku ? DefaultMaxMessageLengthBytesDynamicSku : DefaultMaxMessageLengthBytes;
-            if (languageWorkerSection != null)
+            if (languageWorkersSection != null)
             {
-                if (languageWorkerSection.TryGetValue("maxMessageLength", out value))
+                if (languageWorkersSection.TryGetValue("maxMessageLength", out value))
                 {
                     int valueInBytes = int.Parse((string)value) * 1024 * 1024;
                     if (ScriptSettingsManager.Instance.IsDynamicSku)

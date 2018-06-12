@@ -16,39 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     public class WorkerConfigFactoryTests
     {
         [Fact]
-        public void SetsDebugPort()
-        {
-            var lang = "test";
-            var extension = ".test";
-            var defaultWorkerPath = "./test";
-
-            var workerPath = "/path/to/custom/worker";
-
-            var config = new ConfigurationBuilder()
-                 .AddInMemoryCollection(new Dictionary<string, string>
-                 {
-                     [$"{LanguageWorkerConstants.LanguageWorkerSectionName}:{lang}:arguments"] = "--inspect=1000",
-                     [$"{LanguageWorkerConstants.LanguageWorkerSectionName}:{lang}:path"] = workerPath
-                 })
-                .Build();
-
-            var logger = new TestLogger("test");
-            var workerConfigFactory = new WorkerConfigFactory(config, logger);
-
-            var workerConfigs = workerConfigFactory.GetConfigs(new List<IWorkerProvider>()
-            {
-                new TestWorkerProvider()
-                {
-                    Language = lang,
-                    Extension = extension,
-                    DefaultWorkerPath = defaultWorkerPath
-                }
-            });
-
-            Assert.Equal(workerConfigs.Single().Arguments.WorkerPath, workerPath);
-        }
-
-        [Fact]
         public void DefaultLanguageWorkersDir()
         {
             var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
@@ -65,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = new ConfigurationBuilder()
                    .AddInMemoryCollection(new Dictionary<string, string>
                    {
-                       ["languageWorker:workersDirectory"] = expectedWorkersDir
+                       [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.WorkersDirectorySectionName}"] = expectedWorkersDir
                    })
                    .Build();
             var testLogger = new TestLogger("test");

@@ -26,13 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public bool TryConfigureArguments(WorkerProcessArgumentsDescription args, IConfiguration config, ILogger logger)
         {
-            if (!File.Exists(args.WorkerPath))
-            {
-                logger.LogError($"File {args.WorkerPath} does not exist.");
-                return false;
-            }
             var options = new DefaultWorkerOptions();
-            var javaWorkerSection = $"{LanguageWorkerConstants.LanguageWorkerSectionName}:{LanguageWorkerConstants.JavaLanguageWrokerName}";
+            var javaWorkerSection = $"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWrokerName}";
             config.GetSection(javaWorkerSection).Bind(options);
             var env = new JavaEnvironment();
             config.Bind(env);

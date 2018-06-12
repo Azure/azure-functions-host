@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 .AddInMemoryCollection(new List<KeyValuePair<string, string>>()
                 {
                     new KeyValuePair<string, string>("JAVA_HOME", "asdf"),
-                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkerSectionName}:{LanguageWorkerConstants.JavaLanguageWrokerName}:debug", "localhost:1000")
+                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWrokerName}:debug", "localhost:1000")
                 })
                 .Build();
 
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 {
                     new KeyValuePair<string, string>("JAVA_HOME", "asdf"),
                     new KeyValuePair<string, string>("JAVA_OPTS", "address=1001"),
-                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkerSectionName}:{LanguageWorkerConstants.JavaLanguageWrokerName}:debug", "1000")
+                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWrokerName}:debug", "1000")
                 })
                 .Build();
 
@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new List<KeyValuePair<string, string>>()
                 {
-                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkerSectionName}:{LanguageWorkerConstants.JavaLanguageWrokerName}:debug", "1000")
+                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWrokerName}:debug", "1000")
                 })
                 .Build();
 

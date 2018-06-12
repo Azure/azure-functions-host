@@ -9,10 +9,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string DotNetLanguageWorkerName = "dotnet";
         public const string NodeLanguageWorkerName = "node";
         public const string JavaLanguageWrokerName = "java";
-        public const string DefaultWorkersDirectoryName = "workers";
-        public const string WorkersDirectorySectionName = "workersDirectory";
         public const string WorkerConfigFileName = "worker.config.json";
-        public const string LanguageWorkerSectionName = "languageWorker";
+        public const string DefaultWorkersDirectoryName = "workers";
+
+        // Section names in host.json
+        public const string LanguageWorkersSectionName = "languageWorkers";
+        public const string WorkersDirectorySectionName = "workersDirectory";
+        public const string WorkerDirectorySectionName = "workerDirectory";
+
+        // Worker description constants
         public const string WorkerDescriptionLanguage = "language";
         public const string WorkerDescriptionExtension = "extension";
         public const string WorkerDescriptionDefaultExecutablePath = "defaultExecutablePath";

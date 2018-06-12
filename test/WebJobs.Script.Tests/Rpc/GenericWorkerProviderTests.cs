@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     public class GenericWorkerProviderTests
     {
         private static string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        private static string customRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         private static string testLanguagePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         private static string testLanguage = "testLanguage";
 
@@ -78,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
             Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
             {
-                [$"languageWorker:{testLanguage}:arguments"] = "--inspect=5689  --no-deprecation"
+                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{LanguageWorkerConstants.WorkerDescriptionArguments}"] = "--inspect=5689  --no-deprecation"
             };
             var providers = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), null, keyValuePairs);
             Assert.Single(providers);
@@ -97,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
             Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
             {
-                [$"languageWorker:{testLanguage}:arguments"] = "--inspect=5689"
+                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{LanguageWorkerConstants.WorkerDescriptionArguments}"] = "--inspect=5689"
             };
             var providers = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), null, keyValuePairs);
             Assert.Single(providers);
@@ -138,9 +139,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Equal(language1, providers.Single().GetDescription().Language);
         }
 
+        [Fact]
+        public void ReadWorkerProviderFromAppSetting()
+        {
+            var testConfig = MakeTestConfig(testLanguage, new string[0]);
+            var configs = new List<TestLanguageWorkerConfig>() { testConfig };
+            CreateWorkerFolder(customRootPath, testConfig);
+            Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
+            {
+                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{LanguageWorkerConstants.WorkerDirectorySectionName}"] = customRootPath
+            };
+
+            var providers = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), null, keyValuePairs);
+            Assert.Single(providers);
+            IWorkerProvider workerProvider = providers.Single();
+            Assert.Equal(Path.Combine(customRootPath, testLanguage), workerProvider.GetWorkerDirectoryPath());
+        }
+
         private IEnumerable<IWorkerProvider> TestReadWorkerProviderFromConfig(IEnumerable<TestLanguageWorkerConfig> configs, ILogger testLogger, string language = null, Dictionary<string, string> keyValuePairs = null)
         {
-            var workerPathSection = $"{LanguageWorkerConstants.LanguageWorkerSectionName}:{LanguageWorkerConstants.WorkersDirectorySectionName}";
+            var workerPathSection = $"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.WorkersDirectorySectionName}";
             try
             {
                 foreach (var workerConfig in configs)
@@ -154,20 +172,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 var scriptSettingsManager = new ScriptSettingsManager(config);
                 var configFactory = new WorkerConfigFactory(config, testLogger);
 
-                return GenericWorkerProvider.ReadWorkerProviderFromConfig(scriptHostConfig, configFactory.WorkerDirPath, testLogger, scriptSettingsManager, language: language);
+                return configFactory.GetWorkerProviders(testLogger, scriptSettingsManager, language: language);
             }
             finally
             {
-                if (Directory.Exists(rootPath))
+                DeleteTestDir(rootPath);
+                DeleteTestDir(customRootPath);
+            }
+        }
+
+        private static void DeleteTestDir(string testDir)
+        {
+            if (Directory.Exists(testDir))
+            {
+                try
                 {
-                    try
-                    {
-                        Directory.Delete(rootPath, true);
-                    }
-                    catch
-                    {
-                        // best effort cleanup
-                    }
+                    Directory.Delete(testDir, true);
+                }
+                catch
+                {
+                    // best effort cleanup
                 }
             }
         }
