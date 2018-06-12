@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static IWebHost BuildWebHost(string[] args)
         {
-            return CreateWebHostBuilder(args).Build();
+            return CreateWebHostBuilder(args).UseIIS().Build();
         }
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args = null)

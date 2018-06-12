@@ -24,9 +24,13 @@
   <ItemGroup>
     <None Remove="applicationHost.xdt" />
     <None Remove="Resources\Functions\WarmUp\run.csx" />
+    <None Remove="web.InProcess.xdt" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="applicationHost.xdt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="web.InProcess.xdt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -40,6 +44,7 @@
     <PackageReference Include="Microsoft.AspNetCore.App" Version="2.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Buffering" Version="0.4.0-preview2-28189" />
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.0.5150001-beta-b9e0da04" />
+    <PackageReference Include="Microsoft.AspNetCore.Server.IIS" Version="2.1.0-a-oob-2-1-oob-16914" />
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.0-beta7" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="3.0.0-beta7" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.0-beta7">
