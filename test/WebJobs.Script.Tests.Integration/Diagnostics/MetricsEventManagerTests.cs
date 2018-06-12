@@ -375,7 +375,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void TimerFlush_CalledOnExpectedInterval()
+        public async Task TimerFlush_CalledOnExpectedInterval()
         {
             int flushInterval = 10;
             Mock<IEventGenerator> mockGenerator = new Mock<IEventGenerator>();
@@ -389,11 +389,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     numFlushes++;
                 });
 
-            Thread.Sleep(200);
-
-            // here we're just verifying that we're called
-            // multiple times
-            Assert.True(numFlushes >= 5, $"Expected numFlushes >= 5; Actual: {numFlushes}");
+            // here we're just verifying that we're called multiple times
+            await TestHelpers.Await(() => numFlushes >= 5, timeout: 2000, pollingInterval: 100, userMessageCallback: () => $"Expected numFlushes >= 5; Actual: {numFlushes}");                        
 
             mockEventManager.VerifyAll();
         }
