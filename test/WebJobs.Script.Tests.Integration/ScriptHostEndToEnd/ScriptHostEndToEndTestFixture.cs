@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage;
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             if (!string.IsNullOrEmpty(functionsWorkerLanguage))
             {
-                Environment.SetEnvironmentVariable(ScriptConstants.FunctionWorkerRuntimeSettingName, functionsWorkerLanguage);
+                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, functionsWorkerLanguage);
             }
             _settingsManager = ScriptSettingsManager.Instance;
             FixtureId = testId;

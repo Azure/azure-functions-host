@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.Abstractions
 {
-    public class ArgumentsDescription
+    public class WorkerProcessArguments
     {
         /// <summary>
         /// Gets or sets the path to the executable (java, node, etc).

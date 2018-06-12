@@ -20,13 +20,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 .AddInMemoryCollection(new List<KeyValuePair<string, string>>()
                 {
                     new KeyValuePair<string, string>("JAVA_HOME", "asdf"),
-                    new KeyValuePair<string, string>("workers:java:debug", "localhost:1000")
+                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWorkerName}:debug", "localhost:1000")
                 })
                 .Build();
 
-            var provider = new JavaWorkerProvider();
-            var args = new ArgumentsDescription();
-            var result = provider.TryConfigureArguments(args, config, new TestLogger("test"));
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger);
+
+            var provider = new JavaWorkerProvider(configFactory.WorkerDirPath);
+            var args = new WorkerProcessArguments();
+            var result = provider.TryConfigureArguments(args, config, testLogger);
 
             Assert.True(result);
             Assert.Contains(args.ExecutableArguments, (exeArg) => exeArg.Contains("address=localhost:1000"));
@@ -40,13 +43,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 {
                     new KeyValuePair<string, string>("JAVA_HOME", "asdf"),
                     new KeyValuePair<string, string>("JAVA_OPTS", "address=1001"),
-                    new KeyValuePair<string, string>("workers:java:debug", "1000")
+                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWorkerName}:debug", "1000")
                 })
                 .Build();
 
-            var provider = new JavaWorkerProvider();
-            var args = new ArgumentsDescription();
-            var result = provider.TryConfigureArguments(args, config, new TestLogger("test"));
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var provider = new JavaWorkerProvider(configFactory.WorkerDirPath);
+            var args = new WorkerProcessArguments();
+            var result = provider.TryConfigureArguments(args, config, testLogger);
 
             Assert.True(result);
             Assert.Contains(args.ExecutableArguments, (exeArg) => exeArg.Contains("address=1001"));
@@ -63,9 +68,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 })
                 .Build();
 
-            var provider = new JavaWorkerProvider();
-            var args = new ArgumentsDescription();
-            var result = provider.TryConfigureArguments(args, config, new TestLogger("test"));
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var provider = new JavaWorkerProvider(configFactory.WorkerDirPath);
+            var args = new WorkerProcessArguments();
+            var result = provider.TryConfigureArguments(args, config, testLogger);
 
             Assert.True(result);
             Assert.DoesNotContain(args.ExecutableArguments, (exeArg) => exeArg.Contains("address="));
@@ -77,13 +84,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new List<KeyValuePair<string, string>>()
                 {
-                    new KeyValuePair<string, string>("workers:java:debug", "1000")
+                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWorkerName}:debug", "1000")
                 })
                 .Build();
 
-            var provider = new JavaWorkerProvider();
-            var args = new ArgumentsDescription();
-            var result = provider.TryConfigureArguments(args, config, new TestLogger("test"));
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var provider = new JavaWorkerProvider(configFactory.WorkerDirPath);
+            var args = new WorkerProcessArguments();
+            var result = provider.TryConfigureArguments(args, config, testLogger);
 
             Assert.False(result);
         }
@@ -99,9 +108,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 })
                 .Build();
 
-            var provider = new JavaWorkerProvider();
-            var args = new ArgumentsDescription();
-            var result = provider.TryConfigureArguments(args, config, new TestLogger("test"));
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var provider = new JavaWorkerProvider(configFactory.WorkerDirPath);
+            var args = new WorkerProcessArguments();
+            var result = provider.TryConfigureArguments(args, config, testLogger);
 
             Assert.True(result);
             var exePath = Path.GetFullPath("d:/java/zulu8.23.0.3-jdk8.0.144-win_x64/bin/java");

@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         public WorkerDescription Description { get; set; }
 
-        public ArgumentsDescription Arguments { get; set; }
+        public WorkerProcessArguments Arguments { get; set; }
 
         public string Extension => Description.Extension;
 
