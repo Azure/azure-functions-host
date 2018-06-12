@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void TryConfigureArguments_ReturnsTrue()
         {
             var provider = new GenericWorkerProvider(new WorkerDescription(), string.Empty);
-            var args = new WorkerProcessArgumentsDescription();
+            var args = new WorkerProcessArguments();
             Assert.True(provider.TryConfigureArguments(args, null, null));
         }
 

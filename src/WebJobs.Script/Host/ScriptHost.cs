@@ -742,11 +742,11 @@ namespace Microsoft.Azure.WebJobs.Script
             var providers = new List<IWorkerProvider>();
             if (!string.IsNullOrEmpty(_language))
             {
-                _startupLogger.LogInformation($"{LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} is specified, only {_language} will be enabled");
+                _startupLogger.LogInformation($"'{LanguageWorkerConstants.FunctionWorkerRuntimeSettingName}' is specified, only '{_language}' will be enabled");
                 // TODO: We still have some hard coded languages, so we need to handle them. Remove this switch once we've moved away from that.
                 switch (_language.ToLowerInvariant())
                 {
-                    case LanguageWorkerConstants.JavaLanguageWrokerName:
+                    case LanguageWorkerConstants.JavaLanguageWorkerName:
                         providers.Add(new JavaWorkerProvider(configFactory.WorkerDirPath));
                         break;
                     case LanguageWorkerConstants.DotNetLanguageWorkerName:

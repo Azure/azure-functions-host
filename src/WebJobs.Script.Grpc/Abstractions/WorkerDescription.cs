@@ -33,6 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
         public string DefaultWorkerPath { get; set; }
 
         /// <summary>
+        /// Gets or sets the default base directory for the worker
+        /// </summary>
+        [JsonProperty(PropertyName = "workerDirectory")]
+        public string WorkerDirectory { get; set; }
+
+        /// <summary>
         /// Gets or sets the default path to the worker (relative to the bin/workers/{language} directory)
         /// </summary>
         [JsonProperty(PropertyName = "arguments")]

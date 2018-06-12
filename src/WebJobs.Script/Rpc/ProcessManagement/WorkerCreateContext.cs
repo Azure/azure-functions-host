@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         public Uri ServerUri { get; set; }
 
-        public WorkerProcessArgumentsDescription Arguments { get; set; }
+        public WorkerProcessArguments Arguments { get; set; }
 
         public string WorkerId { get; set; }
 

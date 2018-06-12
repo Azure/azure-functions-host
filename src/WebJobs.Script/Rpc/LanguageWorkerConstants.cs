@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string FunctionWorkerRuntimeSettingName = "FUNCTIONS_WORKER_RUNTIME";
         public const string DotNetLanguageWorkerName = "dotnet";
         public const string NodeLanguageWorkerName = "node";
-        public const string JavaLanguageWrokerName = "java";
+        public const string JavaLanguageWorkerName = "java";
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultWorkersDirectoryName = "workers";
 

@@ -14,20 +14,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public JavaWorkerProvider(string workerDir)
         {
-           _pathToWorkerDir = Path.Combine(workerDir, LanguageWorkerConstants.JavaLanguageWrokerName);
+           _pathToWorkerDir = Path.Combine(workerDir, LanguageWorkerConstants.JavaLanguageWorkerName);
         }
 
         public WorkerDescription GetDescription() => new WorkerDescription
         {
-            Language = LanguageWorkerConstants.JavaLanguageWrokerName,
+            Language = LanguageWorkerConstants.JavaLanguageWorkerName,
             Extension = ".jar",
             DefaultWorkerPath = "azure-functions-java-worker.jar",
         };
 
-        public bool TryConfigureArguments(WorkerProcessArgumentsDescription args, IConfiguration config, ILogger logger)
+        public bool TryConfigureArguments(WorkerProcessArguments args, IConfiguration config, ILogger logger)
         {
             var options = new DefaultWorkerOptions();
-            var javaWorkerSection = $"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWrokerName}";
+            var javaWorkerSection = $"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWorkerName}";
             config.GetSection(javaWorkerSection).Bind(options);
             var env = new JavaEnvironment();
             config.Bind(env);

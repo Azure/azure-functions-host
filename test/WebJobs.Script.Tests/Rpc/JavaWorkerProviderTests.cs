@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 .AddInMemoryCollection(new List<KeyValuePair<string, string>>()
                 {
                     new KeyValuePair<string, string>("JAVA_HOME", "asdf"),
-                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWrokerName}:debug", "localhost:1000")
+                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWorkerName}:debug", "localhost:1000")
                 })
                 .Build();
 
@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var configFactory = new WorkerConfigFactory(config, testLogger);
 
             var provider = new JavaWorkerProvider(configFactory.WorkerDirPath);
-            var args = new WorkerProcessArgumentsDescription();
+            var args = new WorkerProcessArguments();
             var result = provider.TryConfigureArguments(args, config, testLogger);
 
             Assert.True(result);
@@ -43,14 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 {
                     new KeyValuePair<string, string>("JAVA_HOME", "asdf"),
                     new KeyValuePair<string, string>("JAVA_OPTS", "address=1001"),
-                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWrokerName}:debug", "1000")
+                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWorkerName}:debug", "1000")
                 })
                 .Build();
 
             var testLogger = new TestLogger("test");
             var configFactory = new WorkerConfigFactory(config, testLogger);
             var provider = new JavaWorkerProvider(configFactory.WorkerDirPath);
-            var args = new WorkerProcessArgumentsDescription();
+            var args = new WorkerProcessArguments();
             var result = provider.TryConfigureArguments(args, config, testLogger);
 
             Assert.True(result);
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var testLogger = new TestLogger("test");
             var configFactory = new WorkerConfigFactory(config, testLogger);
             var provider = new JavaWorkerProvider(configFactory.WorkerDirPath);
-            var args = new WorkerProcessArgumentsDescription();
+            var args = new WorkerProcessArguments();
             var result = provider.TryConfigureArguments(args, config, testLogger);
 
             Assert.True(result);
@@ -84,14 +84,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new List<KeyValuePair<string, string>>()
                 {
-                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWrokerName}:debug", "1000")
+                    new KeyValuePair<string, string>($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.JavaLanguageWorkerName}:debug", "1000")
                 })
                 .Build();
 
             var testLogger = new TestLogger("test");
             var configFactory = new WorkerConfigFactory(config, testLogger);
             var provider = new JavaWorkerProvider(configFactory.WorkerDirPath);
-            var args = new WorkerProcessArgumentsDescription();
+            var args = new WorkerProcessArguments();
             var result = provider.TryConfigureArguments(args, config, testLogger);
 
             Assert.False(result);
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var testLogger = new TestLogger("test");
             var configFactory = new WorkerConfigFactory(config, testLogger);
             var provider = new JavaWorkerProvider(configFactory.WorkerDirPath);
-            var args = new WorkerProcessArgumentsDescription();
+            var args = new WorkerProcessArguments();
             var result = provider.TryConfigureArguments(args, config, testLogger);
 
             Assert.True(result);

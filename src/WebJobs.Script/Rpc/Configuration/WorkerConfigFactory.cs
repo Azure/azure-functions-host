@@ -40,16 +40,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             foreach (var provider in providers)
             {
                 var description = provider.GetDescription();
+                _logger.LogTrace($"Worker path for language worker {description.Language}: {description.WorkerDirectory}");
 
-                // Can override the path we load from, or we use the default path from where we loaded the config
-                var languageSection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{description.Language}");
-                var workerPath = languageSection.GetSection("path").Value ?? Path.Combine(Path.Combine(WorkerDirPath, description.Language), description.DefaultWorkerPath);
-                _logger.LogTrace($"Worker path for language worker {description.Language}: {workerPath}");
-
-                var arguments = new WorkerProcessArgumentsDescription()
+                var arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = description.DefaultExecutablePath,
-                    WorkerPath = workerPath
+                    WorkerPath = description.WorkerDirectory
                 };
 
                 if (provider.TryConfigureArguments(arguments, _config, _logger))
@@ -125,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 string json = File.ReadAllText(workerConfigPath);
                 JObject workerConfig = JObject.Parse(json);
                 WorkerDescription workerDescription = workerConfig.Property(LanguageWorkerConstants.WorkerDescription).Value.ToObject<WorkerDescription>();
-
+                workerDescription.WorkerDirectory = workerDir;
                 var languageSection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
                 workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
                 var argumentsSection = languageSection.GetSection($"{LanguageWorkerConstants.WorkerDescriptionArguments}");
