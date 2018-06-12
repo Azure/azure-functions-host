@@ -49,7 +49,7 @@ else
 	NUGET_PATH=$NUGET_ROOT/packages
 fi
 
-GRPC_TOOLS_PATH=$NUGET_PATH/grpc.tools/1.4.1/tools/$PLATFORM
+GRPC_TOOLS_PATH=$NUGET_PATH/grpc.tools/1.12.0/tools/$PLATFORM
 PROTO_PATH=./azure-functions-language-worker-protobuf/src/proto
 PROTOBUF_TOOLS=$NUGET_PATH/google.protobuf.tools/3.5.1/tools
 PROTO=./azure-functions-language-worker-protobuf/src/proto/FunctionRpc.proto
