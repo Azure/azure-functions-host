@@ -844,7 +844,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             config["id"] = ID;
             JObject languageWorkerConfig = new JObject();
             languageWorkerConfig["maxMessageLength"] = 20;
-            config["languageWorker"] = languageWorkerConfig;
+            config[$"{LanguageWorkerConstants.LanguageWorkersSectionName}"] = languageWorkerConfig;
 
             ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
             ScriptHost.ApplyConfiguration(config, scriptConfig);
