@@ -44,5 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// configuration values.
         /// </summary>
         public const string AzureWebsiteConfigurationReady = "WEBSITE_CONFIGURATION_READY";
+
+        public const string ContainerStartContext = "CONTAINER_START_CONTEXT";
+        public const string ContainerStartContextSasUri = "CONTAINER_START_CONTEXT_SAS_URI";
     }
 }

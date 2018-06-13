@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
@@ -67,6 +68,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .AddXmlDataContractSerializerFormatters();
 
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WebJobsScriptHostService>());
+
+            if (ScriptSettingsManager.Instance.IsLinuxContainerEnvironment)
+            {
+                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, LinuxContainerInitializationHostService>());
+            }
 
             // TODO: This is a direct port from the current model.
             // Some of those services (or the way we register them) may need to change

@@ -22,5 +22,10 @@ namespace Microsoft.WebJobs.Script.Tests
         /// static state, and benefit from test isolation.
         /// </summary>
         public const string StandbyModeTests = "StandbyModeEndToEndTests";
+
+        /// <summary>
+        /// These are Linux container environment specific tests.
+        /// </summary>
+        public const string ContainerInstanceTests = "ContainerInstanceTests";
     }
 }
