@@ -281,6 +281,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-TypeScript", "H
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Java", "HttpTrigger-Java", "{1DE0B190-660F-4601-AAC1-94C9BDF5BDD2}"
 	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-Java\Function.java = sample\HttpTrigger-Java\Function.java
 		sample\HttpTrigger-Java\function.json = sample\HttpTrigger-Java\function.json
 		sample\HttpTrigger-Java\HttpTrigger-Java-1.0-SNAPSHOT.jar = sample\HttpTrigger-Java\HttpTrigger-Java-1.0-SNAPSHOT.jar
 	EndProjectSection
