@@ -281,8 +281,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-TypeScript", "H
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Java", "HttpTrigger-Java", "{1DE0B190-660F-4601-AAC1-94C9BDF5BDD2}"
 	ProjectSection(SolutionItems) = preProject
-		sample\HttpTrigger-Java\azure-functions-java-sample-1.0-SNAPSHOT.jar = sample\HttpTrigger-Java\azure-functions-java-sample-1.0-SNAPSHOT.jar
 		sample\HttpTrigger-Java\function.json = sample\HttpTrigger-Java\function.json
+		sample\HttpTrigger-Java\HttpTrigger-Java-1.0-SNAPSHOT.jar = sample\HttpTrigger-Java\HttpTrigger-Java-1.0-SNAPSHOT.jar
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{BCFBE330-871A-44BE-9016-83845231230F}"
@@ -316,7 +316,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Disabled", "Htt
 		sample\HttpTrigger-Disabled\index.js = sample\HttpTrigger-Disabled\index.js
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestFunctions", "test\TestFunctions\TestFunctions.csproj", "{5C308A72-5CF3-45E8-B64F-2C98F567054A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestFunctions", "test\TestFunctions\TestFunctions.csproj", "{5C308A72-5CF3-45E8-B64F-2C98F567054A}"
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
