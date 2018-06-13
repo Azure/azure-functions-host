@@ -330,6 +330,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal static async Task<bool> DelayUntilHostReady(WebHostResolver resolver)
         {
+            // need to ensure the host startup has been initiated
+            var manager = resolver.GetWebScriptHostManager();
+            var tIgnore = manager.EnsureHostStarted(CancellationToken.None);
+
+            // wait for the host to get into a running state
+            return await manager.DelayUntilHostReady(throwOnFailure: false);
+        }
+
+        internal static async Task DelayUntilEnvironmentReady()
+        {
             if (DelayRequests)
             {
                 // delay until we're ready to start processing requests
@@ -338,13 +348,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     return DelayRequests;
                 });
             }
-
-            // need to ensure the host startup has been initiated
-            var manager = resolver.GetWebScriptHostManager();
-            var tIgnore = manager.EnsureHostStarted(CancellationToken.None);
-
-            // wait for the host to get into a running state
-            return await manager.DelayUntilHostReady(throwOnFailure: false);
         }
     }
 }

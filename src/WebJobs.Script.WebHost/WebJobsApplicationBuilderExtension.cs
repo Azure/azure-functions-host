@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 builder.UseMiddleware<AppServiceHeaderFixupMiddleware>();
             }
 
+            builder.UseMiddleware<EnvironmentReadyCheckMiddleware>();
             builder.UseMiddleware<HttpExceptionMiddleware>();
             builder.UseMiddleware<ResponseBufferingMiddleware>();
             builder.UseMiddleware<HomepageMiddleware>();
