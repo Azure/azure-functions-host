@@ -198,8 +198,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task HttpTrigger_Get_Succeeds()
         {
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger");
-            string uri = $"api/httptrigger?code={functionKey}&name=Mathew";
+            await InvokeHttpTrigger("HttpTrigger");
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Java_Get_Succeeds()
+        {
+            await InvokeHttpTrigger("HttpTrigger-Java");
+        }
+
+        private async Task InvokeHttpTrigger(string functionName)
+        {
+            string functionKey = await _fixture.Host.GetFunctionSecretAsync($"{functionName}");
+            string uri = $"api/{functionName}?code={functionKey}&name=Mathew";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
@@ -211,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // verify request also succeeds with master key
             string masterKey = await _fixture.Host.GetMasterKeyAsync();
-            uri = $"api/httptrigger?code={masterKey}&name=Mathew";
+            uri = $"api/{functionName}?code={masterKey}&name=Mathew";
             request = new HttpRequestMessage(HttpMethod.Get, uri);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }

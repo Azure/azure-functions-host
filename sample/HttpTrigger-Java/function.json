@@ -1,17 +1,15 @@
 {
-  "entryPoint": "com.microsoft.serverless.Calculator.add",
-  "bindings": [
-    {
-      "type": "httpTrigger",
-      "name": "req",
-      "direction": "in",
-      "authLevel": "anonymous",
-      "methods": [ "post" ]
-    },
-    {
-      "type": "http",
-      "name": "$return",
-      "direction": "out"
-    }
-  ]
+  "scriptFile" : "HttpTrigger-Java-1.0-SNAPSHOT.jar",
+  "entryPoint" : "Microsoft.Azure.WebJobs.Script.Tests.EndToEnd.Function.HttpTriggerJava",
+  "bindings" : [ {
+    "type" : "httpTrigger",
+    "name" : "req",
+    "direction" : "in",
+    "methods" : [ "get", "post" ]
+  }, {
+    "type" : "http",
+    "name" : "$return",
+    "direction" : "out"
+  } ],
+  "disabled" : false
 }
