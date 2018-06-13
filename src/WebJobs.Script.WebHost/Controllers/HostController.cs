@@ -131,6 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/synctriggers")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        [RequiresRunningHost]
         public async Task<IActionResult> SyncTriggers()
         {
             (var success, var error) = await _functionsManager.TrySyncTriggers();
