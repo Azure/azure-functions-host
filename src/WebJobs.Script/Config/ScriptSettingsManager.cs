@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets a value indicating whether we are running in a Linux container
         /// </summary>
-        public bool IsLinuxContainerEnvironment
+        public virtual bool IsLinuxContainerEnvironment
         {
             get
             {

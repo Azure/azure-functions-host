@@ -42,7 +42,7 @@ $tests = @(
   @{project ="WebJobs.Script.Tests.Integration"; description="Raw assembly end to end tests"; filter ="Group=RawAssemblyEndToEndTests"},
   @{project ="WebJobs.Script.Tests.Integration"; description="Samples end to end tests"; filter ="Group=SamplesEndToEndTests"}
   @{project ="WebJobs.Script.Tests.Integration"; description="Standby mode end to end tests"; filter ="Group=StandbyModeEndToEndTests"}
-  @{project ="WebJobs.Script.Tests.Integration"; description="InstanceManager end to end tests"; filter ="Group=InstanceManagerTests"}
+  @{project ="WebJobs.Script.Tests.Integration"; description="Linux Container end to end tests"; filter ="Group=ContainerInstanceTests"}
 )
 
 $success = $true

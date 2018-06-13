@@ -141,20 +141,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
                 return false;
             }
 
+            encryptionKey = hexOrBase64.ToKeyBytes();
+
+            return true;
+        }
+
+        public static byte[] ToKeyBytes(this string hexOrBase64)
+        {
             // only support 32 bytes (256 bits) key length
             if (hexOrBase64.Length == 64)
             {
-                encryptionKey = Enumerable.Range(0, hexOrBase64.Length)
+                return Enumerable.Range(0, hexOrBase64.Length)
                     .Where(x => x % 2 == 0)
                     .Select(x => Convert.ToByte(hexOrBase64.Substring(x, 2), 16))
                     .ToArray();
             }
-            else
-            {
-                encryptionKey = Convert.FromBase64String(hexOrBase64);
-            }
 
-            return true;
+            return Convert.FromBase64String(hexOrBase64);
         }
     }
 }
