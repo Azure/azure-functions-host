@@ -13,21 +13,22 @@ namespace Microsoft.Azure.WebJobs.Script
     /// <summary>
     /// Overrides the default client creation by adding a custom SdkVersion for backend tracking.
     /// </summary>
-    internal class ScriptTelemetryClientFactory : DefaultTelemetryClientFactory
-    {
-        public ScriptTelemetryClientFactory(string instrumentationKey, SamplingPercentageEstimatorSettings samplingSettings, Func<string, LogLevel, bool> filter)
-            : base(instrumentationKey, samplingSettings, filter)
-        {
-        }
+    // TODO: DI (FACAVAL) Resolve
+    //internal class ScriptTelemetryClientFactory : DefaultTelemetryClientFactory
+    //{
+    //    public ScriptTelemetryClientFactory(string instrumentationKey, SamplingPercentageEstimatorSettings samplingSettings, Func<string, LogLevel, bool> filter)
+    //        : base(instrumentationKey, samplingSettings, filter)
+    //    {
+    //    }
 
-        public override TelemetryClient Create()
-        {
-            TelemetryClient client = base.Create();
+    //    public override TelemetryClient Create()
+    //    {
+    //        TelemetryClient client = base.Create();
 
-            string assemblyVersion = ScriptHost.GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
-            client.Context.GetInternalContext().SdkVersion = $"azurefunctions: {assemblyVersion}";
+    //        string assemblyVersion = ScriptHost.GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
+    //        client.Context.GetInternalContext().SdkVersion = $"azurefunctions: {assemblyVersion}";
 
-            return client;
-        }
-    }
+    //        return client;
+    //    }
+    //}
 }

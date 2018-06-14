@@ -7,6 +7,7 @@ using System.Runtime.Loader;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -19,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var bindingProviders = new Collection<ScriptBindingProvider>
             {
-                new TestBindingProvider(new JobHostConfiguration(), new JObject(), null)
+                new TestBindingProvider(new OptionsWrapper<JobHostOptions>(new JobHostOptions()), new JObject(), null)
             };
 
             var provider = new ExtensionSharedAssemblyProvider(bindingProviders);
@@ -33,8 +34,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestBindingProvider : ScriptBindingProvider
         {
-            public TestBindingProvider(JobHostConfiguration config, JObject hostMetadata, ILogger traceWriter)
-                : base(config, hostMetadata, traceWriter)
+            public TestBindingProvider(IOptions<JobHostOptions> options, JObject hostMetadata, ILogger traceWriter)
+                : base(options, hostMetadata, traceWriter)
             {
             }
 

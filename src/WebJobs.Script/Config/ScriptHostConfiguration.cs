@@ -14,7 +14,9 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         public ScriptHostConfiguration()
         {
-            HostConfig = new JobHostConfiguration();
+            // TODO: DI (FACAVAL) This needs to change. We won't
+            // be creating an instance of the options here.
+            HostOptions = new JobHostOptions();
             FileWatchingEnabled = true;
             FileLoggingMode = FileLoggingMode.Never;
             RootScriptPath = Environment.CurrentDirectory;
@@ -27,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets or sets the <see cref="JobHostConfiguration"/>.
         /// </summary>
-        public JobHostConfiguration HostConfig { get; set; }
+        public JobHostOptions HostOptions { get; set; }
 
         /// <summary>
         /// Gets or sets the path to the script function directory.

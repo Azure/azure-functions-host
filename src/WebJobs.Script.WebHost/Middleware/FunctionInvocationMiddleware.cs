@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _next = next;
         }
 
-        public async Task Invoke(HttpContext context, WebScriptHostManager manager)
+        public async Task Invoke(HttpContext context, IScriptHostManager manager)
         {
             // flow required context through the request pipeline
             // downstream middleware and filters rely on this

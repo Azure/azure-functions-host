@@ -23,11 +23,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private bool _disposed = false;
         private IDisposable _fileChangeSubscription;
 
-        internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, string logDirName = null)
+        internal FunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory, string logDirName = null)
         {
             Host = host;
             Metadata = functionMetadata;
-            FunctionLogger = host.ScriptConfig.HostConfig.LoggerFactory.CreateLogger(LogCategories.CreateFunctionCategory(functionMetadata.Name));
+            FunctionLogger = loggerFactory.CreateLogger(LogCategories.CreateFunctionCategory(functionMetadata.Name));
         }
 
         protected static IDictionary<string, object> PrimaryHostLogProperties { get; }

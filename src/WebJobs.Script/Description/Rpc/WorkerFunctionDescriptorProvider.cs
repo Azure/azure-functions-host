@@ -10,17 +10,20 @@ using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal class WorkerFunctionDescriptorProvider : FunctionDescriptorProvider
     {
+        private readonly ILoggerFactory _loggerFactory;
         private IFunctionRegistry _dispatcher;
 
-        public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config, IFunctionRegistry dispatcher)
+        public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config, IFunctionRegistry dispatcher, ILoggerFactory loggerFactory)
             : base(host, config)
         {
             _dispatcher = dispatcher;
+            _loggerFactory = loggerFactory;
         }
 
         public override bool TryCreate(FunctionMetadata functionMetadata, out FunctionDescriptor functionDescriptor)
@@ -42,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Metadata = functionMetadata,
                 InputBuffer = inputBuffer
             });
-            return new WorkerLanguageInvoker(Host, triggerMetadata, functionMetadata, inputBindings, outputBindings, inputBuffer);
+            return new WorkerLanguageInvoker(Host, triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, inputBuffer);
         }
 
         protected override Collection<ParameterDescriptor> GetFunctionParameters(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,

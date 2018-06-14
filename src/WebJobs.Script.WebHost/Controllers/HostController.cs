@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -30,14 +31,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     {
         private readonly WebScriptHostManager _scriptHostManager;
         private readonly WebHostSettings _webHostSettings;
+        private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly ILogger _logger;
         private readonly IAuthorizationService _authorizationService;
         private readonly IWebFunctionsManager _functionsManager;
 
-        public HostController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory, IAuthorizationService authorizationService, IWebFunctionsManager functionsManager)
+        public HostController(WebScriptHostManager scriptHostManager,
+            WebHostSettings webHostSettings,
+            IOptions<JobHostOptions> hostOptions,
+            ILoggerFactory loggerFactory,
+            IAuthorizationService authorizationService,
+            IWebFunctionsManager functionsManager)
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
+            _hostOptions = hostOptions;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostController);
             _authorizationService = authorizationService;
             _functionsManager = functionsManager;
@@ -54,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 State = _scriptHostManager.State.ToString(),
                 Version = ScriptHost.Version,
                 VersionDetails = Utility.GetInformationalVersion(typeof(ScriptHost)),
-                Id = _scriptHostManager.Instance?.ScriptConfig.HostConfig.HostId
+                Id = _hostOptions.Value.HostId
             };
 
             var lastError = _scriptHostManager.LastError;

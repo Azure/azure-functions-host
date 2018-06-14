@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.CodeAnalysis;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -24,9 +25,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
         private readonly BufferBlock<ScriptInvocationContext> _invocationBuffer;
 
-        internal WorkerLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata,
+        internal WorkerLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, BufferBlock<ScriptInvocationContext> invocationBuffer)
-            : base(host, functionMetadata)
+            : base(host, functionMetadata, loggerFactory)
         {
             _trigger = trigger;
             _inputBindings = inputBindings;

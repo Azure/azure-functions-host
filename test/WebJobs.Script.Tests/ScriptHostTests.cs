@@ -765,11 +765,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             try
             {
+                // TODO: DI (FACAVAL) Fix test
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
                 ScriptHost.ApplyConfiguration(config, scriptConfig);
                 Assert.Equal(ScriptHost.DefaultFunctionTimeout, scriptConfig.FunctionTimeout);
                 Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytesDynamicSku, scriptConfig.MaxMessageLengthBytes);
-                var timeoutConfig = scriptConfig.HostConfig.FunctionTimeout;
+                var timeoutConfig = scriptConfig.HostOptions.FunctionTimeout;
                 Assert.NotNull(timeoutConfig);
                 Assert.True(timeoutConfig.ThrowOnTimeout);
                 Assert.Equal(scriptConfig.FunctionTimeout.Value, timeoutConfig.Timeout);
