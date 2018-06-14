@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -18,36 +19,37 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     internal class WebJobsCoreScriptBindingProvider : ScriptBindingProvider
     {
-        public WebJobsCoreScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, ILogger logger)
-            : base(config, hostMetadata, logger)
+        public WebJobsCoreScriptBindingProvider(IOptions<JobHostOptions> options, JObject hostMetadata, ILogger logger)
+            : base(options, hostMetadata, logger)
         {
         }
 
         public override void Initialize()
         {
+            // TODO: DI (FACAVAL) This all gets moved to service and configuration initialization
             // Apply Blobs configuration
-            var configSection = (JObject)Metadata["blobs"];
-            JToken value = null;
-            if (configSection != null)
-            {
-                if (configSection.TryGetValue("centralizedPoisonQueue", out value))
-                {
-                    Config.Blobs.CentralizedPoisonQueue = (bool)value;
-                }
-            }
+            //var configSection = (JObject)Metadata["blobs"];
+            //JToken value = null;
+            //if (configSection != null)
+            //{
+            //    if (configSection.TryGetValue("centralizedPoisonQueue", out value))
+            //    {
+            //        HostOptions.Blobs.CentralizedPoisonQueue = (bool)value;
+            //    }
+            //}
 
-            // apply http configuration configuration
-            configSection = (JObject)Metadata["http"];
-            HttpExtensionConfiguration httpConfig = null;
-            if (configSection != null)
-            {
-                httpConfig = configSection.ToObject<HttpExtensionConfiguration>();
-            }
-            httpConfig = httpConfig ?? new HttpExtensionConfiguration();
-            httpConfig.SetResponse = HttpBinding.SetResponse;
+            //// apply http configuration configuration
+            //configSection = (JObject)Metadata["http"];
+            //HttpExtensionConfiguration httpConfig = null;
+            //if (configSection != null)
+            //{
+            //    httpConfig = configSection.ToObject<HttpExtensionConfiguration>();
+            //}
+            //httpConfig = httpConfig ?? new HttpExtensionConfiguration();
+            //httpConfig.SetResponse = HttpBinding.SetResponse;
 
-            Config.UseScriptExtensions();
-            Config.UseHttp(httpConfig);
+            //HostOptions.UseScriptExtensions();
+            //HostOptions.UseHttp(httpConfig);
         }
 
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
@@ -57,7 +59,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             if (string.Compare(context.Type, "blobTrigger", StringComparison.OrdinalIgnoreCase) == 0 ||
                 string.Compare(context.Type, "blob", StringComparison.OrdinalIgnoreCase) == 0)
             {
-                binding = new BlobScriptBinding(context);
+                // TODO: DI (FACAVAL) Load storage extensions dynamically
+                //binding = new BlobScriptBinding(context);
             }
             else if (string.Compare(context.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase) == 0)
             {
@@ -102,45 +105,46 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        private class BlobScriptBinding : ScriptBinding
-        {
-            public BlobScriptBinding(ScriptBindingContext context) : base(context)
-            {
-            }
+        // TODO: DI (FACAVAL) Load storage extensions dynamically
+        //private class BlobScriptBinding : ScriptBinding
+        //{
+        //    public BlobScriptBinding(ScriptBindingContext context) : base(context)
+        //    {
+        //    }
 
-            public override Type DefaultType
-            {
-                get
-                {
-                    return typeof(Stream);
-                }
-            }
+        //    public override Type DefaultType
+        //    {
+        //        get
+        //        {
+        //            return typeof(Stream);
+        //        }
+        //    }
 
-            public override Collection<Attribute> GetAttributes()
-            {
-                Collection<Attribute> attributes = new Collection<Attribute>();
+        //    public override Collection<Attribute> GetAttributes()
+        //    {
+        //        Collection<Attribute> attributes = new Collection<Attribute>();
 
-                string path = Context.GetMetadataValue<string>("path");
-                Attribute attribute = null;
-                if (Context.IsTrigger)
-                {
-                    attribute = new BlobTriggerAttribute(path);
-                }
-                else
-                {
-                    attribute = new BlobAttribute(path, Context.Access);
-                }
-                attributes.Add(attribute);
+        //        string path = Context.GetMetadataValue<string>("path");
+        //        Attribute attribute = null;
+        //        if (Context.IsTrigger)
+        //        {
+        //            attribute = new BlobTriggerAttribute(path);
+        //        }
+        //        else
+        //        {
+        //            attribute = new BlobAttribute(path, Context.Access);
+        //        }
+        //        attributes.Add(attribute);
 
-                var connectionProvider = (IConnectionProvider)attribute;
-                string connection = Context.GetMetadataValue<string>("connection");
-                if (!string.IsNullOrEmpty(connection))
-                {
-                    connectionProvider.Connection = connection;
-                }
+        //        var connectionProvider = (IConnectionProvider)attribute;
+        //        string connection = Context.GetMetadataValue<string>("connection");
+        //        if (!string.IsNullOrEmpty(connection))
+        //        {
+        //            connectionProvider.Connection = connection;
+        //        }
 
-                return attributes;
-            }
-        }
+        //        return attributes;
+        //    }
+        //}
     }
 }

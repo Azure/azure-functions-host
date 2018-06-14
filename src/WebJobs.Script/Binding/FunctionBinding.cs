@@ -21,9 +21,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     public abstract class FunctionBinding
     {
         private readonly ScriptHostConfiguration _config;
+        private readonly INameResolver _nameResolver;
 
         protected FunctionBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access)
         {
+            // TODO: DI (FACAVAL) Inject...
+            _nameResolver = null;
             _config = config;
             Access = access;
             Metadata = metadata;
@@ -96,12 +99,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         protected string Resolve(string name)
         {
-            if (_config.HostConfig.NameResolver == null)
-            {
-                return name;
-            }
-
-            return _config.HostConfig.NameResolver.ResolveWholeString(name);
+            // TODO: DI (FACAVAL) Inject resolver
+            return _nameResolver?.ResolveWholeString(name) ?? name;
         }
 
         internal static IEnumerable ReadAsEnumerable(object value)

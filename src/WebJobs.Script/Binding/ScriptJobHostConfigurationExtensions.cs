@@ -8,14 +8,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public static class ScriptJobHostConfigurationExtensions
     {
-        public static void UseScriptExtensions(this JobHostConfiguration config)
+        public static void UseScriptExtensions(this JobHostOptions config)
         {
             if (config == null)
             {
                 throw new ArgumentNullException("config");
             }
 
-            config.RegisterExtensionConfigProvider(new ScriptExtensionConfig());
+            // TODO: DI (FACAVAL) Register the manual trigger
+
+            //config.RegisterExtensionConfigProvider(new ScriptExtensionConfig());
         }
 
         private class ScriptExtensionConfig : IExtensionConfigProvider

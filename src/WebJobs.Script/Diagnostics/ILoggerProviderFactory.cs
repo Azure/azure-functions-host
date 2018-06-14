@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -13,6 +14,11 @@ namespace Microsoft.Azure.WebJobs.Script
     /// </summary>
     public interface ILoggerProviderFactory
     {
-        IEnumerable<ILoggerProvider> CreateLoggerProviders(string hostInstanceId, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary);
+        IEnumerable<ILoggerProvider> CreateLoggerProviders(string hostInstanceId,
+            ScriptHostConfiguration scriptConfig,
+            ScriptSettingsManager settingsManager,
+            IMetricsLogger metricsLogger,
+            Func<bool> isFileLoggingEnabled,
+            Func<bool> isPrimary);
     }
 }

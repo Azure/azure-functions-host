@@ -8,6 +8,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public interface ISecretManagerFactory
     {
-        ISecretManager Create(ScriptSettingsManager settingsManager, ILogger logger, ISecretsRepository secretsRepository);
+        ISecretManager Create();
     }
 }

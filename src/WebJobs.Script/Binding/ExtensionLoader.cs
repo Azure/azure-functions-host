@@ -19,11 +19,13 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     internal class ExtensionLoader
     {
         private readonly ScriptHostConfiguration _config;
+        private readonly IExtensionRegistry _extensionRegistry;
         private readonly ILogger _logger;
 
-        public ExtensionLoader(ScriptHostConfiguration config, ILogger logger)
+        public ExtensionLoader(ScriptHostConfiguration config, IExtensionRegistry extensionRegistry, ILogger logger)
         {
             _config = config;
+            _extensionRegistry = extensionRegistry;
             _logger = logger;
         }
 
@@ -152,8 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         private bool IsExtensionLoaded(Type type)
         {
-            var registry = _config.HostConfig.GetService<IExtensionRegistry>();
-            var extensions = registry.GetExtensions<IExtensionConfigProvider>();
+            var extensions = _extensionRegistry.GetExtensions<IExtensionConfigProvider>();
             foreach (var extension in extensions)
             {
                 var loadedExtentionType = extension.GetType();
@@ -168,14 +169,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         // Load a single extension
         private void LoadExtension(IExtensionConfigProvider instance, string locationHint = null)
         {
-            JobHostConfiguration config = _config.HostConfig;
+            JobHostOptions config = _config.HostOptions;
 
             var type = instance.GetType();
             string name = type.Name;
 
             string msg = $"Loaded custom extension: {name} from '{locationHint}'";
             _logger.LogInformation(msg);
-            config.AddExtension(instance);
+            // TODO: DI (FACAVAL) Inject extensions instead of using the extension registry
+            //_extensionRegistry.
+            //config.AddExtension(instance);
         }
     }
 }

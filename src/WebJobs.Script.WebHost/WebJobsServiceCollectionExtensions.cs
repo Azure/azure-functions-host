@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
+using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
@@ -61,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return services.AddSingleton<IAuthorizationHandler, FunctionAuthorizationHandler>();
         }
 
-        public static IServiceProvider AddWebJobsScriptHost(this IServiceCollection services, IConfiguration configuration)
+        public static void AddWebJobsScriptHost(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddWebJobsScriptHostRouting();
             services.AddMvc()
@@ -74,17 +75,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, LinuxContainerInitializationHostService>());
             }
 
-            // TODO: This is a direct port from the current model.
-            // Some of those services (or the way we register them) may need to change
-            var builder = new ContainerBuilder();
-
             // ScriptSettingsManager should be replaced. We're setting this here as a temporary step until
             // broader configuaration changes are made:
-            builder.RegisterType<ScriptSettingsManager>().SingleInstance();
-
-            builder.Register<IEventGenerator>(c =>
+            services.AddSingleton<ScriptSettingsManager>();
+            services.AddSingleton<IEventGenerator>(p =>
             {
-                var settingsManager = c.Resolve<ScriptSettingsManager>();
+                var settingsManager = p.GetService<ScriptSettingsManager>();
                 if (settingsManager.IsLinuxContainerEnvironment)
                 {
                     return new LinuxContainerEventGenerator();
@@ -93,68 +89,62 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     return new EtwEventGenerator();
                 }
-            }).SingleInstance();
+            });
+            services.AddSingleton<ISecretManagerFactory, DefaultSecretManagerFactory>();
+            services.AddSingleton<ISecretsRepositoryFactory, DefaultSecretsRepositoryFactory>();
 
-            builder.RegisterType<DefaultSecretManagerFactory>().As<ISecretManagerFactory>().SingleInstance();
-            builder.RegisterType<ScriptEventManager>().As<IScriptEventManager>().SingleInstance();
-            builder.Register(c => WebHostSettings.CreateDefault(c.Resolve<ScriptSettingsManager>()));
+            // TODO: DI (FACAVAL) Review metrics logger registration
+            services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
 
-            // Pass a specially-constructed LoggerFactory to the WebHostResolver, if there isn't already a service instance
-            // registered. This LoggerFactory is only used when there is no host available.
-            // Only use this LoggerFactory for this constructor; use the registered ILoggerFactory below everywhere else.
-            // TODO: This default logger factory is a TEMP workaround. Fix this.
-            var defaultLoggerFactory = services.Where(p => p.ServiceType == typeof(ILoggerFactory) && p.ImplementationInstance != null).Select(p => p.ImplementationInstance).FirstOrDefault();
-            builder.RegisterType<WebHostResolver>().SingleInstance()
-                    .WithParameter(new ResolvedParameter(
-                        (pi, ctx) => pi.ParameterType == typeof(ILoggerFactory),
-                        (pi, ctx) => defaultLoggerFactory ?? CreateLoggerFactory(string.Empty, ctx.Resolve<ScriptSettingsManager>(), ctx.Resolve<IEventGenerator>(), ctx.Resolve<WebHostSettings>())));
+            services.AddSingleton<IScriptEventManager, ScriptEventManager>();
+            services.AddTransient(p => WebHostSettings.CreateDefault(p.GetService<ScriptSettingsManager>()));
+            services.AddSingleton<ILoggerProviderFactory, WebHostLoggerProviderFactory>();
 
-            // Register the LoggerProviderFactory, which defines the ILoggerProviders for the host.
-            builder.RegisterType<WebHostLoggerProviderFactory>().As<ILoggerProviderFactory>().SingleInstance();
+            // TODO: DI (FACAVAL) Removed the previous workaround to pass a logger factory into the host resolver
+            // this is no longer needed, but we need to validate log output.
+            // Remove the need to have the WebHostResolver
+            //services.AddSingleton<WebHostResolver>();
 
             // Temporary - This should be replaced with a simple type registration.
-            builder.Register<IExtensionsManager>(c =>
+            services.AddTransient<IExtensionsManager>(c =>
             {
-                var hostInstance = c.Resolve<WebScriptHostManager>().Instance;
+                var hostInstance = c.GetService<WebScriptHostManager>().Instance;
                 return new ExtensionsManager(hostInstance.ScriptConfig.RootScriptPath, hostInstance.Logger, hostInstance.ScriptConfig.NugetFallBackPath);
             });
 
-            // The services below need to be scoped to a pseudo-tenant (warm/specialized environment)
-            builder.Register<WebScriptHostManager>(c => c.Resolve<WebHostResolver>().GetWebScriptHostManager()).ExternallyOwned();
-            builder.Register<ISecretManager>(c => c.Resolve<WebHostResolver>().GetSecretManager()).ExternallyOwned();
-            builder.RegisterType<WebFunctionsManager>().As<IWebFunctionsManager>().SingleInstance();
-            builder.RegisterType<InstanceManager>().As<IInstanceManager>().SingleInstance();
-            builder.Register(_ => new HttpClient()).SingleInstance();
-            builder.Register<IFileSystem>(_ => FileUtility.Instance).SingleInstance();
-            builder.RegisterType<VirtualFileSystem>();
-            builder.RegisterType<VirtualFileSystemMiddleware>();
+            // TODO: DI (FACAVAL) This will be replacet by the hosted service implementation
+            services.AddSingleton<IScriptHostManager, Host.TempScriptHostManager>();
 
-            // Populate the container builder with registered services.
-            // Doing this here will cause any services registered in the service collection to
-            // override the registrations above
-            builder.Populate(services);
+            // The services below need to be scoped to a pseudo-tenant (warm/specialized environment)
+            // TODO: DI (FACAVAL) This will need the child container/scoping logic for warm/specialized hosts
+            //services.AddSingleton<WebScriptHostManager>(c => c.GetService<WebHostResolver>().GetWebScriptHostManager());
+            services.AddSingleton<ISecretManager>(c => c.GetService<ISecretManagerFactory>().Create());
+            services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
+            services.AddSingleton<IInstanceManager, InstanceManager>();
+            services.AddSingleton(_ => new HttpClient());
+            services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
+            services.AddTransient<VirtualFileSystem>();
+            services.AddTransient<VirtualFileSystemMiddleware>();
 
             // we want all ILoggerFactory resolution to go through WebHostResolver
-            builder.Register(ct => ct.Resolve<WebHostResolver>().GetLoggerFactory(ct.Resolve<WebHostSettings>())).As<ILoggerFactory>().ExternallyOwned();
-
-            var applicationContainer = builder.Build();
-
-            return new AutofacServiceProvider(applicationContainer);
+            // TODO: DI (FACAVAL) This is no longer the case... perform cleanup (/cc brettsam)
+            // builder.Register(ct => ct.Resolve<WebHostResolver>().GetLoggerFactory(ct.Resolve<WebHostSettings>())).As<ILoggerFactory>().ExternallyOwned();
         }
 
-        private static ILoggerFactory CreateLoggerFactory(string hostInstanceId, ScriptSettingsManager settingsManager, IEventGenerator eventGenerator, WebHostSettings settings)
-        {
-            var loggerFactory = new LoggerFactory(Enumerable.Empty<ILoggerProvider>(), Utility.CreateLoggerFilterOptions());
+        // TODO: DI (FACAVAL) Removing this. We need to ensure system logs are properly written now when using the default provider.
+        //private static ILoggerFactory CreateLoggerFactory(string hostInstanceId, ScriptSettingsManager settingsManager, IEventGenerator eventGenerator, WebHostSettings settings)
+        //{
+        //    var loggerFactory = new LoggerFactory(Enumerable.Empty<ILoggerProvider>(), Utility.CreateLoggerFilterOptions());
 
-            var systemLoggerProvider = new SystemLoggerProvider(hostInstanceId, eventGenerator, settingsManager);
-            loggerFactory.AddProvider(systemLoggerProvider);
+        //    var systemLoggerProvider = new SystemLoggerProvider(hostInstanceId, eventGenerator, settingsManager);
+        //    loggerFactory.AddProvider(systemLoggerProvider);
 
-            // This loggerFactory logs everything to host files. No filter is applied because it is created
-            // before we parse host.json.
-            var hostFileLogger = new HostFileLoggerProvider(hostInstanceId, settings.LogPath, () => true);
-            loggerFactory.AddProvider(hostFileLogger);
+        //    // This loggerFactory logs everything to host files. No filter is applied because it is created
+        //    // before we parse host.json.
+        //    var hostFileLogger = new HostFileLoggerProvider(hostInstanceId, settings.LogPath, () => true);
+        //    loggerFactory.AddProvider(hostFileLogger);
 
-            return loggerFactory;
-        }
+        //    return loggerFactory;
+        //}
     }
 }

@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NCrontab;
 using Newtonsoft.Json.Linq;
 
@@ -15,8 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     internal class CoreExtensionsScriptBindingProvider : ScriptBindingProvider
     {
-        public CoreExtensionsScriptBindingProvider(JobHostConfiguration config, JObject hostMetadata, ILogger logger)
-            : base(config, hostMetadata, logger)
+        public CoreExtensionsScriptBindingProvider(IOptions<JobHostOptions> hostOptions, JObject hostMetadata, ILogger logger)
+            : base(hostOptions, hostMetadata, logger)
         {
         }
 
@@ -25,8 +26,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         /// <inheritdoc/>
         public override void Initialize()
         {
-            Config.UseTimers();
-            Config.UseCore(AppDirectory);
+            // TODO: DI (FACAVAL) Register core extensions
+            //HostOptions.UseTimers();
+            //HostOptions.UseCore(AppDirectory);
         }
 
         /// <inheritdoc/>

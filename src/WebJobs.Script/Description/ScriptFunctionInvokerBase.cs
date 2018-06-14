@@ -14,13 +14,14 @@ using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public class ScriptFunctionInvokerBase : FunctionInvokerBase
     {
-        public ScriptFunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata)
-            : base(host, functionMetadata)
+        public ScriptFunctionInvokerBase(ScriptHost host, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory)
+            : base(host, functionMetadata, loggerFactory)
         {
         }
 

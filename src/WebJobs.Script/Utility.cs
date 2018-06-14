@@ -380,7 +380,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static IJobHostMetadataProvider CreateMetadataProvider(this JobHost host)
         {
-            return (IJobHostMetadataProvider)host.Services.GetService(typeof(IJobHostMetadataProvider));
+            // TODO: DI (FACAVAL) Review
+            //return (IJobHostMetadataProvider)host.Services.GetService(typeof(IJobHostMetadataProvider));
+            return null;
         }
 
         internal static bool IsNullable(Type type)

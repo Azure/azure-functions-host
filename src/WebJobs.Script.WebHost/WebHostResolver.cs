@@ -7,12 +7,15 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -22,10 +25,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static object _syncLock = new object();
 
         private readonly ISecretManagerFactory _secretManagerFactory;
+        private readonly ISecretsRepositoryFactory _secretsRepositoryFactory;
+        private readonly IOptions<JobHostOptions> _jobHostOptions;
+        private readonly IMetricsLogger _metricsLogger;
         private readonly IScriptEventManager _eventManager;
         private readonly IWebJobsRouter _router;
         private readonly WebHostSettings _settings;
         private readonly ILoggerProviderFactory _loggerProviderFactory;
+        private readonly IConnectionStringProvider _connectionStringProvider;
+        private readonly IExtensionRegistry _extensionRegistry;
+        private readonly IScriptHostFactory _scriptHostFactory;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IEventGenerator _eventGenerator;
 
@@ -35,12 +44,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private WebScriptHostManager _activeHostManager;
         private Timer _specializationTimer;
 
-        public WebHostResolver(ScriptSettingsManager settingsManager, ISecretManagerFactory secretManagerFactory,
-            IScriptEventManager eventManager, WebHostSettings settings, IWebJobsRouter router, ILoggerProviderFactory loggerProviderFactory,
-            ILoggerFactory loggerFactory, IEventGenerator eventGenerator)
+        public WebHostResolver(ScriptSettingsManager settingsManager,
+            ISecretManagerFactory secretManagerFactory,
+            ISecretsRepositoryFactory secretsRepositoryFactory,
+            IOptions<JobHostOptions> jobHostOptions,
+            IMetricsLogger metricsLogger,
+            IScriptEventManager eventManager,
+            WebHostSettings settings,
+            IWebJobsRouter router,
+            ILoggerProviderFactory loggerProviderFactory,
+            IConnectionStringProvider connectionStringProvider,
+            IExtensionRegistry extensionRegistry,
+            IScriptHostFactory scriptHostFactory,
+            ILoggerFactory loggerFactory,
+            IEventGenerator eventGenerator)
         {
             _settingsManager = settingsManager;
             _secretManagerFactory = secretManagerFactory;
+            _secretsRepositoryFactory = secretsRepositoryFactory;
+            _jobHostOptions = jobHostOptions;
+            _metricsLogger = metricsLogger;
             _eventManager = eventManager;
             _router = router;
             _settings = settings;
@@ -48,6 +71,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // _loggerProviderFactory is used for creating the LoggerFactory for each ScriptHost
             _loggerProviderFactory = loggerProviderFactory;
+            _connectionStringProvider = connectionStringProvider;
+            _extensionRegistry = extensionRegistry;
+            _scriptHostFactory = scriptHostFactory;
 
             // _loggerFactory is used when there is no host available.
             _loggerFactory = loggerFactory;
@@ -61,7 +87,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (hostManager.CanInvoke())
             {
                 var config = GetScriptHostConfiguration(settings);
-                return config.HostConfig.LoggerFactory;
+
+                // TODO: DI (FACAVAL) Review
+                return Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance;
+                // return config.HostConfig.LoggerFactory;
             }
             else
             {
@@ -116,8 +145,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _specializationTimer = null;
 
                         _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
-                        _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings,
-                            _router, loggerProviderFactory: _loggerProviderFactory, loggerFactory: _loggerFactory, eventGenerator: _eventGenerator);
+                        _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig,
+                            _jobHostOptions,
+                            _metricsLogger,
+                            _secretManagerFactory,
+                            _eventManager,
+                            _settingsManager,
+                            settings,
+                            _router,
+                            _loggerFactory,
+                            _connectionStringProvider,
+                            _scriptHostFactory,
+                            _extensionRegistry,
+                            _secretsRepositoryFactory,
+                            loggerProviderFactory: _loggerProviderFactory,
+                            eventGenerator: _eventGenerator);
                         //_activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
                         InitializeFileSystem(settings, _settingsManager.FileSystemIsReadOnly);
 
@@ -151,8 +193,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         var standbySettings = CreateStandbySettings(settings);
                         _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
-                        _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings,
-                            _router, loggerProviderFactory: _loggerProviderFactory, loggerFactory: _loggerFactory, eventGenerator: _eventGenerator);
+                        _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig,
+                            _jobHostOptions,
+                            _metricsLogger,
+                            _secretManagerFactory,
+                            _eventManager,
+                            _settingsManager,
+                            standbySettings,
+                            _router,
+                            _loggerFactory,
+                            _connectionStringProvider,
+                            _scriptHostFactory,
+                            _extensionRegistry,
+                            _secretsRepositoryFactory,
+                            loggerProviderFactory: _loggerProviderFactory,
+                            eventGenerator: _eventGenerator);
                         // _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
 
                         InitializeFileSystem(settings, _settingsManager.FileSystemIsReadOnly);
@@ -200,11 +255,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (inStandbyMode)
             {
                 scriptHostConfig.FileLoggingMode = FileLoggingMode.DebugOnly;
-                scriptHostConfig.HostConfig.StorageConnectionString = null;
-                scriptHostConfig.HostConfig.DashboardConnectionString = null;
+                // TODO: DI (FACAVAL) This should no longer be needed... handled at initialization
+                //scriptHostConfig.HostConfig.StorageConnectionString = null;
+                //scriptHostConfig.HostConfig.DashboardConnectionString = null;
             }
 
-            scriptHostConfig.HostConfig.HostId = Utility.GetDefaultHostId(_settingsManager, scriptHostConfig);
+            // TODO: DI (FACAVAL) This needs to move to configuration setup
+            scriptHostConfig.HostOptions.HostId = Utility.GetDefaultHostId(_settingsManager, scriptHostConfig);
 
             return scriptHostConfig;
         }

@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.Implementation;
 using Microsoft.Azure.AppService.Proxy.Client;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
@@ -34,6 +35,8 @@ using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -49,7 +52,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IScriptHostEnvironment _scriptHostEnvironment;
         private readonly ILoggerProviderFactory _loggerProviderFactory;
         private readonly string _storageConnectionString;
-        private readonly IMetricsLogger _metricsLogger;
+        private readonly IDistributedLockManager _distributedLockManager;
+        private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly string _hostConfigFilePath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
@@ -66,7 +70,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private Action _shutdown;
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
         private ImmutableArray<string> _directorySnapshot;
-        private PrimaryHostCoordinator _primaryHostCoordinator;
+        // TODO: DI (FACAVAL) Review
+        private PrimaryHostCoordinator _primaryHostCoordinator = null;
         internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
         internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(5);
         internal static readonly TimeSpan MaxFunctionTimeout = TimeSpan.FromMinutes(10);
@@ -77,13 +82,15 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static readonly int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
         private ScriptSettingsManager _settingsManager;
         private bool _shutdownScheduled;
-        private ILogger _startupLogger;
+        // TODO: DI (FACAVAL) Review
+        private ILogger _startupLogger = null;
         private FileWatcherEventSource _fileEventSource;
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private ProxyClientExecutor _proxyClient;
         private IFunctionRegistry _functionDispatcher;
-        private ILoggerFactory _loggerFactory;
-        private JobHostConfiguration _hostConfig;
+        // TODO: DI (FACAVAL) Review
+        private ILoggerFactory _loggerFactory = null;
+        private JobHostOptions _hostOptions;
         private List<FunctionDescriptorProvider> _descriptorProviders;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
 
@@ -92,17 +99,23 @@ namespace Microsoft.Azure.WebJobs.Script
         // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
 
         protected internal ScriptHost(IScriptHostEnvironment environment,
+            IOptions<JobHostOptions> options,
+            IJobHostContextFactory jobHostContextFactory,
+            IConnectionStringProvider connectionStringProvider,
+            IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
             ScriptHostConfiguration scriptConfig = null,
             ScriptSettingsManager settingsManager = null,
             ILoggerProviderFactory loggerProviderFactory = null,
             ProxyClientExecutor proxyClient = null)
-            : base(scriptConfig.HostConfig)
+            : base(options, jobHostContextFactory)
         {
             scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
-            _hostConfig = scriptConfig.HostConfig;
+            _hostOptions = scriptConfig.HostOptions;
             _instanceId = Guid.NewGuid().ToString();
-            _storageConnectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+
+            _storageConnectionString = connectionStringProvider.GetConnectionString(ConnectionStringNames.Storage);
+            _distributedLockManager = distributedLockManager;
 
             if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
             {
@@ -117,7 +130,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
             _proxyClient = proxyClient;
-            _metricsLogger = CreateMetricsLogger();
+
+            // TODO: DI (FACAVAL) See comment on method
+            //_metricsLogger = CreateMetricsLogger();
 
             _hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
             _hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, ScriptConstants.HostMetadataFileName);
@@ -299,7 +314,6 @@ namespace Microsoft.Azure.WebJobs.Script
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
                 PreInitialize();
-                ApplyEnvironmentSettings();
                 var hostConfig = ApplyHostConfiguration();
                 InitializeFileWatchers();
                 InitializeWorkers();
@@ -314,32 +328,34 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private void ConfigureLoggerFactory(bool recreate = false)
-        {
-            // Ensure we always have an ILoggerFactory,
-            // regardless of whether AppInsights is registered or not
-            if (recreate || _hostConfig.LoggerFactory == null)
-            {
-                _hostConfig.LoggerFactory = new LoggerFactory(Enumerable.Empty<ILoggerProvider>(), Utility.CreateLoggerFilterOptions());
+        // TODO: DI (FACAVAL) Logger configuration is done on startup
+        //private void ConfigureLoggerFactory(bool recreate = false)
+        //{
+        //    // Ensure we always have an ILoggerFactory,
+        //    // regardless of whether AppInsights is registered or not
+        //    if (recreate || _hostOptions.LoggerFactory == null)
+        //    {
+        //        _hostOptions.LoggerFactory = new LoggerFactory(Enumerable.Empty<ILoggerProvider>(), Utility.CreateLoggerFilterOptions());
 
-                // If we've created the LoggerFactory, then we are responsible for
-                // disposing. Store this locally for disposal later. We can't rely
-                // on accessing this directly from ScriptConfig.HostConfig as the
-                // ScriptConfig is re-used for every host.
-                _loggerFactory = _hostConfig.LoggerFactory;
-            }
+        //        // If we've created the LoggerFactory, then we are responsible for
+        //        // disposing. Store this locally for disposal later. We can't rely
+        //        // on accessing this directly from ScriptConfig.HostConfig as the
+        //        // ScriptConfig is re-used for every host.
+        //        _loggerFactory = _hostOptions.LoggerFactory;
+        //    }
 
-            ConfigureLoggerFactory(_instanceId, _hostConfig.LoggerFactory, ScriptConfig, _settingsManager, _loggerProviderFactory,
-                () => FileLoggingEnabled, () => IsPrimary, HandleHostError);
-        }
+        //    ConfigureLoggerFactory(_instanceId, _hostOptions.LoggerFactory, ScriptConfig, _settingsManager, _loggerProviderFactory,
+        //        () => FileLoggingEnabled, () => IsPrimary, HandleHostError);
+        //}
 
         internal static void ConfigureLoggerFactory(string instanceId, ILoggerFactory loggerFactory, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager,
             ILoggerProviderFactory builder, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary, Action<Exception> handleException)
         {
-            foreach (ILoggerProvider provider in builder.CreateLoggerProviders(instanceId, scriptConfig, settingsManager, isFileLoggingEnabled, isPrimary))
-            {
-                loggerFactory.AddProvider(provider);
-            }
+            // TODO: DI (FACAVAL) Review - BrettSam
+            //foreach (ILoggerProvider provider in builder.CreateLoggerProviders(instanceId, scriptConfig, settingsManager, isFileLoggingEnabled, isPrimary))
+            //{
+            //    loggerFactory.AddProvider(provider);
+            //}
 
             // The LoggerFactory must always have this as there's some functional value (handling exceptions) when handling these errors.
             loggerFactory.AddProvider(new HostErrorLoggerProvider(handleException));
@@ -355,14 +371,15 @@ namespace Microsoft.Azure.WebJobs.Script
             Logger.LogInformation(signalMessage);
         }
 
+        // TODO: DI (FACAVAL) This needs to move to an options config setup
         // Create a TimeoutConfiguration specified by scriptConfig knobs; else null.
-        internal static JobHostFunctionTimeoutConfiguration CreateTimeoutConfiguration(ScriptHostConfiguration scriptConfig)
+        internal static JobHostFunctionTimeoutOptions CreateTimeoutConfiguration(ScriptHostConfiguration scriptConfig)
         {
             if (scriptConfig.FunctionTimeout == null)
             {
                 return null;
             }
-            return new JobHostFunctionTimeoutConfiguration
+            return new JobHostFunctionTimeoutOptions
             {
                 Timeout = scriptConfig.FunctionTimeout.Value,
                 ThrowOnTimeout = true,
@@ -484,7 +501,9 @@ namespace Microsoft.Azure.WebJobs.Script
             var types = new List<Type>();
             types.Add(functionWrapperType);
             types.AddRange(directTypes);
-            _hostConfig.TypeLocator = new TypeLocator(types);
+
+            // TODO: DI (FACAVAL) Use a custom ITypeLocator implementation that supports the type registration
+            // _hostOptions.TypeLocator = new TypeLocator(types);
         }
 
         /// <summary>
@@ -496,19 +515,19 @@ namespace Microsoft.Azure.WebJobs.Script
             if (string.IsNullOrEmpty(_language))
             {
                 _startupLogger.LogTrace("Adding Function descriptor providers for all languages.");
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
-                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher));
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig, _loggerFactory));
+                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher, _loggerFactory));
             }
             else
             {
                 _startupLogger.LogTrace($"Adding Function descriptor provider for language {_language}.");
                 if (string.Equals(_language, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
-                    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
+                    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig, _loggerFactory));
                 }
                 else
                 {
-                    _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher));
+                    _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher, _loggerFactory));
                 }
             }
 
@@ -532,14 +551,16 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void InitializeHostCoordinator()
         {
+            // TODO: DI (FACAVAL) Remove this once validated. Injection no longer relies on this ordering.
             // this must be done ONLY after we've loaded any custom extensions.
             // that gives an extension an opportunity to plug in their own implementations.
-            if (_storageConnectionString != null)
-            {
-                var lockManager = (IDistributedLockManager)Services.GetService(typeof(IDistributedLockManager));
-                _primaryHostCoordinator = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), _hostConfig.HostId, _settingsManager.InstanceId, _hostConfig.LoggerFactory);
-            }
+            //if (_storageConnectionString != null)
+            //{
+            //    var lockManager = (IDistributedLockManager)Services.GetService(typeof(IDistributedLockManager));
+            //    _primaryHostCoordinator = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), _hostOptions.HostId, _settingsManager.InstanceId, _hostOptions.LoggerFactory);
+            //}
 
+            // TODO: DI (FACAVAL) Move to constructor injection, wire up handler.
             // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal
             // and subscribe for change notifications.
             if (_primaryHostCoordinator != null)
@@ -603,18 +624,6 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Make any configuration changes required based on environmental state.
-        /// </summary>
-        private void ApplyEnvironmentSettings()
-        {
-            if (_hostConfig.IsDevelopment || InDebugMode)
-            {
-                // If we're in debug/development mode, use optimal debug settings
-                _hostConfig.UseDevelopmentSettings();
-            }
-        }
-
-        /// <summary>
         /// Read and apply host.json configuration.
         /// </summary>
         private JObject ApplyHostConfiguration()
@@ -626,15 +635,19 @@ namespace Microsoft.Azure.WebJobs.Script
             // to the startup logger until we've read configuration settings and can create the real logger.
             // The "startup" logger is used in this class for startup related logs. The public logger is used
             // for all other logging after startup.
-            ConfigureLoggerFactory();
-            Logger = _startupLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
+            // TODO: DI (FACAVAL) Fix this
+            //ConfigureLoggerFactory();
+
+            // TODO: DI (FACAVAL) Logger configuration to move to startup:
+            // Logger = _startupLogger = _hostOptions.LoggerFactory.CreateLogger(LogCategories.Startup);
 
             string readingFileMessage = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", _hostConfigFilePath);
             JObject hostConfigObject = LoadHostConfig(_hostConfigFilePath, _startupLogger);
             string sanitizedJson = SanitizeHostJson(hostConfigObject);
             string readFileMessage = $"Host configuration file read:{Environment.NewLine}{sanitizedJson}";
 
-            ApplyConfiguration(hostConfigObject, ScriptConfig, _startupLogger);
+            // TODO: DI (FACAVAL) See method comments.
+            //ApplyConfiguration(hostConfigObject, ScriptConfig, _startupLogger);
 
             if (_settingsManager.FileSystemIsReadOnly)
             {
@@ -644,9 +657,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // now the configuration has been read and applied re-create the logger
             // factory and loggers ensuring that filters and settings have been applied
-            ConfigureLoggerFactory(recreate: true);
-            _startupLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
-            Logger = _hostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+            // TODO: DI (FACAVAL) TODO
+            //ConfigureLoggerFactory(recreate: true);
+
+            // TODO: DI (FACAVAL) Logger configuration to move to startup
+            //_startupLogger = _hostOptions.LoggerFactory.CreateLogger(LogCategories.Startup);
+            //Logger = _hostOptions.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
 
             // Allow tests to modify anything initialized by host.json
             ScriptConfig.OnConfigurationApplied?.Invoke(ScriptConfig);
@@ -656,26 +672,29 @@ namespace Microsoft.Azure.WebJobs.Script
             _startupLogger.LogInformation(readingFileMessage);
             _startupLogger.LogInformation(readFileMessage);
 
+            // TODO: DI (FACAVAL) Move this to a more appropriate place
             // If they set the host id in the JSON, emit a warning that this could cause issues and they shouldn't do it.
-            if (ScriptConfig.HostConfig?.HostConfigMetadata?["id"] != null)
-            {
-                _startupLogger.LogWarning("Host id explicitly set in the host.json. It is recommended that you remove the \"id\" property in your host.json.");
-            }
+            //if (ScriptConfig.HostOptions?.HostConfigMetadata?["id"] != null)
+            //{
+            //    _startupLogger.LogWarning("Host id explicitly set in the host.json. It is recommended that you remove the \"id\" property in your host.json.");
+            //}
 
-            if (string.IsNullOrEmpty(_hostConfig.HostId))
+            if (string.IsNullOrEmpty(_hostOptions.HostId))
             {
-                _hostConfig.HostId = Utility.GetDefaultHostId(_settingsManager, ScriptConfig);
+                _hostOptions.HostId = Utility.GetDefaultHostId(_settingsManager, ScriptConfig);
             }
-            if (string.IsNullOrEmpty(_hostConfig.HostId))
+            if (string.IsNullOrEmpty(_hostOptions.HostId))
             {
                 throw new InvalidOperationException("An 'id' must be specified in the host configuration.");
             }
 
-            if (_storageConnectionString == null)
-            {
-                // Disable core storage
-                _hostConfig.StorageConnectionString = null;
-            }
+            // TODO: DI (FACAVAL) Disabling core storage is now just a matter of
+            // registering the appropriate services.
+            //if (_storageConnectionString == null)
+            //{
+            //    // Disable core storage
+            //    _hostOptions.StorageConnectionString = null;
+            //}
 
             // only after configuration has been applied and loggers
             // have been created, raise the initializing event
@@ -734,7 +753,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     registrations,
                     languageWorkerConfig,
                     server.Uri,
-                    _hostConfig.LoggerFactory);
+                    NullLoggerFactory.Instance); // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
             };
 
             var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
@@ -834,9 +853,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private IEnumerable<Type> LoadBindingExtensions(IEnumerable<FunctionMetadata> functionMetadata, JObject hostConfigObject)
         {
-            Func<string, FunctionDescriptor> funcLookup = (name) => GetFunctionOrNull(name);
-            _hostConfig.AddService(funcLookup);
-            var extensionLoader = new ExtensionLoader(ScriptConfig, _startupLogger);
+            // TODO: DI (FACAVAL) Inject this thing.... :S
+            //Func<string, FunctionDescriptor> funcLookup = (name) => GetFunctionOrNull(name);
+            //_hostOptions.AddService(funcLookup);
+            // TODO: DI (FACAVAL) Inject this (if needed, ideally, remove), remove the instantiation
+            var extensionLoader = new ExtensionLoader(ScriptConfig, null, _startupLogger);
             var usedBindingTypes = extensionLoader.DiscoverBindingTypes(functionMetadata);
 
             var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfigObject, _startupLogger, usedBindingTypes);
@@ -964,16 +985,17 @@ namespace Microsoft.Azure.WebJobs.Script
             return visitedTypes;
         }
 
-        private IMetricsLogger CreateMetricsLogger()
-        {
-            IMetricsLogger metricsLogger = ScriptConfig.HostConfig.GetService<IMetricsLogger>();
-            if (metricsLogger == null)
-            {
-                metricsLogger = new MetricsLogger();
-                ScriptConfig.HostConfig.AddService<IMetricsLogger>(metricsLogger);
-            }
-            return metricsLogger;
-        }
+        // TODO: DI (FACAVAL) All of this just gets replaced with a metrics logger registration
+        //private IMetricsLogger CreateMetricsLogger()
+        //{
+        //    IMetricsLogger metricsLogger = ScriptConfig.HostOptions.GetService<IMetricsLogger>();
+        //    if (metricsLogger == null)
+        //    {
+        //        metricsLogger = new MetricsLogger();
+        //        ScriptConfig.HostOptions.AddService<IMetricsLogger>(metricsLogger);
+        //    }
+        //    return metricsLogger;
+        //}
 
         internal static string SanitizeHostJson(JObject hostJsonObject)
         {
@@ -993,7 +1015,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static Collection<ScriptBindingProvider> LoadBindingProviders(ScriptHostConfiguration config, JObject hostMetadata, ILogger logger, IEnumerable<string> usedBindingTypes)
         {
-            JobHostConfiguration hostConfig = config.HostConfig;
+            JobHostOptions hostConfig = config.HostOptions;
 
             // Register our built in extensions
             var bindingProviderTypes = new Collection<Type>()
@@ -1381,7 +1403,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 combinedFunctionMetadata = proxies.Concat(functions);
 
-                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptConfig, _proxyClient));
+                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptConfig, _proxyClient, _loggerFactory));
             }
             else
             {
@@ -1495,149 +1517,150 @@ namespace Microsoft.Azure.WebJobs.Script
             return httpTrigger.Methods.Intersect(otherHttpTrigger.Methods).Any();
         }
 
-        internal static void ApplyConfiguration(JObject config, ScriptHostConfiguration scriptConfig, ILogger logger = null)
-        {
-            var hostConfig = scriptConfig.HostConfig;
+        // TODO: DI (FACAVAL) All of this needs to move to the configuration step
+        //internal static void ApplyConfiguration(JObject config, ScriptHostConfiguration scriptConfig, ILogger logger = null)
+        //{
+        //    var hostConfig = scriptConfig.HostOptions;
 
-            hostConfig.HostConfigMetadata = config;
+        //    hostConfig.HostConfigMetadata = config;
 
-            JArray functions = (JArray)config["functions"];
-            if (functions != null && functions.Count > 0)
-            {
-                scriptConfig.Functions = new Collection<string>();
-                foreach (var function in functions)
-                {
-                    scriptConfig.Functions.Add((string)function);
-                }
-            }
-            else
-            {
-                scriptConfig.Functions = null;
-            }
+        //    JArray functions = (JArray)config["functions"];
+        //    if (functions != null && functions.Count > 0)
+        //    {
+        //        scriptConfig.Functions = new Collection<string>();
+        //        foreach (var function in functions)
+        //        {
+        //            scriptConfig.Functions.Add((string)function);
+        //        }
+        //    }
+        //    else
+        //    {
+        //        scriptConfig.Functions = null;
+        //    }
 
-            // We may already have a host id, but the one from the JSON takes precedence
-            JToken hostId = (JToken)config["id"];
-            if (hostId != null)
-            {
-                hostConfig.HostId = (string)hostId;
-            }
+        //    // We may already have a host id, but the one from the JSON takes precedence
+        //    JToken hostId = (JToken)config["id"];
+        //    if (hostId != null)
+        //    {
+        //        hostConfig.HostId = (string)hostId;
+        //    }
 
-            // Default AllowHostPartialStartup to true, but allow it
-            // to be overridden by config
-            hostConfig.AllowPartialHostStartup = true;
-            JToken allowPartialHostStartup = (JToken)config["allowPartialHostStartup"];
-            if (allowPartialHostStartup != null && allowPartialHostStartup.Type == JTokenType.Boolean)
-            {
-                hostConfig.AllowPartialHostStartup = (bool)allowPartialHostStartup;
-            }
+        //    // Default AllowHostPartialStartup to true, but allow it
+        //    // to be overridden by config
+        //    hostConfig.AllowPartialHostStartup = true;
+        //    JToken allowPartialHostStartup = (JToken)config["allowPartialHostStartup"];
+        //    if (allowPartialHostStartup != null && allowPartialHostStartup.Type == JTokenType.Boolean)
+        //    {
+        //        hostConfig.AllowPartialHostStartup = (bool)allowPartialHostStartup;
+        //    }
 
-            JToken fileWatchingEnabled = (JToken)config["fileWatchingEnabled"];
-            if (fileWatchingEnabled != null && fileWatchingEnabled.Type == JTokenType.Boolean)
-            {
-                scriptConfig.FileWatchingEnabled = (bool)fileWatchingEnabled;
-            }
+        //    JToken fileWatchingEnabled = (JToken)config["fileWatchingEnabled"];
+        //    if (fileWatchingEnabled != null && fileWatchingEnabled.Type == JTokenType.Boolean)
+        //    {
+        //        scriptConfig.FileWatchingEnabled = (bool)fileWatchingEnabled;
+        //    }
 
-            // Configure the set of watched directories, adding the standard built in
-            // set to any the user may have specified
-            if (scriptConfig.WatchDirectories == null)
-            {
-                scriptConfig.WatchDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            }
-            scriptConfig.WatchDirectories.Add("node_modules");
-            JToken watchDirectories = config["watchDirectories"];
-            if (watchDirectories != null && watchDirectories.Type == JTokenType.Array)
-            {
-                foreach (JToken directory in watchDirectories.Where(p => p.Type == JTokenType.String))
-                {
-                    scriptConfig.WatchDirectories.Add((string)directory);
-                }
-            }
+        //    // Configure the set of watched directories, adding the standard built in
+        //    // set to any the user may have specified
+        //    if (scriptConfig.WatchDirectories == null)
+        //    {
+        //        scriptConfig.WatchDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        //    }
+        //    scriptConfig.WatchDirectories.Add("node_modules");
+        //    JToken watchDirectories = config["watchDirectories"];
+        //    if (watchDirectories != null && watchDirectories.Type == JTokenType.Array)
+        //    {
+        //        foreach (JToken directory in watchDirectories.Where(p => p.Type == JTokenType.String))
+        //        {
+        //            scriptConfig.WatchDirectories.Add((string)directory);
+        //        }
+        //    }
 
-            JToken nugetFallbackFolder = config["nugetFallbackFolder"];
-            if (nugetFallbackFolder != null && nugetFallbackFolder.Type == JTokenType.String)
-            {
-                scriptConfig.NugetFallBackPath = (string)nugetFallbackFolder;
-            }
+        //    JToken nugetFallbackFolder = config["nugetFallbackFolder"];
+        //    if (nugetFallbackFolder != null && nugetFallbackFolder.Type == JTokenType.String)
+        //    {
+        //        scriptConfig.NugetFallBackPath = (string)nugetFallbackFolder;
+        //    }
 
-            // Apply Singleton configuration
-            JObject configSection = (JObject)config["singleton"];
-            JToken value = null;
-            if (configSection != null)
-            {
-                if (configSection.TryGetValue("lockPeriod", out value))
-                {
-                    hostConfig.Singleton.LockPeriod = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-                }
-                if (configSection.TryGetValue("listenerLockPeriod", out value))
-                {
-                    hostConfig.Singleton.ListenerLockPeriod = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-                }
-                if (configSection.TryGetValue("listenerLockRecoveryPollingInterval", out value))
-                {
-                    hostConfig.Singleton.ListenerLockRecoveryPollingInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-                }
-                if (configSection.TryGetValue("lockAcquisitionTimeout", out value))
-                {
-                    hostConfig.Singleton.LockAcquisitionTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-                }
-                if (configSection.TryGetValue("lockAcquisitionPollingInterval", out value))
-                {
-                    hostConfig.Singleton.LockAcquisitionPollingInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-                }
-            }
+        //    // Apply Singleton configuration
+        //    JObject configSection = (JObject)config["singleton"];
+        //    JToken value = null;
+        //    if (configSection != null)
+        //    {
+        //        if (configSection.TryGetValue("lockPeriod", out value))
+        //        {
+        //            hostConfig.Singleton.LockPeriod = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+        //        }
+        //        if (configSection.TryGetValue("listenerLockPeriod", out value))
+        //        {
+        //            hostConfig.Singleton.ListenerLockPeriod = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+        //        }
+        //        if (configSection.TryGetValue("listenerLockRecoveryPollingInterval", out value))
+        //        {
+        //            hostConfig.Singleton.ListenerLockRecoveryPollingInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+        //        }
+        //        if (configSection.TryGetValue("lockAcquisitionTimeout", out value))
+        //        {
+        //            hostConfig.Singleton.LockAcquisitionTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+        //        }
+        //        if (configSection.TryGetValue("lockAcquisitionPollingInterval", out value))
+        //        {
+        //            hostConfig.Singleton.LockAcquisitionPollingInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+        //        }
+        //    }
 
-            // Apply Host Health Montitor configuration
-            configSection = (JObject)config["healthMonitor"];
-            value = null;
-            if (configSection != null)
-            {
-                if (configSection.TryGetValue("enabled", out value) && value.Type == JTokenType.Boolean)
-                {
-                    scriptConfig.HostHealthMonitor.Enabled = (bool)value;
-                }
-                if (configSection.TryGetValue("healthCheckInterval", out value))
-                {
-                    scriptConfig.HostHealthMonitor.HealthCheckInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-                }
-                if (configSection.TryGetValue("healthCheckWindow", out value))
-                {
-                    scriptConfig.HostHealthMonitor.HealthCheckWindow = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-                }
-                if (configSection.TryGetValue("healthCheckThreshold", out value))
-                {
-                    scriptConfig.HostHealthMonitor.HealthCheckThreshold = (int)value;
-                }
-                if (configSection.TryGetValue("counterThreshold", out value))
-                {
-                    scriptConfig.HostHealthMonitor.CounterThreshold = (float)value;
-                }
-            }
+        //    // Apply Host Health Montitor configuration
+        //    configSection = (JObject)config["healthMonitor"];
+        //    value = null;
+        //    if (configSection != null)
+        //    {
+        //        if (configSection.TryGetValue("enabled", out value) && value.Type == JTokenType.Boolean)
+        //        {
+        //            scriptConfig.HostHealthMonitor.Enabled = (bool)value;
+        //        }
+        //        if (configSection.TryGetValue("healthCheckInterval", out value))
+        //        {
+        //            scriptConfig.HostHealthMonitor.HealthCheckInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+        //        }
+        //        if (configSection.TryGetValue("healthCheckWindow", out value))
+        //        {
+        //            scriptConfig.HostHealthMonitor.HealthCheckWindow = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+        //        }
+        //        if (configSection.TryGetValue("healthCheckThreshold", out value))
+        //        {
+        //            scriptConfig.HostHealthMonitor.HealthCheckThreshold = (int)value;
+        //        }
+        //        if (configSection.TryGetValue("counterThreshold", out value))
+        //        {
+        //            scriptConfig.HostHealthMonitor.CounterThreshold = (float)value;
+        //        }
+        //    }
 
-            value = null;
-            if (config.TryGetValue("functionTimeout", out value))
-            {
-                TimeSpan requestedTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
+        //    value = null;
+        //    if (config.TryGetValue("functionTimeout", out value))
+        //    {
+        //        TimeSpan requestedTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
 
-                // Only apply limits if this is Dynamic.
-                if (ScriptSettingsManager.Instance.IsDynamicSku && (requestedTimeout < MinFunctionTimeout || requestedTimeout > MaxFunctionTimeout))
-                {
-                    string message = $"{nameof(scriptConfig.FunctionTimeout)} must be between {MinFunctionTimeout} and {MaxFunctionTimeout}.";
-                    throw new ArgumentException(message);
-                }
+        //        // Only apply limits if this is Dynamic.
+        //        if (ScriptSettingsManager.Instance.IsDynamicSku && (requestedTimeout < MinFunctionTimeout || requestedTimeout > MaxFunctionTimeout))
+        //        {
+        //            string message = $"{nameof(scriptConfig.FunctionTimeout)} must be between {MinFunctionTimeout} and {MaxFunctionTimeout}.";
+        //            throw new ArgumentException(message);
+        //        }
 
-                scriptConfig.FunctionTimeout = requestedTimeout;
-            }
-            else if (ScriptSettingsManager.Instance.IsDynamicSku)
-            {
-                // Apply a default if this is running on Dynamic.
-                scriptConfig.FunctionTimeout = DefaultFunctionTimeout;
-            }
-            scriptConfig.HostConfig.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
+        //        scriptConfig.FunctionTimeout = requestedTimeout;
+        //    }
+        //    else if (ScriptSettingsManager.Instance.IsDynamicSku)
+        //    {
+        //        // Apply a default if this is running on Dynamic.
+        //        scriptConfig.FunctionTimeout = DefaultFunctionTimeout;
+        //    }
+        //    scriptConfig.HostOptions.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
 
-            ApplyLanguageWorkersConfig(config, scriptConfig, logger);
-            ApplyLoggerConfig(config, scriptConfig);
-            ApplyApplicationInsightsConfig(config, scriptConfig);
-        }
+        //    ApplyLanguageWorkersConfig(config, scriptConfig, logger);
+        //    ApplyLoggerConfig(config, scriptConfig);
+        //    ApplyApplicationInsightsConfig(config, scriptConfig);
+        //}
 
         private static void ApplyLanguageWorkersConfig(JObject config, ScriptHostConfiguration scriptConfig, ILogger logger)
         {
@@ -1672,63 +1695,64 @@ namespace Microsoft.Azure.WebJobs.Script
             scriptConfig.MaxMessageLengthBytes = requestedGrpcMaxMessageLength;
         }
 
-        internal static void ApplyLoggerConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
-        {
-            scriptConfig.LogFilter = new LogCategoryFilter();
-            JObject configSection = (JObject)configJson["logger"];
-            JToken value;
-            if (configSection != null)
-            {
-                JObject filterSection = (JObject)configSection["categoryFilter"];
-                if (filterSection != null)
-                {
-                    if (filterSection.TryGetValue("defaultLevel", out value))
-                    {
-                        LogLevel level;
-                        if (Enum.TryParse(value.ToString(), out level))
-                        {
-                            scriptConfig.LogFilter.DefaultLevel = level;
-                        }
-                    }
+        // TODO: DI (FACAVAL) All configuration needs to move to initialization
+        //internal static void ApplyLoggerConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
+        //{
+        //    scriptConfig.LogFilter = new LogCategoryFilter();
+        //    JObject configSection = (JObject)configJson["logger"];
+        //    JToken value;
+        //    if (configSection != null)
+        //    {
+        //        JObject filterSection = (JObject)configSection["categoryFilter"];
+        //        if (filterSection != null)
+        //        {
+        //            if (filterSection.TryGetValue("defaultLevel", out value))
+        //            {
+        //                LogLevel level;
+        //                if (Enum.TryParse(value.ToString(), out level))
+        //                {
+        //                    scriptConfig.LogFilter.DefaultLevel = level;
+        //                }
+        //            }
 
-                    if (filterSection.TryGetValue("categoryLevels", out value))
-                    {
-                        scriptConfig.LogFilter.CategoryLevels.Clear();
-                        foreach (var prop in ((JObject)value).Properties())
-                        {
-                            LogLevel level;
-                            if (Enum.TryParse(prop.Value.ToString(), out level))
-                            {
-                                scriptConfig.LogFilter.CategoryLevels[prop.Name] = level;
-                            }
-                        }
-                    }
-                }
+        //            if (filterSection.TryGetValue("categoryLevels", out value))
+        //            {
+        //                scriptConfig.LogFilter.CategoryLevels.Clear();
+        //                foreach (var prop in ((JObject)value).Properties())
+        //                {
+        //                    LogLevel level;
+        //                    if (Enum.TryParse(prop.Value.ToString(), out level))
+        //                    {
+        //                        scriptConfig.LogFilter.CategoryLevels[prop.Name] = level;
+        //                    }
+        //                }
+        //            }
+        //        }
 
-                JObject aggregatorSection = (JObject)configSection["aggregator"];
-                if (aggregatorSection != null)
-                {
-                    if (aggregatorSection.TryGetValue("batchSize", out value))
-                    {
-                        scriptConfig.HostConfig.Aggregator.BatchSize = (int)value;
-                    }
+        //        JObject aggregatorSection = (JObject)configSection["aggregator"];
+        //        if (aggregatorSection != null)
+        //        {
+        //            if (aggregatorSection.TryGetValue("batchSize", out value))
+        //            {
+        //                scriptConfig.HostOptions.Aggregator.BatchSize = (int)value;
+        //            }
 
-                    if (aggregatorSection.TryGetValue("flushTimeout", out value))
-                    {
-                        scriptConfig.HostConfig.Aggregator.FlushTimeout = TimeSpan.Parse(value.ToString());
-                    }
-                }
+        //            if (aggregatorSection.TryGetValue("flushTimeout", out value))
+        //            {
+        //                scriptConfig.HostOptions.Aggregator.FlushTimeout = TimeSpan.Parse(value.ToString());
+        //            }
+        //        }
 
-                if (configSection.TryGetValue("fileLoggingMode", out value))
-                {
-                    FileLoggingMode fileLoggingMode;
-                    if (Enum.TryParse<FileLoggingMode>((string)value, true, out fileLoggingMode))
-                    {
-                        scriptConfig.FileLoggingMode = fileLoggingMode;
-                    }
-                }
-            }
-        }
+        //        if (configSection.TryGetValue("fileLoggingMode", out value))
+        //        {
+        //            FileLoggingMode fileLoggingMode;
+        //            if (Enum.TryParse<FileLoggingMode>((string)value, true, out fileLoggingMode))
+        //            {
+        //                scriptConfig.FileLoggingMode = fileLoggingMode;
+        //            }
+        //        }
+        //    }
+        //}
 
         internal static void ApplyApplicationInsightsConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
         {
@@ -1985,8 +2009,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     (function.Invoker as IDisposable)?.Dispose();
                 }
-
-                _loggerFactory?.Dispose();
 
                 if (_descriptorProviders != null)
                 {

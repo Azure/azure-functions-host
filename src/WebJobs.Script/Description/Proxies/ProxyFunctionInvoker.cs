@@ -5,6 +5,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -12,8 +13,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private ProxyClientExecutor _proxyClient;
 
-        public ProxyFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata, ProxyClientExecutor proxyClient)
-            : base(host, functionMetadata)
+        public ProxyFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata, ProxyClientExecutor proxyClient, ILoggerFactory loggerFactory)
+            : base(host, functionMetadata, loggerFactory)
         {
             _proxyClient = proxyClient;
         }

@@ -45,10 +45,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Collection<FunctionBinding> outputBindings,
             IFunctionEntryPointResolver functionEntryPointResolver,
             ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory,
+            ILoggerFactory loggerFactory,
             IFunctionMetadataResolver metadataResolver = null)
-            : base(host, functionMetadata)
+            : base(host, functionMetadata, loggerFactory)
         {
-            _metricsLogger = Host.ScriptConfig.HostConfig.GetService<IMetricsLogger>();
+            // TODO: DI (FACAVAL) Inject the metrics logger
+            _metricsLogger = null;
+            //_metricsLogger = Host.ScriptConfig.HostOptions.GetService<IMetricsLogger>();
             _functionEntryPointResolver = functionEntryPointResolver;
             _metadataResolver = metadataResolver ?? CreateMetadataResolver(host, functionMetadata, FunctionLogger);
             _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);

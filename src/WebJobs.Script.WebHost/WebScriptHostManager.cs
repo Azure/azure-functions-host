@@ -22,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -36,7 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private readonly IWebJobsExceptionHandler _exceptionHandler;
         private readonly ScriptHostConfiguration _config;
-
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly IExtensionRegistry _extensionRegistry;
         private readonly object _syncLock = new object();
         private readonly int _hostTimeoutSeconds;
         private readonly int _hostRunningPollIntervalMilliseconds;
@@ -47,24 +49,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private bool _hostStarted = false;
 
         public WebScriptHostManager(ScriptHostConfiguration config,
+            IOptions<JobHostOptions> jobHostOptions,
+            IMetricsLogger metricsLogger,
             ISecretManagerFactory secretManagerFactory,
             IScriptEventManager eventManager,
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
             IWebJobsRouter router,
             ILoggerFactory loggerFactory,
-            IScriptHostFactory scriptHostFactory = null,
-            ISecretsRepositoryFactory secretsRepositoryFactory = null,
+            IConnectionStringProvider connectionStringProvider,
+            IScriptHostFactory scriptHostFactory,
+            IExtensionRegistry extensionRegistry,
+            ISecretsRepositoryFactory secretsRepositoryFactory,
             HostPerformanceManager hostPerformanceManager = null,
             ILoggerProviderFactory loggerProviderFactory = null,
             IEventGenerator eventGenerator = null,
             int hostTimeoutSeconds = 30,
             int hostPollingIntervalMilliseconds = 500)
-            : base(config, settingsManager, scriptHostFactory, eventManager, environment: null,
-                  hostPerformanceManager: hostPerformanceManager, loggerProviderFactory: loggerProviderFactory)
+            : base(config,
+                  jobHostOptions,
+                  settingsManager,
+                  metricsLogger,
+                  scriptHostFactory,
+                  eventManager,
+                  environment: null,
+                  hostPerformanceManager: hostPerformanceManager,
+                  loggerProviderFactory: loggerProviderFactory)
         {
             _config = config;
-
+            _loggerFactory = loggerFactory;
+            _extensionRegistry = extensionRegistry;
             _exceptionHandler = new WebScriptHostExceptionHandler(this);
             _webHostSettings = webHostSettings;
             _settingsManager = settingsManager;
@@ -75,8 +89,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             config.IsSelfHost = webHostSettings.IsSelfHost;
 
             secretsRepositoryFactory = secretsRepositoryFactory ?? new DefaultSecretsRepositoryFactory();
-            ISecretsRepository secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config, loggerFactory.CreateLogger(ScriptConstants.LogCategoryMigration));
-            _secretManager = secretManagerFactory.Create(settingsManager, loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral), secretsRepository);
+            var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config, connectionStringProvider);
+            _secretManager = secretManagerFactory.Create();
             eventGenerator = eventGenerator ?? new EtwEventGenerator();
 
             _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider(_secretManager);
@@ -84,25 +98,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         public WebScriptHostManager(ScriptHostConfiguration config,
+            IOptions<JobHostOptions> jobHostOptions,
+            IMetricsLogger metricsLogger,
             ISecretManagerFactory secretManagerFactory,
             IScriptEventManager eventManager,
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
             IWebJobsRouter router,
             ILoggerFactory loggerFactory,
-            IScriptHostFactory scriptHostFactory)
-            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, loggerFactory, scriptHostFactory, new DefaultSecretsRepositoryFactory())
-        {
-        }
-
-        public WebScriptHostManager(ScriptHostConfiguration config,
-            ISecretManagerFactory secretManagerFactory,
-            IScriptEventManager eventManager,
-            ScriptSettingsManager settingsManager,
-            WebHostSettings webHostSettings,
-            IWebJobsRouter router,
-            ILoggerFactory loggerFactory)
-            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, router, loggerFactory, new ScriptHostFactory())
+            IConnectionStringProvider connectionStringProvider,
+            IScriptHostFactory scriptHostFactory,
+            IExtensionRegistry extensionRegistry)
+            : this(config,
+                  jobHostOptions,
+                  metricsLogger,
+                  secretManagerFactory,
+                  eventManager,
+                  settingsManager,
+                  webHostSettings,
+                  router,
+                  loggerFactory,
+                  connectionStringProvider,
+                  scriptHostFactory,
+                  extensionRegistry,
+                  new DefaultSecretsRepositoryFactory())
         {
         }
 
@@ -180,31 +199,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             base.OnInitializeConfig(config);
 
+            // TODO: DI (FACAVAL) Move all service registration and configuration
             // Note: this method can be called many times for the same ScriptHostConfiguration
             // so no changes should be made to the configuration itself. It is safe to modify
             // ScriptHostConfiguration.Host config though, since the inner JobHostConfiguration
             // is created on each restart.
 
             // Add our WebHost specific services
-            var hostConfig = config.HostConfig;
+            //var hostConfig = config.HostConfig;
 
-            hostConfig.AddService<IMetricsLogger>(_metricsLogger);
-            hostConfig.AddService<IWebHookProvider>(_bindingWebHookProvider);
+            //hostConfig.AddService<IMetricsLogger>(_metricsLogger);
+            //hostConfig.AddService<IWebHookProvider>(_bindingWebHookProvider);
 
-            // Add our exception handler
-            hostConfig.AddService<IWebJobsExceptionHandler>(_exceptionHandler);
+            //// Add our exception handler
+            //hostConfig.AddService<IWebJobsExceptionHandler>(_exceptionHandler);
 
             // HostId may be missing in local test scenarios.
-            var hostId = hostConfig.HostId ?? "default";
-            Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
-            var loggingConnectionString = config.HostConfig.DashboardConnectionString;
+            //var hostId = hostConfig.HostId ?? "default";
+            //Func<string, FunctionDescriptor> funcLookup = (name) => this.Instance.GetFunctionOrNull(name);
+            //var loggingConnectionString = config.HostConfig.DashboardConnectionString;
 
             // TODO: This is asking for a LoggerFactory before the LoggerFactory is ready. Pass a Null instance for now.
-            var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, loggingConnectionString, NullLoggerFactory.Instance);
-            hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
+            //var instanceLogger = new FunctionInstanceLogger(funcLookup, _metricsLogger, hostId, loggingConnectionString, NullLoggerFactory.Instance);
+            //hostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(instanceLogger);
 
-            // disable standard Dashboard logging (enabling Table logging above)
-            hostConfig.DashboardConnectionString = null;
+            //// disable standard Dashboard logging (enabling Table logging above)
+            //hostConfig.DashboardConnectionString = null;
         }
 
         protected override void OnHostInitialized()
@@ -233,8 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private void InitializeHttp()
         {
             // get the registered http configuration from the extension registry
-            var extensions = Instance.ScriptConfig.HostConfig.GetService<IExtensionRegistry>();
-            HttpExtensionConfiguration httpConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<HttpExtensionConfiguration>().Single();
+            HttpExtensionConfiguration httpConfig = _extensionRegistry.GetExtensions<IExtensionConfigProvider>().OfType<HttpExtensionConfiguration>().Single();
 
             InitializeHttpFunctions(Instance.Functions, httpConfig);
         }
@@ -244,11 +263,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _router.ClearRoutes();
 
             // TODO: FACAVAL Instantiation of the ScriptRouteHandler should be cleaned up
-            ILoggerFactory loggerFactory = _config.HostConfig.LoggerFactory;
-            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, this, _settingsManager, false), httpConfig.RoutePrefix);
+            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, this, _settingsManager, false), httpConfig.RoutePrefix);
 
             // Proxies do not honor the route prefix defined in host.json
-            WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(loggerFactory, this, _settingsManager, true), routePrefix: null);
+            WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, this, _settingsManager, true), routePrefix: null);
 
             foreach (var function in functions)
             {

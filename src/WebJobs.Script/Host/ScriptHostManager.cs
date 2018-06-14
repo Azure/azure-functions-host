@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -24,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script
     /// Class encapsulating a <see cref="ScriptHost"/> an keeping a singleton
     /// instance always alive, restarting as necessary.
     /// </summary>
-    public class ScriptHostManager : IScriptHostEnvironment, IDisposable
+    public class ScriptHostManager : IScriptHostManager, IScriptHostEnvironment, IDisposable
     {
         public const int HostCheckTimeoutSeconds = 30;
         public const int HostCheckPollingIntervalMilliseconds = 500;
@@ -32,6 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ScriptHostConfiguration _config;
         private readonly IScriptHostFactory _scriptHostFactory;
         private readonly ILoggerProviderFactory _loggerProviderFactory;
+        private readonly IOptions<JobHostOptions> _jobHostOptions;
+        private readonly IMetricsLogger _metricsLogger;
         private readonly IScriptHostEnvironment _environment;
         private readonly IDisposable _fileEventSubscription;
         private readonly StructuredLogWriter _structuredLogWriter;
@@ -58,16 +61,21 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ScriptHostManager(
             ScriptHostConfiguration config,
+            IOptions<JobHostOptions> jobHostOptions,
+            IMetricsLogger metricsLogger,
+            IScriptHostFactory scriptHostFactory,
             IScriptEventManager eventManager = null,
             IScriptHostEnvironment environment = null,
             ILoggerProviderFactory loggerProviderFactory = null,
             HostPerformanceManager hostPerformanceManager = null)
-            : this(config, ScriptSettingsManager.Instance, new ScriptHostFactory(), eventManager, environment, loggerProviderFactory, hostPerformanceManager)
+            : this(config, jobHostOptions, ScriptSettingsManager.Instance, metricsLogger, scriptHostFactory, eventManager, environment, loggerProviderFactory, hostPerformanceManager)
         {
         }
 
         public ScriptHostManager(ScriptHostConfiguration config,
+            IOptions<JobHostOptions> jobHostOptions,
             ScriptSettingsManager settingsManager,
+            IMetricsLogger metricsLogger,
             IScriptHostFactory scriptHostFactory,
             IScriptEventManager eventManager = null,
             IScriptHostEnvironment environment = null,
@@ -83,7 +91,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentNullException(nameof(settingsManager));
             }
 
-            scriptHostFactory = scriptHostFactory ?? new ScriptHostFactory();
+            _jobHostOptions = jobHostOptions;
+            _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _environment = environment ?? this;
             _config = config;
             _settingsManager = settingsManager;
@@ -176,12 +185,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     // Create a new host config, but keep the host id from existing one
-                    _config.HostConfig = new JobHostConfiguration(_settingsManager.Configuration)
-                    {
-                        HostId = _config.HostConfig.HostId
-                    };
+                    // TODO: DI (FACAVAL) Review
+                    //_config.HostOptions = new JobHostOptions(_settingsManager.Configuration)
+                    //{
+                    //    HostId = _config.HostOptions.HostId
+                    //};
                     OnInitializeConfig(_config);
-                    newInstance = _scriptHostFactory.Create(_environment, EventManager, _settingsManager, _config, _loggerProviderFactory);
+
+                    newInstance = _scriptHostFactory.Create();
 
                     _currentInstance = newInstance;
                     lock (_liveInstances)
@@ -294,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // have been initialized
             var host = (ScriptHost)sender;
             string extensionVersion = _settingsManager.GetSetting(EnvironmentSettingNames.FunctionsExtensionVersion);
-            string hostId = host.ScriptConfig.HostConfig.HostId;
+            string hostId = host.ScriptConfig.HostOptions.HostId;
             string message = $"Starting Host (HostId={hostId}, InstanceId={host.InstanceId}, Version={ScriptHost.Version}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={host.InDebugMode}, ConsecutiveErrors={_consecutiveErrorCount}, StartupCount={_hostStartCount}, FunctionsExtensionVersion={extensionVersion})";
             host.Logger.LogInformation(message);
 
@@ -433,13 +444,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected virtual void OnInitializeConfig(ScriptHostConfiguration config)
         {
-            var loggingConnectionString = config.HostConfig.DashboardConnectionString;
-            if (string.IsNullOrEmpty(loggingConnectionString))
-            {
-                // if no Dashboard connection string is provided, set this to null
-                // to prevent host startup failure
-                config.HostConfig.DashboardConnectionString = null;
-            }
+            // TODO: DI (FACAVAL) Fix...
+            //var loggingConnectionString = config.HostOptions.DashboardConnectionString;
+            //if (string.IsNullOrEmpty(loggingConnectionString))
+            //{
+            //    // if no Dashboard connection string is provided, set this to null
+            //    // to prevent host startup failure
+            //    config.HostOptions.DashboardConnectionString = null;
+            //}
         }
 
         protected virtual void OnHostInitialized()
@@ -452,9 +464,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         protected virtual void OnHostStarted()
         {
-            var metricsLogger = _config.HostConfig.GetService<IMetricsLogger>();
-            metricsLogger.LogEvent(new HostStarted(Instance));
-
+            _metricsLogger.LogEvent(new HostStarted(Instance));
             State = ScriptHostState.Running;
         }
 

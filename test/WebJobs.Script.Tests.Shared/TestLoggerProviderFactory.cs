@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.WebJobs.Script.Tests
@@ -21,10 +22,10 @@ namespace Microsoft.WebJobs.Script.Tests
             _includeDefaultLoggerProviders = includeDefaultLoggerProviders;
         }
 
-        public override IEnumerable<ILoggerProvider> CreateLoggerProviders(string hostInstanceId, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager, Func<bool> fileLoggingEnabled, Func<bool> isPrimary)
+        public override IEnumerable<ILoggerProvider> CreateLoggerProviders(string hostInstanceId, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager, IMetricsLogger metricsLogger, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary)
         {
             return _includeDefaultLoggerProviders ?
-                base.CreateLoggerProviders(hostInstanceId, scriptConfig, settingsManager, fileLoggingEnabled, isPrimary).Append(_loggerProvider) :
+                base.CreateLoggerProviders(hostInstanceId, scriptConfig, settingsManager, metricsLogger, isFileLoggingEnabled, isPrimary).Append(_loggerProvider) :
                 new[] { _loggerProvider };
         }
     }
