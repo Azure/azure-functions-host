@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public void WorkerError(WorkerErrorEvent workerError)
         {
             ILanguageWorkerChannel erroredChannel;
-            if (_channelsDictionary.TryGetValue(workerError.WorkerId, out erroredChannel) && erroredChannel != null)
+            if (_channelsDictionary.TryGetValue(workerError.WorkerId, out erroredChannel))
             {
                 // TODO: move retry logic, possibly into worker channel decorator
                 _channelState.AddOrUpdate(erroredChannel.Config,
