@@ -7,7 +7,7 @@ function Check([string] $componentName, [string] $verstr, [Version] $requiredVer
     { 
         $verStr = $verStr.Substring(1)
     }
-
+	
     # Version could be a beta, like 2.1.200-preview-007576
     $x = $verstr;
     $idxDash = $x.IndexOf('-')
@@ -91,6 +91,25 @@ if (-Not $ok) {
     Write-Host "    npm install -g npm@latest" 
     Write-Host 
 }
+
+# Check Java
+$javaFullVersion = & "java" -version 2>&1
+$javaVersion = $javaFullVersion[0].toString().Split(' ')
+$javaVersion = $javaVersion[2].Trim('"')
+$underscoreIndex = $javaVersion.IndexOf('_')
+$actualVersion = $javaVersion.Substring(0, $underscoreIndex)
+$ok = Check "java" $actualVersion ([Version]::Parse("1.8.0"))
+
+if (-Not $ok) {
+    Write-Host "    You can udpate java by downloading from http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html" 
+    Write-Host 
+}
+$ok = Test-Path 'env:JAVA_HOME'
+if (-Not $ok) {
+	Write-Host "JAVA_HOME Environment variable not set. Set it to JDK folder. Example c:\Program Files\Java\jdk1.8.0_171" -ForegroundColor Red
+	Write-Host 
+}
+
 
 # See here for hints on doing Devenv detection:
 # https://stackoverflow.com/questions/42435592/determining-installed-visual-studio-path-for-2017 
