@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // 1) We _were_ in standby mode and now we're ready to specialize
                     // 2) We're doing non-specialization normal initialization
                     if (_activeHostManager == null &&
-                        (_standbyHostManager == null || (_settingsManager.ContainerReady && _settingsManager.ConfigurationReady)))
+                        (_standbyHostManager == null || _settingsManager.ContainerReady))
                     {
                         _specializationTimer?.Dispose();
                         _specializationTimer = null;

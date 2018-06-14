@@ -113,7 +113,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteConfigurationReady, "1");
                 Assert.False(WebScriptHostManager.InStandbyMode);
                 _webHostResolver.EnsureInitialized(settings);
 
@@ -141,7 +140,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                     _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                     _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-                    _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteConfigurationReady, "1");
                     current = func(settings);
                     Assert.NotNull(current);
                     Assert.NotSame(prev, current);

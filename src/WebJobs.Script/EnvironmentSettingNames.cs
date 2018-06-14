@@ -38,13 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public const string AzureWebsiteContainerReady = "WEBSITE_CONTAINER_READY";
 
-        /// <summary>
-        /// Environment variable dynamically set by the platform when configuration has been
-        /// completely initialized (e.g. EnvSettings module has ran) and it is safe to read
-        /// configuration values.
-        /// </summary>
-        public const string AzureWebsiteConfigurationReady = "WEBSITE_CONFIGURATION_READY";
-
         public const string ContainerStartContext = "CONTAINER_START_CONTEXT";
         public const string ContainerStartContextSasUri = "CONTAINER_START_CONTEXT_SAS_URI";
     }
