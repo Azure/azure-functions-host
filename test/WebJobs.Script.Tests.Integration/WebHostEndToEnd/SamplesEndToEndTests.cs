@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await InvokeHttpTrigger("HttpTrigger");
         }
 
-        [Fact(Skip = "Test flaky")]
+        [Fact(Skip = "Investigate test failure")]
         public async Task HttpTrigger_Java_Get_Succeeds()
         {
             await InvokeHttpTrigger("HttpTrigger-Java");
