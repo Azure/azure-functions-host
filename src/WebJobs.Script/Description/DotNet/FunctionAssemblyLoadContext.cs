@@ -2,18 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
-using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyModel;
-using Newtonsoft.Json.Linq;
 using static Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment;
 using ResolutionPolicyEvaluator = System.Func<System.Reflection.AssemblyName, System.Reflection.Assembly, bool>;
 
@@ -26,7 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private static readonly Lazy<Dictionary<string, ScriptRuntimeAssembly>> _runtimeAssemblies = new Lazy<Dictionary<string, ScriptRuntimeAssembly>>(DependencyHelper.GetRuntimeAssemblies);
         private static readonly Lazy<Dictionary<string, ResolutionPolicyEvaluator>> _resolutionPolicyEvaluators = new Lazy<Dictionary<string, ResolutionPolicyEvaluator>>(InitializeLoadPolicyEvaluators);
-        private static Lazy<FunctionAssemblyLoadContext> _defaultContext = new Lazy<FunctionAssemblyLoadContext>(() => new FunctionAssemblyLoadContext(ResolveFunctionBaseProbingPath()), true);
+        private static readonly ConcurrentDictionary<string, object> _sharedContextAssembliesInFallbackLoad = new ConcurrentDictionary<string, object>();
+        private static readonly Lazy<FunctionAssemblyLoadContext> _defaultContext = new Lazy<FunctionAssemblyLoadContext>(CreateSharedContext, true);
 
         private readonly List<string> _probingPaths = new List<string>();
 
@@ -41,6 +40,27 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         public static FunctionAssemblyLoadContext Shared => _defaultContext.Value;
+
+        private static FunctionAssemblyLoadContext CreateSharedContext()
+        {
+            var sharedContext = new FunctionAssemblyLoadContext(ResolveFunctionBaseProbingPath());
+            Default.Resolving += HandleDefaultContextFallback;
+
+            return sharedContext;
+        }
+
+        private static Assembly HandleDefaultContextFallback(AssemblyLoadContext loadContext, AssemblyName assemblyName)
+        {
+            // If we're not currently loading this from the shared context, an attempt to load
+            // a user assembly from the default context might have been made (e.g. Assembly.Load or AppDomain.Load called in a
+            // runtime/default context loaded assembly against a function assembly)
+            if (!_sharedContextAssembliesInFallbackLoad.ContainsKey(assemblyName.Name))
+            {
+                return Shared.LoadCore(assemblyName);
+            }
+
+            return null;
+        }
 
         private static Dictionary<string, ResolutionPolicyEvaluator> InitializeLoadPolicyEvaluators()
         {
@@ -139,10 +159,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             assembly = null;
             try
             {
+                _sharedContextAssembliesInFallbackLoad.TryAdd(assemblyName.Name, null);
                 assembly = AssemblyLoadContext.Default.LoadFromAssemblyName(assemblyName);
             }
             catch (FileNotFoundException)
             {
+            }
+            finally
+            {
+                _sharedContextAssembliesInFallbackLoad.TryRemove(assemblyName.Name, out object _);
             }
 
             return assembly != null;
