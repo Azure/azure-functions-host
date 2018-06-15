@@ -102,30 +102,29 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     string rawBody = null;
 
                     MediaTypeHeaderValue mediaType = null;
-                    if (MediaTypeHeaderValue.TryParse(request.ContentType, out mediaType))
+                    MediaTypeHeaderValue.TryParse(request.ContentType, out mediaType);
+
+                    if (string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
+                        var jsonReader = new StreamReader(request.Body, Encoding.UTF8);
+                        rawBody = jsonReader.ReadToEnd();
+                        try
                         {
-                            var jsonReader = new StreamReader(request.Body, Encoding.UTF8);
-                            rawBody = jsonReader.ReadToEnd();
-                            try
-                            {
-                                body = JsonConvert.DeserializeObject(rawBody);
-                            }
-                            catch (JsonException)
-                            {
-                                body = rawBody;
-                            }
+                            body = JsonConvert.DeserializeObject(rawBody);
                         }
-                        else if (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
-                            mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0)
+                        catch (JsonException)
                         {
-                            var length = Convert.ToInt32(request.ContentLength);
-                            var bytes = new byte[length];
-                            request.Body.Read(bytes, 0, length);
-                            body = bytes;
-                            rawBody = Encoding.UTF8.GetString(bytes);
+                            body = rawBody;
                         }
+                    }
+                    else if (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
+                        mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        var length = Convert.ToInt32(request.ContentLength);
+                        var bytes = new byte[length];
+                        request.Body.Read(bytes, 0, length);
+                        body = bytes;
+                        rawBody = Encoding.UTF8.GetString(bytes);
                     }
                     else
                     {
@@ -134,8 +133,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
 
                     request.Body.Position = 0;
-                    http.Body = body.ToRpc();
-                    http.RawBody = rawBody.ToRpc();
+                    http.Body = body == null ? null : body.ToRpc();
+                    http.RawBody = rawBody == null ? null : rawBody.ToRpc();
                 }
             }
             else
