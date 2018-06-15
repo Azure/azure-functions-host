@@ -4,7 +4,7 @@
       "type": "xrmSyncTrigger",
       "name": "context",
       "direction": "in",
-      "functionIdentifier": "account_create"
+      "functionIdentifier": "account_Create"
     },
     {
       "type": "organizationService",
