@@ -130,9 +130,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                     var actualInterval = currentEvent.Timestamp - previoustTimeStamp;
                     previoustTimeStamp = currentEvent.Timestamp;
 
-                    int intervalInSeconds = (int)Math.Round(actualInterval.TotalSeconds, 0, MidpointRounding.ToEven);
-                    Assert.True(expectedInterval == intervalInSeconds,
-                        $"Recovering interval did not meet the expected interval (expected '{expectedInterval}', actual '{intervalInSeconds}");
+                    int roundedIntervalInSeconds = (int)Math.Round(actualInterval.TotalSeconds, 0, MidpointRounding.ToEven);
+                    Assert.True(expectedInterval == roundedIntervalInSeconds,
+                        $"Recovering interval did not meet the expected interval (expected '{expectedInterval}', rounded '{roundedIntervalInSeconds}', actual '{actualInterval.Seconds}')");
                 }
 
                 Assert.True(loggerProvider.GetAllLogMessages().All(t => t.FormattedMessage.EndsWith(fileWatcherLogSuffix)));
