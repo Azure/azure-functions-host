@@ -43,7 +43,7 @@ for:
   - ps: >-
       $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
 
-      Install-Product node 8.4.0 x86
+      Install-Product node 10.0.0 x86
   build_script:
   - ps: |
       $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
