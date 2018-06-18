@@ -96,6 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 }
 
+                // parse request body as content-type
                 if (request.Body != null && request.ContentLength > 0)
                 {
                     object body = null;
@@ -127,7 +128,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             rawBody = Encoding.UTF8.GetString(bytes);
                         }
                     }
-                    else
+                    // default if content-tye not found or recognized
+                    if (body == null && rawBody == null)
                     {
                         var reader = new StreamReader(request.Body, Encoding.UTF8);
                         body = rawBody = reader.ReadToEnd();
