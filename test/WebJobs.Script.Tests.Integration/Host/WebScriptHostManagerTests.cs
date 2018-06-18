@@ -428,7 +428,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 };
                 foreach (string pattern in expectedPatterns)
                 {
-                    Assert.True(EventGenerator.Events.Any(p => Regex.IsMatch(p, pattern)), $"Expected trace event '{pattern}' not found.");
+                    Assert.True(EventGenerator.SystemEvents.Any(p => Regex.IsMatch(p, pattern)), $"Expected trace event '{pattern}' not found.");
                 }
             }
 

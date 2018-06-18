@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class DiagnosticTraceWriter : TraceWriter
     {
-        internal const string AzureMonitorCategoryName = "FunctionExecutionEvent";
+        internal const string AzureMonitorCategoryName = "FunctionExecutionLogs";
         internal const string AzureMonitorOperationName = "Microsoft.Web/sites/functions/execution";
 
         private readonly string _hostVersion = ScriptHost.Version;
@@ -46,7 +46,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string websiteName = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteName);
             string slotName = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteSlotName);
 
-            string resourceId = GenerateResourceId(subscriptionId, resourceGroup, websiteName, slotName);
+            // Temp test.
+            string resourceId = _settingsManager.GetSetting("WEBSITE_HOSTNAME");
 
             (var exceptionType, var exceptionMessage, var exceptionDetails) = traceEvent.GetExceptionDetails();
 
