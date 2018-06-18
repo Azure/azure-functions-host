@@ -96,45 +96,48 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 }
 
+                // parse request body as content-type
                 if (request.Body != null && request.ContentLength > 0)
                 {
                     object body = null;
                     string rawBody = null;
 
                     MediaTypeHeaderValue mediaType = null;
-                    MediaTypeHeaderValue.TryParse(request.ContentType, out mediaType);
-
-                    if (string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
+                    if (MediaTypeHeaderValue.TryParse(request.ContentType, out mediaType))
                     {
-                        var jsonReader = new StreamReader(request.Body, Encoding.UTF8);
-                        rawBody = jsonReader.ReadToEnd();
-                        try
+                        if (string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
                         {
-                            body = JsonConvert.DeserializeObject(rawBody);
+                            var jsonReader = new StreamReader(request.Body, Encoding.UTF8);
+                            rawBody = jsonReader.ReadToEnd();
+                            try
+                            {
+                                body = JsonConvert.DeserializeObject(rawBody);
+                            }
+                            catch (JsonException)
+                            {
+                                body = rawBody;
+                            }
                         }
-                        catch (JsonException)
+                        else if (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
+                            mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
-                            body = rawBody;
+                            var length = Convert.ToInt32(request.ContentLength);
+                            var bytes = new byte[length];
+                            request.Body.Read(bytes, 0, length);
+                            body = bytes;
+                            rawBody = Encoding.UTF8.GetString(bytes);
                         }
                     }
-                    else if (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
-                        mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        var length = Convert.ToInt32(request.ContentLength);
-                        var bytes = new byte[length];
-                        request.Body.Read(bytes, 0, length);
-                        body = bytes;
-                        rawBody = Encoding.UTF8.GetString(bytes);
-                    }
-                    else
+                    // default if content-tye not found or recognized
+                    if (body == null && rawBody == null)
                     {
                         var reader = new StreamReader(request.Body, Encoding.UTF8);
                         body = rawBody = reader.ReadToEnd();
                     }
 
                     request.Body.Position = 0;
-                    http.Body = body == null ? null : body.ToRpc();
-                    http.RawBody = rawBody == null ? null : rawBody.ToRpc();
+                    http.Body = body.ToRpc();
+                    http.RawBody = rawBody.ToRpc();
                 }
             }
             else
