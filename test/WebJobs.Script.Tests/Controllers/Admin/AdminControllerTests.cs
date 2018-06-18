@@ -14,7 +14,6 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
-using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
@@ -68,12 +67,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             hostMock.Setup(p => p.CallAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, object>>(), CancellationToken.None))
                 .Callback<string, Dictionary<string, object>, CancellationToken>((name, args, token) =>
                 {
-                    functionInvoked = true;
-
                     // verify the correct arguments were passed to the invoke
                     Assert.Equal(testFunctionName, name);
                     Assert.Equal(1, args.Count);
                     Assert.Equal(testInput, (string)args[triggerParameterName]);
+
+                    functionInvoked = true;
                 })
                 .Returns(Task.CompletedTask);
 
@@ -97,8 +96,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             IActionResult response = testController.Invoke(testFunctionName, invocation);
             Assert.IsType<AcceptedResult>(response);
 
-            // allow the invoke task to run
-            await Task.Delay(200);
+            // The call is fire-and-forget, so watch for functionInvoked to be set.
+            await TestHelpers.Await(() => functionInvoked, timeout: 3000, pollingInterval: 100);
 
             Assert.True(functionInvoked);
         }
