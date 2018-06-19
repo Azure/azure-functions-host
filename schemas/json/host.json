@@ -202,44 +202,44 @@
       "type": "object",
 
       "properties": {
-        "defaultLevel": {
-          "description": "The default level for logging. If a category level is not specified, this value is used.",
-          "enum": [ "Critical", "Debug", "Error", "Information", "None", "Trace", "Warning" ],
-          "default": "Information"
-        },
-
-        "categoryLevels": {
-          "description": "Log levels for specific categories.",
-          "type": "object",
-
-          "additionalProperties": {
-            "enum": [ "Critical", "Debug", "Error", "Information", "None", "Trace", "Warning" ]
+        "categoryFilter": {
+          "properties": {
+            "defaultLevel": {
+              "description": "The default level for logging. If a category level is not specified, this value is used.",
+              "enum": [ "Critical", "Debug", "Error", "Information", "None", "Trace", "Warning" ],
+              "default": "Information"
+            },
+            "categoryLevels": {
+              "description": "Log levels for specific categories.",
+              "type": "object",
+              "additionalProperties": {
+                "enum": [ "Critical", "Debug", "Error", "Information", "None", "Trace", "Warning" ]
+              }
+            }
           }
         },
+        "aggregator": {
+          "description": "Configuration settings for the function result aggregator.",
+          "type": "object",
 
+          "properties": {
+            "batchSize": {
+              "description": "The maximum batch size for aggregations. If this value is reached before the 'flushTimeout', all values will be flushed.",
+              "type": "integer",
+              "default": 1000
+            },
+
+            "flushTimeout": {
+              "description": "The aggregation duration. The aggregator will flush periodically based on this value.",
+              "pattern": "^\\d\\d:\\d\\d:\\d\\d$",
+              "default": "00:00:30"
+            }
+          }
+        },
         "fileLoggingMode": {
           "description": "Value determining what level of file logging is enabled.",
           "enum": [ "never", "always", "debugOnly" ],
           "default": "debugOnly"
-        }
-      }
-    },
-
-    "aggregator": {
-      "description": "Configuration settings for the function result aggregator.",
-      "type": "object",
-
-      "properties": {
-        "batchSize": {
-          "description": "The maximum batch size for aggregations. If this value is reached before the 'flushTimeout', all values will be flushed.",
-          "type": "integer",
-          "default": 1000
-        },
-
-        "flushTimeout": {
-          "description": "The aggregation duration. The aggregator will flush periodically based on this value.",
-          "pattern": "^\\d\\d:\\d\\d:\\d\\d$",
-          "default": "00:00:30"
         }
       }
     },
