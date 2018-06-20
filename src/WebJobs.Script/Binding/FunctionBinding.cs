@@ -307,6 +307,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public static void ConvertStreamToValue(Stream stream, DataType dataType, ref object converted)
         {
+            if (stream == null)
+            {
+                return;
+            }
+
             switch (dataType)
             {
                 case DataType.String:
