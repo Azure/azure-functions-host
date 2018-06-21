@@ -6,7 +6,7 @@ module.exports = function (context, req) {
 
     switch (scenario) {
         case "echo":
-            context.res = req.body.value;
+            context.res.send(req.body.value);
             break;
 
         case "buffer":
@@ -28,11 +28,6 @@ module.exports = function (context, req) {
                 status: 200,
                 body: req.body.value
             };
-            break;
-
-        case "return-content":
-            context.res = req.body;
-            context.res.enableContentNegotiation = enableContentNegotiation;
             break;
 
         case "content":
