@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public sealed class DefaultKeyValueConverterFactory : IKeyValueConverterFactory
     {
-        private bool _encryptionSupported;
+        private readonly bool _encryptionSupported;
         private static readonly PlaintextKeyValueConverter PlaintextValueConverter = new PlaintextKeyValueConverter(FileAccess.ReadWrite);
         private static ScriptSettingsManager _settingsManager;
 
@@ -23,8 +23,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _encryptionSupported = IsEncryptionSupported();
         }
 
-        // In Linux Containers AzureWebsiteLocalEncryptionKey will be set, enabling encryption
-        private static bool IsEncryptionSupported() => _settingsManager.IsAppServiceEnvironment || _settingsManager.GetSetting(AzureWebsiteLocalEncryptionKey) != null;
+        private static bool IsEncryptionSupported()
+        {
+            if (_settingsManager.IsLinuxContainerEnvironment)
+            {
+                // TEMP: https://github.com/Azure/azure-functions-host/issues/3035
+                return false;
+            }
+
+            return _settingsManager.IsAppServiceEnvironment || _settingsManager.GetSetting(AzureWebsiteLocalEncryptionKey) != null;
+        }
 
         public IKeyValueReader GetValueReader(Key key)
         {
