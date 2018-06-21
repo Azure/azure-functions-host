@@ -130,13 +130,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _process = _processFactory.CreateWorkerProcess(workerContext);
             StartProcess(_workerId, _process);
+            _processRegistry?.Register(_process);
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
         internal void InitWorker(RpcEvent startEvent)
         {
-            _processRegistry?.Register(_process);
-
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(timeoutInit)
                 .Take(1)
@@ -338,7 +337,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 // TODO: per language stdout/err parser?
                 if (e.Data != null)
                 {
-                    _logger.LogInformation(e.Data);
+                    if (e.Data.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > 0)
+                    {
+                        _logger.LogWarning(e.Data);
+                    }
+                    else
+                    {
+                        _logger.LogError(e.Data);
+                    }
                 }
             };
             process.OutputDataReceived += (sender, e) =>
@@ -355,7 +361,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     if (process.ExitCode != 0)
                     {
-                        HandleWorkerError(new Exception($"{process.StartInfo.FileName} Worker process with pid {process.Id} exited with code {process.ExitCode}"));
+                        HandleWorkerError(new Exception($"{process.StartInfo.FileName} process with pid {process.Id} exited with code {process.ExitCode}"));
                     }
                     process.WaitForExit();
                     process.Close();
@@ -365,8 +371,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     HandleWorkerError(new Exception("Worker process is not attached"));
                 }
             };
-            _logger.LogInformation($"Start Process: {process.StartInfo.FileName} {process.StartInfo.Arguments}");
+            _logger.LogInformation($"Starting {process.StartInfo.FileName} language worker process with Arguments={process.StartInfo.Arguments}");
             process.Start();
+            _logger.LogInformation($"{process.StartInfo.FileName} process with Id={process.Id} started");
             process.BeginErrorReadLine();
             process.BeginOutputReadLine();
         }
