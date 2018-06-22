@@ -11,9 +11,27 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
         private readonly Subject<ScriptEvent> _subject = new Subject<ScriptEvent>();
         private bool _disposed = false;
 
-        public void Publish(ScriptEvent scriptEvent) => _subject.OnNext(scriptEvent);
+        public void Publish(ScriptEvent scriptEvent)
+        {
+            ThrowIfDisposed();
 
-        public IDisposable Subscribe(IObserver<ScriptEvent> observer) => _subject.Subscribe(observer);
+            _subject.OnNext(scriptEvent);
+        }
+
+        public IDisposable Subscribe(IObserver<ScriptEvent> observer)
+        {
+            ThrowIfDisposed();
+
+            return _subject.Subscribe(observer);
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(ScriptEventManager));
+            }
+        }
 
         private void Dispose(bool disposing)
         {

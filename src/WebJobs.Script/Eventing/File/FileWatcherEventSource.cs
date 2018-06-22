@@ -31,8 +31,11 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing.File
 
         private void FileChanged(object sender, FileSystemEventArgs e)
         {
-            var fileEvent = new FileEvent(_source, e);
-            _eventManager.Publish(fileEvent);
+            if (!_disposed)
+            {
+                var fileEvent = new FileEvent(_source, e);
+                _eventManager.Publish(fileEvent);
+            }
         }
 
         private void Dispose(bool disposing)
