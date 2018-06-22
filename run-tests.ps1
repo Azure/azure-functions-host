@@ -1,3 +1,4 @@
+param([switch]$NodeTests)
 
 function RunTest([string] $project, [string] $description,[bool] $skipBuild = $false, $filter = $null) {
     Write-Host "Running test: $description" -ForegroundColor DarkCyan
@@ -48,9 +49,17 @@ $tests = @(
 $success = $true
 $testRunSucceeded = $true
 
+if ($NodeTests) {
+	$tests = @(
+	  @{project ="WebJobs.Script.Tests.Integration"; description="Node end to end tests"; filter ="Group=NodeEndToEndTests"},
+	  @{project ="WebJobs.Script.Tests.Integration"; description="Language worker end to end tests"; filter ="Group=LanguageWorkerSelectionEndToEndTests"},
+	  @{project ="WebJobs.Script.Tests.Integration"; description="Node script host end to end tests"; filter ="Group=NodeScriptHostTests"}
+	)
+}
+
 foreach ($test in $tests){
-    $testRunSucceeded = RunTest $test.project $test.description $testRunSucceeded $test.filter
-    $success = $testRunSucceeded -and $success
+	$testRunSucceeded = RunTest $test.project $test.description $testRunSucceeded $test.filter
+	$success = $testRunSucceeded -and $success
 }
 
 if (-not $success) { exit 1 }
