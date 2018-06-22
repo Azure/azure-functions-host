@@ -62,5 +62,7 @@ for:
   test_script:
   - ps: >
       .\run-tests.ps1
+      
       Install-Product node 8.11.1 x86
+
       .\run-tests.ps1 -NodeTests
