@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             public string AssemblyPath { get; }
 
             public override Assembly Load(FunctionMetadata metadata, IFunctionMetadataResolver metadataResolver, ILogger logger)
-                => FunctionAssemblyLoadContext.Shared.LoadFromAssemblyPath(AssemblyPath);
+                => FunctionAssemblyLoadContext.Shared.LoadFromAssemblyPath(AssemblyPath, true);
         }
     }
 }
