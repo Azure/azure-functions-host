@@ -25,15 +25,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _config = config;
             _logger = logger;
-            WorkerDirPath = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
+            WorkersDirPath = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
             var workersDirectorySection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.WorkersDirectorySectionName}");
             if (!string.IsNullOrEmpty(workersDirectorySection.Value))
             {
-                WorkerDirPath = workersDirectorySection.Value;
+                WorkersDirPath = workersDirectorySection.Value;
             }
         }
 
-        public string WorkerDirPath { get; }
+        public string WorkersDirPath { get; }
 
         public IEnumerable<WorkerConfig> GetConfigs(IEnumerable<IWorkerProvider> providers)
         {
@@ -47,6 +47,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     ExecutablePath = description.DefaultExecutablePath,
                     WorkerPath = description.GetWorkerPath()
                 };
+
+                if (description.Language.Equals(LanguageWorkerConstants.JavaLanguageWorkerName))
+                {
+                    arguments.ExecutablePath = GetExecutablePathForJava();
+                }
 
                 if (provider.TryConfigureArguments(arguments, _config, _logger))
                 {
@@ -73,17 +78,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void AddProviders(ILogger logger, string language = null)
         {
             var providers = new List<IWorkerProvider>();
-            logger.LogTrace($"Workers Directory set to: {WorkerDirPath}");
+            logger.LogTrace($"Workers Directory set to: {WorkersDirPath}");
 
             if (!string.IsNullOrEmpty(language))
             {
                 logger.LogInformation($"Reading Worker config for the language: {language}");
-                AddProvider(Path.Combine(WorkerDirPath, language), logger);
+                AddProvider(Path.Combine(WorkersDirPath, language), logger);
             }
             else
             {
-                logger.LogTrace($"Loading worker providers from the workers directory: {WorkerDirPath}");
-                foreach (var workerDir in Directory.EnumerateDirectories(WorkerDirPath))
+                logger.LogTrace($"Loading worker providers from the workers directory: {WorkersDirPath}");
+                foreach (var workerDir in Directory.EnumerateDirectories(WorkersDirPath))
                 {
                     string workerConfigPath = Path.Combine(workerDir, LanguageWorkerConstants.WorkerConfigFileName);
                     if (File.Exists(workerConfigPath))
@@ -102,6 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var workerDirectorySection = languageSection.GetSection(LanguageWorkerConstants.WorkerDirectorySectionName);
                 if (workerDirectorySection.Value != null)
                 {
+                    _workerProviderDictionary.Remove(languageSection.Key);
                     AddProvider(Path.Combine(workerDirectorySection.Value, languageSection.Key), logger);
                 }
             }
@@ -129,13 +135,40 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     workerDescription.Arguments.AddRange(Regex.Split(argumentsSection.Value, @"\s+"));
                 }
-                logger.LogTrace($"Will load worker provider for language: {workerDescription.Language}");
-                _workerProviderDictionary[workerDescription.Language] = new GenericWorkerProvider(workerDescription, workerDir);
+                if (File.Exists(workerDescription.GetWorkerPath()))
+                {
+                    logger.LogTrace($"Will load worker provider for language: {workerDescription.Language}");
+                    _workerProviderDictionary[workerDescription.Language] = new GenericWorkerProvider(workerDescription, workerDir);
+                }
+                else
+                {
+                    throw new FileNotFoundException($"Did not find worker for for language: {workerDescription.Language}", workerDescription.GetWorkerPath());
+                }
             }
             catch (Exception ex)
             {
                 logger?.LogError(ex, $"Failed to initialize worker provider for: {workerDir}");
             }
+        }
+
+        internal string GetExecutablePathForJava()
+        {
+                string javaHome = ScriptSettingsManager.Instance.GetSetting("JAVA_HOME");
+                if (string.IsNullOrEmpty(javaHome))
+                {
+                    return LanguageWorkerConstants.JavaLanguageWorkerName;
+                }
+                else
+                {
+                    if (ScriptSettingsManager.Instance.IsAppServiceEnvironment)
+                    {
+                        return Path.GetFullPath(Path.Combine(javaHome, "..", LanguageWorkerConstants.AppServiceEnvJavaVersion, "bin", LanguageWorkerConstants.JavaLanguageWorkerName));
+                    }
+                    else
+                    {
+                        return Path.GetFullPath(Path.Combine(javaHome, "bin", LanguageWorkerConstants.JavaLanguageWorkerName));
+                    }
+                }
         }
     }
 }

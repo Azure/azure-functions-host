@@ -38,10 +38,5 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             return true;
         }
-
-        public string GetWorkerDirectoryPath()
-        {
-            return _pathToWorkerDir;
-        }
     }
 }
