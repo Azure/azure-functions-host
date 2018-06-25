@@ -63,6 +63,4 @@ for:
   - ps: >
       .\run-tests.ps1
       
-      Install-Product node 8.11.1 x86
-
-      .\run-tests.ps1 -NodeTests
+      .\run-tests.ps1 -NodeVersion "8.11.1"

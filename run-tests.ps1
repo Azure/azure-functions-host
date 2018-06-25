@@ -1,4 +1,4 @@
-param([switch]$NodeTests)
+param([string]$NodeVersion="10.0.0")
 
 function RunTest([string] $project, [string] $description,[bool] $skipBuild = $false, $filter = $null) {
     Write-Host "Running test: $description" -ForegroundColor DarkCyan
@@ -29,7 +29,6 @@ function RunTest([string] $project, [string] $description,[bool] $skipBuild = $f
     return $r
 }
 
-
 $tests = @(
   @{project ="WebJobs.Script.Tests"; description="Unit Tests"},
   @{project ="WebJobs.Script.Scaling.Tests"; description="Scaling Tests"},
@@ -49,13 +48,8 @@ $tests = @(
 $success = $true
 $testRunSucceeded = $true
 
-if ($NodeTests) {
-	$tests = @(
-	  @{project ="WebJobs.Script.Tests.Integration"; description="Node end to end tests"; filter ="Group=NodeEndToEndTests"},
-	  @{project ="WebJobs.Script.Tests.Integration"; description="Language worker end to end tests"; filter ="Group=LanguageWorkerSelectionEndToEndTests"},
-	  @{project ="WebJobs.Script.Tests.Integration"; description="Node script host end to end tests"; filter ="Group=NodeScriptHostTests"}
-	)
-}
+# Run tests against specific node version
+Install-Product node $NodeVersion x86
 
 foreach ($test in $tests){
 	$testRunSucceeded = RunTest $test.project $test.description $testRunSucceeded $test.filter
