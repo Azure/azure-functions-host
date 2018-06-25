@@ -8,7 +8,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string FunctionWorkerRuntimeSettingName = "FUNCTIONS_WORKER_RUNTIME";
         public const string DotNetLanguageWorkerName = "dotnet";
         public const string NodeLanguageWorkerName = "node";
-        public const string JavaLanguageWorkerName = "java";
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultWorkersDirectoryName = "workers";
 
@@ -24,5 +23,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string WorkerDescriptionDefaultWorkerPath = "defaultWorkerPath";
         public const string WorkerDescription = "Description";
         public const string WorkerDescriptionArguments = "Arguments";
+
+        // Java
+        public const string AppServiceEnvJavaVersion = "zulu8.23.0.3-jdk8.0.144-win_x64";
+        public const string JavaLanguageWorkerName = "java";
     }
 }

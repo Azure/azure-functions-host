@@ -502,14 +502,13 @@ namespace Microsoft.Azure.WebJobs.Script
             else
             {
                 _startupLogger.LogTrace($"Adding Function descriptor provider for language {_language}.");
-                switch (_language.ToLower())
+                if (string.Equals(_language, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
-                    case LanguageWorkerConstants.DotNetLanguageWorkerName:
-                        _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
-                        break;
-                    default:
-                        _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher));
-                        break;
+                    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig));
+                }
+                else
+                {
+                    _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher));
                 }
             }
 
@@ -742,26 +741,15 @@ namespace Microsoft.Azure.WebJobs.Script
             var providers = new List<IWorkerProvider>();
             if (!string.IsNullOrEmpty(_language))
             {
-                _startupLogger.LogInformation($"'{LanguageWorkerConstants.FunctionWorkerRuntimeSettingName}' is specified, only '{_language}' will be enabled");
-                // TODO: We still have some hard coded languages, so we need to handle them. Remove this switch once we've moved away from that.
-                switch (_language.ToLowerInvariant())
+                if (!string.Equals(_language, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
-                    case LanguageWorkerConstants.JavaLanguageWorkerName:
-                        providers.Add(new JavaWorkerProvider(configFactory.WorkerDirPath));
-                        break;
-                    case LanguageWorkerConstants.DotNetLanguageWorkerName:
-                        // No-Op
-                        break;
-                    default:
-                        // Pass the language to the provider loader to filter
-                        providers.AddRange(configFactory.GetWorkerProviders(_startupLogger, language: _language));
-                        break;
+                    _startupLogger.LogInformation($"'{LanguageWorkerConstants.FunctionWorkerRuntimeSettingName}' is specified, only '{_language}' will be enabled");
+                    providers.AddRange(configFactory.GetWorkerProviders(_startupLogger, language: _language));
                 }
             }
             else
             {
                 // load all providers if no specific language is specified
-                providers.Add(new JavaWorkerProvider(configFactory.WorkerDirPath));
                 providers.AddRange(configFactory.GetWorkerProviders(_startupLogger));
             }
 

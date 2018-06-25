@@ -59,8 +59,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Host.Logger.LogTrace(ex, $"Creating function descriptor for function {functionMetadata.Name} failed");
                 IDisposable disposableInvoker = invoker as IDisposable;
                 if (disposableInvoker != null)
                 {
