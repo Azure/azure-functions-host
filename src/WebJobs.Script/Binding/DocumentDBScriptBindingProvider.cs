@@ -65,6 +65,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         documentDBConfiguration.ConnectionMode = connectionModeValue;
                     }
                 }
+
+                JToken protocol = configSection["protocol"];
+                if (protocol != null)
+                {
+                    if (Enum.TryParse<Protocol>(protocol.Value<string>(), out Protocol protocolValue))
+                    {
+                        documentDBConfiguration.Protocol = protocolValue;
+                    }
+                }
             }
 
             Config.UseDocumentDB(documentDBConfiguration);

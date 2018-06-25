@@ -291,6 +291,11 @@
               "description": "ConnectionMode to be used on the DocumentClients.",
               "enum": [ "Gateway", "Direct" ],
               "default": "Gateway"
+            },
+            "protocol": {
+              "description": "Protocol to be used on the DocumentClients.",
+              "enum": [ "Https", "Tcp" ],
+              "default": "Https"
             }
           }
         }
