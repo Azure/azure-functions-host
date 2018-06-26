@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             ChannelOption maxReceiveMessageLength = new ChannelOption(ChannelOptions.MaxReceiveMessageLength, grpcMaxMessageLength);
             ChannelOption maxSendMessageLength = new ChannelOption(ChannelOptions.MaxSendMessageLength, grpcMaxMessageLength);
             ChannelOption[] grpcChannelOptions = { maxReceiveMessageLength, maxSendMessageLength };
-
             _server = new Server(grpcChannelOptions)
             {
                 Services = { FunctionRpc.BindService(serviceImpl) },

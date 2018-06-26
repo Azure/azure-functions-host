@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -16,21 +15,20 @@ using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMeta
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class FunctionRegistry : IFunctionRegistry
+    internal class FunctionDispatcher : IFunctionDispatcher
     {
         private IScriptEventManager _eventManager;
         private IRpcServer _server;
         private CreateChannel _channelFactory;
         private List<WorkerConfig> _workerConfigs;
-
-        private ConcurrentDictionary<WorkerConfig, WorkerState> _channelState = new ConcurrentDictionary<WorkerConfig, WorkerState>();
-
+        private ConcurrentDictionary<WorkerConfig, LanguageWorkerState> _channelStates = new ConcurrentDictionary<WorkerConfig, LanguageWorkerState>();
         private IDisposable _workerErrorSubscription;
+        private IList<IDisposable> _workerStateSubscriptions = new List<IDisposable>();
         private List<ILanguageWorkerChannel> _erroredChannels = new List<ILanguageWorkerChannel>();
         private ConcurrentDictionary<string, ILanguageWorkerChannel> _channelsDictionary = new ConcurrentDictionary<string, ILanguageWorkerChannel>();
         private bool disposedValue = false;
 
-        public FunctionRegistry(
+        public FunctionDispatcher(
             IScriptEventManager manager,
             IRpcServer server,
             CreateChannel channelFactory,
@@ -44,14 +42,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Subscribe(WorkerError);
         }
 
+        public IDictionary<WorkerConfig, LanguageWorkerState> LanguageWorkerChannelStates => _channelStates;
+
         public bool IsSupported(FunctionMetadata functionMetadata)
         {
             return _workerConfigs.Any(config => config.Extension == Path.GetExtension(functionMetadata.ScriptFile));
         }
 
-        internal WorkerState CreateWorkerState(WorkerConfig config)
+        internal LanguageWorkerState CreateWorkerState(WorkerConfig config)
         {
-            var state = new WorkerState();
+            var state = new LanguageWorkerState();
             state.Channel = _channelFactory(config, state.Functions);
             _channelsDictionary[state.Channel.Id] = state.Channel;
             return state;
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public void Register(FunctionRegistrationContext context)
         {
             WorkerConfig workerConfig = _workerConfigs.First(config => config.Extension == Path.GetExtension(context.Metadata.ScriptFile));
-            var state = _channelState.GetOrAdd(workerConfig, CreateWorkerState);
+            var state = _channelStates.GetOrAdd(workerConfig, CreateWorkerState);
             state.Functions.OnNext(context);
         }
 
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (_channelsDictionary.TryGetValue(workerError.WorkerId, out erroredChannel))
             {
                 // TODO: move retry logic, possibly into worker channel decorator
-                _channelState.AddOrUpdate(erroredChannel.Config,
+                _channelStates.AddOrUpdate(erroredChannel.Config,
                     CreateWorkerState,
                     (config, state) =>
                     {
@@ -79,15 +79,22 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         if (state.Errors.Count < 3)
                         {
                             state.Channel = _channelFactory(config, state.Functions);
+                            _channelsDictionary[state.Channel.Id] = state.Channel;
                         }
                         else
                         {
-                            var exception = new AggregateException(state.Errors.ToList());
+                            var exMessage = $"Failed to start language worker for: {config.Language}";
+                            var languageWorkerChannelException = (state.Errors != null && state.Errors.Count > 0) ? new LanguageWorkerChannelException(exMessage, new AggregateException(state.Errors.ToList())) : new LanguageWorkerChannelException(exMessage);
                             var errorBlock = new ActionBlock<ScriptInvocationContext>(ctx =>
                             {
-                                ctx.ResultSource.TrySetException(exception);
+                                ctx.ResultSource.TrySetException(languageWorkerChannelException);
                             });
-                            state.Functions.Subscribe(reg => reg.InputBuffer.LinkTo(errorBlock));
+                            _workerStateSubscriptions.Add(state.Functions.Subscribe(reg =>
+                            {
+                                state.RegisteredFunctions.Add(reg);
+                                reg.InputBuffer.LinkTo(errorBlock);
+                            }));
+                            _eventManager.Publish(new WorkerProcessErrorEvent(state.Channel.Id, config.Language, languageWorkerChannelException));
                         }
                         return state;
                     });
@@ -101,7 +108,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (disposing)
                 {
                     _workerErrorSubscription.Dispose();
-                    foreach (var pair in _channelState)
+                    foreach (var subscription in _workerStateSubscriptions)
+                    {
+                        subscription.Dispose();
+                    }
+                    foreach (var pair in _channelStates)
                     {
                         pair.Value.Channel.Dispose();
                         pair.Value.Functions.Dispose();
@@ -119,16 +130,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public void Dispose()
         {
             Dispose(true);
-        }
-
-        internal class WorkerState
-        {
-            internal ILanguageWorkerChannel Channel { get; set; }
-
-            internal List<Exception> Errors { get; set; } = new List<Exception>();
-
-            // Registered list of functions which can be replayed if the worker fails to start / errors
-            internal ReplaySubject<FunctionRegistrationContext> Functions { get; set; } = new ReplaySubject<FunctionRegistrationContext>();
         }
     }
 }

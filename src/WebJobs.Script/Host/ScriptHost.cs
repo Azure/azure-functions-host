@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ILoggerFactory _loggerFactory = null;
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private ProxyClientExecutor _proxyClient;
-        private IFunctionRegistry _functionDispatcher;
+        private IFunctionDispatcher _functionDispatcher;
         private List<FunctionDescriptorProvider> _descriptorProviders;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
 
@@ -182,6 +182,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public virtual bool InDebugMode => _debugManager.InDebugMode;
 
+        internal IFunctionDispatcher FunctionDispatcher => _functionDispatcher;
+
         /// <summary>
         /// Returns true if the specified name is the name of a known function,
         /// regardless of whether the function is in error.
@@ -213,6 +215,21 @@ namespace Microsoft.Azure.WebJobs.Script
         public virtual async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
         {
             await base.CallAsync(method, arguments, cancellationToken);
+        }
+
+        internal static void AddLanguageWorkerChannelErrors(IFunctionDispatcher functionDispatcher, IDictionary<string, ICollection<string>> functionErrors)
+        {
+            foreach (KeyValuePair<WorkerConfig, LanguageWorkerState> kvp in functionDispatcher.LanguageWorkerChannelStates)
+            {
+                WorkerConfig workerConfig = kvp.Key;
+                LanguageWorkerState workerState = kvp.Value;
+                foreach (var functionRegistrationContext in workerState.RegisteredFunctions)
+                {
+                    var exMessage = $"Failed to start language worker process for: {workerConfig.Language}";
+                    var languageWorkerChannelException = workerState.Errors != null && workerState.Errors.Count > 0 ? new LanguageWorkerChannelException(exMessage, workerState.Errors[workerState.Errors.Count - 1]) : new LanguageWorkerChannelException(exMessage);
+                    Utility.AddFunctionError(functionErrors, functionRegistrationContext.Metadata.Name, Utility.FlattenException(languageWorkerChannelException, includeSource: false));
+                }
+            }
         }
 
         protected override async Task StartAsyncCore(CancellationToken cancellationToken)
@@ -429,7 +446,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     server.Uri,
                     _loggerFactory); // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
             };
-
             var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
             var providers = new List<IWorkerProvider>();
             if (!string.IsNullOrEmpty(_language))
@@ -448,9 +464,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             var workerConfigs = configFactory.GetConfigs(providers);
 
-            _functionDispatcher = new FunctionRegistry(EventManager, server, channelFactory, workerConfigs);
+            _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, workerConfigs);
 
-            _eventSubscriptions.Add(EventManager.OfType<WorkerErrorEvent>()
+            _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
                 .Subscribe(evt =>
                 {
                     HandleHostError(evt.Exception);
@@ -890,6 +906,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Also notify the invoker so the error can also be written to the function
                 // log file
                 NotifyInvoker(functionException.MethodName, functionException);
+            }
+            else if (exception is LanguageWorkerChannelException)
+            {
+                AddLanguageWorkerChannelErrors(_functionDispatcher, FunctionErrors);
             }
             else
             {
