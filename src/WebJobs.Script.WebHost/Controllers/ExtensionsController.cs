@@ -54,14 +54,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/extensions")]
         public Task<IActionResult> Put(int id, [FromBody]ExtensionPackageReference package) => InstallExtension(package);
 
-        [HttpDelete("{id}")]
-        [Route("admin/host/extensions")]
+        [HttpDelete]
+        [Route("admin/host/extensions/{id}")]
         public async Task<IActionResult> Delete(string id)
         {
             // TODO: Check if we have an active job
 
-            var job = await CreateJob();
-
+            var job = await CreateJob(new ExtensionPackageReference() { Id = id, Version = string.Empty });
             await _extensionsManager.DeleteExtensions(id)
                 .ContinueWith(t => ProcessJobTaskResult(t, job.Id));
 
@@ -85,6 +84,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Ok(apiModel);
         }
 
+        [HttpGet]
+        [Route("admin/host/extensions/jobs")]
+        public async Task<IActionResult> GetJobs()
+        {
+            IEnumerable<ExtensionsRestoreJob> jobs = await GetInProgressJobs();
+            var jobContent = new { jobs };
+            var result = ApiModelUtility.CreateApiModel(jobContent, Request);
+            return Ok(result);
+        }
+
         public async Task<IActionResult> InstallExtension(ExtensionPackageReference package, bool verifyConflict = true)
         {
             if (package == null)
@@ -102,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 }
             }
 
-            ExtensionsRestoreJob job = await CreateJob();
+            ExtensionsRestoreJob job = await CreateJob(package);
 
             string jobId = job.Id;
             var addTask = _extensionsManager.AddExtensions(package)
@@ -136,24 +145,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             await SaveJob(job);
         }
 
-        private async Task<ExtensionsRestoreJob> CreateJob()
+        private async Task<ExtensionsRestoreJob> CreateJob(ExtensionPackageReference package)
         {
-            var job = new ExtensionsRestoreJob();
+            var job = new ExtensionsRestoreJob()
+            {
+                Properties = new Dictionary<string, string>()
+                {
+                    { "id", package.Id },
+                    { "version", package.Version }
+                }
+            };
             await SaveJob(job);
-
             return job;
         }
 
         private async Task SaveJob(ExtensionsRestoreJob job)
         {
-            string jobPath = GetJobPath(job.Id);
-
+            string jobPath = Path.Combine(GetJobBasePath(), $"{job.Id}.json");
             Directory.CreateDirectory(Path.GetDirectoryName(jobPath));
 
             await FileUtility.WriteAsync(jobPath, JsonConvert.SerializeObject(job));
         }
 
-        private string GetJobPath(string jobId)
+        private string GetJobBasePath()
         {
             string home = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
             string basePath = null;
@@ -165,13 +179,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".azurefunctions", "extensions");
             }
-
-            return Path.Combine(basePath, $"{jobId}.json");
+            return basePath;
         }
 
         private async Task<ExtensionsRestoreJob> GetJob(string jobId)
         {
-            string path = GetJobPath(jobId);
+            string path = Path.Combine(GetJobBasePath(), $"{jobId}.json");
 
             if (System.IO.File.Exists(path))
             {
@@ -181,6 +194,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             return null;
+        }
+
+        private async Task<IEnumerable<ExtensionsRestoreJob>> GetInProgressJobs()
+        {
+            var jobPaths = await FileUtility.GetFilesAsync(GetJobBasePath(), "*.json");
+            List<ExtensionsRestoreJob> jobs = new List<ExtensionsRestoreJob>();
+            foreach (var jobPath in jobPaths)
+            {
+                if (System.IO.File.Exists(jobPath))
+                {
+                    string json = await FileUtility.ReadAsync(jobPath);
+                    var job = JsonConvert.DeserializeObject<ExtensionsRestoreJob>(json);
+                    if (job.Status == ExtensionsRestoreStatus.Started)
+                    {
+                        jobs.Add(job);
+                    }
+                }
+            }
+            return jobs;
         }
     }
 }
