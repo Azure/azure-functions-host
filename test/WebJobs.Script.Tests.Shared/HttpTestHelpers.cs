@@ -3,9 +3,11 @@
 
 using System;
 using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Newtonsoft.Json;
 
 namespace Microsoft.WebJobs.Script.Tests
 {
@@ -39,6 +41,11 @@ namespace Microsoft.WebJobs.Script.Tests
                 else if (body is byte[] bodyBytes)
                 {
                     bytes = bodyBytes;
+                }
+                else
+                {
+                    string bodyJson = JsonConvert.SerializeObject(body);
+                    bytes = Encoding.UTF8.GetBytes(bodyJson);
                 }
 
                 requestFeature.Body = new MemoryStream(bytes);
