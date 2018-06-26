@@ -77,15 +77,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
-        [Fact(Skip = "unsupported")]
-        public async Task ObjectTextPlainResponse_Conneg()
-        {
-            var obj = new { a = 1 };
-            var str = "{\"a\":1}";
-            var content = await ResponseWithConneg(obj, "text/plain; charset=utf-8");
-            Assert.Equal(str, Regex.Replace(content, @"\s+", string.Empty));
-        }
-
         [Fact]
         public async Task ObjectTextPlain()
         {
@@ -95,28 +86,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, Regex.Replace(content, @"\s+", string.Empty));
         }
 
-        [Fact(Skip = "unsupported")]
-        public async Task StringJsonResponse_Conneg()
-        {
-            var content = await ResponseWithConneg("asdf", "application/json; charset=utf-8");
-            Assert.Equal("\"asdf\"", content);
-        }
-
         [Fact]
         public async Task StringJson()
         {
             var content = await Response("asdf", "application/json; charset=utf-8");
             Assert.Equal("asdf", content);
-        }
-
-        [Fact(Skip = "unsupported")]
-        public async Task ByteArrayJsonResponse_Conneg()
-        {
-            var str = "asdf";
-            var bytes = Encoding.UTF8.GetBytes(str);
-            var base64 = Convert.ToBase64String(bytes);
-            var content = await ResponseWithConneg(bytes, "application/json; charset=utf-8");
-            Assert.Equal("\"" + base64 + "\"", content);
         }
 
         [Fact]
@@ -129,16 +103,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("asdf", content);
         }
 
-        [Fact(Skip = "unsupported")]
-        public async Task ObjectJsonResponse_Conneg()
-        {
-            var obj = new { a = 1 };
-            var str = "{\"a\":1}";
-            var content = await ResponseWithConneg(obj, "application/json; charset=utf-8");
-            content = Regex.Replace(content, @"\s+", string.Empty);
-            Assert.Equal(str, content);
-        }
-
         [Fact]
         public async Task ObjectJson()
         {
@@ -149,28 +113,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
-        [Fact(Skip = "unsupported")]
-        public async Task StringXmlResponse_Conneg()
-        {
-            var content = await ResponseWithConneg("asdf", "application/xml; charset=utf-8");
-            Assert.Equal("<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">asdf</string>", content);
-        }
-
         [Fact]
         public async Task StringXml()
         {
             var content = await Response("asdf", "application/xml; charset=utf-8");
             Assert.Equal("asdf", content);
-        }
-
-        [Fact(Skip = "unsupported")]
-        public async Task ByteArrayXmlResponse_Conneg()
-        {
-            var str = "asdf";
-            var bytes = Encoding.UTF8.GetBytes(str);
-            var base64 = Convert.ToBase64String(bytes);
-            var content = await ResponseWithConneg(bytes, "application/xml; charset=utf-8");
-            Assert.Equal("<base64Binary xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">YXNkZg==</base64Binary>", content);
         }
 
         [Fact]
@@ -181,18 +128,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var base64 = Convert.ToBase64String(bytes);
             var content = await Response(bytes, "application/xml; charset=utf-8");
             Assert.Equal("asdf", content);
-        }
-
-        [Fact(Skip = "unsupported")]
-        public async Task ObjectXmlResponse_Conneg()
-        {
-            var obj = new { a = 1 };
-
-            // consider using fabiocav custom xml formatter
-            var str = "<ArrayOfKeyValueOfstringanyTypexmlns:i=\"http://www.w3.org/2001/XMLSchema-instance\"xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/Arrays\"><KeyValueOfstringanyType><Key>a</Key><Valuexmlns:d3p1=\"http://www.w3.org/2001/XMLSchema\"i:type=\"d3p1:long\">1</Value></KeyValueOfstringanyType></ArrayOfKeyValueOfstringanyType>";
-            var content = await ResponseWithConneg(obj, "application/xml; charset=utf-8");
-            content = Regex.Replace(content, @"\s+", string.Empty);
-            Assert.Equal(str, content);
         }
 
         [Fact]
