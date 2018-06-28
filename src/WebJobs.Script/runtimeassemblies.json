@@ -1,36 +1,7 @@
 ﻿// Assemblies in this list cannot be overriden in the funcion load context
 // This list originally comes from dumping TPA assemblies. 
-// In addition to what is on this list, all System.* assemblies are restricted.
 {
   "runtimeAssemblies": [
-    {
-      "name": "fsc",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "FSharp.Build",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "FSharp.Compiler.Interactive.Settings",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "FSharp.Compiler.Private",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "FSharp.Compiler.Service",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "FSharp.Core",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "fsi",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
     {
       "name": "Microsoft.AspNetCore",
       "resolutionPolicy": "minorMatchOrLower"
