@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             encoding = encoding ?? Encoding.UTF8;
-            using (Stream fileStream = OpenFile(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
+            using (Stream fileStream = OpenFile(path, FileMode.Create, FileAccess.Write, FileShare.Read))
             using (var writer = new StreamWriter(fileStream, encoding, 4096))
             {
                 await writer.WriteAsync(contents);
