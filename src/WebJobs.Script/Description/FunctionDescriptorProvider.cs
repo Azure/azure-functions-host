@@ -42,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // parse the bindings
             Collection<FunctionBinding> inputBindings = FunctionBinding.GetBindings(Config, functionMetadata.InputBindings, FileAccess.Read);
             Collection<FunctionBinding> outputBindings = FunctionBinding.GetBindings(Config, functionMetadata.OutputBindings, FileAccess.Write);
+            VerifyResolvedBindings(functionMetadata, inputBindings, outputBindings);
 
             BindingMetadata triggerMetadata = functionMetadata.InputBindings.FirstOrDefault(p => p.IsTrigger);
             string scriptFilePath = Path.Combine(Config.RootScriptPath, functionMetadata.ScriptFile ?? string.Empty);
@@ -69,6 +70,21 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 }
 
                 throw;
+            }
+        }
+
+        public void VerifyResolvedBindings(FunctionMetadata functionMetadata, IEnumerable<FunctionBinding> inputBindings, IEnumerable<FunctionBinding> outputBindings)
+        {
+            IEnumerable<string> bindingsFromMetadata = functionMetadata.InputBindings.Select(f => f.Type).Union(functionMetadata.OutputBindings.Select(f => f.Type));
+            IEnumerable<string> resolvedBindings = inputBindings.Union(outputBindings).Select(b => b.Metadata.Type);
+            IEnumerable<string> unresolvedBindings = bindingsFromMetadata.Where(b => !resolvedBindings.Contains(b));
+
+            string allUnresolvedBindings = string.Join(", ", unresolvedBindings);
+
+            if (!string.IsNullOrEmpty(allUnresolvedBindings))
+            {
+                throw new ScriptConfigurationException($"The binding type(s) '{allUnresolvedBindings}' are not registered. " +
+                        $"Please ensure the type is correct and the binding extension is installed.");
             }
         }
 
