@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -73,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Task.Delay(1000);
 
             // add a new event that shouldn't be expired
-            var evt = new MyItem { Data = 7 };
+            var evt = new MyItem { Data = 8 };
             window.AddEvent(evt);
 
             Assert.Equal(1, events.Count);
