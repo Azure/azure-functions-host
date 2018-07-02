@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     if (descr == null)
                     {
                         // This exception will cause the function to not get executed.
-                        throw new InvalidOperationException($"Missing function.json for '{shortName}'.");
+                        throw new InvalidOperationException($"Unable to resolve function name '{shortName}'.");
                     }
 
                     state = new FunctionInstanceMonitor(descr.Metadata, _metrics, item.FunctionInstanceId, descr.Invoker.FunctionLogger);

@@ -453,6 +453,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Scaling", "s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Scaling.Tests", "test\WebJobs.Script.Scaling.Tests\WebJobs.Script.Scaling.Tests.csproj", "{8088DC08-4BB1-442D-8CD4-571FC9330D54}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestFunctions", "test\TestFunctions\TestFunctions.csproj", "{B845A7FC-BB23-4094-A589-F65984A07876}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35a2025d-f68a-4b57-83a2-ed4eb9c3894d}*SharedItemsImports = 4
@@ -496,6 +498,10 @@ Global
 		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8088DC08-4BB1-442D-8CD4-571FC9330D54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B845A7FC-BB23-4094-A589-F65984A07876}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B845A7FC-BB23-4094-A589-F65984A07876}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B845A7FC-BB23-4094-A589-F65984A07876}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B845A7FC-BB23-4094-A589-F65984A07876}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -579,9 +585,10 @@ Global
 		{62489417-341D-42AD-9E84-E97EB8236979} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{292A9038-5807-4095-B37F-9A77170D7402} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{8088DC08-4BB1-442D-8CD4-571FC9330D54} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
+		{B845A7FC-BB23-4094-A589-F65984A07876} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		EnterpriseLibraryConfigurationToolBinariesPathV6 = packages\EnterpriseLibrary.TransientFaultHandling.6.0.1304.0\lib\portable-net45+win+wp8
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}
+		EnterpriseLibraryConfigurationToolBinariesPathV6 = packages\EnterpriseLibrary.TransientFaultHandling.6.0.1304.0\lib\portable-net45+win+wp8
 	EndGlobalSection
 EndGlobal

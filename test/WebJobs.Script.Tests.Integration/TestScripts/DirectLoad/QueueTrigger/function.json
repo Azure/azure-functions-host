@@ -1,0 +1,14 @@
+{
+    "generatedBy": "Microsoft.NET.Sdk.Functions-1.0.13",
+    "configurationSource": "attributes",
+    "bindings": [
+        {
+            "type": "queueTrigger",
+            "queueName": "test",
+            "name": "message"
+        }
+    ],
+    "disabled": false,
+    "scriptFile": "..\\..\\..\\TestFunctions.dll",
+    "entryPoint": "TestFunctions.Functions.QueueTrigger"
+}
