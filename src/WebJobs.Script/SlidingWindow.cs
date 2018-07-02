@@ -22,8 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             lock (_syncLock)
             {
-                // remove expired events
-                _events.RemoveAll(p => IsExpired(p, _window));
+                RemoveExpired();
 
                 return _events.Select(p => p.Item).ToList();
             }
@@ -38,8 +37,15 @@ namespace Microsoft.Azure.WebJobs.Script
             };
             lock (_syncLock)
             {
+                RemoveExpired();
+
                 _events.Add(evt);
             }
+        }
+
+        private void RemoveExpired()
+        {
+            _events.RemoveAll(p => IsExpired(p, _window));
         }
 
         internal static bool IsExpired(Event evt, TimeSpan window)

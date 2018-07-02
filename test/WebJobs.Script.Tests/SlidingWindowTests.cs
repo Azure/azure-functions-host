@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
@@ -40,6 +41,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             evts = window.GetEvents().ToArray();
             Assert.Equal(1, evts.Length);
             Assert.Same(evt, evts[0]);
+        }
+
+        [Fact]
+        public async Task AddEvent_RemovesExpiredItems()
+        {
+            var window = new SlidingWindow<MyItem>(TimeSpan.FromSeconds(1));
+
+            for (int i = 0; i < 5; i++)
+            {
+                window.AddEvent(new MyItem { Data = i });
+                await Task.Delay(100);
+            }
+
+            var eventsField = window.GetType().GetField("_events", BindingFlags.Instance | BindingFlags.NonPublic);
+            var events = (List<SlidingWindow<MyItem>.Event>)eventsField.GetValue(window);
+            Assert.Equal(5, events.Count);
+
+            // now let the items expire
+            await Task.Delay(1000);
+
+            // add a new event that shouldn't be expired
+            var evt = new MyItem { Data = 7 };
+            window.AddEvent(evt);
+
+            Assert.Equal(1, events.Count);
         }
 
         [Theory]
