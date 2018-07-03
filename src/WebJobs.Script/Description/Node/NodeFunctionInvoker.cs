@@ -48,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static string _clearRequireCacheScript;
         private static string _globalInitializationScript;
         private static Lazy<Task> _initializer = new Lazy<Task>(InitializeAsync, LazyThreadSafetyMode.ExecutionAndPublication);
+        private static readonly JsonSerializerSettings _datetimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
         static NodeFunctionInvoker()
         {
@@ -750,7 +751,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                result = JsonConvert.DeserializeObject<TResult>(json);
+                result = JsonConvert.DeserializeObject<TResult>(json, _datetimeSerializerSettings);
                 return true;
             }
             catch
