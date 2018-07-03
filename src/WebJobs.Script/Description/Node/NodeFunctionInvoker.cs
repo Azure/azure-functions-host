@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly FunctionMetadata _functionMetadata;
         private readonly string _entryPoint;
         private readonly IMetricsLogger _metricsLogger;
+        private static readonly JsonSerializerSettings _datetimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
         private ScriptFunc _scriptFunc;
         private static ScriptFunc _clearRequireCache;
@@ -750,7 +751,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                result = JsonConvert.DeserializeObject<TResult>(json);
+                result = JsonConvert.DeserializeObject<TResult>(json, _datetimeSerializerSettings);
                 return true;
             }
             catch
