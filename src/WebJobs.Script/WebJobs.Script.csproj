@@ -473,6 +473,8 @@
     <Compile Include="Description\DiagnosticSeverityExtensions.cs" />
     <Compile Include="Description\DotNet\Compilation\CSharp\Analyzers\AsyncVoidAnalyzer.cs" />
     <Compile Include="Description\DotNet\Compilation\CSharp\Analyzers\InvalidPrivateMetadataReferenceAnalyzer.cs" />
+    <Compile Include="Description\DotNet\Compilation\CSharp\CachedCSharpCompilation.cs" />
+    <Compile Include="Description\DotNet\Compilation\CSharp\ICSharpCompilation.cs" />
     <Compile Include="Description\DotNet\Compilation\IDotNetCompilation.cs" />
     <Compile Include="Description\DotNet\Compilation\CSharp\Analyzers\InvalidFileMetadataReferenceAnalyzer.cs" />
     <Compile Include="Description\DotNet\Compilation\CSharp\CSharpCompilation.cs" />
@@ -513,6 +515,7 @@
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Description\DotNet\Compilation\FSharp\FSharpCompilation.cs" />
     <Compile Include="Diagnostics\LogType.cs" />
+    <Compile Include="HashCode.cs" />
     <Compile Include="Scale\ApplicationPerformanceCounters.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />

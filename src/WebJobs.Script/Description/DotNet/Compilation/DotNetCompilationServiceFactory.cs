@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             switch (scriptType)
             {
                 case ScriptType.CSharp:
-                    return new CSharpCompilationService(metadata, OptimizationLevel);
+                    return new CSharpCompilationService(metadata, OptimizationLevel, _loggerFactory);
                 case ScriptType.FSharp:
                     return new FSharpCompilationService(metadata, OptimizationLevel, _traceWriter, _loggerFactory);
                 case ScriptType.DotNetAssembly:

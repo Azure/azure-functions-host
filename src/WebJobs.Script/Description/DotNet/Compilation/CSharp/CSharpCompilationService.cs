@@ -8,11 +8,15 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.CodeAnalysis.Scripting.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -24,12 +28,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
           = new Lazy<InteractiveAssemblyLoader>(() => new InteractiveAssemblyLoader(), LazyThreadSafetyMode.ExecutionAndPublication);
 
         private readonly OptimizationLevel _optimizationLevel;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger _logger;
         private readonly IFunctionMetadataResolver _metadataResolver;
 
-        public CSharpCompilationService(IFunctionMetadataResolver metadataResolver, OptimizationLevel optimizationLevel)
+        public CSharpCompilationService(IFunctionMetadataResolver metadataResolver, OptimizationLevel optimizationLevel, ILoggerFactory loggerFactory)
         {
             _metadataResolver = metadataResolver;
             _optimizationLevel = optimizationLevel;
+            _loggerFactory = loggerFactory;
+            _logger = loggerFactory.CreateLogger(LogCategories.Startup) ?? NullLogger.Instance;
         }
 
         public string Language => "CSharp";
@@ -48,7 +56,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             Compilation compilation = GetScriptCompilation(script, functionMetadata);
 
-            return Task.FromResult<IDotNetCompilation>(new CSharpCompilation(compilation));
+            IDotNetCompilation csharpCompilation = CreateCSharpCompilation(functionMetadata, compilation);
+            return Task.FromResult(csharpCompilation);
+        }
+
+        private IDotNetCompilation CreateCSharpCompilation(FunctionMetadata functionMetadata, Compilation compilation)
+        {
+            ICSharpCompilation result = new CSharpCompilation(compilation);
+
+            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableCompilationCache))
+            {
+                result = new CachedCSharpCompilation(result, functionMetadata, _loggerFactory);
+            }
+            else
+            {
+                _logger.LogInformation($"'{ScriptConstants.FeatureFlagDisableCompilationCache}` set. Compilation cache not enabled.");
+            }
+
+            return result;
         }
 
         internal static string GetFunctionSource(FunctionMetadata functionMetadata)

@@ -20,7 +20,7 @@ using Microsoft.CodeAnalysis.Scripting.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public sealed class CSharpCompilation : IDotNetCompilation
+    public sealed class CSharpCompilation : ICSharpCompilation
     {
         private readonly Compilation _compilation;
 
@@ -35,6 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             _compilation = compilation;
         }
+
+        public Compilation Compilation => _compilation;
 
         public ImmutableArray<Diagnostic> GetDiagnostics()
         {

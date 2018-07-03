@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WebJobs.Script.Tests;
 using Xunit;
@@ -19,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet.CSharp
         public void GetFunctionSource_PreservesByteOrderMark(bool emitBom)
         {
             var metadataResolverMock = new Mock<IFunctionMetadataResolver>();
-            var service = new CSharpCompilationService(metadataResolverMock.Object, CodeAnalysis.OptimizationLevel.Debug);
+            var service = new CSharpCompilationService(metadataResolverMock.Object, CodeAnalysis.OptimizationLevel.Debug, new TestLoggerFactory());
             var function1 = @"using System;
 public static void Run(string id, out string output)
 {

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -16,6 +17,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public IList<ILoggerProvider> Providers { get; private set; }
 
+        public IList<TestLogger> CreatedLoggers { get; } = new List<TestLogger>();
+
         public void AddProvider(ILoggerProvider provider)
         {
             Providers.Add(provider);
@@ -23,7 +26,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public ILogger CreateLogger(string categoryName)
         {
-            throw new NotImplementedException();
+            var logger = new TestLogger(categoryName);
+            CreatedLoggers.Add(logger);
+            return logger;
+        }
+
+        public IEnumerable<LogMessage> GetAllLogMessages()
+        {
+            return CreatedLoggers.SelectMany(l => l.LogMessages);
         }
 
         public void Dispose()

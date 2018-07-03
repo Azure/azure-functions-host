@@ -73,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const int AzureProxyFunctionMaxLocalRedirects = 10;
 
         public const string FeatureFlagDisableShadowCopy = "DisableShadowCopy";
+        public const string FeatureFlagDisableCompilationCache = "DisableCompilationCache";
         public const string FeatureFlagsEnableDynamicExtensionLoading = "EnableDynamicExtensionLoading";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";

@@ -527,6 +527,7 @@
     <Compile Include="Controllers\Admin\AdminControllerTests.cs" />
     <Compile Include="Controllers\Admin\KeysControllerTests.cs" />
     <Compile Include="Controllers\Admin\SwaggerControllerTests.cs" />
+    <Compile Include="Description\DotNet\CSharp\CachedCSharpCompilationTests.cs" />
     <Compile Include="Description\DotNet\CSharp\CSharpCompilationServiceTests.cs" />
     <Compile Include="Description\Node\Compilation\ConditionalCompilationServiceTests.cs" />
     <Compile Include="Description\Node\Compilation\Raw\RawJavascriptCompilationTests.cs" />
