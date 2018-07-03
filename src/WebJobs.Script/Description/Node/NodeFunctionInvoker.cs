@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly FunctionMetadata _functionMetadata;
         private readonly string _entryPoint;
         private readonly IMetricsLogger _metricsLogger;
+        private static readonly JsonSerializerSettings _datetimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
         private ScriptFunc _scriptFunc;
         private static ScriptFunc _clearRequireCache;
@@ -48,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static string _clearRequireCacheScript;
         private static string _globalInitializationScript;
         private static Lazy<Task> _initializer = new Lazy<Task>(InitializeAsync, LazyThreadSafetyMode.ExecutionAndPublication);
-        private static readonly JsonSerializerSettings _datetimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
         static NodeFunctionInvoker()
         {
