@@ -8,19 +8,20 @@ using System.Linq;
 using System.Web;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public sealed class DefaultSecretsRepositoryFactory : ISecretsRepositoryFactory
     {
-        public ISecretsRepository Create(ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, ScriptHostConfiguration config)
+        public ISecretsRepository Create(ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, ScriptHostConfiguration config, ILogger logger)
         {
             string secretStorageType = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebJobsSecretStorageType);
             string storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
             if (secretStorageType != null && secretStorageType.Equals("Blob", StringComparison.OrdinalIgnoreCase) && storageString != null)
             {
                 string siteSlotName = settingsManager.AzureWebsiteUniqueSlotName ?? config.HostConfig.HostId;
-                return new BlobStorageSecretsRepository(Path.Combine(webHostSettings.SecretsPath, "Sentinels"), storageString, siteSlotName);
+                return new BlobStorageSecretsMigrationRepository(Path.Combine(webHostSettings.SecretsPath, "Sentinels"), storageString, siteSlotName, logger);
             }
             else
             {

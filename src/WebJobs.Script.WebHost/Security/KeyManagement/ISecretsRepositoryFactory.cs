@@ -3,11 +3,12 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public interface ISecretsRepositoryFactory
     {
-        ISecretsRepository Create(ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, ScriptHostConfiguration config);
+        ISecretsRepository Create(ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, ScriptHostConfiguration config, ILogger logger);
     }
 }

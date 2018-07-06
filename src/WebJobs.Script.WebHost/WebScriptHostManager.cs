@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             config.IsSelfHost = webHostSettings.IsSelfHost;
 
             secretsRepositoryFactory = secretsRepositoryFactory ?? new DefaultSecretsRepositoryFactory();
-            var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
+            ISecretsRepository secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config, loggerFactory.CreateLogger(ScriptConstants.LogCategoryMigration));
             _secretManager = secretManagerFactory.Create(settingsManager, loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral), secretsRepository);
             eventGenerator = eventGenerator ?? new EtwEventGenerator();
 
