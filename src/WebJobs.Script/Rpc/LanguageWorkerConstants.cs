@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string WorkerDescriptionDefaultExecutablePath = "defaultExecutablePath";
         public const string WorkerDescriptionDefaultWorkerPath = "defaultWorkerPath";
         public const string WorkerDescription = "Description";
-        public const string WorkerDescriptionArguments = "Arguments";
+        public const string WorkerDescriptionArguments = "arguments";
 
         // Java
         public const string AppServiceEnvJavaVersion = "zulu8.23.0.3-jdk8.0.144-win_x64";
