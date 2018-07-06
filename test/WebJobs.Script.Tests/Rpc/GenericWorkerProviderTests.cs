@@ -259,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 Language = language,
                 Extension = $".{language}",
                 Arguments = arguments.ToList()
-        };
+            };
 
             JObject config = new JObject();
             config["Description"] = JObject.FromObject(description);
