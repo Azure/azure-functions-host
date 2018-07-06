@@ -93,11 +93,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 if (e.Data != null)
                 {
-                    // the user's TraceWriter will automatically log to ILogger as well
-                    TraceEvent traceEvent = new TraceEvent(TraceLevel.Info, e.Data, ScriptConstants.TraceSourceScriptFunctionExecution);
+                    var traceEvent = new TraceEvent(TraceLevel.Info, e.Data, ScriptConstants.TraceSourceScriptFunctionExecution);
                     traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionInvocationIdKey, invocationId);
                     traceEvent.Properties.Add(ScriptConstants.TracePropertyFunctionNameKey, context.ExecutionContext.FunctionName);
-                    userTraceWriter.Trace(traceEvent);
+
+                    try
+                    {
+                        userTraceWriter.Trace(traceEvent);
+                    }
+                    catch
+                    {
+                        // best effort
+                    }
                 }
             };
 
