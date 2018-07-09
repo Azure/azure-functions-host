@@ -69,7 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             sw.Start();
             await Utility.DelayWithBackoffAsync(2, CancellationToken.None);
             sw.Stop();
-            Assert.True(sw.Elapsed >= TimeSpan.FromSeconds(2), $"Expected sw.Elapsed >= TimeSpan.FromSeconds(2); Actual: {sw.Elapsed.TotalMilliseconds}");
+
+            // Workaround annoying test failures such as "Expected sw.Elapsed >= TimeSpan.FromSeconds(2); Actual: 1999.4092" by waiting slightly less than 2 seconds
+            // Not sure what causes it, but either Task.Delay sometimes doesn't wait quite long enough or there is some clock skew.
+            Assert.True(sw.Elapsed >= TimeSpan.FromMilliseconds(1990), $"Expected sw.Elapsed >= TimeSpan.FromMilliseconds(1990); Actual: {sw.Elapsed.TotalMilliseconds}");
         }
 
         [Theory]
