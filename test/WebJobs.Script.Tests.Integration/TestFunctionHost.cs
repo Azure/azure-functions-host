@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public IEnumerable<LogMessage> GetLogMessages() => _loggerProvider.GetAllLogMessages();
+        public IList<LogMessage> GetLogMessages() => _loggerProvider.GetAllLogMessages();
 
         public IEnumerable<LogMessage> GetLogMessages(string category) => GetLogMessages().Where(p => p.Category == category);
 
