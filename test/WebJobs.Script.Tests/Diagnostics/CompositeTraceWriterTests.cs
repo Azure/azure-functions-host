@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host;
@@ -56,6 +57,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             compositeWriter.Flush();
 
             Assert.True(traceWriter.Flushed);
+        }
+
+        [Fact]
+        public void Constructor_CreatesCopyOfCollection()
+        {
+            var t1 = new TestTraceWriter(TraceLevel.Verbose);
+            var t2 = new TestTraceWriter(TraceLevel.Verbose);
+            List<TraceWriter> traceWriters = new List<TraceWriter> { t1, t2 };
+            var traceWriter = new CompositeTraceWriter(traceWriters);
+
+            traceWriter.Info("Test");
+            Assert.Equal(1, t1.GetTraces().Count);
+            Assert.Equal(1, t2.GetTraces().Count);
+
+            var t3 = new TestTraceWriter(TraceLevel.Verbose);
+            traceWriters.Add(t3);
+
+            traceWriter.Info("Test");
+            Assert.Equal(2, t1.GetTraces().Count);
+            Assert.Equal(2, t2.GetTraces().Count);
+            Assert.Equal(0, t3.GetTraces().Count);
         }
 
         [Fact]

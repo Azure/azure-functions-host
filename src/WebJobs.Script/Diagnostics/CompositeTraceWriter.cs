@@ -3,22 +3,29 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    // TODO: The core WebJobs SDK also defines a CompositeTraceWriter, but that is internal.
-    // We should consider exposing the core SDK CompositeTraceWriter and adopting that instead.
+    // This is a copy of the WebJobs SDK CompositeTraceWriter, but that is internal.
     public class CompositeTraceWriter : TraceWriter, IDisposable
     {
-        private readonly IEnumerable<TraceWriter> _innerTraceWriters;
+        private readonly ReadOnlyCollection<TraceWriter> _innerTraceWriters;
         private bool _disposed = false;
 
         public CompositeTraceWriter(IEnumerable<TraceWriter> traceWriters, TraceLevel level = TraceLevel.Verbose)
             : base(level)
         {
-            _innerTraceWriters = traceWriters ?? throw new ArgumentNullException("traceWriters");
+            if (traceWriters == null)
+            {
+                throw new ArgumentNullException("traceWriters");
+            }
+
+            // create a copy of the collection to ensure it isn't modified
+            _innerTraceWriters = traceWriters.ToList().AsReadOnly();
         }
 
         public override void Trace(TraceEvent traceEvent)
