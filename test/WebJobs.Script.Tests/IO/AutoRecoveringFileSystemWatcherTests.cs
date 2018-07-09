@@ -127,12 +127,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                     long expectedInterval = Convert.ToInt64((Math.Pow(2, i + 1) - 1) / 2);
                     LogMessage currentEvent = retryEvents[i];
 
-                    var actualInterval = currentEvent.Timestamp - previoustTimeStamp;
+                    TimeSpan actualInterval = currentEvent.Timestamp - previoustTimeStamp;
+                    TimeSpan roundedInterval = actualInterval.RoundSeconds(digits: 0);
                     previoustTimeStamp = currentEvent.Timestamp;
 
-                    int roundedIntervalInSeconds = (int)Math.Round(actualInterval.TotalSeconds, 0, MidpointRounding.ToEven);
-                    Assert.True(expectedInterval == roundedIntervalInSeconds,
-                        $"Recovering interval did not meet the expected interval (expected '{expectedInterval}', rounded '{roundedIntervalInSeconds}', actual '{actualInterval.Seconds}')");
+                    Assert.True(expectedInterval == roundedInterval.TotalSeconds,
+                        $"Recovering interval did not meet the expected interval (expected '{expectedInterval}', rounded '{roundedInterval.TotalSeconds}', actual '{actualInterval.TotalSeconds}')");
                 }
 
                 Assert.True(loggerProvider.GetAllLogMessages().All(t => t.FormattedMessage.EndsWith(fileWatcherLogSuffix)));
