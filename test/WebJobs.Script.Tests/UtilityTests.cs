@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -72,7 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Workaround annoying test failures such as "Expected sw.Elapsed >= TimeSpan.FromSeconds(2); Actual: 1999.4092" by waiting slightly less than 2 seconds
             // Not sure what causes it, but either Task.Delay sometimes doesn't wait quite long enough or there is some clock skew.
-            Assert.True(sw.Elapsed >= TimeSpan.FromMilliseconds(1990), $"Expected sw.Elapsed >= TimeSpan.FromMilliseconds(1990); Actual: {sw.Elapsed.TotalMilliseconds}");
+            TimeSpan roundedElapsedSpan = sw.Elapsed.RoundSeconds(digits: 1);
+            Assert.True(roundedElapsedSpan >= TimeSpan.FromSeconds(2), $"Expected roundedElapsedSpan >= TimeSpan.FromSeconds(2); Actual: {roundedElapsedSpan.TotalSeconds}");
         }
 
         [Theory]
