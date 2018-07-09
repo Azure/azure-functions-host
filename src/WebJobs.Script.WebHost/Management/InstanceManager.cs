@@ -91,10 +91,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 // set a flag which will cause any incoming http requests to buffer
                 // until specialization is complete
-                // the host is guaranteed not to receive any requests until AFTER assign
-                // has been initiated, so setting this flag here is sufficient to ensure
-                // that any subsequent incoming requests while the assign is in progress
-                // will be delayed until complete
                 WebScriptHostManager.DelayRequests = true;
 
                 // first make all environment and file system changes required for
