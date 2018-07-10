@@ -81,6 +81,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void VerifyResolvedBindings_WithNoBindingMatch_ThrowsExpectedException()
+        {
+            FunctionMetadata functionMetadata = new FunctionMetadata();
+            BindingMetadata triggerMetadata = BindingMetadata.Create(JObject.Parse("{\"type\": \"blobTrigger\",\"name\": \"req\",\"direction\": \"in\"}"));
+            BindingMetadata bindingMetadata = BindingMetadata.Create(JObject.Parse("{\"type\": \"unknownbinding\",\"name\": \"blob\",\"direction\": \"in\"}"));
+
+            functionMetadata.Bindings.Add(triggerMetadata);
+            functionMetadata.Bindings.Add(bindingMetadata);
+
+            var ex = Assert.Throws<ScriptConfigurationException>(() =>
+            {
+                _provider.TryCreate(functionMetadata, out FunctionDescriptor descriptor);
+            });
+
+            Assert.Contains("unknownbinding", ex.Message);
+        }
+
+        [Fact]
+        public void VerifyResolvedBindings_WithValidBindingMatch_DoesNotThrow()
+        {
+            FunctionMetadata functionMetadata = new FunctionMetadata();
+            BindingMetadata triggerMetadata = BindingMetadata.Create(JObject.Parse("{\"type\": \"httpTrigger\",\"name\": \"req\",\"direction\": \"in\"}"));
+            BindingMetadata bindingMetadata = BindingMetadata.Create(JObject.Parse("{\"type\": \"http\",\"name\": \"$return\",\"direction\": \"out\"}"));
+
+            functionMetadata.Bindings.Add(triggerMetadata);
+            functionMetadata.Bindings.Add(bindingMetadata);
+            try
+            {
+                _provider.TryCreate(functionMetadata, out FunctionDescriptor descriptor);
+                Assert.True(true, "No exception thrown");
+            }
+            catch (Exception ex)
+            {
+                Assert.True(false, "Exception not expected:" + ex.Message);
+                throw;
+            }
+        }
+
+        [Fact]
         public void CreateTriggerParameter_WithNoBindingMatch_ThrowsExpectedException()
         {
             FunctionMetadata functionMetadata = new FunctionMetadata();
