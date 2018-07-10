@@ -75,14 +75,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public void VerifyResolvedBindings(FunctionMetadata functionMetadata, IEnumerable<FunctionBinding> inputBindings, IEnumerable<FunctionBinding> outputBindings)
         {
-            IEnumerable<string> bindingsFromMetadata = functionMetadata.InputBindings.Select(f => f.Type).Union(functionMetadata.OutputBindings.Select(f => f.Type));
+            IEnumerable<string> bindingsFromMetadata = functionMetadata.InputBindings.Union(functionMetadata.OutputBindings).Select(f => f.Type);
             IEnumerable<string> resolvedBindings = inputBindings.Union(outputBindings).Select(b => b.Metadata.Type);
-            IEnumerable<string> unresolvedBindings = bindingsFromMetadata.Where(b => !resolvedBindings.Contains(b));
+            IEnumerable<string> unresolvedBindings = bindingsFromMetadata.Except(resolvedBindings);
 
-            string allUnresolvedBindings = string.Join(", ", unresolvedBindings);
-
-            if (!string.IsNullOrEmpty(allUnresolvedBindings))
+            if (unresolvedBindings.Any())
             {
+                string allUnresolvedBindings = string.Join(", ", unresolvedBindings);
                 throw new ScriptConfigurationException($"The binding type(s) '{allUnresolvedBindings}' are not registered. " +
                         $"Please ensure the type is correct and the binding extension is installed.");
             }
