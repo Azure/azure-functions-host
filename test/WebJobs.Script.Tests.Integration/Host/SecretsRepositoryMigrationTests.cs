@@ -54,9 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                     var logs = loggerProvider.GetAllLogMessages().ToArray();
                     Assert.Contains(logs[logs.Length - 1].FormattedMessage, "Finished successfully.");
                     string hostContentFromBlob = await blobRepoMigration.ReadAsync(ScriptSecretsType.Host, "");
-                    Assert.Contains(hostContent, hostContentFromBlob);
+                    Assert.Equal(hostContent, hostContentFromBlob);
                     string hostContentFromFunction = await blobRepoMigration.ReadAsync(ScriptSecretsType.Function, "test1");
-                    Assert.Contains(functionContent, hostContentFromFunction);
+                    Assert.Equal(functionContent, hostContentFromFunction);
 
                     var blobRepoMigration2 = _fixture.GetBlobStorageSecretsMigrationRepository(loggerProvider.CreateLogger(""));
                     await blobRepoMigration2.ReadAsync(ScriptSecretsType.Host, "host");
@@ -105,7 +105,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 {
                     _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSlotName, null);
                     _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteName, null);
-                    
                 }
             }
         }

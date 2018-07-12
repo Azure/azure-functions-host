@@ -132,7 +132,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     string blobName = Path.GetFileName(file);
                     CloudBlockBlob cloudBlockBlob = blobStorageSecretsRepository.BlobContainer.GetBlockBlobReference(blobStorageSecretsRepository.SecretsBlobPath + "/" + blobName);
-                    Task copyTask = cloudBlockBlob.UploadFromFileAsync(file);
+
+                    string contents = File.ReadAllText(file);
+                    Task copyTask = cloudBlockBlob.UploadTextAsync(contents);
                     copyTasks.Add(copyTask);
                     _logger?.LogTrace("'{0}' was migrated.", cloudBlockBlob.StorageUri.PrimaryUri.AbsoluteUri.ToString());
                 }
