@@ -779,6 +779,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ApplyConfiguration_FunctionsFilterPrecedence()
+        {
+            // ensure that if no json config specified, imperative config wins
+            JObject config = new JObject();
+            var functions = new Collection<string>
+            {
+                "Foo",
+                "Bar"
+            };
+            var scriptConfig = new ScriptHostConfiguration
+            {
+                Functions = functions
+            };
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Same(functions, scriptConfig.Functions);
+
+            // json config takes precedence over imperative config
+            config["functions"] = new JArray("Baz");
+            ScriptHost.ApplyConfiguration(config, scriptConfig);
+            Assert.Equal("Baz", scriptConfig.Functions.Single());
+        }
+
+        [Fact]
         public void ApplyConfiguration_AppliesFunctionsFilter()
         {
             JObject config = new JObject();
@@ -793,30 +816,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, scriptConfig.Functions.Count);
             Assert.Equal("Function1", scriptConfig.Functions.ElementAt(0));
             Assert.Equal("Function2", scriptConfig.Functions.ElementAt(1));
-        }
-
-        [Fact]
-        public void ApplyConfiguration_ClearsFunctionsFilter()
-        {
-            // A previous bug wouldn't properly clear the filter if you removed it.
-            JObject config = new JObject();
-            config["id"] = ID;
-
-            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            Assert.Null(scriptConfig.Functions);
-
-            config["functions"] = new JArray("Function1", "Function2");
-
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
-            Assert.Equal(2, scriptConfig.Functions.Count);
-            Assert.Equal("Function1", scriptConfig.Functions.ElementAt(0));
-            Assert.Equal("Function2", scriptConfig.Functions.ElementAt(1));
-
-            config.Remove("functions");
-
-            ScriptHost.ApplyConfiguration(config, scriptConfig);
-
-            Assert.Null(scriptConfig.Functions);
         }
 
         [Fact]

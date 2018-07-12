@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -116,27 +115,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs(functionName);
             TimeSpan testTimeout = TimeSpan.FromSeconds(3);
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+
             using (var manager = await CreateAndStartScriptHostManager(scriptLang, functionName, testTimeout, traceWriter))
             {
                 string testData = Guid.NewGuid().ToString();
-
-                Dictionary<string, object> arguments = new Dictionary<string, object>
+                var arguments = new Dictionary<string, object>
                 {
                     { "inputData", testData },
                 };
-
-                FunctionTimeoutException ex = await Assert.ThrowsAsync<FunctionTimeoutException>(() => manager.Instance.CallAsync(functionName, arguments));
+                var timeoutException = await Assert.ThrowsAsync<FunctionTimeoutException>(() => manager.Instance.CallAsync(functionName, arguments));
 
                 await TestHelpers.Await(() =>
                 {
-                    // make sure logging from within the function worked
-                    // TODO: This doesn't appear to work for Powershell in AppVeyor. Need to investigate.
-                    // bool hasTestData = inProgressLogs.Any(l => l.Contains(testData));
-                    var expectedMessage = $"Timeout value of {testTimeout} was exceeded by function: Functions.{functionName}";
-                    var traces = string.Join(Environment.NewLine, traceWriter.GetTraces());
-                    return traces.Contains(expectedMessage);
+                    // wait for the timeout exception to be logged
+                    return traceWriter.GetTraces().Any(p => p.Message == $"Microsoft.Azure.WebJobs.Host: Timeout value of {testTimeout} was exceeded by function: Functions.{functionName}.");
                 });
 
+                // verify that our mock handler received the timeout exception
                 var exception = GetExceptionHandler(manager).TimeoutExceptionInfos.Single().SourceException;
                 Assert.IsType<FunctionTimeoutException>(exception);
             }
@@ -149,6 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private async Task<MockScriptHostManager> CreateAndStartScriptHostManager(string scriptLang, string functionName, TimeSpan timeout, TraceWriter traceWriter)
         {
+            // filter down to a single function
             var functions = new Collection<string>();
             functions.Add(functionName);
 
