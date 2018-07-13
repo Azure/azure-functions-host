@@ -128,6 +128,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task ColdStartRequest()
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "api/proxy/blahblah");
+            request.Headers.Add("X-MS-COLDSTART", "1");
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(request);
+
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("200", response.StatusCode.ToString("D"));
+            Assert.Equal("Pong", content);
+        }
+
+        [Fact]
         //backend set as constant - no trailing slash should be added
         public async Task TrailingSlashRemoved()
         {

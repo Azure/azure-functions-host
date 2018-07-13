@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -36,26 +35,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             // flow required context through the request pipeline
             // downstream middleware and filters rely on this
-            context.Items.Add(ScriptConstants.AzureFunctionsHostManagerKey, manager);
+            context.Items[ScriptConstants.AzureFunctionsHostManagerKey] = manager;
             SetRequestId(context.Request);
+
             if (_next != null)
             {
                 await _next(context);
             }
 
             IFunctionExecutionFeature functionExecution = context.Features.Get<IFunctionExecutionFeature>();
-
-            int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
-
-            IActionResult result = null;
-
             if (functionExecution != null && !context.Response.HasStarted)
             {
-                result = await GetResultAsync(context, functionExecution);
-
+                int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
+                IActionResult result = await GetResultAsync(context, functionExecution);
                 if (nestedProxiesCount > 0)
                 {
-                    // if Proxy, the rest of the pipleline will be processed bt Proxies in case there are response overrides and what not.
+                    // if Proxy, the rest of the pipleline will be processed by Proxies in
+                    // case there are response overrides and what not.
                     SetProxyResult(context, nestedProxiesCount, result);
                     return;
                 }
@@ -71,8 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private static void SetProxyResult(HttpContext context, int nestedProxiesCount, IActionResult result)
         {
-            context.Items.Add(ScriptConstants.AzureFunctionsProxyResult, result);
-
+            context.Items[ScriptConstants.AzureFunctionsProxyResult] = result;
             context.Items[ScriptConstants.AzureFunctionsNestedProxyCount] = nestedProxiesCount - 1;
         }
 
@@ -80,9 +75,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             context.Items.TryGetValue(ScriptConstants.AzureFunctionsNestedProxyCount, out object nestedProxiesCount);
 
-            //HttpBufferingService is disabled for non - proxy functions.
             if (functionExecution != null && !functionExecution.Descriptor.Metadata.IsProxy && nestedProxiesCount == null)
             {
+                // HttpBufferingService is disabled for non-proxy functions.
                 var bufferingFeature = context.Features.Get<IHttpBufferingFeature>();
                 bufferingFeature?.DisableRequestBuffering();
                 bufferingFeature?.DisableResponseBuffering();
@@ -103,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 return new NotFoundResult();
             }
 
-            if (context.Request.IsColdStart())
+            if (context.Request.IsColdStart() && !context.Items.ContainsKey(ScriptConstants.AzureFunctionsColdStartKey))
             {
                 // for cold start requests we want to measure the request
                 // pipeline dispatch time
@@ -111,13 +106,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 // in the pipeline (in this case, in our first middleware)
                 var sw = new Stopwatch();
                 sw.Start();
-                context.Request.HttpContext.Items.Add(ScriptConstants.AzureFunctionsColdStartKey, sw);
+                context.Items[ScriptConstants.AzureFunctionsColdStartKey] = sw;
             }
 
             // Add route data to request info
             // TODO: Keeping this here for now as other code depend on this property, but this can be done in the HTTP binding.
             var routingFeature = context.Features.Get<IRoutingFeature>();
-            context.Items.Add(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, new Dictionary<string, object>(routingFeature.RouteData.Values));
+            context.Items[HttpExtensionConstants.AzureWebJobsHttpRouteDataKey] = new Dictionary<string, object>(routingFeature.RouteData.Values);
 
             bool authorized = await AuthenticateAndAuthorizeAsync(context, functionExecution.Descriptor);
             if (!authorized)
