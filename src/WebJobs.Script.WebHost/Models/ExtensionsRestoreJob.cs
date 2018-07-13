@@ -26,5 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public DateTimeOffset? EndTime { get; set; }
 
         public string Error { get; set; }
+
+        public IDictionary<string, string> Properties { get; set; }
     }
 }
