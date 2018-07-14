@@ -42,7 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly object _syncLock = new object();
         private readonly int _hostTimeoutSeconds;
         private readonly int _hostRunningPollIntervalMilliseconds;
-        private readonly IWebJobsRouter _router;
         private readonly WebJobsSdkExtensionHookProvider _bindingWebHookProvider;
 
         private Task _runTask = Task.CompletedTask;
@@ -84,7 +83,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _settingsManager = settingsManager;
             _hostTimeoutSeconds = hostTimeoutSeconds;
             _hostRunningPollIntervalMilliseconds = hostPollingIntervalMilliseconds;
-            _router = router;
 
             config.IsSelfHost = webHostSettings.IsSelfHost;
 
@@ -234,8 +232,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 Instance?.Logger.LogInformation("Host is in standby mode");
             }
 
-            InitializeHttp();
-
             base.OnHostInitialized();
         }
 
@@ -248,63 +244,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             base.OnHostStarted();
-        }
-
-        private void InitializeHttp()
-        {
-            // get the registered http configuration from the extension registry
-            HttpExtensionConfiguration httpConfig = _extensionRegistry.GetExtensions<IExtensionConfigProvider>().OfType<HttpExtensionConfiguration>().Single();
-
-            InitializeHttpFunctions(Instance.Functions, httpConfig);
-        }
-
-        private void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions, HttpExtensionConfiguration httpConfig)
-        {
-            _router.ClearRoutes();
-
-            // TODO: FACAVAL Instantiation of the ScriptRouteHandler should be cleaned up
-            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, this, _settingsManager, false), httpConfig.RoutePrefix);
-
-            // Proxies do not honor the route prefix defined in host.json
-            WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, this, _settingsManager, true), routePrefix: null);
-
-            foreach (var function in functions)
-            {
-                var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
-                if (httpTrigger != null)
-                {
-                    var constraints = new RouteValueDictionary();
-                    if (httpTrigger.Methods != null)
-                    {
-                        constraints.Add("httpMethod", new HttpMethodRouteConstraint(httpTrigger.Methods));
-                    }
-
-                    string route = httpTrigger.Route;
-
-                    if (string.IsNullOrEmpty(route) && !function.Metadata.IsProxy)
-                    {
-                        route = function.Name;
-                    }
-
-                    WebJobsRouteBuilder builder = function.Metadata.IsProxy ? proxiesRoutesBuilder : routesBuilder;
-                    builder.MapFunctionRoute(function.Metadata.Name, route, constraints, function.Metadata.Name);
-                }
-            }
-
-            IRouter proxyRouter = null;
-            IRouter functionRouter = null;
-
-            if (proxiesRoutesBuilder.Count > 0)
-            {
-                 proxyRouter = proxiesRoutesBuilder.Build();
-            }
-
-            if (routesBuilder.Count > 0)
-            {
-                functionRouter = routesBuilder.Build();
-            }
-
-            _router.AddFunctionRoutes(functionRouter, proxyRouter);
         }
 
         public override void Shutdown()

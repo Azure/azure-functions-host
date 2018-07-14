@@ -17,14 +17,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
 {
     public class ScriptRouteHandler : IWebJobsRouteHandler
     {
-        private readonly WebScriptHostManager _scriptHostManager;
+        private readonly IScriptJobHost _scriptHost;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ScriptSettingsManager _settingsManager;
         private readonly bool _isProxy;
 
-        public ScriptRouteHandler(ILoggerFactory loggerFactory, WebScriptHostManager scriptHostManager, ScriptSettingsManager settingsManager, bool isProxy)
+        public ScriptRouteHandler(ILoggerFactory loggerFactory, IScriptJobHost scriptHost, ScriptSettingsManager settingsManager, bool isProxy)
         {
-            _scriptHostManager = scriptHostManager;
+            _scriptHost = scriptHost;
             _loggerFactory = loggerFactory;
             _settingsManager = settingsManager;
             _isProxy = isProxy;
@@ -34,14 +34,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
         {
             if (_isProxy)
             {
-                ProxyFunctionExecutor proxyFunctionExecutor = new ProxyFunctionExecutor(_scriptHostManager);
+                ProxyFunctionExecutor proxyFunctionExecutor = new ProxyFunctionExecutor(_scriptHost);
                 context.Items.TryAdd(ScriptConstants.AzureProxyFunctionExecutorKey, proxyFunctionExecutor);
             }
 
-            // TODO: FACAVAL This should be improved....
-            var host = _scriptHostManager.Instance;
-            var descriptor = host.Functions.FirstOrDefault(f => string.Equals(f.Name, functionName));
-            var executionFeature = new FunctionExecutionFeature(host, descriptor, _settingsManager, _loggerFactory);
+            var descriptor = _scriptHost.Functions.FirstOrDefault(f => string.Equals(f.Name, functionName));
+            var executionFeature = new FunctionExecutionFeature(_scriptHost, descriptor, _settingsManager, _loggerFactory);
             context.Features.Set<IFunctionExecutionFeature>(executionFeature);
 
             await Task.CompletedTask;

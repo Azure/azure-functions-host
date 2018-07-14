@@ -31,11 +31,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _next = next;
         }
 
-        public async Task Invoke(HttpContext context, IScriptHostManager manager)
+        public async Task Invoke(HttpContext context, IScriptJobHost scriptHost)
         {
             // flow required context through the request pipeline
             // downstream middleware and filters rely on this
-            context.Items[ScriptConstants.AzureFunctionsHostManagerKey] = manager;
+            context.Items[ScriptConstants.AzureFunctionsHostManagerKey] = scriptHost;
             SetRequestId(context.Request);
 
             if (_next != null)

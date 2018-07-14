@@ -51,26 +51,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 return this;
             }
 
-            object service;
-            if (serviceType == typeof(IEnumerable<IHostedService>))
-            {
-                service = _currentResolver.Container.ResolveMany<IHostedService>();
-            }
-            else
-            {
-                service = _currentResolver.Container.Resolve(serviceType, IfUnresolved.ReturnDefault);
-            }
-
-            string name = serviceType.Name;
-
-            return service;
+            return _currentResolver.Container.Resolve(serviceType, IfUnresolved.ReturnDefault);
         }
 
         public void AddServices(IServiceCollection services)
         {
             _root.Populate(services);
 
-            var results = _root.Validate();
+            //var results = _root.Validate();
         }
 
         /// <summary>
@@ -101,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 previous.Dispose();
             }
 
-            var results = resolver.Validate();
+            //var results = resolver.Validate();
         }
 
         public IServiceScope CreateScope()

@@ -43,7 +43,7 @@ using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMeta
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class ScriptHost : JobHost
+    public class ScriptHost : JobHost, IScriptJobHost
     {
         internal const int DebugModeTimeoutMinutes = 15;
         private const string HostAssemblyName = "ScriptHost";
@@ -98,12 +98,13 @@ namespace Microsoft.Azure.WebJobs.Script
         // This is the set of bindings we shipped prior to binding extensibility.
         // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
 
-        protected internal ScriptHost(IScriptHostEnvironment environment,
+        public ScriptHost(IScriptHostEnvironment environment,
             IOptions<JobHostOptions> options,
             IJobHostContextFactory jobHostContextFactory,
             IConnectionStringProvider connectionStringProvider,
             IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
+            ILoggerFactory loggerFactory,
             ScriptHostConfiguration scriptConfig = null,
             ScriptSettingsManager settingsManager = null,
             ILoggerProviderFactory loggerProviderFactory = null,
@@ -139,6 +140,8 @@ namespace Microsoft.Azure.WebJobs.Script
             _language = _settingsManager.Configuration[LanguageWorkerConstants.FunctionWorkerRuntimeSettingName];
 
             _loggerProviderFactory = loggerProviderFactory ?? new DefaultLoggerProviderFactory();
+            _loggerFactory = loggerFactory;
+            _startupLogger = loggerFactory.CreateLogger(LogCategories.Startup);
         }
 
         public event EventHandler HostInitializing;
@@ -172,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets the collection of all valid Functions. For functions that are in error
         /// and were unable to load successfully, consult the <see cref="FunctionErrors"/> collection.
         /// </summary>
-        public virtual Collection<FunctionDescriptor> Functions { get; private set; } = new Collection<FunctionDescriptor>();
+        public virtual ICollection<FunctionDescriptor> Functions { get; private set; } = new Collection<FunctionDescriptor>();
 
         // Maps from FunctionName to a set of errors for that function.
         public virtual Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
@@ -1824,7 +1827,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal static bool TryGetFunctionFromException(Collection<FunctionDescriptor> functions, Exception exception, out FunctionDescriptor function)
+        internal static bool TryGetFunctionFromException(ICollection<FunctionDescriptor> functions, Exception exception, out FunctionDescriptor function)
         {
             function = null;
             if (functions == null)

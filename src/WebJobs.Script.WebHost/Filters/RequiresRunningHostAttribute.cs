@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 
         public override async Task OnActionExecutionAsync(ActionExecutingContext actionContext, ActionExecutionDelegate next)
         {
-            var scriptHostManager = (WebScriptHostManager)actionContext.HttpContext.Items[ScriptConstants.AzureFunctionsHostManagerKey];
+            var scriptHostManager = (WebScriptHostManager)actionContext.HttpContext.Items[ScriptConstants.AzureFunctionsHostKey];
 
             // If the host is not ready, we'll wait a bit for it to initialize.
             // This might happen if http requests come in while the host is starting
