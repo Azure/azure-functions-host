@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsColdStartKey = "MS_AzureFunctionsColdStart";
         public const string AzureFunctionsHttpRequestKey = "MS_AzureFunctionsHttpRequest";
         public const string AzureProxyFunctionExecutorKey = "MS_AzureProxyFunctionExecutor";
-        public const string AzureFunctionsHostManagerKey = "MS_AzureFunctionsHostManager";
+        public const string AzureFunctionsHostKey = "MS_AzureFunctionsHost";
         public const string AzureFunctionsNestedProxyCount = "MS_AzureFunctionsNestedProxyCount";
         public const string AzureFunctionsProxyResult = "MS_AzureFunctionsProxyResult";
 

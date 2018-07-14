@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
     {
         public override async Task OnActionExecutionAsync(ActionExecutingContext actionContext, ActionExecutionDelegate next)
         {
-            var scriptHostManager = (WebScriptHostManager)actionContext.HttpContext.Items[ScriptConstants.AzureFunctionsHostManagerKey];
+            var scriptHostManager = (WebScriptHostManager)actionContext.HttpContext.Items[ScriptConstants.AzureFunctionsHostKey];
 
             scriptHostManager.Instance?.NotifyDebug();
 

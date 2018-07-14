@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             if (StandbyManager.IsWarmUpRequest(httpContext.Request))
             {
-                if (!httpContext.Items.TryGetValue(ScriptConstants.AzureFunctionsHostManagerKey, out object scriptHostManager))
+                if (!httpContext.Items.TryGetValue(ScriptConstants.AzureFunctionsHostKey, out object scriptHostManager))
                 {
                     throw new InvalidOperationException($"Warmup request received, but no instance of {nameof(WebScriptHostManager)} in HTTP context");
                 }

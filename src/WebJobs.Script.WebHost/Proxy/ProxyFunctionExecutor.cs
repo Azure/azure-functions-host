@@ -26,11 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Proxy
 {
     public class ProxyFunctionExecutor : IFuncExecutor
     {
-        private readonly WebScriptHostManager _scriptHostManager;
+        private readonly IScriptJobHost _scriptHost;
 
-        internal ProxyFunctionExecutor(WebScriptHostManager scriptHostManager)
+        internal ProxyFunctionExecutor(IScriptJobHost scriptHost)
         {
-            _scriptHostManager = scriptHostManager;
+            _scriptHost = scriptHost;
         }
 
         public async Task<IActionResult> ExecuteFuncAsync(string functionName, Dictionary<string, object> arguments, CancellationToken cancellationToken)
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Proxy
             }
 
             httpContext.Items.Remove(HttpExtensionConstants.AzureWebJobsUseReverseRoutesKey);
-            httpContext.Items.Remove(ScriptConstants.AzureFunctionsHostManagerKey);
+            httpContext.Items.Remove(ScriptConstants.AzureFunctionsHostKey);
 
             if (rc.Handler == null)
             {
@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Proxy
                 httpContext.Items[ScriptConstants.AzureFunctionsNestedProxyCount] = (int)nestedProxiesCount + 1;
             }
 
-            await functionInvocationMiddleware.Invoke(httpContext, _scriptHostManager);
+            await functionInvocationMiddleware.Invoke(httpContext, _scriptHost);
 
             var result = (IActionResult)httpContext.Items[ScriptConstants.AzureFunctionsProxyResult];
 

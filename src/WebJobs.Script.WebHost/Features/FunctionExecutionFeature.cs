@@ -19,12 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
 {
     internal class FunctionExecutionFeature : IFunctionExecutionFeature
     {
-        private readonly ScriptHost _host;
+        private readonly IScriptJobHost _host;
         private readonly FunctionDescriptor _descriptor;
         private readonly ScriptSettingsManager _settingsManager;
         private readonly ILogger _logger;
 
-        public FunctionExecutionFeature(ScriptHost host, FunctionDescriptor descriptor, ScriptSettingsManager settingsManager, ILoggerFactory loggerFactory)
+        public FunctionExecutionFeature(IScriptJobHost host, FunctionDescriptor descriptor, ScriptSettingsManager settingsManager, ILoggerFactory loggerFactory)
         {
             _host = host ?? throw new ArgumentNullException(nameof(host));
             _descriptor = descriptor;

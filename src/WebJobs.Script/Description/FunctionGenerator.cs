@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return _invokerMap[method];
         }
 
-        public static Type Generate(string functionAssemblyName, string typeName, Collection<CustomAttributeBuilder> typeAttributes, Collection<FunctionDescriptor> functions)
+        public static Type Generate(string functionAssemblyName, string typeName, Collection<CustomAttributeBuilder> typeAttributes, ICollection<FunctionDescriptor> functions)
         {
             if (functions == null)
             {

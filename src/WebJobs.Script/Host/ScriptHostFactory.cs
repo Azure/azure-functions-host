@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -19,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IScriptEventManager _eventManager;
         private readonly ScriptHostConfiguration _scriptHostConfiguration;
         private readonly ScriptSettingsManager _settingsManager;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ILoggerProviderFactory _loggerProviderFactory;
 
         public ScriptHostFactory(
@@ -30,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script
          IScriptEventManager eventManager,
          ScriptHostConfiguration scriptHostConfiguration,
          ScriptSettingsManager settingsManager,
+         ILoggerFactory loggerFactory,
          ILoggerProviderFactory loggerProviderFactory)
         {
             _environment = environment;
@@ -40,13 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script
             _eventManager = eventManager;
             _scriptHostConfiguration = scriptHostConfiguration;
             _settingsManager = settingsManager;
+            _loggerFactory = loggerFactory;
             _loggerProviderFactory = loggerProviderFactory;
         }
 
         public ScriptHost Create()
         {
             return new ScriptHost(_environment, _options, _jobHostContextFactory, _connectionStringProvider, _distributedLockManager,
-                _eventManager, _scriptHostConfiguration, _settingsManager, _loggerProviderFactory);
+                _eventManager, _loggerFactory, _scriptHostConfiguration, _settingsManager, _loggerProviderFactory);
         }
     }
 }
