@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ILoggerFactory _loggerFactory;
         private ProxyClientExecutor _proxyClient;
 
-        public ProxyFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config, ProxyClientExecutor proxyClient, ILoggerFactory loggerFactory)
+        public ProxyFunctionDescriptorProvider(ScriptHost host, ScriptHostOptions config, ProxyClientExecutor proxyClient, ILoggerFactory loggerFactory)
             : base(host, config)
         {
             _proxyClient = proxyClient;

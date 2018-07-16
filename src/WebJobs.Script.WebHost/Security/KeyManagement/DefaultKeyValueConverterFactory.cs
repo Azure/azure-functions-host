@@ -25,13 +25,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static bool IsEncryptionSupported()
         {
-            if (_settingsManager.IsLinuxContainerEnvironment)
+            if (EnvironmentUtility.IsLinuxContainerEnvironment)
             {
                 // TEMP: https://github.com/Azure/azure-functions-host/issues/3035
                 return false;
             }
 
-            return _settingsManager.IsAppServiceEnvironment || _settingsManager.GetSetting(AzureWebsiteLocalEncryptionKey) != null;
+            return EnvironmentUtility.IsAppServiceEnvironment || _settingsManager.GetSetting(AzureWebsiteLocalEncryptionKey) != null;
         }
 
         public IKeyValueReader GetValueReader(Key key)

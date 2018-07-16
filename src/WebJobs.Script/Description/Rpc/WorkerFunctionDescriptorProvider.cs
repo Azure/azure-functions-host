@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ILoggerFactory _loggerFactory;
         private IFunctionRegistry _dispatcher;
 
-        public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config, IFunctionRegistry dispatcher, ILoggerFactory loggerFactory)
+        public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptHostOptions config, IFunctionRegistry dispatcher, ILoggerFactory loggerFactory)
             : base(host, config)
         {
             _dispatcher = dispatcher;

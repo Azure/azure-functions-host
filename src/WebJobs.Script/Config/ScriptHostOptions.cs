@@ -10,26 +10,18 @@ using Microsoft.Azure.WebJobs.Script.Extensibility;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class ScriptHostConfiguration
+    public class ScriptHostOptions
     {
-        public ScriptHostConfiguration()
+        public ScriptHostOptions()
         {
-            // TODO: DI (FACAVAL) This needs to change. We won't
-            // be creating an instance of the options here.
-            HostOptions = new JobHostOptions();
             FileWatchingEnabled = true;
             FileLoggingMode = FileLoggingMode.Never;
-            RootScriptPath = Environment.CurrentDirectory;
-            RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
-            TestDataPath = Path.Combine(Path.GetTempPath(), "FunctionsData");
+            //RootScriptPath = Environment.CurrentDirectory;
+            //RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
+            //TestDataPath = Path.Combine(Path.GetTempPath(), "FunctionsData");
             LogFilter = new LogCategoryFilter();
             HostHealthMonitor = new HostHealthMonitorConfiguration();
         }
-
-        /// <summary>
-        /// Gets or sets the <see cref="JobHostConfiguration"/>.
-        /// </summary>
-        public JobHostOptions HostOptions { get; set; }
 
         /// <summary>
         /// Gets or sets the path to the script function directory.
@@ -120,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets or sets a test hook for modifying the configuration after host.json has been processed.
         /// </summary>
-        internal Action<ScriptHostConfiguration> OnConfigurationApplied { get; set; }
+        internal Action<ScriptHostOptions> OnConfigurationApplied { get; set; }
 
         /// <summary>
         /// Gets the <see cref="HostHealthMonitorConfiguration"/> to use.

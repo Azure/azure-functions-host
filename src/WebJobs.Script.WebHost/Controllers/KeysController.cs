@@ -25,10 +25,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private static readonly Lazy<Dictionary<string, string>> EmptyKeys = new Lazy<Dictionary<string, string>>(() => new Dictionary<string, string>());
         private readonly ISecretManager _secretManager;
         private readonly ILogger _logger;
-        private readonly WebHostSettings _settings;
+        private readonly ScriptWebHostOptions _settings;
         private readonly IFileSystem _fileSystem;
 
-        public KeysController(WebHostSettings settings, ISecretManager secretManager, ILoggerFactory loggerFactory, IFileSystem fileSystem)
+        public KeysController(ScriptWebHostOptions settings, ISecretManager secretManager, ILoggerFactory loggerFactory, IFileSystem fileSystem)
         {
             _settings = settings;
             _secretManager = secretManager;

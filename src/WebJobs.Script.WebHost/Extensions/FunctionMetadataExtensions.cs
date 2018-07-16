@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// <param name="request">Current HttpRequest</param>
         /// <param name="config">ScriptHostConfig</param>
         /// <returns>Promise of a FunctionMetadataResponse</returns>
-        public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, HttpRequest request, ScriptHostConfiguration config, IWebJobsRouter router = null)
+        public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, HttpRequest request, ScriptHostOptions config, IWebJobsRouter router = null)
         {
             var functionPath = Path.Combine(config.RootScriptPath, functionMetadata.Name);
             var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// <param name="functionMetadata">FunctionMetadata object to convert to a JObject.</param>
         /// <param name="config">ScriptHostConfiguration to read RootScriptPath from.</param>
         /// <returns>JObject that represent the trigger for scale controller to consume</returns>
-        public static async Task<JObject> ToFunctionTrigger(this FunctionMetadata functionMetadata, ScriptHostConfiguration config)
+        public static async Task<JObject> ToFunctionTrigger(this FunctionMetadata functionMetadata, ScriptHostOptions config)
         {
             // Only look at the function if it's not disabled
             if (!functionMetadata.IsDisabled)
@@ -90,10 +90,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             return null;
         }
 
-        public static string GetTestDataFilePath(this FunctionMetadata functionMetadata, ScriptHostConfiguration config) =>
+        public static string GetTestDataFilePath(this FunctionMetadata functionMetadata, ScriptHostOptions config) =>
             GetTestDataFilePath(functionMetadata.Name, config);
 
-        public static string GetTestDataFilePath(string functionName, ScriptHostConfiguration config) =>
+        public static string GetTestDataFilePath(string functionName, ScriptHostOptions config) =>
             Path.Combine(config.TestDataPath, $"{functionName}.dat");
 
         private static async Task<JObject> GetFunctionConfig(string path)
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             return new JObject();
         }
 
-        private static async Task<string> GetTestData(string testDataPath, ScriptHostConfiguration config)
+        private static async Task<string> GetTestData(string testDataPath, ScriptHostOptions config)
         {
             if (!File.Exists(testDataPath))
             {

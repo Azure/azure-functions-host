@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IConnectionStringProvider _connectionStringProvider;
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IScriptEventManager _eventManager;
-        private readonly ScriptHostConfiguration _scriptHostConfiguration;
+        private readonly IOptions<ScriptHostOptions> _scriptOptions;
         private readonly ScriptSettingsManager _settingsManager;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILoggerProviderFactory _loggerProviderFactory;
@@ -26,11 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public ScriptHostFactory(
          IScriptHostEnvironment environment,
          IOptions<JobHostOptions> options,
+         IOptions<ScriptHostOptions> scriptOptions,
          IJobHostContextFactory jobHostContextFactory,
          IConnectionStringProvider connectionStringProvider,
          IDistributedLockManager distributedLockManager,
          IScriptEventManager eventManager,
-         ScriptHostConfiguration scriptHostConfiguration,
          ScriptSettingsManager settingsManager,
          ILoggerFactory loggerFactory,
          ILoggerProviderFactory loggerProviderFactory)
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _connectionStringProvider = connectionStringProvider;
             _distributedLockManager = distributedLockManager;
             _eventManager = eventManager;
-            _scriptHostConfiguration = scriptHostConfiguration;
+            _scriptOptions = scriptOptions;
             _settingsManager = settingsManager;
             _loggerFactory = loggerFactory;
             _loggerProviderFactory = loggerProviderFactory;
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public ScriptHost Create()
         {
             return new ScriptHost(_environment, _options, _jobHostContextFactory, _connectionStringProvider, _distributedLockManager,
-                _eventManager, _loggerFactory, _scriptHostConfiguration, _settingsManager, _loggerProviderFactory);
+                _eventManager, _loggerFactory, _scriptOptions,  _settingsManager, _loggerProviderFactory);
         }
     }
 }

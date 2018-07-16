@@ -19,12 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private static HostAssignmentContext _assignmentContext;
         private static object _assignmentLock = new object();
 
-        private readonly WebHostSettings _webHostSettings;
+        private readonly ScriptWebHostOptions _webHostSettings;
         private readonly ILogger _logger;
         private readonly ScriptSettingsManager _settingsManager;
         private readonly HttpClient _client;
 
-        public InstanceManager(ScriptSettingsManager settingsManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory, HttpClient client)
+        public InstanceManager(ScriptSettingsManager settingsManager, ScriptWebHostOptions webHostSettings, ILoggerFactory loggerFactory, HttpClient client)
         {
             _settingsManager = settingsManager;
             _webHostSettings = webHostSettings;

@@ -33,10 +33,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private static readonly MediaTypeHeaderValue _directoryMediaType = MediaTypeHeaderValue.Parse("inode/directory");
 
         protected const int BufferSize = 32 * 1024;
-        private readonly ScriptHostConfiguration _config;
+        private readonly ScriptHostOptions _config;
         private readonly ILogger _logger;
 
-        public VirtualFileSystem(WebHostSettings settings, ILoggerFactory loggerFactory)
+        public VirtualFileSystem(ScriptWebHostOptions settings, ILoggerFactory loggerFactory)
         {
             _config = settings.ToScriptHostConfiguration();
             _logger = loggerFactory.CreateLogger<VirtualFileSystem>();
@@ -185,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        public static Uri FilePathToVfsUri(string filePath, string baseUrl, ScriptHostConfiguration config, bool isDirectory = false)
+        public static Uri FilePathToVfsUri(string filePath, string baseUrl, ScriptHostOptions config, bool isDirectory = false)
         {
             var home = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                 ? ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath) ?? config.RootScriptPath
@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return new Uri($"{baseUrl}/admin/vfs/{filePath}{(isDirectory ? "/" : string.Empty)}");
         }
 
-        public static string VfsUriToFilePath(Uri uri, ScriptHostConfiguration config, bool isDirectory = false)
+        public static string VfsUriToFilePath(Uri uri, ScriptHostOptions config, bool isDirectory = false)
         {
             if (uri != null)
             {

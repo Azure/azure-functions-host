@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IMetricsLogger _metricsLogger;
         private readonly IScriptEventManager _eventManager;
         private readonly IWebJobsRouter _router;
-        private readonly WebHostSettings _settings;
+        private readonly ScriptWebHostOptions _settings;
         private readonly ILoggerProviderFactory _loggerProviderFactory;
         private readonly IConnectionStringProvider _connectionStringProvider;
         private readonly IExtensionRegistry _extensionRegistry;
@@ -38,9 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ILoggerFactory _loggerFactory;
         private readonly IEventGenerator _eventGenerator;
 
-        private ScriptHostConfiguration _standbyScriptHostConfig;
+        private ScriptHostOptions _standbyScriptHostConfig;
         private WebScriptHostManager _standbyHostManager;
-        private ScriptHostConfiguration _activeScriptHostConfig;
+        private ScriptHostOptions _activeScriptHostConfig;
         private WebScriptHostManager _activeHostManager;
         private Timer _specializationTimer;
 
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IOptions<JobHostOptions> jobHostOptions,
             IMetricsLogger metricsLogger,
             IScriptEventManager eventManager,
-            WebHostSettings settings,
+            ScriptWebHostOptions settings,
             IWebJobsRouter router,
             ILoggerProviderFactory loggerProviderFactory,
             IConnectionStringProvider connectionStringProvider,
@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _loggerFactory = loggerFactory;
         }
 
-        public ILoggerFactory GetLoggerFactory(WebHostSettings settings)
+        public ILoggerFactory GetLoggerFactory(ScriptWebHostOptions settings)
         {
             // if we have an active initialized host, return it's fully configured
             // logger factory
@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public ScriptHostConfiguration GetScriptHostConfiguration(WebHostSettings settings)
+        public ScriptHostOptions GetScriptHostConfiguration(ScriptWebHostOptions settings)
         {
             return GetActiveInstance(settings, ref _activeScriptHostConfig, ref _standbyScriptHostConfig);
         }
@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public ISecretManager GetSecretManager() =>
             GetSecretManager(_settings);
 
-        public ISecretManager GetSecretManager(WebHostSettings settings)
+        public ISecretManager GetSecretManager(ScriptWebHostOptions settings)
         {
             return GetWebScriptHostManager(settings).SecretManager;
         }
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public WebScriptHostManager GetWebScriptHostManager() =>
             GetWebScriptHostManager(_settings);
 
-        public WebScriptHostManager GetWebScriptHostManager(WebHostSettings settings)
+        public WebScriptHostManager GetWebScriptHostManager(ScriptWebHostOptions settings)
         {
             return GetActiveInstance(settings, ref _activeHostManager, ref _standbyHostManager);
         }
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// This method ensures that all services managed by this class are initialized
         /// correctly taking into account specialization state transitions.
         /// </summary>
-        internal void EnsureInitialized(WebHostSettings settings)
+        internal void EnsureInitialized(ScriptWebHostOptions settings)
         {
             // Create a logger that we can use when the host isn't yet initialized.
             ILogger logger = _loggerFactory.CreateLogger(LogCategories.Startup);
@@ -223,14 +223,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        internal static WebHostSettings CreateStandbySettings(WebHostSettings settings)
+        internal static ScriptWebHostOptions CreateStandbySettings(ScriptWebHostOptions settings)
         {
             // we need to create a new copy of the settings to avoid modifying
             // the global settings
             // important that we use paths that are different than the configured paths
             // to ensure that placeholder files are isolated
             string tempRoot = Path.GetTempPath();
-            var standbySettings = new WebHostSettings
+            var standbySettings = new ScriptWebHostOptions
             {
                 LogPath = Path.Combine(tempRoot, @"Functions\Standby\Logs"),
                 ScriptPath = Path.Combine(tempRoot, @"Functions\Standby\WWWRoot"),
@@ -241,9 +241,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return standbySettings;
         }
 
-        internal static ScriptHostConfiguration CreateScriptHostConfiguration(WebHostSettings settings, bool inStandbyMode = false)
+        internal static ScriptHostOptions CreateScriptHostConfiguration(ScriptWebHostOptions settings, bool inStandbyMode = false)
         {
-            var scriptHostConfig = new ScriptHostConfiguration()
+            var scriptHostConfig = new ScriptHostOptions()
             {
                 RootScriptPath = settings.ScriptPath,
                 RootLogPath = settings.LogPath,
@@ -261,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             // TODO: DI (FACAVAL) This needs to move to configuration setup
-            scriptHostConfig.HostOptions.HostId = Utility.GetDefaultHostId(_settingsManager, scriptHostConfig);
+            //scriptHostConfig.HostOptions.HostId = Utility.GetDefaultHostId(_settingsManager, scriptHostConfig);
 
             return scriptHostConfig;
         }
@@ -270,7 +270,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// Helper function used to manage active/standby transitions for objects managed
         /// by this class.
         /// </summary>
-        private TInstance GetActiveInstance<TInstance>(WebHostSettings settings, ref TInstance activeInstance, ref TInstance standbyInstance)
+        private TInstance GetActiveInstance<TInstance>(ScriptWebHostOptions settings, ref TInstance activeInstance, ref TInstance standbyInstance)
         {
             if (activeInstance != null)
             {
@@ -294,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void OnSpecializationTimerTick(object state)
         {
-            EnsureInitialized((WebHostSettings)state);
+            EnsureInitialized((ScriptWebHostOptions)state);
 
             // If the active manager is not null, we know we've just specialized,
             // since this timer only runs when in standby mode. We want to initialize
@@ -305,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _activeHostManager?.EnsureHostStarted(CancellationToken.None);
         }
 
-        private static void InitializeFileSystem(WebHostSettings settings, bool readOnlyFileSystem)
+        private static void InitializeFileSystem(ScriptWebHostOptions settings, bool readOnlyFileSystem)
         {
             if (ScriptSettingsManager.Instance.IsAppServiceEnvironment)
             {

@@ -32,11 +32,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private readonly WebHostMetricsLogger _metricsLogger;
         private readonly ISecretManager _secretManager;
-        private readonly WebHostSettings _webHostSettings;
+        private readonly ScriptWebHostOptions _webHostSettings;
         private readonly ScriptSettingsManager _settingsManager;
 
         private readonly IWebJobsExceptionHandler _exceptionHandler;
-        private readonly ScriptHostConfiguration _config;
+        private readonly ScriptHostOptions _config;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IExtensionRegistry _extensionRegistry;
         private readonly object _syncLock = new object();
@@ -47,13 +47,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private Task _runTask = Task.CompletedTask;
         private bool _hostStarted = false;
 
-        public WebScriptHostManager(ScriptHostConfiguration config,
+        public WebScriptHostManager(ScriptHostOptions config,
             IOptions<JobHostOptions> jobHostOptions,
             IMetricsLogger metricsLogger,
             ISecretManagerFactory secretManagerFactory,
             IScriptEventManager eventManager,
             ScriptSettingsManager settingsManager,
-            WebHostSettings webHostSettings,
+            ScriptWebHostOptions webHostSettings,
             IWebJobsRouter router,
             ILoggerFactory loggerFactory,
             IConnectionStringProvider connectionStringProvider,
@@ -95,13 +95,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _metricsLogger = new WebHostMetricsLogger(eventGenerator);
         }
 
-        public WebScriptHostManager(ScriptHostConfiguration config,
+        public WebScriptHostManager(ScriptHostOptions config,
             IOptions<JobHostOptions> jobHostOptions,
             IMetricsLogger metricsLogger,
             ISecretManagerFactory secretManagerFactory,
             IScriptEventManager eventManager,
             ScriptSettingsManager settingsManager,
-            WebHostSettings webHostSettings,
+            ScriptWebHostOptions webHostSettings,
             IWebJobsRouter router,
             ILoggerFactory loggerFactory,
             IConnectionStringProvider connectionStringProvider,
@@ -193,9 +193,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _standbyMode = null;
         }
 
-        protected override void OnInitializeConfig(ScriptHostConfiguration config)
-        {
-            base.OnInitializeConfig(config);
+        //protected override void OnInitializeConfig(ScriptHostOptions config)
+        //{
+            //base.OnInitializeConfig(config);
 
             // TODO: DI (FACAVAL) Move all service registration and configuration
             // Note: this method can be called many times for the same ScriptHostConfiguration
@@ -223,7 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             //// disable standard Dashboard logging (enabling Table logging above)
             //hostConfig.DashboardConnectionString = null;
-        }
+        //}
 
         protected override void OnHostInitialized()
         {
