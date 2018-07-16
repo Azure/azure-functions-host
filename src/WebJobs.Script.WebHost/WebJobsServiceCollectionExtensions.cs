@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WebJobsScriptHostService>());
 
-            if (ScriptSettingsManager.Instance.IsLinuxContainerEnvironment)
+            if (EnvironmentUtility.IsLinuxContainerEnvironment)
             {
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, LinuxContainerInitializationHostService>());
             }
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IEventGenerator>(p =>
             {
                 var settingsManager = p.GetService<ScriptSettingsManager>();
-                if (settingsManager.IsLinuxContainerEnvironment)
+                if (EnvironmentUtility.IsLinuxContainerEnvironment)
                 {
                     return new LinuxContainerEventGenerator();
                 }
@@ -97,7 +97,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
 
             services.AddSingleton<IScriptEventManager, ScriptEventManager>();
-            services.AddTransient(p => WebHostSettings.CreateDefault(p.GetService<ScriptSettingsManager>()));
             services.AddSingleton<ILoggerProviderFactory, WebHostLoggerProviderFactory>();
 
             // TODO: DI (FACAVAL) Removed the previous workaround to pass a logger factory into the host resolver

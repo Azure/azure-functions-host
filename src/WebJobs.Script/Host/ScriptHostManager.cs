@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const int HostCheckTimeoutSeconds = 30;
         public const int HostCheckPollingIntervalMilliseconds = 500;
 
-        private readonly ScriptHostConfiguration _config;
+        private readonly ScriptHostOptions _config;
         private readonly IScriptHostFactory _scriptHostFactory;
         private readonly ILoggerProviderFactory _loggerProviderFactory;
         private readonly IOptions<JobHostOptions> _jobHostOptions;
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private CancellationTokenSource _restartDelayTokenSource;
 
         public ScriptHostManager(
-            ScriptHostConfiguration config,
+            ScriptHostOptions config,
             IOptions<JobHostOptions> jobHostOptions,
             IMetricsLogger metricsLogger,
             IScriptHostFactory scriptHostFactory,
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
         }
 
-        public ScriptHostManager(ScriptHostConfiguration config,
+        public ScriptHostManager(ScriptHostOptions config,
             IOptions<JobHostOptions> jobHostOptions,
             ScriptSettingsManager settingsManager,
             IMetricsLogger metricsLogger,
@@ -201,7 +201,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         _hostStartCount++;
                     }
 
-                    newInstance.HostInitializing += OnHostInitializing;
+                    // TODO: DI (FACAVAL) Still needed?
+                    //newInstance.HostInitializing += OnHostInitializing;
                     newInstance.HostInitialized += OnHostInitialized;
                     newInstance.HostStarted += OnHostStarted;
                     newInstance.Initialize();
@@ -305,7 +306,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // have been initialized
             var host = (ScriptHost)sender;
             string extensionVersion = _settingsManager.GetSetting(EnvironmentSettingNames.FunctionsExtensionVersion);
-            string hostId = host.ScriptConfig.HostOptions.HostId;
+            // TODO: DI (FACAVAL) Review
+            string hostId = "tempid"; // host.ScriptConfig;
             string message = $"Starting Host (HostId={hostId}, InstanceId={host.InstanceId}, Version={ScriptHost.Version}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={host.InDebugMode}, ConsecutiveErrors={_consecutiveErrorCount}, StartupCount={_hostStartCount}, FunctionsExtensionVersion={extensionVersion})";
             host.Logger.LogInformation(message);
 
@@ -357,7 +359,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="forceStop">Forces the call to stop and dispose of the instance, even if it isn't present in the live instances collection.</param>
         private async Task Orphan(ScriptHost instance, bool forceStop = false)
         {
-            instance.HostInitializing -= OnHostInitializing;
+            // TODO: DI (FACAVAL) Review
+            //instance.HostInitializing -= OnHostInitializing;
             instance.HostInitialized -= OnHostInitialized;
             instance.HostStarted -= OnHostStarted;
 
@@ -442,7 +445,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return instances;
         }
 
-        protected virtual void OnInitializeConfig(ScriptHostConfiguration config)
+        protected virtual void OnInitializeConfig(ScriptHostOptions config)
         {
             // TODO: DI (FACAVAL) Fix...
             //var loggingConnectionString = config.HostOptions.DashboardConnectionString;

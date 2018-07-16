@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z][a-zA-Z0-9]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)), RegexOptions.Compiled);
 
-        protected FunctionDescriptorProvider(ScriptHost host, ScriptHostConfiguration config)
+        protected FunctionDescriptorProvider(ScriptHost host, ScriptHostOptions config)
         {
             Host = host;
             Config = config;
@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected ScriptHost Host { get; private set; }
 
-        protected ScriptHostConfiguration Config { get; private set; }
+        protected ScriptHostOptions Config { get; private set; }
 
         public virtual bool TryCreate(FunctionMetadata functionMetadata, out FunctionDescriptor functionDescriptor)
         {

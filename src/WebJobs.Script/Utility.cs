@@ -188,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return typeName;
         }
 
-        internal static string GetDefaultHostId(ScriptSettingsManager settingsManager, ScriptHostConfiguration scriptConfig)
+        internal static string GetDefaultHostId(ScriptSettingsManager settingsManager, ScriptHostOptions scriptConfig)
         {
             // We're setting the default here on the newly created configuration
             // If the user has explicitly set the HostID via host.json, it will overwrite

@@ -20,10 +20,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public abstract class FunctionBinding
     {
-        private readonly ScriptHostConfiguration _config;
+        private readonly ScriptHostOptions _config;
         private readonly INameResolver _nameResolver;
 
-        protected FunctionBinding(ScriptHostConfiguration config, BindingMetadata metadata, FileAccess access)
+        protected FunctionBinding(ScriptHostOptions config, BindingMetadata metadata, FileAccess access)
         {
             // TODO: DI (FACAVAL) Inject...
             _nameResolver = null;
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public abstract Collection<CustomAttributeBuilder> GetCustomAttributes(Type parameterType);
 
-        internal static Collection<FunctionBinding> GetBindings(ScriptHostConfiguration config, IEnumerable<BindingMetadata> bindingMetadataCollection, FileAccess fileAccess)
+        internal static Collection<FunctionBinding> GetBindings(ScriptHostOptions config, IEnumerable<BindingMetadata> bindingMetadataCollection, FileAccess fileAccess)
         {
             Collection<FunctionBinding> bindings = new Collection<FunctionBinding>();
 
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return bindings;
         }
 
-        private static bool TryParseFunctionBinding(ScriptHostConfiguration config, JObject metadata, out FunctionBinding functionBinding)
+        private static bool TryParseFunctionBinding(ScriptHostOptions config, JObject metadata, out FunctionBinding functionBinding)
         {
             functionBinding = null;
 

@@ -5,7 +5,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 {
     public static class WebHostSettingsExtensions
     {
-        public static ScriptHostConfiguration ToScriptHostConfiguration(this WebHostSettings webHostSettings) =>
+        public static ScriptHostOptions ToScriptHostConfiguration(this ScriptWebHostOptions webHostSettings) =>
             WebHostResolver.CreateScriptHostConfiguration(webHostSettings);
     }
 }

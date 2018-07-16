@@ -58,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _hostConfigFilePath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
         private readonly string _language;
+        private readonly IOptions<JobHostOptions> _hostOptions;
 
         private static readonly string[] WellKnownHostJsonProperties = new[]
         {
@@ -90,7 +91,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private IFunctionRegistry _functionDispatcher;
         // TODO: DI (FACAVAL) Review
         private ILoggerFactory _loggerFactory = null;
-        private JobHostOptions _hostOptions;
         private List<FunctionDescriptorProvider> _descriptorProviders;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
 
@@ -105,25 +105,24 @@ namespace Microsoft.Azure.WebJobs.Script
             IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
-            ScriptHostConfiguration scriptConfig = null,
+            IOptions<ScriptHostOptions> scriptHostOptions = null,
             ScriptSettingsManager settingsManager = null,
             ILoggerProviderFactory loggerProviderFactory = null,
             ProxyClientExecutor proxyClient = null)
             : base(options, jobHostContextFactory)
         {
-            scriptConfig = scriptConfig ?? new ScriptHostConfiguration();
-            _hostOptions = scriptConfig.HostOptions;
             _instanceId = Guid.NewGuid().ToString();
-
+            _hostOptions = options;
             _storageConnectionString = connectionStringProvider.GetConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
 
-            if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
-            {
-                scriptConfig.RootScriptPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootScriptPath);
-            }
+            // TODO: DI (FACAVAL) Move this to config setup
+            //if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
+            //{
+            //    scriptConfig.RootScriptPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootScriptPath);
+            //}
 
-            ScriptConfig = scriptConfig;
+            ScriptConfig = scriptHostOptions.Value;
             _scriptHostEnvironment = environment;
             FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -136,6 +135,8 @@ namespace Microsoft.Azure.WebJobs.Script
             //_metricsLogger = CreateMetricsLogger();
 
             _hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
+            // TODO: DI (FACAVAL) If root path is not set, this will fail here.
+            // Ensure we have appropriate validation and clear error returned.
             _hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, ScriptConstants.HostMetadataFileName);
             _language = _settingsManager.Configuration[LanguageWorkerConstants.FunctionWorkerRuntimeSettingName];
 
@@ -144,7 +145,8 @@ namespace Microsoft.Azure.WebJobs.Script
             _startupLogger = loggerFactory.CreateLogger(LogCategories.Startup);
         }
 
-        public event EventHandler HostInitializing;
+        // TODO: DI (FACAVAL) Do we still need this event?
+        //public event EventHandler HostInitializing;
 
         public event EventHandler HostInitialized;
 
@@ -169,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ILogger Logger { get; internal set; }
 
-        public ScriptHostConfiguration ScriptConfig { get; private set; }
+        public ScriptHostOptions ScriptConfig { get; private set; }
 
         /// <summary>
         /// Gets the collection of all valid Functions. For functions that are in error
@@ -317,12 +319,12 @@ namespace Microsoft.Azure.WebJobs.Script
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
                 PreInitialize();
-                var hostConfig = ApplyHostConfiguration();
                 InitializeFileWatchers();
                 InitializeWorkers();
 
                 var functionMetadata = LoadFunctionMetadata();
-                var directTypes = LoadBindingExtensions(functionMetadata, hostConfig);
+                // TODO: DI (FACAVAL) Pass configuration
+                var directTypes = LoadBindingExtensions(functionMetadata, new JObject());
                 InitializeFunctionDescriptors(functionMetadata);
                 GenerateFunctions(directTypes);
 
@@ -351,7 +353,7 @@ namespace Microsoft.Azure.WebJobs.Script
         //        () => FileLoggingEnabled, () => IsPrimary, HandleHostError);
         //}
 
-        internal static void ConfigureLoggerFactory(string instanceId, ILoggerFactory loggerFactory, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager,
+        internal static void ConfigureLoggerFactory(string instanceId, ILoggerFactory loggerFactory, ScriptHostOptions scriptConfig, ScriptSettingsManager settingsManager,
             ILoggerProviderFactory builder, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary, Action<Exception> handleException)
         {
             // TODO: DI (FACAVAL) Review - BrettSam
@@ -376,7 +378,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         // TODO: DI (FACAVAL) This needs to move to an options config setup
         // Create a TimeoutConfiguration specified by scriptConfig knobs; else null.
-        internal static JobHostFunctionTimeoutOptions CreateTimeoutConfiguration(ScriptHostConfiguration scriptConfig)
+        internal static JobHostFunctionTimeoutOptions CreateTimeoutConfiguration(ScriptHostOptions scriptConfig)
         {
             if (scriptConfig.FunctionTimeout == null)
             {
@@ -390,7 +392,7 @@ namespace Microsoft.Azure.WebJobs.Script
             };
         }
 
-        internal static Collection<CustomAttributeBuilder> CreateTypeAttributes(ScriptHostConfiguration scriptConfig)
+        internal static Collection<CustomAttributeBuilder> CreateTypeAttributes(ScriptHostOptions scriptConfig)
         {
             Collection<CustomAttributeBuilder> customAttributes = new Collection<CustomAttributeBuilder>();
 
@@ -624,86 +626,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _shutdown = Shutdown;
             _shutdown = _shutdown.Debounce(500);
-        }
-
-        /// <summary>
-        /// Read and apply host.json configuration.
-        /// </summary>
-        private JObject ApplyHostConfiguration()
-        {
-            // Before configuration has been fully read, configure a default logger factory
-            // to ensure we can log any configuration errors. There's no filters at this point,
-            // but that's okay since we can't build filters until we apply configuration below.
-            // We'll recreate the loggers after config is read. We initialize the public logger
-            // to the startup logger until we've read configuration settings and can create the real logger.
-            // The "startup" logger is used in this class for startup related logs. The public logger is used
-            // for all other logging after startup.
-            // TODO: DI (FACAVAL) Fix this
-            //ConfigureLoggerFactory();
-
-            // TODO: DI (FACAVAL) Logger configuration to move to startup:
-            // Logger = _startupLogger = _hostOptions.LoggerFactory.CreateLogger(LogCategories.Startup);
-
-            string readingFileMessage = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", _hostConfigFilePath);
-            JObject hostConfigObject = LoadHostConfig(_hostConfigFilePath, _startupLogger);
-            string sanitizedJson = SanitizeHostJson(hostConfigObject);
-            string readFileMessage = $"Host configuration file read:{Environment.NewLine}{sanitizedJson}";
-
-            // TODO: DI (FACAVAL) See method comments.
-            //ApplyConfiguration(hostConfigObject, ScriptConfig, _startupLogger);
-
-            if (_settingsManager.FileSystemIsReadOnly)
-            {
-                // we're in read-only mode so source files can't change
-                ScriptConfig.FileWatchingEnabled = false;
-            }
-
-            // now the configuration has been read and applied re-create the logger
-            // factory and loggers ensuring that filters and settings have been applied
-            // TODO: DI (FACAVAL) TODO
-            //ConfigureLoggerFactory(recreate: true);
-
-            // TODO: DI (FACAVAL) Logger configuration to move to startup
-            //_startupLogger = _hostOptions.LoggerFactory.CreateLogger(LogCategories.Startup);
-            //Logger = _hostOptions.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
-
-            // Allow tests to modify anything initialized by host.json
-            ScriptConfig.OnConfigurationApplied?.Invoke(ScriptConfig);
-            _startupLogger.LogTrace("Host configuration applied.");
-
-            // Do not log these until after all the configuration is done so the proper filters are applied.
-            _startupLogger.LogInformation(readingFileMessage);
-            _startupLogger.LogInformation(readFileMessage);
-
-            // TODO: DI (FACAVAL) Move this to a more appropriate place
-            // If they set the host id in the JSON, emit a warning that this could cause issues and they shouldn't do it.
-            //if (ScriptConfig.HostOptions?.HostConfigMetadata?["id"] != null)
-            //{
-            //    _startupLogger.LogWarning("Host id explicitly set in the host.json. It is recommended that you remove the \"id\" property in your host.json.");
-            //}
-
-            if (string.IsNullOrEmpty(_hostOptions.HostId))
-            {
-                _hostOptions.HostId = Utility.GetDefaultHostId(_settingsManager, ScriptConfig);
-            }
-            if (string.IsNullOrEmpty(_hostOptions.HostId))
-            {
-                throw new InvalidOperationException("An 'id' must be specified in the host configuration.");
-            }
-
-            // TODO: DI (FACAVAL) Disabling core storage is now just a matter of
-            // registering the appropriate services.
-            //if (_storageConnectionString == null)
-            //{
-            //    // Disable core storage
-            //    _hostOptions.StorageConnectionString = null;
-            //}
-
-            // only after configuration has been applied and loggers
-            // have been created, raise the initializing event
-            HostInitializing?.Invoke(this, EventArgs.Empty);
-
-            return hostConfigObject;
         }
 
         internal static JObject LoadHostConfig(string configFilePath, ILogger logger)
@@ -1016,10 +938,8 @@ namespace Microsoft.Azure.WebJobs.Script
             return sanitizedObject.ToString();
         }
 
-        private static Collection<ScriptBindingProvider> LoadBindingProviders(ScriptHostConfiguration config, JObject hostMetadata, ILogger logger, IEnumerable<string> usedBindingTypes)
+        private static Collection<ScriptBindingProvider> LoadBindingProviders(ScriptHostOptions options, JObject hostMetadata, ILogger logger, IEnumerable<string> usedBindingTypes)
         {
-            JobHostOptions hostConfig = config.HostOptions;
-
             // Register our built in extensions
             var bindingProviderTypes = new Collection<Type>()
             {
@@ -1042,7 +962,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 try
                 {
-                    var provider = (ScriptBindingProvider)Activator.CreateInstance(bindingProviderType, new object[] { hostConfig, hostMetadata, logger });
+                    var provider = (ScriptBindingProvider)Activator.CreateInstance(bindingProviderType, new object[] { options, hostMetadata, logger });
                     bindingProviders.Add(provider);
                 }
                 catch (Exception ex)
@@ -1168,7 +1088,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return null;
         }
 
-        internal Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostConfiguration config, ScriptSettingsManager settingsManager = null)
+        internal Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostOptions config, ScriptSettingsManager settingsManager = null)
         {
             // read the proxy config
             string proxyConfigPath = Path.Combine(config.RootScriptPath, ScriptConstants.ProxyMetadataFileName);
@@ -1665,7 +1585,7 @@ namespace Microsoft.Azure.WebJobs.Script
         //    ApplyApplicationInsightsConfig(config, scriptConfig);
         //}
 
-        private static void ApplyLanguageWorkersConfig(JObject config, ScriptHostConfiguration scriptConfig, ILogger logger)
+        private static void ApplyLanguageWorkersConfig(JObject config, ScriptHostOptions scriptConfig, ILogger logger)
         {
             JToken value = null;
             JObject languageWorkersSection = (JObject)config[$"{LanguageWorkerConstants.LanguageWorkersSectionName}"];
@@ -1757,7 +1677,7 @@ namespace Microsoft.Azure.WebJobs.Script
         //    }
         //}
 
-        internal static void ApplyApplicationInsightsConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
+        internal static void ApplyApplicationInsightsConfig(JObject configJson, ScriptHostOptions scriptConfig)
         {
             scriptConfig.ApplicationInsightsSamplingSettings = new SamplingPercentageEstimatorSettings();
             JObject configSection = (JObject)configJson["applicationInsights"];

@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             _cancellationToken = cancellationToken;
 
             // The service should be registered in IsLinuxContainerEnvironment only. But do additional check here.
-            if (_settingsManager.IsLinuxContainerEnvironment)
+            if (EnvironmentUtility.IsLinuxContainerEnvironment)
             {
                 await ApplyContextIfPresent();
             }

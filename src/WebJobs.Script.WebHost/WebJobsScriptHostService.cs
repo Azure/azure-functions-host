@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -66,6 +67,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                                 s.AddSingleton<ILoggerFactory>(fa);
                                 s.AddSingleton<IHostLifetime, ScriptHostLifetime>();
                                 s.AddSingleton<WebJobs.Host.Executors.IHostIdProvider, IdProvider>();
+                            })
+                            .ConfigureAppConfiguration(c =>
+                            {
+                                c.Add(new WebScriptHostConfigurationSource());
                             })
                             .AddScriptHostServices()
                             .ConfigureWebJobsHost()

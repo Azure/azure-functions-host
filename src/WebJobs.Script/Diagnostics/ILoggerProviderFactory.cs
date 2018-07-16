@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public interface ILoggerProviderFactory
     {
         IEnumerable<ILoggerProvider> CreateLoggerProviders(string hostInstanceId,
-            ScriptHostConfiguration scriptConfig,
+            ScriptHostOptions scriptConfig,
             ScriptSettingsManager settingsManager,
             IMetricsLogger metricsLogger,
             Func<bool> isFileLoggingEnabled,

@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class DefaultLoggerProviderFactory : ILoggerProviderFactory
     {
         public virtual IEnumerable<ILoggerProvider> CreateLoggerProviders(string hostInstanceId,
-            ScriptHostConfiguration scriptConfig,
+            ScriptHostOptions scriptConfig,
             ScriptSettingsManager settingsManager,
             IMetricsLogger metricsLogger,
             Func<bool> isFileLoggingEnabled,
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return providers;
         }
 
-        internal static bool ConsoleLoggingEnabled(ScriptHostConfiguration config, ScriptSettingsManager settingsManager)
+        internal static bool ConsoleLoggingEnabled(ScriptHostOptions config, ScriptSettingsManager settingsManager)
         {
             // console logging defaults to false, except for self host
             bool enableConsole = config.IsSelfHost;
