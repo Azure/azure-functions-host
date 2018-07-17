@@ -4,6 +4,7 @@
 using System.Linq;
 using System.Threading;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
@@ -44,8 +45,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         config.Sources.Remove(envVarsSource);
                     }
-                    envVarsSource = new ScriptEnvironmentVariablesConfigurationSource();
-                    config.Sources.Add(envVarsSource);
+
+                    config.Add(new ScriptEnvironmentVariablesConfigurationSource());
+                    config.Add(new WebScriptHostConfigurationSource());
                 })
                 .ConfigureLogging(b => b.ClearProviders())
                 .UseStartup<Startup>();

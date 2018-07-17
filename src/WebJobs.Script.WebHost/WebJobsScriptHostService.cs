@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -18,16 +19,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly FunctionsServiceProvider _serviceProvider;
+        private readonly IOptions<ScriptWebHostOptions> _webHostOptions;
         private readonly ILogger _logger;
         private bool _disposed = false;
         private Task _hostTask;
         private IHost _host;
 
-        public WebJobsScriptHostService(FunctionsServiceProvider serviceProvider, ILoggerFactory loggerFactory)
+        public WebJobsScriptHostService(FunctionsServiceProvider serviceProvider, IOptions<ScriptWebHostOptions> webHostOptions, ILoggerFactory loggerFactory)
         {
             _cancellationTokenSource = new CancellationTokenSource();
             _hostTask = Task.CompletedTask;
             _serviceProvider = serviceProvider;
+            _webHostOptions = webHostOptions;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
         }
 
@@ -70,9 +73,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             })
                             .ConfigureAppConfiguration(c =>
                             {
-                                c.Add(new WebScriptHostConfigurationSource());
+                                c.Add(new HostJsonFileConfigurationSource(_webHostOptions));
                             })
-                            .AddScriptHostServices()
+                            .AddScriptHostServices(_webHostOptions)
                             .ConfigureWebJobsHost()
                             .AddWebJobsLogging() // Enables WebJobs v1 classic logging
                             .AddAzureStorageCoreServices()

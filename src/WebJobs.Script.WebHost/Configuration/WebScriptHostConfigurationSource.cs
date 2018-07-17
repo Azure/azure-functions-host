@@ -21,11 +21,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
         private class WebScriptHostConfigurationProvider : ConfigurationProvider
         {
-            private const string ScriptPathProperty = ConfigurationSectionNames.JobHost + ":" + nameof(ScriptHostOptions.RootScriptPath);
-            private const string LogPathProperty = ConfigurationSectionNames.JobHost + ":" + nameof(ScriptHostOptions.RootLogPath);
-            private const string TestDataPathProperty = ConfigurationSectionNames.JobHost + ":" + nameof(ScriptHostOptions.TestDataPath);
-            private const string SecretsPathProperty = ConfigurationSectionNames.WebHost + ":" + nameof(ScriptWebHostOptions.SecretsPath);
-            private const string SelfHostProperty = ConfigurationSectionNames.WebHost + ":" + nameof(ScriptWebHostOptions.IsSelfHost);
+            private const string KeyDelimiter = ":";
+            private const string LogPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptWebHostOptions.LogPath);
+            private const string TestDataPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptWebHostOptions.TestDataPath);
+            private const string SecretsPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptWebHostOptions.SecretsPath);
+            private const string SelfHostProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptWebHostOptions.IsSelfHost);
+            private const string WebHostScriptPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptWebHostOptions.ScriptPath);
 
             public override void Load()
             {
@@ -35,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 {
                     // Running in App Service
                     string home = GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
-                    Data[ScriptPathProperty] = Path.Combine(home, "site", "wwwroot");
+                    Data[WebHostScriptPathProperty] = Path.Combine(home, "site", "wwwroot");
                     Data[LogPathProperty] = Path.Combine(home, "LogFiles", "Application", "Functions");
                     Data[SecretsPathProperty] = Path.Combine(home, "data", "Functions", "secrets");
                     Data[TestDataPathProperty] = Path.Combine(home, "data", "Functions", "sampledata");
@@ -43,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 else
                 {
                     // Local hosting or Linux container scenarios
-                    Data[ScriptPathProperty] = GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot);
+                    Data[WebHostScriptPathProperty] = GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot);
                     Data[LogPathProperty] = Path.Combine(Path.GetTempPath(), @"Functions");
                     Data[SecretsPathProperty] = Path.Combine(AppContext.BaseDirectory, "Secrets");
                     Data[TestDataPathProperty] = Path.Combine(Path.GetTempPath(), @"FunctionsData");

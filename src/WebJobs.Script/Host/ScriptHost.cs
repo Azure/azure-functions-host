@@ -55,16 +55,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
-        private readonly string _hostConfigFilePath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
         private readonly string _language;
         private readonly IOptions<JobHostOptions> _hostOptions;
-
-        private static readonly string[] WellKnownHostJsonProperties = new[]
-        {
-            "id", "functionTimeout", "http", "watchDirectories", "functions", "queues", "serviceBus",
-            "eventHub", "tracing", "singleton", "logger", "aggregator", "applicationInsights", "healthMonitor"
-        };
 
         private string _instanceId;
         private Func<Task> _restart;
@@ -135,9 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script
             //_metricsLogger = CreateMetricsLogger();
 
             _hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
-            // TODO: DI (FACAVAL) If root path is not set, this will fail here.
-            // Ensure we have appropriate validation and clear error returned.
-            _hostConfigFilePath = Path.Combine(ScriptConfig.RootScriptPath, ScriptConstants.HostMetadataFileName);
+
             _language = _settingsManager.Configuration[LanguageWorkerConstants.FunctionWorkerRuntimeSettingName];
 
             _loggerProviderFactory = loggerProviderFactory ?? new DefaultLoggerProviderFactory();
@@ -628,28 +619,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _shutdown = _shutdown.Debounce(500);
         }
 
-        internal static JObject LoadHostConfig(string configFilePath, ILogger logger)
-        {
-            JObject hostConfigObject;
-            try
-            {
-                string json = File.ReadAllText(configFilePath);
-                hostConfigObject = JObject.Parse(json);
-            }
-            catch (JsonException ex)
-            {
-                throw new FormatException($"Unable to parse host configuration file '{configFilePath}'.", ex);
-            }
-            catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
-            {
-                // if no file exists we default the config
-                logger.LogInformation("No host configuration file found. Using default.");
-                hostConfigObject = new JObject();
-            }
-
-            return hostConfigObject;
-        }
-
         private void InitializeWorkers()
         {
             var serverImpl = new FunctionRpcService(EventManager);
@@ -921,22 +890,6 @@ namespace Microsoft.Azure.WebJobs.Script
         //    }
         //    return metricsLogger;
         //}
-
-        internal static string SanitizeHostJson(JObject hostJsonObject)
-        {
-            JObject sanitizedObject = new JObject();
-
-            foreach (var propName in WellKnownHostJsonProperties)
-            {
-                var propValue = hostJsonObject[propName];
-                if (propValue != null)
-                {
-                    sanitizedObject[propName] = propValue;
-                }
-            }
-
-            return sanitizedObject.ToString();
-        }
 
         private static Collection<ScriptBindingProvider> LoadBindingProviders(ScriptHostOptions options, JObject hostMetadata, ILogger logger, IEnumerable<string> usedBindingTypes)
         {
@@ -1440,151 +1393,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return httpTrigger.Methods.Intersect(otherHttpTrigger.Methods).Any();
         }
 
-        // TODO: DI (FACAVAL) All of this needs to move to the configuration step
-        //internal static void ApplyConfiguration(JObject config, ScriptHostConfiguration scriptConfig, ILogger logger = null)
-        //{
-        //    var hostConfig = scriptConfig.HostOptions;
-
-        //    hostConfig.HostConfigMetadata = config;
-
-        //    JArray functions = (JArray)config["functions"];
-        //    if (functions != null && functions.Count > 0)
-        //    {
-        //        scriptConfig.Functions = new Collection<string>();
-        //        foreach (var function in functions)
-        //        {
-        //            scriptConfig.Functions.Add((string)function);
-        //        }
-        //    }
-        //    else
-        //    {
-        //        scriptConfig.Functions = null;
-        //    }
-
-        //    // We may already have a host id, but the one from the JSON takes precedence
-        //    JToken hostId = (JToken)config["id"];
-        //    if (hostId != null)
-        //    {
-        //        hostConfig.HostId = (string)hostId;
-        //    }
-
-        //    // Default AllowHostPartialStartup to true, but allow it
-        //    // to be overridden by config
-        //    hostConfig.AllowPartialHostStartup = true;
-        //    JToken allowPartialHostStartup = (JToken)config["allowPartialHostStartup"];
-        //    if (allowPartialHostStartup != null && allowPartialHostStartup.Type == JTokenType.Boolean)
-        //    {
-        //        hostConfig.AllowPartialHostStartup = (bool)allowPartialHostStartup;
-        //    }
-
-        //    JToken fileWatchingEnabled = (JToken)config["fileWatchingEnabled"];
-        //    if (fileWatchingEnabled != null && fileWatchingEnabled.Type == JTokenType.Boolean)
-        //    {
-        //        scriptConfig.FileWatchingEnabled = (bool)fileWatchingEnabled;
-        //    }
-
-        //    // Configure the set of watched directories, adding the standard built in
-        //    // set to any the user may have specified
-        //    if (scriptConfig.WatchDirectories == null)
-        //    {
-        //        scriptConfig.WatchDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        //    }
-        //    scriptConfig.WatchDirectories.Add("node_modules");
-        //    JToken watchDirectories = config["watchDirectories"];
-        //    if (watchDirectories != null && watchDirectories.Type == JTokenType.Array)
-        //    {
-        //        foreach (JToken directory in watchDirectories.Where(p => p.Type == JTokenType.String))
-        //        {
-        //            scriptConfig.WatchDirectories.Add((string)directory);
-        //        }
-        //    }
-
-        //    JToken nugetFallbackFolder = config["nugetFallbackFolder"];
-        //    if (nugetFallbackFolder != null && nugetFallbackFolder.Type == JTokenType.String)
-        //    {
-        //        scriptConfig.NugetFallBackPath = (string)nugetFallbackFolder;
-        //    }
-
-        //    // Apply Singleton configuration
-        //    JObject configSection = (JObject)config["singleton"];
-        //    JToken value = null;
-        //    if (configSection != null)
-        //    {
-        //        if (configSection.TryGetValue("lockPeriod", out value))
-        //        {
-        //            hostConfig.Singleton.LockPeriod = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //        if (configSection.TryGetValue("listenerLockPeriod", out value))
-        //        {
-        //            hostConfig.Singleton.ListenerLockPeriod = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //        if (configSection.TryGetValue("listenerLockRecoveryPollingInterval", out value))
-        //        {
-        //            hostConfig.Singleton.ListenerLockRecoveryPollingInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //        if (configSection.TryGetValue("lockAcquisitionTimeout", out value))
-        //        {
-        //            hostConfig.Singleton.LockAcquisitionTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //        if (configSection.TryGetValue("lockAcquisitionPollingInterval", out value))
-        //        {
-        //            hostConfig.Singleton.LockAcquisitionPollingInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //    }
-
-        //    // Apply Host Health Montitor configuration
-        //    configSection = (JObject)config["healthMonitor"];
-        //    value = null;
-        //    if (configSection != null)
-        //    {
-        //        if (configSection.TryGetValue("enabled", out value) && value.Type == JTokenType.Boolean)
-        //        {
-        //            scriptConfig.HostHealthMonitor.Enabled = (bool)value;
-        //        }
-        //        if (configSection.TryGetValue("healthCheckInterval", out value))
-        //        {
-        //            scriptConfig.HostHealthMonitor.HealthCheckInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //        if (configSection.TryGetValue("healthCheckWindow", out value))
-        //        {
-        //            scriptConfig.HostHealthMonitor.HealthCheckWindow = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //        if (configSection.TryGetValue("healthCheckThreshold", out value))
-        //        {
-        //            scriptConfig.HostHealthMonitor.HealthCheckThreshold = (int)value;
-        //        }
-        //        if (configSection.TryGetValue("counterThreshold", out value))
-        //        {
-        //            scriptConfig.HostHealthMonitor.CounterThreshold = (float)value;
-        //        }
-        //    }
-
-        //    value = null;
-        //    if (config.TryGetValue("functionTimeout", out value))
-        //    {
-        //        TimeSpan requestedTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-
-        //        // Only apply limits if this is Dynamic.
-        //        if (ScriptSettingsManager.Instance.IsDynamicSku && (requestedTimeout < MinFunctionTimeout || requestedTimeout > MaxFunctionTimeout))
-        //        {
-        //            string message = $"{nameof(scriptConfig.FunctionTimeout)} must be between {MinFunctionTimeout} and {MaxFunctionTimeout}.";
-        //            throw new ArgumentException(message);
-        //        }
-
-        //        scriptConfig.FunctionTimeout = requestedTimeout;
-        //    }
-        //    else if (ScriptSettingsManager.Instance.IsDynamicSku)
-        //    {
-        //        // Apply a default if this is running on Dynamic.
-        //        scriptConfig.FunctionTimeout = DefaultFunctionTimeout;
-        //    }
-        //    scriptConfig.HostOptions.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
-
-        //    ApplyLanguageWorkersConfig(config, scriptConfig, logger);
-        //    ApplyLoggerConfig(config, scriptConfig);
-        //    ApplyApplicationInsightsConfig(config, scriptConfig);
-        //}
-
         private static void ApplyLanguageWorkersConfig(JObject config, ScriptHostOptions scriptConfig, ILogger logger)
         {
             JToken value = null;
@@ -1617,65 +1425,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             scriptConfig.MaxMessageLengthBytes = requestedGrpcMaxMessageLength;
         }
-
-        // TODO: DI (FACAVAL) All configuration needs to move to initialization
-        //internal static void ApplyLoggerConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
-        //{
-        //    scriptConfig.LogFilter = new LogCategoryFilter();
-        //    JObject configSection = (JObject)configJson["logger"];
-        //    JToken value;
-        //    if (configSection != null)
-        //    {
-        //        JObject filterSection = (JObject)configSection["categoryFilter"];
-        //        if (filterSection != null)
-        //        {
-        //            if (filterSection.TryGetValue("defaultLevel", out value))
-        //            {
-        //                LogLevel level;
-        //                if (Enum.TryParse(value.ToString(), out level))
-        //                {
-        //                    scriptConfig.LogFilter.DefaultLevel = level;
-        //                }
-        //            }
-
-        //            if (filterSection.TryGetValue("categoryLevels", out value))
-        //            {
-        //                scriptConfig.LogFilter.CategoryLevels.Clear();
-        //                foreach (var prop in ((JObject)value).Properties())
-        //                {
-        //                    LogLevel level;
-        //                    if (Enum.TryParse(prop.Value.ToString(), out level))
-        //                    {
-        //                        scriptConfig.LogFilter.CategoryLevels[prop.Name] = level;
-        //                    }
-        //                }
-        //            }
-        //        }
-
-        //        JObject aggregatorSection = (JObject)configSection["aggregator"];
-        //        if (aggregatorSection != null)
-        //        {
-        //            if (aggregatorSection.TryGetValue("batchSize", out value))
-        //            {
-        //                scriptConfig.HostOptions.Aggregator.BatchSize = (int)value;
-        //            }
-
-        //            if (aggregatorSection.TryGetValue("flushTimeout", out value))
-        //            {
-        //                scriptConfig.HostOptions.Aggregator.FlushTimeout = TimeSpan.Parse(value.ToString());
-        //            }
-        //        }
-
-        //        if (configSection.TryGetValue("fileLoggingMode", out value))
-        //        {
-        //            FileLoggingMode fileLoggingMode;
-        //            if (Enum.TryParse<FileLoggingMode>((string)value, true, out fileLoggingMode))
-        //            {
-        //                scriptConfig.FileLoggingMode = fileLoggingMode;
-        //            }
-        //        }
-        //    }
-        //}
 
         internal static void ApplyApplicationInsightsConfig(JObject configJson, ScriptHostOptions scriptConfig)
         {
