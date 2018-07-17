@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -26,6 +27,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -128,6 +130,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // we want all ILoggerFactory resolution to go through WebHostResolver
             // TODO: DI (FACAVAL) This is no longer the case... perform cleanup (/cc brettsam)
             // builder.Register(ct => ct.Resolve<WebHostResolver>().GetLoggerFactory(ct.Resolve<WebHostSettings>())).As<ILoggerFactory>().ExternallyOwned();
+
+            // Configuration
+            services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<ScriptWebHostOptions>, ScriptWebHostOptionsSetup>());
         }
 
         // TODO: DI (FACAVAL) Removing this. We need to ensure system logs are properly written now when using the default provider.

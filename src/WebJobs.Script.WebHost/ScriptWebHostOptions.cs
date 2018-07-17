@@ -18,8 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public string SecretsPath { get; set; }
 
-        // TODO: DI (FACAVAL) All properties below should be removed
-        // dependencies should be updated to use the the ScriptHostOptions instead
         public string ScriptPath { get; set; }
 
         public string LogPath { get; set; }
