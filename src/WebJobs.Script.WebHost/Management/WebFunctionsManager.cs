@@ -133,8 +133,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <returns>(success, FunctionMetadataResponse)</returns>
         public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request, IWebJobsRouter router = null)
         {
-            var functionMetadata = ScriptHost.ReadFunctionMetadata(Path.Combine(_config.RootScriptPath, name), new Dictionary<string, Collection<string>>(), fileSystem: FileUtility.Instance);
-
+            // TODO: DI (FACAVAL) Follow up with ahmels - Since loading of function metadata is no longer tied to the script host, we
+            // should be able to inject an IFunctionMedatadaManager here and bypass this step.
+            var functionMetadata = FunctionMetadataManager.ReadFunctionMetadata(Path.Combine(_config.RootScriptPath, name), null, new Dictionary<string, Collection<string>>(), fileSystem: FileUtility.Instance);
             if (functionMetadata != null)
             {
                 return (true, await functionMetadata.ToFunctionMetadataResponse(request, _config, router));
@@ -247,8 +248,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
         {
-            return ScriptHost
-                .ReadFunctionsMetadata(FileUtility.EnumerateDirectories(_config.RootScriptPath), _logger, new Dictionary<string, Collection<string>>(), fileSystem: FileUtility.Instance);
+            return FunctionMetadataManager
+                .ReadFunctionsMetadata(FileUtility.EnumerateDirectories(_config.RootScriptPath), null, _logger, fileSystem: FileUtility.Instance);
         }
 
         private async Task<Dictionary<string, string>> ReadDurableTaskConfig()

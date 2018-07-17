@@ -175,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public IActionResult Download()
         {
-            var path = _scriptHostManager.Instance.ScriptConfig.RootScriptPath;
+            var path = _scriptHostManager.Instance.ScriptOptions.RootScriptPath;
             var dirInfo = FileUtility.DirectoryInfoFromDirectoryName(path);
             return new FileCallbackResult(new MediaTypeHeaderValue("application/octet-stream"), async (outputStream, _) =>
             {

@@ -240,7 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (!InStandbyMode)
             {
                 // Purge any old Function secrets
-                _secretManager.PurgeOldSecretsAsync(Instance.ScriptConfig.RootScriptPath, Instance.Logger);
+                _secretManager.PurgeOldSecretsAsync(Instance.ScriptOptions.RootScriptPath, Instance.Logger);
             }
 
             base.OnHostStarted();

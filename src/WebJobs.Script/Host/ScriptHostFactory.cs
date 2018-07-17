@@ -4,6 +4,7 @@
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,6 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ScriptSettingsManager _settingsManager;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILoggerProviderFactory _loggerProviderFactory;
+        private readonly IFunctionMetadataManager _functionMetadataManager;
+        private readonly IMetricsLogger _metricsLogger;
 
         public ScriptHostFactory(
          IScriptHostEnvironment environment,
@@ -33,7 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script
          IScriptEventManager eventManager,
          ScriptSettingsManager settingsManager,
          ILoggerFactory loggerFactory,
-         ILoggerProviderFactory loggerProviderFactory)
+         ILoggerProviderFactory loggerProviderFactory,
+         IFunctionMetadataManager functionMetadataManager,
+         IMetricsLogger metricsLogger)
         {
             _environment = environment;
             _options = options;
@@ -45,12 +50,14 @@ namespace Microsoft.Azure.WebJobs.Script
             _settingsManager = settingsManager;
             _loggerFactory = loggerFactory;
             _loggerProviderFactory = loggerProviderFactory;
+            _functionMetadataManager = functionMetadataManager;
+            _metricsLogger = metricsLogger;
         }
 
         public ScriptHost Create()
         {
             return new ScriptHost(_environment, _options, _jobHostContextFactory, _connectionStringProvider, _distributedLockManager,
-                _eventManager, _loggerFactory, _scriptOptions,  _settingsManager, _loggerProviderFactory);
+                _eventManager, _loggerFactory, _functionMetadataManager, _metricsLogger, _scriptOptions,  _settingsManager, _loggerProviderFactory);
         }
     }
 }

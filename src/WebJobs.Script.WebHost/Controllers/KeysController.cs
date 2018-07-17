@@ -251,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             string json = null;
             string functionPath = Path.Combine(_settings.ScriptPath, functionName);
-            return ScriptHost.TryReadFunctionConfig(functionPath, out json, _fileSystem);
+            return Utility.TryReadFunctionConfig(functionPath, out json, _fileSystem);
         }
     }
 }
