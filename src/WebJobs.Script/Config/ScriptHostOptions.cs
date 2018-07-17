@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.Implementation;
 using Microsoft.Azure.WebJobs.Logging;
@@ -12,6 +13,9 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class ScriptHostOptions
     {
+        private string _rootScriptPath;
+        private ImmutableArray<string> _directorySnapshot;
+
         public ScriptHostOptions()
         {
             FileWatchingEnabled = true;
@@ -26,7 +30,39 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets or sets the path to the script function directory.
         /// </summary>
-        public string RootScriptPath { get; set; }
+        public string RootScriptPath
+        {
+            get => _rootScriptPath;
+            set
+            {
+                _directorySnapshot = default;
+                _rootScriptPath = value;
+            }
+        }
+
+        public ImmutableArray<string> RootScriptDirectorySnapshot
+        {
+            get
+            {
+                if (_rootScriptPath != null && _directorySnapshot.IsDefault)
+                {
+                    // take a startup time function directory snapshot so we can detect function additions/removals
+                    // we'll also use this snapshot when reading function metadata as part of startup
+                    // taking this snapshot once and reusing at various points during initialization allows us to
+                    // minimize disk operations
+                    try
+                    {
+                        _directorySnapshot = Directory.EnumerateDirectories(_rootScriptPath).ToImmutableArray();
+                    }
+                    catch (DirectoryNotFoundException)
+                    {
+                        _directorySnapshot = default;
+                    }
+                }
+
+                return _directorySnapshot;
+            }
+        }
 
         /// <summary>
         /// Gets or sets NugetFallBackPath

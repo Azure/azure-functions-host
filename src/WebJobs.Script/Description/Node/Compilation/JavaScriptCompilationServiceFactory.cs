@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 ToolPath = GetTypeScriptToolPath(),
                 OutDir = ".output",
-                RootDir = _host.ScriptConfig.RootScriptPath
+                RootDir = _host.ScriptOptions.RootScriptPath
             };
         }
 

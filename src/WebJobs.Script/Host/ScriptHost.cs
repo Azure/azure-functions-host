@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILoggerProviderFactory _loggerProviderFactory;
         private readonly string _storageConnectionString;
         private readonly IDistributedLockManager _distributedLockManager;
+        private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
@@ -63,13 +64,11 @@ namespace Microsoft.Azure.WebJobs.Script
         private Func<Task> _restart;
         private Action _shutdown;
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
-        private ImmutableArray<string> _directorySnapshot;
         // TODO: DI (FACAVAL) Review
         private PrimaryHostCoordinator _primaryHostCoordinator = null;
         internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
         internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(5);
         internal static readonly TimeSpan MaxFunctionTimeout = TimeSpan.FromMinutes(10);
-        private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex ProxyNameValidationRegex = new Regex(@"[^a-zA-Z0-9_-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         internal static readonly int DefaultMaxMessageLengthBytesDynamicSku = 32 * 1024 * 1024;
@@ -98,6 +97,8 @@ namespace Microsoft.Azure.WebJobs.Script
             IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
+            IFunctionMetadataManager functionMetadataManager,
+            IMetricsLogger metricsLogger,
             IOptions<ScriptHostOptions> scriptHostOptions = null,
             ScriptSettingsManager settingsManager = null,
             ILoggerProviderFactory loggerProviderFactory = null,
@@ -108,14 +109,14 @@ namespace Microsoft.Azure.WebJobs.Script
             _hostOptions = options;
             _storageConnectionString = connectionStringProvider.GetConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
-
+            _functionMetadataManager = functionMetadataManager;
             // TODO: DI (FACAVAL) Move this to config setup
             //if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
             //{
             //    scriptConfig.RootScriptPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootScriptPath);
             //}
 
-            ScriptConfig = scriptHostOptions.Value;
+            ScriptOptions = scriptHostOptions.Value;
             _scriptHostEnvironment = environment;
             FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -126,14 +127,16 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // TODO: DI (FACAVAL) See comment on method
             //_metricsLogger = CreateMetricsLogger();
+            _metricsLogger = metricsLogger;
 
-            _hostLogPath = Path.Combine(ScriptConfig.RootLogPath, "Host");
+            _hostLogPath = Path.Combine(ScriptOptions.RootLogPath, "Host");
 
             _language = _settingsManager.Configuration[LanguageWorkerConstants.FunctionWorkerRuntimeSettingName];
 
             _loggerProviderFactory = loggerProviderFactory ?? new DefaultLoggerProviderFactory();
             _loggerFactory = loggerFactory;
             _startupLogger = loggerFactory.CreateLogger(LogCategories.Startup);
+            Logger = _startupLogger;
         }
 
         // TODO: DI (FACAVAL) Do we still need this event?
@@ -162,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ILogger Logger { get; internal set; }
 
-        public ScriptHostOptions ScriptConfig { get; private set; }
+        public ScriptHostOptions ScriptOptions { get; private set; }
 
         /// <summary>
         /// Gets the collection of all valid Functions. For functions that are in error
@@ -212,8 +215,8 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             get
             {
-                return ScriptConfig.FileLoggingMode == FileLoggingMode.Always ||
-                    (ScriptConfig.FileLoggingMode == FileLoggingMode.DebugOnly && InDebugMode);
+                return ScriptOptions.FileLoggingMode == FileLoggingMode.Always ||
+                    (ScriptOptions.FileLoggingMode == FileLoggingMode.DebugOnly && InDebugMode);
             }
         }
 
@@ -260,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // create or update the debug sentinel file to trigger a
                 // debug timeout update across all instances
-                string debugSentinelFileName = Path.Combine(ScriptConfig.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
+                string debugSentinelFileName = Path.Combine(ScriptOptions.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
                 if (!File.Exists(debugSentinelFileName))
                 {
                     File.WriteAllText(debugSentinelFileName, "This is a system managed marker file used to control runtime debug mode behavior.");
@@ -283,21 +286,15 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal static void AddFunctionError(Dictionary<string, Collection<string>> functionErrors, string functionName, string error, bool isFunctionShortName = false)
-        {
-            functionName = isFunctionShortName ? functionName : Utility.GetFunctionShortName(functionName);
-
-            Collection<string> functionErrorCollection = new Collection<string>();
-            if (!functionErrors.TryGetValue(functionName, out functionErrorCollection))
-            {
-                functionErrors[functionName] = functionErrorCollection = new Collection<string>();
-            }
-            functionErrorCollection.Add(error);
-        }
-
         public virtual async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
         {
             await base.CallAsync(method, arguments, cancellationToken);
+        }
+
+        protected override Task StartAsyncCore(CancellationToken cancellationToken)
+        {
+            Initialize();
+            return base.StartAsyncCore(cancellationToken);
         }
 
         /// <summary>
@@ -307,21 +304,21 @@ namespace Microsoft.Azure.WebJobs.Script
         public void Initialize()
         {
             _stopwatch.Start();
-            using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
-            {
-                PreInitialize();
-                InitializeFileWatchers();
-                InitializeWorkers();
+            //using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
+            //{
+            PreInitialize();
+            InitializeFileWatchers();
+            InitializeWorkers();
 
-                var functionMetadata = LoadFunctionMetadata();
-                // TODO: DI (FACAVAL) Pass configuration
-                var directTypes = LoadBindingExtensions(functionMetadata, new JObject());
-                InitializeFunctionDescriptors(functionMetadata);
-                GenerateFunctions(directTypes);
+            // TODO: DI (FACAVAL) Pass configuration
+            var functionMetadata = _functionMetadataManager.FunctionMetadata;
+            var directTypes = LoadBindingExtensions(functionMetadata, new JObject());
+            InitializeFunctionDescriptors(functionMetadata);
+            GenerateFunctions(directTypes);
 
-                InitializeServices();
-                CleanupFileSystem();
-            }
+            InitializeServices();
+            CleanupFileSystem();
+            //}
         }
 
         // TODO: DI (FACAVAL) Logger configuration is done on startup
@@ -457,12 +454,6 @@ namespace Microsoft.Azure.WebJobs.Script
             LastDebugNotify = File.Exists(debugSentinelFileName)
                 ? File.GetLastWriteTimeUtc(debugSentinelFileName)
                 : DateTime.MinValue;
-
-            // take a startup time function directory snapshot so we can detect function additions/removals
-            // we'll also use this snapshot when reading function metadata as part of startup
-            // taking this snapshot once and reusing at various points during initialization allows us to
-            // minimize disk operations
-            _directorySnapshot = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).ToImmutableArray();
         }
 
         /// <summary>
@@ -474,7 +465,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (!_settingsManager.FileSystemIsReadOnly)
             {
-                FileUtility.EnsureDirectoryExists(ScriptConfig.RootScriptPath);
+                FileUtility.EnsureDirectoryExists(ScriptOptions.RootScriptPath);
             }
         }
 
@@ -484,7 +475,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private void GenerateFunctions(IEnumerable<Type> directTypes)
         {
             // generate Type level attributes
-            var typeAttributes = CreateTypeAttributes(ScriptConfig);
+            var typeAttributes = CreateTypeAttributes(ScriptOptions);
 
             string generatingMsg = string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", Functions.Count);
             _startupLogger?.LogInformation(generatingMsg);
@@ -505,25 +496,25 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Initialize function descriptors from metadata.
         /// </summary>
-        internal void InitializeFunctionDescriptors(Collection<FunctionMetadata> functionMetadata)
+        internal void InitializeFunctionDescriptors(ImmutableArray<FunctionMetadata> functionMetadata)
         {
             _descriptorProviders = new List<FunctionDescriptorProvider>();
             if (string.IsNullOrEmpty(_language))
             {
                 _startupLogger.LogTrace("Adding Function descriptor providers for all languages.");
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig, _loggerFactory));
-                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher, _loggerFactory));
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _loggerFactory));
+                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptOptions, _functionDispatcher, _loggerFactory));
             }
             else
             {
                 _startupLogger.LogTrace($"Adding Function descriptor provider for language {_language}.");
                 if (string.Equals(_language, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
-                    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptConfig, _loggerFactory));
+                    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _loggerFactory));
                 }
                 else
                 {
-                    _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptConfig, _functionDispatcher, _loggerFactory));
+                    _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptOptions, _functionDispatcher, _loggerFactory));
                 }
             }
 
@@ -566,21 +557,6 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Read all functions and populate function metadata.
-        /// </summary>
-        private Collection<FunctionMetadata> LoadFunctionMetadata()
-        {
-            Collection<FunctionMetadata> functionMetadata;
-            using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupReadFunctionMetadataLatency))
-            {
-                functionMetadata = ReadFunctionsMetadata(_directorySnapshot, _startupLogger, FunctionErrors, _settingsManager, ScriptConfig.Functions);
-                _startupLogger.LogTrace("Function metadata read.");
-            }
-
-            return functionMetadata;
-        }
-
-        /// <summary>
         /// Initialize file and directory change monitoring.
         /// </summary>
         private void InitializeFileWatchers()
@@ -591,9 +567,9 @@ namespace Microsoft.Azure.WebJobs.Script
             _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
             _startupLogger.LogTrace("Debug file watch initialized.");
 
-            if (ScriptConfig.FileWatchingEnabled)
+            if (ScriptOptions.FileWatchingEnabled)
             {
-                _fileEventSource = new FileWatcherEventSource(EventManager, EventSources.ScriptFiles, ScriptConfig.RootScriptPath);
+                _fileEventSource = new FileWatcherEventSource(EventManager, EventSources.ScriptFiles, ScriptOptions.RootScriptPath);
 
                 _eventSubscriptions.Add(EventManager.OfType<FileEvent>()
                         .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
@@ -622,7 +598,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private void InitializeWorkers()
         {
             var serverImpl = new FunctionRpcService(EventManager);
-            var server = new GrpcServer(serverImpl, ScriptConfig.MaxMessageLengthBytes);
+            var server = new GrpcServer(serverImpl, ScriptOptions.MaxMessageLengthBytes);
 
             // TODO: async initialization of script host - hook into startasync method?
             server.StartAsync().GetAwaiter().GetResult();
@@ -640,7 +616,7 @@ namespace Microsoft.Azure.WebJobs.Script
             CreateChannel channelFactory = (languageWorkerConfig, registrations) =>
             {
                 return new LanguageWorkerChannel(
-                    ScriptConfig,
+                    ScriptOptions,
                     EventManager,
                     processFactory,
                     _processRegistry,
@@ -682,7 +658,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void CleanupFileSystem()
         {
-            if (ScriptConfig.FileLoggingMode != FileLoggingMode.Never)
+            if (ScriptOptions.FileLoggingMode != FileLoggingMode.Never)
             {
                 // initiate the cleanup in a background task so we don't
                 // delay startup
@@ -698,7 +674,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             try
             {
-                if (!Directory.Exists(this.ScriptConfig.RootScriptPath))
+                if (!Directory.Exists(this.ScriptOptions.RootScriptPath))
                 {
                     return;
                 }
@@ -708,9 +684,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 // not whether we've identified a valid function from that folder. This ensures
                 // that we don't delete logs/secrets for functions that transition into/out of
                 // invalid unparsable states.
-                var functionLookup = Directory.EnumerateDirectories(ScriptConfig.RootScriptPath).ToLookup(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase);
+                var functionLookup = Directory.EnumerateDirectories(ScriptOptions.RootScriptPath).ToLookup(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase);
 
-                string rootLogFilePath = Path.Combine(ScriptConfig.RootLogPath, "Function");
+                string rootLogFilePath = Path.Combine(ScriptOptions.RootLogPath, "Function");
                 if (!Directory.Exists(rootLogFilePath))
                 {
                     return;
@@ -751,19 +727,19 @@ namespace Microsoft.Azure.WebJobs.Script
             //Func<string, FunctionDescriptor> funcLookup = (name) => GetFunctionOrNull(name);
             //_hostOptions.AddService(funcLookup);
             // TODO: DI (FACAVAL) Inject this (if needed, ideally, remove), remove the instantiation
-            var extensionLoader = new ExtensionLoader(ScriptConfig, null, _startupLogger);
+            var extensionLoader = new ExtensionLoader(ScriptOptions, null, _startupLogger);
             var usedBindingTypes = extensionLoader.DiscoverBindingTypes(functionMetadata);
 
-            var bindingProviders = LoadBindingProviders(ScriptConfig, hostConfigObject, _startupLogger, usedBindingTypes);
-            ScriptConfig.BindingProviders = bindingProviders;
+            var bindingProviders = LoadBindingProviders(_hostOptions, hostConfigObject, _startupLogger, usedBindingTypes);
+            ScriptOptions.BindingProviders = bindingProviders;
             _startupLogger.LogTrace("Binding providers loaded.");
 
             var coreExtensionsBindingProvider = bindingProviders.OfType<CoreExtensionsScriptBindingProvider>().First();
-            coreExtensionsBindingProvider.AppDirectory = ScriptConfig.RootScriptPath;
+            coreExtensionsBindingProvider.AppDirectory = ScriptOptions.RootScriptPath;
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupInitializeBindingProvidersLatency))
             {
-                foreach (var bindingProvider in ScriptConfig.BindingProviders)
+                foreach (var bindingProvider in ScriptOptions.BindingProviders)
                 {
                     try
                     {
@@ -790,7 +766,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // give that script binding the metadata for all loaded extensions so it can dispatch to them.
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupCreateMetadataProviderLatency))
             {
-                var generalProvider = ScriptConfig.BindingProviders.OfType<GeneralScriptBindingProvider>().First();
+                var generalProvider = ScriptOptions.BindingProviders.OfType<GeneralScriptBindingProvider>().First();
                 var metadataProvider = this.CreateMetadataProvider();
                 generalProvider.CompleteInitialization(metadataProvider);
                 _startupLogger.LogTrace("Metadata provider created.");
@@ -836,7 +812,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         scriptFile);
 
                     // Adding a function error will cause this function to get ignored
-                    AddFunctionError(this.FunctionErrors, metadata.Name, msg);
+                    Utility.AddFunctionError(this.FunctionErrors, metadata.Name, msg);
 
                     _startupLogger.LogInformation(msg);
                 }
@@ -891,7 +867,7 @@ namespace Microsoft.Azure.WebJobs.Script
         //    return metricsLogger;
         //}
 
-        private static Collection<ScriptBindingProvider> LoadBindingProviders(ScriptHostOptions options, JObject hostMetadata, ILogger logger, IEnumerable<string> usedBindingTypes)
+        private static Collection<ScriptBindingProvider> LoadBindingProviders(IOptions<JobHostOptions> options, JObject hostMetadata, ILogger logger, IEnumerable<string> usedBindingTypes)
         {
             // Register our built in extensions
             var bindingProviderTypes = new Collection<Type>()
@@ -930,117 +906,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return bindingProviders;
         }
 
-        private static FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, string scriptDirectory, ScriptSettingsManager settingsManager)
-        {
-            var functionMetadata = new FunctionMetadata
-            {
-                Name = functionName,
-                FunctionDirectory = scriptDirectory
-            };
-
-            JArray bindingArray = (JArray)configMetadata["bindings"];
-            if (bindingArray == null || bindingArray.Count == 0)
-            {
-                throw new FormatException("At least one binding must be declared.");
-            }
-
-            if (bindingArray != null)
-            {
-                foreach (JObject binding in bindingArray)
-                {
-                    BindingMetadata bindingMetadata = BindingMetadata.Create(binding);
-                    functionMetadata.Bindings.Add(bindingMetadata);
-                }
-            }
-
-            JToken isDirect;
-            if (configMetadata.TryGetValue("configurationSource", StringComparison.OrdinalIgnoreCase, out isDirect))
-            {
-                var isDirectValue = isDirect.ToString();
-                if (string.Equals(isDirectValue, "attributes", StringComparison.OrdinalIgnoreCase))
-                {
-                    functionMetadata.IsDirect = true;
-                }
-                else if (!string.Equals(isDirectValue, "config", StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new FormatException($"Illegal value '{isDirectValue}' for 'configurationSource' property in {functionMetadata.Name}'.");
-                }
-            }
-
-            return functionMetadata;
-        }
-
-        public static Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<string> functionDirectories, ILogger logger, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null, IFileSystem fileSystem = null)
-        {
-            var functions = new Collection<FunctionMetadata>();
-            settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
-
-            if (functionWhitelist != null)
-            {
-                logger.LogInformation($"A function whitelist has been specified, excluding all but the following functions: [{string.Join(", ", functionWhitelist)}]");
-            }
-
-            foreach (var scriptDir in functionDirectories)
-            {
-                var function = ReadFunctionMetadata(scriptDir, functionErrors, settingsManager, functionWhitelist, fileSystem);
-                if (function != null)
-                {
-                    functions.Add(function);
-                }
-            }
-
-            return functions;
-        }
-
-        public static FunctionMetadata ReadFunctionMetadata(string scriptDir, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null, IFileSystem fileSystem = null)
-        {
-            string functionName = null;
-
-            try
-            {
-                // read the function config
-                string json = null;
-                if (!TryReadFunctionConfig(scriptDir, out json, fileSystem))
-                {
-                    // not a function directory
-                    return null;
-                }
-
-                functionName = Path.GetFileName(scriptDir);
-                if (functionWhitelist != null &&
-                    !functionWhitelist.Contains(functionName, StringComparer.OrdinalIgnoreCase))
-                {
-                    // a functions filter has been specified and the current function is
-                    // not in the filter list
-                    return null;
-                }
-
-                ValidateName(functionName);
-
-                JObject functionConfig = JObject.Parse(json);
-
-                string functionError = null;
-                FunctionMetadata functionMetadata = null;
-                if (!TryParseFunctionMetadata(functionName, functionConfig, scriptDir, settingsManager, out functionMetadata, out functionError, fileSystem))
-                {
-                    // for functions in error, log the error and don't
-                    // add to the functions collection
-                    AddFunctionError(functionErrors, functionName, functionError);
-                    return null;
-                }
-                else if (functionMetadata != null)
-                {
-                    return functionMetadata;
-                }
-            }
-            catch (Exception ex)
-            {
-                // log any unhandled exceptions and continue
-                AddFunctionError(functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
-            }
-            return null;
-        }
-
         internal Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostOptions config, ScriptSettingsManager settingsManager = null)
         {
             // read the proxy config
@@ -1068,27 +933,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return null;
-        }
-
-        internal static bool TryReadFunctionConfig(string scriptDir, out string json, IFileSystem fileSystem = null)
-        {
-            json = null;
-            fileSystem = fileSystem ?? FileUtility.Instance;
-
-            // read the function config
-            string functionConfigPath = Path.Combine(scriptDir, ScriptConstants.FunctionMetadataFileName);
-            try
-            {
-                json = fileSystem.File.ReadAllText(functionConfigPath);
-            }
-            catch (IOException ex) when
-                (ex is FileNotFoundException || ex is DirectoryNotFoundException)
-            {
-                // not a function directory
-                return false;
-            }
-
-            return true;
         }
 
         private Collection<FunctionMetadata> LoadProxyRoutes(string proxiesJson)
@@ -1143,44 +987,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 catch (Exception ex)
                 {
                     // log any unhandled exceptions and continue
-                    AddFunctionError(FunctionErrors, route.Name, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
+                    Utility.AddFunctionError(FunctionErrors, route.Name, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
                 }
             }
 
             return proxies;
-        }
-
-        internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, string scriptDirectory,
-                ScriptSettingsManager settingsManager, out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
-        {
-            fileSystem = fileSystem ?? new FileSystem();
-
-            error = null;
-            functionMetadata = ParseFunctionMetadata(functionName, functionConfig, scriptDirectory, settingsManager);
-
-            try
-            {
-                functionMetadata.ScriptFile = DeterminePrimaryScriptFile(functionConfig, scriptDirectory, fileSystem);
-            }
-            catch (ScriptConfigurationException exc)
-            {
-                error = exc.Message;
-                return false;
-            }
-
-            // determine the script type based on the primary script file extension
-            functionMetadata.ScriptType = ParseScriptType(functionMetadata.ScriptFile);
-            functionMetadata.EntryPoint = (string)functionConfig["entryPoint"];
-
-            return true;
-        }
-
-        internal static void ValidateName(string name, bool isProxy = false)
-        {
-            if (!FunctionNameValidationRegex.IsMatch(name))
-            {
-                throw new InvalidOperationException(string.Format("'{0}' is not a valid {1} name.", name, isProxy ? "proxy" : "function"));
-            }
         }
 
         internal static string NormalizeProxyName(string name)
@@ -1188,98 +999,16 @@ namespace Microsoft.Azure.WebJobs.Script
             return ProxyNameValidationRegex.Replace(name, string.Empty);
         }
 
-        /// <summary>
-        /// Determines which script should be considered the "primary" entry point script.
-        /// </summary>
-        /// <exception cref="ConfigurationErrorsException">Thrown if the function metadata points to an invalid script file, or no script files are present.</exception>
-        internal static string DeterminePrimaryScriptFile(JObject functionConfig, string scriptDirectory, IFileSystem fileSystem = null)
+        private Collection<FunctionDescriptor> GetFunctionDescriptors(ImmutableArray<FunctionMetadata> functions)
         {
-            fileSystem = fileSystem ?? new FileSystem();
-
-            // First see if there is an explicit primary file indicated
-            // in config. If so use that.
-            string functionPrimary = null;
-            string scriptFile = (string)functionConfig["scriptFile"];
-
-            if (!string.IsNullOrEmpty(scriptFile))
-            {
-                string scriptPath = fileSystem.Path.Combine(scriptDirectory, scriptFile);
-                if (!fileSystem.File.Exists(scriptPath))
-                {
-                    throw new ScriptConfigurationException("Invalid script file name configuration. The 'scriptFile' property is set to a file that does not exist.");
-                }
-
-                functionPrimary = scriptPath;
-            }
-            else
-            {
-                string[] functionFiles = fileSystem.Directory.EnumerateFiles(scriptDirectory)
-                    .Where(p => fileSystem.Path.GetFileName(p).ToLowerInvariant() != ScriptConstants.FunctionMetadataFileName)
-                    .ToArray();
-
-                if (functionFiles.Length == 0)
-                {
-                    throw new ScriptConfigurationException("No function script files present.");
-                }
-
-                if (functionFiles.Length == 1)
-                {
-                    // if there is only a single file, that file is primary
-                    functionPrimary = functionFiles[0];
-                }
-                else
-                {
-                    // if there is a "run" file, that file is primary,
-                    // for Node, any index.js file is primary
-                    functionPrimary = functionFiles.FirstOrDefault(p =>
-                        fileSystem.Path.GetFileNameWithoutExtension(p).ToLowerInvariant() == "run" ||
-                        fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.js");
-                }
-            }
-
-            if (string.IsNullOrEmpty(functionPrimary))
-            {
-                throw new ScriptConfigurationException("Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
-                    "or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.");
-            }
-
-            return Path.GetFullPath(functionPrimary);
-        }
-
-        private static ScriptType ParseScriptType(string scriptFilePath)
-        {
-            string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
-
-            switch (extension)
-            {
-                case "csx":
-                case "cs":
-                    return ScriptType.CSharp;
-                case "js":
-                    return ScriptType.Javascript;
-                case "ts":
-                    return ScriptType.TypeScript;
-                case "fsx":
-                    return ScriptType.FSharp;
-                case "dll":
-                    return ScriptType.DotNetAssembly;
-                case "jar":
-                    return ScriptType.JavaArchive;
-                default:
-                    return ScriptType.Unknown;
-            }
-        }
-
-        private Collection<FunctionDescriptor> GetFunctionDescriptors(Collection<FunctionMetadata> functions)
-        {
-            var proxies = ReadProxyMetadata(ScriptConfig, _settingsManager);
+            var proxies = ReadProxyMetadata(ScriptOptions, _settingsManager);
 
             IEnumerable<FunctionMetadata> combinedFunctionMetadata = null;
             if (proxies != null && proxies.Any())
             {
                 combinedFunctionMetadata = proxies.Concat(functions);
 
-                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptConfig, _proxyClient, _loggerFactory));
+                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _proxyClient, _loggerFactory));
             }
             else
             {
@@ -1316,7 +1045,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 catch (Exception ex)
                 {
                     // log any unhandled exceptions and continue
-                    AddFunctionError(FunctionErrors, metadata.Name, Utility.FlattenException(ex, includeSource: false));
+                    Utility.AddFunctionError(FunctionErrors, metadata.Name, Utility.FlattenException(ex, includeSource: false));
                 }
             }
 
@@ -1478,7 +1207,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // For all startup time indexing/listener errors, we accumulate them per function
                 FunctionException functionException = exception as FunctionException;
                 string formattedError = Utility.FlattenException(functionException);
-                AddFunctionError(FunctionErrors, functionException.MethodName, formattedError);
+                Utility.AddFunctionError(FunctionErrors, functionException.MethodName, formattedError);
 
                 // Also notify the invoker so the error can also be written to the function
                 // log file
@@ -1547,10 +1276,10 @@ namespace Microsoft.Azure.WebJobs.Script
             // A full host shutdown is performed when an assembly (.dll, .exe) in a watched directory is modified
 
             string changeDescription = string.Empty;
-            string directory = GetRelativeDirectory(e.FullPath, ScriptConfig.RootScriptPath);
+            string directory = GetRelativeDirectory(e.FullPath, ScriptOptions.RootScriptPath);
             string fileName = Path.GetFileName(e.Name);
 
-            if (ScriptConfig.WatchDirectories.Contains(directory))
+            if (ScriptOptions.WatchDirectories.Contains(directory))
             {
                 changeDescription = "Watched directory";
             }
@@ -1561,7 +1290,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 changeDescription = "File";
             }
             else if ((e.ChangeType == WatcherChangeTypes.Deleted || Directory.Exists(e.FullPath))
-                && !_directorySnapshot.SequenceEqual(Directory.EnumerateDirectories(ScriptConfig.RootScriptPath)))
+                && !ScriptOptions.RootScriptDirectorySnapshot.SequenceEqual(Directory.EnumerateDirectories(ScriptOptions.RootScriptPath)))
             {
                 // Check directory snapshot only if "Deleted" change or if directory changed
                 changeDescription = "Directory";
@@ -1614,6 +1343,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void ApplyJobHostMetadata()
         {
+            // TODO: DI (FACAVAL) Review
             var metadataProvider = this.CreateMetadataProvider();
             foreach (var function in Functions)
             {

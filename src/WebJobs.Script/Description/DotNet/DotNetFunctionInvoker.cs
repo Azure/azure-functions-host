@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private static IFunctionMetadataResolver CreateMetadataResolver(ScriptHost host, FunctionMetadata functionMetadata, ILogger logger)
         {
-            return new ScriptFunctionMetadataResolver(functionMetadata.ScriptFile, host.ScriptConfig.BindingProviders, logger);
+            return new ScriptFunctionMetadataResolver(functionMetadata.ScriptFile, host.ScriptOptions.BindingProviders, logger);
         }
 
         private void InitializeFileWatcher()

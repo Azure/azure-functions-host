@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected bool InitializeFileWatcherIfEnabled()
         {
-            if (Host.ScriptConfig.FileWatchingEnabled)
+            if (Host.ScriptOptions.FileWatchingEnabled)
             {
                 string functionBasePath = Path.GetDirectoryName(Metadata.ScriptFile) + Path.DirectorySeparatorChar;
                 _fileChangeSubscription = Host.EventManager.OfType<FileEvent>()

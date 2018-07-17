@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
         {
             string name = context.Type;
-            var attrType = _metadataProvider.GetAttributeTypeFromName(name);
+            var attrType = _metadataProvider?.GetAttributeTypeFromName(name);
             if (attrType == null)
             {
                 binding = null;

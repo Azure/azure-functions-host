@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddTransient<IExtensionsManager>(c =>
             {
                 var hostInstance = c.GetService<WebScriptHostManager>().Instance;
-                return new ExtensionsManager(hostInstance.ScriptConfig.RootScriptPath, hostInstance.Logger, hostInstance.ScriptConfig.NugetFallBackPath);
+                return new ExtensionsManager(hostInstance.ScriptOptions.RootScriptPath, hostInstance.Logger, hostInstance.ScriptOptions.NugetFallBackPath);
             });
 
             // TODO: DI (FACAVAL) This will be replacet by the hosted service implementation
