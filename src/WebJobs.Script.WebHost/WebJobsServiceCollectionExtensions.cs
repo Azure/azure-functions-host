@@ -70,7 +70,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddMvc()
                 .AddXmlDataContractSerializerFormatters();
 
-            services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WebJobsScriptHostService>());
+            // Core script host service
+            services.AddSingleton<WebJobsScriptHostService>();
+            services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
 
             if (EnvironmentUtility.IsLinuxContainerEnvironment)
             {
@@ -92,13 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     return new EtwEventGenerator();
                 }
             });
-            services.AddSingleton<ISecretManagerFactory, DefaultSecretManagerFactory>();
-            services.AddSingleton<ISecretsRepositoryFactory, DefaultSecretsRepositoryFactory>();
 
-            // TODO: DI (FACAVAL) Review metrics logger registration
-            services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
-
-            services.AddSingleton<IScriptEventManager, ScriptEventManager>();
             services.AddSingleton<ILoggerProviderFactory, WebHostLoggerProviderFactory>();
 
             // TODO: DI (FACAVAL) Removed the previous workaround to pass a logger factory into the host resolver
@@ -119,14 +115,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // The services below need to be scoped to a pseudo-tenant (warm/specialized environment)
             // TODO: DI (FACAVAL) This will need the child container/scoping logic for warm/specialized hosts
             //services.AddSingleton<WebScriptHostManager>(c => c.GetService<WebHostResolver>().GetWebScriptHostManager());
-            services.AddSingleton<ISecretManager>(c => c.GetService<ISecretManagerFactory>().Create());
+
+            // Management services
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
+
             services.AddSingleton(_ => new HttpClient());
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
 
+            // TODO: DI (FACAVAL) Replace with the actual web host environment
+            services.AddSingleton<IScriptHostEnvironment, NullScriptHostEnvironment>();
             // we want all ILoggerFactory resolution to go through WebHostResolver
             // TODO: DI (FACAVAL) This is no longer the case... perform cleanup (/cc brettsam)
             // builder.Register(ct => ct.Resolve<WebHostResolver>().GetLoggerFactory(ct.Resolve<WebHostSettings>())).As<ILoggerFactory>().ExternallyOwned();

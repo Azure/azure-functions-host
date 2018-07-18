@@ -127,11 +127,11 @@ namespace DryIoc.Microsoft.DependencyInjection
         /// ]]></code>
         /// </example>
         public static void Populate(this IContainer container, IEnumerable<ServiceDescriptor> descriptors,
-            Func<IRegistrator, ServiceDescriptor, bool> registerDescriptor = null)
+            Func<IRegistrator, ServiceDescriptor, bool> registerDescriptor = null, IReuse singletonReuse = null)
         {
             foreach (var descriptor in descriptors)
                 if (registerDescriptor == null || !registerDescriptor(container, descriptor))
-                    container.RegisterDescriptor(descriptor);
+                    container.RegisterDescriptor(descriptor, singletonReuse);
         }
 
         /// <summary>Uses passed descriptor to register service in container: 
@@ -139,9 +139,9 @@ namespace DryIoc.Microsoft.DependencyInjection
         /// and DI registration type to corresponding DryIoc Register, RegisterDelegate or RegisterInstance.</summary>
         /// <param name="container">The container.</param>
         /// <param name="descriptor">Service descriptor.</param>
-        public static void RegisterDescriptor(this IContainer container, ServiceDescriptor descriptor)
+        public static void RegisterDescriptor(this IContainer container, ServiceDescriptor descriptor, IReuse singletonReuse = null)
         {
-            var reuse = ConvertLifetimeToReuse(descriptor.Lifetime);
+            var reuse = ConvertLifetimeToReuse(descriptor.Lifetime, singletonReuse);
 
             if (descriptor.ImplementationType != null)
             {
@@ -160,12 +160,12 @@ namespace DryIoc.Microsoft.DependencyInjection
             }
         }
 
-        private static IReuse ConvertLifetimeToReuse(ServiceLifetime lifetime)
+        private static IReuse ConvertLifetimeToReuse(ServiceLifetime lifetime, IReuse singletonReuse = null)
         {
             switch (lifetime)
             {
                 case ServiceLifetime.Singleton:
-                    return Reuse.Singleton;
+                    return singletonReuse ?? Reuse.Singleton;
                 case ServiceLifetime.Scoped:
                     return Reuse.ScopedOrSingleton; // note: because the infrastructure services may be resolved w/out scope
                 case ServiceLifetime.Transient:

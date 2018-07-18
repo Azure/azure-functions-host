@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script
     /// Class encapsulating a <see cref="ScriptHost"/> an keeping a singleton
     /// instance always alive, restarting as necessary.
     /// </summary>
-    public class ScriptHostManager : IScriptHostManager, IScriptHostEnvironment, IDisposable
+    public class ScriptHostManager : IScriptHostEnvironment, IDisposable
     {
         public const int HostCheckTimeoutSeconds = 30;
         public const int HostCheckPollingIntervalMilliseconds = 500;

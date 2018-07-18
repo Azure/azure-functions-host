@@ -20,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static IApplicationBuilder UseWebJobsScriptHost(this IApplicationBuilder builder, IApplicationLifetime applicationLifetime, Action<WebJobsRouteBuilder> routes)
         {
+            builder.UseMiddleware<ScriptHostRequestServiceProviderMiddleware>();
+
             if (!ScriptSettingsManager.Instance.IsAppServiceEnvironment)
             {
                 builder.UseMiddleware<AppServiceHeaderFixupMiddleware>();

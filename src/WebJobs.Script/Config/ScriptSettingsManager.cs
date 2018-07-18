@@ -62,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets a value that uniquely identifies the site and slot.
         /// </summary>
+        // TODO: DI (FACAVAL) Remove all usage here. Moved to EnvironmentUtility
         public virtual string AzureWebsiteUniqueSlotName
         {
             get

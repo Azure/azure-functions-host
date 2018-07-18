@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
@@ -24,10 +25,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly ScriptSettingsManager _settingsManager;
         private readonly HttpClient _client;
 
-        public InstanceManager(ScriptSettingsManager settingsManager, ScriptWebHostOptions webHostSettings, ILoggerFactory loggerFactory, HttpClient client)
+        public InstanceManager(ScriptSettingsManager settingsManager, IOptions<ScriptWebHostOptions> webHostSettings, ILoggerFactory loggerFactory, HttpClient client)
         {
             _settingsManager = settingsManager;
-            _webHostSettings = webHostSettings;
+            _webHostSettings = webHostSettings.Value;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _client = client;
         }
