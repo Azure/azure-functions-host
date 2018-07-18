@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
         private readonly ICompilationService<IDotNetCompilation> _compilationService;
         private readonly FunctionLoader<MethodInfo> _functionLoader;
-        private readonly IMetricsLogger _metricsLogger;
+       // private readonly IMetricsLogger _metricsLogger;
 
         private FunctionSignature _functionSignature;
         private IFunctionMetadataResolver _metadataResolver;
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             : base(host, functionMetadata, loggerFactory)
         {
             // TODO: DI (FACAVAL) Inject the metrics logger
-            _metricsLogger = null;
+            //_metricsLogger = null;
             //_metricsLogger = Host.ScriptConfig.HostOptions.GetService<IMetricsLogger>();
             _functionEntryPointResolver = functionEntryPointResolver;
             _metadataResolver = metadataResolver ?? CreateMetadataResolver(host, functionMetadata, FunctionLogger);
@@ -282,25 +282,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 await VerifyPackageReferencesAsync();
 
                 string eventName = string.Format(MetricEventNames.FunctionCompileLatencyByLanguageFormat, _compilationService.Language);
-                using (_metricsLogger.LatencyEvent(eventName, _functionMetadata.Name))
-                {
-                    IDotNetCompilation compilation = await _compilationService.GetFunctionCompilationAsync(Metadata);
+                // TODO: DI (FACAVAL) Fix metrics logger
+                //using (_metricsLogger.LatencyEvent(eventName, _functionMetadata.Name))
+                //{
+                IDotNetCompilation compilation = await _compilationService.GetFunctionCompilationAsync(Metadata);
 
-                    DotNetCompilationResult compilationResult = await compilation.EmitAsync(cancellationToken);
-                    Assembly assembly = compilationResult.Load(Metadata, _metadataResolver, FunctionLogger);
+                DotNetCompilationResult compilationResult = await compilation.EmitAsync(cancellationToken);
+                Assembly assembly = compilationResult.Load(Metadata, _metadataResolver, FunctionLogger);
 
-                    FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver, assembly);
+                FunctionSignature functionSignature = compilation.GetEntryPointSignature(_functionEntryPointResolver, assembly);
 
-                    ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, _triggerInputName, _inputBindings, _outputBindings, throwIfFailed: true);
-                    TraceCompilationDiagnostics(bindingDiagnostics);
+                ImmutableArray<Diagnostic> bindingDiagnostics = ValidateFunctionBindingArguments(functionSignature, _triggerInputName, _inputBindings, _outputBindings, throwIfFailed: true);
+                TraceCompilationDiagnostics(bindingDiagnostics);
 
-                    _compilerErrorCount = 0;
+                _compilerErrorCount = 0;
 
-                    // Set our function entry point signature
-                    _functionSignature = functionSignature;
+                // Set our function entry point signature
+                _functionSignature = functionSignature;
 
-                    return _functionSignature.GetMethod(assembly);
-                }
+                return _functionSignature.GetMethod(assembly);
+                //}
             }
             catch (CompilationErrorException exc)
             {

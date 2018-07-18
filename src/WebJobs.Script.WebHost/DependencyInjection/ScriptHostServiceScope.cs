@@ -2,25 +2,34 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using DryIoc;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
-    public class FunctionsServiceScope : IServiceScope
+    public class ScriptHostServiceScope : IServiceScope
     {
+        private readonly TaskCompletionSource<object> _activeTcs;
         private readonly ScopedServiceProvider _serviceProvider;
+        private readonly IServiceScope _rootScope;
 
-        public FunctionsServiceScope(IResolverContext serviceProvider)
+        public ScriptHostServiceScope(IResolverContext serviceProvider, IServiceScope rootScope)
         {
+            _activeTcs = new TaskCompletionSource<object>();
             _serviceProvider = new ScopedServiceProvider(serviceProvider);
+            _rootScope = rootScope;
         }
 
         public IServiceProvider ServiceProvider => _serviceProvider;
 
+        public Task DisposalTask => _activeTcs.Task;
+
         public void Dispose()
         {
             _serviceProvider.Dispose();
+            _rootScope.Dispose();
+            _activeTcs.SetResult(null);
         }
     }
 }

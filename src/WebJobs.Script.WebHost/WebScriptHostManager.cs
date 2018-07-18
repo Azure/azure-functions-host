@@ -86,41 +86,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             config.IsSelfHost = webHostSettings.IsSelfHost;
 
-            secretsRepositoryFactory = secretsRepositoryFactory ?? new DefaultSecretsRepositoryFactory();
-            var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config, connectionStringProvider);
+            secretsRepositoryFactory = secretsRepositoryFactory ?? new DefaultSecretsRepositoryFactory(new OptionsWrapper<ScriptWebHostOptions>(webHostSettings),
+                new OptionsWrapper<ScriptHostOptions>(config), connectionStringProvider);
+            var secretsRepository = secretsRepositoryFactory.Create();
             _secretManager = secretManagerFactory.Create();
             eventGenerator = eventGenerator ?? new EtwEventGenerator();
 
             _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider(_secretManager);
             _metricsLogger = new WebHostMetricsLogger(eventGenerator);
-        }
-
-        public WebScriptHostManager(ScriptHostOptions config,
-            IOptions<JobHostOptions> jobHostOptions,
-            IMetricsLogger metricsLogger,
-            ISecretManagerFactory secretManagerFactory,
-            IScriptEventManager eventManager,
-            ScriptSettingsManager settingsManager,
-            ScriptWebHostOptions webHostSettings,
-            IWebJobsRouter router,
-            ILoggerFactory loggerFactory,
-            IConnectionStringProvider connectionStringProvider,
-            IScriptHostFactory scriptHostFactory,
-            IExtensionRegistry extensionRegistry)
-            : this(config,
-                  jobHostOptions,
-                  metricsLogger,
-                  secretManagerFactory,
-                  eventManager,
-                  settingsManager,
-                  webHostSettings,
-                  router,
-                  loggerFactory,
-                  connectionStringProvider,
-                  scriptHostFactory,
-                  extensionRegistry,
-                  new DefaultSecretsRepositoryFactory())
-        {
         }
 
         internal WebJobsSdkExtensionHookProvider BindingWebHookProvider => _bindingWebHookProvider;

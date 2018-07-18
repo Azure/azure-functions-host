@@ -8,7 +8,6 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.IO.Abstractions;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reflection;
@@ -37,7 +36,6 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
@@ -50,7 +48,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string GeneratedTypeNamespace = "Host";
         internal const string GeneratedTypeName = "Functions";
         private readonly IScriptHostEnvironment _scriptHostEnvironment;
-        private readonly ILoggerProviderFactory _loggerProviderFactory;
         private readonly string _storageConnectionString;
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
@@ -59,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly Stopwatch _stopwatch = new Stopwatch();
         private readonly string _language;
         private readonly IOptions<JobHostOptions> _hostOptions;
-
+        private readonly ScriptTypeLocator _typeLocator;
         private string _instanceId;
         private Func<Task> _restart;
         private Action _shutdown;
@@ -90,8 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // This is the set of bindings we shipped prior to binding extensibility.
         // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
 
-        public ScriptHost(IScriptHostEnvironment environment,
-            IOptions<JobHostOptions> options,
+        public ScriptHost(IOptions<JobHostOptions> options,
             IJobHostContextFactory jobHostContextFactory,
             IConnectionStringProvider connectionStringProvider,
             IDistributedLockManager distributedLockManager,
@@ -99,12 +95,15 @@ namespace Microsoft.Azure.WebJobs.Script
             ILoggerFactory loggerFactory,
             IFunctionMetadataManager functionMetadataManager,
             IMetricsLogger metricsLogger,
-            IOptions<ScriptHostOptions> scriptHostOptions = null,
+            IOptions<ScriptHostOptions> scriptHostOptions,
+            ITypeLocator typeLocator,
             ScriptSettingsManager settingsManager = null,
-            ILoggerProviderFactory loggerProviderFactory = null,
             ProxyClientExecutor proxyClient = null)
             : base(options, jobHostContextFactory)
         {
+            _typeLocator = typeLocator as ScriptTypeLocator
+                ?? throw new ArgumentException(nameof(typeLocator), $"A {nameof(ScriptTypeLocator)} instance is required.");
+
             _instanceId = Guid.NewGuid().ToString();
             _hostOptions = options;
             _storageConnectionString = connectionStringProvider.GetConnectionString(ConnectionStringNames.Storage);
@@ -117,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script
             //}
 
             ScriptOptions = scriptHostOptions.Value;
-            _scriptHostEnvironment = environment;
+            _scriptHostEnvironment = new NullScriptHostEnvironment();
             FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
 
             EventManager = eventManager;
@@ -133,7 +132,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _language = _settingsManager.Configuration[LanguageWorkerConstants.FunctionWorkerRuntimeSettingName];
 
-            _loggerProviderFactory = loggerProviderFactory ?? new DefaultLoggerProviderFactory();
             _loggerFactory = loggerFactory;
             _startupLogger = loggerFactory.CreateLogger(LogCategories.Startup);
             Logger = _startupLogger;
@@ -489,8 +487,7 @@ namespace Microsoft.Azure.WebJobs.Script
             types.Add(functionWrapperType);
             types.AddRange(directTypes);
 
-            // TODO: DI (FACAVAL) Use a custom ITypeLocator implementation that supports the type registration
-            // _hostOptions.TypeLocator = new TypeLocator(types);
+            _typeLocator.SetTypes(types);
         }
 
         /// <summary>
@@ -1344,15 +1341,15 @@ namespace Microsoft.Azure.WebJobs.Script
         private void ApplyJobHostMetadata()
         {
             // TODO: DI (FACAVAL) Review
-            var metadataProvider = this.CreateMetadataProvider();
-            foreach (var function in Functions)
-            {
-                var metadata = metadataProvider.GetFunctionMetadata(function.Metadata.Name);
-                if (metadata != null)
-                {
-                    function.Metadata.IsDisabled = metadata.IsDisabled;
-                }
-            }
+            //var metadataProvider = this.CreateMetadataProvider();
+            //foreach (var function in Functions)
+            //{
+            //    var metadata = metadataProvider.GetFunctionMetadata(function.Metadata.Name);
+            //    if (metadata != null)
+            //    {
+            //        function.Metadata.IsDisabled = metadata.IsDisabled;
+            //    }
+            //}
         }
 
         internal static string GetAssemblyFileVersion(Assembly assembly)

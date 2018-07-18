@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _metricsEventManager = eventManager;
         }
 
-        public WebHostMetricsLogger(ScriptSettingsManager settingsManager, IEventGenerator eventGenerator, int metricEventIntervalInSeconds)
+        protected WebHostMetricsLogger(ScriptSettingsManager settingsManager, IEventGenerator eventGenerator, int metricEventIntervalInSeconds)
         {
             _metricsEventManager = new MetricsEventManager(settingsManager, eventGenerator, metricEventIntervalInSeconds);
         }
