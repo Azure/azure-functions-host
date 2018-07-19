@@ -289,34 +289,34 @@ namespace Microsoft.Azure.WebJobs.Script
             await base.CallAsync(method, arguments, cancellationToken);
         }
 
-        protected override Task StartAsyncCore(CancellationToken cancellationToken)
+        protected override async Task StartAsyncCore(CancellationToken cancellationToken)
         {
-            Initialize();
-            return base.StartAsyncCore(cancellationToken);
+            await InitializeAsync();
+            await base.StartAsyncCore(cancellationToken);
         }
 
         /// <summary>
         /// Performs all required initialization on the host.
         /// Must be called before the host is started.
         /// </summary>
-        public void Initialize()
+        public async Task InitializeAsync()
         {
             _stopwatch.Start();
-            //using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
-            //{
-            PreInitialize();
-            InitializeFileWatchers();
-            InitializeWorkers();
+            using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
+            {
+                PreInitialize();
+                InitializeFileWatchers();
+                await InitializeWorkersAsync();
 
-            // TODO: DI (FACAVAL) Pass configuration
-            var functionMetadata = _functionMetadataManager.FunctionMetadata;
-            var directTypes = LoadBindingExtensions(functionMetadata, new JObject());
-            InitializeFunctionDescriptors(functionMetadata);
-            GenerateFunctions(directTypes);
+                // TODO: DI (FACAVAL) Pass configuration
+                var functionMetadata = _functionMetadataManager.FunctionMetadata;
+                var directTypes = LoadBindingExtensions(functionMetadata, new JObject());
+                InitializeFunctionDescriptors(functionMetadata);
+                GenerateFunctions(directTypes);
 
-            InitializeServices();
-            CleanupFileSystem();
-            //}
+                InitializeServices();
+                CleanupFileSystem();
+            }
         }
 
         // TODO: DI (FACAVAL) Logger configuration is done on startup
@@ -535,20 +535,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void InitializeHostCoordinator()
         {
-            // TODO: DI (FACAVAL) Remove this once validated. Injection no longer relies on this ordering.
-            // this must be done ONLY after we've loaded any custom extensions.
-            // that gives an extension an opportunity to plug in their own implementations.
-            //if (_storageConnectionString != null)
-            //{
-            //    var lockManager = (IDistributedLockManager)Services.GetService(typeof(IDistributedLockManager));
-            //    _primaryHostCoordinator = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), _hostOptions.HostId, _settingsManager.InstanceId, _hostOptions.LoggerFactory);
-            //}
-
-            // TODO: DI (FACAVAL) Move to constructor injection, wire up handler.
             // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal
             // and subscribe for change notifications.
-            if (_primaryHostCoordinator != null)
+            if (_storageConnectionString != null)
             {
+                _primaryHostCoordinator = PrimaryHostCoordinator.Create(_distributedLockManager, TimeSpan.FromSeconds(15), _hostOptions.Value.HostId, _settingsManager.InstanceId, _loggerFactory);
                 _primaryHostCoordinator.HasLeaseChanged += OnHostLeaseChanged;
             }
         }
@@ -592,13 +583,13 @@ namespace Microsoft.Azure.WebJobs.Script
             _shutdown = _shutdown.Debounce(500);
         }
 
-        private void InitializeWorkers()
+        private async Task InitializeWorkersAsync()
         {
             var serverImpl = new FunctionRpcService(EventManager);
             var server = new GrpcServer(serverImpl, ScriptOptions.MaxMessageLengthBytes);
 
-            // TODO: async initialization of script host - hook into startasync method?
-            server.StartAsync().GetAwaiter().GetResult();
+            await server.StartAsync();
+
             var processFactory = new DefaultWorkerProcessFactory();
 
             try

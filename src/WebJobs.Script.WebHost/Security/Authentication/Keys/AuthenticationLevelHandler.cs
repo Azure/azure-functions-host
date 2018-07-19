@@ -16,7 +16,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
 {

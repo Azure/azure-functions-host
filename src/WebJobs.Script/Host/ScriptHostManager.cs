@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     //newInstance.HostInitializing += OnHostInitializing;
                     newInstance.HostInitialized += OnHostInitialized;
                     newInstance.HostStarted += OnHostStarted;
-                    newInstance.Initialize();
+                    newInstance.InitializeAsync();
 
                     newInstance.StartAsync(cancellationToken).GetAwaiter().GetResult();
 

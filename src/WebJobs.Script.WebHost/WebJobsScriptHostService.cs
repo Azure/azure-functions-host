@@ -97,7 +97,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             })
                             .AddAzureStorageCoreServices()
                             .AddAzureStorage()
-                            .AddHttp()
+                            .AddHttp(o =>
+                            {
+                                o.SetResponse = Binding.HttpBinding.SetResponse;
+                            })
                             .ConfigureServices(s =>
                             {
                                 s.RemoveAll<IHostedService>();
