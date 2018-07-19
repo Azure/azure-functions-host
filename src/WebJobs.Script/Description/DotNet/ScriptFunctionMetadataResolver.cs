@@ -42,7 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 typeof(ILoggerFactory).Assembly.Location, /*Microsoft.Extensions.Logging.Abstractions*/
                 typeof(IAsyncCollector<>).Assembly.Location, /*Microsoft.Azure.WebJobs*/
                 typeof(JobHost).Assembly.Location, /*Microsoft.Azure.WebJobs.Host*/
-                typeof(CoreJobHostConfigurationExtensions).Assembly.Location, /*Microsoft.Azure.WebJobs.Extensions*/
                 typeof(AspNetCore.Http.HttpRequest).Assembly.Location, /*Microsoft.AspNetCore.Http.Abstractions*/
                 typeof(AspNetCore.Mvc.IActionResult).Assembly.Location, /*Microsoft.AspNetCore.Mvc.Abstractions*/
                 typeof(AspNetCore.Mvc.RedirectResult).Assembly.Location, /*Microsoft.AspNetCore.Mvc.Core*/

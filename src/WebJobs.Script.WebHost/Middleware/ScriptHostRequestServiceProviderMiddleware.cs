@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         public async Task Invoke(HttpContext httpContext, WebJobsScriptHostService manager)
         {
             // TODO: DI (FACAVAL) Remove this once the host check middleware is updated.
-            await Task.Delay(5000);
+            //await Task.Delay(5000);
 
             if (manager.Services is IServiceScopeFactory scopedServiceProvider)
             {

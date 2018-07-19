@@ -85,12 +85,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             {
                                 c.Add(new HostJsonFileConfigurationSource(_webHostOptions));
                             })
-                            .AddScriptHostServices(_webHostOptions)
+                            .AddScriptHost(_webHostOptions)
                             .ConfigureWebJobsHost(o =>
                             {
                                 o.AllowPartialHostStartup = true;
                             })
                             .AddWebJobsLogging() // Enables WebJobs v1 classic logging
+                            .AddExecutionContextBinding(o =>
+                            {
+                                o.AppDirectory = _webHostOptions.Value.ScriptPath;
+                            })
                             .AddAzureStorageCoreServices()
                             .AddAzureStorage()
                             .AddHttp()

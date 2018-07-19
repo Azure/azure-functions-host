@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public static class ScriptHostBuilderExtensions
     {
-        public static IHostBuilder AddScriptHostServices(this IHostBuilder builder, IOptions<ScriptWebHostOptions> webHostOptions)
+        public static IHostBuilder AddScriptHost(this IHostBuilder builder, IOptions<ScriptWebHostOptions> webHostOptions)
         {
             builder.ConfigureServices(services =>
             {
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 // Configuration
                 services.AddSingleton<IOptions<ScriptWebHostOptions>>(webHostOptions);
-                services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<ScriptHostOptions>, ScriptHostOptionsSetup>());
+                services.ConfigureOptions<ScriptHostOptionsSetup>();
             });
 
             return builder;

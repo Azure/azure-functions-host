@@ -731,9 +731,6 @@ namespace Microsoft.Azure.WebJobs.Script
             ScriptOptions.BindingProviders = bindingProviders;
             _startupLogger.LogTrace("Binding providers loaded.");
 
-            var coreExtensionsBindingProvider = bindingProviders.OfType<CoreExtensionsScriptBindingProvider>().First();
-            coreExtensionsBindingProvider.AppDirectory = ScriptOptions.RootScriptPath;
-
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupInitializeBindingProvidersLatency))
             {
                 foreach (var bindingProvider in ScriptOptions.BindingProviders)
