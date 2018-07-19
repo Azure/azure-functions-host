@@ -12,7 +12,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
-    public class ScriptHostServiceProvider : IServiceProvider, IServiceScopeFactory
+    public class ScriptHostServiceProvider : IServiceProvider, IServiceScopeFactory, ISupportRequiredService
     {
         private const string ScriptJobHostScope = "scriptjobhost";
 
@@ -70,6 +70,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public object GetService(Type serviceType)
         {
+            return GetService(serviceType, IfUnresolved.ReturnDefault);
+        }
+
+        public object GetRequiredService(Type serviceType)
+        {
+            return GetService(serviceType, IfUnresolved.Throw);
+        }
+
+        private object GetService(Type serviceType, IfUnresolved ifUnresolved)
+        {
             if (serviceType == typeof(IServiceProvider))
             {
                 return this;
@@ -80,35 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 return this;
             }
 
-            return _currentResolver.Container.Resolve(serviceType, IfUnresolved.ReturnDefault);
-        }
-
-        public void AddServices(IServiceCollection services)
-        {
-            _container.Populate(services);
-
-            //var results = _root.Validate();
-        }
-
-        /// <summary>
-        /// Updates the child container and populates it with the services contained in the provided <see cref="IServiceCollection"/>.
-        /// </summary>
-        /// <param name="serviceDescriptors">The service descriptors used to populate the child container.</param>
-        internal void UpdateChildServices(IServiceCollection serviceDescriptors)
-        {
-            //_container.Unregister<IHostedService>(condition: f => f.ImplementationType == typeof(WebJobsScriptHostService));
-            var resolver = new Container(_defaultContainerRules); // (Container)_root.OpenScope(ScriptJobHostScope);
-            resolver.Populate(serviceDescriptors, singletonReuse: Reuse.InCurrentNamedScope(ScriptJobHostScope));
-
-            var functionsResolver = new ScriptHostScopedResolver(resolver);
-            ScriptHostScopedResolver previous = Interlocked.Exchange(ref _currentResolver, functionsResolver);
-
-            if (!previous.IsRootResolver)
-            {
-                previous.Dispose();
-            }
-
-            //var results = resolver.Validate();
+            return _currentResolver.Container.Resolve(serviceType, ifUnresolved);
         }
 
         public IServiceScope CreateScope()

@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             // TODO: DI (FACAVAL) Register core extensions
             //HostOptions.UseTimers();
-            //HostOptions.UseCore(AppDirectory);
         }
 
         /// <inheritdoc/>
@@ -41,60 +40,61 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             binding = null;
 
-            if (string.Compare(context.Type, "timerTrigger", StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                binding = new TimerTriggerScriptBinding(context);
-            }
+            //if (string.Compare(context.Type, "timerTrigger", StringComparison.OrdinalIgnoreCase) == 0)
+            //{
+            //    binding = new TimerTriggerScriptBinding(context);
+            //}
 
             return binding != null;
         }
 
-        internal class TimerTriggerScriptBinding : ScriptBinding
-        {
-            public TimerTriggerScriptBinding(ScriptBindingContext context) : base(context)
-            {
-            }
+        // TODO: DI (FACAVAL) Re-add when we migrate the timer extension
+        //internal class TimerTriggerScriptBinding : ScriptBinding
+        //{
+        //    public TimerTriggerScriptBinding(ScriptBindingContext context) : base(context)
+        //    {
+        //    }
 
-            public override Type DefaultType
-            {
-                get
-                {
-                    return typeof(TimerInfo);
-                }
-            }
+        //    public override Type DefaultType
+        //    {
+        //        get
+        //        {
+        //            return typeof(TimerInfo);
+        //        }
+        //    }
 
-            public override Collection<Attribute> GetAttributes()
-            {
-                Collection<Attribute> attributes = new Collection<Attribute>();
+        //    public override Collection<Attribute> GetAttributes()
+        //    {
+        //        Collection<Attribute> attributes = new Collection<Attribute>();
 
-                string schedule = Context.GetMetadataValue<string>("schedule");
-                bool runOnStartup = Context.GetMetadataValue<bool>("runOnStartup");
-                bool useMonitor = Context.GetMetadataValue<bool>("useMonitor", true);
+        //        string schedule = Context.GetMetadataValue<string>("schedule");
+        //        bool runOnStartup = Context.GetMetadataValue<bool>("runOnStartup");
+        //        bool useMonitor = Context.GetMetadataValue<bool>("useMonitor", true);
 
-                if (Utility.IsDynamic)
-                {
-                    // pre-resolve app setting specifiers
-                    var resolver = new DefaultNameResolver();
-                    schedule = resolver.ResolveWholeString(schedule);
+        //        if (Utility.IsDynamic)
+        //        {
+        //            // pre-resolve app setting specifiers
+        //            var resolver = new DefaultNameResolver();
+        //            schedule = resolver.ResolveWholeString(schedule);
 
-                    var options = new CrontabSchedule.ParseOptions()
-                    {
-                        IncludingSeconds = true
-                    };
-                    if (CrontabSchedule.TryParse(schedule, options) == null)
-                    {
-                        throw new ArgumentException(string.Format("'{0}' is not a valid CRON expression.", schedule));
-                    }
-                }
+        //            var options = new CrontabSchedule.ParseOptions()
+        //            {
+        //                IncludingSeconds = true
+        //            };
+        //            if (CrontabSchedule.TryParse(schedule, options) == null)
+        //            {
+        //                throw new ArgumentException(string.Format("'{0}' is not a valid CRON expression.", schedule));
+        //            }
+        //        }
 
-                attributes.Add(new TimerTriggerAttribute(schedule)
-                {
-                    RunOnStartup = runOnStartup,
-                    UseMonitor = useMonitor
-                });
+        //        attributes.Add(new TimerTriggerAttribute(schedule)
+        //        {
+        //            RunOnStartup = runOnStartup,
+        //            UseMonitor = useMonitor
+        //        });
 
-                return attributes;
-            }
-        }
+        //        return attributes;
+        //    }
+        //}
     }
 }

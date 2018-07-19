@@ -56,10 +56,10 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.0-beta7-dev636671255557347906">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="3.0.0-beta7-dev636674651149195809" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="3.0.0-beta7-dev636674651149195809" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.0-beta7-dev636674651149195809" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.0-beta7-dev636674651149195809" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="3.0.0-beta7-dev636675515207483521" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="3.0.0-beta7-dev636675515207483521" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.0-beta7-dev636675515207483521" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.0-beta7-dev636675515207483521" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.88-alpha" />
     <PackageReference Include="System.Net.Primitives" Version="4.3.0" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.6.0" />
