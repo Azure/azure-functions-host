@@ -1,9 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +32,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // TODO: DI (FACAVAL) Review metrics logger registration
                 services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
                 services.AddSingleton<IScriptEventManager, ScriptEventManager>();
+
+                // Script binding providers
+                services.AddSingleton<IScriptBindingProvider, WebJobsCoreScriptBindingProvider>();
+                services.AddSingleton<IScriptBindingProvider, CoreExtensionsScriptBindingProvider>();
+                services.AddSingleton<IScriptBindingProvider, GeneralScriptBindingProvider>();
 
                 // Secret management
                 services.AddSingleton<ISecretManager>(c => c.GetService<ISecretManagerFactory>().Create());

@@ -12,32 +12,16 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
     /// <summary>
     /// Base class for providers of <see cref="ScriptBinding"/>s.
     /// </summary>
-    public abstract class ScriptBindingProvider
+    public abstract class ScriptBindingProvider : IScriptBindingProvider
     {
-        private readonly IOptions<JobHostOptions> _hostOptions;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="ScriptBindingProvider"/> class.
         /// </summary>
-        /// <param name="hostOptions">The <see cref="JobHostConfiguration"/>.</param>
-        /// <param name="hostMetadata">The host configuration metadata.</param>
         /// <param name="logger">The <see cref="ILogger"/> that can be used to log trace events.</param>
-        protected ScriptBindingProvider(IOptions<JobHostOptions> hostOptions, JObject hostMetadata, ILogger logger)
+        protected ScriptBindingProvider(ILogger logger)
         {
-            _hostOptions = hostOptions;
-            Metadata = hostMetadata;
             Logger = logger;
         }
-
-        /// <summary>
-        /// Gets the <see cref="JobHostConfiguration"/>.
-        /// </summary>
-        protected JobHostOptions HostOptions => _hostOptions.Value;
-
-        /// <summary>
-        /// Gets the host configuration metadata.
-        /// </summary>
-        protected JObject Metadata { get; private set; }
 
         /// <summary>
         /// Gets the <see cref="ILogger"/> that can be used to log trace events.
