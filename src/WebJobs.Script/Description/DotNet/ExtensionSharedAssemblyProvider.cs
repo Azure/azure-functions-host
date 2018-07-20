@@ -16,13 +16,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// </summary>
     public class ExtensionSharedAssemblyProvider : ISharedAssemblyProvider
     {
-        private readonly ICollection<ScriptBindingProvider> _bindingProviders;
+        private readonly ICollection<IScriptBindingProvider> _bindingProviders;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ExtensionSharedAssemblyProvider"/> class.
         /// </summary>
         /// <param name="bindingProviders">The collection of <see cref="ScriptBindingProvider"/>s.</param>
-        public ExtensionSharedAssemblyProvider(ICollection<ScriptBindingProvider> bindingProviders)
+        public ExtensionSharedAssemblyProvider(ICollection<IScriptBindingProvider> bindingProviders)
         {
             _bindingProviders = bindingProviders ?? throw new ArgumentNullException(nameof(bindingProviders));
         }
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return assembly != null;
         }
 
-        private static bool TryResolveExtensionAssembly(ScriptBindingProvider bindingProvider, string assemblyName, out Assembly assembly)
+        private static bool TryResolveExtensionAssembly(IScriptBindingProvider bindingProvider, string assemblyName, out Assembly assembly)
         {
             assembly = null;
             Assembly providerAssembly = bindingProvider.GetType().Assembly;

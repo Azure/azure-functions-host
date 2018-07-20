@@ -19,8 +19,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     internal class WebJobsCoreScriptBindingProvider : ScriptBindingProvider
     {
-        public WebJobsCoreScriptBindingProvider(IOptions<JobHostOptions> options, JObject hostMetadata, ILogger logger)
-            : base(options, hostMetadata, logger)
+        public WebJobsCoreScriptBindingProvider(ILogger logger)
+            : base(logger)
         {
         }
 

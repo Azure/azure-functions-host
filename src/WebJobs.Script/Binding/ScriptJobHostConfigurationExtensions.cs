@@ -3,16 +3,17 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public static class ScriptJobHostConfigurationExtensions
     {
-        public static void UseScriptExtensions(this JobHostOptions config)
+        public static void AddManualTrigger(this IHostBuilder builder)
         {
-            if (config == null)
+            if (builder == null)
             {
-                throw new ArgumentNullException("config");
+                throw new ArgumentNullException(nameof(builder));
             }
 
             // TODO: DI (FACAVAL) Register the manual trigger

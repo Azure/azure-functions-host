@@ -23,18 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         private IJobHostMetadataProvider _metadataProvider;
 
-        public GeneralScriptBindingProvider(
-            IOptions<JobHostOptions> hostOptions,
-            JObject hostMetadata,
-            ILogger logger)
-            : base(hostOptions, hostMetadata, logger)
-        {
-        }
-
-        // The constructor is fixed and ScriptBindingProvider are instantated for us by the Script runtime.
-        // Extensions may get registered after this class is instantiated.
-        // So we need a final call that lets us get the tooling snapshot of the graph after all extensions are set.
-        public void CompleteInitialization(IJobHostMetadataProvider metadataProvider)
+        public GeneralScriptBindingProvider(ILogger logger, IJobHostMetadataProvider metadataProvider)
+            : base(logger)
         {
             _metadataProvider = metadataProvider;
         }

@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.IO;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.Implementation;
 using Microsoft.Azure.WebJobs.Logging;
@@ -20,11 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             FileWatchingEnabled = true;
             FileLoggingMode = FileLoggingMode.Never;
-            //RootScriptPath = Environment.CurrentDirectory;
-            //RootLogPath = Path.Combine(Path.GetTempPath(), "Functions");
-            //TestDataPath = Path.Combine(Path.GetTempPath(), "FunctionsData");
             LogFilter = new LogCategoryFilter();
             HostHealthMonitor = new HostHealthMonitorConfiguration();
+            BindingProviders = new Collection<IScriptBindingProvider>();
         }
 
         /// <summary>
@@ -143,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets or sets the set of <see cref="ScriptBindingProviders"/> to use when loading functions.
         /// </summary>
-        internal ICollection<ScriptBindingProvider> BindingProviders { get; set; }
+        internal ICollection<IScriptBindingProvider> BindingProviders { get; set; }
 
         /// <summary>
         /// Gets or sets a test hook for modifying the configuration after host.json has been processed.

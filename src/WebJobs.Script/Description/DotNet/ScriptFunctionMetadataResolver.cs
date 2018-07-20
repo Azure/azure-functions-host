@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 "Microsoft.AspNetCore.Http"
             };
 
-        public ScriptFunctionMetadataResolver(string scriptFilePath, ICollection<ScriptBindingProvider> bindingProviders, ILogger logger)
+        public ScriptFunctionMetadataResolver(string scriptFilePath, ICollection<IScriptBindingProvider> bindingProviders, ILogger logger)
         {
             _scriptFileDirectory = Path.GetDirectoryName(scriptFilePath);
             _scriptFilePath = scriptFilePath;
