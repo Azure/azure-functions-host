@@ -45,14 +45,6 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         protected ILogger Logger { get; private set; }
 
         /// <summary>
-        /// Called early in the host initialization pipeline, before bindings have been created
-        /// to allow the provider to perform host level initialization, extension registration, etc.
-        /// </summary>
-        public virtual void Initialize()
-        {
-        }
-
-        /// <summary>
         /// Create a <see cref="ScriptBinding"/> for the specified metadata if
         /// </summary>
         /// <param name="context">The binding context.</param>

@@ -24,34 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
         }
 
-        public override void Initialize()
-        {
-            // TODO: DI (FACAVAL) This all gets moved to service and configuration initialization
-            // Apply Blobs configuration
-            //var configSection = (JObject)Metadata["blobs"];
-            //JToken value = null;
-            //if (configSection != null)
-            //{
-            //    if (configSection.TryGetValue("centralizedPoisonQueue", out value))
-            //    {
-            //        HostOptions.Blobs.CentralizedPoisonQueue = (bool)value;
-            //    }
-            //}
-
-            //// apply http configuration configuration
-            //configSection = (JObject)Metadata["http"];
-            //HttpExtensionConfiguration httpConfig = null;
-            //if (configSection != null)
-            //{
-            //    httpConfig = configSection.ToObject<HttpExtensionConfiguration>();
-            //}
-            //httpConfig = httpConfig ?? new HttpExtensionConfiguration();
-            //httpConfig.SetResponse = HttpBinding.SetResponse;
-
-            //HostOptions.UseScriptExtensions();
-            //HostOptions.UseHttp(httpConfig);
-        }
-
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
         {
             binding = null;

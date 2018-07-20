@@ -56,63 +56,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        public void LoadCustomExtensions()
-        {
-            string binPath = Path.Combine(_config.RootScriptPath, "bin");
-            string metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
-            if (File.Exists(metadataFilePath))
-            {
-                var extensionMetadata = JObject.Parse(File.ReadAllText(metadataFilePath));
-
-                var extensionItems = extensionMetadata["extensions"]?.ToObject<List<ExtensionReference>>();
-                if (extensionItems == null)
-                {
-                    _logger.LogWarning("Invalid extensions metadata file. Unable to load custom extensions");
-                    return;
-                }
-
-                foreach (var item in extensionItems)
-                {
-                    string extensionName = item.Name ?? item.TypeName;
-                    _logger.LogInformation($"Loading custom extension '{extensionName}'");
-                    Type extensionType = Type.GetType(item.TypeName,
-                        assemblyName =>
-                        {
-                            string path = item.HintPath;
-
-                            if (string.IsNullOrEmpty(path))
-                            {
-                                path = assemblyName.Name + ".dll";
-                            }
-
-                            var hintUri = new Uri(path, UriKind.RelativeOrAbsolute);
-                            if (!hintUri.IsAbsoluteUri)
-                            {
-                                path = Path.Combine(binPath, path);
-                            }
-
-                            if (File.Exists(path))
-                            {
-                                return FunctionAssemblyLoadContext.Shared.LoadFromAssemblyPath(path, true);
-                            }
-
-                            return null;
-                        },
-                        (assembly, typeName, ignoreCase) =>
-                        {
-                            return assembly?.GetType(typeName, false, ignoreCase);
-                        }, false, true);
-
-                    if (extensionType == null ||
-                        !LoadIfExtensionType(extensionType, extensionType.Assembly.Location))
-                    {
-                        _logger.LogWarning($"Unable to load custom extension type for extension '{extensionName}' (Type: `{item.TypeName}`)." +
-                                $"The type does not exist or is not a valid extension. Please validate the type and assembly names.");
-                    }
-                }
-            }
-        }
-
         private void LoadExtensions(Assembly assembly, string locationHint)
         {
             foreach (var type in assembly.ExportedTypes.Where(p => !p.IsAbstract))

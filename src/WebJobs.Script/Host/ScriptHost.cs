@@ -722,28 +722,8 @@ namespace Microsoft.Azure.WebJobs.Script
             ScriptOptions.BindingProviders = bindingProviders;
             _startupLogger.LogTrace("Binding providers loaded.");
 
-            using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupInitializeBindingProvidersLatency))
-            {
-                foreach (var bindingProvider in ScriptOptions.BindingProviders)
-                {
-                    try
-                    {
-                        bindingProvider.Initialize();
-                    }
-                    catch (Exception ex)
-                    {
-                        // If we're unable to initialize a binding provider for any reason, log the error
-                        // and continue
-                        string errorMsg = string.Format("Error initializing binding provider '{0}'", bindingProvider.GetType().FullName);
-                        _startupLogger?.LogError(0, ex, errorMsg);
-                    }
-                }
-                _startupLogger.LogTrace("Binding providers initialized.");
-            }
-
             var directTypes = GetDirectTypes(functionMetadata);
             extensionLoader.LoadDirectlyReferencedExtensions(directTypes);
-            extensionLoader.LoadCustomExtensions();
             _startupLogger.LogTrace("Extension loading complete.");
 
             // Now all extensions have been loaded, the metadata is finalized.
