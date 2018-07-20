@@ -21,15 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
         }
 
-        public string AppDirectory { get; set; }
-
-        /// <inheritdoc/>
-        public override void Initialize()
-        {
-            // TODO: DI (FACAVAL) Register core extensions
-            //HostOptions.UseTimers();
-        }
-
         /// <inheritdoc/>
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
         {

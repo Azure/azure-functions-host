@@ -4,6 +4,7 @@
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -42,6 +43,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
 
             return builder;
+        }
+
+        public static IHostBuilder UseScriptExternalStartup(this IHostBuilder builder, string rootScriptPath)
+        {
+            return builder.UseExternalStartup(new ScriptStartupTypeDiscoverer(rootScriptPath));
         }
     }
 }

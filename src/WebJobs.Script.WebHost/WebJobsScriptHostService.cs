@@ -72,10 +72,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private IHost BuildHost()
         {
-            return new HostBuilder()
-                            .UseServiceProviderFactory(new ScriptHostScopedServiceProviderFactory(_rootServiceProvider, _rootScopeFactory))
+            var builder = new HostBuilder();
+
+            // Host configuration
+            builder.UseServiceProviderFactory(new ScriptHostScopedServiceProviderFactory(_rootServiceProvider, _rootScopeFactory))
                             .ConfigureServices(s =>
                             {
+                                // TODO: DI (FACAVAL) Temporary - replace with proper logger factory using
+                                // job host configuration
                                 var fa = new LoggerFactory();
                                 fa.AddConsole(LogLevel.Trace);
                                 s.AddSingleton<ILoggerFactory>(fa);
@@ -84,30 +88,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             .ConfigureAppConfiguration(c =>
                             {
                                 c.Add(new HostJsonFileConfigurationSource(_webHostOptions));
-                            })
-                            .AddScriptHost(_webHostOptions)
-                            .ConfigureWebJobsHost(o =>
-                            {
-                                o.AllowPartialHostStartup = true;
-                            })
-                            .AddWebJobsLogging() // Enables WebJobs v1 classic logging
-                            .AddExecutionContextBinding(o =>
-                            {
-                                o.AppDirectory = _webHostOptions.Value.ScriptPath;
-                            })
-                            .AddAzureStorageCoreServices()
-                            .AddAzureStorage()
-                            .AddHttp(o =>
-                            {
-                                o.SetResponse = Binding.HttpBinding.SetResponse;
-                            })
-                            .ConfigureServices(s =>
-                            {
-                                s.RemoveAll<IHostedService>();
-                                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, JobHostService>());
-                                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HttpInitializationService>());
-                            })
-                            .Build();
+                            });
+
+            // WebJobs configuration
+            builder.AddScriptHost(_webHostOptions)
+            .ConfigureWebJobsHost(o =>
+            {
+                o.AllowPartialHostStartup = true;
+            })
+            .UseScriptExternalStartup(_webHostOptions.Value.ScriptPath)
+            .AddWebJobsLogging() // Enables WebJobs v1 classic logging
+            .AddExecutionContextBinding(o =>
+            {
+                o.AppDirectory = _webHostOptions.Value.ScriptPath;
+            })
+            .AddAzureStorageCoreServices()
+            .AddAzureStorage()
+            .AddHttp(o =>
+            {
+                o.SetResponse = Binding.HttpBinding.SetResponse;
+            });
+
+            // HACK: Remove previous IHostedService registration
+            // TODO: DI (FACAVAL) Remove this and move HttpInitialization to webjobs configuration
+            builder.ConfigureServices(s =>
+            {
+                s.RemoveAll<IHostedService>();
+                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, JobHostService>());
+                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HttpInitializationService>());
+            });
+
+            return builder.Build();
         }
 
         protected virtual void Dispose(bool disposing)
