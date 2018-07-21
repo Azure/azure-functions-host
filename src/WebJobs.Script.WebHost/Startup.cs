@@ -44,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 app.UseDeveloperExceptionPage();
             }
 
+            app.UseWebSockets();
             app.UseWebJobsScriptHost(applicationLifetime);
         }
     }
