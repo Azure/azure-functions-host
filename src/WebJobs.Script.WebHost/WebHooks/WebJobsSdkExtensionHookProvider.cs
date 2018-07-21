@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Config;
-using HttpHandler = Microsoft.Azure.WebJobs.IAsyncConverter<System.Net.Http.HttpRequestMessage, System.Net.Http.HttpResponseMessage>;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -17,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ISecretManager _secretManager;
 
         // Map from an extension name to a http handler.
-        private IDictionary<string, HttpHandler> _customHttpHandlers = new Dictionary<string, HttpHandler>(StringComparer.OrdinalIgnoreCase);
+        private IDictionary<string, WebJobsSdkExtensionHttpHandler> _customHttpHandlers = new Dictionary<string, WebJobsSdkExtensionHttpHandler>(StringComparer.OrdinalIgnoreCase);
 
         public WebJobsSdkExtensionHookProvider(ISecretManager secretManager)
         {
@@ -25,9 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         // Get a registered handler, or null
-        public HttpHandler GetHandlerOrNull(string name)
+        public WebJobsSdkExtensionHttpHandler GetHandlerOrNull(string name)
         {
-            HttpHandler handler;
+            WebJobsSdkExtensionHttpHandler handler;
             _customHttpHandlers.TryGetValue(name, out handler);
 
             return handler;
@@ -37,11 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public Uri GetUrl(IExtensionConfigProvider extension)
         {
             var extensionType = extension.GetType();
-            var handler = extension as HttpHandler;
-            if (handler == null)
-            {
-                throw new InvalidOperationException($"Extension must implement IAsyncConverter<HttpRequestMessage, HttpResponseMessage> in order to receive webhooks");
-            }
+            var handler = new WebJobsSdkExtensionHttpHandler(extension);
 
             string name = extensionType.Name;
             _customHttpHandlers[name] = handler;

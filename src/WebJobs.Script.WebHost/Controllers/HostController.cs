@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             var provider = _scriptHostManager.BindingWebHookProvider;
 
-            var handler = provider.GetHandlerOrNull(name);
+            WebJobsSdkExtensionHttpHandler handler = provider.GetHandlerOrNull(name);
             if (handler != null)
             {
                 string keyName = WebJobsSdkExtensionHookProvider.GetKeyName(name);
@@ -169,12 +169,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     return Unauthorized();
                 }
 
-                var requestMessage = new HttpRequestMessageFeature(this.HttpContext).HttpRequestMessage;
-                HttpResponseMessage response = await handler.ConvertAsync(requestMessage, token);
+                if (handler.IsLegacy)
+                {
+                    var requestMessage = new HttpRequestMessageFeature(this.HttpContext).HttpRequestMessage;
+                    HttpResponseMessage response = await handler.ConvertAsync(requestMessage, token);
 
-                var result = new ObjectResult(response);
-                result.Formatters.Add(new HttpResponseMessageOutputFormatter());
-                return result;
+                    var result = new ObjectResult(response);
+                    result.Formatters.Add(new HttpResponseMessageOutputFormatter());
+                    return result;
+                }
+                else
+                {
+                    return await handler.ConvertAsync(this.HttpContext, token);
+                }
             }
 
             return NotFound();
