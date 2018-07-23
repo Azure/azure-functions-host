@@ -24,13 +24,17 @@
   <ItemGroup>
     <None Remove="applicationHost.xdt" />
     <None Remove="Resources\Functions\WarmUp\run.csx" />
-    <None Remove="web.InProcess.xdt" />
+    <None Remove="web.InProcess.win-x64.xdt" />
+    <None Remove="web.InProcess.win-x86.xdt" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="applicationHost.xdt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="web.InProcess.xdt">
+    <Content Include="web.InProcess.win-x64.xdt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="web.InProcess.win-x86.xdt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
