@@ -23,15 +23,11 @@ using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
-using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Eventing.File;
-using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Grpc;
-using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -58,9 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly ScriptTypeLocator _typeLocator;
         private string _instanceId;
-        private Func<Task> _restart;
-        private Action _shutdown;
-        private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
         // TODO: DI (FACAVAL) Review
         private PrimaryHostCoordinator _primaryHostCoordinator = null;
         internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
@@ -71,10 +64,9 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static readonly int DefaultMaxMessageLengthBytesDynamicSku = 32 * 1024 * 1024;
         internal static readonly int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
         private ScriptSettingsManager _settingsManager;
-        private bool _shutdownScheduled;
+
         // TODO: DI (FACAVAL) Review
         private ILogger _startupLogger = null;
-        private FileWatcherEventSource _fileEventSource;
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private ProxyClientExecutor _proxyClient;
         private IFunctionRegistry _functionDispatcher;
@@ -97,6 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IMetricsLogger metricsLogger,
             IOptions<ScriptHostOptions> scriptHostOptions,
             ITypeLocator typeLocator,
+            IScriptHostEnvironment scriptHostEnvironment,
             ScriptSettingsManager settingsManager = null,
             ProxyClientExecutor proxyClient = null)
             : base(options, jobHostContextFactory)
@@ -109,14 +102,9 @@ namespace Microsoft.Azure.WebJobs.Script
             _storageConnectionString = connectionStringProvider.GetConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
             _functionMetadataManager = functionMetadataManager;
-            // TODO: DI (FACAVAL) Move this to config setup
-            //if (!Path.IsPathRooted(scriptConfig.RootScriptPath))
-            //{
-            //    scriptConfig.RootScriptPath = Path.Combine(Environment.CurrentDirectory, scriptConfig.RootScriptPath);
-            //}
 
             ScriptOptions = scriptHostOptions.Value;
-            _scriptHostEnvironment = new NullScriptHostEnvironment();
+            _scriptHostEnvironment = scriptHostEnvironment;
             FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
 
             EventManager = eventManager;
@@ -305,7 +293,6 @@ namespace Microsoft.Azure.WebJobs.Script
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
                 PreInitialize();
-                InitializeFileWatchers();
                 await InitializeWorkersAsync();
 
                 // Generate Functions
@@ -350,16 +337,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // The LoggerFactory must always have this as there's some functional value (handling exceptions) when handling these errors.
             loggerFactory.AddProvider(new HostErrorLoggerProvider(handleException));
-        }
-
-        private void TraceFileChangeRestart(string changeDescription, string changeType, string path, bool isShutdown)
-        {
-            string fileChangeMsg = string.Format(CultureInfo.InvariantCulture, "{0} change of type '{1}' detected for '{2}'", changeDescription, changeType, path);
-            Logger.LogInformation(fileChangeMsg);
-
-            string action = isShutdown ? "shutdown" : "restart";
-            string signalMessage = $"Host configuration has changed. Signaling {action}";
-            Logger.LogInformation(signalMessage);
         }
 
         // TODO: DI (FACAVAL) This needs to move to an options config setup
@@ -413,12 +390,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return customAttributes;
         }
 
+        // TODO: DI (FACAVAL) Remove this method.
+        // all restart/shutdown requests should go through the
+        // IScriptHostEnvironment implementation
         internal Task RestartAsync()
         {
-            if (!_shutdownScheduled)
-            {
-                _scriptHostEnvironment.RestartHost();
-            }
+            _scriptHostEnvironment.RestartHost();
 
             return Task.CompletedTask;
         }
@@ -426,14 +403,6 @@ namespace Microsoft.Azure.WebJobs.Script
         internal void Shutdown()
         {
             _scriptHostEnvironment.Shutdown();
-        }
-
-        /// <summary>
-        /// Whenever the debug marker file changes we update our debug timeout
-        /// </summary>
-        private void OnDebugModeFileChanged(object sender, FileSystemEventArgs e)
-        {
-            LastDebugNotify = DateTime.UtcNow;
         }
 
         private void OnHostLeaseChanged(object sender, EventArgs e)
@@ -447,6 +416,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private void PreInitialize()
         {
             InitializeFileSystem();
+
+            _eventSubscriptions.Add(EventManager.OfType<DebugNotification>()
+               .Subscribe(evt => LastDebugNotify = evt.NotificationTime));
 
             string debugSentinelFileName = Path.Combine(_hostLogPath, ScriptConstants.DebugSentinelFileName);
             LastDebugNotify = File.Exists(debugSentinelFileName)
@@ -518,6 +490,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functions;
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
             {
+                _startupLogger.LogTrace("Creating function descriptors.");
                 functions = GetFunctionDescriptors(functionMetadata);
                 _startupLogger.LogTrace("Function descriptors created.");
             }
@@ -542,45 +515,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 _primaryHostCoordinator = PrimaryHostCoordinator.Create(_distributedLockManager, TimeSpan.FromSeconds(15), _hostOptions.Value.HostId, _settingsManager.InstanceId, _loggerFactory);
                 _primaryHostCoordinator.HasLeaseChanged += OnHostLeaseChanged;
             }
-        }
-
-        /// <summary>
-        /// Initialize file and directory change monitoring.
-        /// </summary>
-        private void InitializeFileWatchers()
-        {
-            _debugModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DebugSentinelFileName,
-                   includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
-
-            _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
-            _startupLogger.LogTrace("Debug file watch initialized.");
-
-            if (ScriptOptions.FileWatchingEnabled)
-            {
-                _fileEventSource = new FileWatcherEventSource(EventManager, EventSources.ScriptFiles, ScriptOptions.RootScriptPath);
-
-                _eventSubscriptions.Add(EventManager.OfType<FileEvent>()
-                        .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
-                        .Subscribe(e => OnFileChanged(e.FileChangeArguments)));
-
-                _startupLogger.LogTrace("File event source initialized.");
-            }
-
-            _eventSubscriptions.Add(EventManager.OfType<HostRestartEvent>()
-                    .Subscribe((msg) => ScheduleRestartAsync(false)
-                    .ContinueWith(t => _startupLogger.LogCritical(t.Exception.Message),
-                        TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously)));
-
-            // If a file change should result in a restart, we debounce the event to
-            // ensure that only a single restart is triggered within a specific time window.
-            // This allows us to deal with a large set of file change events that might
-            // result from a bulk copy/unzip operation. In such cases, we only want to
-            // restart after ALL the operations are complete and there is a quiet period.
-            _restart = RestartAsync;
-            _restart = _restart.Debounce(500);
-
-            _shutdown = Shutdown;
-            _shutdown = _shutdown.Debounce(500);
         }
 
         private async Task InitializeWorkersAsync()
@@ -1160,82 +1094,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private void OnFileChanged(FileSystemEventArgs e)
-        {
-            // We will perform a host restart in the following cases:
-            // - the file change was under one of the configured watched directories (e.g. node_modules, shared code directories, etc.)
-            // - the host.json file was changed
-            // - a function.json file was changed
-            // - a proxies.json file was changed
-            // - a function directory was added/removed/renamed
-            // A full host shutdown is performed when an assembly (.dll, .exe) in a watched directory is modified
-
-            string changeDescription = string.Empty;
-            string directory = GetRelativeDirectory(e.FullPath, ScriptOptions.RootScriptPath);
-            string fileName = Path.GetFileName(e.Name);
-
-            if (ScriptOptions.WatchDirectories.Contains(directory))
-            {
-                changeDescription = "Watched directory";
-            }
-            else if (string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
-                string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
-                string.Compare(fileName, ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                changeDescription = "File";
-            }
-            else if ((e.ChangeType == WatcherChangeTypes.Deleted || Directory.Exists(e.FullPath))
-                && !ScriptOptions.RootScriptDirectorySnapshot.SequenceEqual(Directory.EnumerateDirectories(ScriptOptions.RootScriptPath)))
-            {
-                // Check directory snapshot only if "Deleted" change or if directory changed
-                changeDescription = "Directory";
-            }
-
-            if (!string.IsNullOrEmpty(changeDescription))
-            {
-                bool shutdown = false;
-                string fileExtension = Path.GetExtension(fileName);
-                if (!string.IsNullOrEmpty(fileExtension) && ScriptConstants.AssemblyFileTypes.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
-                {
-                    shutdown = true;
-                }
-
-                TraceFileChangeRestart(changeDescription, e.ChangeType.ToString(), e.FullPath, shutdown);
-                ScheduleRestartAsync(shutdown).ContinueWith(t => Logger.LogError($"Error restarting host (full shutdown: {shutdown})", t.Exception),
-                    TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
-            }
-        }
-
-        private async Task ScheduleRestartAsync(bool shutdown)
-        {
-            if (shutdown)
-            {
-                _shutdownScheduled = true;
-                _shutdown();
-            }
-            else
-            {
-                await _restart();
-            }
-        }
-
-        internal static string GetRelativeDirectory(string path, string scriptRoot)
-        {
-            if (path.StartsWith(scriptRoot))
-            {
-                string directory = path.Substring(scriptRoot.Length).TrimStart(Path.DirectorySeparatorChar);
-                int idx = directory.IndexOf(Path.DirectorySeparatorChar);
-                if (idx != -1)
-                {
-                    directory = directory.Substring(0, idx);
-                }
-
-                return directory;
-            }
-
-            return string.Empty;
-        }
-
         private void ApplyJobHostMetadata()
         {
             // TODO: DI (FACAVAL) Review
@@ -1286,15 +1144,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     subscription.Dispose();
                 }
-                _fileEventSource?.Dispose();
+
                 _functionDispatcher?.Dispose();
                 (_processRegistry as IDisposable)?.Dispose();
-
-                if (_debugModeFileWatcher != null)
-                {
-                    _debugModeFileWatcher.Changed -= OnDebugModeFileChanged;
-                    _debugModeFileWatcher.Dispose();
-                }
 
                 if (_primaryHostCoordinator != null)
                 {

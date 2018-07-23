@@ -1,9 +1,19 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace Microsoft.Azure.WebJobs.Script
 {
     public interface IScriptHostManager
     {
+        ScriptHostState State { get;  }
+
+        /// <summary>
+        /// Restarts the current Script Job Host
+        /// </summary>
+        /// <returns>A <see cref="Task"/> that will completed when the host is restarted.</returns>
+        Task RestartHostAsync(CancellationToken cancellationToken);
     }
 }

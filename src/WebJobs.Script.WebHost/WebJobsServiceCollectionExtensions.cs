@@ -73,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Core script host service
             services.AddSingleton<WebJobsScriptHostService>();
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
+            services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
 
             if (EnvironmentUtility.IsLinuxContainerEnvironment)
             {
@@ -109,9 +110,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return new ExtensionsManager(hostInstance.ScriptOptions.RootScriptPath, hostInstance.Logger, hostInstance.ScriptOptions.NugetFallBackPath);
             });
 
-            // TODO: DI (FACAVAL) This will be replacet by the hosted service implementation
-            services.AddSingleton<IScriptHostManager, Host.TempScriptHostManager>();
-
             // The services below need to be scoped to a pseudo-tenant (warm/specialized environment)
             // TODO: DI (FACAVAL) This will need the child container/scoping logic for warm/specialized hosts
             //services.AddSingleton<WebScriptHostManager>(c => c.GetService<WebHostResolver>().GetWebScriptHostManager());
@@ -125,8 +123,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
 
-            // TODO: DI (FACAVAL) Replace with the actual web host environment
-            services.AddSingleton<IScriptHostEnvironment, NullScriptHostEnvironment>();
             // we want all ILoggerFactory resolution to go through WebHostResolver
             // TODO: DI (FACAVAL) This is no longer the case... perform cleanup (/cc brettsam)
             // builder.Register(ct => ct.Resolve<WebHostResolver>().GetLoggerFactory(ct.Resolve<WebHostSettings>())).As<ILoggerFactory>().ExternallyOwned();
