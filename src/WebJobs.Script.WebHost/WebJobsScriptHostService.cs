@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -15,7 +16,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public class WebJobsScriptHostService : IHostedService, IDisposable
+    public class WebJobsScriptHostService : IHostedService, IScriptHostManager,  IDisposable
     {
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly IServiceProvider _rootServiceProvider;
@@ -41,9 +42,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _hostTask = Task.CompletedTask;
             _cancellationTokenSource = new CancellationTokenSource();
+
+            State = ScriptHostState.Default;
         }
 
         public IServiceProvider Services => _host?.Services;
+
+        public ScriptHostState State { get; private set; }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
@@ -70,25 +75,48 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        public async Task RestartHostAsync(CancellationToken cancellationToken)
+        {
+            State = ScriptHostState.Default;
+
+            _logger.LogInformation("Restarting script host.");
+
+            var previousHost = _host;
+            _host = BuildHost();
+
+            var stopTask = previousHost.StopAsync(cancellationToken).
+                ContinueWith(t => previousHost.Dispose());
+
+            await _host.StartAsync(cancellationToken);
+
+            State = ScriptHostState.Running;
+
+            _logger.LogInformation("Script host restarted.");
+        }
+
         private IHost BuildHost()
         {
             var builder = new HostBuilder();
 
             // Host configuration
             builder.UseServiceProviderFactory(new ScriptHostScopedServiceProviderFactory(_rootServiceProvider, _rootScopeFactory))
-                            .ConfigureServices(s =>
-                            {
-                                // TODO: DI (FACAVAL) Temporary - replace with proper logger factory using
-                                // job host configuration
-                                var fa = new LoggerFactory();
-                                fa.AddConsole(LogLevel.Trace);
-                                s.AddSingleton<ILoggerFactory>(fa);
-                                s.AddSingleton<IHostLifetime, ScriptHostLifetime>();
-                            })
-                            .ConfigureAppConfiguration(c =>
-                            {
-                                c.Add(new HostJsonFileConfigurationSource(_webHostOptions));
-                            });
+                .ConfigureLogging(b =>
+                {
+                    b.AddConsole(c => { c.DisableColors = false; });
+                    b.SetMinimumLevel(LogLevel.Trace);
+                    b.AddFilter(f => true);
+                })
+                .ConfigureServices(s =>
+                {
+                    // TODO: DI (FACAVAL) Temporary - replace with proper logger factory using
+                    // job host configuration
+                    s.AddSingleton<ILoggerFactory, CustomFactory>();
+                    s.AddSingleton<IHostLifetime, ScriptHostLifetime>();
+                })
+                .ConfigureAppConfiguration(c =>
+                {
+                    c.Add(new HostJsonFileConfigurationSource(_webHostOptions));
+                });
 
             // WebJobs configuration
             builder.AddScriptHost(_webHostOptions);
@@ -100,6 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 s.RemoveAll<IHostedService>();
                 s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, JobHostService>());
                 s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HttpInitializationService>());
+                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
             });
 
             return builder.Build();
@@ -118,6 +147,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         public void Dispose() => Dispose(true);
+
+        public Task RestartHostAsync()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class IdProvider : WebJobs.Host.Executors.IHostIdProvider
@@ -129,6 +163,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public Task<string> GetHostIdAsync(CancellationToken cancellationToken)
         {
             return Task.FromResult("0980980980980980980980989009");
+        }
+    }
+
+    public class CustomFactory : ILoggerFactory
+    {
+        private readonly LoggerFactory _factory;
+
+        public CustomFactory(IEnumerable<ILoggerProvider> providers, IOptionsMonitor<LoggerFilterOptions> filterOption)
+        {
+            _factory = new LoggerFactory(providers, filterOption);
+        }
+
+        public void AddProvider(ILoggerProvider provider)
+        {
+            _factory.AddProvider(provider);
+        }
+
+        public ILogger CreateLogger(string categoryName)
+        {
+            return _factory.CreateLogger(categoryName);
+        }
+
+        public void Dispose()
+        {
+            _factory.Dispose();
         }
     }
 }
