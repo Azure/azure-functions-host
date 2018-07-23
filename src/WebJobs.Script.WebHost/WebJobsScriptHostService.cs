@@ -91,23 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             });
 
             // WebJobs configuration
-            builder.AddScriptHost(_webHostOptions)
-            .ConfigureWebJobsHost(o =>
-            {
-                o.AllowPartialHostStartup = true;
-            })
-            .UseScriptExternalStartup(_webHostOptions.Value.ScriptPath)
-            .AddWebJobsLogging() // Enables WebJobs v1 classic logging
-            .AddExecutionContextBinding(o =>
-            {
-                o.AppDirectory = _webHostOptions.Value.ScriptPath;
-            })
-            .AddAzureStorageCoreServices()
-            .AddAzureStorage()
-            .AddHttp(o =>
-            {
-                o.SetResponse = Binding.HttpBinding.SetResponse;
-            });
+            builder.AddScriptHost(_webHostOptions);
 
             // HACK: Remove previous IHostedService registration
             // TODO: DI (FACAVAL) Remove this and move HttpInitialization to webjobs configuration
