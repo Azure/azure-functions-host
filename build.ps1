@@ -44,7 +44,7 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
 
     # Modify web.config for inproc
     dotnet tool install -g dotnet-xdt --version 2.1.0-rc.1
-    dotnet-xdt -s "$privateSiteExtensionPath\web.config" -t "$privateSiteExtensionPath\web.InProcess.xdt" -o "$privateSiteExtensionPath\web.config"
+    dotnet-xdt -s "$privateSiteExtensionPath\web.config" -t "$privateSiteExtensionPath\web.InProcess.$runtime.xdt" -o "$privateSiteExtensionPath\web.config"
 
     $successfullDlls =@()
     $failedDlls = @()
@@ -87,8 +87,9 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
     }
     
     
-    # If not self-contained
-    Copy-Item -Path $privateSiteExtensionPath\runtimes\win\native\*  -Destination $privateSiteExtensionPath -Force       
+    if ($runtime -eq "win-x86") {
+        Copy-Item -Path $privateSiteExtensionPath\runtimes\win\native\*  -Destination $privateSiteExtensionPath -Force
+    }
 
     #read-host "Press ENTER to continue..."
     Remove-Item -Recurse -Force $selfContained -ErrorAction SilentlyContinue
@@ -116,7 +117,26 @@ function DownloadNupkg([string] $nupkgPath, [string[]]$from, [string[]]$to) {
     }
 }
 
-function BuildPackages([string] $runtime<#, [bool] $isSelfContained#>) {
+function BuildPackages([bool] $isNoRuntime) {
+    if($isNoRuntime) {
+        BuildOutput ""
+        CreateZips ".no-runtime"
+    } else {
+        BuildOutput "win-x86"
+        BuildOutput "win-x64"
+
+        New-Item -Itemtype directory -path $buildOutput\publish.runtime\SiteExtensions\Functions
+        Move-Item -Path $buildOutput\publish.win-x86\SiteExtensions\Functions -Destination $buildOutput\publish.runtime\SiteExtensions\Functions\32bit -Force
+        Move-Item -Path $buildOutput\publish.win-x64\SiteExtensions\Functions -Destination $buildOutput\publish.runtime\SiteExtensions\Functions\64bit -Force
+        Move-Item -Path $buildOutput\publish.runtime\SiteExtensions\Functions\32bit\applicationHost.xdt -Destination $buildOutput\publish.runtime\SiteExtensions\Functions -Force
+        Remove-Item -Path $buildOutput\publish.runtime\SiteExtensions\Functions\64bit\applicationHost.xdt
+
+        CreateZips ".runtime"
+    }
+}
+
+
+function BuildOutput([string] $runtime) {
     $runtimeSuffix = ""
     if (![string]::IsNullOrEmpty($runtime)) {
         $runtimeSuffix = ".$runtime"
@@ -128,17 +148,28 @@ function BuildPackages([string] $runtime<#, [bool] $isSelfContained#>) {
     $siteExtensionPath = "$publishTarget\SiteExtensions"
     $privateSiteExtensionPath = "$siteExtensionPath\Functions"
     
-    dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false -c Release
-    #dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -r $runtime -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false -c Release
+    if ($runtime -eq "win-x86" -or $runtime -eq "") {
+        dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false -c Release
+    } else {
+        # There are no preinstalled 'x64 .NET Core'/'x64 ASP.NET Core' on the stamp so we we need to build self-contained package for x64.
+        dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -r $runtime -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false -c Release
+    }
 
     # replace IL dlls with crossgen dlls
     if (![string]::IsNullOrEmpty($runtime)) {
         CrossGen $runtime $publishTarget $privateSiteExtensionPath
     }
+}
 
-    # Do not put siffux to win-x86 zips names
-    if ($runtime -eq "win-x86") {
-        $runtimeSuffix = "";
+
+function CreateZips([string] $runtimeSuffix) {
+    $publishTarget = "$buildOutput\publish$runtimeSuffix"
+    $siteExtensionPath = "$publishTarget\SiteExtensions"
+    $privateSiteExtensionPath = "$siteExtensionPath\Functions"
+
+    # We do not want .runtime as suffix for zips
+    if ($runtimeSuffix -eq ".runtime") {
+        $runtimesuffix = "";
     }
 
     ZipContent $privateSiteExtensionPath "$buildOutput\Functions.Binaries.$extensionVersion-alpha$runtimeSuffix.zip"
@@ -184,9 +215,9 @@ $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PUL
 if ($bypassPackaging){
     Write-Host "Bypassing artifact packaging and CrossGen for pull request." -ForegroundColor Yellow
 } else {
-    # build IL extensions
-    BuildPackages ""
+    # build no-runntime extension
+    BuildPackages 1
 
-    #build win-x86 extensions
-    BuildPackages "win-x86"
+    #build win-x86 and win-x64 extension
+    BuildPackages 0
 }
