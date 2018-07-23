@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         [Theory]
         [InlineData(null, null, typeof(object))]
-        [InlineData(null, "many", typeof(object[]))]
+        [InlineData(null, "many", typeof(string[]))]
         [InlineData("string", null, typeof(string))]
         [InlineData("StRing", null, typeof(string))] // case insenstive
         [InlineData("string", "mANy", typeof(string[]))] // case insensitve

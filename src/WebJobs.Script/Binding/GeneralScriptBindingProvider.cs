@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         // Read the properties and convert that into a System.Type.
         internal static Type GetRequestedType(ScriptBindingContext context)
         {
-            Type type = ParseDataType(context);
+            Type type = ParseDataType(context, out bool typeSpecified);
 
             Cardinality cardinality;
             if (!Enum.TryParse<Cardinality>(context.Cardinality, true, out cardinality))
@@ -78,20 +78,22 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 cardinality = Cardinality.One; // default
             }
 
+            // arrays are supported for both trigger input as well
+            // as output bindings
             if (cardinality == Cardinality.Many)
             {
-                // arrays are supported for both trigger input as well
-                // as output bindings
-                type = type.MakeArrayType();
+                // Default to string array type
+                type = typeSpecified ? type.MakeArrayType() : typeof(string[]);
             }
             return type;
         }
 
         // Parse the DataType field and return as a System.Type.
         // Never return null. Use typeof(object) to refer to an unnkown.
-        private static Type ParseDataType(ScriptBindingContext context)
+        private static Type ParseDataType(ScriptBindingContext context, out bool typeSpecified)
         {
             DataType result;
+            typeSpecified = true;
             if (Enum.TryParse<DataType>(context.DataType, true, out result))
             {
                 switch (result)
@@ -106,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         return typeof(string);
                 }
             }
-
+            typeSpecified = false;
             return typeof(object);
         }
 
