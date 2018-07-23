@@ -19,6 +19,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         public static IHostBuilder AddScriptHost(this IHostBuilder builder, IOptions<ScriptWebHostOptions> webHostOptions)
         {
+            builder.ConfigureWebJobsHost(o =>
+             {
+                 o.AllowPartialHostStartup = true;
+             })
+             .UseScriptExternalStartup(webHostOptions.Value.ScriptPath)
+             .AddWebJobsLogging() // Enables WebJobs v1 classic logging
+             .AddAzureStorageCoreServices();
+
+            // Built in binding registrations
+            builder.AddExecutionContextBinding(o =>
+             {
+                 o.AppDirectory = webHostOptions.Value.ScriptPath;
+             })
+             .AddAzureStorage()
+             .AddHttp(o =>
+             {
+                 o.SetResponse = HttpBinding.SetResponse;
+             })
+             .AddManualTrigger();
+
+            // Script host services
             builder.ConfigureServices(services =>
             {
                 // Core WebJobs/Script Host services
