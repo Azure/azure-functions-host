@@ -37,6 +37,19 @@ namespace Microsoft.Azure.WebJobs.Script
             request.Properties[propertyName] = value;
         }
 
+        public static void NormalizeContentTypeCharsetHeader(this HttpRequestMessage request)
+        {
+            if (request.Content != null && request.Content.Headers.ContentLength > 0 && request.Content.Headers.ContentType != null)
+            {
+                var charSet = request.Content.Headers.ContentType.CharSet;
+                if (!string.IsNullOrEmpty(charSet))
+                {
+                    char[] trimQuotes = new[] { '\'', '\"' };
+                    request.Content.Headers.ContentType.CharSet = charSet.Trim(trimQuotes);
+                }
+            }
+        }
+
         public static T GetPropertyOrDefault<T>(this HttpRequestMessage request, string propertyName)
         {
             return request.GetRequestPropertyOrDefault<T>(propertyName);

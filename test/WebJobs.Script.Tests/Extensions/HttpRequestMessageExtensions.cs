@@ -42,6 +42,61 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("One", value);
         }
 
+        [Theory]
+        [InlineData("\"UTF-8\"")]
+        [InlineData("utf-8")]
+        [InlineData("'Utf-8'")]
+        [InlineData("'UTF-8'")]
+        public void NormalizeContentTypeCharsetHeader_ContentTypeHeader_ValidCharSet(string charSet)
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "http://functions/{test:alpha}/test?name=Amy");
+            string input = "{ name: 'body1', nestedObject: { name: 'body2' } }";
+            request.Content = new StringContent(input);
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            request.Content.Headers.ContentType.Parameters.Add(new NameValueHeaderValue("charset", charSet));
+            request.NormalizeContentTypeCharsetHeader();
+
+            string expectedHeader = GetExpectedContenTypeHeader(charSet);
+            string actualHeader = request.Content.Headers.ContentType.ToString();
+            Assert.Equal(expectedHeader, actualHeader);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData(null)]
+        public void NormalizeContentTypeCharsetHeader_ContentTypeHeader_Set_CharSet_Empty(string charSet)
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "http://functions/{test:alpha}/test?name=Amy");
+            string input = "{ name: 'body1', nestedObject: { name: 'body2' } }";
+            request.Content = new StringContent(input);
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            request.Content.Headers.ContentType.Parameters.Add(new NameValueHeaderValue("charset", charSet));
+            request.NormalizeContentTypeCharsetHeader();
+
+            string expectedHeader = GetExpectedContenTypeHeader(charSet);
+            string actualHeader = request.Content.Headers.ContentType.ToString();
+            Assert.Equal(expectedHeader, actualHeader);
+        }
+
+        [Fact]
+        public void NormalizeContentTypeCharsetHeader_ContentTypeHeader_Default()
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "http://functions/{test:alpha}/test?name=Amy");
+            request.Content = new StringContent("test");
+            request.NormalizeContentTypeCharsetHeader();
+            string expectedHeader = "text/plain; charset=utf-8";
+            string actualHeader = request.Content.Headers.ContentType.ToString();
+            Assert.Equal(expectedHeader, actualHeader);
+        }
+
+        [Fact]
+        public void NormalizeContentTypeCharsetHeader_NoHeaders()
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "http://functions/{test:alpha}/test?name=Amy");
+            request.NormalizeContentTypeCharsetHeader();
+            Assert.Null(request.Content);
+        }
+
         [Fact]
         public void IsAntaresInternalRequest_ReturnsExpectedResult()
         {
@@ -170,6 +225,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
             request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestAuthorizationDisabledKey, true);
             Assert.True(request.HasAuthorizationLevel(AuthorizationLevel.Admin));
+        }
+
+        private static string GetExpectedContenTypeHeader(string charSet)
+        {
+            if (string.IsNullOrEmpty(charSet))
+            {
+                return "application/json; charset";
+            }
+            char[] trimQuotes = new[] { '\'', '\"' };
+            return "application/json; charset=" + charSet.Trim(trimQuotes);
         }
     }
 }

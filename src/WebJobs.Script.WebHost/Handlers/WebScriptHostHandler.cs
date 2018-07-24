@@ -39,6 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
                 await StandbyManager.WarmUp(request, scriptHostManager);
             }
 
+            // Workaround for .net framework bug https://github.com/dotnet/corefx/issues/5014
+            request.NormalizeContentTypeCharsetHeader();
             return await base.SendAsync(request, cancellationToken);
         }
     }
