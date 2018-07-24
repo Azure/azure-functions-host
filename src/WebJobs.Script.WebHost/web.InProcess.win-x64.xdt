@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<configuration xmlns:xdt="http://schemas.microsoft.com/XML-Document-Transform">
+  <system.webServer>
+    <handlers>
+      <add name="aspNetCore" path="*" verb="*" modules="AspNetCoreModuleV2" resourceType="Unspecified" xdt:Transform="Replace" xdt:Locator="Match(name)" />
+    </handlers>
+    <aspNetCore processPath=".\Microsoft.Azure.WebJobs.Script.WebHost.exe" arguments="" stdoutLogEnabled="false" hostingModel="inprocess" xdt:Transform="Replace" />
+  </system.webServer>
+</configuration>
