@@ -25,7 +25,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -115,8 +114,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Temporary - This should be replaced with a simple type registration.
             builder.Register<IExtensionsManager>(c =>
             {
-                var hostInstance = c.Resolve<WebScriptHostManager>().Instance;
-                return new ExtensionsManager(hostInstance.ScriptConfig.RootScriptPath, hostInstance.Logger, hostInstance.ScriptConfig.NugetFallBackPath);
+                var webHostSettings = c.Resolve<WebHostSettings>();
+                var loggerFactory = c.Resolve<ILoggerFactory>();
+                var logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryExtensionsController);
+                return new ExtensionsManager(webHostSettings.ScriptPath, logger);
             });
 
             // The services below need to be scoped to a pseudo-tenant (warm/specialized environment)

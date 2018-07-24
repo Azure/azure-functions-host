@@ -89,8 +89,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public async Task<IActionResult> GetJobs()
         {
             IEnumerable<ExtensionsRestoreJob> jobs = await GetInProgressJobs();
+
             var jobContent = new { jobs };
             var result = ApiModelUtility.CreateApiModel(jobContent, Request);
+
             return Ok(result);
         }
 
@@ -155,7 +157,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     { "version", package.Version }
                 }
             };
+
             await SaveJob(job);
+
             return job;
         }
 
@@ -179,6 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".azurefunctions", "extensions");
             }
+
             return basePath;
         }
 
@@ -212,6 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     }
                 }
             }
+
             return jobs;
         }
     }

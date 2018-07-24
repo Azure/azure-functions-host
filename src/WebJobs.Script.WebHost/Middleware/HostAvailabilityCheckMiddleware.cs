@@ -20,25 +20,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public async Task Invoke(HttpContext httpContext, WebHostResolver resolver)
         {
-            using (Logger.VerifyingHostAvailabilityScope(_logger, httpContext.TraceIdentifier))
+            var manager = resolver.GetWebScriptHostManager();
+            if (manager.State != ScriptHostState.Offline)
             {
-                Logger.InitiatingHostAvailabilityCheck(_logger);
-
-                bool hostReady = await WebScriptHostManager.DelayUntilHostReady(resolver);
-                if (!hostReady)
+                using (Logger.VerifyingHostAvailabilityScope(_logger, httpContext.TraceIdentifier))
                 {
-                    Logger.HostUnavailableAfterCheck(_logger);
+                    Logger.InitiatingHostAvailabilityCheck(_logger);
 
-                    httpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-                    await httpContext.Response.WriteAsync("Function host is not running.");
+                    bool hostReady = await WebScriptHostManager.DelayUntilHostReady(resolver);
+                    if (!hostReady)
+                    {
+                        Logger.HostUnavailableAfterCheck(_logger);
 
-                    return;
+                        httpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                        await httpContext.Response.WriteAsync("Function host is not running.");
+
+                        return;
+                    }
+
+                    Logger.HostAvailabilityCheckSucceeded(_logger);
                 }
-
-                Logger.HostAvailabilityCheckSucceeded(_logger);
-
-                await _next.Invoke(httpContext);
             }
+            else
+            {
+                httpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                await httpContext.Response.WriteAsync("Function host is offline.");
+
+                return;
+            }
+
+            await _next.Invoke(httpContext);
         }
     }
 }

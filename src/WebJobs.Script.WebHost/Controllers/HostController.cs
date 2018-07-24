@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -33,14 +35,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly ILogger _logger;
         private readonly IAuthorizationService _authorizationService;
         private readonly IWebFunctionsManager _functionsManager;
+        private readonly ScriptSettingsManager _settingsManager;
 
-        public HostController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory, IAuthorizationService authorizationService, IWebFunctionsManager functionsManager)
+        public HostController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, ILoggerFactory loggerFactory, IAuthorizationService authorizationService, IWebFunctionsManager functionsManager, ScriptSettingsManager settingsManager)
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostController);
             _authorizationService = authorizationService;
             _functionsManager = functionsManager;
+            _settingsManager = settingsManager;
         }
 
         [HttpGet]
@@ -148,6 +152,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             _scriptHostManager.RestartHost();
             return Ok(_webHostSettings);
+        }
+
+        [HttpPost]
+        [Route("admin/host/offline")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        public IActionResult Offline(bool isOffline)
+        {
+            if (_settingsManager.FileSystemIsReadOnly)
+            {
+                return BadRequest();
+            }
+
+            _scriptHostManager.SetOfflineState(isOffline);
+
+            return Ok();
         }
 
         [HttpGet]
