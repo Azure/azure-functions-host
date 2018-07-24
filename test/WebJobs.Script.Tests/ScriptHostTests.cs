@@ -545,7 +545,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             IExtensionRegistry extensions = scriptConfig.HostConfig.GetService<IExtensionRegistry>();
             var eventHubConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<EventHubConfiguration>().Single();
 
-            // I don't want to update any of the V1 public surface area, so I'll just use reflection for this test.
             var getOptionsMethod = typeof(EventHubConfiguration)
                     .GetMethod("GetOptions", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
@@ -601,6 +600,61 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(customBatchSize, eventHubOptions.MaxBatchSize);
             Assert.Equal(customPrefetchCount, eventHubOptions.PrefetchCount);
             Assert.Equal(customCheckpointFrequency, eventHubConfig.BatchCheckpointFrequency);
+        }
+
+        [Fact]
+        public void ApplyConfiguration_ServiceBus_UsesWebJobsDefaults()
+        {
+            JObject config = new JObject();
+            var scriptConfig = new ScriptHostConfiguration();
+            scriptConfig.HostConfig.HostConfigMetadata = config;
+
+            var provider = new ServiceBusScriptBindingProvider(scriptConfig.HostConfig, config, new TestTraceWriter(TraceLevel.Verbose));
+            provider.Initialize();
+
+            var x = new OnMessageOptions();
+            var extensions = scriptConfig.HostConfig.GetService<IExtensionRegistry>();
+            var configProvider = extensions.GetExtensions<IExtensionConfigProvider>().Single(p => p.GetType().Name == "ServiceBusExtensionConfig");
+            var configProperty = configProvider.GetType().GetProperty("Config");
+            Assert.NotNull(configProperty);
+
+            var serviceBusConfig = (ServiceBusConfiguration)configProperty.GetValue(configProvider);
+            var defaultConfiguration = new ServiceBusConfiguration();
+            Assert.Equal(defaultConfiguration.PrefetchCount, serviceBusConfig.PrefetchCount);
+            Assert.Equal(defaultConfiguration.MessageOptions.MaxConcurrentCalls, serviceBusConfig.MessageOptions.MaxConcurrentCalls);
+            Assert.Equal(defaultConfiguration.MessageOptions.AutoRenewTimeout, serviceBusConfig.MessageOptions.AutoRenewTimeout);
+            Assert.Equal(defaultConfiguration.MessageOptions.AutoComplete, serviceBusConfig.MessageOptions.AutoComplete);
+        }
+
+        [Fact]
+        public void ApplyConfiguration_ServiceBus_UsesCustomConfiguration()
+        {
+            JObject config = new JObject();
+            JObject serviceBus = new JObject
+            {
+                { "autoComplete", false },
+                { "maxConcurrentCalls", 77 },
+                { "autoRenewTimeout", "00:07:00" },
+                { "prefetchCount", 77 }
+            };
+            config["serviceBus"] = serviceBus;
+
+            ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
+            scriptConfig.HostConfig.HostConfigMetadata = config;
+
+            var provider = new ServiceBusScriptBindingProvider(scriptConfig.HostConfig, config, new TestTraceWriter(TraceLevel.Verbose));
+            provider.Initialize();
+
+            var extensions = scriptConfig.HostConfig.GetService<IExtensionRegistry>();
+            var configProvider = extensions.GetExtensions<IExtensionConfigProvider>().Single(p => p.GetType().Name == "ServiceBusExtensionConfig");
+            var configProperty = configProvider.GetType().GetProperty("Config");
+            Assert.NotNull(configProperty);
+
+            var serviceBusConfig = (ServiceBusConfiguration)configProperty.GetValue(configProvider);
+            Assert.Equal(77, serviceBusConfig.PrefetchCount);
+            Assert.Equal(77, serviceBusConfig.MessageOptions.MaxConcurrentCalls);
+            Assert.Equal(TimeSpan.FromMinutes(7), serviceBusConfig.MessageOptions.AutoRenewTimeout);
+            Assert.Equal(false, serviceBusConfig.MessageOptions.AutoComplete);
         }
 
         [Fact]

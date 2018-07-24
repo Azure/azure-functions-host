@@ -61,6 +61,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     serviceBusConfig.PrefetchCount = (int)value;
                 }
+
+                if (configSection.TryGetValue("autoComplete", StringComparison.OrdinalIgnoreCase, out value) && value.Type == JTokenType.Boolean)
+                {
+                    serviceBusConfig.MessageOptions.AutoComplete = (bool)value;
+                }
             }
 
             var eventHubConfiguration = new EventHubConfiguration();

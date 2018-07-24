@@ -133,6 +133,12 @@
                     "type": "string",
                     "pattern": "^\\d\\d:\\d\\d:\\d\\d$",
                     "default": "00:05:00"
+                },
+
+                "autoComplete": {
+                    "description": "Specifies whether messages should be automatically completed after successful processing.",
+                    "type": "boolean",
+                    "default": true
                 }
             }          
         },
