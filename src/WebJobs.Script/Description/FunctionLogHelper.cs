@@ -12,21 +12,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     // Each function can get its own log stream.
     // Static per-function logging information.
-    public class FunctionLogger : IDisposable
+    public class FunctionLogHelper : IDisposable
     {
         private bool _disposed = false;
 
-        public FunctionLogger(ScriptHost host, string functionName, string logDirName = null)
+        public FunctionLogHelper(ScriptHost host, string functionName, string logDirName = null)
         {
-            // Function file logging is only done conditionally
-            TraceWriter traceWriter = host.FunctionTraceWriterFactory.Create(functionName, logDirName);
-            FileTraceWriter = traceWriter.Conditional(t => host.FileLoggingEnabled && (!(t.Properties?.ContainsKey(ScriptConstants.TracePropertyPrimaryHostKey) ?? false) || host.IsPrimary));
+            FunctionTraceWriter = host.FunctionTraceWriterFactory.Create(functionName, logDirName);
 
             // The global trace writer used by the invoker will write all traces to both
             // the host trace writer as well as our file trace writer
-            traceWriter = host.TraceWriter != null ?
-                new CompositeTraceWriter(new TraceWriter[] { FileTraceWriter, host.TraceWriter }) :
-                FileTraceWriter;
+            var traceWriter = host.TraceWriter != null ?
+                new CompositeTraceWriter(new TraceWriter[] { FunctionTraceWriter, host.TraceWriter }) :
+                FunctionTraceWriter;
 
             // Apply the function name as an event property to all traces
             var functionTraceProperties = new Dictionary<string, object>
@@ -38,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Logger = host.ScriptConfig.HostConfig.LoggerFactory?.CreateLogger(LogCategories.Executor);
         }
 
-        internal TraceWriter FileTraceWriter { get; private set; }
+        internal TraceWriter FunctionTraceWriter { get; private set; }
 
         public TraceWriter TraceWriter { get; private set; }
 
@@ -63,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 { ScriptConstants.TracePropertyIsUserTraceKey, true }
             };
-            return new CompositeTraceWriter(new[] { traceWriter, FileTraceWriter }).Apply(userTraceProperties);
+            return new CompositeTraceWriter(new[] { traceWriter, FunctionTraceWriter }).Apply(userTraceProperties);
         }
 
         // Helper to emit a standard log message for function started.
@@ -102,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 if (disposing)
                 {
-                    (FileTraceWriter as IDisposable)?.Dispose();
+                    (FunctionTraceWriter as IDisposable)?.Dispose();
                     (TraceWriter as IDisposable)?.Dispose();
                 }
 

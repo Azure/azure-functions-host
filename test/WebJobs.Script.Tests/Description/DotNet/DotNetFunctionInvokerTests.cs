@@ -11,6 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -147,67 +148,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     throw new Exception(compilationDetails, exc);
                 }
 
-                Assert.Contains(dependencies.TraceWriter.GetTraces(),
-                    t => t.Message.Contains($"warning {DotNetConstants.MissingBindingArgumentCompilationCode}") && t.Message.Contains("'TestBinding'"));
-            }
-        }
+                TraceEvent t = dependencies.TraceWriter.GetTraces().Single();
+                Assert.Contains($"warning {DotNetConstants.MissingBindingArgumentCompilationCode}", t.Message);
+                Assert.Contains("'TestBinding'", t.Message);
 
-        [Theory]
-        [MemberData(nameof(CompilationEnvironment))]
-        public async Task Compilation_OnSecondaryHost_SuppressesLogs(IDictionary<string, string> environment)
-        {
-            using (new TestScopedEnvironmentVariable(environment))
-            {
-                // Create the compilation exception we expect to throw during the reload
-                string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                Directory.CreateDirectory(rootFunctionsFolder);
-
-                // Create the invoker dependencies and setup the appropriate method to throw the exception
-                RunDependencies dependencies = CreateDependencies();
-
-                // Set the host to secondary
-                dependencies.Host.SetupGet(h => h.IsPrimary).Returns(false);
-
-                // Create a dummy file to represent our function
-                string filePath = Path.Combine(rootFunctionsFolder, Guid.NewGuid().ToString() + ".csx");
-                File.WriteAllText(filePath, Resources.TestFunctionWithMissingBindingArgumentsCode);
-
-                var metadata = new FunctionMetadata
-                {
-                    ScriptFile = filePath,
-                    FunctionDirectory = Path.GetDirectoryName(filePath),
-                    Name = Guid.NewGuid().ToString(),
-                    ScriptType = ScriptType.CSharp
-                };
-
-                metadata.Bindings.Add(new BindingMetadata() { Name = "myQueueItem", Type = "ManualTrigger" });
-
-                var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
-
-                var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
-                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new FunctionAssemblyLoader(string.Empty),
-                    new DotNetCompilationServiceFactory(NullTraceWriter.Instance, null));
-                try
-                {
-                    await invoker.GetFunctionTargetAsync();
-                }
-                catch (CompilationErrorException exc)
-                {
-                    var builder = new StringBuilder();
-                    builder.AppendLine(Resources.TestFunctionWithMissingBindingArgumentsCode);
-                    builder.AppendLine();
-
-                    string compilationDetails = exc.Diagnostics.Aggregate(
-                        builder,
-                        (a, d) => a.AppendLine(d.ToString()),
-                        a => a.ToString());
-
-                    throw new Exception(compilationDetails, exc);
-                }
-
-                // Verify that logs on the second instance were suppressed
-                int count = dependencies.TraceWriter.GetTraces().Count();
-                Assert.Equal(0, count);
+                // verify that this property is here for a TraceWriter to filter on
+                Assert.True((bool)t.Properties[ScriptConstants.TracePropertyPrimaryHostKey]);
             }
         }
 

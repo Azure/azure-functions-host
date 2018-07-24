@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public FunctionLogger FunctionLogger => throw new NotImplementedException();
+        public FunctionLogHelper FunctionLogger => throw new NotImplementedException();
 
         public Task Invoke(object[] parameters)
         {

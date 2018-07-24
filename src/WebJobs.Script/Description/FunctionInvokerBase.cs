@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             Host = host;
             Metadata = functionMetadata;
-            FunctionLogger = new FunctionLogger(host, logDirName ?? functionMetadata.Name);
+            FunctionLogger = new FunctionLogHelper(host, logDirName ?? functionMetadata.Name);
         }
 
         protected static IDictionary<string, object> PrimaryHostTraceProperties { get; }
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public ScriptHost Host { get; }
 
-        public FunctionLogger FunctionLogger { get; }
+        public FunctionLogHelper FunctionLogger { get; }
 
         public FunctionMetadata Metadata { get; }
 
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected ILogger Logger => FunctionLogger.Logger;
 
-        public TraceWriter FileTraceWriter => FunctionLogger.FileTraceWriter;
+        public TraceWriter FunctionTraceWriter => FunctionLogger.FunctionTraceWriter;
 
         /// <summary>
         /// All unhandled invocation exceptions will flow through this method.
@@ -224,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly FunctionMetadata _metadata;
         private readonly IMetricsLogger _metrics;
         private readonly Guid _invocationId;
-        private readonly FunctionLogger _logInfo;
+        private readonly FunctionLogHelper _logInfo;
 
         private readonly Stopwatch _invocationStopWatch = new Stopwatch();
 
@@ -235,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             FunctionMetadata metadata,
             IMetricsLogger metrics,
             Guid invocationId,
-            FunctionLogger logInfo)
+            FunctionLogHelper logInfo)
         {
             _metadata = metadata;
             _metrics = metrics;

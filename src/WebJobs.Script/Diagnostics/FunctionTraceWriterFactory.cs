@@ -6,7 +6,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -15,30 +14,37 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly ConcurrentDictionary<string, TraceWriter> _writerCache = new ConcurrentDictionary<string, TraceWriter>(StringComparer.OrdinalIgnoreCase);
         private readonly ScriptHostConfiguration _scriptHostConfig;
+        private readonly Func<TraceEvent, bool> _fileLoggingEnabled;
 
-        public FunctionTraceWriterFactory(ScriptHostConfiguration scriptHostConfig)
+        public FunctionTraceWriterFactory(ScriptHostConfiguration scriptHostConfig, Func<TraceEvent, bool> fileLoggingEnabled)
         {
             _scriptHostConfig = scriptHostConfig;
+            _fileLoggingEnabled = fileLoggingEnabled;
         }
 
         public TraceWriter Create(string functionName, string logDirName = null)
         {
             logDirName = logDirName ?? "Function";
-            if (_scriptHostConfig.FileLoggingMode != FileLoggingMode.Never)
-            {
-                return _writerCache.GetOrAdd(functionName, f => CreateTraceWriter(_scriptHostConfig, f, logDirName));
-            }
 
-            return NullTraceWriter.Instance;
+            return _writerCache.GetOrAdd(functionName, f => CreateTraceWriter(f, logDirName));
         }
 
-        private TraceWriter CreateTraceWriter(ScriptHostConfiguration config, string functionName, string dirName)
+        private TraceWriter CreateTraceWriter(string functionName, string dirName)
         {
-            TraceLevel functionTraceLevel = config.HostConfig.Tracing.ConsoleLevel;
-            string logFilePath = Path.Combine(config.RootLogPath, dirName, functionName);
+            TraceLevel functionTraceLevel = _scriptHostConfig.HostConfig.Tracing.ConsoleLevel;
 
-            // Wrap the FileTraceWriter in a RemovableTraceWriter so we can remove it from the cache when it is disposed
-            var innerTraceWriter = new FileTraceWriter(logFilePath, functionTraceLevel, LogType.Function);
+            // File logging is done conditionally.
+            string logFilePath = Path.Combine(_scriptHostConfig.RootLogPath, dirName, functionName);
+            var fileTraceWriter = new FileTraceWriter(logFilePath, functionTraceLevel, LogType.Function)
+                .Conditional(_fileLoggingEnabled);
+
+            // Set up a TraceWriter for logging the count of user logs written.
+            IMetricsLogger metricsLogger = _scriptHostConfig.HostConfig.GetService<IMetricsLogger>();
+            var userLogMetricsTraceWriter = new UserLogMetricsTraceWriter(metricsLogger, functionName, functionTraceLevel);
+
+            var innerTraceWriter = new CompositeTraceWriter(new TraceWriter[] { fileTraceWriter, userLogMetricsTraceWriter }, functionTraceLevel);
+
+            // Wrap in a RemovableTraceWriter so we can remove it from the cache when it is disposed
             return new RemovableTraceWriter(this, functionName, innerTraceWriter);
         }
 
@@ -65,6 +71,13 @@ namespace Microsoft.Azure.WebJobs.Script
             public override void Trace(TraceEvent traceEvent)
             {
                 _innerWriter.Trace(traceEvent);
+            }
+
+            public override void Flush()
+            {
+                _innerWriter.Flush();
+
+                base.Flush();
             }
 
             public void Dispose()

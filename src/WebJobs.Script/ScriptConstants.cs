@@ -37,7 +37,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TraceSourceScriptHost = "Script.Host";
         public const string TraceSourceScriptFunctionExecution = "Script.Execution";
 
-        public const string LoggerFunctionNameKey = "MS_FunctionName";
         public const string LoggerHttpRequest = "MS_HttpRequest";
 
         public const string LogCategoryAdminController = "Host.Controllers.Admin";

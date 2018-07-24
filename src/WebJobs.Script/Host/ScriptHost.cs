@@ -429,16 +429,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 _loggerFactory = _hostConfig.LoggerFactory;
             }
 
-            ConfigureLoggerFactory(ScriptConfig, FunctionTraceWriterFactory, _settingsManager, () => FileLoggingEnabled);
+            ConfigureLoggerFactory(ScriptConfig, FunctionTraceWriterFactory, _settingsManager);
         }
 
-        internal static void ConfigureLoggerFactory(ScriptHostConfiguration scriptConfig, IFunctionTraceWriterFactory traceWriteFactory,
-            ScriptSettingsManager settingsManager, Func<bool> isFileLoggingEnabled)
+        internal static void ConfigureLoggerFactory(ScriptHostConfiguration scriptConfig,
+            IFunctionTraceWriterFactory traceWriterFactory, ScriptSettingsManager settingsManager)
         {
-            // Register a file logger that only logs user logs and only if file logging is enabled.
-            // We don't allow this to be replaced; if you want to disable it, you can use host.json to do so.
-            scriptConfig.HostConfig.LoggerFactory.AddProvider(new FileLoggerProvider(traceWriteFactory,
-                (category, level) => (category == LogCategories.Function) && isFileLoggingEnabled()));
+            // Register a logger that logs using the TraceWriter created for function logging.
+            // We don't allow this to be replaced; if you want to disable file logging, you can use host.json to do so.
+            scriptConfig.HostConfig.LoggerFactory.AddProvider(new FunctionLoggerProvider(traceWriterFactory, scriptConfig.LogFilter.Filter));
 
             scriptConfig.LoggerFactoryBuilder.AddLoggerProviders(scriptConfig.HostConfig.LoggerFactory, scriptConfig, settingsManager);
         }
@@ -843,7 +842,12 @@ namespace Microsoft.Azure.WebJobs.Script
             // to the startup logger until we've read configuration settings and can create the real logger.
             // The "startup" logger is used in this class for startup related logs. The public logger is used
             // for all other logging after startup.
-            FunctionTraceWriterFactory = new FunctionTraceWriterFactory(ScriptConfig);
+            FunctionTraceWriterFactory = new FunctionTraceWriterFactory(ScriptConfig, t =>
+            {
+                // File logging is done conditionally.
+                return FileLoggingEnabled && (!(t.Properties?.ContainsKey(ScriptConstants.TracePropertyPrimaryHostKey) ?? false) || IsPrimary);
+            });
+
             ConfigureLoggerFactory();
             Logger = _startupLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
         }

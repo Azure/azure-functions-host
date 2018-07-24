@@ -6,21 +6,22 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
     /// <summary>
-    /// A wrapper class to allow ILoggers from functions to write to the existing FileTraceWriter. This allows
+    /// A wrapper class to allow ILoggers from functions to write to the existing FunctionTraceWriter. This allows
     /// logs to show up in the log files and stream in the portal.
     /// </summary>
-    internal class FileLogger : ILogger
+    internal class FunctionLogger : ILogger
     {
         private readonly Func<string, LogLevel, bool> _filter;
         private readonly string _categoryName;
         private readonly IFunctionTraceWriterFactory _traceWriterFactory;
 
-        public FileLogger(string categoryName, IFunctionTraceWriterFactory traceWriterFactory, Func<string, LogLevel, bool> filter)
+        public FunctionLogger(string categoryName, IFunctionTraceWriterFactory traceWriterFactory, Func<string, LogLevel, bool> filter)
         {
             _categoryName = categoryName;
             _filter = filter;
@@ -31,6 +32,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         public bool IsEnabled(LogLevel logLevel)
         {
+            // Make sure we only log for user logs
+            if (_categoryName != LogCategories.Function)
+            {
+                return false;
+            }
+
             if (_filter == null)
             {
                 // if there is no filter, assume it is always enabled
@@ -63,6 +70,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             }
 
             TraceWriter traceWriter = _traceWriterFactory.Create(functionName);
+
+            // Set this so the TraceWriter knows that this is a user log
+            traceEvent.Properties[ScriptConstants.TracePropertyIsUserTraceKey] = true;
+
             traceWriter.Trace(traceEvent);
         }
 
@@ -70,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         {
             IDictionary<string, object> scopeProperties = DictionaryLoggerScope.GetMergedStateDictionary();
 
-            if (!scopeProperties.TryGetValue(ScriptConstants.LoggerFunctionNameKey, out string functionName))
+            if (!scopeProperties.TryGetValue(ScopeKeys.FunctionName, out string functionName))
             {
                 return null;
             }

@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -1224,7 +1225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public IEnumerable<string> GetFunctionLogs(string functionName)
             {
                 return _traceWriter.GetTraces()
-                    .Where(p => p.Properties.ContainsKey(ScriptConstants.LoggerFunctionNameKey) && string.Compare((string)p.Properties[ScriptConstants.LoggerFunctionNameKey], functionName) == 0)
+                    .Where(p => p.Properties.ContainsKey(ScopeKeys.FunctionName) && string.Compare((string)p.Properties[ScopeKeys.FunctionName], functionName) == 0)
                     .Select(p => p.Message);
             }
 

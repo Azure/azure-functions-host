@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Internal;
@@ -12,17 +13,17 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 {
-    public class FileLoggerTests
+    public class FunctionLoggerTests
     {
         [Fact]
-        public void FileLogger_NoFunctionName()
+        public void FunctionLogger_NoFunctionName()
         {
             var trace = new TestTraceWriter(TraceLevel.Info);
 
             // we should never call this
             var factoryMock = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
 
-            var logger = new FileLogger("SomeCategory", factoryMock.Object, (c, l) => true);
+            var logger = new FunctionLogger(LogCategories.Function, factoryMock.Object, (c, l) => true);
 
             // FunctionName comes from scope -- call with no scope values
             logger.Log(LogLevel.Information, 0, new FormattedLogValues("Some Message"), null, (s, e) => s.ToString());
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         }
 
         [Fact]
-        public void FileLogger_FunctionName_FromScope()
+        public void FunctionLogger_FunctionName_FromScope()
         {
             var trace = new TestTraceWriter(TraceLevel.Info);
 
@@ -41,12 +42,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 .Setup(f => f.Create("SomeFunction", null))
                 .Returns(trace);
 
-            var logger = new FileLogger("SomeCategory", factoryMock.Object, (c, l) => true);
+            var logger = new FunctionLogger(LogCategories.Function, factoryMock.Object, (c, l) => true);
 
             // FunctionName comes from scope
             using (logger.BeginScope(new Dictionary<string, object>
             {
-                [ScriptConstants.LoggerFunctionNameKey] = "SomeFunction"
+                [ScopeKeys.FunctionName] = "SomeFunction"
             }))
             {
                 logger.Log(LogLevel.Information, 0, new FormattedLogValues("Some Message"), null, (s, e) => s.ToString());
@@ -55,7 +56,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var traceEvent = trace.GetTraces().Single();
             Assert.Equal(TraceLevel.Info, traceEvent.Level);
             Assert.Equal("Some Message", traceEvent.Message);
-            Assert.Equal("SomeCategory", traceEvent.Source);
+            Assert.Equal(LogCategories.Function, traceEvent.Source);
+        }
+
+        [Fact]
+        public void FunctionLogger_Ignores_NonFunctionLogs()
+        {
+            var trace = new TestTraceWriter(TraceLevel.Info);
+
+            var factoryMock = new Mock<IFunctionTraceWriterFactory>(MockBehavior.Strict);
+            factoryMock
+                .Setup(f => f.Create("SomeFunction", null))
+                .Returns(trace);
+
+            var logger = new FunctionLogger("NotAFunction", factoryMock.Object, (c, l) => true);
+
+            // FunctionName comes from scope
+            using (logger.BeginScope(new Dictionary<string, object>
+            {
+                [ScopeKeys.FunctionName] = "SomeFunction"
+            }))
+            {
+                logger.Log(LogLevel.Information, 0, new FormattedLogValues("Some Message"), null, (s, e) => s.ToString());
+            }
+
+            Assert.Empty(trace.GetTraces());
         }
     }
 }

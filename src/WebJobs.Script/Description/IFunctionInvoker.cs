@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <summary>
         /// Gets logging information for this function.
         /// </summary>
-        FunctionLogger FunctionLogger { get; }
+        FunctionLogHelper FunctionLogger { get; }
 
         /// <summary>
         /// Invoke the function using the specified parameters.

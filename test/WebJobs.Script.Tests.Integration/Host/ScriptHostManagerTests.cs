@@ -720,13 +720,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
 
                 RemovableTraceWriter instance = null;
-                if (invokerBase.FileTraceWriter is ConditionalTraceWriter conditional)
+                if (invokerBase.FunctionTraceWriter is ConditionalTraceWriter conditional)
                 {
                     instance = conditional.InnerWriter as RemovableTraceWriter;
                 }
                 else
                 {
-                    instance = invokerBase.FileTraceWriter as RemovableTraceWriter;
+                    instance = invokerBase.FunctionTraceWriter as RemovableTraceWriter;
                 }
 
                 if (instance != null)

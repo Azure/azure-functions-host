@@ -1309,9 +1309,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var metricsLogger = new TestMetricsLogger();
             config.HostConfig.AddService<IMetricsLogger>(metricsLogger);
 
-            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, () => true);
+            ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager);
 
-            Assert.IsType<FileLoggerProvider>(loggerFactory.Providers.Single());
+            Assert.IsType<FunctionLoggerProvider>(loggerFactory.Providers.Single());
             Assert.Equal(1, metricsLogger.LoggedEvents.Count);
             Assert.Equal(MetricEventNames.ApplicationInsightsDisabled, metricsLogger.LoggedEvents[0]);
         }
@@ -1334,11 +1334,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var metricsLogger = new TestMetricsLogger();
                 config.HostConfig.AddService<IMetricsLogger>(metricsLogger);
 
-                ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, () => true);
+                ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager);
 
                 Assert.Equal(2, loggerFactory.Providers.Count);
 
-                Assert.Equal(1, loggerFactory.Providers.OfType<FileLoggerProvider>().Count());
+                Assert.Equal(1, loggerFactory.Providers.OfType<FunctionLoggerProvider>().Count());
 
                 // The app insights logger is internal, so just check the name
                 ILoggerProvider appInsightsProvider = loggerFactory.Providers.Last();
@@ -1377,7 +1377,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var settingsManager = ScriptSettingsManager.Instance;
                 ConfigurationManager.AppSettings[EnvironmentSettingNames.AppInsightsInstrumentationKey] = TestChannelLoggerFactoryBuilder.ApplicationInsightsKey;
 
-                ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager, () => true);
+                ScriptHost.ConfigureLoggerFactory(config, mockTraceFactory.Object, settingsManager);
 
                 // Create a logger and try out the configured factory. We need to pretend that it is coming from a
                 // function, so set the function name and the category appropriately.
@@ -1385,7 +1385,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 using (logger.BeginScope(new Dictionary<string, object>
                 {
-                    [ScriptConstants.LoggerFunctionNameKey] = "Test"
+                    [ScopeKeys.FunctionName] = "Test"
                 }))
                 {
                     // Now log as if from within a function.

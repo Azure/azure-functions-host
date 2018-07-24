@@ -535,8 +535,9 @@
     <Compile Include="Description\Node\Compilation\TypeScript\TypeScriptCompilerTests.cs" />
     <Compile Include="Description\Proxy\ProxyFunctionDescriptorProviderTests.cs" />
     <Compile Include="Description\Script\ScriptFunctionInvokerBaseTests.cs" />
-    <Compile Include="Diagnostics\FileLoggerTests.cs" />
+    <Compile Include="Diagnostics\FunctionLoggerTests.cs" />
     <Compile Include="Diagnostics\FunctionTraceWriterFactoryTests.cs" />
+    <Compile Include="Diagnostics\UserLogMetricsTraceWriterTests.cs" />
     <Compile Include="Eventing\File\FileWatcherEventSourceTests.cs" />
     <Compile Include="Eventing\ScriptEventManagerTests.cs" />
     <Compile Include="Diagnostics\ConditionalTraceWriterTests.cs" />
@@ -592,7 +593,6 @@
     <Compile Include="Diagnostics\TraceWriterExtensionsTests.cs" />
     <Compile Include="SlidingWindowTests.cs" />
     <Compile Include="Swagger\SwaggerDocumentManagerTests.cs" />
-    <Compile Include="TestMetricsLogger.cs" />
     <Compile Include="UtilityTests.cs" />
     <Compile Include="WebApiApplicationTests.cs" />
     <Compile Include="WebConfigTests\WebConfigTests.cs" />

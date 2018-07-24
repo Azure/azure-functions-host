@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             CreateTestStorageEntities();
             TraceWriter = new TestTraceWriter(TraceLevel.Verbose);
+            MetricsLogger = new TestMetricsLogger();
 
             ApiHubTestHelper.SetDefaultConnectionFactory();
 
@@ -63,8 +64,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             InitializeConfig(config);
             Func<string, FunctionDescriptor> funcLookup = (name) => this.Host.GetFunctionOrNull(name);
-            var fastLogger = new FunctionInstanceLogger(funcLookup, new MetricsLogger());
+            var fastLogger = new FunctionInstanceLogger(funcLookup, MetricsLogger);
             config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
+            config.HostConfig.AddService<IMetricsLogger>(MetricsLogger);
             Host = new ScriptHost(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager, proxyClient);
             Host.Initialize();
 
@@ -82,6 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public Mock<IScriptHostEnvironment> ScriptHostEnvironmentMock { get; }
 
         public TestTraceWriter TraceWriter { get; private set; }
+
+        public TestMetricsLogger MetricsLogger { get; private set; }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
 

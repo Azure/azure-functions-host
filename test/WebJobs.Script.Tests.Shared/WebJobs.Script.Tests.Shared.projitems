@@ -20,6 +20,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)TestLoggerFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestLoggerFactoryBuilder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestLoggerProvider.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestMetricsLogger.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestScopedEnvironmentVariable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestScopedSettings.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestSecretManager.cs" />

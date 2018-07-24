@@ -491,7 +491,7 @@
     <Compile Include="Description\DotNet\Compilation\Raw\RawAssemblyCompilationService.cs" />
     <Compile Include="Description\FunctionInvocationContext.cs" />
     <Compile Include="Description\FunctionLoader.cs" />
-    <Compile Include="Description\FunctionLogger.cs" />
+    <Compile Include="Description\FunctionLogHelper.cs" />
     <Compile Include="Description\LogTargets.cs" />
     <Compile Include="Description\Node\Compilation\ConditionalJavaScriptCompilationService.cs" />
     <Compile Include="Description\Node\Compilation\IJavaScriptCompilation.cs" />
@@ -512,7 +512,10 @@
     <Compile Include="Description\Proxies\ProxyFunctionInvoker.cs" />
     <Compile Include="Description\ScriptFunctionInvokerBase.cs" />
     <Compile Include="Description\DotNet\Compilation\FSharp\FSharpCompilation.cs" />
+    <Compile Include="Diagnostics\FunctionLogger.cs" />
+    <Compile Include="Diagnostics\FunctionLoggerProvider.cs" />
     <Compile Include="Diagnostics\LogType.cs" />
+    <Compile Include="Diagnostics\UserLogMetricsTraceWriter.cs" />
     <Compile Include="Scale\ApplicationPerformanceCounters.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />
@@ -534,8 +537,6 @@
     <Compile Include="Description\ScriptType.cs" />
     <Compile Include="Diagnostics\ConditionalTraceWriter.cs" />
     <Compile Include="Diagnostics\ConsoleTraceWriter.cs" />
-    <Compile Include="Diagnostics\FileLogger.cs" />
-    <Compile Include="Diagnostics\FileLoggerProvider.cs" />
     <Compile Include="Diagnostics\FileLoggingMode.cs" />
     <Compile Include="Diagnostics\FunctionStartedEvent.cs" />
     <Compile Include="Diagnostics\FunctionTraceWriterFactory.cs" />

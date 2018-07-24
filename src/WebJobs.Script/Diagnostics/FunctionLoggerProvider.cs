@@ -6,18 +6,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
-    internal class FileLoggerProvider : ILoggerProvider
+    internal class FunctionLoggerProvider : ILoggerProvider
     {
         private IFunctionTraceWriterFactory _traceWriterFactory;
         private Func<string, LogLevel, bool> _filter;
 
-        public FileLoggerProvider(IFunctionTraceWriterFactory traceWriterFactory, Func<string, LogLevel, bool> filter)
+        public FunctionLoggerProvider(IFunctionTraceWriterFactory traceWriterFactory, Func<string, LogLevel, bool> filter)
         {
             _traceWriterFactory = traceWriterFactory;
             _filter = filter;
         }
 
-        public ILogger CreateLogger(string categoryName) => new FileLogger(categoryName, _traceWriterFactory, _filter);
+        public ILogger CreateLogger(string categoryName) => new FunctionLogger(categoryName, _traceWriterFactory, _filter);
 
         public void Dispose()
         {

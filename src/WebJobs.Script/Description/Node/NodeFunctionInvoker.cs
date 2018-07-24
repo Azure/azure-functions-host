@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using EdgeJs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.CodeAnalysis;
@@ -517,8 +518,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return context.Logger.BeginScope(
                 new Dictionary<string, object>
                 {
-                    ["MS_FunctionName"] = context.ExecutionContext.FunctionName,
-                    ["MS_FunctionInvocationId"] = context.ExecutionContext.InvocationId.ToString()
+                    [ScopeKeys.FunctionName] = context.ExecutionContext.FunctionName,
+                    [ScopeKeys.FunctionInvocationId] = context.ExecutionContext.InvocationId.ToString()
                 });
         }
 

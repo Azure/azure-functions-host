@@ -14,6 +14,8 @@ using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.ServiceBus.Messaging;
 using Microsoft.WindowsAzure.MobileServices;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -190,6 +192,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // No need for assert; this will throw if there's not one and only one
             logs.Single(p => p.EndsWith($"From TraceWriter: {guid1}"));
             logs.Single(p => p.EndsWith($"From ILogger: {guid2}"));
+
+            // Check that the proper metrics are logged from both TraceWriter and ILogger
+            string expectedKey = MetricsEventManager.GetAggregateKey(MetricEventNames.FunctionUserLog, functionName);
+            var userLogEvents = Fixture.MetricsLogger.LoggedEvents.Where(p => p == expectedKey);
+            Assert.Equal(2, userLogEvents.Count());
         }
 
         public async Task QueueTriggerToBlobTest()
