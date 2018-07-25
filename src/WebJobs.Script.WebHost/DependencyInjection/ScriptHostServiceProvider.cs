@@ -12,7 +12,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
-    public class ScriptHostServiceProvider : IServiceProvider, IServiceScopeFactory, ISupportRequiredService
+    public class ScriptHostServiceProvider : IServiceProvider, IServiceScopeFactory, ISupportRequiredService, IDisposable
     {
         private const string ScriptJobHostScope = "scriptjobhost";
 
@@ -96,6 +96,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         public IServiceScope CreateScope()
         {
             return _currentResolver.CreateChildScope(_rootScopeFactory);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _currentResolver.Dispose();
+            }
         }
     }
 }
