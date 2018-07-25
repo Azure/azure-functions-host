@@ -15,6 +15,9 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -47,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // ApiHubTestHelper.SetDefaultConnectionFactory();
 
-            ScriptHostConfiguration config = new ScriptHostConfiguration()
+            var scriptOptions = new ScriptHostOptions()
             {
                 RootScriptPath = rootPath,
                 FileLoggingMode = FileLoggingMode.Always,
@@ -55,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             if (functions != null)
             {
-                config.OnConfigurationApplied = c => c.Functions = functions;
+                scriptOptions.OnConfigurationApplied = c => c.Functions = functions;
             }
 
             RequestConfiguration = new HttpConfiguration();
@@ -70,13 +73,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("TimerTrigger");
             TestHelpers.ClearFunctionLogs("ListenerStartupException");
 
-            InitializeConfig(config);
+            InitializeConfig(scriptOptions);
             Func<string, FunctionDescriptor> funcLookup = (name) => this.Host.GetFunctionOrNull(name);
             var fastLogger = new FunctionInstanceLogger(funcLookup, new MetricsLogger());
-            config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
-            Host = new ScriptHost(ScriptHostEnvironmentMock.Object, EventManager, config, _settingsManager,
-                proxyClient: proxyClient, loggerProviderFactory: loggerProviderFactory);
-            Host.Initialize();
+
+            // TODO: DI (FACAVAL) Fix
+            //config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
+
+            var host = new HostBuilder()
+                .ConfigureDefaultTestScriptHost()
+                .ConfigureServices(s =>
+                {
+                    s.AddSingleton<IScriptEventManager>(EventManager);
+                    s.AddSingleton<IOptions<ScriptHostOptions>>(new OptionsWrapper<ScriptHostOptions>(scriptOptions));
+                    s.AddSingleton<ProxyClientExecutor>(proxyClient);
+                })
+                .Build();
+
+            Host = host.GetScriptHost();
 
             if (startHost)
             {
@@ -114,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public IScriptEventManager EventManager { get; }
 
-        protected virtual void InitializeConfig(ScriptHostConfiguration config)
+        protected virtual void InitializeConfig(ScriptHostOptions options)
         {
         }
 

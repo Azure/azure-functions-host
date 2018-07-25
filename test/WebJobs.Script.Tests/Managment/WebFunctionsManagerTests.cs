@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -37,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
                 var contentBuilder = new StringBuilder();
                 var httpClient = CreateHttpClient(contentBuilder);
-                var webManager = new WebFunctionsManager(settings, loggerFactory, httpClient);
+                var webManager = new WebFunctionsManager(new OptionsWrapper<ScriptWebHostOptions>(settings), loggerFactory, httpClient);
 
                 FileUtility.Instance = fileSystem;
 
@@ -76,9 +77,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             return new HttpClient(new MockHttpHandler(writeContent));
         }
 
-        private static WebHostSettings CreateWebSettings()
+        private static ScriptWebHostOptions CreateWebSettings()
         {
-            return new WebHostSettings
+            return new ScriptWebHostOptions
             {
                 ScriptPath = @"x:\root",
                 IsSelfHost = false,

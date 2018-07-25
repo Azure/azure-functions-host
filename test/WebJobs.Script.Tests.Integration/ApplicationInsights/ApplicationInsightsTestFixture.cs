@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public ApplicationInsightsTestFixture(string scriptRoot, string testId)
         {
-            HostSettings = new WebHostSettings
+            WebHostOptions = new ScriptWebHostOptions
             {
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(Environment.CurrentDirectory, scriptRoot),
@@ -33,19 +33,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 {
                     config.AddInMemoryCollection(new Dictionary<string, string>
                     {
-                        [EnvironmentSettingNames.AppInsightsInstrumentationKey] = TestChannelLoggerProviderFactory.ApplicationInsightsKey
+                        [EnvironmentSettingNames.AppInsightsInstrumentationKey] = ""//TestChannelLoggerProviderFactory.ApplicationInsightsKey - TODO: review (brettsam)
                     });
                 })
                 .ConfigureServices(services =>
                 {
-                    services.Replace(new ServiceDescriptor(typeof(WebHostSettings), HostSettings));
-                    services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestChannelLoggerProviderFactory(Channel)));
+                    services.Replace(new ServiceDescriptor(typeof(ScriptWebHostOptions), WebHostOptions));
+                    //services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestChannelLoggerProviderFactory(Channel)));
                     services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
                 });
 
             _testServer = new TestServer(hostBuilder);
 
-            var scriptConfig = _testServer.Host.Services.GetService<WebHostResolver>().GetScriptHostConfiguration(HostSettings);
+            var scriptConfig = _testServer.Host.Services.GetService<WebHostResolver>().GetScriptHostConfiguration(WebHostOptions);
 
             InitializeConfig(scriptConfig);
 
@@ -57,21 +57,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public ScriptHost GetScriptHost()
         {
-            return _testServer.Host.Services.GetService<WebHostResolver>().GetWebScriptHostManager(HostSettings).Instance;
+            return _testServer.Host.Services.GetService<WebHostResolver>().GetWebScriptHostManager(WebHostOptions).Instance;
         }
 
-        public TestTelemetryChannel Channel { get; private set; } = new TestTelemetryChannel();
+        // TODO: DI (FACAVAL) brettsam - missing type?
+        // public TestTelemetryChannel Channel { get; private set; } = new TestTelemetryChannel();
 
-        public WebHostSettings HostSettings { get; private set; }
+        public ScriptWebHostOptions WebHostOptions { get; private set; }
 
         public HttpClient HttpClient { get; private set; }
 
-        protected void InitializeConfig(ScriptHostConfiguration config)
+        protected void InitializeConfig(ScriptHostOptions options)
         {
-            config.OnConfigurationApplied = c =>
+            options.OnConfigurationApplied = c =>
             {
                 // turn this off as it makes validation tough
-                config.HostConfig.Aggregator.IsEnabled = false;
+                // TODO: DI (FACAVAL) Review- brettsam
+                //options.HostConfig.Aggregator.IsEnabled = false;
 
                 // Overwrite the generated function whitelist to only include two functions.
                 c.Functions = new[] { "Scenarios", "HttpTrigger-Scenarios" };

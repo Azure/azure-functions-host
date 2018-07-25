@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -73,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             metadata.Bindings.Add(new BindingMetadata() { Name = "Test", Type = "ManualTrigger" });
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<Script.Binding.FunctionBinding>(),
-                new Collection<FunctionBinding>(), dependencies.EntrypointResolver.Object, dependencies.CompilationServiceFactory.Object);
+                new Collection<FunctionBinding>(), dependencies.EntrypointResolver.Object, dependencies.CompilationServiceFactory.Object, NullLoggerFactory.Instance);
 
             // Send file change notification to trigger a reload
             var fileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetTempPath(), Path.Combine(Path.GetFileName(rootFunctionsFolder), Path.GetFileName(filePath)));
@@ -162,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
-                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new DotNetCompilationServiceFactory(null));
+                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new DotNetCompilationServiceFactory(null), NullLoggerFactory.Instance);
 
                 try
                 {
@@ -220,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
-                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new DotNetCompilationServiceFactory(null));
+                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new DotNetCompilationServiceFactory(null), NullLoggerFactory.Instance);
                 try
                 {
                     await invoker.GetFunctionTargetAsync();
@@ -312,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                 new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(),
-                compilationFactory.Object, new Mock<IFunctionMetadataResolver>().Object);
+                compilationFactory.Object, NullLoggerFactory.Instance, new Mock<IFunctionMetadataResolver>().Object);
 
             var arguments = new object[]
             {
@@ -372,7 +373,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                   new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(),
-                  new DotNetCompilationServiceFactory(null), metadataResolver.Object);
+                  new DotNetCompilationServiceFactory(null), NullLoggerFactory.Instance, metadataResolver.Object);
 
                 await invoker.RestorePackagesAsync(true);
 
@@ -388,18 +389,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var dependencies = new RunDependencies();
 
-            var scriptHostConfiguration = new ScriptHostConfiguration
+            var scriptHostConfiguration = new ScriptHostOptions
             {
-                HostConfig = new JobHostConfiguration(),
                 FileLoggingMode = FileLoggingMode.Always,
                 FileWatchingEnabled = true,
-                BindingProviders = new List<ScriptBindingProvider>()
+                BindingProviders = new List<IScriptBindingProvider>()
             };
 
             TestLoggerProvider loggerProvider = new TestLoggerProvider();
             ILoggerFactory loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
-            scriptHostConfiguration.HostConfig.LoggerFactory = loggerFactory;
+            // TODO: DI (FACAVAL) Use test helpers to create host and inject services
+            //scriptHostConfiguration.HostConfig.LoggerFactory = loggerFactory;
 
             var eventManager = new ScriptEventManager();
 
@@ -424,7 +425,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Returns(compilationService.Object);
 
             var metricsLogger = new MetricsLogger();
-            scriptHostConfiguration.HostConfig.AddService<IMetricsLogger>(metricsLogger);
+            // TODO: DI (FACAVAL) Use test helpers to create host and inject services
+            //scriptHostConfiguration.HostConfig.AddService<IMetricsLogger>(metricsLogger);
 
             return new RunDependencies
             {

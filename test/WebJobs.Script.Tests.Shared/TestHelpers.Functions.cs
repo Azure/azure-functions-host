@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -22,11 +23,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public static FunctionBinding CreateTestBinding(JObject json)
         {
             ScriptBindingContext context = new ScriptBindingContext(json);
-            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(new JobHostConfiguration(), new JObject(), null);
+            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(NullLogger.Instance);
             ScriptBinding scriptBinding = null;
             provider.TryCreate(context, out scriptBinding);
             BindingMetadata bindingMetadata = BindingMetadata.Create(json);
-            ScriptHostConfiguration config = new ScriptHostConfiguration();
+            var config = new ScriptHostOptions();
             return new ExtensionBinding(config, scriptBinding, bindingMetadata);
         }
 

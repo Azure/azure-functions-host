@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class TestFunctionHost : IDisposable
     {
-        private readonly WebHostSettings _hostSettings;
+        private readonly ScriptWebHostOptions _hostOptions;
         private readonly TestServer _testServer;
         private readonly string _appRoot;
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _appRoot = appRoot;
 
-            _hostSettings = new WebHostSettings
+            _hostOptions = new ScriptWebHostOptions
             {
                 IsSelfHost = true,
                 ScriptPath = _appRoot,
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .UseStartup<Startup>()
                 .ConfigureServices(services =>
                 {
-                    services.Replace(new ServiceDescriptor(typeof(WebHostSettings), _hostSettings));
+                    services.Replace(new ServiceDescriptor(typeof(ScriptWebHostOptions), _hostOptions));
                     services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestLoggerProviderFactory(_loggerProvider, includeDefaultLoggerProviders: false)));
                     services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
                 }));
@@ -53,13 +53,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpClient.BaseAddress = new Uri("https://localhost/");
         }
 
-        public ScriptHostConfiguration ScriptConfig => _testServer.Host.Services.GetService<WebHostResolver>().GetScriptHostConfiguration(_hostSettings);
+        public ScriptHostOptions ScriptOptions => _testServer.Host.Services.GetService<WebHostResolver>().GetScriptHostConfiguration(_hostOptions);
 
         public ISecretManager SecretManager => _testServer.Host.Services.GetService<ISecretManager>();
 
-        public string LogPath => _hostSettings.LogPath;
+        public string LogPath => _hostOptions.LogPath;
 
-        public string ScriptPath => _hostSettings.ScriptPath;
+        public string ScriptPath => _hostOptions.ScriptPath;
 
         public async Task<string> GetMasterKeyAsync()
         {

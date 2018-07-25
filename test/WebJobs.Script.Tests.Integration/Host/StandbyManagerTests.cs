@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private HttpClient _httpClient;
         private TestServer _httpServer;
         private string _expectedHostId;
-        private WebHostSettings _webHostSettings;
+        private ScriptWebHostOptions _webHostOptions;
         private string _testRootPath;
 
         public StandbyManagerTests()
@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
                 _settingsManager.SetSetting(EnvironmentSettingNames.ContainerName, "TestContainer");
-                Assert.True(_settingsManager.IsLinuxContainerEnvironment);
+                Assert.True(EnvironmentUtility.IsLinuxContainerEnvironment);
                 Assert.True(StandbyManager.IsWarmUpRequest(request));
             }
         }
@@ -221,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Equal(1, logLines.Count(p => p.Contains("Validating host assignment context")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Starting Assignment")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Applying 1 app setting(s)")));
-                Assert.Equal(1, logLines.Count(p => p.Contains($"Extracting files to '{_webHostSettings.ScriptPath}'")));
+                Assert.Equal(1, logLines.Count(p => p.Contains($"Extracting files to '{_webHostOptions.ScriptPath}'")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Zip extraction complete")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Triggering specialization")));
                 Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
@@ -246,7 +246,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _loggerProvider = new TestLoggerProvider();
             var loggerProviderFactory = new TestLoggerProviderFactory(_loggerProvider);
-            _webHostSettings = new WebHostSettings
+            _webHostOptions = new ScriptWebHostOptions
             {
                 IsSelfHost = true,
                 LogPath = Path.Combine(uniqueTestRootPath, "Logs"),
@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var webHostBuilder = Program.CreateWebHostBuilder()
                 .ConfigureServices(c =>
                 {
-                    c.AddSingleton(_webHostSettings)
+                    c.AddSingleton(_webHostOptions)
                     .AddSingleton<ILoggerProviderFactory>(loggerProviderFactory)
                     .AddSingleton<ILoggerFactory>(loggerFactory);
                 });
@@ -282,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Starting Host (HostId=placeholder-host")));
             Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Host is in standby mode")));
 
-            var hostConfig = WebHostResolver.CreateScriptHostConfiguration(_webHostSettings, true);
+            var hostConfig = WebHostResolver.CreateScriptHostConfiguration(_webHostOptions, true);
             _expectedHostId = hostConfig.HostConfig.HostId;
         }
 

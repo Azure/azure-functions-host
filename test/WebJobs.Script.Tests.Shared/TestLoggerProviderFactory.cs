@@ -22,7 +22,7 @@ namespace Microsoft.WebJobs.Script.Tests
             _includeDefaultLoggerProviders = includeDefaultLoggerProviders;
         }
 
-        public override IEnumerable<ILoggerProvider> CreateLoggerProviders(string hostInstanceId, ScriptHostConfiguration scriptConfig, ScriptSettingsManager settingsManager, IMetricsLogger metricsLogger, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary)
+        public override IEnumerable<ILoggerProvider> CreateLoggerProviders(string hostInstanceId, ScriptHostOptions scriptConfig, ScriptSettingsManager settingsManager, IMetricsLogger metricsLogger, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary)
         {
             return _includeDefaultLoggerProviders ?
                 base.CreateLoggerProviders(hostInstanceId, scriptConfig, settingsManager, metricsLogger, isFileLoggingEnabled, isPrimary).Append(_loggerProvider) :

@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             _config = new HttpConfiguration();
             _settingsManager = ScriptSettingsManager.Instance;
 
-            HostSettings = new WebHostSettings
+            HostOptions = new ScriptWebHostOptions
             {
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"),
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             TestHelpers.WaitForWebHost(HttpClient);
         }
 
-        public WebHostSettings HostSettings { get; private set; }
+        public ScriptWebHostOptions HostOptions { get; private set; }
 
         public HttpClient HttpClient { get; set; }
 
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         protected virtual void ConfigureWebHostBuilder(IWebHostBuilder webHostBuilder)
         {
-            webHostBuilder.ConfigureServices(c => c.AddSingleton(HostSettings));
+            webHostBuilder.ConfigureServices(c => c.AddSingleton(HostOptions));
         }
 
         public void Dispose()

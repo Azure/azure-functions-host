@@ -217,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         private VirtualFileSystem CreateVirtualFileSystem()
         {
-            return new VirtualFileSystem(new WebHostSettings
+            return new VirtualFileSystem(new ScriptWebHostOptions
             {
                 ScriptPath = SiteRootPath
             }, NullLoggerFactory.Instance);

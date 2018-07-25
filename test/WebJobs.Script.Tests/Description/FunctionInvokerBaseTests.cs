@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -29,18 +30,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _metricsLogger = new TestMetricsLogger();
             _testLoggerProvider = new TestLoggerProvider();
 
-            var scriptHostConfiguration = new ScriptHostConfiguration
+            var scriptHostConfiguration = new ScriptHostOptions
             {
-                HostConfig = new JobHostConfiguration(),
                 FileLoggingMode = FileLoggingMode.Always,
                 FileWatchingEnabled = true
             };
 
             ILoggerFactory loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_testLoggerProvider);
-            scriptHostConfiguration.HostConfig.LoggerFactory = loggerFactory;
 
-            scriptHostConfiguration.HostConfig.AddService<IMetricsLogger>(_metricsLogger);
+            // TODO: DI (FACAVAL) Review
+            //scriptHostConfiguration.HostConfig.LoggerFactory = loggerFactory;
+
+            //scriptHostConfiguration.HostConfig.AddService<IMetricsLogger>(_metricsLogger);
 
             var eventManager = new ScriptEventManager();
 
@@ -190,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             private readonly FunctionInstanceLogger _fastLogger;
 
-            public MockInvoker(ScriptHost host, IMetricsLogger metrics, FunctionMetadata metadata) : base(host, metadata)
+            public MockInvoker(ScriptHost host, IMetricsLogger metrics, FunctionMetadata metadata) : base(host, metadata, NullLoggerFactory.Instance)
             {
                 _fastLogger = new FunctionInstanceLogger(
                     (name) => this.Host.GetFunctionOrNull(name),

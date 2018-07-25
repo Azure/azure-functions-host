@@ -7,7 +7,10 @@ using System.IO;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -23,17 +26,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public FunctionDescriptorProviderTests()
         {
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node");
-            ScriptHostConfiguration config = new ScriptHostConfiguration
-            {
-                RootScriptPath = rootPath
-            };
 
-            var environment = new Mock<IScriptHostEnvironment>();
-            var eventManager = new Mock<IScriptEventManager>();
-            _settingsManager = ScriptSettingsManager.Instance;
-            _host = new ScriptHost(environment.Object, eventManager.Object, config, _settingsManager);
-            _host.Initialize();
-            _provider = new TestDescriptorProvider(_host, config);
+            var host = new HostBuilder()
+                .ConfigureDefaultTestScriptHost(o => o.ScriptPath = rootPath)
+                .Build();
+            _host = host.GetScriptHost();
+            _host.InitializeAsync().GetAwaiter().GetResult();
+            _provider = new TestDescriptorProvider(_host, host.Services.GetService<IOptions<ScriptHostOptions>>().Value);
         }
 
         [Fact]
@@ -197,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestDescriptorProvider : FunctionDescriptorProvider
         {
-            public TestDescriptorProvider(ScriptHost host, ScriptHostConfiguration config) : base(host, config)
+            public TestDescriptorProvider(ScriptHost host, ScriptHostOptions config) : base(host, config)
             {
             }
 

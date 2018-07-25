@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _settingsManager = ScriptSettingsManager.Instance;
             testFunctions = new Collection<FunctionDescriptor>();
 
-            var config = new ScriptHostConfiguration();
+            var config = new ScriptHostOptions();
             var environment = new NullScriptHostEnvironment();
             var eventManager = new Mock<IScriptEventManager>();
             var mockRouter = new Mock<IWebJobsRouter>();
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, eventManager.Object, config, null, null, null });
             hostMock.Setup(p => p.Functions).Returns(testFunctions);
 
-            WebHostSettings settings = new WebHostSettings();
+            var settings = new ScriptWebHostOptions();
             settings.SecretsPath = _secretsDirectory.Path;
             secretsManagerMock = new Mock<ISecretManager>(MockBehavior.Strict);
             managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(secretsManagerMock.Object), eventManager.Object, _settingsManager, settings, mockRouter.Object, NullLoggerFactory.Instance });

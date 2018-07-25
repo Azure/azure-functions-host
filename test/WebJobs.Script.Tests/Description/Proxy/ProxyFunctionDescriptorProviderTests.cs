@@ -9,10 +9,14 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.AppService.Proxy.Client;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -25,24 +29,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptSettingsManager _settingsManager;
 
         private readonly ProxyClientExecutor _proxyClient;
-        private readonly ScriptHostConfiguration _config;
+        private readonly ScriptHostOptions _config;
         private Collection<FunctionMetadata> _metadataCollection;
 
         public ProxyFunctionDescriptorProviderTests()
         {
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Proxies");
-            _config = new ScriptHostConfiguration
+            _config = new ScriptHostOptions
             {
                 RootScriptPath = rootPath
             };
 
+            var hostOptions = new JobHostOptions();
             var environment = new Mock<IScriptHostEnvironment>();
             var eventManager = new Mock<IScriptEventManager>();
+            var contextFactory = new Mock<IJobHostContextFactory>();
 
             _proxyClient = GetMockProxyClient();
             _settingsManager = ScriptSettingsManager.Instance;
-            _host = new ScriptHost(environment.Object, eventManager.Object, _config, _settingsManager, proxyClient: _proxyClient);
-            _host.Initialize();
+            var host = new HostBuilder()
+                .ConfigureDefaultTestScriptHost(o => o.ScriptPath = rootPath)
+                .Build();
+
+            _host = host.GetScriptHost();
+            _host.InitializeAsync().GetAwaiter().GetResult();
             _metadataCollection = _host.ReadProxyMetadata(_config, _settingsManager);
         }
 
@@ -77,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var proxy = _proxyClient as ProxyClientExecutor;
             Assert.NotNull(proxy);
 
-            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_host, _config, proxy);
+            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_host, _config, proxy, NullLoggerFactory.Instance);
 
             Assert.True(proxyFunctionDescriptor.TryCreate(_metadataCollection[0], out FunctionDescriptor functionDescriptor));
 
@@ -89,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ValidateProxyFunctionInvoker()
         {
-            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_host, _config, _proxyClient);
+            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_host, _config, _proxyClient, NullLoggerFactory.Instance);
 
             proxyFunctionDescriptor.TryCreate(_metadataCollection[0], out FunctionDescriptor functionDescriptor);
 

@@ -231,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
                 IConfigurationRoot config = TestConfigBuilder(workerPathSection, keyValuePairs);
 
-                var scriptHostConfig = new ScriptHostConfiguration();
+                var scriptHostOptions = new ScriptHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
                 var configFactory = new WorkerConfigFactory(config, testLogger);
                 if (appSvcEnv)
