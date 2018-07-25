@@ -11,6 +11,11 @@ namespace Microsoft.Azure.WebJobs.Script
         Default,
 
         /// <summary>
+        /// The host is starting.
+        /// </summary>
+        Starting,
+
+        /// <summary>
         /// The host has been fully initialized and can accept direct function
         /// invocations. All functions have been indexed. Listeners may not yet
         /// be not yet running.
@@ -25,6 +30,16 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// The host is in an error state
         /// </summary>
-        Error
+        Error,
+
+        /// <summary>
+        /// The host is stopping.
+        /// </summary>
+        Stopping,
+
+        /// <summary>
+        /// The host is stopped.
+        /// </summary>
+        Stopped
     }
 }

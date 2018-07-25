@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,13 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class WebJobsScriptHostService : IHostedService, IScriptHostManager,  IDisposable
     {
-        private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly IServiceProvider _rootServiceProvider;
         private readonly IServiceScopeFactory _rootScopeFactory;
         private readonly IOptions<ScriptWebHostOptions> _webHostOptions;
         private readonly ILogger _logger;
+        private CancellationTokenSource _startupLoopTokenSource;
         private bool _disposed = false;
-        private Task _hostTask;
         private IHost _host;
 
         public WebJobsScriptHostService(IOptions<ScriptWebHostOptions> webHostOptions, IServiceProvider rootServiceProvider, IServiceScopeFactory rootScopeFactory, ILoggerFactory loggerFactory)
@@ -40,9 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
 
-            _hostTask = Task.CompletedTask;
-            _cancellationTokenSource = new CancellationTokenSource();
-
             State = ScriptHostState.Default;
         }
 
@@ -50,22 +47,90 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public ScriptHostState State { get; private set; }
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            _startupLoopTokenSource = new CancellationTokenSource();
+            var startupLoopToken = _startupLoopTokenSource.Token;
+
+            CancellationTokenSource tokenSource = CancellationTokenSource.CreateLinkedTokenSource(startupLoopToken, cancellationToken);
+
+            try
+            {
+                await StartHostAsync(tokenSource.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogInformation("Initialization cancellation requested by runtime.");
+                    throw;
+                }
+
+                // If the exception was triggered by our loop cancellation token, just ignore as
+                // it doesn't indicate an issue.
+            }
+
+            State = ScriptHostState.Running;
+        }
+
+        private async Task StartHostAsync(CancellationToken cancellationToken, int attemptCount = 0)
         {
             _logger.LogInformation("Initializing Azure Functions Host.");
-            _host = BuildHost();
-            _hostTask = _host.StartAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                _host = BuildHost();
+                await _host.StartAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception exc)
+            {
+                State = ScriptHostState.Error;
+                //LastError = ex;
+                attemptCount++;
 
-            return Task.CompletedTask;
+                var hostLoggerFactory = _host.Services.GetService<ILoggerFactory>();
+                var logger = hostLoggerFactory?.CreateLogger(LogCategories.Startup) ?? _logger;
+
+                logger.LogError(exc, "A ScriptHost error has occurred");
+
+                var orphanTask = Orphan(_host, logger)
+                    .ContinueWith(t =>
+                           {
+                               if (t.IsFaulted)
+                               {
+                                   t.Exception.Handle(e => true);
+                               }
+                           }, TaskContinuationOptions.ExecuteSynchronously);
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                await Utility.DelayWithBackoffAsync(attemptCount, cancellationToken, min: TimeSpan.FromSeconds(1), max: TimeSpan.FromMinutes(2))
+                    .ContinueWith(t =>
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        return StartHostAsync(cancellationToken, attemptCount);
+                    });
+            }
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            _cancellationTokenSource.Cancel();
+            _startupLoopTokenSource?.Cancel();
 
-            Task result = await Task.WhenAny(_host.StopAsync(cancellationToken), Task.Delay(TimeSpan.FromSeconds(10)));
+            State = ScriptHostState.Stopping;
 
-            if (result != _hostTask)
+            _logger.LogInformation("Stopping script host.");
+
+            var currentHost = _host;
+
+            Task stopTask = Orphan(currentHost, _logger, cancellationToken);
+            Task result = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(10)));
+
+            if (result != stopTask)
             {
                 _logger.LogWarning("Script host manager did not shutdown within its allotted time.");
             }
@@ -73,23 +138,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 _logger.LogInformation("Script host manager shutdown completed.");
             }
+
+            State = ScriptHostState.Stopped;
         }
 
         public async Task RestartHostAsync(CancellationToken cancellationToken)
         {
+            if (State == ScriptHostState.Stopping || State == ScriptHostState.Stopped)
+            {
+                return;
+            }
+
+            _startupLoopTokenSource?.Cancel();
+
             State = ScriptHostState.Default;
 
             _logger.LogInformation("Restarting script host.");
 
             var previousHost = _host;
-            _host = BuildHost();
+            Task startTask = StartAsync(cancellationToken);
+            Task stopTask = Orphan(previousHost, _logger, cancellationToken);
 
-            var stopTask = previousHost.StopAsync(cancellationToken).
-                ContinueWith(t => previousHost.Dispose());
-
-            await _host.StartAsync(cancellationToken);
-
-            State = ScriptHostState.Running;
+            await startTask;
 
             _logger.LogInformation("Script host restarted.");
         }
@@ -134,24 +204,40 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return builder.Build();
         }
 
+        /// <summary>
+        /// Remove the <see cref="IHost"/> instance from the live instances collection,
+        /// allowing it to finish currently executing functions before stopping and disposing of it.
+        /// </summary>
+        /// <param name="instance">The <see cref="IHost"/> instance to remove</param>
+        private async Task Orphan(IHost instance, ILogger logger, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await instance.StopAsync(cancellationToken);
+            }
+            catch (Exception)
+            {
+              //  logger.LogTrace(exc, "Error stopping and disposing of host");
+            }
+            finally
+            {
+                instance.Dispose();
+            }
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
             {
                 if (disposing)
                 {
-                    _cancellationTokenSource.Dispose();
+                    _startupLoopTokenSource?.Dispose();
                 }
                 _disposed = true;
             }
         }
 
         public void Dispose() => Dispose(true);
-
-        public Task RestartHostAsync()
-        {
-            throw new NotImplementedException();
-        }
     }
 
     public class IdProvider : WebJobs.Host.Executors.IHostIdProvider
