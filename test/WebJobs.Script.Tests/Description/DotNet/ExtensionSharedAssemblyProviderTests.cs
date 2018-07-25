@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void TryResolveAssembly_ResolvesProviderAssembly()
         {
-            var bindingProviders = new Collection<ScriptBindingProvider>
+            var bindingProviders = new Collection<IScriptBindingProvider>
             {
                 new TestBindingProvider(new OptionsWrapper<JobHostOptions>(new JobHostOptions()), new JObject(), null)
             };
@@ -34,8 +34,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestBindingProvider : ScriptBindingProvider
         {
-            public TestBindingProvider(IOptions<JobHostOptions> options, JObject hostMetadata, ILogger traceWriter)
-                : base(options, hostMetadata, traceWriter)
+            public TestBindingProvider(IOptions<JobHostOptions> options, JObject hostMetadata, ILogger logger)
+                : base(logger)
             {
             }
 

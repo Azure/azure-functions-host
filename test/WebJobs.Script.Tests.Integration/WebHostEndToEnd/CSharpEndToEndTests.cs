@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             Assert.NotNull(context);
             Assert.Equal(functionName, context.FunctionName);
-            Assert.Equal(Path.Combine(Fixture.Host.ScriptConfig.RootScriptPath, functionName), context.FunctionDirectory);
+            Assert.Equal(Path.Combine(Fixture.Host.ScriptOptions.RootScriptPath, functionName), context.FunctionDirectory);
         }
 
         [Fact]

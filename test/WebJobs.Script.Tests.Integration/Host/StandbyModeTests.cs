@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Mock<IEventGenerator> eventGeneratorMock = new Mock<IEventGenerator>();
             _webHostResolver = new WebHostResolver(_settingsManager, new TestSecretManagerFactory(false), eventManagerMock.Object,
-                new WebHostSettings(), routerMock.Object, new TestLoggerProviderFactory(_loggerProvider),
+                new ScriptWebHostOptions(), routerMock.Object, new TestLoggerProviderFactory(_loggerProvider),
                 loggerFactory, eventGeneratorMock.Object);
 
             WebScriptHostManager.ResetStandbyMode();
@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private async Task TestGetter<T>(Func<WebHostSettings, T> func)
+        private async Task TestGetter<T>(Func<ScriptWebHostOptions, T> func)
         {
             using (new TestEnvironment())
             {
@@ -159,10 +159,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private Task<WebHostSettings> GetWebHostSettings()
+        private Task<ScriptWebHostOptions> GetWebHostSettings()
         {
             var home = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
-            var settings = new WebHostSettings
+            var settings = new ScriptWebHostOptions
             {
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(home, @"site\wwwroot"),

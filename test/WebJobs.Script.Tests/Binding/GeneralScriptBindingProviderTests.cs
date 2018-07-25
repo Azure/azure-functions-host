@@ -3,8 +3,11 @@
 
 using System;
 using System.IO;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -42,12 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ManualTest()
         {
-            JobHostConfiguration config = new JobHostConfiguration();
-            config.UseScriptExtensions();
-            JObject hostMetadata = new JObject();
-            var provider = new GeneralScriptBindingProvider(config, hostMetadata, null);
-            var metadataProvider = new JobHost(config).CreateMetadataProvider();
-            provider.CompleteInitialization(metadataProvider);
+            var mockMetadataProvider = new Mock<IJobHostMetadataProvider>();
+            var provider = new GeneralScriptBindingProvider(NullLogger.Instance, mockMetadataProvider.Object);
 
             JObject bindingMetadata = new JObject
             {
@@ -78,12 +77,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             ScriptBindingContext context = new ScriptBindingContext(bindingMetadata);
             ScriptBinding binding = null;
-            JobHostConfiguration config = new JobHostConfiguration();
-            config.UseScriptExtensions();
-            JObject hostMetadata = new JObject();
-            var provider = new GeneralScriptBindingProvider(config, hostMetadata, null);
-            var metadataProvider = new JobHost(config).CreateMetadataProvider();
-            provider.CompleteInitialization(metadataProvider);
+
+            var mockMetadataProvider = new Mock<IJobHostMetadataProvider>();
+            var provider = new GeneralScriptBindingProvider(NullLogger.Instance, mockMetadataProvider.Object);
             bool created = provider.TryCreate(context, out binding);
 
             Assert.False(created);
