@@ -27,6 +27,9 @@ THE SOFTWARE.
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using ImTools;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DryIoc.Microsoft.DependencyInjection
