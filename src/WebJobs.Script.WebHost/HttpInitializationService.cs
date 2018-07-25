@@ -1,9 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Routing;
@@ -22,12 +20,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     /// </summary>
     public class HttpInitializationService : IHostedService
     {
-        private readonly IOptions<HttpExtensionOptions> _httpOptions;
+        private readonly IOptions<HttpOptions> _httpOptions;
         private readonly IWebJobsRouter _router;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IScriptJobHost _host;
 
-        public HttpInitializationService(IOptions<HttpExtensionOptions> httpOptions, IWebJobsRouter router, ILoggerFactory loggerFactory, IScriptJobHost host)
+        public HttpInitializationService(IOptions<HttpOptions> httpOptions, IWebJobsRouter router, ILoggerFactory loggerFactory, IScriptJobHost host)
         {
             _httpOptions = httpOptions;
             _router = router;
@@ -47,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return Task.CompletedTask;
         }
 
-        private void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions, HttpExtensionOptions httpOptions)
+        private void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions, HttpOptions httpOptions)
         {
             _router.ClearRoutes();
 
