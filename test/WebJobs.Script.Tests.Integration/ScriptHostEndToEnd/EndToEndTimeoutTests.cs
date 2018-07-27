@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             //}
         }
 
-        private MockExceptionHandler GetExceptionHandler(ScriptHostManager manager)
+        private MockExceptionHandler GetExceptionHandler()
         {
             return null;
             // TODO: DI (FACAVAL) Review

@@ -7,9 +7,12 @@ using System.IO;
 using System.Net.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
@@ -38,26 +41,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 })
                 .ConfigureServices(services =>
                 {
-                    services.Replace(new ServiceDescriptor(typeof(ScriptWebHostOptions), WebHostOptions));
+                    services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptWebHostOptions>), new OptionsWrapper<ScriptWebHostOptions>(WebHostOptions)));
                     //services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestChannelLoggerProviderFactory(Channel)));
                     services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
+                    services.AddSingleton<IScriptHostBuilder, ScriptHostBuilder>();
                 });
 
             _testServer = new TestServer(hostBuilder);
-
-            var scriptConfig = _testServer.Host.Services.GetService<WebHostResolver>().GetScriptHostConfiguration(WebHostOptions);
-
-            InitializeConfig(scriptConfig);
 
             HttpClient = _testServer.CreateClient();
             HttpClient.BaseAddress = new Uri("https://localhost/");
 
             TestHelpers.WaitForWebHost(HttpClient);
-        }
-
-        public ScriptHost GetScriptHost()
-        {
-            return _testServer.Host.Services.GetService<WebHostResolver>().GetWebScriptHostManager(WebHostOptions).Instance;
         }
 
         // TODO: DI (FACAVAL) brettsam - missing type?
@@ -67,23 +62,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public HttpClient HttpClient { get; private set; }
 
-        protected void InitializeConfig(ScriptHostOptions options)
-        {
-            options.OnConfigurationApplied = c =>
-            {
-                // turn this off as it makes validation tough
-                // TODO: DI (FACAVAL) Review- brettsam
-                //options.HostConfig.Aggregator.IsEnabled = false;
-
-                // Overwrite the generated function whitelist to only include two functions.
-                c.Functions = new[] { "Scenarios", "HttpTrigger-Scenarios" };
-            };
-        }
-
         public void Dispose()
         {
             _testServer?.Dispose();
             HttpClient?.Dispose();
+        }
+
+        private class ScriptHostBuilder : IScriptHostBuilder
+        {
+            public void Configure(IHostBuilder builder)
+            {
+                builder.ConfigureServices(s =>
+                {
+                    s.Configure<ScriptHostOptions>(o =>
+                    {
+                        o.Functions = new[] { "Scenarios", "HttpTrigger-Scenarios" };
+                    });
+                });
+            }
         }
     }
 }

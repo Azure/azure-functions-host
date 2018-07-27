@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             // flow required context through the request pipeline
             // downstream middleware and filters rely on this
-            context.Items[ScriptConstants.AzureFunctionsHostManagerKey] = scriptHost;
+            context.Items[ScriptConstants.AzureFunctionsHostKey] = scriptHost;
             SetRequestId(context.Request);
 
             if (_next != null)

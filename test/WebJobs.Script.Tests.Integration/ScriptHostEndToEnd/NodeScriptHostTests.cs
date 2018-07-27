@@ -208,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Same(t, result);
             Assert.True(logs.Any(l => l.Contains("FunctionName:Scenarios")));
-            Assert.True(logs.Any(l => l.Contains($"FunctionDirectory:{Path.Combine(Fixture.Host.ScriptConfig.RootScriptPath, "Scenarios")}")));
+            Assert.True(logs.Any(l => l.Contains($"FunctionDirectory:{Path.Combine(Fixture.Host.ScriptOptions.RootScriptPath, "Scenarios")}")));
         }
 
         public class TestFixture : ScriptHostEndToEndTestFixture

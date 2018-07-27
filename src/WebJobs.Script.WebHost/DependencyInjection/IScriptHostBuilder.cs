@@ -4,19 +4,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
-    public class NullScriptHostEnvironment : IScriptJobHostEnvironment
+    public interface IScriptHostBuilder
     {
-        public void RestartHost()
-        {
-        }
-
-        public void Shutdown()
-        {
-        }
+        void Configure(IHostBuilder builder);
     }
 }

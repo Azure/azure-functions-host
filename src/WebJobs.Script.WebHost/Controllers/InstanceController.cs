@@ -19,13 +19,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     /// </summary>
     public class InstanceController : Controller
     {
-        private readonly WebScriptHostManager _scriptHostManager;
         private readonly ScriptSettingsManager _settingsManager;
         private readonly IInstanceManager _instanceManager;
 
-        public InstanceController(WebScriptHostManager scriptHostManager, ScriptSettingsManager settingsManager, IInstanceManager instanceManager)
+        public InstanceController(ScriptSettingsManager settingsManager, IInstanceManager instanceManager)
         {
-            _scriptHostManager = scriptHostManager;
             _settingsManager = settingsManager;
             _instanceManager = instanceManager;
         }

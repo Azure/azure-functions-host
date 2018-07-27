@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
@@ -36,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             loggerFactory.AddProvider(_loggerProvider);
 
             _settingsManager = new ScriptSettingsManager();
-            _instanceManager = new InstanceManager(_settingsManager, null, loggerFactory, _httpClient);
+            _instanceManager = new InstanceManager(_settingsManager, null, loggerFactory, _httpClient, new Mock<IScriptWebHostEnvironment>().Object);
         }
 
         [Fact]
@@ -49,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
 
             _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            WebScriptHostManager.ResetStandbyMode();
+            
             var context = new HostAssignmentContext
             {
                 Environment = new Dictionary<string, string>
@@ -59,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
             bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
-            Assert.True(WebScriptHostManager.InStandbyMode);
+            Assert.True(new ScriptWebHostEnvironment().InStandbyMode);
 
             // specialization is done in the background
             await Task.Delay(500);
@@ -88,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public void StartAssignment_ReturnsFalse_WhenNotInStandbyMode()
         {
-            Assert.False(WebScriptHostManager.InStandbyMode);
+            Assert.False(new ScriptWebHostEnvironment().InStandbyMode);
 
             var context = new HostAssignmentContext();
             bool result = _instanceManager.StartAssignment(context);

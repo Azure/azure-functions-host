@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var hostOptions = new JobHostOptions();
-            var environment = new Mock<IScriptHostEnvironment>();
+            var environment = new Mock<IScriptJobHostEnvironment>();
             var eventManager = new Mock<IScriptEventManager>();
             var contextFactory = new Mock<IJobHostContextFactory>();
 

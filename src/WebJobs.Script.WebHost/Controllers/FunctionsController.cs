@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -96,14 +97,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/functions/{name}")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         [RequiresRunningHost]
-        public IActionResult Invoke(string name, [FromBody] FunctionInvocation invocation)
+        public IActionResult Invoke(string name, [FromBody] FunctionInvocation invocation, [FromServices] IScriptJobHost scriptHost)
         {
             if (invocation == null)
             {
                 return BadRequest();
             }
 
-            FunctionDescriptor function = _scriptHostManager.Instance.GetFunctionOrNull(name);
+            FunctionDescriptor function = scriptHost.GetFunctionOrNull(name);
             if (function == null)
             {
                 return NotFound();
@@ -114,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 { inputParameter.Name, invocation.Input }
             };
-            Task.Run(() => _scriptHostManager.Instance.CallAsync(function.Name, arguments));
+            Task.Run(() => scriptHost.CallAsync(function.Name, arguments));
 
             return Accepted();
         }
@@ -123,13 +124,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/functions/{name}/status")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         [RequiresRunningHost]
-        public IActionResult GetFunctionStatus(string name)
+        public IActionResult GetFunctionStatus(string name, IScriptJobHost scriptHost)
         {
             FunctionStatus status = new FunctionStatus();
-            Collection<string> functionErrors = null;
 
             // first see if the function has any errors
-            if (_scriptHostManager.Instance.FunctionErrors.TryGetValue(name, out functionErrors))
+            if (scriptHost.FunctionErrors.TryGetValue(name, out ICollection<string> functionErrors))
             {
                 status.Errors = functionErrors;
             }
@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 // if we don't have any errors registered, make sure the function exists
                 // before returning empty errors
-                FunctionDescriptor function = _scriptHostManager.Instance.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
+                FunctionDescriptor function = scriptHost.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
                 if (function == null)
                 {
                     return NotFound();
@@ -173,9 +173,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/functions/download")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public IActionResult Download()
+        public IActionResult Download([FromServices] IOptions<ScriptWebHostOptions> webHostOptions)
         {
-            var path = _scriptHostManager.Instance.ScriptOptions.RootScriptPath;
+            var path = webHostOptions.Value.ScriptPath;
             var dirInfo = FileUtility.DirectoryInfoFromDirectoryName(path);
             return new FileCallbackResult(new MediaTypeHeaderValue("application/octet-stream"), async (outputStream, _) =>
             {

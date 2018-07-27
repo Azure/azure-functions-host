@@ -227,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public Fixture()
             {
                 TestSiteName = "TestSiteName";
-                BlobConnectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+                BlobConnectionString = Environment.GetEnvironmentVariable(ConnectionStringNames.Storage);
                 BlobContainer = CloudStorageAccount.Parse(BlobConnectionString).CreateCloudBlobClient().GetContainerReference("azure-webjobs-secrets");
             }
 

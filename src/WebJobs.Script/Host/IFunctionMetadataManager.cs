@@ -9,8 +9,8 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public interface IFunctionMetadataManager
     {
-        ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors { get; }
+        ImmutableDictionary<string, ImmutableArray<string>> Errors { get; }
 
-        ImmutableArray<FunctionMetadata> FunctionMetadata { get; }
+        ImmutableArray<FunctionMetadata> Functions { get; }
     }
 }

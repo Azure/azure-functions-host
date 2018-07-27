@@ -74,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<WebJobsScriptHostService>();
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
+            services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
 
             if (EnvironmentUtility.IsLinuxContainerEnvironment)
             {
@@ -102,13 +103,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // this is no longer needed, but we need to validate log output.
             // Remove the need to have the WebHostResolver
             //services.AddSingleton<WebHostResolver>();
-
-            // Temporary - This should be replaced with a simple type registration.
-            services.AddTransient<IExtensionsManager>(c =>
-            {
-                var hostInstance = c.GetService<WebScriptHostManager>().Instance;
-                return new ExtensionsManager(hostInstance.ScriptOptions.RootScriptPath, hostInstance.Logger, hostInstance.ScriptOptions.NugetFallBackPath);
-            });
 
             // The services below need to be scoped to a pseudo-tenant (warm/specialized environment)
             // TODO: DI (FACAVAL) This will need the child container/scoping logic for warm/specialized hosts

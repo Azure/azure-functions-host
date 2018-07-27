@@ -483,11 +483,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return AssemblyPrefix + metadata.Name + AssemblySeparator + suffix.GetHashCode().ToString();
         }
 
-        internal static void AddFunctionError(Dictionary<string, Collection<string>> functionErrors, string functionName, string error, bool isFunctionShortName = false)
+        internal static void AddFunctionError(IDictionary<string, ICollection<string>> functionErrors, string functionName, string error, bool isFunctionShortName = false)
         {
             functionName = isFunctionShortName ? functionName : Utility.GetFunctionShortName(functionName);
 
-            Collection<string> functionErrorCollection = new Collection<string>();
+            ICollection<string> functionErrorCollection = new Collection<string>();
             if (!functionErrors.TryGetValue(functionName, out functionErrorCollection))
             {
                 functionErrors[functionName] = functionErrorCollection = new Collection<string>();

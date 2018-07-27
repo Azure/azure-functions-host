@@ -484,7 +484,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     RootScriptPath = rootPath
                 };
-                var environment = new Mock<IScriptHostEnvironment>();
+                var environment = new Mock<IScriptJobHostEnvironment>();
                 var eventManager = new Mock<IScriptEventManager>();
 
                 //var scriptHost = new ScriptHost(environment.Object, eventManager.Object, scriptConfig, _settingsManager);
@@ -1709,13 +1709,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void IsFunction_ReturnsExpectedResult()
         {
-            Mock<IScriptHostEnvironment> mockEnvironment = new Mock<IScriptHostEnvironment>(MockBehavior.Strict);
+            Mock<IScriptJobHostEnvironment> mockEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Strict);
             var config = new ScriptHostOptions();
             var eventManager = new Mock<IScriptEventManager>();
             var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, eventManager.Object, config, null, null, null });
 
             var functions = new Collection<FunctionDescriptor>();
-            var functionErrors = new Dictionary<string, Collection<string>>();
+            var functionErrors = new Dictionary<string, ICollection<string>>();
             mockHost.Setup(p => p.Functions).Returns(functions);
             mockHost.Setup(p => p.FunctionErrors).Returns(functionErrors);
 
@@ -1765,7 +1765,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // This id will be over written
             // TODO: DI (FACAVAL) Review
             //config.HostConfig.HostId = ID;
-            var environment = new Mock<IScriptHostEnvironment>();
+            var environment = new Mock<IScriptJobHostEnvironment>();
             var eventManager = new Mock<IScriptEventManager>();
 
             //var host = new ScriptHost(environment.Object, eventManager.Object, config, null, loggerProviderFactory);
@@ -1802,7 +1802,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public async Task InitializeAsync()
             {
                 Directory.CreateDirectory(TestHelpers.FunctionsTestDirectory);
-                var environment = new Mock<IScriptHostEnvironment>();
+                var environment = new Mock<IScriptJobHostEnvironment>();
                 var eventManager = new Mock<IScriptEventManager>();
 
                 _host = new HostBuilder()

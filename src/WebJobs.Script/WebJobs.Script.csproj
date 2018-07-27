@@ -27,7 +27,6 @@
     <PackageReference Include="Google.Protobuf" Version="3.5.1" />
     <PackageReference Include="Grpc.Core" Version="1.12.0" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.6.4" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.1.0">
     <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.1.1">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>

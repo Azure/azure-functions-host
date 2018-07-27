@@ -12,15 +12,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class WebScriptHostExceptionHandler : IWebJobsExceptionHandler
     {
-        private ScriptHostManager _manager;
+        private readonly IScriptJobHostEnvironment _jobHostEnvironment;
+        private readonly ILogger _logger;
 
-        public WebScriptHostExceptionHandler(ScriptHostManager manager)
+        public WebScriptHostExceptionHandler(IScriptJobHostEnvironment jobHostEnvironment, ILogger<WebScriptHostExceptionHandler> logger)
         {
-            _manager = manager ?? throw new ArgumentNullException(nameof(manager));
-        }
-
-        public void Initialize(JobHost host)
-        {
+            _jobHostEnvironment = jobHostEnvironment ?? throw new ArgumentNullException(nameof(jobHostEnvironment));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task OnTimeoutExceptionAsync(ExceptionDispatchInfo exceptionInfo, TimeSpan timeoutGracePeriod)
@@ -44,26 +42,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // We can't wait on this as it may cause a deadlock if the timeout was fired
             // by a Listener that cannot stop until it has completed.
-            Task ignoreTask = _manager.StopAsync();
-
+            // TODO: DI (FACAVAL) The shutdown call will invoke the host stop... but we may need to do this
+            // explicitly in order to pass the timeout.
+            // Task ignoreTask = _hostManager.StopAsync();
             // Give the manager and all running tasks some time to shut down gracefully.
-            await Task.Delay(timeoutGracePeriod);
+            //await Task.Delay(timeoutGracePeriod);
 
-            // TODO: FACAVAL - PASS ENVIRONMENT AND INITIATE SHUTDWON
-            Program.InitiateShutdown();
+            _jobHostEnvironment.Shutdown();
         }
 
         public Task OnUnhandledExceptionAsync(ExceptionDispatchInfo exceptionInfo)
         {
             LogErrorAndFlush("An unhandled exception has occurred. Host is shutting down.", exceptionInfo.SourceException);
 
-            // TODO: FACAVAL - PASS ENVIRONMENT AND INITIATE SHUTDWON
+            _jobHostEnvironment.Shutdown();
             return Task.CompletedTask;
         }
 
         private void LogErrorAndFlush(string message, Exception exception)
         {
-            _manager.Instance.Logger.LogError(0, exception, message);
+            _logger.LogError(0, exception, message);
         }
     }
 }

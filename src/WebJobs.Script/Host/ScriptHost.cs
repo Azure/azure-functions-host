@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string HostAssemblyName = "ScriptHost";
         private const string GeneratedTypeNamespace = "Host";
         internal const string GeneratedTypeName = "Functions";
-        private readonly IScriptHostEnvironment _scriptHostEnvironment;
+        private readonly IScriptJobHostEnvironment _scriptHostEnvironment;
         private readonly string _storageConnectionString;
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IMetricsLogger metricsLogger,
             IOptions<ScriptHostOptions> scriptHostOptions,
             ITypeLocator typeLocator,
-            IScriptHostEnvironment scriptHostEnvironment,
+            IScriptJobHostEnvironment scriptHostEnvironment,
             ScriptSettingsManager settingsManager = null,
             ProxyClientExecutor proxyClient = null)
             : base(options, jobHostContextFactory)
@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             ScriptOptions = scriptHostOptions.Value;
             _scriptHostEnvironment = scriptHostEnvironment;
-            FunctionErrors = new Dictionary<string, Collection<string>>(StringComparer.OrdinalIgnoreCase);
+            FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
 
             EventManager = eventManager;
 
@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public virtual ICollection<FunctionDescriptor> Functions { get; private set; } = new Collection<FunctionDescriptor>();
 
         // Maps from FunctionName to a set of errors for that function.
-        public virtual Dictionary<string, Collection<string>> FunctionErrors { get; private set; }
+        public virtual IDictionary<string, ICollection<string>> FunctionErrors { get; private set; }
 
         public virtual bool IsPrimary
         {
@@ -227,16 +227,6 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Lookup a function by name
-        /// </summary>
-        /// <param name="name">name of function</param>
-        /// <returns>function or null if not found</returns>
-        public FunctionDescriptor GetFunctionOrNull(string name)
-        {
-            return Functions.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
-        }
-
-        /// <summary>
         /// Notifies this host that it should be in debug mode.
         /// </summary>
         public void NotifyDebug()
@@ -296,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 await InitializeWorkersAsync();
 
                 // Generate Functions
-                var functionMetadata = _functionMetadataManager.FunctionMetadata;
+                var functionMetadata = _functionMetadataManager.Functions;
                 var directTypes = GetDirectTypes(functionMetadata);
                 InitializeFunctionDescriptors(functionMetadata);
                 GenerateFunctions(directTypes);

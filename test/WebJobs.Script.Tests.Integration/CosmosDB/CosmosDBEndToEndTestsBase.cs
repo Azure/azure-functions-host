@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             if (DocumentClient == null)
             {
                 var builder = new System.Data.Common.DbConnectionStringBuilder();
-                builder.ConnectionString = AmbientConnectionStringProvider.Instance.GetConnectionString("AzureWebJobsCosmosDBConnectionString");
+                builder.ConnectionString = Environment.GetEnvironmentVariable("AzureWebJobsCosmosDBConnectionString");
                 var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
 
                 DocumentClient = new DocumentClient(serviceUri, builder["AccountKey"].ToString());

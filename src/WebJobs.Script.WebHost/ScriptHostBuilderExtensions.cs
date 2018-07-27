@@ -1,7 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -48,12 +50,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
-                services.AddSingleton<WebJobs.Host.Executors.IHostIdProvider, IdProvider>();
+                services.AddSingleton<Host.Executors.IHostIdProvider, IdProvider>();
                 services.AddSingleton<ScriptSettingsManager>();
+                services.AddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
                 // TODO: DI (FACAVAL) Review metrics logger registration
                 services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
                 services.AddSingleton<IScriptEventManager, ScriptEventManager>();
-                services.AddSingleton<IScriptHostEnvironment, WebScriptHostEnvironment>();
+                services.AddSingleton<IScriptJobHostEnvironment, WebScriptJobHostEnvironment>();
+                services.AddTransient<IExtensionsManager, ExtensionsManager>();
 
                 // Script binding providers
                 services.AddSingleton<IScriptBindingProvider, WebJobsCoreScriptBindingProvider>();
