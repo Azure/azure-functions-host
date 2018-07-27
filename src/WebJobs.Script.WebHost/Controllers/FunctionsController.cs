@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     public class FunctionsController : Controller
     {
         private readonly IWebFunctionsManager _functionsManager;
-        private readonly ScriptHostManager _scriptHostManager;
+        private readonly WebScriptHostManager _scriptHostManager;
         private readonly ILogger _logger;
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> List()
         {
-            return Ok(await _functionsManager.GetFunctionsMetadata(Request));
+            return Ok(await _functionsManager.GetFunctionsMetadata(Request, _scriptHostManager.Router));
         }
 
         [HttpGet]
@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> Get(string name)
         {
-            (var success, var function) = await _functionsManager.TryGetFunction(name, Request);
+            (var success, var function) = await _functionsManager.TryGetFunction(name, Request, _scriptHostManager.Router);
 
             return success
                 ? Ok(function)
