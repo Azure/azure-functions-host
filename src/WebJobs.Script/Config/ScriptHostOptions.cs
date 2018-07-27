@@ -4,11 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Collections.ObjectModel;
 using System.IO;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.Implementation;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Extensibility;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -23,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script
             FileLoggingMode = FileLoggingMode.Never;
             LogFilter = new LogCategoryFilter();
             HostHealthMonitor = new HostHealthMonitorConfiguration();
-            BindingProviders = new Collection<IScriptBindingProvider>();
+            InstanceId = Guid.NewGuid().ToString();
         }
 
         /// <summary>
@@ -62,6 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 return _directorySnapshot;
             }
         }
+
+        /// <summary>
+        /// Gets the current ScriptHost instance id.
+        /// </summary>
+        public string InstanceId { get; }
 
         /// <summary>
         /// Gets or sets NugetFallBackPath
@@ -138,11 +141,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Insights client-side sampling. If null, client-side sampling is disabled.
         /// </summary>
         public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
-
-        /// <summary>
-        /// Gets or sets the set of <see cref="ScriptBindingProviders"/> to use when loading functions.
-        /// </summary>
-        internal ICollection<IScriptBindingProvider> BindingProviders { get; set; }
 
         /// <summary>
         /// Gets or sets a test hook for modifying the configuration after host.json has been processed.

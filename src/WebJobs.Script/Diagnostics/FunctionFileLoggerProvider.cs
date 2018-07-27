@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
@@ -26,12 +27,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         private bool _disposed = false;
 
-        public FunctionFileLoggerProvider(string hostInstanceId, string rootLogPath, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary)
+        public FunctionFileLoggerProvider(IOptions<ScriptHostOptions> scriptOptions, IFileLoggingStatusManager fileLoggingStatusManager,
+            IPrimaryHostStateProvider primaryHostStateProvider)
         {
-            _roogLogPath = rootLogPath;
-            _isFileLoggingEnabled = isFileLoggingEnabled;
-            _isPrimary = isPrimary;
-            _hostInstanceId = hostInstanceId;
+            _roogLogPath = scriptOptions.Value.RootLogPath;
+            _isFileLoggingEnabled = () => fileLoggingStatusManager.IsFileLoggingEnabled;
+            _isPrimary = () => primaryHostStateProvider.IsPrimary;
+            _hostInstanceId = scriptOptions.Value.InstanceId;
         }
 
         // For testing

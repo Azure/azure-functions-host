@@ -1,10 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Text;
-using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -15,22 +11,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IConfiguration _configuration;
         private readonly IOptions<ScriptWebHostOptions> _webHostOptions;
-        private readonly IEnumerable<IScriptBindingProvider> _bindingProviders;
 
-        public ScriptHostOptionsSetup(IConfiguration configuration, IOptions<ScriptWebHostOptions> webHostOptions, IEnumerable<IScriptBindingProvider> bindingProviders)
+        public ScriptHostOptionsSetup(IConfiguration configuration, IOptions<ScriptWebHostOptions> webHostOptions)
         {
             _configuration = configuration;
             _webHostOptions = webHostOptions;
-            _bindingProviders = bindingProviders;
         }
 
         public void Configure(ScriptHostOptions options)
         {
-            foreach (var provider in _bindingProviders)
-            {
-                options.BindingProviders.Add(provider);
-            }
-
             // Bind to all configuration properties
             IConfigurationSection jobHostSection = _configuration.GetSection(ConfigurationSectionNames.JobHost);
 

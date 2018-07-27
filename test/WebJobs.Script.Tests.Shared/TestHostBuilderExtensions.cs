@@ -2,13 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Moq;
 
 namespace Microsoft.WebJobs.Script.Tests
 {
@@ -20,7 +18,11 @@ namespace Microsoft.WebJobs.Script.Tests
 
             configure?.Invoke(webHostOptions);
 
-            return builder.AddScriptHost(new OptionsWrapper<ScriptWebHostOptions>(webHostOptions));
+            var lifetime = new Mock<Microsoft.AspNetCore.Hosting.IApplicationLifetime>();
+
+            return builder
+                .ConfigureServices(s => s.AddSingleton<Microsoft.AspNetCore.Hosting.IApplicationLifetime>(lifetime.Object))
+                .AddScriptHost(new OptionsWrapper<ScriptWebHostOptions>(webHostOptions));
         }
     }
 }

@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.Extensions.Logging;
 
@@ -20,15 +21,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ILoggerFactory _loggerFactory;
         private readonly ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> _compilationServiceFactory;
 
-        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostOptions config, ILoggerFactory loggerFactory)
-           : this(host, config, new DotNetCompilationServiceFactory(loggerFactory), loggerFactory)
+        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, ILoggerFactory loggerFactory)
+           : this(host, config, bindingProviders, new DotNetCompilationServiceFactory(loggerFactory), loggerFactory)
         {
         }
 
-        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostOptions config,
+        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
             ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory,
             ILoggerFactory loggerFactory)
-            : base(host, config)
+            : base(host, config, bindingProviders)
         {
             _loggerFactory = loggerFactory;
             _compilationServiceFactory = compilationServiceFactory;
@@ -72,7 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 outputBindings,
                 new FunctionEntryPointResolver(functionMetadata.EntryPoint),
                 _compilationServiceFactory,
-                _loggerFactory);
+                _loggerFactory,
+                BindingProviders);
         }
 
         protected override Collection<ParameterDescriptor> GetFunctionParameters(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,

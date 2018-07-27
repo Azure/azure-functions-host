@@ -74,7 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             metadata.Bindings.Add(new BindingMetadata() { Name = "Test", Type = "ManualTrigger" });
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<Script.Binding.FunctionBinding>(),
-                new Collection<FunctionBinding>(), dependencies.EntrypointResolver.Object, dependencies.CompilationServiceFactory.Object, NullLoggerFactory.Instance);
+                new Collection<FunctionBinding>(), dependencies.EntrypointResolver.Object, dependencies.CompilationServiceFactory.Object,
+                NullLoggerFactory.Instance, new Collection<IScriptBindingProvider>());
 
             // Send file change notification to trigger a reload
             var fileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetTempPath(), Path.Combine(Path.GetFileName(rootFunctionsFolder), Path.GetFileName(filePath)));
@@ -163,7 +164,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
-                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new DotNetCompilationServiceFactory(null), NullLoggerFactory.Instance);
+                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new DotNetCompilationServiceFactory(null),
+                    NullLoggerFactory.Instance, new Collection<IScriptBindingProvider>());
 
                 try
                 {
@@ -221,7 +223,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
-                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new DotNetCompilationServiceFactory(null), NullLoggerFactory.Instance);
+                    new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new DotNetCompilationServiceFactory(null),
+                    NullLoggerFactory.Instance, new Collection<IScriptBindingProvider>());
                 try
                 {
                     await invoker.GetFunctionTargetAsync();
@@ -313,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                 new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(),
-                compilationFactory.Object, NullLoggerFactory.Instance, new Mock<IFunctionMetadataResolver>().Object);
+                compilationFactory.Object, NullLoggerFactory.Instance, new Collection<IScriptBindingProvider>(), new Mock<IFunctionMetadataResolver>().Object);
 
             var arguments = new object[]
             {
@@ -373,7 +376,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host.Object, metadata, new Collection<FunctionBinding>(),
                   new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(),
-                  new DotNetCompilationServiceFactory(null), NullLoggerFactory.Instance, metadataResolver.Object);
+                  new DotNetCompilationServiceFactory(null), NullLoggerFactory.Instance, new Collection<IScriptBindingProvider>(), metadataResolver.Object);
 
                 await invoker.RestorePackagesAsync(true);
 
@@ -393,7 +396,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 FileLoggingMode = FileLoggingMode.Always,
                 FileWatchingEnabled = true,
-                BindingProviders = new List<IScriptBindingProvider>()
             };
 
             TestLoggerProvider loggerProvider = new TestLoggerProvider();

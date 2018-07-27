@@ -10,23 +10,14 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
-using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
-using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Rpc;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Console;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -117,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task OnDebugModeFileChanged_TriggeredWhenDebugFileUpdated()
         {
-            ScriptHost host = _fixture.Host;
+            ScriptHost host = _fixture.ScriptHost;
             string debugSentinelFilePath = Path.Combine(host.ScriptOptions.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
 
             if (!File.Exists(debugSentinelFilePath))
@@ -125,14 +116,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 File.WriteAllText(debugSentinelFilePath, string.Empty);
             }
 
+            var debugState = _fixture.Host.Services.GetService<IDebugStateProvider>();
+
             // first put the host into a non-debug state
             await TestHelpers.Await(() =>
             {
-                host.LastDebugNotify = DateTime.MinValue;
+                debugState.LastDebugNotify = DateTime.MinValue;
                 return !host.InDebugMode;
             });
 
-            Assert.False(host.InDebugMode, $"Expected InDebugMode to be false. Now: {DateTime.UtcNow}; Sentinel LastWriteTime: {File.GetLastWriteTimeUtc(debugSentinelFilePath)}; LastDebugNotify: {host.LastDebugNotify}.");
+            Assert.False(host.InDebugMode, $"Expected InDebugMode to be false. Now: {DateTime.UtcNow}; Sentinel LastWriteTime: {File.GetLastWriteTimeUtc(debugSentinelFilePath)}; LastDebugNotify: {debugState.LastDebugNotify}.");
 
             // verify that our file watcher for the debug sentinel file is configured
             // properly by touching the file and ensuring that our host goes into
@@ -150,77 +143,86 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void InDebugMode_ReturnsExpectedValue()
         {
-            ScriptHost host = _fixture.Host;
+            ScriptHost host = _fixture.ScriptHost;
+            var debugState = _fixture.Host.Services.GetService<IDebugStateProvider>();
 
-            host.LastDebugNotify = DateTime.MinValue;
+            debugState.LastDebugNotify = DateTime.MinValue;
             Assert.False(host.InDebugMode);
 
-            host.LastDebugNotify = DateTime.UtcNow - TimeSpan.FromSeconds(60 * ScriptHost.DebugModeTimeoutMinutes);
+            debugState.LastDebugNotify = DateTime.UtcNow - TimeSpan.FromSeconds(60 * ScriptHost.DebugModeTimeoutMinutes);
             Assert.False(host.InDebugMode);
 
-            host.LastDebugNotify = DateTime.UtcNow - TimeSpan.FromSeconds(60 * (ScriptHost.DebugModeTimeoutMinutes - 1));
+            debugState.LastDebugNotify = DateTime.UtcNow - TimeSpan.FromSeconds(60 * (ScriptHost.DebugModeTimeoutMinutes - 1));
             Assert.True(host.InDebugMode);
         }
 
         [Fact]
         public void FileLoggingEnabled_ReturnsExpectedValue()
         {
-            ScriptHost host = _fixture.Host;
+            ScriptHost host = _fixture.ScriptHost;
+            var debugState = _fixture.Host.Services.GetService<IDebugStateProvider>();
+            var debugManager = _fixture.Host.Services.GetService<IDebugManager>();
+            var fileLoggingState = _fixture.Host.Services.GetService<IFileLoggingStatusManager>();
 
             host.ScriptOptions.FileLoggingMode = FileLoggingMode.DebugOnly;
-            host.LastDebugNotify = DateTime.MinValue;
-            Assert.False(host.FileLoggingEnabled);
-            host.NotifyDebug();
-            Assert.True(host.FileLoggingEnabled);
+            debugState.LastDebugNotify = DateTime.MinValue;
+            Assert.False(fileLoggingState.IsFileLoggingEnabled);
+            debugManager.NotifyDebug();
+            Assert.True(fileLoggingState.IsFileLoggingEnabled);
 
             host.ScriptOptions.FileLoggingMode = FileLoggingMode.Never;
-            Assert.False(host.FileLoggingEnabled);
+            Assert.False(fileLoggingState.IsFileLoggingEnabled);
 
             host.ScriptOptions.FileLoggingMode = FileLoggingMode.Always;
-            Assert.True(host.FileLoggingEnabled);
-            host.LastDebugNotify = DateTime.MinValue;
-            Assert.True(host.FileLoggingEnabled);
+            Assert.True(fileLoggingState.IsFileLoggingEnabled);
+            debugState.LastDebugNotify = DateTime.MinValue;
+            Assert.True(fileLoggingState.IsFileLoggingEnabled);
         }
 
         [Fact]
         public void NotifyDebug_UpdatesDebugMarkerFileAndTimestamp()
         {
-            ScriptHost host = _fixture.Host;
+            ScriptHost host = _fixture.ScriptHost;
+
+            var debugState = _fixture.Host.Services.GetService<IDebugStateProvider>();
+            var debugManager = _fixture.Host.Services.GetService<IDebugManager>();
 
             string debugSentinelFileName = Path.Combine(host.ScriptOptions.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
             File.Delete(debugSentinelFileName);
-            host.LastDebugNotify = DateTime.MinValue;
+            debugState.LastDebugNotify = DateTime.MinValue;
 
             Assert.False(host.InDebugMode);
 
-            DateTime lastDebugNotify = host.LastDebugNotify;
-            host.NotifyDebug();
+            DateTime lastDebugNotify = debugState.LastDebugNotify;
+            debugManager.NotifyDebug();
             Assert.True(host.InDebugMode);
             Assert.True(File.Exists(debugSentinelFileName));
             string text = File.ReadAllText(debugSentinelFileName);
             Assert.Equal("This is a system managed marker file used to control runtime debug mode behavior.", text);
-            Assert.True(host.LastDebugNotify > lastDebugNotify);
+            Assert.True(debugState.LastDebugNotify > lastDebugNotify);
 
             Thread.Sleep(500);
 
             DateTime lastModified = File.GetLastWriteTime(debugSentinelFileName);
-            lastDebugNotify = host.LastDebugNotify;
-            host.NotifyDebug();
+            lastDebugNotify = debugState.LastDebugNotify;
+            debugManager.NotifyDebug();
             Assert.True(host.InDebugMode);
             Assert.True(File.Exists(debugSentinelFileName));
             Assert.True(File.GetLastWriteTime(debugSentinelFileName) > lastModified);
-            Assert.True(host.LastDebugNotify > lastDebugNotify);
+            Assert.True(debugState.LastDebugNotify > lastDebugNotify);
         }
 
         [Fact]
         public void NotifyDebug_HandlesExceptions()
         {
-            ScriptHost host = _fixture.Host;
+            ScriptHost host = _fixture.ScriptHost;
             string debugSentinelFileName = Path.Combine(host.ScriptOptions.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
+
+            var debugManager = _fixture.Host.Services.GetService<IDebugManager>();
 
             try
             {
-                host.NotifyDebug();
+                debugManager.NotifyDebug();
                 Assert.True(host.InDebugMode);
 
                 var attributes = File.GetAttributes(debugSentinelFileName);
@@ -228,7 +230,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 File.SetAttributes(debugSentinelFileName, attributes);
                 Assert.True(host.InDebugMode);
 
-                host.NotifyDebug();
+                debugManager.NotifyDebug();
             }
             finally
             {
@@ -504,7 +506,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact(Skip ="ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)")]
+        [Fact(Skip = "ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)")]
         public void ApplyConfiguration_TopLevel()
         {
             JObject config = new JObject();
@@ -1499,7 +1501,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
-               // ScriptHost.ValidateName(functionName);
+                // ScriptHost.ValidateName(functionName);
             });
 
             Assert.Equal(string.Format("'{0}' is not a valid function name.", functionName), ex.Message);
@@ -1742,7 +1744,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Initialize_LogsWarningForExplicitlySetHostId()
         {
             var loggerProvider = new TestLoggerProvider();
-            var loggerProviderFactory = new TestLoggerProviderFactory(loggerProvider, false);
+            //var loggerProviderFactory = new TestLoggerProviderFactory(loggerProvider, false);
 
             string rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests_Initialize_LogsWarningForExplicitlySetHostId");
             if (!Directory.Exists(rootPath))
@@ -1789,14 +1791,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : IAsyncLifetime
         {
-            private IHost _host;
+            public ScriptHost ScriptHost => Host.GetScriptHost();
 
-            public ScriptHost Host => _host.GetScriptHost();
+            public IHost Host { get; set; }
 
             public async Task DisposeAsync()
             {
-                await _host.StopAsync();
-                _host.Dispose();
+                await Host.StopAsync();
+                Host.Dispose();
             }
 
             public async Task InitializeAsync()
@@ -1805,14 +1807,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new Mock<IScriptJobHostEnvironment>();
                 var eventManager = new Mock<IScriptEventManager>();
 
-                _host = new HostBuilder()
+                Host = new HostBuilder()
                     .ConfigureDefaultTestScriptHost(o =>
                     {
                         o.ScriptPath = TestHelpers.FunctionsTestDirectory;
                     })
                     .Build();
 
-                await Host.InitializeAsync();
+                await ScriptHost.InitializeAsync();
             }
         }
     }

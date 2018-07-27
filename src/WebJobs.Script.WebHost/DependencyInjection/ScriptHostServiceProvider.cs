@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using DryIoc;
@@ -89,6 +90,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             {
                 return this;
             }
+
+            Debug.WriteLine(serviceType.Name);
 
             return _currentResolver.Container.Resolve(serviceType, ifUnresolved);
         }

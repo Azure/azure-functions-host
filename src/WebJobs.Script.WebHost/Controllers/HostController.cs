@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/host/status")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
-        [EnableDebugMode]
+        [TypeFilter(typeof(EnableDebugModeFilter))]
         public IActionResult GetHostStatus([FromServices] IScriptHostManager scriptHostManager)
         {
             var status = new HostStatus
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/debug")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        [EnableDebugMode]
+        [TypeFilter(typeof(EnableDebugModeFilter))]
         public IActionResult LaunchDebugger()
         {
             if (_webHostSettings.Value.IsSelfHost)
