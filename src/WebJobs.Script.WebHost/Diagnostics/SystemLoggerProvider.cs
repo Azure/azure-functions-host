@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
@@ -14,11 +15,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private IEventGenerator _eventGenerator;
         private ScriptSettingsManager _settingsManager;
 
-        public SystemLoggerProvider(string hostInstanceId, IEventGenerator eventGenerator, ScriptSettingsManager settingsManager)
+        public SystemLoggerProvider(IOptions<ScriptHostOptions> scriptOptions, IEventGenerator eventGenerator, ScriptSettingsManager settingsManager)
         {
             _eventGenerator = eventGenerator;
             _settingsManager = settingsManager;
-            _hostInstanceId = hostInstanceId;
+            _hostInstanceId = scriptOptions.Value.InstanceId;
         }
 
         public ILogger CreateLogger(string categoryName)

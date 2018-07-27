@@ -4,11 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Azure.AppService.Proxy.Client;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -18,8 +15,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ILoggerFactory _loggerFactory;
         private ProxyClientExecutor _proxyClient;
 
-        public ProxyFunctionDescriptorProvider(ScriptHost host, ScriptHostOptions config, ProxyClientExecutor proxyClient, ILoggerFactory loggerFactory)
-            : base(host, config)
+        public ProxyFunctionDescriptorProvider(ScriptHost host, ScriptHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
+            ProxyClientExecutor proxyClient, ILoggerFactory loggerFactory)
+            : base(host, config, bindingProviders)
         {
             _proxyClient = proxyClient;
             _loggerFactory = loggerFactory;

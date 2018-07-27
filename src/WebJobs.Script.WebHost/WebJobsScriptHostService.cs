@@ -7,8 +7,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -17,7 +19,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public class WebJobsScriptHostService : IHostedService, IScriptHostManager,  IDisposable
+    public class WebJobsScriptHostService : IHostedService, IScriptHostManager, IDisposable
     {
         private readonly IServiceProvider _rootServiceProvider;
         private readonly IServiceScopeFactory _rootScopeFactory;
@@ -178,12 +180,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     b.AddConsole(c => { c.DisableColors = false; });
                     b.SetMinimumLevel(LogLevel.Trace);
                     b.AddFilter(f => true);
+
+                    // TODO: DI (FACAVAL) Temporary - replace with proper logger factory using
+                    // job host configuration
+                    b.Services.AddSingleton<ILoggerFactory, CustomFactory>();
+
+                    b.Services.AddSingleton<ILoggerProvider, SystemLoggerProvider>();
+                    b.Services.AddSingleton<ILoggerProvider, HostFileLoggerProvider>();
+                    b.Services.AddSingleton<ILoggerProvider, FunctionFileLoggerProvider>();
                 })
                 .ConfigureServices(s =>
                 {
-                    // TODO: DI (FACAVAL) Temporary - replace with proper logger factory using
-                    // job host configuration
-                    s.AddSingleton<ILoggerFactory, CustomFactory>();
                     s.AddSingleton<IHostLifetime, ScriptHostLifetime>();
                 })
                 .ConfigureAppConfiguration(c =>
@@ -199,6 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.ConfigureServices(s =>
             {
                 s.RemoveAll<IHostedService>();
+                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
                 s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, JobHostService>());
                 s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HttpInitializationService>());
                 s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
@@ -225,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (Exception)
             {
-              //  logger.LogTrace(exc, "Error stopping and disposing of host");
+                //  logger.LogTrace(exc, "Error stopping and disposing of host");
             }
             finally
             {

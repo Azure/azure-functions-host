@@ -7,6 +7,7 @@ using System.IO;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -196,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestDescriptorProvider : FunctionDescriptorProvider
         {
-            public TestDescriptorProvider(ScriptHost host, ScriptHostOptions config) : base(host, config)
+            public TestDescriptorProvider(ScriptHost host, ScriptHostOptions config) : base(host, config, new Collection<IScriptBindingProvider>())
             {
             }
 

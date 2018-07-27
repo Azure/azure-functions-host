@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.Extensions.Logging;
@@ -29,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
         private readonly ICompilationService<IDotNetCompilation> _compilationService;
         private readonly FunctionLoader<MethodInfo> _functionLoader;
-       // private readonly IMetricsLogger _metricsLogger;
+        // private readonly IMetricsLogger _metricsLogger;
 
         private FunctionSignature _functionSignature;
         private IFunctionMetadataResolver _metadataResolver;
@@ -46,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             IFunctionEntryPointResolver functionEntryPointResolver,
             ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory,
             ILoggerFactory loggerFactory,
+            ICollection<IScriptBindingProvider> bindingProviders,
             IFunctionMetadataResolver metadataResolver = null)
             : base(host, functionMetadata, loggerFactory)
         {
@@ -53,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             //_metricsLogger = null;
             //_metricsLogger = Host.ScriptConfig.HostOptions.GetService<IMetricsLogger>();
             _functionEntryPointResolver = functionEntryPointResolver;
-            _metadataResolver = metadataResolver ?? CreateMetadataResolver(host, functionMetadata, FunctionLogger);
+            _metadataResolver = metadataResolver ?? CreateMetadataResolver(host, bindingProviders, functionMetadata, FunctionLogger);
             _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
@@ -74,9 +76,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _restorePackages = _restorePackages.Debounce();
         }
 
-        private static IFunctionMetadataResolver CreateMetadataResolver(ScriptHost host, FunctionMetadata functionMetadata, ILogger logger)
+        private static IFunctionMetadataResolver CreateMetadataResolver(ScriptHost host, ICollection<IScriptBindingProvider> bindingProviders,
+            FunctionMetadata functionMetadata, ILogger logger)
         {
-            return new ScriptFunctionMetadataResolver(functionMetadata.ScriptFile, host.ScriptOptions.BindingProviders, logger);
+            return new ScriptFunctionMetadataResolver(functionMetadata.ScriptFile, bindingProviders, logger);
         }
 
         private void InitializeFileWatcher()

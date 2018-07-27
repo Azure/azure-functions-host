@@ -12,7 +12,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
@@ -23,7 +22,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
-using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -63,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, null }
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
-            {   
+            {
                 // Get a new instance of the host environemnt, which
                 // will reset the standby flag.
                 environment = new ScriptWebHostEnvironment();
@@ -246,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var uniqueTestRootPath = Path.Combine(_testRootPath, testDirName, Guid.NewGuid().ToString());
 
             _loggerProvider = new TestLoggerProvider();
-            var loggerProviderFactory = new TestLoggerProviderFactory(_loggerProvider);
+
             _webHostOptions = new ScriptWebHostOptions
             {
                 IsSelfHost = true,
@@ -269,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureServices(c =>
                 {
                     c.AddSingleton(_webHostOptions)
-                    .AddSingleton<ILoggerProviderFactory>(loggerProviderFactory)
+                    .AddSingleton<ILoggerProvider>(_loggerProvider)
                     .AddSingleton<ILoggerFactory>(loggerFactory);
                 });
 

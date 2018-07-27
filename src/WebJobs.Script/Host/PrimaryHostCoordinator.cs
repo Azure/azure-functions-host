@@ -6,12 +6,15 @@ using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
     // This is used to determine which host instance is the "Primary"
-    internal sealed class PrimaryHostCoordinator : IDisposable
+    internal sealed class PrimaryHostCoordinator : IHostedService, IDisposable
     {
         internal const string LockBlobName = "host";
         internal const string HostContainerName = "azure-webjobs-hosts";
@@ -21,8 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly TimeSpan _renewalInterval;
         private readonly TimeSpan _leaseRetryInterval;
         private readonly ILogger _logger;
+        private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
         private readonly string _hostId;
-        private readonly string _instanceId;
+        private readonly string _websiteInstanceId;
         private IDistributedLock _lockHandle; // If non-null, then we own the lock.
 
         private bool _disposed;
@@ -32,12 +36,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private IDistributedLockManager _lockManager;
 
-        internal PrimaryHostCoordinator(IDistributedLockManager lockManager, TimeSpan leaseTimeout, string hostId, string instanceId,
-            ILoggerFactory loggerFactory, TimeSpan? renewalInterval = null)
+        public PrimaryHostCoordinator(IOptions<PrimaryHostCoordinatorOptions> coordinatorOptions, IOptions<JobHostOptions> jobHostOptions,
+            IDistributedLockManager lockManager, ScriptSettingsManager settingsManager, IPrimaryHostStateProvider primaryHostStateProvider, ILoggerFactory loggerFactory)
         {
-            _leaseTimeout = leaseTimeout;
-            _hostId = hostId;
-            _instanceId = instanceId;
+            _leaseTimeout = coordinatorOptions.Value.LeaseTimeout;
+            _hostId = jobHostOptions.Value.HostId;
+            _websiteInstanceId = settingsManager.AzureWebsiteInstanceId;
 
             _lockManager = lockManager;
             if (lockManager == null)
@@ -46,19 +50,20 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // Renew the lease three seconds before it expires
-            _renewalInterval = renewalInterval ?? leaseTimeout.Add(TimeSpan.FromSeconds(-3));
+            _renewalInterval = coordinatorOptions.Value.RenewalInterval ?? _leaseTimeout.Add(TimeSpan.FromSeconds(-3));
 
             // Attempt to acquire a lease every 5 seconds
             _leaseRetryInterval = TimeSpan.FromSeconds(5);
 
-            _timer = new Timer(ProcessLeaseTimerTick, null, TimeSpan.Zero, _leaseRetryInterval);
+            _timer = new Timer(ProcessLeaseTimerTick);
 
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+            _primaryHostStateProvider = primaryHostStateProvider;
         }
 
         public event EventHandler HasLeaseChanged;
 
-        public bool HasLease => _lockHandle != null;
+        private bool HasLease => _lockHandle != null;
 
         internal IDistributedLock LockHandle
         {
@@ -71,6 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 var previous = _lockHandle;
                 _lockHandle = value;
+                _primaryHostStateProvider.IsPrimary = HasLease;
 
                 if (previous != _lockHandle)
                 {
@@ -80,23 +86,6 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         private void OnHasLeaseChanged() => HasLeaseChanged?.Invoke(this, EventArgs.Empty);
-
-        public static PrimaryHostCoordinator Create(
-            IDistributedLockManager lockManager,
-            TimeSpan leaseTimeout,
-            string hostId,
-            string instanceId,
-            ILoggerFactory loggerFactory,
-            TimeSpan? renewalInterval = null)
-        {
-            if (leaseTimeout < TimeSpan.FromSeconds(15) || leaseTimeout > TimeSpan.FromSeconds(60))
-            {
-                throw new ArgumentOutOfRangeException(nameof(leaseTimeout), $"The {nameof(leaseTimeout)} should be between 15 and 60 seconds but was '{leaseTimeout}'");
-            }
-
-            var manager = new PrimaryHostCoordinator(lockManager, leaseTimeout, hostId, instanceId, loggerFactory, renewalInterval);
-            return manager;
-        }
 
         private void ProcessLeaseTimerTick(object state)
         {
@@ -148,8 +137,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                string proposedLeaseId = _instanceId;
-                LockHandle = await _lockManager.TryLockAsync(null, lockName, _instanceId, proposedLeaseId, _leaseTimeout, CancellationToken.None);
+                string proposedLeaseId = _websiteInstanceId;
+                LockHandle = await _lockManager.TryLockAsync(null, lockName, _websiteInstanceId, proposedLeaseId, _leaseTimeout, CancellationToken.None);
                 if (LockHandle == null)
                 {
                     // We didn't have the lease and failed to acquire it. Common if somebody else already has it.
@@ -160,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _lastRenewal = DateTime.UtcNow;
                 _lastRenewalLatency = _lastRenewal - requestStart;
 
-                string message = $"Host lock lease acquired by instance ID '{_instanceId}'.";
+                string message = $"Host lock lease acquired by instance ID '{_websiteInstanceId}'.";
                 _logger.LogInformation(message);
 
                 // We've successfully acquired the lease, change the timer to use our renewal interval
@@ -181,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                string message = $"Host instance '{_instanceId}' failed to acquire host lock lease: {reason}";
+                string message = $"Host instance '{_websiteInstanceId}' failed to acquire host lock lease: {reason}";
                 _logger.LogDebug(message);
             }
         }
@@ -208,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     Task.Run(() => _lockManager.ReleaseLockAsync(_lockHandle, CancellationToken.None)).GetAwaiter().GetResult();
 
-                    string message = $"Host instance '{_instanceId}' released lock lease.";
+                    string message = $"Host instance '{_websiteInstanceId}' released lock lease.";
                     _logger.LogDebug(message);
                 }
             }
@@ -236,6 +225,18 @@ namespace Microsoft.Azure.WebJobs.Script
         public void Dispose()
         {
             Dispose(true);
+        }
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            _timer.Change(TimeSpan.Zero, _leaseRetryInterval);
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            _timer.Change(Timeout.Infinite, Timeout.Infinite);
+            return Task.CompletedTask;
         }
     }
 }

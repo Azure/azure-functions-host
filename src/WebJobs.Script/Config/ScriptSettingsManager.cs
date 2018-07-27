@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
         }
 
-        public virtual string InstanceId
+        public virtual string AzureWebsiteInstanceId
          {
              get
              {

@@ -8,9 +8,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -32,34 +32,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static IHost CreateHost()
         {
             var host = new HostBuilder()
-                .ConfigureDefaultTestScriptHost()
+                .ConfigureDefaultTestScriptHost(o => o.ScriptPath = Path.GetTempPath())
                 .Build();
 
             return host;
         }
-        
+
         [Theory]
         [InlineData(14.99)]
         [InlineData(60.01)]
         public void RejectsInvalidLeaseTimeout(double leaseTimeoutSeconds)
         {
             var leaseTimeout = TimeSpan.FromSeconds(leaseTimeoutSeconds);
-
-            string hostId = Guid.NewGuid().ToString();
-            string instanceId = Guid.NewGuid().ToString();
-
-            var host = CreateHost();
-            using (host)
-            {
-                var lockManager = (IDistributedLockManager)host.Services.GetService(typeof(IDistributedLockManager));
-                Assert.Throws<ArgumentOutOfRangeException>(
-                    () => PrimaryHostCoordinator.Create(lockManager, leaseTimeout, hostId, instanceId, _loggerFactory));
-            }
+            Assert.Throws<ArgumentOutOfRangeException>(() => new PrimaryHostCoordinatorOptions { LeaseTimeout = leaseTimeout });
         }
 
         [Fact]
         public async Task HasLease_WhenLeaseIsAcquired_ReturnsTrue()
         {
+            // TODO: Wire these up correctly [BrettSam]
             string connectionString = Environment.GetEnvironmentVariable(ConnectionStringNames.Storage);
             string hostId = Guid.NewGuid().ToString();
             string instanceId = Guid.NewGuid().ToString();
@@ -67,11 +58,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var host = CreateHost();
             using (host)
             {
-                var lockManager = (IDistributedLockManager)host.Services.GetService(typeof(IDistributedLockManager));
-                using (var manager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId, instanceId, _loggerFactory))
-                {
-                    await TestHelpers.Await(() => manager.HasLease);
-                }
+                await host.StartAsync();
+
+                var primaryState = host.Services.GetService<IPrimaryHostStateProvider>();
+                await TestHelpers.Await(() => primaryState.IsPrimary);
+
+                await host.StopAsync();
             }
 
             await ClearLeaseBlob(hostId);
@@ -80,6 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task HasLeaseChanged_WhenLeaseIsAcquiredAndStateChanges_IsFired()
         {
+            //TODO: Wire these up correctly [BrettSam]
             string hostId = Guid.NewGuid().ToString();
             string instanceId = Guid.NewGuid().ToString();
             var resetEvent = new ManualResetEventSlim();
@@ -95,25 +88,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var host = CreateHost();
             using (host)
             {
-                var lockManager = (IDistributedLockManager)host.Services.GetService(typeof(IDistributedLockManager));
-                try
-                {
+                var primaryState = host.Services.GetService<IPrimaryHostStateProvider>();
 
-                    manager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId, instanceId, _loggerFactory);
-                    manager.HasLeaseChanged += (s, a) => resetEvent.Set();
-                }
-                finally
-                {
-                    await blob.ReleaseLeaseAsync(new AccessCondition { LeaseId = leaseId });
-                }
+                // We've taken the lease already.
+                Assert.False(primaryState.IsPrimary);
 
-                resetEvent.Wait(TimeSpan.FromSeconds(15));
-                bool hasLease = manager.HasLease;
+                // Now release it, and we should reclaim it.
+                await blob.ReleaseLeaseAsync(new AccessCondition { LeaseId = leaseId });
+
+                await TestHelpers.Await(() => primaryState.IsPrimary, pollingInterval: 50);
 
                 manager.Dispose();
 
                 Assert.True(resetEvent.IsSet);
-                Assert.True(hasLease, $"{nameof(PrimaryHostCoordinator.HasLease)} was not correctly set to 'true' when lease was acquired.");
+                Assert.True(primaryState.IsPrimary, $"{nameof(IPrimaryHostStateProvider.IsPrimary)} was not correctly set to 'true' when lease was acquired.");
             }
             await ClearLeaseBlob(hostId);
         }
@@ -121,6 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task HasLeaseChanged_WhenLeaseIsLostAndStateChanges_IsFired()
         {
+            //TODO: Wire these up correctly [BrettSam]
             string hostId = Guid.NewGuid().ToString();
             string instanceId = Guid.NewGuid().ToString();
             string connectionString = Environment.GetEnvironmentVariable(ConnectionStringNames.Storage);
@@ -134,33 +123,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var host = CreateHost();
             using (host)
             {
-                var lockManager = (IDistributedLockManager)host.Services.GetService(typeof(IDistributedLockManager));
+                var primaryState = host.Services.GetService<IPrimaryHostStateProvider>();
+                manager = host.Services.GetServices<IHostedService>().OfType<PrimaryHostCoordinator>().Single();
+                var lockManager = host.Services.GetService<IDistributedLockManager>();
+
                 var renewalInterval = TimeSpan.FromSeconds(3);
-                using (manager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId, instanceId, _loggerFactory, renewalInterval))
+                try
                 {
-                    try
+                    await TestHelpers.Await(() => primaryState.IsPrimary, pollingInterval: 50);
+
+                    // Release the manager's lease and acquire one with a different id
+                    await lockManager.ReleaseLockAsync(manager.LockHandle, CancellationToken.None);
+                    tempLeaseId = await blob.AcquireLeaseAsync(TimeSpan.FromSeconds(30), Guid.NewGuid().ToString());
+                }
+                finally
+                {
+                    if (tempLeaseId != null)
                     {
-                        await TestHelpers.Await(() => manager.HasLease);
-
-                        manager.HasLeaseChanged += (s, a) => resetEvent.Set();
-
-                        // Release the manager's lease and acquire one with a different id
-                        await lockManager.ReleaseLockAsync(manager.LockHandle, CancellationToken.None);
-                        tempLeaseId = await blob.AcquireLeaseAsync(TimeSpan.FromSeconds(30), Guid.NewGuid().ToString());
+                        await blob.ReleaseLeaseAsync(new AccessCondition { LeaseId = tempLeaseId });
                     }
-                    finally
-                    {
-                        if (tempLeaseId != null)
-                        {
-                            await blob.ReleaseLeaseAsync(new AccessCondition { LeaseId = tempLeaseId });
-                        }
-                    }
-
-                    resetEvent.Wait(TimeSpan.FromSeconds(15));
                 }
 
-                Assert.True(resetEvent.IsSet);
-                Assert.False(manager.HasLease, $"{nameof(PrimaryHostCoordinator.HasLease)} was not correctly set to 'false' when lease lost.");
+                await TestHelpers.Await(() => !primaryState.IsPrimary, pollingInterval: 50);
+
+                Assert.False(primaryState.IsPrimary, $"{nameof(IPrimaryHostStateProvider.IsPrimary)} was not correctly set to 'false' when lease lost.");
 
                 await ClearLeaseBlob(hostId);
             }
@@ -169,6 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Dispose_ReleasesBlobLease()
         {
+            //TODO: Wire these up correctly [BrettSam]
             string hostId = Guid.NewGuid().ToString();
             string instanceId = Guid.NewGuid().ToString();
             string connectionString = Environment.GetEnvironmentVariable(ConnectionStringNames.Storage);
@@ -176,11 +163,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var host = CreateHost();
             using (host)
             {
-                var lockManager = (IDistributedLockManager)host.Services.GetService(typeof(IDistributedLockManager));
-                using (var manager = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId, instanceId, _loggerFactory))
-                {
-                    await TestHelpers.Await(() => manager.HasLease);
-                }
+                var primaryState = host.Services.GetService<IPrimaryHostStateProvider>();
+                await TestHelpers.Await(() => primaryState.IsPrimary, pollingInterval: 50);
 
                 ICloudBlob blob = await GetLockBlobAsync(connectionString, hostId);
 
@@ -205,9 +189,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task TraceOutputsMessagesWhenLeaseIsAcquired()
         {
+            //TODO: Wire these up correctly [BrettSam]
             string hostId = Guid.NewGuid().ToString();
             string instanceId = Guid.NewGuid().ToString();
-            var renewResetEvent = new ManualResetEventSlim();
 
             var blobMock = new Mock<IDistributedLockManager>();
             blobMock.Setup(b => b.TryLockAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
@@ -217,14 +201,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var host = CreateHost();
             using (host)
             {
-                var lockManager = (IDistributedLockManager)host.Services.GetService(typeof(IDistributedLockManager));
-                using (var manager = new PrimaryHostCoordinator(blobMock.Object, TimeSpan.FromSeconds(5), hostId, instanceId, _loggerFactory))
-                {
-                    renewResetEvent.Wait(TimeSpan.FromSeconds(10));
-
-                    // Make sure we have enough time to trace the renewal
-                    await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages().Count() == 1, 5000, 500);
-                }
+                // Make sure we have enough time to trace the renewal
+                await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.StartsWith("Host lock lease acquired by instance ID ")), 5000, 500);
 
                 LogMessage acquisitionEvent = _loggerProvider.GetAllLogMessages().First();
                 Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.FormattedMessage);
@@ -235,6 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task TraceOutputsMessagesWhenLeaseRenewalFails()
         {
+            //TODO: Wire these up correctly [BrettSam]
             string hostId = Guid.NewGuid().ToString();
             string instanceId = Guid.NewGuid().ToString();
             var renewResetEvent = new ManualResetEventSlim();
@@ -248,11 +227,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Returns(() => Task.FromException<bool>(new StorageException(new RequestResult { HttpStatusCode = 409 }, "test", null)))
                 .Callback(() => renewResetEvent.Set());
 
-            using (var manager = new PrimaryHostCoordinator(blobMock.Object, TimeSpan.FromSeconds(5), hostId, instanceId, _loggerFactory))
-            {
-                renewResetEvent.Wait(TimeSpan.FromSeconds(10));
-                await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages().Count() == 2, 5000, 500);
-            }
+            renewResetEvent.Wait(TimeSpan.FromSeconds(10));
+            await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages().Count() == 2, 5000, 500);
 
             LogMessage acquisitionEvent = _loggerProvider.GetAllLogMessages().First();
             Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.FormattedMessage);
@@ -267,23 +243,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task DifferentHosts_UsingSameStorageAccount_CanObtainLease()
         {
+            //TODO: Wire these up correctly [BrettSam]
             string hostId1 = Guid.NewGuid().ToString();
             string hostId2 = Guid.NewGuid().ToString();
             string instanceId = Guid.NewGuid().ToString();
             string connectionString = Environment.GetEnvironmentVariable(ConnectionStringNames.Storage);
 
-            var host = CreateHost();
-            using (host)
+            var host1 = CreateHost();
+            var host2 = CreateHost();
+            using (host1)
+            using (host2)
             {
-                var lockManager = (IDistributedLockManager)host.Services.GetService(typeof(IDistributedLockManager));
-                using (var manager1 = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId1, instanceId, NullLoggerFactory.Instance))
-                using (var manager2 = PrimaryHostCoordinator.Create(lockManager, TimeSpan.FromSeconds(15), hostId2, instanceId, NullLoggerFactory.Instance))
-                {
-                    Task manager1Check = TestHelpers.Await(() => manager1.HasLease);
-                    Task manager2Check = TestHelpers.Await(() => manager2.HasLease);
+                var primaryState1 = host1.Services.GetService<IPrimaryHostStateProvider>();
+                var primaryState2 = host2.Services.GetService<IPrimaryHostStateProvider>();
 
-                    await Task.WhenAll(manager1Check, manager2Check);
-                }
+                Task manager1Check = TestHelpers.Await(() => primaryState1.IsPrimary);
+                Task manager2Check = TestHelpers.Await(() => primaryState2.IsPrimary);
+
+                await Task.WhenAll(manager1Check, manager2Check);
 
                 await Task.WhenAll(ClearLeaseBlob(hostId1), ClearLeaseBlob(hostId2));
             }

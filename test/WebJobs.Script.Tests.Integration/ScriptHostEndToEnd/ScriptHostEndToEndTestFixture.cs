@@ -7,8 +7,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -66,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             EventManager = new ScriptEventManager();
             ScriptJobHostEnvironmentMock = new Mock<IScriptJobHostEnvironment>();
             LoggerProvider = new TestLoggerProvider();
-            ILoggerProviderFactory loggerProviderFactory = new TestLoggerProviderFactory(LoggerProvider);
+            //ILoggerProviderFactory loggerProviderFactory = new TestLoggerProviderFactory(LoggerProvider);
 
             // Reset the timer logs first, since one of the tests will
             // be checking them

@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
@@ -97,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
             });
 
-            services.AddSingleton<ILoggerProviderFactory, WebHostLoggerProviderFactory>();
+            //services.AddSingleton<ILoggerProviderFactory, WebHostLoggerProviderFactory>();
 
             // TODO: DI (FACAVAL) Removed the previous workaround to pass a logger factory into the host resolver
             // this is no longer needed, but we need to validate log output.
@@ -123,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Configuration
             services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<ScriptWebHostOptions>, ScriptWebHostOptionsSetup>());
-        }
+                    }
 
         // TODO: DI (FACAVAL) Removing this. We need to ensure system logs are properly written now when using the default provider.
         //private static ILoggerFactory CreateLoggerFactory(string hostInstanceId, ScriptSettingsManager settingsManager, IEventGenerator eventGenerator, WebHostSettings settings)

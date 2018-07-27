@@ -27,6 +27,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
@@ -53,9 +54,11 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _language;
         private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly ScriptTypeLocator _typeLocator;
+        private readonly IDebugStateProvider _debugManager;
+        private readonly ICollection<IScriptBindingProvider> _bindingProviders;
+        private IPrimaryHostStateProvider _primaryHostStateProvider;
         private string _instanceId;
         // TODO: DI (FACAVAL) Review
-        private PrimaryHostCoordinator _primaryHostCoordinator = null;
         internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
         internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(5);
         internal static readonly TimeSpan MaxFunctionTimeout = TimeSpan.FromMinutes(10);
@@ -90,6 +93,9 @@ namespace Microsoft.Azure.WebJobs.Script
             IOptions<ScriptHostOptions> scriptHostOptions,
             ITypeLocator typeLocator,
             IScriptJobHostEnvironment scriptHostEnvironment,
+            IDebugStateProvider debugManager,
+            ICollection<IScriptBindingProvider> bindingProviders,
+            IPrimaryHostStateProvider primaryHostStateProvider,
             ScriptSettingsManager settingsManager = null,
             ProxyClientExecutor proxyClient = null)
             : base(options, jobHostContextFactory)
@@ -123,6 +129,10 @@ namespace Microsoft.Azure.WebJobs.Script
             _loggerFactory = loggerFactory;
             _startupLogger = loggerFactory.CreateLogger(LogCategories.Startup);
             Logger = _startupLogger;
+
+            _debugManager = debugManager;
+            _primaryHostStateProvider = primaryHostStateProvider;
+            _bindingProviders = bindingProviders;
         }
 
         // TODO: DI (FACAVAL) Do we still need this event?
@@ -134,18 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public event EventHandler IsPrimaryChanged;
 
-        public string InstanceId
-        {
-            get
-            {
-                if (_instanceId == null)
-                {
-                    _instanceId = Guid.NewGuid().ToString();
-                }
-
-                return _instanceId;
-            }
-        }
+        public string InstanceId => ScriptOptions.InstanceId;
 
         public IScriptEventManager EventManager { get; }
 
@@ -166,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             get
             {
-                return _primaryHostCoordinator?.HasLease ?? false;
+                return _primaryHostStateProvider.IsPrimary;
             }
         }
 
@@ -186,27 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets a value indicating whether the host is in debug mode.
         /// </summary>
-        public virtual bool InDebugMode
-        {
-            get
-            {
-                return (DateTime.UtcNow - LastDebugNotify).TotalMinutes < DebugModeTimeoutMinutes;
-            }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether logs should be written to disk.
-        /// </summary>
-        internal virtual bool FileLoggingEnabled
-        {
-            get
-            {
-                return ScriptOptions.FileLoggingMode == FileLoggingMode.Always ||
-                    (ScriptOptions.FileLoggingMode == FileLoggingMode.DebugOnly && InDebugMode);
-            }
-        }
-
-        internal DateTime LastDebugNotify { get; set; }
+        public virtual bool InDebugMode => _debugManager.InDebugMode;
 
         /// <summary>
         /// Returns true if the specified name is the name of a known function,
@@ -227,39 +206,13 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Notifies this host that it should be in debug mode.
+        /// Lookup a function by name
         /// </summary>
-        public void NotifyDebug()
+        /// <param name="name">name of function</param>
+        /// <returns>function or null if not found</returns>
+        public FunctionDescriptor GetFunctionOrNull(string name)
         {
-            // This is redundant, since we're also watching the debug marker
-            // file. However, we leave this here for assurances.
-            LastDebugNotify = DateTime.UtcNow;
-
-            try
-            {
-                // create or update the debug sentinel file to trigger a
-                // debug timeout update across all instances
-                string debugSentinelFileName = Path.Combine(ScriptOptions.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
-                if (!File.Exists(debugSentinelFileName))
-                {
-                    File.WriteAllText(debugSentinelFileName, "This is a system managed marker file used to control runtime debug mode behavior.");
-                }
-                else
-                {
-                    File.SetLastWriteTimeUtc(debugSentinelFileName, DateTime.UtcNow);
-                }
-            }
-            catch (Exception ex)
-            {
-                // best effort
-                string message = "Unable to update the debug sentinel file.";
-                Logger.LogError(0, ex, message);
-
-                if (ex.IsFatal())
-                {
-                    throw;
-                }
-            }
+            return Functions.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
         }
 
         public virtual async Task CallAsync(string method, Dictionary<string, object> arguments, CancellationToken cancellationToken = default(CancellationToken))
@@ -291,7 +244,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 InitializeFunctionDescriptors(functionMetadata);
                 GenerateFunctions(directTypes);
 
-                InitializeServices();
                 CleanupFileSystem();
             }
         }
@@ -316,18 +268,18 @@ namespace Microsoft.Azure.WebJobs.Script
         //        () => FileLoggingEnabled, () => IsPrimary, HandleHostError);
         //}
 
-        internal static void ConfigureLoggerFactory(string instanceId, ILoggerFactory loggerFactory, ScriptHostOptions scriptConfig, ScriptSettingsManager settingsManager,
-            ILoggerProviderFactory builder, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary, Action<Exception> handleException)
-        {
-            // TODO: DI (FACAVAL) Review - BrettSam
-            //foreach (ILoggerProvider provider in builder.CreateLoggerProviders(instanceId, scriptConfig, settingsManager, isFileLoggingEnabled, isPrimary))
-            //{
-            //    loggerFactory.AddProvider(provider);
-            //}
+        //internal static void ConfigureLoggerFactory(string instanceId, ILoggerFactory loggerFactory, ScriptHostOptions scriptConfig, ScriptSettingsManager settingsManager,
+        //    ILoggerProviderFactory builder, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary, Action<Exception> handleException)
+        //{
+        //    // TODO: DI (FACAVAL) Review - BrettSam
+        //    //foreach (ILoggerProvider provider in builder.CreateLoggerProviders(instanceId, scriptConfig, settingsManager, isFileLoggingEnabled, isPrimary))
+        //    //{
+        //    //    loggerFactory.AddProvider(provider);
+        //    //}
 
-            // The LoggerFactory must always have this as there's some functional value (handling exceptions) when handling these errors.
-            loggerFactory.AddProvider(new HostErrorLoggerProvider(handleException));
-        }
+        //    // The LoggerFactory must always have this as there's some functional value (handling exceptions) when handling these errors.
+        //    loggerFactory.AddProvider(new HostErrorLoggerProvider(handleException));
+        //}
 
         // TODO: DI (FACAVAL) This needs to move to an options config setup
         // Create a TimeoutConfiguration specified by scriptConfig knobs; else null.
@@ -406,14 +358,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private void PreInitialize()
         {
             InitializeFileSystem();
-
-            _eventSubscriptions.Add(EventManager.OfType<DebugNotification>()
-               .Subscribe(evt => LastDebugNotify = evt.NotificationTime));
-
-            string debugSentinelFileName = Path.Combine(_hostLogPath, ScriptConstants.DebugSentinelFileName);
-            LastDebugNotify = File.Exists(debugSentinelFileName)
-                ? File.GetLastWriteTimeUtc(debugSentinelFileName)
-                : DateTime.MinValue;
         }
 
         /// <summary>
@@ -461,19 +405,19 @@ namespace Microsoft.Azure.WebJobs.Script
             if (string.IsNullOrEmpty(_language))
             {
                 _startupLogger.LogTrace("Adding Function descriptor providers for all languages.");
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _loggerFactory));
-                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptOptions, _functionDispatcher, _loggerFactory));
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
+                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
             }
             else
             {
                 _startupLogger.LogTrace($"Adding Function descriptor provider for language {_language}.");
                 if (string.Equals(_language, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
-                    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _loggerFactory));
+                    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
                 }
                 else
                 {
-                    _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptOptions, _functionDispatcher, _loggerFactory));
+                    _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
                 }
             }
 
@@ -486,25 +430,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             Functions = functions;
-        }
-
-        /// <summary>
-        /// Create and initialize host services.
-        /// </summary>
-        private void InitializeServices()
-        {
-            InitializeHostCoordinator();
-        }
-
-        private void InitializeHostCoordinator()
-        {
-            // Create the lease manager that will keep handle the primary host blob lease acquisition and renewal
-            // and subscribe for change notifications.
-            if (_storageConnectionString != null)
-            {
-                _primaryHostCoordinator = PrimaryHostCoordinator.Create(_distributedLockManager, TimeSpan.FromSeconds(15), _hostOptions.Value.HostId, _settingsManager.InstanceId, _loggerFactory);
-                _primaryHostCoordinator.HasLeaseChanged += OnHostLeaseChanged;
-            }
         }
 
         private async Task InitializeWorkersAsync()
@@ -827,7 +752,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 combinedFunctionMetadata = proxies.Concat(functions);
 
-                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _proxyClient, _loggerFactory));
+                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _proxyClient, _loggerFactory));
             }
             else
             {
@@ -1137,12 +1062,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 _functionDispatcher?.Dispose();
                 (_processRegistry as IDisposable)?.Dispose();
-
-                if (_primaryHostCoordinator != null)
-                {
-                    _primaryHostCoordinator.HasLeaseChanged -= OnHostLeaseChanged;
-                    _primaryHostCoordinator.Dispose();
-                }
 
                 foreach (var function in Functions)
                 {

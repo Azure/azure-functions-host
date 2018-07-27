@@ -32,7 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _httpClient = new HttpClient();
 
             _loggerProvider = new TestLoggerProvider();
-            var loggerProviderFactory = new TestLoggerProviderFactory(_loggerProvider);
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
 

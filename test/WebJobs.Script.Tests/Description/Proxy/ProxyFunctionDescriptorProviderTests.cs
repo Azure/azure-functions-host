@@ -13,10 +13,10 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var proxy = _proxyClient as ProxyClientExecutor;
             Assert.NotNull(proxy);
 
-            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_host, _config, proxy, NullLoggerFactory.Instance);
+            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_host, _config, new Collection<IScriptBindingProvider>(), proxy, NullLoggerFactory.Instance);
 
             Assert.True(proxyFunctionDescriptor.TryCreate(_metadataCollection[0], out FunctionDescriptor functionDescriptor));
 
@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ValidateProxyFunctionInvoker()
         {
-            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_host, _config, _proxyClient, NullLoggerFactory.Instance);
+            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_host, _config, new Collection<IScriptBindingProvider>(), _proxyClient, NullLoggerFactory.Instance);
 
             proxyFunctionDescriptor.TryCreate(_metadataCollection[0], out FunctionDescriptor functionDescriptor);
 

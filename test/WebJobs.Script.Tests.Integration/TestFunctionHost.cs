@@ -46,7 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureServices(services =>
                 {
                     services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptWebHostOptions>), new OptionsWrapper<ScriptWebHostOptions>(_hostOptions)));
-                    services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestLoggerProviderFactory(_loggerProvider, includeDefaultLoggerProviders: false)));
                     services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
                 }));
 

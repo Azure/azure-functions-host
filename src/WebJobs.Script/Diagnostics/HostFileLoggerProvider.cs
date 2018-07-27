@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
@@ -14,15 +15,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     {
         private readonly FileWriter _writer;
         private readonly Func<bool> _isFileLoggingEnabled;
-        private readonly string _hostInstanceId;
 
         private bool _disposed = false;
 
-        public HostFileLoggerProvider(string hostInstanceId, string rootLogPath, Func<bool> isFileLoggingEnabled)
+        public HostFileLoggerProvider(IOptions<ScriptHostOptions> options, IFileLoggingStatusManager fileLoggingStatusManager)
         {
-            _writer = new FileWriter(Path.Combine(rootLogPath, "Host"));
-            _isFileLoggingEnabled = isFileLoggingEnabled;
-            _hostInstanceId = hostInstanceId;
+            _writer = new FileWriter(Path.Combine(options.Value.RootLogPath, "Host"));
+            _isFileLoggingEnabled = () => fileLoggingStatusManager.IsFileLoggingEnabled;
         }
 
         public ILogger CreateLogger(string categoryName)

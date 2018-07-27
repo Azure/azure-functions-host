@@ -104,7 +104,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
                 FunctionTimeout = TimeSpan.FromSeconds(3)
             };
 
-            var loggerProviderFactory = new TestLoggerProviderFactory(_loggerProvider);
             var mockEventManager = new Mock<IScriptEventManager>();
             var mockRouter = new Mock<IWebJobsRouter>();
 

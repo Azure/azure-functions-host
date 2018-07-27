@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
@@ -9,6 +10,7 @@ using System.Reflection.Emit;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 
@@ -19,8 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ILoggerFactory _loggerFactory;
         private IFunctionRegistry _dispatcher;
 
-        public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptHostOptions config, IFunctionRegistry dispatcher, ILoggerFactory loggerFactory)
-            : base(host, config)
+        public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
+            IFunctionRegistry dispatcher, ILoggerFactory loggerFactory)
+            : base(host, config, bindingProviders)
         {
             _dispatcher = dispatcher;
             _loggerFactory = loggerFactory;
