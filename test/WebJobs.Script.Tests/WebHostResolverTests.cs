@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -58,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ScriptPath = Path.Combine(Path.GetTempPath(), "Functions", "Standby")
             };
 
-            var config = WebHostResolver.CreateScriptHostConfiguration(settings, true);
+            var config = settings.ToScriptHostConfiguration(true);
 
             Assert.Equal(FileLoggingMode.DebugOnly, config.FileLoggingMode);
 

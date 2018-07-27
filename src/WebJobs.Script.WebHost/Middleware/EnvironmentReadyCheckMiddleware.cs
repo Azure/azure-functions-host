@@ -19,9 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _next = next;
         }
 
-        public async Task Invoke(HttpContext httpContext)
+        public async Task Invoke(HttpContext httpContext, IScriptWebHostEnvironment webHostEnvironment)
         {
-            await WebScriptHostManager.DelayUntilEnvironmentReady();
+            if (webHostEnvironment.DelayRequestsEnabled)
+            {
+                await webHostEnvironment.DelayCompletionTask;
+            }
 
             await _next.Invoke(httpContext);
         }

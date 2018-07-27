@@ -31,7 +31,8 @@ namespace Microsoft.Extensions.DependencyInjection
                                 OnMessageReceived = c =>
                                 {
                                     // Temporary: Tactical fix to address specialization issues. This should likely be moved to a token validator
-                                    if (_specialized == 0 && !WebScriptHostManager.InStandbyMode && Interlocked.CompareExchange(ref _specialized, 1, 0) == 0)
+                                    // TODO: DI (FACAVAL) This will be fixed once the permanent fix is in plance
+                                    if (_specialized == 0 && !new ScriptWebHostEnvironment().InStandbyMode && Interlocked.CompareExchange(ref _specialized, 1, 0) == 0)
                                     {
                                         o.TokenValidationParameters = CreateTokenValidationParameters();
                                     }
@@ -53,7 +54,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
                             o.TokenValidationParameters = CreateTokenValidationParameters();
 
-                            if (!WebScriptHostManager.InStandbyMode)
+                            if (!new ScriptWebHostEnvironment().InStandbyMode)
                             {
                                 // We're not in standby mode, so flag as specialized
                                 _specialized = 1;

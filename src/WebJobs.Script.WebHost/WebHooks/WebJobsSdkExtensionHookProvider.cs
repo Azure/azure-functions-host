@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -12,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     // Gives binding extensions access to a http handler.
     // This is registered with the JobHostConfiguration and extensions will call on it to register for a handler.
-    internal class WebJobsSdkExtensionHookProvider : IWebHookProvider
+    internal class WebJobsSdkExtensionHookProvider : IScriptWebHookProvider
     {
         private readonly ISecretManager _secretManager;
 
@@ -24,13 +25,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _secretManager = secretManager;
         }
 
-        // Get a registered handler, or null
-        public HttpHandler GetHandlerOrNull(string name)
+        public bool TryGetHandler(string name, out HttpHandler handler)
         {
-            HttpHandler handler;
-            _customHttpHandlers.TryGetValue(name, out handler);
-
-            return handler;
+            return _customHttpHandlers.TryGetValue(name, out handler);
         }
 
         // Exposed to extensions to get the URL for their http handler.

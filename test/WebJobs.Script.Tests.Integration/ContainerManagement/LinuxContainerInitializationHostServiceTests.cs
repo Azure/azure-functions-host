@@ -35,11 +35,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
         [Fact]
         public async Task Runs_In_Linux_Container_Mode_Only()
         {
-            var settingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict, null);
-            var initializationHostService = new LinuxContainerInitializationHostService(settingsManagerMock.Object, _instanceManagerMock.Object, NullLoggerFactory.Instance);
-            settingsManagerMock.Setup(manager => manager.IsLinuxContainerEnvironment).Returns(false);
-            await initializationHostService.StartAsync(CancellationToken.None);
-            settingsManagerMock.Verify(settingsManager => settingsManager.GetSetting(It.IsAny<string>()), Times.Never);
+            var variables = new Dictionary<string, string>
+            {
+                {EnvironmentSettingNames.ContainerName, "TEST" },
+                {EnvironmentSettingNames.AzureWebsiteInstanceId, "TEST" },
+            };
+            using (new TestScopedEnvironmentVariable(variables))
+            {
+                var settingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict, null);
+                var initializationHostService = new LinuxContainerInitializationHostService(settingsManagerMock.Object, _instanceManagerMock.Object, NullLoggerFactory.Instance);                
+                await initializationHostService.StartAsync(CancellationToken.None);
+                settingsManagerMock.Verify(settingsManager => settingsManager.GetSetting(It.IsAny<string>()), Times.Never);
+            }
         }
 
         [Fact]

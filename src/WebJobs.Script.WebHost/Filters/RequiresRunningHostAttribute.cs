@@ -64,32 +64,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 // If the host is not ready, we'll wait a bit for it to initialize.
                 // This might happen if http requests come in while the host is starting
                 // up for the first time, or if it is restarting.
-                await DelayUntilHostReady(_hostManager, TimeoutSeconds, PollingIntervalMilliseconds);
+                bool hostReady = await _hostManager.DelayUntilHostReady(TimeoutSeconds, PollingIntervalMilliseconds);
 
-                await next();
-            }
-
-            internal static async Task<bool> DelayUntilHostReady(IScriptHostManager hostManager, int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds, bool throwOnFailure = true)
-            {
-                bool CanInvoke()
-                {
-                    return hostManager.State == ScriptHostState.Running || hostManager.State == ScriptHostState.Initialized;
-                }
-
-                await Utility.DelayAsync(timeoutSeconds, pollingIntervalMilliseconds, () =>
-                {
-                    return !CanInvoke() &&
-                            hostManager.State != ScriptHostState.Error;
-                });
-
-                bool hostReady = CanInvoke();
-
-                if (throwOnFailure && !hostReady)
+                if (!hostReady)
                 {
                     throw new HttpException(HttpStatusCode.ServiceUnavailable, "Function host is not running.");
                 }
 
-                return hostReady;
+                await next();
             }
         }
     }

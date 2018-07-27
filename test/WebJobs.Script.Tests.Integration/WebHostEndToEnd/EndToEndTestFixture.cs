@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         protected EndToEndTestFixture(string rootPath, string testId, string extensionName = null, string extensionVersion = null)
         {
             FixtureId = testId;
-            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+            string connectionString = Environment.GetEnvironmentVariable(ConnectionStringNames.Storage);
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
 
             QueueClient = storageAccount.CreateCloudQueueClient();

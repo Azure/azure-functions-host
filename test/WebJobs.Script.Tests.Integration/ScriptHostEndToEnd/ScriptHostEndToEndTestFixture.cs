@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             _settingsManager = ScriptSettingsManager.Instance;
             FixtureId = testId;
-            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+            string connectionString = Environment.GetEnvironmentVariable(ConnectionStringNames.Storage);
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             QueueClient = storageAccount.CreateCloudQueueClient();
             BlobClient = storageAccount.CreateCloudBlobClient();
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             RequestConfiguration = new HttpConfiguration();
 
             EventManager = new ScriptEventManager();
-            ScriptHostEnvironmentMock = new Mock<IScriptHostEnvironment>();
+            ScriptJobHostEnvironmentMock = new Mock<IScriptJobHostEnvironment>();
             LoggerProvider = new TestLoggerProvider();
             ILoggerProviderFactory loggerProviderFactory = new TestLoggerProviderFactory(LoggerProvider);
 
@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestLoggerProvider LoggerProvider { get; }
 
-        public Mock<IScriptHostEnvironment> ScriptHostEnvironmentMock { get; }
+        public Mock<IScriptJobHostEnvironment> ScriptJobHostEnvironmentMock { get; }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
 

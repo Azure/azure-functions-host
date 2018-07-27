@@ -5,6 +5,7 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -23,20 +24,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private const string WarmUpAlternateRoute = "CSharpHttpWarmup";
         private static object _syncLock = new object();
 
-        public static async Task<HttpResponseMessage> WarmUp(HttpRequest request, WebScriptHostManager scriptHostManager)
+        public static async Task<HttpResponseMessage> WarmUp(HttpRequest request, IScriptHostManager scriptHostManager)
         {
             if (request.Query.TryGetValue("restart", out StringValues value) && string.Compare("1", value) == 0)
             {
-                scriptHostManager.RestartHost();
+                await scriptHostManager.RestartHostAsync(CancellationToken.None);
+
+                // This call is here for sanity, but we should be fully initialized.
                 await scriptHostManager.DelayUntilHostReady();
             }
 
             return new HttpResponseMessage(HttpStatusCode.OK);
         }
 
-        public static bool IsWarmUpRequest(HttpRequest request)
+        public static bool IsWarmUpRequest(HttpRequest request, IScriptWebHostEnvironment webHostEnvironment)
         {
-            return WebScriptHostManager.InStandbyMode &&
+            return webHostEnvironment.InStandbyMode &&
                 ((ScriptSettingsManager.Instance.IsAppServiceEnvironment && request.IsAntaresInternalRequest()) || EnvironmentUtility.IsLinuxContainerEnvironment) &&
                 (request.Path.StartsWithSegments(new PathString($"/api/{WarmUpFunctionName}")) ||
                 request.Path.StartsWithSegments(new PathString($"/api/{WarmUpAlternateRoute}")));

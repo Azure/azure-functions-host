@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly ScriptHostOptions _scriptOptions;
         private readonly IScriptEventManager _eventManager;
-        private readonly IScriptHostEnvironment _scriptEnvironment;
+        private readonly IScriptJobHostEnvironment _scriptEnvironment;
         private readonly string _hostLogPath;
         private readonly ILogger _logger;
         private readonly IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private bool _shutdownScheduled;
         private bool _disposed = false;
 
-        public FileMonitoringService(IOptions<ScriptHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager, IScriptHostEnvironment scriptEnvironment)
+        public FileMonitoringService(IOptions<ScriptHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager, IScriptJobHostEnvironment scriptEnvironment)
         {
             _scriptOptions = scriptOptions.Value;
             _eventManager = eventManager;

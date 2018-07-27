@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void AssemblyChange_TriggersEnvironmentShutdown()
         {
             var manualResetEvent = new ManualResetEvent(false);
-            _fixture.ScriptHostEnvironmentMock.Setup(e => e.Shutdown())
+            _fixture.ScriptJobHostEnvironmentMock.Setup(e => e.Shutdown())
                 .Callback(() => manualResetEvent.Set());
 
             string sourceFile = TestFixture.SharedAssemblyPath;

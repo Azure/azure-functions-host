@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 
@@ -44,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .UseStartup<Startup>()
                 .ConfigureServices(services =>
                 {
-                    services.Replace(new ServiceDescriptor(typeof(ScriptWebHostOptions), _hostOptions));
+                    services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptWebHostOptions>), new OptionsWrapper<ScriptWebHostOptions>(_hostOptions)));
                     services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestLoggerProviderFactory(_loggerProvider, includeDefaultLoggerProviders: false)));
                     services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
                 }));
@@ -53,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpClient.BaseAddress = new Uri("https://localhost/");
         }
 
-        public ScriptHostOptions ScriptOptions => _testServer.Host.Services.GetService<WebHostResolver>().GetScriptHostConfiguration(_hostOptions);
+        public ScriptHostOptions ScriptOptions => _testServer.Host.Services.GetService<IOptions<ScriptHostOptions>>().Value;
 
         public ISecretManager SecretManager => _testServer.Host.Services.GetService<ISecretManager>();
 

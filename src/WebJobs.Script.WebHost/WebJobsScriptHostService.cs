@@ -47,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public ScriptHostState State { get; private set; }
 
+        public Exception LastError { get; private set; }
+
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             _startupLoopTokenSource = new CancellationTokenSource();
@@ -81,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 _host = BuildHost();
                 await _host.StartAsync(cancellationToken);
+                LastError = null;
             }
             catch (OperationCanceledException)
             {
@@ -88,8 +91,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (Exception exc)
             {
+                LastError = exc;
                 State = ScriptHostState.Error;
-                //LastError = ex;
                 attemptCount++;
 
                 var hostLoggerFactory = _host.Services.GetService<ILoggerFactory>();
@@ -200,6 +203,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HttpInitializationService>());
                 s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
             });
+
+            // If there is a script host builder registered, allow it to configure
+            // the host builder
+            var scriptBuilder = _rootServiceProvider.GetService<IScriptHostBuilder>();
+            scriptBuilder?.Configure(builder);
 
             return builder.Build();
         }

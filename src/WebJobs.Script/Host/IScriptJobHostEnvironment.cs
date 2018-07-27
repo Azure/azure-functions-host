@@ -9,15 +9,18 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public interface IScriptHostEnvironment
+    /// <summary>
+    /// Allows consumers to perform operations against the Job Host environment.
+    /// </summary>
+    public interface IScriptJobHostEnvironment
     {
         /// <summary>
-        /// Restarts the <see cref="ScriptHost"/>.
+        /// Restarts the <see cref="IScriptJobHost"/>.
         /// </summary>
         void RestartHost();
 
         /// <summary>
-        /// Stops the <see cref="ScriptHost"/> and shuts down the hosting environment.
+        /// Stops the <see cref="IScriptJobHost"/> and shuts down the hosting environment.
         /// </summary>
         void Shutdown();
     }

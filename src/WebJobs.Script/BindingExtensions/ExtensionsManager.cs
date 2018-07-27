@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Build.Construction;
 using Microsoft.Build.Evaluation;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.ScriptConstants;
 using static Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment;
 
@@ -28,11 +29,11 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
         private readonly ILogger _logger;
         private string _nugetFallbackPath;
 
-        public ExtensionsManager(string scriptRootPath, ILogger logger, string nugetFallbackPath = null)
+        public ExtensionsManager(IOptions<ScriptHostOptions> hostOptions, ILogger logger)
         {
-            _scriptRootPath = scriptRootPath;
+            _scriptRootPath = hostOptions.Value.RootScriptPath;
+            _nugetFallbackPath = hostOptions.Value.NugetFallBackPath;
             _logger = logger;
-            _nugetFallbackPath = nugetFallbackPath;
         }
 
         internal string ProjectPath => Path.Combine(_scriptRootPath, ExtensionsProjectFileName);

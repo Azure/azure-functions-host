@@ -24,18 +24,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly ILogger _logger;
         private readonly ScriptSettingsManager _settingsManager;
         private readonly HttpClient _client;
+        private readonly IScriptWebHostEnvironment _webHostEnvironment;
 
-        public InstanceManager(ScriptSettingsManager settingsManager, IOptions<ScriptWebHostOptions> webHostSettings, ILoggerFactory loggerFactory, HttpClient client)
+        public InstanceManager(ScriptSettingsManager settingsManager, IOptions<ScriptWebHostOptions> webHostSettings, ILoggerFactory loggerFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment)
         {
             _settingsManager = settingsManager;
             _webHostSettings = webHostSettings.Value;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _client = client;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         public bool StartAssignment(HostAssignmentContext context)
         {
-            if (!WebScriptHostManager.InStandbyMode)
+            if (!_webHostEnvironment.InStandbyMode)
             {
                 _logger.LogError("Assign called while host is not in placeholder mode");
                 return false;
@@ -96,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // has been initiated, so setting this flag here is sufficient to ensure
                 // that any subsequent incoming requests while the assign is in progress
                 // will be delayed until complete
-                WebScriptHostManager.DelayRequests = true;
+                _webHostEnvironment.DelayRequests();
 
                 // first make all environment and file system changes required for
                 // the host to be specialized
@@ -115,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             finally
             {
-                WebScriptHostManager.DelayRequests = false;
+                _webHostEnvironment.ResumeRequests();
             }
         }
 

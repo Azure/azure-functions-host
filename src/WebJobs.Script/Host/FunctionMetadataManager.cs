@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class FunctionMetadataManager : IFunctionMetadataManager
     {
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private readonly Dictionary<string, Collection<string>> _functionErrors = new Dictionary<string, Collection<string>>();
+        private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly Lazy<ImmutableArray<FunctionMetadata>> _metadata;
         private readonly IOptions<ScriptHostOptions> _scriptOptions;
         private readonly ILogger _logger;
@@ -33,9 +33,9 @@ namespace Microsoft.Azure.WebJobs.Script
             _metadata = new Lazy<ImmutableArray<FunctionMetadata>>(LoadFunctionMetadata);
         }
 
-        public ImmutableArray<FunctionMetadata> FunctionMetadata => _metadata.Value;
+        public ImmutableArray<FunctionMetadata> Functions => _metadata.Value;
 
-        public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
+        public ImmutableDictionary<string, ImmutableArray<string>> Errors
             => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
         /// <summary>
@@ -49,9 +49,9 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         internal static Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<string> functionDirectories, ICollection<string> functionsWhiteList,
-            ILogger logger, Dictionary<string, Collection<string>> functionErrors = null, IFileSystem fileSystem = null)
+            ILogger logger, Dictionary<string, ICollection<string>> functionErrors = null, IFileSystem fileSystem = null)
         {
-            functionErrors = functionErrors ?? new Dictionary<string, Collection<string>>();
+            functionErrors = functionErrors ?? new Dictionary<string, ICollection<string>>();
 
             var functions = new Collection<FunctionMetadata>();
 
@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return ReadFunctionsMetadata(options.RootScriptDirectorySnapshot, options.Functions, _logger, _functionErrors);
         }
 
-        internal static FunctionMetadata ReadFunctionMetadata(string scriptDir, ICollection<string> functionsWhiteList, Dictionary<string, Collection<string>> functionErrors, IFileSystem fileSystem = null)
+        internal static FunctionMetadata ReadFunctionMetadata(string scriptDir, ICollection<string> functionsWhiteList, Dictionary<string, ICollection<string>> functionErrors, IFileSystem fileSystem = null)
         {
             string functionName = null;
 

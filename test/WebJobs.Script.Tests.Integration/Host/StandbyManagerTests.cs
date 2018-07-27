@@ -16,12 +16,14 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
+using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -51,8 +53,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void IsWarmUpRequest_ReturnsExpectedValue()
         {
+            var environment = new ScriptWebHostEnvironment();
             var request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
-            Assert.False(StandbyManager.IsWarmUpRequest(request));
+            Assert.False(StandbyManager.IsWarmUpRequest(request, environment));
 
             var vars = new Dictionary<string, string>
             {
@@ -60,26 +63,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, null }
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
-            {
-                // in this test we're forcing a transition from non-placeholder mode to placeholder mode
-                // which can't happen in the wild, so we force a reset here
-                WebScriptHostManager.ResetStandbyMode();
+            {   
+                // Get a new instance of the host environemnt, which
+                // will reset the standby flag.
+                environment = new ScriptWebHostEnvironment();
 
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-                Assert.False(StandbyManager.IsWarmUpRequest(request));
+                Assert.False(StandbyManager.IsWarmUpRequest(request, environment));
 
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId, "12345");
-                Assert.True(StandbyManager.IsWarmUpRequest(request));
+                Assert.True(StandbyManager.IsWarmUpRequest(request, environment));
 
                 request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/csharphttpwarmup");
-                Assert.True(StandbyManager.IsWarmUpRequest(request));
+                Assert.True(StandbyManager.IsWarmUpRequest(request, environment));
 
                 request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
                 request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, "xyz123");
-                Assert.False(StandbyManager.IsWarmUpRequest(request));
+                Assert.False(StandbyManager.IsWarmUpRequest(request, environment));
 
                 request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/foo");
-                Assert.False(StandbyManager.IsWarmUpRequest(request));
+                Assert.False(StandbyManager.IsWarmUpRequest(request, environment));
             }
 
             vars = new Dictionary<string, string>
@@ -89,15 +92,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
-                WebScriptHostManager.ResetStandbyMode();
+                // Get a new instance of the host environemnt, which
+                // will reset the standby flag.
+                environment = new ScriptWebHostEnvironment();
 
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-                Assert.False(StandbyManager.IsWarmUpRequest(request));
+                Assert.False(StandbyManager.IsWarmUpRequest(request, environment));
 
                 request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
                 _settingsManager.SetSetting(EnvironmentSettingNames.ContainerName, "TestContainer");
                 Assert.True(EnvironmentUtility.IsLinuxContainerEnvironment);
-                Assert.True(StandbyManager.IsWarmUpRequest(request));
+                Assert.True(StandbyManager.IsWarmUpRequest(request, environment));
             }
         }
 
@@ -124,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                 ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
 
-                Assert.False(WebScriptHostManager.InStandbyMode);
+                Assert.False(new ScriptWebHostEnvironment().InStandbyMode);
                 Assert.True(ScriptSettingsManager.Instance.ContainerReady);
 
                 _httpServer.Dispose();
@@ -149,8 +154,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
                 Assert.Equal(1, logLines.Count(p => p.Contains($"Starting Host (HostId={_expectedHostId}")));
                 Assert.Contains("Generating 0 job function(s)", logLines);
-
-                WebScriptHostManager.ResetStandbyMode();
             }
         }
 
@@ -199,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 response = await _httpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-                Assert.False(WebScriptHostManager.InStandbyMode);
+                Assert.False(new ScriptWebHostEnvironment().InStandbyMode);
                 Assert.True(ScriptSettingsManager.Instance.ContainerReady);
 
                 // verify warmup function no longer there
@@ -234,8 +237,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Equal("Dynamic", coldStartData["sku"]);
                 Assert.True((int)coldStartData["dispatchDuration"] > 0);
                 Assert.True((int)coldStartData["functionDuration"] > 0);
-
-                WebScriptHostManager.ResetStandbyMode();
             }
         }
 
@@ -282,8 +283,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Starting Host (HostId=placeholder-host")));
             Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Host is in standby mode")));
 
-            var hostConfig = WebHostResolver.CreateScriptHostConfiguration(_webHostOptions, true);
-            _expectedHostId = hostConfig.HostConfig.HostId;
+            var hostConfig = _webHostOptions.ToScriptHostConfiguration(true);
+            // TODO: DI (FACAVAL) Review
+            // _expectedHostId = hostConfig.HostConfig.HostId;
         }
 
         private async Task Assign(string encryptionKey)
@@ -356,7 +358,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private static async Task<Uri> CreateBlobSas(string filePath, string blobContainer, string blobName)
         {
-            string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
+            string connectionString = Environment.GetEnvironmentVariable(ConnectionStringNames.Storage);
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             var blobClient = storageAccount.CreateCloudBlobClient();
             var container = blobClient.GetContainerReference(blobContainer);
@@ -399,7 +401,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, string.Empty);
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, string.Empty);
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, null);
-            WebScriptHostManager.ResetStandbyMode();
         }
     }
 }

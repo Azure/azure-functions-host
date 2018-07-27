@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public WebFunctionsManager(IOptions<ScriptWebHostOptions> webSettings, ILoggerFactory loggerFactory, HttpClient client)
         {
-            _config = WebHostResolver.CreateScriptHostConfiguration(webSettings.Value);
+            _config = webSettings.Value.ToScriptHostConfiguration();
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryKeysController);
             _client = client;
         }
@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             // TODO: DI (FACAVAL) Follow up with ahmels - Since loading of function metadata is no longer tied to the script host, we
             // should be able to inject an IFunctionMedatadaManager here and bypass this step.
-            var functionMetadata = FunctionMetadataManager.ReadFunctionMetadata(Path.Combine(_config.RootScriptPath, name), null, new Dictionary<string, Collection<string>>(), fileSystem: FileUtility.Instance);
+            var functionMetadata = FunctionMetadataManager.ReadFunctionMetadata(Path.Combine(_config.RootScriptPath, name), null, new Dictionary<string, ICollection<string>>(), fileSystem: FileUtility.Instance);
             if (functionMetadata != null)
             {
                 return (true, await functionMetadata.ToFunctionMetadataResponse(request, _config, router));

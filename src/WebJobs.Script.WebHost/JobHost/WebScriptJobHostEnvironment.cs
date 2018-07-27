@@ -10,14 +10,14 @@ using Microsoft.AspNetCore.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public class WebScriptHostEnvironment : IScriptHostEnvironment
+    public class WebScriptJobHostEnvironment : IScriptJobHostEnvironment
     {
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly IScriptHostManager _hostManager;
         private int _shutdownRequested;
         private int _restartRequested;
 
-        public WebScriptHostEnvironment(IApplicationLifetime applicationLifetime, IScriptHostManager hostManager)
+        public WebScriptJobHostEnvironment(IApplicationLifetime applicationLifetime, IScriptHostManager hostManager)
         {
             _applicationLifetime = applicationLifetime ?? throw new ArgumentNullException(nameof(applicationLifetime));
             _hostManager = hostManager ?? throw new ArgumentNullException(nameof(hostManager));

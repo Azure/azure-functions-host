@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -282,11 +283,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                .UseStartup<Startup>()
                .ConfigureServices(services =>
                {
-                   services.Replace(new ServiceDescriptor(typeof(ScriptWebHostOptions), HostOptions));
+                   services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptWebHostOptions>), new OptionsWrapper<ScriptWebHostOptions>(HostOptions)));
                    services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
                }));
 
-                var scriptConfig = _testServer.Host.Services.GetService<WebHostResolver>().GetScriptHostConfiguration(HostOptions);
+                var scriptConfig = _testServer.Host.Services.GetService<IOptions<ScriptHostOptions>>().Value;
 
                 HttpClient = _testServer.CreateClient();
                 HttpClient.BaseAddress = new Uri("https://localhost/");

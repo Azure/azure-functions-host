@@ -347,7 +347,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var tempDirectory = new TempDirectory())
             {
-                var environmentMock = new Mock<IScriptHostEnvironment>();
+                var environmentMock = new Mock<IScriptJobHostEnvironment>();
 
                 // Create the invoker dependencies and setup the appropriate method to throw the exception
                 RunDependencies dependencies = CreateDependencies(environment: environmentMock.Object);
@@ -385,7 +385,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private RunDependencies CreateDependencies(IScriptHostEnvironment environment = null)
+        private RunDependencies CreateDependencies(IScriptJobHostEnvironment environment = null)
         {
             var dependencies = new RunDependencies();
 

@@ -9,5 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public interface IScriptJobHost : IJobHost
     {
         ICollection<FunctionDescriptor> Functions { get; }
+
+        IDictionary<string, ICollection<string>> FunctionErrors { get; }
     }
 }
