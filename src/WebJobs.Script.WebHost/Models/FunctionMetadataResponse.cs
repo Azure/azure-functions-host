@@ -47,6 +47,12 @@ namespace Microsoft.Azure.WebJobs.Script.Management.Models
         public Uri Href { get; set; }
 
         /// <summary>
+        /// Gets or sets httptrigger invoke url
+        /// </summary>
+        [JsonProperty(PropertyName = "httptrigger_invoke_url")]
+        public Uri HttpTriggerInvokeUrl { get; set; }
+
+        /// <summary>
         /// Gets or sets function config json
         /// </summary>
         [JsonProperty(PropertyName = "config")]
