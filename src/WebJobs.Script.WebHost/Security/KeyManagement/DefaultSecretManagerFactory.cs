@@ -26,6 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         public ISecretManager Create()
-            => new SecretManager(_settingsManager, _secretsRepository, _logger);
+            => new SecretManager(_secretsRepository, _logger);
     }
 }

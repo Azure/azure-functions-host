@@ -14,9 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
     public class WebScriptHostConfigurationSource : IConfigurationSource
     {
+        public bool IsAppServiceEnvironment { get; set; }
+
+        public bool IsLinuxContainerEnvironment { get; set; }
+
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
-            return new WebScriptHostConfigurationProvider();
+            return new WebScriptHostConfigurationProvider(this);
         }
 
         private class WebScriptHostConfigurationProvider : ConfigurationProvider
@@ -28,11 +32,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             private const string SelfHostProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptWebHostOptions.IsSelfHost);
             private const string WebHostScriptPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptWebHostOptions.ScriptPath);
 
+            private readonly WebScriptHostConfigurationSource _configurationSource;
+
+            public WebScriptHostConfigurationProvider(WebScriptHostConfigurationSource configurationSource)
+            {
+                _configurationSource = configurationSource ?? throw new ArgumentNullException(nameof(configurationSource));
+            }
+
             public override void Load()
             {
-                Data[SelfHostProperty] = (EnvironmentUtility.IsAppServiceEnvironment && !EnvironmentUtility.IsLinuxContainerEnvironment).ToString();
+                Data[SelfHostProperty] = (_configurationSource.IsAppServiceEnvironment && !_configurationSource.IsLinuxContainerEnvironment).ToString();
 
-                if (EnvironmentUtility.IsAppServiceEnvironment)
+                if (_configurationSource.IsAppServiceEnvironment)
                 {
                     // Running in App Service
                     string home = GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);

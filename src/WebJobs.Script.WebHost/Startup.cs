@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             Configuration = configuration;
 
-            if (EnvironmentUtility.IsLinuxContainerEnvironment)
+            if (SystemEnvironment.Instance.IsLinuxContainerEnvironment())
             {
                 // Linux containers always start out in placeholder mode
                 ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");

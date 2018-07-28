@@ -15,23 +15,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly bool _encryptionSupported;
         private static readonly PlaintextKeyValueConverter PlaintextValueConverter = new PlaintextKeyValueConverter(FileAccess.ReadWrite);
-        private static ScriptSettingsManager _settingsManager;
 
-        public DefaultKeyValueConverterFactory(ScriptSettingsManager settingsManager)
+        public DefaultKeyValueConverterFactory()
         {
-            _settingsManager = settingsManager;
             _encryptionSupported = IsEncryptionSupported();
         }
 
         private static bool IsEncryptionSupported()
         {
-            if (EnvironmentUtility.IsLinuxContainerEnvironment)
+            if (SystemEnvironment.Instance.IsLinuxContainerEnvironment())
             {
                 // TEMP: https://github.com/Azure/azure-functions-host/issues/3035
                 return false;
             }
 
-            return EnvironmentUtility.IsAppServiceEnvironment || _settingsManager.GetSetting(AzureWebsiteLocalEncryptionKey) != null;
+            return SystemEnvironment.Instance.IsAppServiceEnvironment() ||
+                SystemEnvironment.Instance.GetEnvironmentVariable(AzureWebsiteLocalEncryptionKey) != null;
         }
 
         public IKeyValueReader GetValueReader(Key key)

@@ -24,12 +24,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
     {
         private const string Containerstartcontexturi = "https://containerstartcontexturi";
         private readonly Mock<IInstanceManager> _instanceManagerMock;
+        private readonly Mock<IEnvironment> _environment;
         private readonly LinuxContainerInitializationHostService _initializationHostService;
 
         public LinuxContainerInitializationHostServiceTests()
         {
             _instanceManagerMock = new Mock<IInstanceManager>(MockBehavior.Strict);
-            _initializationHostService = new LinuxContainerInitializationHostService(new ScriptSettingsManager(), _instanceManagerMock.Object, NullLoggerFactory.Instance);
+            _environment = new Mock<IEnvironment>(MockBehavior.Strict);
+            _initializationHostService = new LinuxContainerInitializationHostService(_environment.Object, _instanceManagerMock.Object, NullLoggerFactory.Instance);
         }
 
         [Fact]
@@ -42,10 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             };
             using (new TestScopedEnvironmentVariable(variables))
             {
-                var settingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict, null);
-                var initializationHostService = new LinuxContainerInitializationHostService(settingsManagerMock.Object, _instanceManagerMock.Object, NullLoggerFactory.Instance);                
+                var environmentMock = new Mock<IEnvironment>(MockBehavior.Strict, null);
+                var initializationHostService = new LinuxContainerInitializationHostService(environmentMock.Object, _instanceManagerMock.Object, NullLoggerFactory.Instance);                
                 await initializationHostService.StartAsync(CancellationToken.None);
-                settingsManagerMock.Verify(settingsManager => settingsManager.GetSetting(It.IsAny<string>()), Times.Never);
+                environmentMock.Verify(settingsManager => settingsManager.GetEnvironmentVariable(It.IsAny<string>()), Times.Never);
             }
         }
 

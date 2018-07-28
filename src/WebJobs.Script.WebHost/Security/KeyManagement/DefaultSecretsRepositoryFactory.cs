@@ -18,17 +18,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IOptions<ScriptWebHostOptions> _webHostOptions;
         private readonly IOptions<ScriptHostOptions> _scriptHostOptions;
         private readonly IConnectionStringProvider _connectionStringProvider;
+        private readonly IEnvironment _environment;
         private readonly ILogger<DefaultSecretsRepositoryFactory> _logger;
 
         public DefaultSecretsRepositoryFactory(IOptions<ScriptWebHostOptions> webHostOptions,
             IOptions<ScriptHostOptions> scriptHostOptions,
             IConnectionStringProvider connectionStringProvider,
+            IEnvironment environment,
             ILogger<DefaultSecretsRepositoryFactory> logger)
         {
             _webHostOptions = webHostOptions ?? throw new ArgumentNullException(nameof(webHostOptions));
             _scriptHostOptions = scriptHostOptions ?? throw new ArgumentNullException(nameof(scriptHostOptions));
             _connectionStringProvider = connectionStringProvider ?? throw new ArgumentNullException(nameof(connectionStringProvider));
-            _logger = logger;
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public ISecretsRepository Create()
@@ -38,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (secretStorageType != null && secretStorageType.Equals("Blob", StringComparison.OrdinalIgnoreCase) && storageString != null)
             {
                 // TODO: DI (FACAVAL) Review
-                string siteSlotName = Environment.GetEnvironmentVariable(EnvironmentUtility.AzureWebsiteUniqueSlotName) ?? "testid"; //config.HostConfig.HostId;
+                string siteSlotName = _environment.GetEnvironmentVariable(_environment.GetAzureWebsiteUniqueSlotName()) ?? "testid"; //config.HostConfig.HostId;
                 return new BlobStorageSecretsMigrationRepository(Path.Combine(_webHostOptions.Value.SecretsPath, "Sentinels"), storageString, siteSlotName, _logger);
             }
             else

@@ -47,7 +47,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
 
                     config.Add(new ScriptEnvironmentVariablesConfigurationSource());
-                    config.Add(new WebScriptHostConfigurationSource());
+
+                    config.Add(new WebScriptHostConfigurationSource
+                    {
+                        IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppServiceEnvironment(),
+                        IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsLinuxContainerEnvironment()
+                    });
                 })
                 .ConfigureLogging(b => b.ClearProviders())
                 .UseStartup<Startup>();
