@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
                 services.AddSingleton<IScriptEventManager, ScriptEventManager>();
                 services.AddSingleton<IScriptJobHostEnvironment, WebScriptJobHostEnvironment>();
+                services.AddSingleton<IEnvironment>(SystemEnvironment.Instance);
                 services.AddTransient<IExtensionsManager, ExtensionsManager>();
 
                 // Script binding providers

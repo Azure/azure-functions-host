@@ -31,8 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// </summary>
         public virtual bool IsAppServiceEnvironment => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId));
 
-        public bool IsRemoteDebuggingEnabled => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.RemoteDebuggingPort));
-
         public virtual bool IsZipDeployment => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteZipDeployment));
 
         public virtual bool ContainerReady => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady));

@@ -3,11 +3,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class NullScriptHostEnvironment : IScriptJobHostEnvironment
     {

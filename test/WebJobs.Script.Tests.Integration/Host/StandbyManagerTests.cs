@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
                 _settingsManager.SetSetting(EnvironmentSettingNames.ContainerName, "TestContainer");
-                Assert.True(EnvironmentUtility.IsLinuxContainerEnvironment);
+                Assert.True(SystemEnvironment.Instance.IsLinuxContainerEnvironment());
                 Assert.True(StandbyManager.IsWarmUpRequest(request, environment));
             }
         }

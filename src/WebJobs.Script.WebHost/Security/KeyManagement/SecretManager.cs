@@ -27,8 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
         }
 
-        public SecretManager(ScriptSettingsManager settingsManager, ISecretsRepository repository, ILogger logger, bool createHostSecretsIfMissing = false)
-            : this(repository, new DefaultKeyValueConverterFactory(settingsManager), logger, createHostSecretsIfMissing)
+        public SecretManager(ISecretsRepository repository, ILogger logger, bool createHostSecretsIfMissing = false)
+            : this(repository, new DefaultKeyValueConverterFactory(), logger, createHostSecretsIfMissing)
         {
         }
 

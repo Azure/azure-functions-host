@@ -23,8 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 {
     public class SecretManagerTests
     {
-        private ScriptSettingsManager _settingsManager = new ScriptSettingsManager();
-
         [Fact]
         public async Task MergedSecrets_PrioritizesFunctionSecrets()
         {
@@ -70,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 IDictionary<string, string> result;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(_settingsManager, repository, NullLogger.Instance))
+                using (var secretManager = new SecretManager(repository, NullLogger.Instance))
                 {
                     result = await secretManager.GetFunctionSecretsAsync("testfunction", true);
                 }
@@ -575,7 +573,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 IDictionary<string, string> functionSecrets;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
 
-                using (var secretManager = new SecretManager(_settingsManager, repository, logger))
+                using (var secretManager = new SecretManager(repository, logger))
                 {
                     InvalidOperationException ioe = null;
                     try
@@ -591,17 +589,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                             }
 
                             string hostName = "test" + (i % 2).ToString();
-                            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHostName, hostName);
-                            functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
+                            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, hostName))
+                            {
+                                functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
+                            }
                         }
                     }
                     catch (InvalidOperationException ex)
                     {
                         ioe = ex;
-                    }
-                    finally
-                    {
-                        _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHostName, null);
                     }
                 }
 
@@ -632,7 +628,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 HostSecretsInfo hostSecrets = null;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
 
-                using (var secretManager = new SecretManager(_settingsManager, repository, null))
+                using (var secretManager = new SecretManager(repository, null))
                 {
                     await Task.WhenAll(
                         Task.Run(async () =>
@@ -652,7 +648,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     Assert.Equal(hostSecrets.MasterKey, "1234");
                 }
 
-                using (var secretManager = new SecretManager(_settingsManager, repository, null))
+                using (var secretManager = new SecretManager(repository, null))
                 {
                     await Assert.ThrowsAsync<IOException>(async () =>
                     {
@@ -701,7 +697,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 IDictionary<string, string> functionSecrets = null;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(_settingsManager, repository, null))
+                using (var secretManager = new SecretManager(repository, null))
                 {
                     await Task.WhenAll(
                         Task.Run(async () =>
@@ -721,7 +717,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     Assert.Equal(functionSecrets["Key1"], "FunctionValue1");
                 }
 
-                using (var secretManager = new SecretManager(_settingsManager, repository, null))
+                using (var secretManager = new SecretManager(repository, null))
                 {
                     await Assert.ThrowsAsync<IOException>(async () =>
                     {
