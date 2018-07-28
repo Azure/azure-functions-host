@@ -10,18 +10,18 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
-    internal class ScriptHostScopedResolver : IDisposable
+    internal class ScopedResolver : IDisposable
     {
-        public ScriptHostScopedResolver(IContainer resolver, bool isRootResolver = false)
+        public ScopedResolver(IContainer resolver, bool isRootResolver = false)
         {
             Container = resolver ?? throw new ArgumentNullException(nameof(resolver));
             IsRootResolver = isRootResolver;
-            ChildScopes = new HashSet<ScriptHostServiceScope>();
+            ChildScopes = new HashSet<ServiceScope>();
         }
 
         public IContainer Container { get; }
 
-        public HashSet<ScriptHostServiceScope> ChildScopes { get; }
+        public HashSet<ServiceScope> ChildScopes { get; }
 
         public bool IsRootResolver { get; }
 
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 });
         }
 
-        internal ScriptHostServiceScope CreateChildScope(IServiceScopeFactory rootScopeFactory)
+        internal ServiceScope CreateChildScope(IServiceScopeFactory rootScopeFactory)
         {
             var scopedRoot = rootScopeFactory.CreateScope();
             Container scopedContext = Container.OpenScope() as Container;
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                   return new DelegateFactory(_ => scopedRoot.ServiceProvider.GetService(request.ServiceType));
               }));
 
-            var scope = new ScriptHostServiceScope(resolver, scopedRoot);
+            var scope = new ServiceScope(resolver, scopedRoot);
             ChildScopes.Add(scope);
 
             scope.DisposalTask.ContinueWith(t => ChildScopes.Remove(scope));

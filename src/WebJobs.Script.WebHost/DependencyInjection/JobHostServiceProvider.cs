@@ -13,7 +13,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
-    public class ScriptHostServiceProvider : IServiceProvider, IServiceScopeFactory, ISupportRequiredService, IDisposable
+    public class JobHostServiceProvider : IServiceProvider, IServiceScopeFactory, ISupportRequiredService, IDisposable
     {
         private const string ScriptJobHostScope = "scriptjobhost";
 
@@ -21,9 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         private readonly IServiceProvider _rootProvider;
         private readonly IServiceScopeFactory _rootScopeFactory;
         private readonly Container _container;
-        private ScriptHostScopedResolver _currentResolver;
+        private ScopedResolver _currentResolver;
 
-        static ScriptHostServiceProvider()
+        static JobHostServiceProvider()
         {
             _defaultContainerRules = Rules.Default
                 .With(FactoryMethod.ConstructorWithResolvableArguments)
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .WithTrackingDisposableTransients();
         }
 
-        public ScriptHostServiceProvider(IServiceCollection descriptors, IServiceProvider rootProvider, IServiceScopeFactory rootScopeFactory)
+        public JobHostServiceProvider(IServiceCollection descriptors, IServiceProvider rootProvider, IServiceScopeFactory rootScopeFactory)
         {
             if (descriptors == null)
             {
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             _rootScopeFactory = rootScopeFactory ?? throw new ArgumentNullException(nameof(rootScopeFactory));
 
             _container = BuildContainer(descriptors);
-            _currentResolver = new ScriptHostScopedResolver(_container);
+            _currentResolver = new ScopedResolver(_container);
         }
 
         public IServiceProvider ServiceProvider => throw new NotImplementedException();
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             container.Populate(descriptors);
             container.UseInstance<IServiceProvider>(this);
-            container.UseInstance<ScriptHostServiceProvider>(this);
+            container.UseInstance<JobHostServiceProvider>(this);
 
             return container;
         }

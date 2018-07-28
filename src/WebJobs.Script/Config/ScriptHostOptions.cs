@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.IO;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.Implementation;
 using Microsoft.Azure.WebJobs.Logging;
@@ -22,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script
             LogFilter = new LogCategoryFilter();
             HostHealthMonitor = new HostHealthMonitorConfiguration();
             InstanceId = Guid.NewGuid().ToString();
+            WatchDirectories = new Collection<string>();
         }
 
         /// <summary>

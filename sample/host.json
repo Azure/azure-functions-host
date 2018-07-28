@@ -1,5 +1,5 @@
 {
-    "watchDirectories": [ "Shared" ],
+    "watchDirectories": [ "Shared", "Test" ],
     "sendGrid": {
         "from": "Azure Functions <samples@functions.com>"
     },

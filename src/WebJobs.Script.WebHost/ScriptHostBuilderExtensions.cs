@@ -1,25 +1,80 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public static class ScriptHostBuilderExtensions
     {
-        public static IHostBuilder AddScriptHost(this IHostBuilder builder, IOptions<ScriptWebHostOptions> webHostOptions)
+        public static IHostBuilder AddScriptHost(this IHostBuilder builder, IServiceProvider rootServiceProvider,
+            IServiceScopeFactory rootScopeFactory, IOptions<ScriptWebHostOptions> webHostOptions)
+        {
+            // Host configuration
+            builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory))
+                .ConfigureLogging(b =>
+                {
+                    b.AddConsole(c => { c.DisableColors = false; });
+                    b.SetMinimumLevel(LogLevel.Trace);
+                    b.AddFilter(f => true);
+
+                    // TODO: DI (FACAVAL) Temporary - replace with proper logger factory using
+                    // job host configuration
+                    b.Services.AddSingleton<ILoggerFactory, CustomFactory>();
+
+                    b.Services.AddSingleton<ILoggerProvider, SystemLoggerProvider>();
+                    b.Services.AddSingleton<ILoggerProvider, HostFileLoggerProvider>();
+                    b.Services.AddSingleton<ILoggerProvider, FunctionFileLoggerProvider>();
+                })
+                .ConfigureServices(s =>
+                {
+                    s.AddSingleton<IHostLifetime, JobHostHostLifetime>();
+                })
+                .ConfigureAppConfiguration(c =>
+                {
+                    c.Add(new HostJsonFileConfigurationSource(webHostOptions));
+                });
+
+            // WebJobs configuration
+            builder.AddScriptHostCore(webHostOptions);
+
+            // HACK: Remove previous IHostedService registration
+            // TODO: DI (FACAVAL) Remove this and move HttpInitialization to webjobs configuration
+            builder.ConfigureServices(s =>
+            {
+                s.RemoveAll<IHostedService>();
+                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
+                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, JobHostService>());
+                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HttpInitializationService>());
+                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
+            });
+
+            // If there is a script host builder registered, allow it to configure
+            // the host builder
+            var scriptBuilder = rootServiceProvider.GetService<IScriptHostBuilder>();
+            scriptBuilder?.Configure(builder);
+
+            return builder;
+        }
+
+        public static IHostBuilder AddScriptHostCore(this IHostBuilder builder, IOptions<ScriptWebHostOptions> webHostOptions)
         {
             builder.ConfigureWebJobsHost(o =>
              {

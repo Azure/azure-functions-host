@@ -33,7 +33,7 @@ using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public static class WebJobsServiceCollectionExtensions
+    public static class WebHostServiceCollectionExtensions
     {
         public static IServiceCollection AddWebJobsScriptHostRouting(this IServiceCollection services)
         {
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Configuration
             services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<ScriptWebHostOptions>, ScriptWebHostOptionsSetup>());
-                    }
+        }
 
         // TODO: DI (FACAVAL) Removing this. We need to ensure system logs are properly written now when using the default provider.
         //private static ILoggerFactory CreateLoggerFactory(string hostInstanceId, ScriptSettingsManager settingsManager, IEventGenerator eventGenerator, WebHostSettings settings)

@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
@@ -32,7 +33,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static IHost CreateHost()
         {
             var host = new HostBuilder()
-                .ConfigureDefaultTestScriptHost(o => o.ScriptPath = Path.GetTempPath())
+                .ConfigureDefaultTestScriptHost(o =>
+                {
+                    o.ScriptPath = Path.GetTempPath();
+                    o.LogPath = Path.GetTempPath();
+                })
+                .ConfigureServices(s =>
+                {
+                    s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
+                })
                 .Build();
 
             return host;

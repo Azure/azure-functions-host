@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMiddleware<HttpExceptionMiddleware>();
             builder.UseMiddleware<ResponseBufferingMiddleware>();
             builder.UseMiddleware<HomepageMiddleware>();
-           // builder.UseMiddleware<FunctionInvocationMiddleware>();
+            builder.UseMiddleware<FunctionInvocationMiddleware>();
             builder.UseMiddleware<HostWarmupMiddleware>();
 
             builder.UseWhen(context => !context.Request.Path.StartsWithSegments("/admin"), config =>
