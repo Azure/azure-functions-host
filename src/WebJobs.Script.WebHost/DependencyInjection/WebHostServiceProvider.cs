@@ -8,13 +8,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
-    public class FunctionsServiceProvider : IServiceProvider, IServiceScopeFactory
+    public class WebHostServiceProvider : IServiceProvider, IServiceScopeFactory
     {
         private static readonly Rules _defaultContainerRules;
         private readonly Container _container;
-        private ScriptHostScopedResolver _currentResolver;
+        private ScopedResolver _currentResolver;
 
-        static FunctionsServiceProvider()
+        static WebHostServiceProvider()
         {
             _defaultContainerRules = Rules.Default
                 .With(FactoryMethod.ConstructorWithResolvableArguments)
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .WithTrackingDisposableTransients();
         }
 
-        public FunctionsServiceProvider(IServiceCollection descriptors)
+        public WebHostServiceProvider(IServiceCollection descriptors)
         {
             if (descriptors == null)
             {
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             _container.UseInstance<IServiceProvider>(this);
             _container.UseInstance<IServiceScopeFactory>(this);
 
-            _currentResolver = new ScriptHostScopedResolver(_container);
+            _currentResolver = new ScopedResolver(_container);
         }
 
         public object GetService(Type serviceType)
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public IServiceScope CreateScope()
         {
-            return new FunctionsServiceScope(_container.OpenScope());
+            return new JobHostServiceScope(_container.OpenScope());
         }
     }
 }

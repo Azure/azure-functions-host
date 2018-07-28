@@ -7,7 +7,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
-    public class ScriptHostLifetime : IHostLifetime
+    public class JobHostHostLifetime : IHostLifetime
     {
         public Task StopAsync(CancellationToken cancellationToken)
         {

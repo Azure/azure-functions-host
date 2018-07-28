@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
-    internal class FunctionsServiceProviderFactory : IServiceProviderFactory<IServiceCollection>
+    internal class WebHostServiceProviderFactory : IServiceProviderFactory<IServiceCollection>
     {
         public IServiceCollection CreateBuilder(IServiceCollection services)
         {
@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public IServiceProvider CreateServiceProvider(IServiceCollection services)
         {
-            return new FunctionsServiceProvider(services);
+            return new WebHostServiceProvider(services);
         }
     }
 }

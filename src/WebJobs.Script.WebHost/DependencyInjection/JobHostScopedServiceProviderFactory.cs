@@ -8,15 +8,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
     /// <summary>
     /// An <see cref="IServiceProviderFactory{TContainerBuilder}"/> implementation that creates
-    /// and populates an <see cref="ScriptHostServiceProvider"/> that can be used as the <see cref="IServiceProvider"/>
+    /// and populates an <see cref="JobHostServiceProvider"/> that can be used as the <see cref="IServiceProvider"/>
     /// </summary>
-    public class ScriptHostScopedServiceProviderFactory : IServiceProviderFactory<IServiceCollection>
+    public class JobHostScopedServiceProviderFactory : IServiceProviderFactory<IServiceCollection>
     {
         private readonly IServiceProvider _rootProvider;
         private readonly IServiceScopeFactory _rootScopeFactory;
-        private ScriptHostServiceProvider _provider;
+        private JobHostServiceProvider _provider;
 
-        public ScriptHostScopedServiceProviderFactory(IServiceProvider rootProvider, IServiceScopeFactory rootScopeFactory)
+        public JobHostScopedServiceProviderFactory(IServiceProvider rootProvider, IServiceScopeFactory rootScopeFactory)
         {
             _rootProvider = rootProvider ?? throw new ArgumentNullException(nameof(rootProvider));
             _rootScopeFactory = rootScopeFactory ?? throw new ArgumentNullException(nameof(rootScopeFactory));
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         {
             if (_provider == null)
             {
-                _provider = new ScriptHostServiceProvider(containerBuilder, _rootProvider, _rootScopeFactory);
+                _provider = new JobHostServiceProvider(containerBuilder, _rootProvider, _rootScopeFactory);
             }
 
             return _provider;

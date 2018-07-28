@@ -20,6 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public void Configure(ScriptHostOptions options)
         {
+            // Add the standard built in watched directories set to any the user may have specified
+            options.WatchDirectories.Add("node_modules");
+
             // Bind to all configuration properties
             IConfigurationSection jobHostSection = _configuration.GetSection(ConfigurationSectionNames.JobHost);
 

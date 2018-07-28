@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return Microsoft.AspNetCore.WebHost.CreateDefaultBuilder(args)
                 .ConfigureServices(services =>
                 {
-                   services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new FunctionsServiceProviderFactory()));
+                   services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
                 })
                 .ConfigureAppConfiguration((builderContext, config) =>
                 {
