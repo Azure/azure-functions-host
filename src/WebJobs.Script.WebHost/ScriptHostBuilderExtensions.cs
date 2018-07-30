@@ -29,21 +29,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             // Host configuration
             builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory))
-                .ConfigureLogging(b =>
+                .ConfigureLogging((context, loggingBuilder) =>
                 {
-                    b.AddConsole(c => { c.DisableColors = false; });
-                    b.SetMinimumLevel(LogLevel.Trace);
-                    b.AddFilter(f => true);
-
                     // TODO: DI (FACAVAL) Temporary - replace with proper logger factory using
                     // job host configuration
-                    b.Services.AddSingleton<ILoggerFactory, CustomFactory>();
+                    loggingBuilder.Services.AddSingleton<ILoggerFactory, CustomFactory>();
 
-                    b.Services.AddSingleton<ILoggerProvider, SystemLoggerProvider>();
-                    b.Services.AddSingleton<ILoggerProvider, HostFileLoggerProvider>();
-                    b.Services.AddSingleton<ILoggerProvider, FunctionFileLoggerProvider>();
+                    loggingBuilder.Services.AddSingleton<ILoggerProvider, SystemLoggerProvider>();
+                    loggingBuilder.Services.AddSingleton<ILoggerProvider, HostFileLoggerProvider>();
+                    loggingBuilder.Services.AddSingleton<ILoggerProvider, FunctionFileLoggerProvider>();
+
+                    if (ConsoleLoggingEnabled(context))
+                    {
+                        loggingBuilder.AddConsole(c => { c.DisableColors = false; });
+                        loggingBuilder.SetMinimumLevel(LogLevel.Trace);
+                        loggingBuilder.AddFilter(f => true);
+                    }
+
+                    // If the instrumentation key is null, the call to AddApplicationInsights is a no-op.
+                    string appInsightsKey = context.Configuration[EnvironmentSettingNames.AppInsightsInstrumentationKey];
+                    loggingBuilder.Services.AddApplicationInsights(appInsightsKey, (_, level) => level > LogLevel.Debug, null);
                 })
-                .ConfigureServices(s =>
+                .ConfigureServices((context, s) =>
                 {
                     s.AddSingleton<IHostLifetime, JobHostHostLifetime>();
                 })
@@ -142,6 +149,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public static IHostBuilder UseScriptExternalStartup(this IHostBuilder builder, string rootScriptPath)
         {
             return builder.UseExternalStartup(new ScriptStartupTypeDiscoverer(rootScriptPath));
+        }
+
+        internal static bool ConsoleLoggingEnabled(HostBuilderContext context)
+        {
+            // console logging defaults to false, except for self host
+            // TODO: This doesn't seem to be picking up that it's in Development when running locally.
+            bool enableConsole = context.HostingEnvironment.IsDevelopment();
+
+            string configValue = context.Configuration.GetSection(ScriptConstants.ConsoleLoggingMode).Value;
+            if (!string.IsNullOrEmpty(configValue))
+            {
+                // if it has been explicitly configured that value overrides default
+                enableConsole = string.Compare(configValue, "always", StringComparison.OrdinalIgnoreCase) == 0 ? true : false;
+            }
+
+            return enableConsole;
         }
     }
 }
