@@ -100,10 +100,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 using (var assemblyStream = new MemoryStream())
                 using (var pdbStream = new MemoryStream())
                 {
-                    var compilationWithAnalyzers = _compilation.WithAnalyzers(GetAnalyzers());
-                    var diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
+                    Compilation compilation = _compilation;
+                    var diagnostics = ImmutableArray<Diagnostic>.Empty;
+
+                    if (compilation.Options.OptimizationLevel == OptimizationLevel.Debug)
+                    {
+                        var compilationWithAnalyzers = compilation.WithAnalyzers(GetAnalyzers());
+                        diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
+                        compilation = compilationWithAnalyzers.Compilation;
+                    }
+
                     var emitOptions = new EmitOptions().WithDebugInformationFormat(PlatformHelper.IsMono ? DebugInformationFormat.PortablePdb : DebugInformationFormat.Pdb);
-                    var emitResult = compilationWithAnalyzers.Compilation.Emit(assemblyStream, pdbStream, options: emitOptions, cancellationToken: cancellationToken);
+                    var emitResult = compilation.Emit(assemblyStream, pdbStream, options: emitOptions, cancellationToken: cancellationToken);
 
                     diagnostics = diagnostics.AddRange(emitResult.Diagnostics);
 
