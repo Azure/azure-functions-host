@@ -30,6 +30,7 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<IWebJobsRouter>(services);
             AddMockedSingleton<IEventGenerator>(services);
             AddMockedSingleton<AspNetCore.Hosting.IApplicationLifetime>(services);
+            services.AddLogging();
 
             var rootProvider = new WebHostServiceProvider(services);
 
