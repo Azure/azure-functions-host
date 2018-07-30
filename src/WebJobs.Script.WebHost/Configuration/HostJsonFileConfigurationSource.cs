@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -16,16 +18,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
     public class HostJsonFileConfigurationSource : IConfigurationSource
     {
-        public HostJsonFileConfigurationSource(IOptions<ScriptWebHostOptions> scriptHostOptions)
+        private readonly ILogger _logger;
+
+        public HostJsonFileConfigurationSource(IOptions<ScriptWebHostOptions> scriptHostOptions, ILoggerFactory loggerFactory)
         {
+            if (loggerFactory == null)
+            {
+                throw new ArgumentNullException(nameof(loggerFactory));
+            }
+
             HostOptions = scriptHostOptions;
+            _logger = loggerFactory.CreateLogger(LogCategories.Startup);
         }
 
         public IOptions<ScriptWebHostOptions> HostOptions { get; }
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
-            return new HostJsonFileConfigurationProvider(this);
+            return new HostJsonFileConfigurationProvider(this, _logger);
         }
 
         private class HostJsonFileConfigurationProvider : ConfigurationProvider
@@ -38,11 +48,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
             private readonly HostJsonFileConfigurationSource _configurationSource;
             private readonly Stack<string> _path;
+            private readonly ILogger _logger;
 
-            public HostJsonFileConfigurationProvider(HostJsonFileConfigurationSource configurationSource)
+            public HostJsonFileConfigurationProvider(HostJsonFileConfigurationSource configurationSource, ILogger logger)
             {
                 _configurationSource = configurationSource;
                 _path = new Stack<string>();
+                _logger = logger;
             }
 
             public override void Load()
@@ -149,18 +161,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
                 // Allow tests to modify anything initialized by host.json
                 //ScriptConfig.OnConfigurationApplied?.Invoke(ScriptConfig);
-                //_startupLogger.LogTrace("Host configuration applied.");
+                _logger.LogTrace("Host configuration applied.");
 
                 // Do not log these until after all the configuration is done so the proper filters are applied.
-                //_startupLogger.LogInformation(readingFileMessage);
-                //_startupLogger.LogInformation(readFileMessage);
+                _logger.LogInformation(readingFileMessage);
+                _logger.LogInformation(readFileMessage);
 
                 // TODO: DI (FACAVAL) Move this to a more appropriate place
                 // If they set the host id in the JSON, emit a warning that this could cause issues and they shouldn't do it.
                 if (hostConfigObject["id"] != null)
                 {
-                    // TODO: DI (FACAVAL) log
-                    //_startupLogger.LogWarning("Host id explicitly set in the host.json. It is recommended that you remove the \"id\" property in your host.json.");
+                    _logger.LogWarning("Host id explicitly set in the host.json. It is recommended that you remove the \"id\" property in your host.json.");
                 }
 
                 // TODO: DI (FACAVAL) Move to options setup

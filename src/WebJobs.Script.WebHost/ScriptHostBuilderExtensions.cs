@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 })
                 .ConfigureAppConfiguration(c =>
                 {
-                    c.Add(new HostJsonFileConfigurationSource(webHostOptions));
+                    c.Add(new HostJsonFileConfigurationSource(webHostOptions, rootServiceProvider.GetService<ILoggerFactory>()));
                 });
 
             // WebJobs configuration

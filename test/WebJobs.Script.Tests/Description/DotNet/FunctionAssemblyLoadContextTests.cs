@@ -17,7 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         [Theory]
         [InlineData("Microsoft.Azure.WebJobs")]
-        [InlineData("Microsoft.Azure.WebJobs.Extensions")]
         [InlineData("Microsoft.Azure.WebJobs.Extensions.Http")]
         [InlineData("Microsoft.Azure.WebJobs.Host")]
         [InlineData("Microsoft.Azure.WebJobs.Logging")]
