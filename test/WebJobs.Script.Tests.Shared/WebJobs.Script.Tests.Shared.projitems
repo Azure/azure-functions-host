@@ -13,6 +13,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)NullScriptHostEnvironment.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SingleThreadedSynchronizationContext.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TempDirectory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestConfigurationBuilderExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHostBuilderExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHostExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestScriptJobHostEnvironment.cs" />

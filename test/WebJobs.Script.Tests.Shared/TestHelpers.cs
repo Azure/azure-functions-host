@@ -159,10 +159,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static IConnectionStringProvider GetTestConnectionStringProvider()
         {
-            string configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".azurefunctions", "appsettings.tests.json");
             var config = new ConfigurationBuilder()
                     .AddEnvironmentVariables()
-                    .AddJsonFile(configPath, true)
+                    .AddTestSettings()
                     .Build();
 
             return new AmbientConnectionStringProvider(config);
