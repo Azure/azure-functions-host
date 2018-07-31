@@ -11,6 +11,8 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -57,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     .ToArray());
         }
 
-        public static Task Await(Func<bool> condition, int timeout = 30 * 1000, int pollingInterval = 2 * 1000, bool throwWhenDebugging = false, Func<string> userMessageCallback = null)
+        public static Task Await(Func<bool> condition, int timeout = 30 * 1000, int pollingInterval = 50, bool throwWhenDebugging = false, Func<string> userMessageCallback = null)
         {
             return Await(() => Task.FromResult(condition()), timeout, pollingInterval, throwWhenDebugging, userMessageCallback);
         }
@@ -153,6 +155,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     }
                 }
             }
+        }
+
+        public static IConnectionStringProvider GetTestConnectionStringProvider()
+        {
+            string configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".azurefunctions", "appsettings.tests.json");
+            var config = new ConfigurationBuilder()
+                    .AddEnvironmentVariables()
+                    .AddJsonFile(configPath, true)
+                    .Build();
+
+            return new AmbientConnectionStringProvider(config);
         }
 
         // Deleting and recreating a container can result in a 409 as the container name is not

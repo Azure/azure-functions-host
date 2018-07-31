@@ -46,9 +46,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         loggingBuilder.AddFilter(f => true);
                     }
 
+                    // TODO: DI (BRETTSAM) re-enable app insights
                     // If the instrumentation key is null, the call to AddApplicationInsights is a no-op.
                     string appInsightsKey = context.Configuration[EnvironmentSettingNames.AppInsightsInstrumentationKey];
-                    loggingBuilder.Services.AddApplicationInsights(appInsightsKey, (_, level) => level > LogLevel.Debug, null);
+                    // loggingBuilder.Services.AddApplicationInsights(appInsightsKey, (_, level) => level > LogLevel.Debug, null);
                 })
                 .ConfigureServices((context, s) =>
                 {

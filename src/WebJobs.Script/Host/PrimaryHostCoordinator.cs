@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -17,15 +18,14 @@ namespace Microsoft.Azure.WebJobs.Script
     internal sealed class PrimaryHostCoordinator : IHostedService, IDisposable
     {
         internal const string LockBlobName = "host";
-        internal const string HostContainerName = "azure-webjobs-hosts";
 
         private readonly Timer _timer;
         private readonly TimeSpan _leaseTimeout;
+        private readonly IHostIdProvider _hostIdProvider;
         private readonly TimeSpan _renewalInterval;
         private readonly TimeSpan _leaseRetryInterval;
         private readonly ILogger _logger;
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
-        private readonly string _hostId;
         private readonly string _websiteInstanceId;
         private IDistributedLock _lockHandle; // If non-null, then we own the lock.
 
@@ -35,12 +35,13 @@ namespace Microsoft.Azure.WebJobs.Script
         private TimeSpan _lastRenewalLatency;
 
         private IDistributedLockManager _lockManager;
+        private string _hostId;
 
-        public PrimaryHostCoordinator(IOptions<PrimaryHostCoordinatorOptions> coordinatorOptions, IOptions<JobHostOptions> jobHostOptions,
-            IDistributedLockManager lockManager, ScriptSettingsManager settingsManager, IPrimaryHostStateProvider primaryHostStateProvider, ILoggerFactory loggerFactory)
+        public PrimaryHostCoordinator(IOptions<PrimaryHostCoordinatorOptions> coordinatorOptions, IHostIdProvider hostIdProvider, IDistributedLockManager lockManager,
+            ScriptSettingsManager settingsManager, IPrimaryHostStateProvider primaryHostStateProvider, ILoggerFactory loggerFactory)
         {
             _leaseTimeout = coordinatorOptions.Value.LeaseTimeout;
-            _hostId = jobHostOptions.Value.HostId;
+            _hostIdProvider = hostIdProvider;
             _websiteInstanceId = settingsManager.AzureWebsiteInstanceId;
 
             _lockManager = lockManager;
@@ -61,8 +62,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _primaryHostStateProvider = primaryHostStateProvider;
         }
 
-        public event EventHandler HasLeaseChanged;
-
         private bool HasLease => _lockHandle != null;
 
         internal IDistributedLock LockHandle
@@ -77,15 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 var previous = _lockHandle;
                 _lockHandle = value;
                 _primaryHostStateProvider.IsPrimary = HasLease;
-
-                if (previous != _lockHandle)
-                {
-                    OnHasLeaseChanged();
-                }
             }
         }
-
-        private void OnHasLeaseChanged() => HasLeaseChanged?.Invoke(this, EventArgs.Empty);
 
         private void ProcessLeaseTimerTick(object state)
         {
@@ -114,6 +106,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private async Task AcquireOrRenewLeaseAsync()
         {
+            if (_hostId == null)
+            {
+                _hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
+            }
+
             string lockName = GetBlobName(_hostId);
 
             DateTime requestStart = DateTime.UtcNow;
@@ -157,7 +154,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal static string GetBlobName(string hostId) => $"locks/{hostId}/{LockBlobName}";
+        // The StorageDistributedLockManager will put things under the /locks path automatically
+        internal static string GetBlobName(string hostId) => $"{hostId}/{LockBlobName}";
 
         private void ProcessLeaseError(string reason)
         {
