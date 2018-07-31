@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 using WebJobs.Script.Tests;
 using Xunit;
@@ -121,7 +122,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private ExtensionsManager GetExtensionsManager(string rootPath)
         {
-            var manager = new Mock<ExtensionsManager>(rootPath, NullLogger.Instance, null);
+            IOptions<ScriptHostOptions> options = new OptionsWrapper<ScriptHostOptions>(new ScriptHostOptions
+            {
+                RootScriptPath = rootPath
+            });
+
+            var manager = new Mock<ExtensionsManager>(options, NullLogger.Instance);
             manager.Setup(m => m.ProcessExtensionsProject(It.IsAny<string>()))
                 .Returns<string>(a =>
                 {

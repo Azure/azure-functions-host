@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
@@ -40,16 +41,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         public class SystemKeyFixture : KeyManagementFixture
         {
-            public SystemKeyFixture()
+            public override async Task InitializeAsync()
             {
+                await base.InitializeAsync();
+
                 HttpClient.DefaultRequestHeaders.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, MasterKey);
                 HttpResponse = HttpClient.GetAsync($"http://localhost/admin/host/systemkeys/{KeyName}").Result;
                 Result = ReadApiModelContent(HttpResponse);
             }
 
-            public ApiModel Result { get; }
+            public ApiModel Result { get; private set; }
 
-            public HttpResponseMessage HttpResponse { get; }
+            public HttpResponseMessage HttpResponse { get; private set; }
 
             public virtual string KeyName => "sytemtest";
 

@@ -4,6 +4,7 @@
 using System;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -21,8 +22,17 @@ namespace Microsoft.WebJobs.Script.Tests
         {
             var webHostOptions = new ScriptWebHostOptions();
 
-            configure?.Invoke(webHostOptions);
+            if (configure == null)
+            {
+                configure = o =>
+                {
+                    o.ScriptPath = TestHelpers.FunctionsTestDirectory;
+                    o.LogPath = TestHelpers.GetHostLogFileDirectory().FullName;
+                };
+            }
 
+            configure(webHostOptions);
+           
             // Register root services
             var services = new ServiceCollection();
             AddMockedSingleton<IScriptHostManager>(services);

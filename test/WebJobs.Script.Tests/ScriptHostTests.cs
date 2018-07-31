@@ -1436,44 +1436,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(string.Format($"The function or proxy name '{name}' must be unique within the function app.", name), ex.Message);
         }
 
-        //[Fact]
-        //public void IsFunction_ReturnsExpectedResult()
-        //{
-        //    _fixture.ScriptHost.
-        //    var mockEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Strict);
-        //    var jobHostContextFactory = new Mock<IJobHostContextFactory>(MockBehavior.Strict);
-        //    var connectionStringProvider = new Mock<IJobHostContextFactory>(MockBehavior.Strict);
+        [Fact]
+        public async Task IsFunction_ReturnsExpectedResult()
+        {
+            var host = TestHelpers.GetDefaultHost(o =>
+            {
+                o.ScriptPath = TestHelpers.FunctionsTestDirectory;
+                o.LogPath = TestHelpers.GetHostLogFileDirectory().FullName;
+            });
+            await host.StartAsync();
+            var scriptHost = host.GetScriptHost();
 
-        //    var mockEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Strict);
-        //    var mockEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Strict);
-        //    var mockEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Strict);
-        //    var options = new ScriptHostOptions();
-        //    var eventManager = new Mock<IScriptEventManager>();
-        //    var mockHost = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { mockEnvironment.Object, eventManager.Object, options, null, null, null });
+            var parameters = new Collection<ParameterDescriptor>();
+            parameters.Add(new ParameterDescriptor("param1", typeof(string)));
+            var metadata = new FunctionMetadata();
+            var invoker = new TestInvoker();
+            var function = new FunctionDescriptor("TestFunction", invoker, metadata, parameters, null, null, null);
+            scriptHost.Functions.Add(function);
 
-        //    var functions = new Collection<FunctionDescriptor>();
-        //    var functionErrors = new Dictionary<string, ICollection<string>>();
-        //    mockHost.Setup(p => p.Functions).Returns(functions);
-        //    mockHost.Setup(p => p.FunctionErrors).Returns(functionErrors);
+            var errors = new Collection<string>();
+            errors.Add("A really really bad error!");
+            scriptHost.FunctionErrors.Add("ErrorFunction", errors);
 
-        //    var parameters = new Collection<ParameterDescriptor>();
-        //    parameters.Add(new ParameterDescriptor("param1", typeof(string)));
-        //    var metadata = new FunctionMetadata();
-        //    var invoker = new TestInvoker();
-        //    var function = new FunctionDescriptor("TestFunction", invoker, metadata, parameters, null, null, null);
-        //    functions.Add(function);
-
-        //    var errors = new Collection<string>();
-        //    errors.Add("A really really bad error!");
-        //    functionErrors.Add("ErrorFunction", errors);
-
-        //    var host = mockHost.Object;
-        //    Assert.True(host.IsFunction("TestFunction"));
-        //    Assert.True(host.IsFunction("ErrorFunction"));
-        //    Assert.False(host.IsFunction("DoesNotExist"));
-        //    Assert.False(host.IsFunction(string.Empty));
-        //    Assert.False(host.IsFunction(null));
-        //}
+            Assert.True(scriptHost.IsFunction("TestFunction"));
+            Assert.True(scriptHost.IsFunction("ErrorFunction"));
+            Assert.False(scriptHost.IsFunction("DoesNotExist"));
+            Assert.False(scriptHost.IsFunction(string.Empty));
+            Assert.False(scriptHost.IsFunction(null));
+        }
 
         [Fact(Skip = "Fix test")]
         public void Initialize_LogsWarningForExplicitlySetHostId()

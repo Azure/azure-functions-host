@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
@@ -58,16 +59,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         {
             private readonly string _requestUri = "http://localhost/admin/functions/{0}/keys/TestKey";
 
-            public Fixture()
+            public override async Task InitializeAsync()
             {
+                await base.InitializeAsync();
+
                 HttpClient.DefaultRequestHeaders.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, "1234");
                 HttpResponse = HttpClient.PutAsJsonAsync(FormattedRequestUri, new { name = "TestKey", value = "testvalue" }).Result;
                 Result = ReadApiModelContent(HttpResponse);
             }
 
-            public ApiModel Result { get; }
+            public ApiModel Result { get; private set;}
 
-            public HttpResponseMessage HttpResponse { get; }
+            public HttpResponseMessage HttpResponse { get; private set; }
 
             public string FormattedRequestUri => string.Format(RequestUriFormat, TestKeyScope);
 
