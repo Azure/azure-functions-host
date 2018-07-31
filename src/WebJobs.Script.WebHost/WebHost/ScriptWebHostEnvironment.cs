@@ -12,11 +12,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public class ScriptWebHostEnvironment : IScriptWebHostEnvironment
     {
         private readonly ReaderWriterLockSlim _delayLock = new ReaderWriterLockSlim();
+        private readonly IEnvironment _environment;
         private TaskCompletionSource<object> _delayTaskCompletionSource;
         private bool? _standbyMode;
 
         public ScriptWebHostEnvironment()
+            : this(SystemEnvironment.Instance)
         {
+        }
+
+        public ScriptWebHostEnvironment(IEnvironment environment)
+        {
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _delayTaskCompletionSource = new TaskCompletionSource<object>();
             _delayTaskCompletionSource.SetResult(null);
         }
@@ -48,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     return _standbyMode.Value;
                 }
-                if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1")
+                if (_environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1")
                 {
                     return true;
                 }
@@ -95,6 +102,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 _delayLock.ExitReadLock();
             }
+        }
+
+        public void FlagAsSpecializedAndReady()
+        {
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
         }
     }
 }

@@ -18,5 +18,12 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="name">The environment variable name.</param>
         /// <returns>The value of the environment variable specified by <paramref name="name"/>, or <see cref="null"/> if the environment variable is not found.</returns>
         string GetEnvironmentVariable(string name);
+
+        /// <summary>
+        /// Creates, modifies, or deletes an environment variable stored in the current <see cref="IEnvironment"/>
+        /// </summary>
+        /// <param name="name">The environment variable name.</param>
+        /// <param name="value">The value to assign to the variable.</param>
+        void SetEnvironmentVariable(string name, string value);
     }
 }

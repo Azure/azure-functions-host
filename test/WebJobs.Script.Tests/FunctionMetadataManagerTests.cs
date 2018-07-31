@@ -3,8 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using System.Text;
+using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -199,6 +201,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Assert.True(false, $"Valid function name {functionName} failed validation.");
             }
+        }
+
+        [Fact]
+        public void ReadFunctionMetadata_Succeeds()
+        {
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample");
+            var functionErrors = new Dictionary<string, ICollection<string>>();
+            var functionDirectories = Directory.EnumerateDirectories(functionsPath);
+            var metadata = FunctionMetadataManager.ReadFunctionsMetadata(functionDirectories, null, NullLogger.Instance, functionErrors);
+            Assert.Equal(41, metadata.Count);
         }
     }
 }

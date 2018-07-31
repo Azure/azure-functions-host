@@ -7,8 +7,8 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
@@ -25,12 +25,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
         [InlineData("dotNet")]
         public async Task HttpTrigger_Get(string functionsWorkerLanguage)
         {
-            NodeScriptHostTests.TestFixture fixture = null;
+            TestFixture fixture = null;
 
             try
             {
                 string functionName = "HttpTrigger";
-                fixture = new NodeScriptHostTests.TestFixture(new Collection<string> { functionName }, functionsWorkerLanguage);
+                fixture = new TestFixture(new Collection<string> { functionName }, functionsWorkerLanguage);
+                await fixture.InitializeAsync();
 
                 string url = $"http://localhost/api/{functionName}?name=test";
                 var request = HttpTestHelpers.CreateHttpRequest("GET", url);
@@ -55,7 +56,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
             finally
             {
                 Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
-                fixture?.Dispose();
+                await fixture?.DisposeAsync();
+            }
+        }
+
+        private class TestFixture : NodeScriptHostTests.TestFixture
+        {
+            public TestFixture(ICollection<string> functions, string functionsWorkerLanguage)
+                : base(functions, functionsWorkerLanguage)
+            {
+            }
+
+            protected override Task CreateTestStorageEntities()
+            {
+                // No need for this, so let's save some time.
+                return Task.CompletedTask;
             }
         }
     }

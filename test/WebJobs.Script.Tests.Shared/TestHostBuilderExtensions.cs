@@ -2,14 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -20,36 +17,32 @@ namespace Microsoft.WebJobs.Script.Tests
 {
     public static class TestHostBuilderExtensions
     {
-        public static IHostBuilder ConfigureDefaultTestScriptHost(this IHostBuilder builder, Action<ScriptWebHostOptions> configure = null, bool runStartupHostedServices = false)
+        public static IHostBuilder ConfigureDefaultTestScriptHost(this IHostBuilder builder,
+            Action<ScriptWebHostOptions> configure = null,
+            bool runStartupHostedServices = false)
         {
             var webHostOptions = new ScriptWebHostOptions()
             {
-                IsSelfHost = true
+                IsSelfHost = true,
+                ScriptPath = TestHelpers.FunctionsTestDirectory,
+                LogPath = TestHelpers.GetHostLogFileDirectory().FullName,
             };
 
-            if (configure == null)
-            {
-                configure = o =>
-                {
-                    o.ScriptPath = TestHelpers.FunctionsTestDirectory;
-                    o.LogPath = TestHelpers.GetHostLogFileDirectory().FullName;
-                };
-            }
+            configure?.Invoke(webHostOptions);
 
-            configure(webHostOptions);
-           
             // Register root services
             var services = new ServiceCollection();
             AddMockedSingleton<IScriptHostManager>(services);
             AddMockedSingleton<IScriptWebHostEnvironment>(services);
-            AddMockedSingleton<IWebJobsRouter>(services);
             AddMockedSingleton<IEventGenerator>(services);
             AddMockedSingleton<AspNetCore.Hosting.IApplicationLifetime>(services);
+            services.AddWebJobsScriptHostRouting();
             services.AddLogging();
 
             var rootProvider = new WebHostServiceProvider(services);
 
-            builder.AddScriptHost(rootProvider, rootProvider, new OptionsWrapper<ScriptWebHostOptions>(webHostOptions))
+            builder
+                .AddScriptHost(rootProvider, rootProvider, new OptionsWrapper<ScriptWebHostOptions>(webHostOptions))
                 .ConfigureAppConfiguration(c =>
                 {
                     c.AddTestSettings();

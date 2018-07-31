@@ -24,7 +24,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public string GetEnvironmentVariable(string name)
         {
-            return System.Environment.GetEnvironmentVariable(name);
+            return Environment.GetEnvironmentVariable(name);
+        }
+
+        public void SetEnvironmentVariable(string name, string value)
+        {
+            Environment.SetEnvironmentVariable(name, value);
         }
     }
 }

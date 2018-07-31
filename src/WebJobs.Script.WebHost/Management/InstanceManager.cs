@@ -22,17 +22,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private readonly ScriptWebHostOptions _webHostSettings;
         private readonly ILogger _logger;
-        private readonly ScriptSettingsManager _settingsManager;
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
 
-        public InstanceManager(ScriptSettingsManager settingsManager, IOptions<ScriptWebHostOptions> webHostSettings, ILoggerFactory loggerFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment)
+        public InstanceManager(IOptions<ScriptWebHostOptions> webHostSettings, ILoggerFactory loggerFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment)
         {
-            _settingsManager = settingsManager;
+            if (webHostSettings == null)
+            {
+                throw new ArgumentNullException(nameof(webHostSettings));
+            }
+
+            if (loggerFactory == null)
+            {
+                throw new ArgumentNullException(nameof(loggerFactory));
+            }
+
+            _client = client ?? throw new ArgumentNullException(nameof(client));
+            _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _webHostSettings = webHostSettings.Value;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
-            _client = client;
-            _webHostEnvironment = webHostEnvironment;
         }
 
         public bool StartAssignment(HostAssignmentContext context)
@@ -107,8 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // all assignment settings/files have been applied so we can flip
                 // the switch now on specialization
                 _logger.LogInformation("Triggering specialization");
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                _webHostEnvironment.FlagAsSpecializedAndReady();
             }
             catch (Exception ex)
             {

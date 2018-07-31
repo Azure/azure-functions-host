@@ -2,12 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
 
@@ -78,7 +78,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             Assert.Equal(updatedDoc.Id, doc.Id);
             Assert.NotEqual(doc.ETag, updatedDoc.ETag);
         }
-
     }
 
     public abstract class CosmosDBTestFixture : EndToEndTestFixture
@@ -90,7 +89,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
         public DocumentClient DocumentClient { get; private set; }
 
-        protected override IEnumerable<string> GetActiveFunctions() => new[] { "CosmosDBTrigger", "CosmosDBIn", "CosmosDBOut" };
+        public override void ConfigureJobHost(IHostBuilder builder)
+        {
+            builder
+                .ConfigureServices(s =>
+                {
+                    s.Configure<ScriptHostOptions>(o =>
+                    {
+                        o.Functions = new[]
+                        {
+                            "CosmosDBTrigger",
+                            "CosmosDBIn",
+                            "CosmosDBOut"
+                        };
+
+                        // TODO DI: This should be set automatically
+                        o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
+                    });
+                });
+        }
 
         public async Task InitializeDocumentClient()
         {
@@ -138,9 +155,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             await DocumentClient.DeleteDocumentCollectionAsync(leasesCollectionsUri);
         }
 
-        public override void Dispose()
+        public override async Task DisposeAsync()
         {
-            base.Dispose();
+            await base.DisposeAsync();
             DocumentClient?.Dispose();
         }
     }

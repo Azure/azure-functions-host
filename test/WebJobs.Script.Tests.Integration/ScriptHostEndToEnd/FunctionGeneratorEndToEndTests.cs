@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
 
-        [Fact]
+        [Fact(Skip = "Pending migration of TimerTrigger")]
         public async Task Generate_EndToEnd()
         {
             // construct our TimerTrigger attribute ([TimerTrigger("00:00:02", RunOnStartup = true)])

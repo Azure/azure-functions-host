@@ -31,14 +31,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _next = next;
         }
 
-        public async Task Invoke(HttpContext context, IScriptJobHost scriptHost = null)
+        public async Task Invoke(HttpContext context)
         {
-            if (scriptHost != null)
-            {
-                // flow required context through the request pipeline
-                // downstream middleware and filters rely on this
-                context.Items[ScriptConstants.AzureFunctionsHostKey] = scriptHost;
-            }
+            // TODO: DI Need to make sure downstream services are getting what they need
+            // that includes proxies.
+            //if (scriptHost != null)
+            //{
+            //    // flow required context through the request pipeline
+            //    // downstream middleware and filters rely on this
+            //    context.Items[ScriptConstants.AzureFunctionsHostKey] = scriptHost;
+            //}
             SetRequestId(context.Request);
 
             if (_next != null)

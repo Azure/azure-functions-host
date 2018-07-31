@@ -65,8 +65,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 {
                     services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
                     services.AddSingleton<IOptions<ScriptWebHostOptions>>(new OptionsWrapper<ScriptWebHostOptions>(HostOptions));
-                    services.AddSingleton<IScriptHostBuilder>(new DelegatedScriptJobHostBuilder(ConfigureJobHostBuilder));
                 })
+                .AddScriptHostBuilder(ConfigureJobHostBuilder)
                 .ConfigureAppConfiguration((builderContext, config) =>
                 {
                     config.Add(new WebScriptHostConfigurationSource
@@ -93,21 +93,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         public Task DisposeAsync()
         {
             return Task.CompletedTask;
-        }
-
-        private class DelegatedScriptJobHostBuilder : IScriptHostBuilder
-        {
-            private readonly Action<IHostBuilder> _builder;
-
-            public DelegatedScriptJobHostBuilder(Action<IHostBuilder> builder)
-            {
-                _builder = builder;
-            }
-
-            public void Configure(IHostBuilder builder)
-            {
-                _builder(builder);
-            }
         }
     }
 }

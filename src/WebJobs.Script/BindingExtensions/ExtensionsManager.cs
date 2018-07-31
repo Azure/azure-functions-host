@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
@@ -29,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
         private readonly ILogger _logger;
         private string _nugetFallbackPath;
 
-        public ExtensionsManager(IOptions<ScriptHostOptions> hostOptions, ILogger logger)
+        public ExtensionsManager(IOptions<ScriptHostOptions> hostOptions, ILogger<ExtensionsManager> logger)
         {
             _scriptRootPath = hostOptions.Value.RootScriptPath;
             _nugetFallbackPath = hostOptions.Value.NugetFallBackPath;

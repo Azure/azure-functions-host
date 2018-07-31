@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -12,9 +15,12 @@ using System.Xml;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
@@ -27,8 +33,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly TestServer _testServer;
         private readonly string _appRoot;
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
+        private readonly WebJobsScriptHostService _hostService;
 
-        public TestFunctionHost(string appRoot)
+        public TestFunctionHost(string appRoot, Action<IHostBuilder> configureJobHost)
         {
             _appRoot = appRoot;
 
@@ -40,20 +47,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 SecretsPath = Environment.CurrentDirectory // not used
             };
 
-            _testServer = new TestServer(
-                AspNetCore.WebHost.CreateDefaultBuilder()
-                .UseStartup<Startup>()
-                .ConfigureServices(services =>
-                {
-                    services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptWebHostOptions>), new OptionsWrapper<ScriptWebHostOptions>(_hostOptions)));
-                    services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
-                }));
+            _testServer = new TestServer(new WebHostBuilder()
+                 .ConfigureServices(services =>
+                 {
+                     services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
+
+                     services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptWebHostOptions>), new OptionsWrapper<ScriptWebHostOptions>(_hostOptions)));
+                     services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
+                 })
+                 .AddScriptHostBuilder(b =>
+                 {
+                     b.ConfigureLogging(l =>
+                     {
+                         l.AddProvider(_loggerProvider);
+                         l.AddFilter<TestLoggerProvider>(_ => true);
+                     });
+
+                     configureJobHost?.Invoke(b);
+                 })
+                 .UseStartup<Startup>());
 
             HttpClient = new HttpClient(new UpdateContentLengthHandler(_testServer.CreateHandler()));
             HttpClient.BaseAddress = new Uri("https://localhost/");
+
+            var manager = _testServer.Host.Services.GetService<IScriptHostManager>();
+            manager.DelayUntilHostReady().GetAwaiter().GetResult();
+
+            _hostService = manager as WebJobsScriptHostService;
         }
 
-        public ScriptHostOptions ScriptOptions => _testServer.Host.Services.GetService<IOptions<ScriptHostOptions>>().Value;
+        public IServiceProvider JobHostServices => _hostService.Services;
+
+        public ScriptHostOptions ScriptOptions => JobHostServices.GetService<IOptions<ScriptHostOptions>>().Value;
 
         public ISecretManager SecretManager => _testServer.Host.Services.GetService<ISecretManager>();
 
@@ -133,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response.EnsureSuccessStatusCode();
         }
 
-        public async Task InstallBindingExtension(string packageName, string packageVersion)
+        public async Task InstallBindingExtensionAsync(string packageName, string packageVersion)
         {
             HostSecretsInfo secrets = await SecretManager.GetHostSecretsAsync();
             string uri = $"admin/host/extensions?code={secrets.MasterKey}";
@@ -228,6 +253,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
 
                 return base.SendAsync(request, cancellationToken);
+            }
+        }
+
+        private class DelegatedScriptJobHostBuilder : IScriptHostBuilder
+        {
+            private readonly Action<IHostBuilder> _builder;
+
+            public DelegatedScriptJobHostBuilder(Action<IHostBuilder> builder)
+            {
+                _builder = builder;
+            }
+
+            public void Configure(IHostBuilder builder)
+            {
+                _builder(builder);
             }
         }
     }

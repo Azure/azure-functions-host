@@ -34,5 +34,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// Flags that requests under this environment should be resumed.
         /// </summary>
         void ResumeRequests();
+
+        /// <summary>
+        /// Flags the current environment as ready and specialized.
+        /// This sets <see cref="EnvironmentSettingNames.AzureWebsitePlaceholderMode"/> to "0"
+        /// and <see cref="EnvironmentSettingNames.AzureWebsiteContainerReady"/> to "1" against
+        /// the current environment.
+        /// </summary>
+        void FlagAsSpecializedAndReady();
     }
 }

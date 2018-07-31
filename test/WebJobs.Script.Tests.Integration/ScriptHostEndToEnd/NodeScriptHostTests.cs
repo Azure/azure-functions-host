@@ -10,6 +10,7 @@ using System.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -220,9 +221,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             internal TestFixture(bool startHost) : base(@"TestScripts\Node", "node", null, startHost)
             {
             }
-            internal TestFixture(ICollection<string> functions, string functionsWorkerLanguage = null) 
+            internal TestFixture(ICollection<string> functions, string functionsWorkerLanguage = null)
                 : base(@"TestScripts\Node", "node", null, true, functions, functionsWorkerLanguage)
             {
+            }
+
+            public override void ConfigureServices(IServiceCollection services)
+            {
+                services.Configure<ScriptHostOptions>(o =>
+                {
+                    // TODO DI: This should be set automatically
+                    o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
+                });
             }
         }
     }

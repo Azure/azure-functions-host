@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -15,87 +16,42 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Moq;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public abstract class ScriptHostEndToEndTestFixture : IDisposable
+    public abstract class ScriptHostEndToEndTestFixture : IAsyncLifetime
     {
         private readonly ScriptSettingsManager _settingsManager;
         private readonly ManualResetEventSlim _hostStartedEvent = new ManualResetEventSlim();
+        private readonly string _rootPath;
+        private readonly ProxyClientExecutor _proxyClient;
+        private readonly bool _startHost;
+        private readonly ICollection<string> _functions;
+        private readonly string _functionsWorkerLanguage;
 
-        protected ScriptHostEndToEndTestFixture(string rootPath, string testId, ProxyClientExecutor proxyClient = null, bool startHost = true, ICollection<string> functions = null, string functionsWorkerLanguage = null)
+        protected ScriptHostEndToEndTestFixture(string rootPath, string testId, ProxyClientExecutor proxyClient = null,
+            bool startHost = true, ICollection<string> functions = null, string functionsWorkerLanguage = null)
         {
-            if (!string.IsNullOrEmpty(functionsWorkerLanguage))
-            {
-                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, functionsWorkerLanguage);
-            }
             _settingsManager = ScriptSettingsManager.Instance;
             FixtureId = testId;
-            string connectionString = Environment.GetEnvironmentVariable(ConnectionStringNames.Storage);
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-            QueueClient = storageAccount.CreateCloudQueueClient();
-            BlobClient = storageAccount.CreateCloudBlobClient();
-            TableClient = storageAccount.CreateCloudTableClient();
-
-            CreateTestStorageEntities().Wait();
-
-            // ApiHubTestHelper.SetDefaultConnectionFactory();
-
-            var scriptOptions = new ScriptHostOptions()
-            {
-                RootScriptPath = rootPath,
-                FileLoggingMode = FileLoggingMode.Always,
-            };
-
-            if (functions != null)
-            {
-                scriptOptions.OnConfigurationApplied = c => c.Functions = functions;
-            }
-
             RequestConfiguration = new HttpConfiguration();
-
             EventManager = new ScriptEventManager();
             ScriptJobHostEnvironmentMock = new Mock<IScriptJobHostEnvironment>();
             LoggerProvider = new TestLoggerProvider();
-            //ILoggerProviderFactory loggerProviderFactory = new TestLoggerProviderFactory(LoggerProvider);
 
-            // Reset the timer logs first, since one of the tests will
-            // be checking them
-            TestHelpers.ClearFunctionLogs("TimerTrigger");
-            TestHelpers.ClearFunctionLogs("ListenerStartupException");
-
-            InitializeConfig(scriptOptions);
-            Func<string, FunctionDescriptor> funcLookup = (name) => this.Host.GetFunctionOrNull(name);
-            var fastLogger = new FunctionInstanceLogger(funcLookup, new MetricsLogger());
-
-            // TODO: DI (FACAVAL) Fix
-            //config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
-
-            var host = new HostBuilder()
-                .ConfigureDefaultTestScriptHost()
-                .ConfigureServices(s =>
-                {
-                    s.AddSingleton<IScriptEventManager>(EventManager);
-                    s.AddSingleton<IOptions<ScriptHostOptions>>(new OptionsWrapper<ScriptHostOptions>(scriptOptions));
-                    s.AddSingleton<ProxyClientExecutor>(proxyClient);
-                })
-                .Build();
-
-            Host = host.GetScriptHost();
-
-            if (startHost)
-            {
-                Host.HostStarted += (s, e) => _hostStartedEvent.Set();
-                Host.Start();
-                _hostStartedEvent.Wait(TimeSpan.FromSeconds(30));
-            }
+            _rootPath = rootPath;
+            _proxyClient = proxyClient;
+            _startHost = startHost;
+            _functions = functions;
+            _functionsWorkerLanguage = functionsWorkerLanguage;
         }
 
         public TestLoggerProvider LoggerProvider { get; }
@@ -126,8 +82,77 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public IScriptEventManager EventManager { get; }
 
-        protected virtual void InitializeConfig(ScriptHostOptions options)
+        public async Task InitializeAsync()
         {
+            if (!string.IsNullOrEmpty(_functionsWorkerLanguage))
+            {
+                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerLanguage);
+            }
+            IConnectionStringProvider connectionStringProvider = TestHelpers.GetTestConnectionStringProvider();
+            string connectionString = connectionStringProvider.GetConnectionString(ConnectionStringNames.Storage);
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+            QueueClient = storageAccount.CreateCloudQueueClient();
+            BlobClient = storageAccount.CreateCloudBlobClient();
+            TableClient = storageAccount.CreateCloudTableClient();
+
+            await CreateTestStorageEntities();
+
+            // ApiHubTestHelper.SetDefaultConnectionFactory();
+
+            //ILoggerProviderFactory loggerProviderFactory = new TestLoggerProviderFactory(LoggerProvider);
+
+            // Reset the timer logs first, since one of the tests will
+            // be checking them
+            TestHelpers.ClearFunctionLogs("TimerTrigger");
+            TestHelpers.ClearFunctionLogs("ListenerStartupException");
+
+            Func<string, FunctionDescriptor> funcLookup = (name) => this.Host.GetFunctionOrNull(name);
+            var fastLogger = new FunctionInstanceLogger(funcLookup, new MetricsLogger());
+
+            // TODO: DI (FACAVAL) Fix
+            //config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
+
+            var host = new HostBuilder()
+                .ConfigureDefaultTestScriptHost(o =>
+                {
+                    o.ScriptPath = _rootPath;
+                    o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
+                })
+                .ConfigureServices(s =>
+                {
+                    s.AddSingleton<IScriptEventManager>(EventManager);
+
+                    s.Configure<ScriptHostOptions>(o =>
+                    {
+                        o.FileLoggingMode = FileLoggingMode.Always;
+
+                        if (_functions != null)
+                        {
+                            o.Functions = _functions;
+                        }
+                    });
+
+                    if (_proxyClient != null)
+                    {
+                        s.AddSingleton<ProxyClientExecutor>(_proxyClient);
+                    }
+
+                    ConfigureServices(s);
+                })
+                .ConfigureLogging(b =>
+                {
+                    b.AddProvider(LoggerProvider);
+                })
+                .Build();
+
+            Host = host.GetScriptHost();
+
+            if (_startHost)
+            {
+                Host.HostStarted += (s, e) => _hostStartedEvent.Set();
+                await Host.StartAsync();
+                _hostStartedEvent.Wait(TimeSpan.FromSeconds(30));
+            }
         }
 
         public async Task<CloudQueue> GetNewQueue(string queueName)
@@ -180,12 +205,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestTable.ExecuteBatchAsync(batch);
         }
 
-        public virtual void Dispose()
-        {
-            Host.Stop();
-            Host.Dispose();
-        }
-
         public async Task DeleteEntities(CloudTable table, string partition = null)
         {
             if (!await table.ExistsAsync())
@@ -209,6 +228,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     batch.Delete(entity);
                 }
                 await table.ExecuteBatchAsync(batch);
+            }
+        }
+
+        public virtual void ConfigureServices(IServiceCollection services)
+        {
+        }
+
+        public virtual async Task DisposeAsync()
+        {
+            if (Host != null)
+            {
+                await Host.StopAsync();
+                Host.Dispose();
             }
         }
 

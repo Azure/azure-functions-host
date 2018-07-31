@@ -6,6 +6,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.EventHubs;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -59,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
                 // above have been processed
                 logs = _fixture.Host.GetLog();
                 return ids.All(p => logs.Contains(p));
-            });
+            }, userMessageCallback: _fixture.Host.GetLog);
 
             Assert.True(logs.Contains("IsArray true"));
         }
@@ -67,11 +69,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture() :
-                base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"), "samples", "Microsoft.Azure.WebJobs.Extensions.EventHubs", "3.0.0-beta4-11268")
+                base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"), "samples", "Microsoft.Azure.WebJobs.Extensions.EventHubs", "3.0.0-beta*")
             {
             }
 
-            protected override IEnumerable<string> GetActiveFunctions() => new[] { "EventHubTrigger" };
+            public override void ConfigureJobHost(IHostBuilder builder)
+            {
+                builder
+                    .ConfigureServices(s =>
+                    {
+                        s.Configure<ScriptHostOptions>(o =>
+                        {
+                            o.Functions = new[] { "EventHubTrigger" };
+
+                            //TODO DI: This should be set automatically.
+                            o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
+                        });
+                    });
+            }
         }
     }
 }
