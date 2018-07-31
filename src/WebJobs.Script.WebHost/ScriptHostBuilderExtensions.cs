@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
-                services.AddSingleton<IHostIdProvider, IdProvider>();
+                services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
                 services.AddSingleton<ScriptSettingsManager>();
                 services.AddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
                 // TODO: DI (FACAVAL) Review metrics logger registration

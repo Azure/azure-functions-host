@@ -5,14 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
-using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
-using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -210,18 +204,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         public void Dispose() => Dispose(true);
-    }
-
-    public class IdProvider : WebJobs.Host.Executors.IHostIdProvider
-    {
-        public IdProvider()
-        {
-        }
-
-        public Task<string> GetHostIdAsync(CancellationToken cancellationToken)
-        {
-            return Task.FromResult("0980980980980980980980989009");
-        }
     }
 
     public class CustomFactory : ILoggerFactory
