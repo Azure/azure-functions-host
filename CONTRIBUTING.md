@@ -37,15 +37,15 @@ Before filing an issue, please check that it doesn't already exist. If you're no
        - While you can develop from a Mac/Linux machine, it can be a rough experience and not all unit tests pass today. We have improvements where we hope to make this easier.
  - Language runtimes
     - Note: today you have to have Node.js and Java installed, but in the long run we hope move those tests out into their own repos
-    - Java 8 (JDK and JRE required)
-    - Node 8.4+
+    - [Java 8 ](http://www.oracle.com/technetwork/java/javase/downloads/index.html) (JDK and JRE required)
+    - [Node 8.4+](https://nodejs.org/en/)
     - .NET Core 2.0
  - Editor
-    - Visual Studio 2017 (recommended)
-    - VS Code (works, but has some quirks running tests)
+    - [Visual Studio 2017](https://visualstudio.microsoft.com/vs/) (recommended)
+    - [VS Code](https://code.visualstudio.com/) (works, but has some quirks running tests)
  - Misc tools (suggested)
-    - git - source control
-    - nvm (nvm-windows for windows) - Node Version Manager (for managing multiple versions of Node.js)
+    - [git](https://git-scm.com/downloads) - source control
+    - [nvm (nvm-windows for windows)](https://github.com/coreybutler/nvm-windows) - Node Version Manager (for managing multiple versions of Node.js)
     - Commander/ConEmu(Windows)/iTerm(mac) - console managers; makes dealing with lots of consoles more manageable
     - [functions core tools](https://www.npmjs.com/package/azure-functions-core-tools) - helps for making samples/etc. `npm i -g azure-functions-core-tools@core`
 
