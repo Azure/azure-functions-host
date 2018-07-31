@@ -51,10 +51,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             JObject json = new JObject
             {
-                { "type", "blob" },
-                { "name", "myOutput" },
-                { "direction", "out" },
-                { "path", "foo/bar" }
+                { "type", "httpTrigger" },
+                { "name", "myInput" },
+                { "direction", "in" }
             };
             FunctionBinding functionBinding = TestHelpers.CreateTestBinding(json);
             FunctionBinding[] bindings = new FunctionBinding[] { functionBinding };

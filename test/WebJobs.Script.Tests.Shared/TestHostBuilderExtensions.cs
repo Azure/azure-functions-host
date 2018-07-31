@@ -20,7 +20,10 @@ namespace Microsoft.WebJobs.Script.Tests
     {
         public static IHostBuilder ConfigureDefaultTestScriptHost(this IHostBuilder builder, Action<ScriptWebHostOptions> configure = null, bool runStartupHostedServices = false)
         {
-            var webHostOptions = new ScriptWebHostOptions();
+            var webHostOptions = new ScriptWebHostOptions()
+            {
+                IsSelfHost = true
+            };
 
             if (configure == null)
             {
