@@ -11,7 +11,10 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -20,6 +23,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     // not have a direct dependency on anything WebJobs related.
     public static partial class TestHelpers
     {
+        public static IHost GetDefaultHost(Action<ScriptWebHostOptions> configure = null)
+        {
+            if (configure == null)
+            {
+                configure = o =>
+                {
+                    o.ScriptPath = TestHelpers.FunctionsTestDirectory;
+                    o.LogPath = TestHelpers.GetHostLogFileDirectory().FullName;
+                };
+            }
+
+            return new HostBuilder()
+                .ConfigureDefaultTestScriptHost(configure)
+                .Build();
+        }
+
+        public static ScriptHost GetDefaultScriptHost(Action<ScriptWebHostOptions> configure = null)
+        {
+            return GetDefaultHost(configure)
+                .GetScriptHost();
+        }
+
         public static FunctionBinding CreateTestBinding(JObject json)
         {
             ScriptBindingContext context = new ScriptBindingContext(json);

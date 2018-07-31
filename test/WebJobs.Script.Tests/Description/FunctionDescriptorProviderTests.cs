@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -29,11 +30,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node");
 
             var host = new HostBuilder()
-                .ConfigureDefaultTestScriptHost(o => o.ScriptPath = rootPath)
+                .ConfigureDefaultTestScriptHost(o =>
+                {
+                    o.ScriptPath = rootPath;
+                    o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
+                })
+                .AddAzureStorage()
                 .Build();
             _host = host.GetScriptHost();
             _host.InitializeAsync().GetAwaiter().GetResult();
-            _provider = new TestDescriptorProvider(_host, host.Services.GetService<IOptions<ScriptHostOptions>>().Value);
+            _provider = new TestDescriptorProvider(_host, host.Services.GetService<IOptions<ScriptHostOptions>>().Value, host.Services.GetService<ICollection<IScriptBindingProvider>>());
         }
 
         [Fact]
@@ -197,7 +203,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestDescriptorProvider : FunctionDescriptorProvider
         {
-            public TestDescriptorProvider(ScriptHost host, ScriptHostOptions config) : base(host, config, new Collection<IScriptBindingProvider>())
+            public TestDescriptorProvider(ScriptHost host, ScriptHostOptions config, ICollection<IScriptBindingProvider> bindingProviders)
+                : base(host, config, bindingProviders)
             {
             }
 

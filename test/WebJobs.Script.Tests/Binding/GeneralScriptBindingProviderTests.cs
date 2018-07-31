@@ -6,6 +6,8 @@ using System.IO;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -45,8 +47,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ManualTest()
         {
-            var mockMetadataProvider = new Mock<IJobHostMetadataProvider>();
-            var provider = new GeneralScriptBindingProvider(NullLogger.Instance, mockMetadataProvider.Object);
+            var metadataProvider = TestHelpers.GetDefaultHost()
+                .Services.GetService<IJobHostMetadataProvider>();
+
+            var provider = new GeneralScriptBindingProvider(NullLogger.Instance, metadataProvider);
 
             JObject bindingMetadata = new JObject
             {
