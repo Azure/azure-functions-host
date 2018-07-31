@@ -3,13 +3,11 @@
 
 using System;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -28,13 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             binding = null;
 
-            if (string.Compare(context.Type, "blobTrigger", StringComparison.OrdinalIgnoreCase) == 0 ||
-                string.Compare(context.Type, "blob", StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                // TODO: DI (FACAVAL) Load storage extensions dynamically
-                //binding = new BlobScriptBinding(context);
-            }
-            else if (string.Compare(context.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase) == 0)
+            if (string.Compare(context.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase) == 0)
             {
                 binding = new HttpScriptBinding(context);
             }

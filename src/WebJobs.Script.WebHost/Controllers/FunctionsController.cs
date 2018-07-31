@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO.Abstractions;
 using System.IO.Compression;
 using System.Linq;
@@ -124,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/functions/{name}/status")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         [RequiresRunningHost]
-        public IActionResult GetFunctionStatus(string name, IScriptJobHost scriptHost)
+        public IActionResult GetFunctionStatus(string name, [FromServices] IScriptJobHost scriptHost)
         {
             FunctionStatus status = new FunctionStatus();
 

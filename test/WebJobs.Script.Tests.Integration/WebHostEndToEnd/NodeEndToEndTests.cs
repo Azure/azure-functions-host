@@ -14,6 +14,8 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -185,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 logs = Fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory("Scenarios")).Select(p => p.FormattedMessage).ToList();
                 return logs.Count == 10;
-            });
+            }, userMessageCallback: Fixture.Host.GetLog);
 
             // verify use of context.log to log complex objects
             LogMessage scriptTrace = Fixture.Host.GetLogMessages().Single(p => p.FormattedMessage != null && p.FormattedMessage.Contains(testData));
@@ -808,7 +810,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(1, array[1]);
         }
 
-        [Fact]
+        [Fact(Skip = "Disabled until extension is supported")]
         public void TimerTrigger()
         {
             var logs = Fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory("TimerTrigger"));
@@ -925,6 +927,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             public TestFixture() : base(@"TestScripts\Node", "node")
             {
+            }
+
+            public override void ConfigureJobHost(IHostBuilder builder)
+            {
+                base.ConfigureJobHost(builder);
+
+                builder
+                    .AddAzureStorage()
+                    .ConfigureServices(s =>
+                    {
+                        s.Configure<ScriptHostOptions>(o =>
+                        {
+                            o.Functions = new[]
+                            {
+                                "BlobTriggerToBlob",
+                                "HttpTrigger",
+                                "HttpTrigger-Scenarios",
+                                "HttpTriggerExpressApi",
+                                "HttpTriggerPromise",
+                                "HttpTriggerToBlob",
+                                "Invalid",
+                                "ManualTrigger",
+                                "MultipleExports",
+                                "MultipleOutputs",
+                                "MultipleInputs",
+                                "QueueTriggerByteArray",
+                                "QueueTriggerToBlob",
+                                "SingleNamedExport",
+                                "TableIn",
+                                "TableOut",
+                                "Scenarios"
+                            };
+
+                            // TODO DI: This should naturally default
+                            o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
+                        });
+                    });
             }
         }
 

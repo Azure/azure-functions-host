@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Proxy
                 httpContext.Items[ScriptConstants.AzureFunctionsNestedProxyCount] = (int)nestedProxiesCount + 1;
             }
 
-            await functionInvocationMiddleware.Invoke(httpContext, _scriptHost);
+            await functionInvocationMiddleware.Invoke(httpContext);
 
             var result = (IActionResult)httpContext.Items[ScriptConstants.AzureFunctionsProxyResult];
 

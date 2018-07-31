@@ -106,11 +106,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public static string SharedAssemblyPath => Path.Combine(FunctionSharedBinPath, "DotNetFunctionSharedAssembly.dll");
 
-            public override void Dispose()
+            public override async Task DisposeAsync()
             {
-                base.Dispose();
+                await base.DisposeAsync();
 
-                Task.WaitAll(
+                await Task.WhenAll(
                     FileUtility.DeleteDirectoryAsync(Function1Path, true),
                     FileUtility.DeleteDirectoryAsync(Function2Path, true),
                     FileUtility.DeleteDirectoryAsync(Function3Path, true),

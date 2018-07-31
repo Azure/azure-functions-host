@@ -2,17 +2,17 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Internal;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Primitives;
-using System.Linq;
-using Xunit;
-using Microsoft.Extensions.Logging;
-using System;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using Microsoft.WebJobs.Script.Tests;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -54,7 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var log = Fixture.LoggerProvider.GetAllLogMessages().SingleOrDefault(p => p.FormattedMessage == "C# HTTP trigger function processed a request.");
             Assert.NotNull(log);
             Assert.Equal(LogLevel.Information, log.Level);
-            
+            Assert.Equal("Function1", log.Scope[ScopeKeys.FunctionName]);
+            Assert.Equal(LogCategories.CreateFunctionUserCategory("Function1"), log.Category);
         }
 
         [Fact]
@@ -82,16 +83,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var response = request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
 
             var errorLogs = Fixture.LoggerProvider.GetAllLogMessages().Where(p => p.Level == LogLevel.Error).ToArray();
-            Assert.Equal(3, errorLogs.Length);
+            Assert.Equal(2, errorLogs.Length);
 
-            // ensure the thrown exception was logged
+            // first log is the result
+            Assert.Equal(LogCategories.Results, errorLogs[0].Category);
+
             var error = errorLogs[1];
-            Assert.Equal("System.Private.CoreLib: Exception while executing function: Function1. TestFunctions: Kaboom!.", error.FormattedMessage);
-
-            error = errorLogs[2];
             var invocationException = (FunctionInvocationException)error.Exception;
             Assert.Equal("Exception while executing function: Function1", invocationException.Message);
             Assert.Equal("TestFunctions.Function1.Run", invocationException.MethodName);
+            Assert.Equal("Function1", error.Scope[ScopeKeys.FunctionName]);
+            Assert.Equal(LogCategories.CreateFunctionCategory("Function1"), error.Category);
         }
 
         public class TestFixture : ScriptHostEndToEndTestFixture
@@ -104,9 +106,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
             }
 
-            public override void Dispose()
+            protected override Task CreateTestStorageEntities()
             {
-                base.Dispose();
+                // No need for this.
+                return Task.CompletedTask;
             }
         }
     }

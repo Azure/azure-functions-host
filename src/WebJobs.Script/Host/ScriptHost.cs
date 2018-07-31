@@ -31,7 +31,6 @@ using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -56,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ScriptTypeLocator _typeLocator;
         private readonly IDebugStateProvider _debugManager;
         private readonly ICollection<IScriptBindingProvider> _bindingProviders;
+        private readonly IJobHostMetadataProvider _metadataProvider;
         private IPrimaryHostStateProvider _primaryHostStateProvider;
         private string _instanceId;
         // TODO: DI (FACAVAL) Review
@@ -96,6 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IDebugStateProvider debugManager,
             ICollection<IScriptBindingProvider> bindingProviders,
             IPrimaryHostStateProvider primaryHostStateProvider,
+            IJobHostMetadataProvider metadataProvider,
             ScriptSettingsManager settingsManager = null,
             ProxyClientExecutor proxyClient = null)
             : base(options, jobHostContextFactory)
@@ -133,6 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _debugManager = debugManager;
             _primaryHostStateProvider = primaryHostStateProvider;
             _bindingProviders = bindingProviders;
+            _metadataProvider = metadataProvider;
         }
 
         // TODO: DI (FACAVAL) Do we still need this event?
@@ -240,6 +242,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Generate Functions
                 var functionMetadata = _functionMetadataManager.Functions;
+                foreach (var error in _functionMetadataManager.Errors)
+                {
+                    FunctionErrors.Add(error.Key, error.Value.ToArray());
+                }
+
                 var directTypes = GetDirectTypes(functionMetadata);
                 InitializeFunctionDescriptors(functionMetadata);
                 GenerateFunctions(directTypes);
@@ -247,39 +254,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 CleanupFileSystem();
             }
         }
-
-        // TODO: DI (FACAVAL) Logger configuration is done on startup - brettsam
-        //private void ConfigureLoggerFactory(bool recreate = false)
-        //{
-        //    // Ensure we always have an ILoggerFactory,
-        //    // regardless of whether AppInsights is registered or not
-        //    if (recreate || _hostOptions.LoggerFactory == null)
-        //    {
-        //        _hostOptions.LoggerFactory = new LoggerFactory(Enumerable.Empty<ILoggerProvider>(), Utility.CreateLoggerFilterOptions());
-
-        //        // If we've created the LoggerFactory, then we are responsible for
-        //        // disposing. Store this locally for disposal later. We can't rely
-        //        // on accessing this directly from ScriptConfig.HostConfig as the
-        //        // ScriptConfig is re-used for every host.
-        //        _loggerFactory = _hostOptions.LoggerFactory;
-        //    }
-
-        //    ConfigureLoggerFactory(_instanceId, _hostOptions.LoggerFactory, ScriptConfig, _settingsManager, _loggerProviderFactory,
-        //        () => FileLoggingEnabled, () => IsPrimary, HandleHostError);
-        //}
-
-        //internal static void ConfigureLoggerFactory(string instanceId, ILoggerFactory loggerFactory, ScriptHostOptions scriptConfig, ScriptSettingsManager settingsManager,
-        //    ILoggerProviderFactory builder, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary, Action<Exception> handleException)
-        //{
-        //    // TODO: DI (FACAVAL) Review - BrettSam
-        //    //foreach (ILoggerProvider provider in builder.CreateLoggerProviders(instanceId, scriptConfig, settingsManager, isFileLoggingEnabled, isPrimary))
-        //    //{
-        //    //    loggerFactory.AddProvider(provider);
-        //    //}
-
-        //    // The LoggerFactory must always have this as there's some functional value (handling exceptions) when handling these errors.
-        //    loggerFactory.AddProvider(new HostErrorLoggerProvider(handleException));
-        //}
 
         // TODO: DI (FACAVAL) This needs to move to an options config setup
         // Create a TimeoutConfiguration specified by scriptConfig knobs; else null.
@@ -460,7 +434,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     registrations,
                     languageWorkerConfig,
                     server.Uri,
-                    NullLoggerFactory.Instance); // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
+                    _loggerFactory); // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
             };
 
             var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
@@ -1012,15 +986,14 @@ namespace Microsoft.Azure.WebJobs.Script
         private void ApplyJobHostMetadata()
         {
             // TODO: DI (FACAVAL) Review
-            //var metadataProvider = this.CreateMetadataProvider();
-            //foreach (var function in Functions)
-            //{
-            //    var metadata = metadataProvider.GetFunctionMetadata(function.Metadata.Name);
-            //    if (metadata != null)
-            //    {
-            //        function.Metadata.IsDisabled = metadata.IsDisabled;
-            //    }
-            //}
+            foreach (var function in Functions)
+           {
+                var metadata = _metadataProvider.GetFunctionMetadata(function.Metadata.Name);
+                if (metadata != null)
+                {
+                    function.Metadata.IsDisabled = metadata.IsDisabled;
+                }
+            }
         }
 
         internal static string GetAssemblyFileVersion(Assembly assembly)

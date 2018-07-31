@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class DotNetFunctionDescriptorProviderTests
     {
-        [Fact]
+        [Fact(Skip = "Test depending on blob/storage extension. We either need to reference them from tests or change to core bindings")]
         public void TryCreateReturnValueParameterDescriptor_ReturnBindingPresent_ReturnsExpectedValue()
         {
             JObject json = new JObject

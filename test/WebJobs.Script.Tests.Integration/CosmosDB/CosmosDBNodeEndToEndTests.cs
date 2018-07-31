@@ -13,13 +13,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         {
         }
 
-        [Fact]
+        [Fact(Skip = "Waiting for updated extension")]
         public Task CosmosDBTrigger()
         {
             return CosmosDBTriggerToBlobTest();
         }
 
-        [Fact]
+        [Fact(Skip = "Waiting for updated extension")]
         public Task CosmosDB()
         {
             return CosmosDBTest();

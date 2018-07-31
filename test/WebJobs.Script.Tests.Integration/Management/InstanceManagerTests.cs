@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -23,7 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
     public class InstanceManagerTests : IDisposable
     {
         private readonly TestLoggerProvider _loggerProvider;
-        private readonly ScriptSettingsManager _settingsManager;
+        private readonly TestEnvironment _environment;
+        private readonly ScriptWebHostEnvironment _scriptWebEnvironment;
         private readonly InstanceManager _instanceManager;
         private readonly HttpClient _httpClient;
 
@@ -35,8 +37,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
 
-            _settingsManager = new ScriptSettingsManager();
-            _instanceManager = new InstanceManager(_settingsManager, null, loggerFactory, _httpClient, new Mock<IScriptWebHostEnvironment>().Object);
+            _environment = new TestEnvironment();
+            _scriptWebEnvironment = new ScriptWebHostEnvironment(_environment);
+            _instanceManager = new InstanceManager(new OptionsWrapper<ScriptWebHostOptions>(new ScriptWebHostOptions()),
+                loggerFactory, _httpClient, _scriptWebEnvironment);
         }
 
         [Fact]
@@ -48,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Value = Guid.NewGuid().ToString()
             };
 
-            _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             
             var context = new HostAssignmentContext
             {
@@ -59,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
             bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
-            Assert.True(new ScriptWebHostEnvironment().InStandbyMode);
+            Assert.True(_scriptWebEnvironment.InStandbyMode);
 
             // specialization is done in the background
             await Task.Delay(500);

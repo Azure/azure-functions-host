@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -24,10 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public string Category { get; private set; }
 
-        public IDisposable BeginScope<TState>(TState state)
-        {
-            return null;
-        }
+        public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope.Push(state);
 
         public bool IsEnabled(LogLevel logLevel)
         {
@@ -62,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Level = logLevel,
                 EventId = eventId,
                 State = state as IEnumerable<KeyValuePair<string, object>>,
+                Scope = DictionaryLoggerScope.GetMergedStateDictionary(),
                 Exception = exception,
                 FormattedMessage = formatter(state, exception),
                 Category = Category,
@@ -82,6 +81,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public EventId EventId { get; set; }
 
         public IEnumerable<KeyValuePair<string, object>> State { get; set; }
+
+        public IDictionary<string, object> Scope { get; set; }
 
         public Exception Exception { get; set; }
 

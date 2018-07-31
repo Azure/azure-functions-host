@@ -3,26 +3,15 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Formatting;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Web.Http;
-using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.WebHost;
-using Xunit;
-using Microsoft.WebJobs.Script.Tests;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Primitives;
 using Microsoft.AspNetCore.Mvc;
-using System.Web.Http.Results;
-using Moq;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.WebJobs.Script.Tests;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -157,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             headers.Add("accept", contentType);
             headers.Add("type", contentType);
-            
+
             if (contentNegotiation)
             {
                 headers.Add("negotiation", "true");
@@ -210,8 +199,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : ScriptHostEndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\Node", "node")
+            public TestFixture() : base(@"TestScripts\Node", "node",
+                startHost: true, functions: new[] { "HttpTrigger", "HttpTrigger-Scenarios" })
             {
+            }
+
+            public override void ConfigureServices(IServiceCollection services)
+            {
+                services.Configure<ScriptHostOptions>(o =>
+                {
+                    // TODO DI: This should be automatically configured.
+                    o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
+                });
             }
         }
     }

@@ -145,11 +145,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
 
         /// <summary>
-        /// Gets or sets a test hook for modifying the configuration after host.json has been processed.
-        /// </summary>
-        internal Action<ScriptHostOptions> OnConfigurationApplied { get; set; }
-
-        /// <summary>
         /// Gets the <see cref="HostHealthMonitorConfiguration"/> to use.
         /// </summary>
         public HostHealthMonitorConfiguration HostHealthMonitor { get; }

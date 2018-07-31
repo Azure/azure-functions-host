@@ -5,13 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -92,41 +90,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             //Assert.Equal(expected, ScriptHost.GetRelativeDirectory(path, @"C:\Functions\Scripts"));
         }
 
-        [Fact(Skip = "This test should be updated to validate the FunctionMetadataManager")]
-        public void ReadFunctionMetadata_Succeeds()
-        {
-            var config = new ScriptHostOptions
-            {
-                RootScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample")
-            };
-
-            var functionErrors = new Dictionary<string, Collection<string>>();
-            var functionDirectories = Directory.EnumerateDirectories(config.RootScriptPath);
-            //var metadata = ScriptHost.ReadFunctionsMetadata(functionDirectories, null, functionErrors);
-            //Assert.Equal(41, metadata.Count);
-        }
-
         [Fact]
-        public async Task OnDebugModeFileChanged_TriggeredWhenDebugFileUpdated()
+        public static async Task OnDebugModeFileChanged_TriggeredWhenDebugFileUpdated()
         {
-            ScriptHost host = _fixture.ScriptHost;
-            string debugSentinelFilePath = Path.Combine(host.ScriptOptions.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
+            var host = new HostBuilder()
+                .ConfigureDefaultTestScriptHost(runStartupHostedServices: true)
+                .Build();
 
+            ScriptHost scriptHost = host.GetScriptHost();
+            string debugSentinelFilePath = Path.Combine(scriptHost.ScriptOptions.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
+
+            // Write the initial file.
             if (!File.Exists(debugSentinelFilePath))
             {
                 File.WriteAllText(debugSentinelFilePath, string.Empty);
             }
 
-            var debugState = _fixture.Host.Services.GetService<IDebugStateProvider>();
-
             // first put the host into a non-debug state
+            var debugState = host.Services.GetService<IDebugStateProvider>();
+            debugState.LastDebugNotify = DateTime.MinValue;
+
+            await host.StartAsync();
+
             await TestHelpers.Await(() =>
             {
-                debugState.LastDebugNotify = DateTime.MinValue;
-                return !host.InDebugMode;
-            });
-
-            Assert.False(host.InDebugMode, $"Expected InDebugMode to be false. Now: {DateTime.UtcNow}; Sentinel LastWriteTime: {File.GetLastWriteTimeUtc(debugSentinelFilePath)}; LastDebugNotify: {debugState.LastDebugNotify}.");
+                return !scriptHost.InDebugMode;
+            },
+            userMessageCallback: () => $"Expected InDebugMode to be false. Now: {DateTime.UtcNow}; Sentinel LastWriteTime: {File.GetLastWriteTimeUtc(debugSentinelFilePath)}; LastDebugNotify: {debugState.LastDebugNotify}.");
 
             // verify that our file watcher for the debug sentinel file is configured
             // properly by touching the file and ensuring that our host goes into
@@ -135,10 +125,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await TestHelpers.Await(() =>
             {
-                return host.InDebugMode;
-            });
-
-            Assert.True(host.InDebugMode);
+                return scriptHost.InDebugMode;
+            }, userMessageCallback: () => "InDebugMode never set to true.");
         }
 
         [Fact]
@@ -305,7 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("function test")]
         [InlineData("function.test")]
         [InlineData("function0.1")]
-        public void Initialize_InvalidFunctionNames_DoesNotCreateFunctionAndLogsFailure(string functionName)
+        public async Task Initialize_InvalidFunctionNames_DoesNotCreateFunctionAndLogsFailure(string functionName)
         {
             string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             string invalidFunctionNamePath = Path.Combine(rootPath, functionName);
@@ -319,20 +307,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 File.WriteAllText(Path.Combine(rootPath, ScriptConstants.HostMetadataFileName), config.ToString());
                 File.WriteAllText(Path.Combine(invalidFunctionNamePath, ScriptConstants.FunctionMetadataFileName), string.Empty);
 
-                var scriptConfig = new ScriptHostOptions()
-                {
-                    RootScriptPath = rootPath
-                };
                 var environment = new Mock<IScriptJobHostEnvironment>();
                 var eventManager = new Mock<IScriptEventManager>();
 
-                //var scriptHost = new ScriptHost(environment.Object, eventManager.Object, scriptConfig, _settingsManager);
-                //scriptHost.Initialize();
+                IHost host = new HostBuilder()
+                    .ConfigureDefaultTestScriptHost(o =>
+                    {
+                        o.ScriptPath = rootPath;
+                    })
+                    .Build();
 
-                //Assert.Equal(1, scriptHost.FunctionErrors.Count);
-                //Assert.Equal(functionName, scriptHost.FunctionErrors.First().Key);
-                //Assert.Equal($"'{functionName}' is not a valid function name.", scriptHost.FunctionErrors.First().Value.First());
-                throw new Exception("Fix test");
+                var scriptHost = host.GetScriptHost();
+                await scriptHost.InitializeAsync();
+
+                Assert.Equal(1, scriptHost.FunctionErrors.Count);
+                Assert.Equal(functionName, scriptHost.FunctionErrors.First().Key);
+                Assert.Equal($"'{functionName}' is not a valid function name.", scriptHost.FunctionErrors.First().Value.First());
             }
             finally
             {

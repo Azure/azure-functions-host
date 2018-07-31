@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = rootPath
             });
 
-            var manager = new Mock<ExtensionsManager>(options, NullLogger.Instance);
+            var manager = new Mock<ExtensionsManager>(options, NullLogger<ExtensionsManager>.Instance);
             manager.Setup(m => m.ProcessExtensionsProject(It.IsAny<string>()))
                 .Returns<string>(a =>
                 {
