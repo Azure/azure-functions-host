@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Tests;
@@ -18,19 +19,13 @@ namespace Microsoft.WebJobs.Script.Tests
             _filter = filter;
         }
 
-        private Dictionary<string, TestLogger> LoggerCache { get; } = new Dictionary<string, TestLogger>();
+        private ConcurrentDictionary<string, TestLogger> LoggerCache { get; } = new ConcurrentDictionary<string, TestLogger>();
 
         public IEnumerable<TestLogger> CreatedLoggers => LoggerCache.Values;
 
         public ILogger CreateLogger(string categoryName)
         {
-            if (!LoggerCache.TryGetValue(categoryName, out TestLogger logger))
-            {
-                logger = new TestLogger(categoryName, _filter);
-                LoggerCache.Add(categoryName, logger);
-            }
-
-            return logger;
+            return LoggerCache.GetOrAdd(categoryName, (key) => new TestLogger(key, _filter));
         }
 
         public IList<LogMessage> GetAllLogMessages() => CreatedLoggers.SelectMany(l => l.GetLogMessages()).OrderBy(p => p.Timestamp).ToList();
