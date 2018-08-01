@@ -27,6 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         // Profiles
         public const string WorkerDescriptionProfiles = "profiles";
-        public const string AppServiceEnvDescription = "AppServiceEnvironment";
+        public const string WorkerDescriptionAppServiceEnvProfileName = "AppServiceEnvironment";
     }
 }

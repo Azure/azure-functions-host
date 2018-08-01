@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (ScriptSettingsManager.Instance.IsAppServiceEnvironment)
                 {
                     //Overwrite default Description with AppServiceEnv profile
-                    workerDescription = GetWorkerDescriptionFromProfiles(LanguageWorkerConstants.AppServiceEnvDescription, descriptionProfiles, workerDescription);
+                    workerDescription = GetWorkerDescriptionFromProfiles(LanguageWorkerConstants.WorkerDescriptionAppServiceEnvProfileName, descriptionProfiles, workerDescription);
                 }
                 GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
                 AddArgumentsFromAppSettings(workerDescription, languageSection);

@@ -337,11 +337,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 // TODO: per language stdout/err parser?
                 if (e.Data != null)
                 {
-                    if (e.Data.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > 0)
+                    if (e.Data.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
                     {
                         _logger.LogWarning(e.Data);
                     }
-                    else if (e.Data.IndexOf("error", StringComparison.OrdinalIgnoreCase) > 0)
+                    else if (e.Data.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1)
                     {
                         _logger.LogError(e.Data);
                     }

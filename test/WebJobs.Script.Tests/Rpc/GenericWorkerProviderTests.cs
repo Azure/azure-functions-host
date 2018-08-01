@@ -176,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void ReadWorkerProviderFromConfig_AddAppSvcProfile_ReturnsAppServiceEnvDescription()
         {
             var expectedArguments = new string[] { "-v", "verbose" };
-            var configs = new List<TestLanguageWorkerConfig>() { MakeTestConfig(testLanguage, expectedArguments, false, LanguageWorkerConstants.AppServiceEnvDescription) };
+            var configs = new List<TestLanguageWorkerConfig>() { MakeTestConfig(testLanguage, expectedArguments, false, LanguageWorkerConstants.WorkerDescriptionAppServiceEnvProfileName) };
             var testLogger = new TestLogger(testLanguage);
 
             // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void ReadWorkerProviderFromConfig_OverrideDefaultExePath()
         {
-            var configs = new List<TestLanguageWorkerConfig>() { MakeTestConfig(testLanguage, new string[0], false, LanguageWorkerConstants.AppServiceEnvDescription) };
+            var configs = new List<TestLanguageWorkerConfig>() { MakeTestConfig(testLanguage, new string[0], false, LanguageWorkerConstants.WorkerDescriptionAppServiceEnvProfileName) };
             var testLogger = new TestLogger(testLanguage);
             var testExePath = "./mySrc/myIndex";
             Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
