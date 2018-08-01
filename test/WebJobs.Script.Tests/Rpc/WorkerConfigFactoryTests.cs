@@ -4,8 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
@@ -75,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
             {
-                var javaPath = configFactory.GetExecutablePathForJava();
+                var javaPath = configFactory.GetExecutablePathForJava("../../zulu8.23.0.3-jdk8.0.144-win_x64/bin/java");
                 Assert.Equal(@"D:\Program Files\Java\zulu8.23.0.3-jdk8.0.144-win_x64\bin\java", javaPath);
             }
         }
@@ -98,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
             {
-                var javaPath = configFactory.GetExecutablePathForJava();
+                var javaPath = configFactory.GetExecutablePathForJava("java");
                 Assert.Equal(@"D:\Program Files\Java\jdk1.7.0_51\bin\java", javaPath);
             }
         }
@@ -121,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
             {
-                var javaPath = configFactory.GetExecutablePathForJava();
+                var javaPath = configFactory.GetExecutablePathForJava("java");
                 Assert.Equal("java", javaPath);
             }
         }

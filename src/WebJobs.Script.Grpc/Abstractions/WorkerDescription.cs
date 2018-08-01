@@ -12,25 +12,25 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
         /// <summary>
         /// Gets or sets the name of the supported language. This is the same name as the IConfiguration section for the worker.
         /// </summary>
-        [JsonProperty(PropertyName = "language", Required = Required.Always)]
+        [JsonProperty(PropertyName = "language")]
         public string Language { get; set; }
 
         /// <summary>
         /// Gets or sets the supported file extension type. Functions are registered with workers based on extension.
         /// </summary>
-        [JsonProperty(PropertyName = "extension", Required = Required.Always)]
+        [JsonProperty(PropertyName = "extension")]
         public string Extension { get; set; }
 
         /// <summary>
         /// Gets or sets the default executable path.
         /// </summary>
-        [JsonProperty(PropertyName = "defaultExecutablePath", Required = Required.Always)]
+        [JsonProperty(PropertyName = "defaultExecutablePath")]
         public string DefaultExecutablePath { get; set; }
 
         /// <summary>
         /// Gets or sets the default path to the worker (relative to the bin/workers/{language} directory)
         /// </summary>
-        [JsonProperty(PropertyName = "defaultWorkerPath", Required = Required.Always)]
+        [JsonProperty(PropertyName = "defaultWorkerPath")]
         public string DefaultWorkerPath { get; set; }
 
         /// <summary>

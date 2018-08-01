@@ -337,13 +337,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 // TODO: per language stdout/err parser?
                 if (e.Data != null)
                 {
-                    if (e.Data.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > 0)
+                    if (e.Data.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
                     {
                         _logger.LogWarning(e.Data);
                     }
-                    else
+                    else if (e.Data.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1)
                     {
                         _logger.LogError(e.Data);
+                    }
+                    else
+                    {
+                        _logger.LogInformation(e.Data);
                     }
                 }
             };
@@ -371,9 +375,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     HandleWorkerError(new Exception("Worker process is not attached"));
                 }
             };
-            _logger.LogInformation($"Starting {process.StartInfo.FileName} language worker process with Arguments={process.StartInfo.Arguments}");
+            _logger.LogInformation($"Starting language worker process: {process.StartInfo.FileName} {process.StartInfo.Arguments}");
             process.Start();
-            _logger.LogInformation($"{process.StartInfo.FileName} process with Id={process.Id} started");
+            _logger.LogInformation($"{process.StartInfo.FileName} process with Id: {process.Id} started");
             process.BeginErrorReadLine();
             process.BeginOutputReadLine();
         }
