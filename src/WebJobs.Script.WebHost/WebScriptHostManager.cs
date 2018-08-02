@@ -110,6 +110,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public ISecretManager SecretManager => _secretManager;
 
+        public IWebJobsRouter Router => _router;
+
         /// <summary>
         /// Gets or sets a value indicating whether http requests should be
         /// temporarily delayed due to host state.

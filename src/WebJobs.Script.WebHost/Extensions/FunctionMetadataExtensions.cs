@@ -3,8 +3,11 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -21,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// <param name="request">Current HttpRequest</param>
         /// <param name="config">ScriptHostConfig</param>
         /// <returns>Promise of a FunctionMetadataResponse</returns>
-        public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, HttpRequest request, ScriptHostConfiguration config)
+        public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, HttpRequest request, ScriptHostConfiguration config, IWebJobsRouter router = null)
         {
             var functionPath = Path.Combine(config.RootScriptPath, functionMetadata.Name);
             var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
@@ -45,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 // Properties below this comment are not present in the kudu version.
                 IsDirect = functionMetadata.IsDirect,
                 IsDisabled = functionMetadata.IsDisabled,
-                IsProxy = functionMetadata.IsProxy
+                IsProxy = functionMetadata.IsProxy,
+                InvokeUrlTemplate = GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata.Name, router)
             };
             return response;
         }
@@ -124,5 +128,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 
         private static Uri GetFunctionHref(string functionName, string baseUrl) =>
             new Uri($"{baseUrl}/admin/functions/{functionName}");
+
+        private static Uri GetFunctionInvokeUrlTemplate(string baseUrl, string functionName, IWebJobsRouter router)
+        {
+            var template = router?.GetFunctionRouteTemplate(functionName);
+
+            if (template != null)
+            {
+                return new Uri($"{baseUrl}/{template}");
+            }
+
+            return null;
+        }
     }
 }
