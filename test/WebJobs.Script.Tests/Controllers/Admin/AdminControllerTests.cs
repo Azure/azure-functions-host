@@ -31,9 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly TempDirectory _secretsDirectory = new TempDirectory();
 
-            testController = new FunctionsController(mockWebFunctionManager.Object, managerMock.Object, mockRouter.Object, new LoggerFactory());
-        }
-
         [Fact]
         public async Task Invoke_CallsFunction()
         {
@@ -77,7 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var functionsManagerMock = new Mock<IWebFunctionsManager>();
-            var testController = new FunctionsController(functionsManagerMock.Object, new LoggerFactory());
+            var mockRouter = new Mock<IWebJobsRouter>();
+            var testController = new FunctionsController(functionsManagerMock.Object, mockRouter.Object, new LoggerFactory());
             IActionResult response = testController.Invoke(testFunctionName, invocation, scriptHostMock.Object);
             Assert.IsType<AcceptedResult>(response);
 

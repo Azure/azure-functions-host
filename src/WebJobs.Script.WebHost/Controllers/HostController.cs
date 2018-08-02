@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -53,14 +54,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/status")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         [TypeFilter(typeof(EnableDebugModeFilter))]
-        public IActionResult GetHostStatus([FromServices] IScriptHostManager scriptHostManager)
+        public async Task<IActionResult> GetHostStatus([FromServices] IScriptHostManager scriptHostManager, [FromServices] IHostIdProvider hostIdProvider)
         {
             var status = new HostStatus
             {
                 State = scriptHostManager.State.ToString(),
                 Version = ScriptHost.Version,
                 VersionDetails = Utility.GetInformationalVersion(typeof(ScriptHost)),
-                Id = _hostOptions.Value.HostId
+                Id = await hostIdProvider.GetHostIdAsync(CancellationToken.None)
             };
 
             var lastError = scriptHostManager.LastError;

@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly IDictionary<string, string> _variables;
 
         public TestEnvironment()
-            :this(new Dictionary<string, string>())
+            : this(new Dictionary<string, string>())
         {
         }
 
