@@ -118,6 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     o.ScriptPath = _rootPath;
                     o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
                 })
+                .AddAzureStorage()
                 .ConfigureServices(s =>
                 {
                     s.AddSingleton<IScriptEventManager>(EventManager);

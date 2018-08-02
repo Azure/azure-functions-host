@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,7 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly FunctionDescriptorProvider _provider;
         private readonly ScriptHost _host;
-        private readonly ScriptSettingsManager _settingsManager;
 
         public FunctionDescriptorProviderTests()
         {

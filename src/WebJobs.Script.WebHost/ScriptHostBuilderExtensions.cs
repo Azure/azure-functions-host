@@ -97,7 +97,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
              {
                  o.AppDirectory = webHostOptions.Value.ScriptPath;
              })
-             .AddAzureStorage()
              .AddHttp(o =>
              {
                  o.SetResponse = HttpBinding.SetResponse;

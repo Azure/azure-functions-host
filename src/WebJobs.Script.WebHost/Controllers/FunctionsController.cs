@@ -32,15 +32,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     public class FunctionsController : Controller
     {
         private readonly IWebFunctionsManager _functionsManager;
-        private readonly ScriptHostManager _scriptHostManager;
         private readonly IWebJobsRouter _webJobsRouter;
         private readonly ILogger _logger;
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        public FunctionsController(IWebFunctionsManager functionsManager, WebScriptHostManager scriptHostManager, IWebJobsRouter webJobsRouter, ILoggerFactory loggerFactory)
+        public FunctionsController(IWebFunctionsManager functionsManager, IWebJobsRouter webJobsRouter, ILoggerFactory loggerFactory)
         {
             _functionsManager = functionsManager;
-            _scriptHostManager = scriptHostManager;
             _webJobsRouter = webJobsRouter;
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryFunctionsController);
         }

@@ -40,24 +40,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void InStandbyMode_ReturnsExpectedValue()
         {
-            using (new TestEnvironment())
-            {
-                // initially false
-                Assert.Equal(false, new ScriptWebHostEnvironment().InStandbyMode);
-            }
+            var environment = new Tests.TestEnvironment();
+            var scriptHostEnvironment = new ScriptWebHostEnvironment(environment);
 
-            using (new TestEnvironment())
-            {
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-                Assert.Equal(true, new ScriptWebHostEnvironment().InStandbyMode);
+            // initially false
+            Assert.Equal(false, scriptHostEnvironment.InStandbyMode);
 
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-                Assert.Equal(false, new ScriptWebHostEnvironment().InStandbyMode);
+            scriptHostEnvironment = new ScriptWebHostEnvironment(environment);
 
-                // test only set one way
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-                Assert.Equal(false, new ScriptWebHostEnvironment().InStandbyMode);
-            }
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            Assert.Equal(true, scriptHostEnvironment.InStandbyMode);
+
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            Assert.Equal(false, scriptHostEnvironment.InStandbyMode);
+
+            // test only set one way
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            Assert.Equal(false, scriptHostEnvironment.InStandbyMode);
         }
 
         [Fact(Skip = "Review test")]
@@ -179,7 +178,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void Dispose()
         {
-            
         }
 
         private class TestEnvironment : IDisposable

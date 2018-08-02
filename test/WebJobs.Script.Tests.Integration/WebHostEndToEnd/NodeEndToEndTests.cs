@@ -134,7 +134,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await TableOutputTest();
         }
 
-
         [Fact(Skip = "Not yet enabled.")]
         public void NotificationHub()
         {

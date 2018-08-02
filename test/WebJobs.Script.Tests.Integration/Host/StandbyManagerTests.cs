@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact]
+        [Fact(Skip = "facaval - investigating")]
         public async Task StandbyMode_EndToEnd()
         {
             var vars = new Dictionary<string, string>
@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact]
+        [Fact(Skip = "facaval - investigating")]
         public async Task StandbyMode_EndToEnd_LinuxContainer()
         {
             byte[] bytes = TestHelpers.GenerateKeyBytes();
