@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -31,14 +32,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     public class FunctionsController : Controller
     {
         private readonly IWebFunctionsManager _functionsManager;
-        private readonly WebScriptHostManager _scriptHostManager;
+        private readonly ScriptHostManager _scriptHostManager;
+        private readonly IWebJobsRouter _webJobsRouter;
         private readonly ILogger _logger;
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        public FunctionsController(IWebFunctionsManager functionsManager, WebScriptHostManager scriptHostManager, ILoggerFactory loggerFactory)
+        public FunctionsController(IWebFunctionsManager functionsManager, WebScriptHostManager scriptHostManager, IWebJobsRouter webJobsRouter, ILoggerFactory loggerFactory)
         {
             _functionsManager = functionsManager;
             _scriptHostManager = scriptHostManager;
+            _webJobsRouter = webJobsRouter;
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryFunctionsController);
         }
 
@@ -47,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> List()
         {
-            return Ok(await _functionsManager.GetFunctionsMetadata(Request, _scriptHostManager.Router));
+            return Ok(await _functionsManager.GetFunctionsMetadata(Request, _webJobsRouter));
         }
 
         [HttpGet]
@@ -55,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> Get(string name)
         {
-            (var success, var function) = await _functionsManager.TryGetFunction(name, Request, _scriptHostManager.Router);
+            (var success, var function) = await _functionsManager.TryGetFunction(name, Request, _webJobsRouter);
 
             return success
                 ? Ok(function)
