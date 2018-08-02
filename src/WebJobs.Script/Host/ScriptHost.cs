@@ -757,7 +757,9 @@ namespace Microsoft.Azure.WebJobs.Script
             ConfigureLoggerFactory(recreate: true);
             _startupLogger = _hostConfig.LoggerFactory.CreateLogger(LogCategories.Startup);
             Logger = _hostConfig.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
-            oldLoggerFactory.Dispose();
+
+            // Dispose needs to be called in a fire and forget pattern as it has several sleeps and waits in the pipeline and was adding ~5 seconds to cold start.
+            Task.Run(() => oldLoggerFactory.Dispose());
 
             // Allow tests to modify anything initialized by host.json
             ScriptConfig.OnConfigurationApplied?.Invoke(ScriptConfig);
