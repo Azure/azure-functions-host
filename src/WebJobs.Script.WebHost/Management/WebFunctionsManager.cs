@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -46,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// </summary>
         /// <param name="request">Current HttpRequest for figuring out baseUrl</param>
         /// <returns>collection of FunctionMetadataResponse</returns>
-        public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(HttpRequest request, IRouter router = null)
+        public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(HttpRequest request, IWebJobsRouter router = null)
         {
             return await GetFunctionsMetadata().Select(fm => fm.ToFunctionMetadataResponse(request, _config, router)).WhenAll();
         }
@@ -130,9 +131,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <param name="name">Function name to retrieve</param>
         /// <param name="request">Current HttpRequest</param>
         /// <returns>(success, FunctionMetadataResponse)</returns>
-        public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request, IRouter router = null)
+        public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request, IWebJobsRouter router = null)
         {
             var functionMetadata = ScriptHost.ReadFunctionMetadata(Path.Combine(_config.RootScriptPath, name), new Dictionary<string, Collection<string>>(), fileSystem: FileUtility.Instance);
+
             if (functionMetadata != null)
             {
                 return (true, await functionMetadata.ToFunctionMetadataResponse(request, _config, router));
