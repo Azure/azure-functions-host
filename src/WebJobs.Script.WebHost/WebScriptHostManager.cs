@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -18,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
@@ -42,6 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly int _hostRunningPollIntervalMilliseconds;
         private readonly IWebJobsRouter _router;
         private readonly WebJobsSdkExtensionHookProvider _bindingWebHookProvider;
+        private readonly AutoRecoveringFileSystemWatcher _offlineFileWatcher;
+        private readonly ILogger _logger;
 
         private Task _runTask = Task.CompletedTask;
         private bool _hostStarted = false;
@@ -71,16 +75,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _hostTimeoutSeconds = hostTimeoutSeconds;
             _hostRunningPollIntervalMilliseconds = hostPollingIntervalMilliseconds;
             _router = router;
-
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
             config.IsSelfHost = webHostSettings.IsSelfHost;
 
             secretsRepositoryFactory = secretsRepositoryFactory ?? new DefaultSecretsRepositoryFactory();
             ISecretsRepository secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config, loggerFactory.CreateLogger(ScriptConstants.LogCategoryMigration));
-            _secretManager = secretManagerFactory.Create(settingsManager, loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral), secretsRepository);
+            _secretManager = secretManagerFactory.Create(settingsManager, _logger, secretsRepository);
             eventGenerator = eventGenerator ?? new EtwEventGenerator();
 
             _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider(_secretManager);
             _metricsLogger = new WebHostMetricsLogger(eventGenerator);
+
+            _offlineFileWatcher = new AutoRecoveringFileSystemWatcher(_config.RootScriptPath, ScriptConstants.HostOfflineFileName,
+                   includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Deleted);
+            _offlineFileWatcher.Changed += OnOfflineFileChanged;
+
+            string offlineFilePath = Path.Combine(_config.RootScriptPath, ScriptConstants.HostOfflineFileName);
+            if (File.Exists(offlineFilePath))
+            {
+                State = ScriptHostState.Offline;
+                _logger.LogInformation("Host is offline.");
+            }
         }
 
         public WebScriptHostManager(ScriptHostConfiguration config,
@@ -347,6 +362,40 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     return DelayRequests;
                 });
+            }
+        }
+
+        public void SetOfflineState(bool isOffline)
+        {
+            string path = Path.Combine(_config.RootScriptPath, ScriptConstants.HostOfflineFileName);
+            bool offlineFileExists = File.Exists(path);
+
+            if (isOffline && !offlineFileExists)
+            {
+                var fs = File.Create(path);
+                fs.Close();
+            }
+            else if (!isOffline && offlineFileExists)
+            {
+                FileUtility.DeleteFileSafe(path);
+            }
+        }
+
+        private void OnOfflineFileChanged(object sender, FileSystemEventArgs e)
+        {
+            if (e.ChangeType == WatcherChangeTypes.Created)
+            {
+                // after creating the offline marker file force
+                // a shutdown
+                this.Shutdown();
+            }
+            else if (e.ChangeType == WatcherChangeTypes.Deleted)
+            {
+                State = ScriptHostState.Default;
+
+                // after deleting the offline marker file
+                // force the host to initialize
+                EnsureHostStarted(CancellationToken.None);
             }
         }
     }

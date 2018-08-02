@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMiddleware<FunctionInvocationMiddleware>();
             builder.UseMiddleware<HostWarmupMiddleware>();
 
-            builder.UseWhen(context => !context.Request.Path.StartsWithSegments("/admin"), config =>
+            builder.UseWhen(context => !context.Request.Path.StartsWithSegments("/admin") && !context.Request.Path.Equals("/"), config =>
             {
                 config.UseMiddleware<HostAvailabilityCheckMiddleware>();
             });

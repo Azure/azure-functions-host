@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException(nameof(basePath));
             }
 
-            _probingPaths.Add(basePath);
+            AddProbingPath(basePath);
         }
 
         public static FunctionAssemblyLoadContext Shared => _defaultContext.Value;
@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 if (Directory.Exists(directory))
                 {
-                    _probingPaths.Add(directory);
+                    AddProbingPath(directory);
                 }
             }
 
@@ -297,6 +297,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return Path.Combine(basePath, "bin");
+        }
+
+        private void AddProbingPath(string path)
+        {
+            if (!_probingPaths.Contains(path))
+            {
+                _probingPaths.Add(path);
+            }
         }
     }
 }

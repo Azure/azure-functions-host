@@ -23,8 +23,13 @@ namespace Microsoft.Azure.WebJobs.Script
         Running,
 
         /// <summary>
-        /// The host is in an error state
+        /// The host is in an error state.
         /// </summary>
-        Error
+        Error,
+
+        /// <summary>
+        /// The host is offline and will not run.
+        /// </summary>
+        Offline
     }
 }

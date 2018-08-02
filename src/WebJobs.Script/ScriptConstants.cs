@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LoggerHttpRequest = "MS_HttpRequest";
 
         public const string LogCategoryHostController = "Host.Controllers.Host";
+        public const string LogCategoryExtensionsController = "Host.Controllers.Extensions";
         public const string LogCategoryFunctionsController = "Host.Controllers.Functions";
         public const string LogCategoryInstanceController = "Host.Controllers.Instance";
         public const string LogCategoryKeysController = "Host.Controllers.Keys";
@@ -86,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
 
+        public const string HostOfflineFileName = "host_offline";
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
         public const string HttpMethodConstraintName = "httpMethod";
         public const string Snapshot = "snapshot";
