@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { config, new TestSecretManagerFactory(secretsManagerMock.Object), eventManager.Object, _settingsManager, settings, mockRouter.Object, NullLoggerFactory.Instance });
             managerMock.SetupGet(p => p.Instance).Returns(hostMock.Object);
 
-            testController = new FunctionsController(mockWebFunctionManager.Object, managerMock.Object, new LoggerFactory());
+            testController = new FunctionsController(mockWebFunctionManager.Object, managerMock.Object, mockRouter.Object, new LoggerFactory());
         }
 
         [Fact]

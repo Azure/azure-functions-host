@@ -5,15 +5,16 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
     public interface IWebFunctionsManager
     {
-        Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(HttpRequest request, IRouter router = null);
+        Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(HttpRequest request, IWebJobsRouter router = null);
 
-        Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request, IRouter router = null);
+        Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request, IWebJobsRouter router = null);
 
         Task<(bool, bool, FunctionMetadataResponse)> CreateOrUpdate(string name, FunctionMetadataResponse functionMetadata, HttpRequest request);
 
