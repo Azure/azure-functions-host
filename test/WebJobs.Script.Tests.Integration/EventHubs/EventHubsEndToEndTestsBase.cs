@@ -51,8 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
 
         public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture() :
-                base(@"TestScripts\Node", "node", "Microsoft.Azure.WebJobs.Extensions.EventHubs", "3.0.0-beta*")
+            public TestFixture()
+                : base(@"TestScripts\Node", "node", "Microsoft.Azure.WebJobs.Extensions.EventHubs", "3.0.0-beta*")
             {
             }
 
