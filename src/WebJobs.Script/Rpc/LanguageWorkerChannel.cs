@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly WorkerConfig _workerConfig;
         private readonly Uri _serverUri;
         private readonly ILogger _logger;
+        private bool _disposed;
         private string _workerId;
         private Process _process;
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new Dictionary<string, BufferBlock<ScriptInvocationContext>>();
@@ -55,8 +56,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         new StringEnumConverter()
                     }
         };
-
-        private bool disposedValue;
 
         public LanguageWorkerChannel(
             ScriptHostOptions scriptConfig,
@@ -316,16 +315,27 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void HandleWorkerError(Exception exc)
         {
-            _startSubscription?.Dispose();
-
-            // unlink function inputs
-            foreach (var link in _inputLinks)
-            {
-                link.Dispose();
-            }
-
             _logger.LogError(exc, $"Worker encountered an error.");
-            _eventManager.Publish(new WorkerErrorEvent(Id, exc));
+
+            try
+            {
+                if (!_disposed)
+                {
+                    _startSubscription?.Dispose();
+
+                    // unlink function inputs
+                    foreach (var link in _inputLinks)
+                    {
+                        link.Dispose();
+                    }
+
+                    _eventManager.Publish(new WorkerErrorEvent(Id, exc));
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error handler failure");
+            }
         }
 
         // TODO: move this out of LanguageWorkerChannel to WorkerProcessFactory
@@ -389,7 +399,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!_disposed)
             {
                 if (disposing)
                 {
@@ -408,7 +418,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         sub.Dispose();
                     }
                 }
-                disposedValue = true;
+                _disposed = true;
             }
         }
 
