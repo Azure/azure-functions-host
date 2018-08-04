@@ -117,10 +117,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void SetNugetPackageSources(params string[] sources)
         {
+            WriteNugetPackageSources(_appRoot, sources);
+        }
+
+        public static void WriteNugetPackageSources(string appRoot, params string[] sources)
+        {
             XmlWriterSettings settings = new XmlWriterSettings();
             settings.Indent = true;
 
-            using (XmlWriter writer = XmlWriter.Create(Path.Combine(_appRoot, "nuget.config"), settings))
+            using (XmlWriter writer = XmlWriter.Create(Path.Combine(appRoot, "nuget.config"), settings))
             {
                 writer.WriteStartElement("configuration");
                 writer.WriteStartElement("packageSources");
@@ -157,39 +162,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request.Content = new StringContent(wrappedPayload.ToString(), Encoding.UTF8, "application/json");
             HttpResponseMessage response = await HttpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
-        }
-
-        public async Task InstallBindingExtensionAsync(string packageName, string packageVersion)
-        {
-            HostSecretsInfo secrets = await SecretManager.GetHostSecretsAsync();
-            string uri = $"admin/host/extensions?code={secrets.MasterKey}";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-
-            string payload = new JObject
-            {
-                { "id", packageName },
-                {"version", packageVersion }
-            }.ToString(Newtonsoft.Json.Formatting.None);
-
-            request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
-            var response = await HttpClient.SendAsync(request);
-            var jobStatusUri = response.Headers.Location;
-            string status = null;
-            do
-            {
-                await Task.Delay(500);
-                response = await CheckExtensionInstallStatus(jobStatusUri);
-                var jobStatus = await response.Content.ReadAsAsync<JObject>();
-                status = jobStatus["status"].ToString();
-            } while (status == "Started");
-
-            if (status != "Succeeded")
-            {
-                throw new InvalidOperationException("Failed to install extension.");
-            }
-
-            // TODO: Find a better way to ensure the site has restarted.
-            await Task.Delay(3000);
         }
 
         private async Task<HttpResponseMessage> CheckExtensionInstallStatus(Uri jobLocation)

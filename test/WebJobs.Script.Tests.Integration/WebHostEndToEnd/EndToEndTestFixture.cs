@@ -6,8 +6,12 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.BindingExtensions;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -37,6 +41,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _copiedRootPath = Path.Combine(Path.GetTempPath(), "FunctionsE2E", DateTime.UtcNow.ToString("yyMMdd-HHmmss"));
             FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
 
+            // We can currently only support a single extension.
+            if (_extensionName != null && _extensionVersion != null)
+            {
+                TestFunctionHost.WriteNugetPackageSources(_copiedRootPath, "http://www.myget.org/F/azure-appservice/api/v2", "https://api.nuget.org/v3/index.json");
+                var options = new OptionsWrapper<ScriptHostOptions>(new ScriptHostOptions
+                {
+                    RootScriptPath = _copiedRootPath
+                });
+
+                var manager = new ExtensionsManager(options, NullLogger<ExtensionsManager>.Instance);
+                await manager.AddExtensions(new[]
+                {
+                    new ExtensionPackageReference
+                    {
+                        Id = _extensionName,
+                        Version = _extensionVersion
+                    }
+                });
+            }
+
             Host = new TestFunctionHost(_copiedRootPath, ConfigureJobHost);
 
             string connectionString = Host.JobHostServices.GetService<IConnectionStringProvider>().GetConnectionString(ConnectionStringNames.Storage);
@@ -47,13 +71,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TableClient = storageAccount.CreateCloudTableClient();
 
             await CreateTestStorageEntities();
-
-            // We can currently only support a single extension.
-            if (_extensionName != null && _extensionVersion != null)
-            {
-                Host.SetNugetPackageSources("http://www.myget.org/F/azure-appservice/api/v2", "https://api.nuget.org/v3/index.json");
-                await Host.InstallBindingExtensionAsync(_extensionName, _extensionVersion);
-            }
         }
 
         public CloudBlobContainer TestInputContainer { get; private set; }

@@ -71,6 +71,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         {
             private readonly string _requestUri = "http://localhost/admin/functions/{0}/keys";
 
+            public ApiModel Result { get; private set; }
+
+            public HttpResponseMessage HttpResponse { get; private set; }
+
+            public string FormattedRequestUri => string.Format(RequestUriFormat, TestKeyScope);
+
+            protected virtual string RequestUriFormat => _requestUri;
+
             public override async Task InitializeAsync()
             {
                 await base.InitializeAsync();
@@ -80,14 +88,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
                 Result = ReadApiModelContent(HttpResponse);
             }
-
-            public ApiModel Result { get; private set; }
-
-            public HttpResponseMessage HttpResponse { get; private set; }
-
-            public string FormattedRequestUri => string.Format(RequestUriFormat, TestKeyScope);
-
-            protected virtual string RequestUriFormat => _requestUri;
         }
     }
 }

@@ -184,11 +184,26 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
         {
             foreach (DictionaryEntry environmentVariable in Environment.GetEnvironmentVariables(EnvironmentVariableTarget.Process))
             {
-                startInfo.Environment.Add(environmentVariable.Key?.ToString(), environmentVariable.Value?.ToString());
+                if (!TryAdd(startInfo.Environment, environmentVariable.Key?.ToString(), environmentVariable.Value?.ToString()))
+                {
+                    _logger.LogWarning($"Unable to set environment variable '{environmentVariable.Key}' during extension installation. "
+                        + "A key with the same name already exists");
+                }
             }
 
-            startInfo.EnvironmentVariables.Add("DOTNET_SKIP_FIRST_TIME_EXPERIENCE", "true");
-            startInfo.EnvironmentVariables.Add(NugetXmlDocModeSettingName, NugetXmlDocSkipMode);
+            TryAdd(startInfo.Environment, "DOTNET_SKIP_FIRST_TIME_EXPERIENCE", "true");
+            TryAdd(startInfo.Environment, NugetXmlDocModeSettingName, NugetXmlDocSkipMode);
+        }
+
+        private static bool TryAdd(IDictionary<string, string> dictionary, string key, string value)
+        {
+            if (!dictionary.ContainsKey(key))
+            {
+                dictionary.Add(key, value);
+                return true;
+            }
+
+            return false;
         }
 
         private void ApplyNugetFallbackFolderConfiguration(ProcessStartInfo startInfo)

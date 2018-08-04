@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
     {
         private ScriptSettingsManager _settingsManager;
         private HttpConfiguration _config;
-        
+
         public ScriptWebHostOptions HostOptions { get; private set; }
 
         public HttpClient HttpClient { get; set; }
