@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private IHost CreateHost(Action<IServiceCollection> configure = null)
         {
             var host = new HostBuilder()
-                .ConfigureDefaultTestScriptHost(o =>
+                .ConfigureDefaultTestWebScriptHost(o =>
                 {
                     o.ScriptPath = Path.GetTempPath();
                     o.LogPath = Path.GetTempPath();
@@ -289,7 +289,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string host1ConnectionString = host1.GetStorageConnectionString();
             string host2ConnectionString = host2.GetStorageConnectionString();
 
-
             using (host1)
             using (host2)
             {
@@ -320,7 +319,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await container.CreateIfNotExistsAsync();
 
-            // the StorageDistributedLockManager puts things under the /locks path by default 
+            // the StorageDistributedLockManager puts things under the /locks path by default
             CloudBlockBlob blob = container.GetBlockBlobReference("locks/" + PrimaryHostCoordinator.GetBlobName(hostId));
             if (!await blob.ExistsAsync())
             {

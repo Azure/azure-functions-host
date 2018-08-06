@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
+namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
     public static class ConfigurationSectionNames
     {

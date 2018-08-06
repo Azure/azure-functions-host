@@ -23,10 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly Lazy<ImmutableArray<FunctionMetadata>> _metadata;
-        private readonly IOptions<ScriptHostOptions> _scriptOptions;
+        private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
         private readonly ILogger _logger;
 
-        public FunctionMetadataManager(IOptions<ScriptHostOptions> scriptOptions, ILoggerFactory loggerFactory)
+        public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory)
         {
             _scriptOptions = scriptOptions;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);

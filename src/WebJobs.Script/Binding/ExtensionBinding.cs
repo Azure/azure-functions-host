@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     {
         private ScriptBinding _binding;
 
-        public ExtensionBinding(ScriptHostOptions config, ScriptBinding binding, BindingMetadata metadata) : base(config, metadata, binding.Context.Access)
+        public ExtensionBinding(ScriptJobHostOptions config, ScriptBinding binding, BindingMetadata metadata) : base(config, metadata, binding.Context.Access)
         {
             _binding = binding;
             Attributes = _binding.GetAttributes();

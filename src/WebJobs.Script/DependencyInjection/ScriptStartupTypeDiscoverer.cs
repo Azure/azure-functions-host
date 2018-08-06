@@ -15,7 +15,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
+namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 {
     /// <summary>
     /// An implementation of an <see cref="IWebJobsStartupTypeDiscoverer"/> that locates startup types

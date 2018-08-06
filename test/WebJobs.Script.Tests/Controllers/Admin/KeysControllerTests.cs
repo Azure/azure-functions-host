@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var eventManager = new Mock<IScriptEventManager>();
             var mockRouter = new Mock<IWebJobsRouter>();
 
-            var settings = new ScriptWebHostOptions()
+            var settings = new ScriptApplicationHostOptions()
             {
                 ScriptPath = rootScriptPath,
                 SecretsPath = _secretsDirectory.Path

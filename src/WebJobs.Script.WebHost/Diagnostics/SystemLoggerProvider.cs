@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private IEventGenerator _eventGenerator;
         private ScriptSettingsManager _settingsManager;
 
-        public SystemLoggerProvider(IOptions<ScriptHostOptions> scriptOptions, IEventGenerator eventGenerator, ScriptSettingsManager settingsManager)
+        public SystemLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IEventGenerator eventGenerator, ScriptSettingsManager settingsManager)
         {
             _eventGenerator = eventGenerator;
             _settingsManager = settingsManager;

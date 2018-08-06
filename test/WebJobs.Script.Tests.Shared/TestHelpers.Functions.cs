@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     // not have a direct dependency on anything WebJobs related.
     public static partial class TestHelpers
     {
-        public static IHost GetDefaultHost(Action<ScriptWebHostOptions> configure = null)
+        public static IHost GetDefaultHost(Action<ScriptApplicationHostOptions> configure = null)
         {
             if (configure == null)
             {
@@ -35,11 +35,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             return new HostBuilder()
-                .ConfigureDefaultTestScriptHost(configure)
+                .ConfigureDefaultTestWebScriptHost(configure)
                 .Build();
         }
 
-        public static ScriptHost GetDefaultScriptHost(Action<ScriptWebHostOptions> configure = null)
+        public static ScriptHost GetDefaultScriptHost(Action<ScriptApplicationHostOptions> configure = null)
         {
             return GetDefaultHost(configure)
                 .GetScriptHost();
@@ -48,11 +48,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public static FunctionBinding CreateTestBinding(JObject json)
         {
             ScriptBindingContext context = new ScriptBindingContext(json);
-            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(NullLogger.Instance);
+            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(NullLogger<WebJobsCoreScriptBindingProvider>.Instance);
             ScriptBinding scriptBinding = null;
             provider.TryCreate(context, out scriptBinding);
             BindingMetadata bindingMetadata = BindingMetadata.Create(json);
-            var config = new ScriptHostOptions();
+            var config = new ScriptJobHostOptions();
             return new ExtensionBinding(config, scriptBinding, bindingMetadata);
         }
 

@@ -61,9 +61,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
                 builder
                     .ConfigureServices(s =>
                     {
-                        s.Configure<ScriptHostOptions>(o =>
+                        s.Configure<ScriptJobHostOptions>(o =>
                         {
-                            o.Functions = new[] 
+                            o.Functions = new[]
                             {
                                 "EventHubSender",
                                 "EventHubTrigger"

@@ -17,9 +17,9 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly IConfiguration _config;
         private readonly ScriptSettingsManager _settingsManager;
-        private readonly ScriptHostOptions _options;
+        private readonly ScriptJobHostOptions _options;
 
-        public ScriptHostIdProvider(IConfiguration config, ScriptSettingsManager settingsManager, IOptions<ScriptHostOptions> options)
+        public ScriptHostIdProvider(IConfiguration config, ScriptSettingsManager settingsManager, IOptions<ScriptJobHostOptions> options)
         {
             _config = config;
             _settingsManager = settingsManager;
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return Task.FromResult(_config["id"] ?? GetDefaultHostId(_settingsManager, _options));
         }
 
-        internal static string GetDefaultHostId(ScriptSettingsManager settingsManager, ScriptHostOptions scriptConfig)
+        internal static string GetDefaultHostId(ScriptSettingsManager settingsManager, ScriptJobHostOptions scriptConfig)
         {
             // We're setting the default here on the newly created configuration
             // If the user has explicitly set the HostID via host.json, it will overwrite

@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private IDisposable _event;
         private bool _disposed;
 
-        public DebugStateProvider(IOptions<ScriptHostOptions> scriptOptions, IScriptEventManager eventManager)
+        public DebugStateProvider(IOptions<ScriptJobHostOptions> scriptOptions, IScriptEventManager eventManager)
         {
             _event = eventManager.OfType<DebugNotification>()
                 .Subscribe(evt => LastDebugNotify = evt.NotificationTime);

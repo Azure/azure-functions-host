@@ -270,7 +270,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public TestFixture()
             {
-                HostOptions = new ScriptWebHostOptions
+                HostOptions = new ScriptApplicationHostOptions
                 {
                     IsSelfHost = true,
                     ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\TestScripts\Proxies"),
@@ -283,11 +283,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                .UseStartup<Startup>()
                .ConfigureServices(services =>
                {
-                   services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptWebHostOptions>), new OptionsWrapper<ScriptWebHostOptions>(HostOptions)));
+                   services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions)));
                    services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
                }));
 
-                var scriptConfig = _testServer.Host.Services.GetService<IOptions<ScriptHostOptions>>().Value;
+                var scriptConfig = _testServer.Host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
                 HttpClient = _testServer.CreateClient();
                 HttpClient.BaseAddress = new Uri("https://localhost/");
@@ -295,7 +295,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 TestHelpers.WaitForWebHost(HttpClient);
             }
 
-            public ScriptWebHostOptions HostOptions { get; private set; }
+            public ScriptApplicationHostOptions HostOptions { get; private set; }
 
             public HttpClient HttpClient { get; set; }
 

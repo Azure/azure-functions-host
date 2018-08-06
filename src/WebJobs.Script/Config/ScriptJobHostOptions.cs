@@ -11,12 +11,12 @@ using Microsoft.Azure.WebJobs.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class ScriptHostOptions
+    public class ScriptJobHostOptions
     {
         private string _rootScriptPath;
         private ImmutableArray<string> _directorySnapshot;
 
-        public ScriptHostOptions()
+        public ScriptJobHostOptions()
         {
             FileWatchingEnabled = true;
             FileLoggingMode = FileLoggingMode.Never;

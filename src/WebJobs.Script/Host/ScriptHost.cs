@@ -90,11 +90,11 @@ namespace Microsoft.Azure.WebJobs.Script
             ILoggerFactory loggerFactory,
             IFunctionMetadataManager functionMetadataManager,
             IMetricsLogger metricsLogger,
-            IOptions<ScriptHostOptions> scriptHostOptions,
+            IOptions<ScriptJobHostOptions> scriptHostOptions,
             ITypeLocator typeLocator,
             IScriptJobHostEnvironment scriptHostEnvironment,
             IDebugStateProvider debugManager,
-            ICollection<IScriptBindingProvider> bindingProviders,
+            IEnumerable<IScriptBindingProvider> bindingProviders,
             IPrimaryHostStateProvider primaryHostStateProvider,
             IJobHostMetadataProvider metadataProvider,
             ScriptSettingsManager settingsManager = null,
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _debugManager = debugManager;
             _primaryHostStateProvider = primaryHostStateProvider;
-            _bindingProviders = bindingProviders;
+            _bindingProviders = new List<IScriptBindingProvider>(bindingProviders);
             _metadataProvider = metadataProvider;
         }
 
@@ -152,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ILogger Logger { get; internal set; }
 
-        public ScriptHostOptions ScriptOptions { get; private set; }
+        public ScriptJobHostOptions ScriptOptions { get; private set; }
 
         /// <summary>
         /// Gets the collection of all valid Functions. For functions that are in error
@@ -257,7 +257,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         // TODO: DI (FACAVAL) This needs to move to an options config setup
         // Create a TimeoutConfiguration specified by scriptConfig knobs; else null.
-        internal static JobHostFunctionTimeoutOptions CreateTimeoutConfiguration(ScriptHostOptions scriptConfig)
+        internal static JobHostFunctionTimeoutOptions CreateTimeoutConfiguration(ScriptJobHostOptions scriptConfig)
         {
             if (scriptConfig.FunctionTimeout == null)
             {
@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script
             };
         }
 
-        internal static Collection<CustomAttributeBuilder> CreateTypeAttributes(ScriptHostOptions scriptConfig)
+        internal static Collection<CustomAttributeBuilder> CreateTypeAttributes(ScriptJobHostOptions scriptConfig)
         {
             Collection<CustomAttributeBuilder> customAttributes = new Collection<CustomAttributeBuilder>();
 
@@ -624,7 +624,7 @@ namespace Microsoft.Azure.WebJobs.Script
         //    return metricsLogger;
         //}
 
-        internal Collection<FunctionMetadata> ReadProxyMetadata(ScriptHostOptions config, ScriptSettingsManager settingsManager = null)
+        internal Collection<FunctionMetadata> ReadProxyMetadata(ScriptJobHostOptions config, ScriptSettingsManager settingsManager = null)
         {
             // read the proxy config
             string proxyConfigPath = Path.Combine(config.RootScriptPath, ScriptConstants.ProxyMetadataFileName);
@@ -840,7 +840,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return httpTrigger.Methods.Intersect(otherHttpTrigger.Methods).Any();
         }
 
-        private static void ApplyLanguageWorkersConfig(JObject config, ScriptHostOptions scriptConfig, ILogger logger)
+        private static void ApplyLanguageWorkersConfig(JObject config, ScriptJobHostOptions scriptConfig, ILogger logger)
         {
             JToken value = null;
             JObject languageWorkersSection = (JObject)config[$"{LanguageWorkerConstants.LanguageWorkersSectionName}"];
@@ -873,7 +873,7 @@ namespace Microsoft.Azure.WebJobs.Script
             scriptConfig.MaxMessageLengthBytes = requestedGrpcMaxMessageLength;
         }
 
-        internal static void ApplyApplicationInsightsConfig(JObject configJson, ScriptHostOptions scriptConfig)
+        internal static void ApplyApplicationInsightsConfig(JObject configJson, ScriptJobHostOptions scriptConfig)
         {
             scriptConfig.ApplicationInsightsSamplingSettings = new SamplingPercentageEstimatorSettings();
             JObject configSection = (JObject)configJson["applicationInsights"];

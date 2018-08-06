@@ -5,9 +5,9 @@ using System;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Config;
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost
+namespace Microsoft.Azure.WebJobs.Script
 {
-    public class ScriptWebHostOptions
+    public class ScriptApplicationHostOptions
     {
         /// <summary>
         /// Gets or sets a value indicating whether the host is running

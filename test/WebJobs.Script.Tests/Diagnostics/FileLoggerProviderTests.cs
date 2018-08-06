@@ -25,14 +25,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public void CreateLogger_UsesSameFileWriter_ForSameFile()
         {
-            var options = new ScriptHostOptions
+            var options = new ScriptJobHostOptions
             {
                 RootLogPath = Path.GetTempPath()
             };
             var fileStatus = new Mock<IFileLoggingStatusManager>();
             var primaryStatus = new Mock<IPrimaryHostStateProvider>();
 
-            using (var provider = new FunctionFileLoggerProvider(new OptionsWrapper<ScriptHostOptions>(options), fileStatus.Object, primaryStatus.Object))
+            using (var provider = new FunctionFileLoggerProvider(new OptionsWrapper<ScriptJobHostOptions>(options), fileStatus.Object, primaryStatus.Object))
             {
                 provider.CreateLogger(LogCategories.CreateFunctionCategory("Test1"));
                 provider.CreateLogger(LogCategories.CreateFunctionUserCategory("Test1"));

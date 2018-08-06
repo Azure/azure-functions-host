@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var metadataProvider = TestHelpers.GetDefaultHost()
                 .Services.GetService<IJobHostMetadataProvider>();
 
-            var provider = new GeneralScriptBindingProvider(NullLogger.Instance, metadataProvider);
+            var provider = new GeneralScriptBindingProvider(NullLogger<GeneralScriptBindingProvider>.Instance, metadataProvider);
 
             JObject bindingMetadata = new JObject
             {
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ScriptBinding binding = null;
 
             var mockMetadataProvider = new Mock<IJobHostMetadataProvider>();
-            var provider = new GeneralScriptBindingProvider(NullLogger.Instance, mockMetadataProvider.Object);
+            var provider = new GeneralScriptBindingProvider(NullLogger<GeneralScriptBindingProvider>.Instance, mockMetadataProvider.Object);
             bool created = provider.TryCreate(context, out binding);
 
             Assert.False(created);

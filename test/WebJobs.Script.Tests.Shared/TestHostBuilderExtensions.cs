@@ -17,11 +17,11 @@ namespace Microsoft.WebJobs.Script.Tests
 {
     public static class TestHostBuilderExtensions
     {
-        public static IHostBuilder ConfigureDefaultTestScriptHost(this IHostBuilder builder,
-            Action<ScriptWebHostOptions> configure = null,
+        public static IHostBuilder ConfigureDefaultTestWebScriptHost(this IHostBuilder builder,
+            Action<ScriptApplicationHostOptions> configure = null,
             bool runStartupHostedServices = false)
         {
-            var webHostOptions = new ScriptWebHostOptions()
+            var webHostOptions = new ScriptApplicationHostOptions()
             {
                 IsSelfHost = true,
                 ScriptPath = TestHelpers.FunctionsTestDirectory,
@@ -42,7 +42,7 @@ namespace Microsoft.WebJobs.Script.Tests
             var rootProvider = new WebHostServiceProvider(services);
 
             builder
-                .AddScriptHost(rootProvider, rootProvider, new OptionsWrapper<ScriptWebHostOptions>(webHostOptions))
+                .AddWebScriptHost(rootProvider, rootProvider, new OptionsWrapper<ScriptApplicationHostOptions>(webHostOptions))
                 .ConfigureAppConfiguration(c =>
                 {
                     c.AddTestSettings();

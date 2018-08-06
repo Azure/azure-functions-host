@@ -54,6 +54,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
                             o.TokenValidationParameters = CreateTokenValidationParameters();
 
+                            // TODO: DI (FACAVAL) Remove this once th work above is completed.
                             if (!new ScriptWebHostEnvironment().InStandbyMode)
                             {
                                 // We're not in standby mode, so flag as specialized

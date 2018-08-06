@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             _environment = new TestEnvironment();
             _scriptWebEnvironment = new ScriptWebHostEnvironment(_environment);
-            _instanceManager = new InstanceManager(new OptionsWrapper<ScriptWebHostOptions>(new ScriptWebHostOptions()),
+            _instanceManager = new InstanceManager(new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()),
                 loggerFactory, _httpClient, _scriptWebEnvironment);
         }
 
@@ -53,7 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            
             var context = new HostAssignmentContext
             {
                 Environment = new Dictionary<string, string>

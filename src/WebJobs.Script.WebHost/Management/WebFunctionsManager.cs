@@ -31,11 +31,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const string DurableTaskStorageConnectionName = "azureStorageConnectionStringName";
         private const string DurableTask = "durableTask";
 
-        private readonly ScriptHostOptions _config;
+        private readonly ScriptJobHostOptions _config;
         private readonly ILogger _logger;
         private readonly HttpClient _client;
 
-        public WebFunctionsManager(IOptions<ScriptWebHostOptions> webSettings, ILoggerFactory loggerFactory, HttpClient client)
+        public WebFunctionsManager(IOptions<ScriptApplicationHostOptions> webSettings, ILoggerFactory loggerFactory, HttpClient client)
         {
             _config = webSettings.Value.ToScriptHostConfiguration();
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryKeysController);

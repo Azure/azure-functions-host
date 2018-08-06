@@ -12,10 +12,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 {
     public static class FunctionMetadataResponseExtensions
     {
-        public static string GetFunctionPath(this FunctionMetadataResponse function, ScriptHostOptions config)
+        public static string GetFunctionPath(this FunctionMetadataResponse function, ScriptJobHostOptions config)
             => VirtualFileSystem.VfsUriToFilePath(function.ScriptRootPathHref, config);
 
-        public static string GetFunctionTestDataFilePath(this FunctionMetadataResponse function, ScriptHostOptions config)
+        public static string GetFunctionTestDataFilePath(this FunctionMetadataResponse function, ScriptJobHostOptions config)
             => VirtualFileSystem.VfsUriToFilePath(function.TestDataHref, config);
     }
 }

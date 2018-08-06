@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly TimeSpan timeoutStart = TimeSpan.FromSeconds(20);
         private readonly TimeSpan timeoutInit = TimeSpan.FromSeconds(20);
-        private readonly ScriptHostOptions _scriptConfig;
+        private readonly ScriptJobHostOptions _scriptConfig;
         private readonly IScriptEventManager _eventManager;
         private readonly IWorkerProcessFactory _processFactory;
         private readonly IProcessRegistry _processRegistry;
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         };
 
         public LanguageWorkerChannel(
-            ScriptHostOptions scriptConfig,
+            ScriptJobHostOptions scriptConfig,
             IScriptEventManager eventManager,
             IWorkerProcessFactory processFactory,
             IProcessRegistry processRegistry,

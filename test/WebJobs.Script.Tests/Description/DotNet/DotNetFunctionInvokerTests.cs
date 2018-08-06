@@ -427,7 +427,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var metricsLogger = new MetricsLogger();
 
             var hostBuilder = new HostBuilder()
-                .ConfigureDefaultTestScriptHost(o =>
+                .ConfigureDefaultTestWebScriptHost(o =>
                 {
                     o.ScriptPath = TestHelpers.FunctionsTestDirectory;
                     o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;

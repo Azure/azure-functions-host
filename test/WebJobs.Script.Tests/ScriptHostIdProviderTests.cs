@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null, null)]
         public void GetDefaultHostId_AzureHost_ReturnsExpectedResult(string input, string expected)
         {
-            var config = new ScriptHostOptions();
+            var config = new ScriptJobHostOptions();
             var scriptSettingsManagerMock = new Mock<ScriptSettingsManager>(MockBehavior.Strict, null);
             scriptSettingsManagerMock.SetupGet(p => p.AzureWebsiteUniqueSlotName).Returns(() => input);
 
@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GetDefaultHostId_SelfHost_ReturnsExpectedResult()
         {
-            var config = new ScriptHostOptions
+            var config = new ScriptJobHostOptions
             {
                 IsSelfHost = true,
                 RootScriptPath = @"c:\testing\FUNCTIONS-TEST\test$#"

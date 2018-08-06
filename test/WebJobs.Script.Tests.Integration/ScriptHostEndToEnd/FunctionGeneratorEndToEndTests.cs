@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             functions.Add(function);
 
             // Get the Type Attributes (in this case, a TimeoutAttribute)
-            ScriptHostOptions scriptConfig = new ScriptHostOptions();
+            ScriptJobHostOptions scriptConfig = new ScriptJobHostOptions();
             scriptConfig.FunctionTimeout = TimeSpan.FromMinutes(5);
             Collection<CustomAttributeBuilder> typeAttributes = new Collection<CustomAttributeBuilder>();
 

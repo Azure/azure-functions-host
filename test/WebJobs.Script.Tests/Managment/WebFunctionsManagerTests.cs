@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
                 var contentBuilder = new StringBuilder();
                 var httpClient = CreateHttpClient(contentBuilder);
-                var webManager = new WebFunctionsManager(new OptionsWrapper<ScriptWebHostOptions>(settings), loggerFactory, httpClient);
+                var webManager = new WebFunctionsManager(new OptionsWrapper<ScriptApplicationHostOptions>(settings), loggerFactory, httpClient);
 
                 FileUtility.Instance = fileSystem;
 
@@ -77,9 +77,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             return new HttpClient(new MockHttpHandler(writeContent));
         }
 
-        private static ScriptWebHostOptions CreateWebSettings()
+        private static ScriptApplicationHostOptions CreateWebSettings()
         {
-            return new ScriptWebHostOptions
+            return new ScriptApplicationHostOptions
             {
                 ScriptPath = @"x:\root",
                 IsSelfHost = false,

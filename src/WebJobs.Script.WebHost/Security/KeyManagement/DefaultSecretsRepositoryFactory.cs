@@ -15,14 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public sealed class DefaultSecretsRepositoryFactory : ISecretsRepositoryFactory
     {
-        private readonly IOptions<ScriptWebHostOptions> _webHostOptions;
-        private readonly IOptions<ScriptHostOptions> _scriptHostOptions;
+        private readonly IOptions<ScriptApplicationHostOptions> _webHostOptions;
+        private readonly IOptions<ScriptJobHostOptions> _scriptHostOptions;
         private readonly IConnectionStringProvider _connectionStringProvider;
         private readonly IEnvironment _environment;
         private readonly ILogger<DefaultSecretsRepositoryFactory> _logger;
 
-        public DefaultSecretsRepositoryFactory(IOptions<ScriptWebHostOptions> webHostOptions,
-            IOptions<ScriptHostOptions> scriptHostOptions,
+        public DefaultSecretsRepositoryFactory(IOptions<ScriptApplicationHostOptions> webHostOptions,
+            IOptions<ScriptJobHostOptions> scriptHostOptions,
             IConnectionStringProvider connectionStringProvider,
             IEnvironment environment,
             ILogger<DefaultSecretsRepositoryFactory> logger)

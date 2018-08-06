@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/functions/download")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public IActionResult Download([FromServices] IOptions<ScriptWebHostOptions> webHostOptions)
+        public IActionResult Download([FromServices] IOptions<ScriptApplicationHostOptions> webHostOptions)
         {
             var path = webHostOptions.Value.ScriptPath;
             var dirInfo = FileUtility.DirectoryInfoFromDirectoryName(path);

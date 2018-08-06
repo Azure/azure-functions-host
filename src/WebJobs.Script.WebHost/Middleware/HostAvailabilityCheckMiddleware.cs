@@ -18,16 +18,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _logger = loggerFactory.CreateLogger<HostAvailabilityCheckMiddleware>();
         }
 
-        public async Task Invoke(HttpContext httpContext)
+        public async Task Invoke(HttpContext httpContext, IScriptHostManager scriptHostManager)
         {
             using (Logger.VerifyingHostAvailabilityScope(_logger, httpContext.TraceIdentifier))
             {
                 Logger.InitiatingHostAvailabilityCheck(_logger);
 
-                // TODO: DI (FACAVAL) Perform host check... moving forward, this information
-                // will be provided by the host startup service.
-                //bool hostReady = await WebScriptHostManager.DelayUntilHostReady(resolver);
-                bool hostReady = true;
+                bool hostReady = await scriptHostManager.DelayUntilHostReady();
                 if (!hostReady)
                 {
                     Logger.HostUnavailableAfterCheck(_logger);

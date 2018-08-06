@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -18,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             ScriptHostOptionsSetup setup = CreateSetupWithConfiguration();
 
-            var options = new ScriptHostOptions();
+            var options = new ScriptJobHostOptions();
             setup.Configure(options);
 
             Assert.NotNull(options.ApplicationInsightsSamplingSettings);
@@ -35,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             ScriptHostOptionsSetup setup = CreateSetupWithConfiguration(settings);
 
-            var options = new ScriptHostOptions();
+            var options = new ScriptJobHostOptions();
 
             // Validate default (this should be in another test - migrated here for now)
             Assert.True(options.FileWatchingEnabled);
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             setup = CreateSetupWithConfiguration(settings);
 
-            options = new ScriptHostOptions();
+            options = new ScriptJobHostOptions();
             setup.Configure(options);
 
             Assert.False(options.FileWatchingEnabled);
@@ -63,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             setup = CreateSetupWithConfiguration(settings);
 
-            options = new ScriptHostOptions();
+            options = new ScriptJobHostOptions();
             setup.Configure(options);
 
             Assert.True(options.FileWatchingEnabled);
@@ -112,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var configuration = builder.Build();
 
-            return new ScriptHostOptionsSetup(configuration, new OptionsWrapper<ScriptWebHostOptions>(new ScriptWebHostOptions()));
+            return new ScriptHostOptionsSetup(configuration, new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()));
         }
     }
 }

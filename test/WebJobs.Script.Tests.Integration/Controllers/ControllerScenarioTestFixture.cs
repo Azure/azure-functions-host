@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         private ScriptSettingsManager _settingsManager;
         private HttpConfiguration _config;
 
-        public ScriptWebHostOptions HostOptions { get; private set; }
+        public ScriptApplicationHostOptions HostOptions { get; private set; }
 
         public HttpClient HttpClient { get; set; }
 
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             _config = new HttpConfiguration();
             _settingsManager = ScriptSettingsManager.Instance;
 
-            HostOptions = new ScriptWebHostOptions
+            HostOptions = new ScriptApplicationHostOptions
             {
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"),
@@ -59,12 +59,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets")
             };
 
-
             var webHostBuilder = new WebHostBuilder()
                 .ConfigureServices(services =>
                 {
                     services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
-                    services.AddSingleton<IOptions<ScriptWebHostOptions>>(new OptionsWrapper<ScriptWebHostOptions>(HostOptions));
+                    services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions));
                 })
                 .AddScriptHostBuilder(ConfigureJobHostBuilder)
                 .ConfigureAppConfiguration((builderContext, config) =>
@@ -81,8 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             ConfigureWebHostBuilder(webHostBuilder);
 
             HttpServer = new TestServer(webHostBuilder);
-            
-            
+
             HttpClient = HttpServer.CreateClient();
             HttpClient.BaseAddress = new Uri("https://localhost/");
 
