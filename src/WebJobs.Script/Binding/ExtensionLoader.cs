@@ -18,11 +18,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     internal class ExtensionLoader
     {
-        private readonly ScriptHostOptions _config;
+        private readonly ScriptJobHostOptions _config;
         private readonly IExtensionRegistry _extensionRegistry;
         private readonly ILogger _logger;
 
-        public ExtensionLoader(ScriptHostOptions config, IExtensionRegistry extensionRegistry, ILogger logger)
+        public ExtensionLoader(ScriptJobHostOptions config, IExtensionRegistry extensionRegistry, ILogger logger)
         {
             _config = config;
             _extensionRegistry = extensionRegistry;

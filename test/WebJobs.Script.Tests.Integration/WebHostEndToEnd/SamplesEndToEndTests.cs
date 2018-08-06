@@ -34,13 +34,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         private readonly ScriptSettingsManager _settingsManager;
         private TestFixture _fixture;
 
-        public object AuthorizationLevelAttribute { get; private set; }
-
         public SamplesEndToEndTests(TestFixture fixture)
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
         }
+
+        public object AuthorizationLevelAttribute { get; private set; }
 
         [Fact]
         public async Task AdminRequests_PutHostInDebugMode()
@@ -922,8 +922,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 Environment.SetEnvironmentVariable("AzureWebJobs.HttpTrigger-Disabled.Disabled", "1");
             }
 
-            public TestFixture() :
-                base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"), "samples")
+            public TestFixture()
+                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"), "samples")
             {
             }
 
@@ -934,7 +934,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 builder
                     .ConfigureServices(s =>
                     {
-                        s.Configure<ScriptHostOptions>(o =>
+                        s.Configure<ScriptJobHostOptions>(o =>
                         {
                             o.Functions = new[]
                             {

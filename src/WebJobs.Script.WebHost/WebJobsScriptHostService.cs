@@ -17,13 +17,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IServiceProvider _rootServiceProvider;
         private readonly IServiceScopeFactory _rootScopeFactory;
-        private readonly IOptions<ScriptWebHostOptions> _webHostOptions;
+        private readonly IOptions<ScriptApplicationHostOptions> _webHostOptions;
         private readonly ILogger _logger;
         private CancellationTokenSource _startupLoopTokenSource;
         private bool _disposed = false;
         private IHost _host;
 
-        public WebJobsScriptHostService(IOptions<ScriptWebHostOptions> webHostOptions, IServiceProvider rootServiceProvider, IServiceScopeFactory rootScopeFactory, ILoggerFactory loggerFactory)
+        public WebJobsScriptHostService(IOptions<ScriptApplicationHostOptions> webHostOptions, IServiceProvider rootServiceProvider, IServiceScopeFactory rootScopeFactory, ILoggerFactory loggerFactory)
         {
             if (loggerFactory == null)
             {
@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private IHost BuildHost()
         {
             return new HostBuilder()
-                .AddScriptHost(_rootServiceProvider, _rootScopeFactory, _webHostOptions)
+                .AddWebScriptHost(_rootServiceProvider, _rootScopeFactory, _webHostOptions)
                 .Build();
         }
 
@@ -204,30 +204,5 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         public void Dispose() => Dispose(true);
-    }
-
-    public class CustomFactory : ILoggerFactory
-    {
-        private readonly LoggerFactory _factory;
-
-        public CustomFactory(IEnumerable<ILoggerProvider> providers, IOptionsMonitor<LoggerFilterOptions> filterOption)
-        {
-            _factory = new LoggerFactory(providers, filterOption);
-        }
-
-        public void AddProvider(ILoggerProvider provider)
-        {
-            _factory.AddProvider(provider);
-        }
-
-        public ILogger CreateLogger(string categoryName)
-        {
-            return _factory.CreateLogger(categoryName);
-        }
-
-        public void Dispose()
-        {
-            _factory.Dispose();
-        }
     }
 }

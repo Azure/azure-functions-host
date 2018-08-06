@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             functions.Add(function);
 
             // Make sure we don't generate a TimeoutAttribute if FunctionTimeout is null.
-            var scriptConfig = new ScriptHostOptions();
+            var scriptConfig = new ScriptJobHostOptions();
             scriptConfig.FunctionTimeout = null;
             Collection<CustomAttributeBuilder> typeAttributes = new Collection<CustomAttributeBuilder>();
 

@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     internal class CoreExtensionsScriptBindingProvider : ScriptBindingProvider
     {
-        public CoreExtensionsScriptBindingProvider(ILogger logger)
+        public CoreExtensionsScriptBindingProvider(ILogger<CoreExtensionsScriptBindingProvider> logger)
             : base(logger)
         {
         }

@@ -360,7 +360,7 @@ namespace SecondaryDependency
                     .AddAzureStorage()
                     .ConfigureServices(s =>
                     {
-                        s.Configure<ScriptHostOptions>(o =>
+                        s.Configure<ScriptJobHostOptions>(o =>
                         {
                             // Only load the functions we care about
                             o.Functions = new[]

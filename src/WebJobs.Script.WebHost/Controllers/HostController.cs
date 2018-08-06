@@ -31,13 +31,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     /// </summary>
     public class HostController : Controller
     {
-        private readonly IOptions<ScriptWebHostOptions> _webHostSettings;
+        private readonly IOptions<ScriptApplicationHostOptions> _webHostSettings;
         private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly ILogger _logger;
         private readonly IAuthorizationService _authorizationService;
         private readonly IWebFunctionsManager _functionsManager;
 
-        public HostController(IOptions<ScriptWebHostOptions> webHostSettings,
+        public HostController(IOptions<ScriptApplicationHostOptions> webHostSettings,
             IOptions<JobHostOptions> hostOptions,
             ILoggerFactory loggerFactory,
             IAuthorizationService authorizationService,

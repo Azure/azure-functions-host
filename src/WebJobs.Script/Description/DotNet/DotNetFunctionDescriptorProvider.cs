@@ -21,12 +21,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ILoggerFactory _loggerFactory;
         private readonly ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> _compilationServiceFactory;
 
-        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, ILoggerFactory loggerFactory)
+        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, ILoggerFactory loggerFactory)
            : this(host, config, bindingProviders, new DotNetCompilationServiceFactory(loggerFactory), loggerFactory)
         {
         }
 
-        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
+        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
             ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory,
             ILoggerFactory loggerFactory)
             : base(host, config, bindingProviders)

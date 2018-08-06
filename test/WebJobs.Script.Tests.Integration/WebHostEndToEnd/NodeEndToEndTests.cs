@@ -936,7 +936,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     .AddAzureStorage()
                     .ConfigureServices(s =>
                     {
-                        s.Configure<ScriptHostOptions>(o =>
+                        s.Configure<ScriptJobHostOptions>(o =>
                         {
                             o.Functions = new[]
                             {

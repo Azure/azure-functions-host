@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             builder
                 .ConfigureServices(s =>
                 {
-                    s.Configure<ScriptHostOptions>(o =>
+                    s.Configure<ScriptJobHostOptions>(o =>
                     {
                         o.Functions = new[]
                         {

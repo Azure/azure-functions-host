@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             Fixture = fixture;
         }
+
         [Theory]
         [InlineData("httptrigger")]
         [InlineData("httptriggershared")]
@@ -45,7 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     ["user-agent"] = userAgent,
                     ["accept"] = accept,
                     ["custom-1"] = customHeader
-
                 });
 
             Dictionary<string, object> arguments = new Dictionary<string, object>
@@ -87,7 +87,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(HttpUtility.UrlDecode(url), (string)resultObject["reqOriginalUrl"]);
         }
 
-
         [Theory]
         [InlineData("application/octet-stream")]
         [InlineData("multipart/form-data; boundary=----WebKitFormBoundaryTYtz7wze2XXrH26B")]
@@ -100,7 +99,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             byte[] inputBytes = new byte[] { 1, 2, 3, 4, 5 };
             var content = inputBytes;
-
 
             HttpRequest request = HttpTestHelpers.CreateHttpRequest("POST", "http://localhost/api/httptriggerbytearray", headers, content);
 
@@ -167,6 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 throw t.Exception;
             }
         }
+
         [Fact]
         public async Task PromiseApi_Rejects()
         {
@@ -221,6 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             internal TestFixture(bool startHost) : base(@"TestScripts\Node", "node", null, startHost)
             {
             }
+
             internal TestFixture(ICollection<string> functions, string functionsWorkerLanguage = null)
                 : base(@"TestScripts\Node", "node", null, true, functions, functionsWorkerLanguage)
             {
@@ -228,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public override void ConfigureServices(IServiceCollection services)
             {
-                services.Configure<ScriptHostOptions>(o =>
+                services.Configure<ScriptJobHostOptions>(o =>
                 {
                     // TODO DI: This should be set automatically
                     o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;

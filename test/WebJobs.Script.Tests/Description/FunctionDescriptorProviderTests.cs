@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node");
 
             var host = new HostBuilder()
-                .ConfigureDefaultTestScriptHost(o =>
+                .ConfigureDefaultTestWebScriptHost(o =>
                 {
                     o.ScriptPath = rootPath;
                     o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Build();
             _host = host.GetScriptHost();
             _host.InitializeAsync().GetAwaiter().GetResult();
-            _provider = new TestDescriptorProvider(_host, host.Services.GetService<IOptions<ScriptHostOptions>>().Value, host.Services.GetService<ICollection<IScriptBindingProvider>>());
+            _provider = new TestDescriptorProvider(_host, host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value, host.Services.GetService<ICollection<IScriptBindingProvider>>());
         }
 
         [Fact]
@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestDescriptorProvider : FunctionDescriptorProvider
         {
-            public TestDescriptorProvider(ScriptHost host, ScriptHostOptions config, ICollection<IScriptBindingProvider> bindingProviders)
+            public TestDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders)
                 : base(host, config, bindingProviders)
             {
             }

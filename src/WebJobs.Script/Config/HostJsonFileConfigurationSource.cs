@@ -14,13 +14,13 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using static System.Environment;
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
+namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
     public class HostJsonFileConfigurationSource : IConfigurationSource
     {
         private readonly ILogger _logger;
 
-        public HostJsonFileConfigurationSource(IOptions<ScriptWebHostOptions> scriptHostOptions, ILoggerFactory loggerFactory)
+        public HostJsonFileConfigurationSource(IOptions<ScriptApplicationHostOptions> scriptHostOptions, ILoggerFactory loggerFactory)
         {
             if (loggerFactory == null)
             {
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
         }
 
-        public IOptions<ScriptWebHostOptions> HostOptions { get; }
+        public IOptions<ScriptApplicationHostOptions> HostOptions { get; }
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
                 // TODO: DI (FACAVAL) Logger configuration to move to startup:
                 // Logger = _startupLogger = _hostOptions.LoggerFactory.CreateLogger(LogCategories.Startup);
-                ScriptWebHostOptions options = _configurationSource.HostOptions.Value;
+                ScriptApplicationHostOptions options = _configurationSource.HostOptions.Value;
                 string hostFilePath = Path.Combine(options.ScriptPath, ScriptConstants.HostMetadataFileName);
                 string readingFileMessage = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostFilePath);
                 JObject hostConfigObject = LoadHostConfig(hostFilePath);

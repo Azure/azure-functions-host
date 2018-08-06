@@ -1,24 +1,24 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost
+namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
-    internal class ScriptHostOptionsSetup : IConfigureOptions<ScriptHostOptions>
+    internal class ScriptHostOptionsSetup : IConfigureOptions<ScriptJobHostOptions>
     {
         private readonly IConfiguration _configuration;
-        private readonly IOptions<ScriptWebHostOptions> _webHostOptions;
+        private readonly IOptions<ScriptApplicationHostOptions> _webHostOptions;
 
-        public ScriptHostOptionsSetup(IConfiguration configuration, IOptions<ScriptWebHostOptions> webHostOptions)
+        public ScriptHostOptionsSetup(IConfiguration configuration, IOptions<ScriptApplicationHostOptions> webHostOptions)
         {
             _configuration = configuration;
             _webHostOptions = webHostOptions;
         }
 
-        public void Configure(ScriptHostOptions options)
+        public void Configure(ScriptJobHostOptions options)
         {
             // Add the standard built in watched directories set to any the user may have specified
             options.WatchDirectories.Add("node_modules");
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             // Set the root script path to the value the runtime was initialized with:
-            ScriptWebHostOptions webHostOptions = _webHostOptions.Value;
+            ScriptApplicationHostOptions webHostOptions = _webHostOptions.Value;
             options.RootScriptPath = webHostOptions.ScriptPath;
             options.RootLogPath = webHostOptions.LogPath;
             options.IsSelfHost = webHostOptions.IsSelfHost;

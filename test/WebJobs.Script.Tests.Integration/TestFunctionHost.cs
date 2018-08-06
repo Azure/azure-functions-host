@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class TestFunctionHost : IDisposable
     {
-        private readonly ScriptWebHostOptions _hostOptions;
+        private readonly ScriptApplicationHostOptions _hostOptions;
         private readonly TestServer _testServer;
         private readonly string _appRoot;
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _appRoot = appRoot;
 
-            _hostOptions = new ScriptWebHostOptions
+            _hostOptions = new ScriptApplicationHostOptions
             {
                 IsSelfHost = true,
                 ScriptPath = _appRoot,
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                  {
                      services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
 
-                     services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptWebHostOptions>), new OptionsWrapper<ScriptWebHostOptions>(_hostOptions)));
+                     services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions)));
                      services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
                  })
                  .AddScriptHostBuilder(b =>
@@ -79,13 +79,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public IServiceProvider JobHostServices => _hostService.Services;
 
-        public ScriptHostOptions ScriptOptions => JobHostServices.GetService<IOptions<ScriptHostOptions>>().Value;
+        public ScriptJobHostOptions ScriptOptions => JobHostServices.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
         public ISecretManager SecretManager => _testServer.Host.Services.GetService<ISecretManager>();
 
         public string LogPath => _hostOptions.LogPath;
 
         public string ScriptPath => _hostOptions.ScriptPath;
+
+        public HttpClient HttpClient { get; private set; }
 
         public async Task<string> GetMasterKeyAsync()
         {
@@ -98,8 +100,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var secrets = await SecretManager.GetFunctionSecretsAsync(functionName);
             return secrets.First().Value;
         }
-
-        public HttpClient HttpClient { get; private set; }
 
         public async Task StartAsync()
         {
@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HostSecretsInfo secrets = await SecretManager.GetHostSecretsAsync();
 
             // Workaround for https://github.com/Azure/azure-functions-host/issues/2397 as the base URL
-            // doesn't currently start the host. 
+            // doesn't currently start the host.
             // Note: the master key "1234" is from the TestSecretManager.
             using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"/admin/functions/dummyName/status?code={secrets.MasterKey}"))
             {

@@ -7,10 +7,10 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal class FileLoggingStatusManager : IFileLoggingStatusManager
     {
-        private readonly ScriptHostOptions _scriptOptions;
+        private readonly ScriptJobHostOptions _scriptOptions;
         private readonly IDebugStateProvider _debugStateProvider;
 
-        public FileLoggingStatusManager(IOptions<ScriptHostOptions> scriptOptions, IDebugStateProvider debugStateProvider)
+        public FileLoggingStatusManager(IOptions<ScriptJobHostOptions> scriptOptions, IDebugStateProvider debugStateProvider)
         {
             _scriptOptions = scriptOptions.Value;
             _debugStateProvider = debugStateProvider;

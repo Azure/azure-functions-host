@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 request.Path.StartsWithSegments(new PathString($"/api/{WarmUpAlternateRoute}")));
         }
 
-        public static void Initialize(ScriptHostOptions config, ILogger logger)
+        public static void Initialize(ScriptJobHostOptions config, ILogger logger)
         {
             CreateStandbyFunctions(config.RootScriptPath, logger);
         }

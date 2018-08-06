@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         private bool _disposed = false;
 
-        public FunctionFileLoggerProvider(IOptions<ScriptHostOptions> scriptOptions, IFileLoggingStatusManager fileLoggingStatusManager,
+        public FunctionFileLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IFileLoggingStatusManager fileLoggingStatusManager,
             IPrimaryHostStateProvider primaryHostStateProvider)
         {
             _roogLogPath = scriptOptions.Value.RootLogPath;

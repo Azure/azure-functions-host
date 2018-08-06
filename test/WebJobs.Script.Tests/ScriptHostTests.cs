@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public static async Task OnDebugModeFileChanged_TriggeredWhenDebugFileUpdated()
         {
             var host = new HostBuilder()
-                .ConfigureDefaultTestScriptHost(runStartupHostedServices: true)
+                .ConfigureDefaultTestWebScriptHost(runStartupHostedServices: true)
                 .Build();
 
             ScriptHost scriptHost = host.GetScriptHost();
@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Invalid");
 
-            var scriptConfig = new ScriptHostOptions()
+            var scriptConfig = new ScriptJobHostOptions()
             {
                 RootScriptPath = rootPath
             };
@@ -311,7 +311,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var eventManager = new Mock<IScriptEventManager>();
 
                 IHost host = new HostBuilder()
-                    .ConfigureDefaultTestScriptHost(o =>
+                    .ConfigureDefaultTestWebScriptHost(o =>
                     {
                         o.ScriptPath = rootPath;
                     })
@@ -338,7 +338,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             JObject config = new JObject();
             config["id"] = ID;
-            var scriptConfig = new ScriptHostOptions();
+            var scriptConfig = new ScriptJobHostOptions();
 
             //ScriptHost.ApplyConfiguration(config, scriptConfig);
 
@@ -1474,7 +1474,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }";
             File.WriteAllText(Path.Combine(rootPath, "host.json"), hostJsonContent);
 
-            var config = new ScriptHostOptions()
+            var config = new ScriptJobHostOptions()
             {
                 RootScriptPath = rootPath
             };
@@ -1523,7 +1523,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var eventManager = new Mock<IScriptEventManager>();
 
                 Host = new HostBuilder()
-                    .ConfigureDefaultTestScriptHost(o =>
+                    .ConfigureDefaultTestWebScriptHost(o =>
                     {
                         o.ScriptPath = TestHelpers.FunctionsTestDirectory;
                         o.LogPath = TestHelpers.GetHostLogFileDirectory().FullName;

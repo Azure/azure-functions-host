@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         private bool _disposed = false;
 
-        public HostFileLoggerProvider(IOptions<ScriptHostOptions> options, IFileLoggingStatusManager fileLoggingStatusManager)
+        public HostFileLoggerProvider(IOptions<ScriptJobHostOptions> options, IFileLoggingStatusManager fileLoggingStatusManager)
         {
             _writer = new FileWriter(Path.Combine(options.Value.RootLogPath, "Host"));
             _isFileLoggingEnabled = () => fileLoggingStatusManager.IsFileLoggingEnabled;

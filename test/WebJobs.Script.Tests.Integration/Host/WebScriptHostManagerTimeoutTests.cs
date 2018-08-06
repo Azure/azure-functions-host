@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
         {
             var functions = new Collection<string> { "TimeoutToken" };
 
-            var options = new ScriptHostOptions()
+            var options = new ScriptJobHostOptions()
             {
                 RootScriptPath = $@"TestScripts\CSharp",
                 FileLoggingMode = FileLoggingMode.Always,
@@ -108,14 +108,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             var mockRouter = new Mock<IWebJobsRouter>();
 
             var host = new HostBuilder()
-                .ConfigureDefaultTestScriptHost()
+                .ConfigureDefaultTestWebScriptHost()
                 .ConfigureServices(s =>
                 {
                     s.AddSingleton<IWebJobsRouter>(mockRouter.Object);
                     s.AddSingleton<ISecretManagerFactory>(new TestSecretManagerFactory());
                     s.AddSingleton<IScriptEventManager>(mockEventManager.Object);
-                    s.AddSingleton<IOptions<ScriptHostOptions>>(new OptionsWrapper<ScriptHostOptions>(options));
-                    s.AddSingleton<IOptions<ScriptWebHostOptions>>(new OptionsWrapper<ScriptWebHostOptions>(new ScriptWebHostOptions { SecretsPath = _secretsDirectory.Path }));
+                    s.AddSingleton<IOptions<ScriptJobHostOptions>>(new OptionsWrapper<ScriptJobHostOptions>(options));
+                    s.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions { SecretsPath = _secretsDirectory.Path }));
                     s.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
                     s.AddSingleton(ScriptSettingsManager.Instance);
                 })

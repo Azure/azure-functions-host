@@ -12,16 +12,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class SystemLoggerProviderTests
     {
-        private IOptions<ScriptHostOptions> _options;
+        private IOptions<ScriptJobHostOptions> _options;
 
         public SystemLoggerProviderTests()
         {
-            var scriptOptions = new ScriptHostOptions
+            var scriptOptions = new ScriptJobHostOptions
             {
                 RootLogPath = Path.GetTempPath()
             };
 
-            _options = new OptionsWrapper<ScriptHostOptions>(scriptOptions);
+            _options = new OptionsWrapper<ScriptJobHostOptions>(scriptOptions);
         }
 
         [Fact]

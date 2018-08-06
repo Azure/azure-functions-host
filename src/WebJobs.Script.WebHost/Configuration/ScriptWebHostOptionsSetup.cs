@@ -5,12 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
-    public class ScriptWebHostOptionsSetup : IConfigureOptions<ScriptWebHostOptions>
+    public class ScriptWebHostOptionsSetup : IConfigureOptions<ScriptApplicationHostOptions>
     {
         private readonly IConfiguration _configuration;
 
@@ -19,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             _configuration = configuration;
         }
 
-        public void Configure(ScriptWebHostOptions options)
+        public void Configure(ScriptApplicationHostOptions options)
         {
             _configuration.GetSection(ConfigurationSectionNames.WebHost)
                 ?.Bind(options);

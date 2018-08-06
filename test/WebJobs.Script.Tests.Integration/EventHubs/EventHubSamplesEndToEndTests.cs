@@ -71,8 +71,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
 
         public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture() :
-                base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"), "samples", "Microsoft.Azure.WebJobs.Extensions.EventHubs", "3.0.0-beta*")
+            public TestFixture()
+                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"), "samples", "Microsoft.Azure.WebJobs.Extensions.EventHubs", "3.0.0-beta*")
             {
             }
 
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
                 builder
                     .ConfigureServices(s =>
                     {
-                        s.Configure<ScriptHostOptions>(o =>
+                        s.Configure<ScriptJobHostOptions>(o =>
                         {
                             o.Functions = new[] { "EventHubTrigger" };
 

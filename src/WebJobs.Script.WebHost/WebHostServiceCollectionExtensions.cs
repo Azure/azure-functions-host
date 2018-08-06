@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // builder.Register(ct => ct.Resolve<WebHostResolver>().GetLoggerFactory(ct.Resolve<WebHostSettings>())).As<ILoggerFactory>().ExternallyOwned();
 
             // Configuration
-            services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<ScriptWebHostOptions>, ScriptWebHostOptionsSetup>());
+            services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<ScriptApplicationHostOptions>, ScriptWebHostOptionsSetup>());
         }
 
         // TODO: DI (FACAVAL) Removing this. We need to ensure system logs are properly written now when using the default provider.

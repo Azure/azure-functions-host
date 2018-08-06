@@ -22,10 +22,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public abstract class EndToEndTestFixture : IAsyncLifetime
     {
-        private string _copiedRootPath;
         private readonly string _rootPath;
         private readonly string _extensionName;
         private readonly string _extensionVersion;
+        private string _copiedRootPath;
 
         protected EndToEndTestFixture(string rootPath, string testId, string extensionName = null, string extensionVersion = null)
         {
@@ -36,6 +36,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _extensionVersion = extensionVersion;
         }
 
+        public CloudBlobContainer TestInputContainer { get; private set; }
+
+        public CloudBlobContainer TestOutputContainer { get; private set; }
+
+        public CloudQueueClient QueueClient { get; private set; }
+
+        public CloudTableClient TableClient { get; private set; }
+
+        public CloudBlobClient BlobClient { get; private set; }
+
+        public CloudQueue TestQueue { get; private set; }
+
+        public CloudQueue MobileTablesQueue { get; private set; }
+
+        public CloudTable TestTable { get; private set; }
+
+        public TestFunctionHost Host { get; private set; }
+
+        public string FixtureId { get; private set; }
+
         public async Task InitializeAsync()
         {
             _copiedRootPath = Path.Combine(Path.GetTempPath(), "FunctionsE2E", DateTime.UtcNow.ToString("yyMMdd-HHmmss"));
@@ -45,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if (_extensionName != null && _extensionVersion != null)
             {
                 TestFunctionHost.WriteNugetPackageSources(_copiedRootPath, "http://www.myget.org/F/azure-appservice/api/v2", "https://api.nuget.org/v3/index.json");
-                var options = new OptionsWrapper<ScriptHostOptions>(new ScriptHostOptions
+                var options = new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions
                 {
                     RootScriptPath = _copiedRootPath
                 });
@@ -72,26 +92,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await CreateTestStorageEntities();
         }
-
-        public CloudBlobContainer TestInputContainer { get; private set; }
-
-        public CloudBlobContainer TestOutputContainer { get; private set; }
-
-        public CloudQueueClient QueueClient { get; private set; }
-
-        public CloudTableClient TableClient { get; private set; }
-
-        public CloudBlobClient BlobClient { get; private set; }
-
-        public CloudQueue TestQueue { get; private set; }
-
-        public CloudQueue MobileTablesQueue { get; private set; }
-
-        public CloudTable TestTable { get; private set; }
-
-        public TestFunctionHost Host { get; private set; }
-
-        public string FixtureId { get; private set; }
 
         public virtual void ConfigureJobHost(IHostBuilder builder)
         {

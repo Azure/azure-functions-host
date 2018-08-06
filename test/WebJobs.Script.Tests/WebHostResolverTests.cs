@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var secretManagerFactoryMock = new Mock<ISecretManagerFactory>();
                 var eventManagerMock = new Mock<IScriptEventManager>();
                 var routerMock = new Mock<IWebJobsRouter>();
-                var settings = new ScriptWebHostOptions
+                var settings = new ScriptApplicationHostOptions
                 {
                     ScriptPath = @"c:\some\path",
                     LogPath = @"c:\log\path",
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void CreateScriptHostConfiguration_StandbyMode_ReturnsExpectedConfiguration()
         {
-            var settings = new ScriptWebHostOptions
+            var settings = new ScriptApplicationHostOptions
             {
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(Path.GetTempPath(), "Functions", "Standby")

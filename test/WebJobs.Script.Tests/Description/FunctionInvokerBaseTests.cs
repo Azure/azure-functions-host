@@ -51,13 +51,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             metadata.Bindings.Add(BindingMetadata.Create(binding));
 
             var host = new HostBuilder()
-                .ConfigureDefaultTestScriptHost()
+                .ConfigureDefaultTestWebScriptHost()
                 .ConfigureServices(s =>
                 {
                     var metadataManager = new MockMetadataManager(new[] { metadata });
                     s.AddSingleton<IFunctionMetadataManager>(metadataManager);
 
-                    s.Configure<ScriptHostOptions>(o =>
+                    s.Configure<ScriptJobHostOptions>(o =>
                     {
                         // TODO DI: This should be set automatically
                         o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;

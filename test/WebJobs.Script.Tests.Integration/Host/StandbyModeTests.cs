@@ -62,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact(Skip = "Review test")]
         public async Task GetScriptHostConfiguration_ReturnsExpectedValue()
         {
+            await Task.CompletedTask;
             // TODO: DI (FACAVAL) Logic here has changed significantly - Mathewc - please review
             //await TestGetter(_webHostResolver.GetScriptHostConfiguration);
         }
@@ -69,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact(Skip = "Review test")]
         public async Task GetSecretManager_ReturnsExpectedValue()
         {
+            await Task.CompletedTask;
             // TODO: DI (FACAVAL) Logic here has changed significantly - Mathewc - please review
             //await TestGetter(_webHostResolver.GetSecretManager);
         }
@@ -76,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact(Skip = "Review test")]
         public async Task GetWebScriptHostManager_ReturnsExpectedValue()
         {
+            await Task.CompletedTask;
             // TODO: DI (FACAVAL) Logic here has changed significantly - Mathewc - please review
             //await TestGetter(_webHostResolver.GetWebScriptHostManager);
         }
@@ -101,6 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact(Skip = "Review test")]
         public async Task EnsureInitialized_PlaceholderMode()
         {
+            await Task.CompletedTask;
             // TODO: DI (FACAVAL) Logic here has changed significantly - Mathewc - please review
             //using (new TestEnvironment())
             //{
@@ -121,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             //}
         }
 
-        private async Task TestGetter<T>(Func<ScriptWebHostOptions, T> func)
+        private async Task TestGetter<T>(Func<ScriptApplicationHostOptions, T> func)
         {
             using (new TestEnvironment())
             {
@@ -157,10 +161,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private Task<ScriptWebHostOptions> GetWebHostSettings()
+        private Task<ScriptApplicationHostOptions> GetWebHostSettings()
         {
             var home = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
-            var settings = new ScriptWebHostOptions
+            var settings = new ScriptApplicationHostOptions
             {
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(home, @"site\wwwroot"),

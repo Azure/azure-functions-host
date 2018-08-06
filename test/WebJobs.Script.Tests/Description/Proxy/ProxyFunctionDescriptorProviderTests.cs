@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _proxyClient = GetMockProxyClient();
             _settingsManager = ScriptSettingsManager.Instance;
             _host = new HostBuilder()
-                .ConfigureDefaultTestScriptHost(o =>
+                .ConfigureDefaultTestWebScriptHost(o =>
                 {
                     o.ScriptPath = rootPath;
                     o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;

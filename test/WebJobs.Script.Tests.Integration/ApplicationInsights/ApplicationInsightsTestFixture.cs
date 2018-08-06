@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public ApplicationInsightsTestFixture(string scriptRoot, string testId)
         {
-            WebHostOptions = new ScriptWebHostOptions
+            WebHostOptions = new ScriptApplicationHostOptions
             {
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(Environment.CurrentDirectory, scriptRoot),
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 })
                 .ConfigureServices(services =>
                 {
-                    services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptWebHostOptions>), new OptionsWrapper<ScriptWebHostOptions>(WebHostOptions)));
+                    services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(WebHostOptions)));
                     //services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestChannelLoggerProviderFactory(Channel)));
                     services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
                     services.AddSingleton<IScriptHostBuilder, ScriptHostBuilder>();
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
         // TODO: DI (FACAVAL) brettsam - missing type?
         // public TestTelemetryChannel Channel { get; private set; } = new TestTelemetryChannel();
 
-        public ScriptWebHostOptions WebHostOptions { get; private set; }
+        public ScriptApplicationHostOptions WebHostOptions { get; private set; }
 
         public HttpClient HttpClient { get; private set; }
 
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             {
                 builder.ConfigureServices(s =>
                 {
-                    s.Configure<ScriptHostOptions>(o =>
+                    s.Configure<ScriptJobHostOptions>(o =>
                     {
                         o.Functions = new[] { "Scenarios", "HttpTrigger-Scenarios" };
                     });

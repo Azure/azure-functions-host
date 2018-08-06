@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _rootLogPath;
         private readonly ILogger _logger;
 
-        public DebugManager(IOptions<ScriptHostOptions> scriptOptions, IDebugStateProvider debugStateProvider,
+        public DebugManager(IOptions<ScriptJobHostOptions> scriptOptions, IDebugStateProvider debugStateProvider,
             IScriptEventManager eventManager, ILogger<DebugManager> logger)
         {
             _debugStateProvider = debugStateProvider;

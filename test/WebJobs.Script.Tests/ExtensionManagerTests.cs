@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private ExtensionsManager GetExtensionsManager(string rootPath)
         {
-            IOptions<ScriptHostOptions> options = new OptionsWrapper<ScriptHostOptions>(new ScriptHostOptions
+            IOptions<ScriptJobHostOptions> options = new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions
             {
                 RootScriptPath = rootPath
             });

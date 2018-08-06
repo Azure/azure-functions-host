@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
         private readonly ILogger _logger;
         private string _nugetFallbackPath;
 
-        public ExtensionsManager(IOptions<ScriptHostOptions> hostOptions, ILogger<ExtensionsManager> logger)
+        public ExtensionsManager(IOptions<ScriptJobHostOptions> hostOptions, ILogger<ExtensionsManager> logger)
         {
             _scriptRootPath = hostOptions.Value.RootScriptPath;
             _nugetFallbackPath = hostOptions.Value.NugetFallBackPath;

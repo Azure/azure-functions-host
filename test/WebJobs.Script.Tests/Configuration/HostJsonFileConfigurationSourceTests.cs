@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -51,12 +52,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             File.WriteAllText(Path.Combine(rootPath, "host.json"), hostJsonContent);
 
-            var webHostOptions = new ScriptWebHostOptions
+            var webHostOptions = new ScriptApplicationHostOptions
             {
                 ScriptPath = rootPath
             };
 
-            var configSource = new HostJsonFileConfigurationSource(new OptionsWrapper<ScriptWebHostOptions>(webHostOptions), loggerFactory);
+            var configSource = new HostJsonFileConfigurationSource(new OptionsWrapper<ScriptApplicationHostOptions>(webHostOptions), loggerFactory);
 
             var configurationBuilder = new ConfigurationBuilder();
             IConfigurationProvider provider = configSource.Build(configurationBuilder);

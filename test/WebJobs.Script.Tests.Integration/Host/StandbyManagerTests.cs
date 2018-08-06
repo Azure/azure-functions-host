@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private HttpClient _httpClient;
         private TestServer _httpServer;
         private string _expectedHostId;
-        private ScriptWebHostOptions _webHostOptions;
+        private ScriptApplicationHostOptions _webHostOptions;
         private string _testRootPath;
 
         public StandbyManagerTests()
@@ -245,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _loggerProvider = new TestLoggerProvider();
 
-            _webHostOptions = new ScriptWebHostOptions
+            _webHostOptions = new ScriptApplicationHostOptions
             {
                 IsSelfHost = true,
                 LogPath = Path.Combine(uniqueTestRootPath, "Logs"),

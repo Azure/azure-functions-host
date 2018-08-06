@@ -4,10 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Primitives;
 using static System.Environment;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
@@ -26,11 +24,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         private class WebScriptHostConfigurationProvider : ConfigurationProvider
         {
             private const string KeyDelimiter = ":";
-            private const string LogPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptWebHostOptions.LogPath);
-            private const string TestDataPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptWebHostOptions.TestDataPath);
-            private const string SecretsPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptWebHostOptions.SecretsPath);
-            private const string SelfHostProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptWebHostOptions.IsSelfHost);
-            private const string WebHostScriptPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptWebHostOptions.ScriptPath);
+            private const string LogPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptApplicationHostOptions.LogPath);
+            private const string TestDataPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptApplicationHostOptions.TestDataPath);
+            private const string SecretsPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptApplicationHostOptions.SecretsPath);
+            private const string SelfHostProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptApplicationHostOptions.IsSelfHost);
+            private const string WebHostScriptPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptApplicationHostOptions.ScriptPath);
 
             private readonly WebScriptHostConfigurationSource _configurationSource;
 

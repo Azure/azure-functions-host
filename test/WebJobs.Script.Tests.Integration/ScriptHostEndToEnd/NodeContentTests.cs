@@ -206,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public override void ConfigureServices(IServiceCollection services)
             {
-                services.Configure<ScriptHostOptions>(o =>
+                services.Configure<ScriptJobHostOptions>(o =>
                 {
                     // TODO DI: This should be automatically configured.
                     o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
