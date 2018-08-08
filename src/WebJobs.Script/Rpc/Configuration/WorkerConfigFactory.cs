@@ -207,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal string GetExecutablePathForJava(string defaultExecutablePath)
         {
                 string javaHome = ScriptSettingsManager.Instance.GetSetting("JAVA_HOME");
-                if (string.IsNullOrEmpty(javaHome))
+                if (string.IsNullOrEmpty(javaHome) || Path.IsPathRooted(defaultExecutablePath))
                 {
                     return defaultExecutablePath;
                 }
