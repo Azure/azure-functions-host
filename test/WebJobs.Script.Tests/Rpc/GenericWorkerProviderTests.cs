@@ -314,12 +314,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 DefaultExecutablePath = "foopath",
                 DefaultWorkerPath = $"{testWorkerPathInWorkerConfig}.{language}",
                 Language = language,
-                Extension = $".{language}",
+                Extensions = new List<string> { $".{language}" },
                 Arguments = arguments.ToList()
             };
 
             JObject config = new JObject();
-            config["Description"] = JObject.FromObject(description);
+            config[LanguageWorkerConstants.WorkerDescription] = JObject.FromObject(description);
 
             if (!string.IsNullOrEmpty(profileName))
             {
@@ -335,7 +335,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             if (invalid)
             {
-                config["Description"] = "invalidWorkerConfig";
+                config[LanguageWorkerConstants.WorkerDescription] = "invalidWorkerConfig";
             }
 
             return config;
