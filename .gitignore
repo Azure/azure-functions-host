@@ -16,6 +16,7 @@ package-lock.json
 **/Properties/launchSettings.json
 
 /packages
+tools/ExtensionsMetadataGenerator/packages
 /TestResults
 
 /tools/NuGet.exe

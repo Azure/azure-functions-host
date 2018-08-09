@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator;
 #if !NET46
 using System.Runtime.Loader;
 #endif
@@ -16,6 +15,8 @@ namespace ExtensionsMetadataGenerator
 {
     public class ExtensionsMetadataGenerator
     {
+        private const string WebJobsStartupAttributeType = "Microsoft.Azure.WebJobs.Hosting.WebJobsStartupAttribute";
+
         public static void Generate(string sourcePath, string outputPath, Action<string> logger)
         {
             if (!Directory.Exists(sourcePath))
@@ -33,26 +34,46 @@ namespace ExtensionsMetadataGenerator
                 try
                 {
                     Assembly assembly = Assembly.LoadFrom(path);
-
-                    var extensions = assembly.GetExportedTypes()
-                        .Where(t => t.IsExtensionType())
-                        .Select(t => new ExtensionReference
-                        {
-                            Name = t.Name,
-                            TypeName = t.AssemblyQualifiedName
-                        });
-
-                    extensionReferences.AddRange(extensions);
+                    var currExtensionReferences = GenerateExtensionReferences(assembly);
+                    extensionReferences.AddRange(extensionReferences);
                 }
                 catch (Exception exc)
                 {
-                    logger(exc.Message ?? $"Errot processing {path}");
+                    logger(exc.Message ?? $"Error processing {path}");
                 }
             }
 
+            string json = GenerateExtensionsJson(extensionReferences);
+            File.WriteAllText(outputPath, json);
+        }
+
+        public static string GenerateExtensionsJson(IEnumerable<ExtensionReference> extensionReferences)
+        {
             var referenceObjects = extensionReferences.Select(r => string.Format("{2}    {{ \"name\": \"{0}\", \"typeName\":\"{1}\"}}", r.Name, r.TypeName, Environment.NewLine));
-            string metadataContents = string.Format("{{{1}  \"extensions\":[{0}{1}  ]{1}}}", string.Join(",", referenceObjects), Environment.NewLine);
-            File.WriteAllText(outputPath, metadataContents);
+            string json = string.Format("{{{1}  \"extensions\":[{0}{1}  ]{1}}}", string.Join(",", referenceObjects), Environment.NewLine);
+            return json;
+        }
+
+        public static IEnumerable<ExtensionReference> GenerateExtensionReferences(Assembly assembly)
+        {
+            var startupAttributes = assembly.GetCustomAttributes().Where(a => string.Equals(a.GetType().FullName, WebJobsStartupAttributeType, StringComparison.OrdinalIgnoreCase));
+
+            List<ExtensionReference> extensionReferences = new List<ExtensionReference>();
+            foreach (var attribute in startupAttributes)
+            {
+                var nameProperty = attribute.GetType().GetProperty("Name");
+                var typeProperty = attribute.GetType().GetProperty("WebJobsStartupType");
+
+                var extensionReference = new ExtensionReference
+                {
+                    Name = (string)nameProperty.GetValue(attribute),
+                    TypeName = ((Type)typeProperty.GetValue(attribute)).Assembly.FullName
+                };
+
+                extensionReferences.Add(extensionReference);
+            }
+
+            return extensionReferences;
         }
     }
 }
