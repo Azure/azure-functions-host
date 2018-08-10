@@ -67,7 +67,7 @@ namespace ExtensionsMetadataGenerator
                 var extensionReference = new ExtensionReference
                 {
                     Name = (string)nameProperty.GetValue(attribute),
-                    TypeName = ((Type)typeProperty.GetValue(attribute)).Assembly.FullName
+                    TypeName = ((Type)typeProperty.GetValue(attribute)).AssemblyQualifiedName
                 };
 
                 extensionReferences.Add(extensionReference);

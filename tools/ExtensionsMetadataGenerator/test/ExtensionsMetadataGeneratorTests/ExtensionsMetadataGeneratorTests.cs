@@ -14,10 +14,10 @@ namespace ExtensionsMetadataGeneratorTests
             Assert.Equal(2, references.Length);
 
             Assert.Equal("Foo", references[0].Name);
-            Assert.Equal(assembly.FullName, references[0].TypeName);
+            Assert.Equal(typeof(FooWebJobsStartup).AssemblyQualifiedName, references[0].TypeName);
 
             Assert.Equal("BarExtension", references[1].Name);
-            Assert.Equal(assembly.FullName, references[1].TypeName);
+            Assert.Equal(typeof(BarWebJobsStartup).AssemblyQualifiedName, references[1].TypeName);
         }
 
         [Fact]
@@ -31,10 +31,10 @@ namespace ExtensionsMetadataGeneratorTests
             var extensions = root["extensions"];
 
             Assert.Equal("Foo", extensions[0]["name"]);
-            Assert.Equal(assembly.FullName, extensions[0]["typeName"]);
+            Assert.Equal(typeof(FooWebJobsStartup).AssemblyQualifiedName, extensions[0]["typeName"]);
 
             Assert.Equal("BarExtension", extensions[1]["name"]);
-            Assert.Equal(assembly.FullName, extensions[1]["typeName"]);
+            Assert.Equal(typeof(BarWebJobsStartup).AssemblyQualifiedName, extensions[1]["typeName"]);
         }
     }
 }
