@@ -9,11 +9,13 @@ using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public static class ManualTriggerHostBuilderExtensions
+    public static class ManualTriggerWebJobsBuilderExtensions
     {
-        public static IHostBuilder AddManualTrigger(this IHostBuilder builder)
+        public static IWebJobsBuilder AddManualTrigger(this IWebJobsBuilder builder)
         {
-            return builder.AddExtension<ManualTriggerConfigProvider>();
+            builder.AddExtension<ManualTriggerConfigProvider>();
+
+            return builder;
         }
     }
 }

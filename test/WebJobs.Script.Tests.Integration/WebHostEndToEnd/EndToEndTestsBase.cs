@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return logs.Any(p => p.Contains(guid2));
             });
 
-            Assert.True(logs.Count == 4, string.Join(Environment.NewLine, logs));
+            Assert.True(logs.Count == 5, string.Join(Environment.NewLine, logs));
 
             // No need for assert; this will throw if there's not one and only one
             logs.Single(p => p.EndsWith($"From TraceWriter: {guid1}"));
@@ -192,7 +192,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
             Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
 
-            LogMessage traceEvent = await WaitForTraceAsync(p => p?.FormattedMessage != null && p.FormattedMessage.Contains(id));
+            string userCategory = LogCategories.CreateFunctionUserCategory("QueueTriggerToBlob");
+            LogMessage traceEvent = await WaitForTraceAsync(p => p?.FormattedMessage != null && p.FormattedMessage.Contains(id) && string.Equals(p.Category, userCategory, StringComparison.Ordinal));
             Assert.Equal(LogLevel.Information, traceEvent.Level);
 
             string trace = traceEvent.FormattedMessage;

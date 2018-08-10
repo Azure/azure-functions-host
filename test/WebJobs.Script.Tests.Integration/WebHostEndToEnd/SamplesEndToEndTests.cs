@@ -927,33 +927,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
             }
 
-            public override void ConfigureJobHost(IHostBuilder builder)
+            public override void ConfigureJobHost(IWebJobsBuilder webJobsBuilder)
             {
-                base.ConfigureJobHost(builder);
+                base.ConfigureJobHost(webJobsBuilder);
 
-                builder
-                    .ConfigureServices(s =>
+                webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
+                {
+                    o.Functions = new[]
                     {
-                        s.Configure<ScriptJobHostOptions>(o =>
-                        {
-                            o.Functions = new[]
-                            {
-                                "HttpTrigger",
-                                "HttpTrigger-CSharp",
-                                "HttpTrigger-CSharp-CustomRoute",
-                                "HttpTrigger-CSharp-POCO",
-                                "HttpTrigger-CustomRoute-Get",
-                                "HttpTrigger-Disabled",
-                                "HttpTrigger-Java",
-                                "HttpTriggerWithObject-CSharp",
-                                "ManualTrigger",
-                                "ManualTrigger-CSharp"
-                            };
+                        "HttpTrigger",
+                        "HttpTrigger-CSharp",
+                        "HttpTrigger-CSharp-CustomRoute",
+                        "HttpTrigger-CSharp-POCO",
+                        "HttpTrigger-CustomRoute-Get",
+                        "HttpTrigger-Disabled",
+                        "HttpTrigger-Java",
+                        "HttpTriggerWithObject-CSharp",
+                        "ManualTrigger",
+                        "ManualTrigger-CSharp"
+                    };
 
-                            // TODO DI: This should be set automatically
-                            o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
-                        });
-                    });
+                    // TODO DI: This should be set automatically
+                    o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
+                });
             }
 
             protected override async Task CreateTestStorageEntities()

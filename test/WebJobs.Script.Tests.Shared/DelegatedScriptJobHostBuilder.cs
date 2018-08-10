@@ -7,16 +7,16 @@ using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class DelegatedScriptJobHostBuilder : IScriptHostBuilder
+    public class DelegatedScriptJobHostBuilder : IConfigureWebJobsBuilder
     {
-        private readonly Action<IHostBuilder> _builder;
+        private readonly Action<IWebJobsBuilder> _builder;
 
-        public DelegatedScriptJobHostBuilder(Action<IHostBuilder> builder)
+        public DelegatedScriptJobHostBuilder(Action<IWebJobsBuilder> builder)
         {
             _builder = builder;
         }
 
-        public void Configure(IHostBuilder builder)
+        public void Configure(IWebJobsBuilder builder)
         {
             _builder(builder);
         }

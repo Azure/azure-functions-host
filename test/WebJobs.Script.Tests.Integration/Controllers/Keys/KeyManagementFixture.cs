@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         public virtual ScriptSecretsType SecretsType => ScriptSecretsType.Function;
 
-        protected override void ConfigureJobHostBuilder(IHostBuilder builder)
+        protected override void ConfigureJobHostBuilder(IWebJobsBuilder webJobsBuilder)
         {
             TestFunctionKeys = new Dictionary<string, string>
             {
@@ -41,9 +41,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
             SecretManagerMock = BuildSecretManager();
 
-            builder.ConfigureServices(c => c.AddSingleton<ISecretManager>(SecretManagerMock.Object));
+            webJobsBuilder.Services.AddSingleton<ISecretManager>(SecretManagerMock.Object);
 
-            base.ConfigureJobHostBuilder(builder);
+            base.ConfigureJobHostBuilder(webJobsBuilder);
         }
 
         public static ApiModel ReadApiModelContent(HttpResponseMessage response)

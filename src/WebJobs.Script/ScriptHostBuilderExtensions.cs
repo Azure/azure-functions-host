@@ -2,11 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -37,10 +33,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
             configureOptions(options);
 
-            return builder.AddScriptHost(new OptionsWrapper<ScriptApplicationHostOptions>(options), loggerFactory);
+            return builder.AddScriptHost(new OptionsWrapper<ScriptApplicationHostOptions>(options), loggerFactory, null);
         }
 
-        public static IHostBuilder AddScriptHost(this IHostBuilder builder, IOptions<ScriptApplicationHostOptions> webHostOptions, ILoggerFactory loggerFactory = null)
+        public static IHostBuilder AddScriptHost(this IHostBuilder builder, IOptions<ScriptApplicationHostOptions> applicationOptions, ILoggerFactory loggerFactory, Action<IWebJobsBuilder> configureWebJobs = null)
         {
             loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
 
@@ -59,33 +55,32 @@ namespace Microsoft.Azure.WebJobs.Script
             })
             .ConfigureAppConfiguration(c =>
             {
-                c.Add(new HostJsonFileConfigurationSource(webHostOptions, loggerFactory));
+                c.Add(new HostJsonFileConfigurationSource(applicationOptions, loggerFactory));
             });
 
             // WebJobs configuration
-            builder.AddScriptHostCore(webHostOptions);
-
-            return builder;
+            return builder.AddScriptHostCore(applicationOptions, configureWebJobs);
         }
 
-        public static IHostBuilder AddScriptHostCore(this IHostBuilder builder, IOptions<ScriptApplicationHostOptions> webHostOptions)
+        public static IHostBuilder AddScriptHostCore(this IHostBuilder builder, IOptions<ScriptApplicationHostOptions> webHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
         {
-            builder.ConfigureWebJobsHost(o =>
-             {
-                 o.AllowPartialHostStartup = true;
-             })
-             .UseScriptExternalStartup(webHostOptions.Value.ScriptPath);
+            builder.ConfigureWebJobs(webJobsBuilder =>
+            {
+                // Built in binding registrations
+                webJobsBuilder.AddExecutionContextBinding(o =>
+                {
+                    o.AppDirectory = webHostOptions.Value.ScriptPath;
+                })
+                .AddHttp(o =>
+                {
+                    o.SetResponse = HttpBinding.SetResponse;
+                })
+                .AddManualTrigger();
 
-            // Built in binding registrations
-            builder.AddExecutionContextBinding(o =>
-             {
-                 o.AppDirectory = webHostOptions.Value.ScriptPath;
-             })
-             .AddHttp(o =>
-             {
-                 o.SetResponse = HttpBinding.SetResponse;
-             })
-             .AddManualTrigger();
+                webJobsBuilder.UseScriptExternalStartup(webHostOptions.Value.ScriptPath);
+
+                configureWebJobs?.Invoke(webJobsBuilder);
+            }, o => o.AllowPartialHostStartup = true);
 
             // Script host services
             builder.ConfigureServices(services =>
@@ -118,13 +113,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
                 services.AddSingleton<IPrimaryHostStateProvider, PrimaryHostStateProvider>();
 
-                //services.TryAddEnumerable(new ServiceDescriptor)
+                // Hosted services
+                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
             });
 
             return builder;
         }
 
-        public static IHostBuilder UseScriptExternalStartup(this IHostBuilder builder, string rootScriptPath)
+        public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, string rootScriptPath)
         {
             return builder.UseExternalStartup(new ScriptStartupTypeDiscoverer(rootScriptPath));
         }

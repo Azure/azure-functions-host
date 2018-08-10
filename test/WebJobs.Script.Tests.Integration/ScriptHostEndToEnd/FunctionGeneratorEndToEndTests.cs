@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // start the JobHost which will start running the timer function
             var host = new HostBuilder()
-                .ConfigureWebJobsHost()
+                .ConfigureWebJobs()
                 .ConfigureServices(s =>
                 {
                     s.AddSingleton<ITypeLocator>(new TestTypeLocator(functionType));

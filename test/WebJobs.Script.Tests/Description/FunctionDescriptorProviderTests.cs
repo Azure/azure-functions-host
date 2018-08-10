@@ -28,12 +28,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node");
 
             var host = new HostBuilder()
-                .ConfigureDefaultTestWebScriptHost(o =>
+                .ConfigureDefaultTestWebScriptHost(webJobsBuilder =>
+                {
+                    webJobsBuilder.AddAzureStorage();
+                },
+                o =>
                 {
                     o.ScriptPath = rootPath;
                     o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
                 })
-                .AddAzureStorage()
                 .Build();
             _host = host.GetScriptHost();
             _host.InitializeAsync().GetAwaiter().GetResult();

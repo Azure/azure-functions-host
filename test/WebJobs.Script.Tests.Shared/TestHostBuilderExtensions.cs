@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -17,9 +18,13 @@ namespace Microsoft.WebJobs.Script.Tests
 {
     public static class TestHostBuilderExtensions
     {
-        public static IHostBuilder ConfigureDefaultTestWebScriptHost(this IHostBuilder builder,
-            Action<ScriptApplicationHostOptions> configure = null,
-            bool runStartupHostedServices = false)
+        public static IHostBuilder ConfigureDefaultTestWebScriptHost(this IHostBuilder builder, Action<ScriptApplicationHostOptions> configure = null, bool runStartupHostedServices = false)
+        {
+            return builder.ConfigureDefaultTestWebScriptHost(null, configure, runStartupHostedServices);
+        }
+
+        public static IHostBuilder ConfigureDefaultTestWebScriptHost(this IHostBuilder builder, Action<IWebJobsBuilder> configureWebJobs,
+            Action<ScriptApplicationHostOptions> configure = null, bool runStartupHostedServices = false)
         {
             var webHostOptions = new ScriptApplicationHostOptions()
             {
@@ -42,7 +47,7 @@ namespace Microsoft.WebJobs.Script.Tests
             var rootProvider = new WebHostServiceProvider(services);
 
             builder
-                .AddWebScriptHost(rootProvider, rootProvider, new OptionsWrapper<ScriptApplicationHostOptions>(webHostOptions))
+                .AddWebScriptHost(rootProvider, rootProvider, new OptionsWrapper<ScriptApplicationHostOptions>(webHostOptions), configureWebJobs)
                 .ConfigureAppConfiguration(c =>
                 {
                     c.AddTestSettings();

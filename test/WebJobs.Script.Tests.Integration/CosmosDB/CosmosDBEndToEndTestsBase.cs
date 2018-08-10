@@ -89,24 +89,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
         public DocumentClient DocumentClient { get; private set; }
 
-        public override void ConfigureJobHost(IHostBuilder builder)
+        public override void ConfigureJobHost(IWebJobsBuilder webJobsBuilder)
         {
-            builder
-                .ConfigureServices(s =>
+            webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
+            {
+                o.Functions = new[]
                 {
-                    s.Configure<ScriptJobHostOptions>(o =>
-                    {
-                        o.Functions = new[]
-                        {
-                            "CosmosDBTrigger",
-                            "CosmosDBIn",
-                            "CosmosDBOut"
-                        };
+                    "CosmosDBTrigger",
+                    "CosmosDBIn",
+                    "CosmosDBOut"
+                };
 
-                        // TODO DI: This should be set automatically
-                        o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
-                    });
-                });
+                // TODO DI: This should be set automatically
+                o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
+            });
         }
 
         public async Task InitializeDocumentClient()

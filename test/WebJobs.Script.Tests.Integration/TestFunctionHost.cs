@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
         private readonly WebJobsScriptHostService _hostService;
 
-        public TestFunctionHost(string appRoot, Action<IHostBuilder> configureJobHost)
+        public TestFunctionHost(string appRoot, Action<IWebJobsBuilder> configureJobHost)
         {
             _appRoot = appRoot;
 
@@ -53,18 +53,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                      services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
 
                      services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions)));
-                     services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
                  })
-                 .AddScriptHostBuilder(b =>
+                 .AddScriptHostBuilder(webJobsBuilder =>
                  {
-                     b.ConfigureLogging(l =>
-                     {
-                         l.AddProvider(_loggerProvider);
-                         l.AddFilter<TestLoggerProvider>(_ => true);
-                     })
-                     .AddAzureStorage();
+                     var loggingBuilder = new LoggingBuilder(webJobsBuilder.Services);
+                     loggingBuilder.AddProvider(_loggerProvider);
+                     loggingBuilder.AddFilter<TestLoggerProvider>(_ => true);
 
-                     configureJobHost?.Invoke(b);
+
+                     webJobsBuilder.Services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
+
+                     webJobsBuilder.AddAzureStorage();
+
+                     configureJobHost?.Invoke(webJobsBuilder);
                  })
                  .UseStartup<Startup>());
 
@@ -81,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public ScriptJobHostOptions ScriptOptions => JobHostServices.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
-        public ISecretManager SecretManager => _testServer.Host.Services.GetService<ISecretManager>();
+        public ISecretManager SecretManager => JobHostServices.GetService<ISecretManager>();
 
         public string LogPath => _hostOptions.LogPath;
 
@@ -229,19 +230,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private class DelegatedScriptJobHostBuilder : IScriptHostBuilder
+        private class LoggingBuilder : ILoggingBuilder
         {
-            private readonly Action<IHostBuilder> _builder;
+            private readonly IServiceCollection _services;
 
-            public DelegatedScriptJobHostBuilder(Action<IHostBuilder> builder)
+            public LoggingBuilder(IServiceCollection services)
             {
-                _builder = builder;
+                _services = services;
             }
-
-            public void Configure(IHostBuilder builder)
-            {
-                _builder(builder);
-            }
+            public IServiceCollection Services => _services;
         }
     }
 }

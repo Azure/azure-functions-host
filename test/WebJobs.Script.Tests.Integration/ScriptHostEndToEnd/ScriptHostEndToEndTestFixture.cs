@@ -113,12 +113,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             //config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
 
             var host = new HostBuilder()
-                .ConfigureDefaultTestWebScriptHost(o =>
+                .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
+                {
+                    webjobsBuilder.AddAzureStorage();
+                },
+                o =>
                 {
                     o.ScriptPath = _rootPath;
                     o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
                 })
-                .AddAzureStorage()
                 .ConfigureServices(s =>
                 {
                     s.AddSingleton<IScriptEventManager>(EventManager);

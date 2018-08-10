@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         public TestServer HttpServer { get; set; }
 
-        protected virtual void ConfigureJobHostBuilder(IHostBuilder builder)
+        protected virtual void ConfigureJobHostBuilder(IWebJobsBuilder webJobsBuilder)
         {
         }
 

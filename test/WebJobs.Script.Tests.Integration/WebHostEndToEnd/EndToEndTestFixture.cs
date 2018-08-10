@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await CreateTestStorageEntities();
         }
 
-        public virtual void ConfigureJobHost(IHostBuilder builder)
+        public virtual void ConfigureJobHost(IWebJobsBuilder webJobsBuilder)
         {
         }
 

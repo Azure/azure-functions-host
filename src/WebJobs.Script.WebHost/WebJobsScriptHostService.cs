@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 State = ScriptHostState.Error;
                 attemptCount++;
 
-                var hostLoggerFactory = _host.Services.GetService<ILoggerFactory>();
+                var hostLoggerFactory = _host?.Services.GetService<ILoggerFactory>();
                 var logger = hostLoggerFactory?.CreateLogger(LogCategories.Startup) ?? _logger;
 
                 logger.LogError(exc, "A ScriptHost error has occurred");
@@ -179,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             try
             {
-                await instance.StopAsync(cancellationToken);
+                await instance?.StopAsync(cancellationToken);
             }
             catch (Exception)
             {
@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             finally
             {
-                instance.Dispose();
+                instance?.Dispose();
             }
         }
 

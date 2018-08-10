@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             FileWatchingEnabled = true;
             FileLoggingMode = FileLoggingMode.Never;
-            LogFilter = new LogCategoryFilter();
             HostHealthMonitor = new HostHealthMonitorConfiguration();
             InstanceId = Guid.NewGuid().ToString();
             WatchDirectories = new Collection<string>();
@@ -131,12 +130,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// locally or via CLI.
         /// </summary>
         public bool IsSelfHost { get; set; }
-
-        /// <summary>
-        /// Gets or sets the <see cref="LogCategoryFilter"/> to use when constructing providers for the
-        /// registered <see cref="ILoggerFactory"/>.
-        /// </summary>
-        public LogCategoryFilter LogFilter { get; set; }
 
         /// <summary>
         /// Gets or sets the <see cref="SamplingPercentageEstimatorSettings"/> to be used for Application

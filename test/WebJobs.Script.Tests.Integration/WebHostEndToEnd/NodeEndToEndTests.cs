@@ -181,22 +181,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             await Fixture.Host.BeginFunctionAsync("Scenarios", input);
 
+            string userCategory = LogCategories.CreateFunctionUserCategory("Scenarios");
             IList<string> logs = null;
             await TestHelpers.Await(() =>
             {
-                logs = Fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory("Scenarios")).Select(p => p.FormattedMessage).ToList();
+                logs = Fixture.Host.GetLogMessages(userCategory).Select(p => p.FormattedMessage).ToList();
                 return logs.Count == 10;
             }, userMessageCallback: Fixture.Host.GetLog);
 
             // verify use of context.log to log complex objects
-            LogMessage scriptTrace = Fixture.Host.GetLogMessages().Single(p => p.FormattedMessage != null && p.FormattedMessage.Contains(testData));
+            LogMessage scriptTrace = Fixture.Host.GetLogMessages(userCategory).Single(p => p.FormattedMessage != null && p.FormattedMessage.Contains(testData));
             Assert.Equal(LogLevel.Information, scriptTrace.Level);
             JObject logEntry = JObject.Parse(scriptTrace.FormattedMessage);
             Assert.Equal("This is a test", logEntry["message"]);
             Assert.Equal(testData, logEntry["input"]);
 
             // verify log levels in traces
-            LogMessage[] traces = Fixture.Host.GetLogMessages().Where(t => t.FormattedMessage != null && t.FormattedMessage.Contains("loglevel")).ToArray();
+            LogMessage[] traces = Fixture.Host.GetLogMessages(userCategory).Where(t => t.FormattedMessage != null && t.FormattedMessage.Contains("loglevel")).ToArray();
             Assert.Equal(LogLevel.Information, traces[0].Level);
             Assert.Equal("loglevel default", traces[0].FormattedMessage);
             Assert.Equal(LogLevel.Information, traces[1].Level);
@@ -928,40 +929,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
             }
 
-            public override void ConfigureJobHost(IHostBuilder builder)
+            public override void ConfigureJobHost(IWebJobsBuilder webJobsBuilder)
             {
-                base.ConfigureJobHost(builder);
+                base.ConfigureJobHost(webJobsBuilder);
 
-                builder
-                    .AddAzureStorage()
-                    .ConfigureServices(s =>
+                webJobsBuilder.AddAzureStorage()
+                    .Services.Configure<ScriptJobHostOptions>(o =>
                     {
-                        s.Configure<ScriptJobHostOptions>(o =>
+                        o.Functions = new[]
                         {
-                            o.Functions = new[]
-                            {
-                                "BlobTriggerToBlob",
-                                "HttpTrigger",
-                                "HttpTrigger-Scenarios",
-                                "HttpTriggerExpressApi",
-                                "HttpTriggerPromise",
-                                "HttpTriggerToBlob",
-                                "Invalid",
-                                "ManualTrigger",
-                                "MultipleExports",
-                                "MultipleOutputs",
-                                "MultipleInputs",
-                                "QueueTriggerByteArray",
-                                "QueueTriggerToBlob",
-                                "SingleNamedExport",
-                                "TableIn",
-                                "TableOut",
-                                "Scenarios"
-                            };
+                            "BlobTriggerToBlob",
+                            "HttpTrigger",
+                            "HttpTrigger-Scenarios",
+                            "HttpTriggerExpressApi",
+                            "HttpTriggerPromise",
+                            "HttpTriggerToBlob",
+                            "Invalid",
+                            "ManualTrigger",
+                            "MultipleExports",
+                            "MultipleOutputs",
+                            "MultipleInputs",
+                            "QueueTriggerByteArray",
+                            "QueueTriggerToBlob",
+                            "SingleNamedExport",
+                            "TableIn",
+                            "TableOut",
+                            "Scenarios"
+                        };
 
-                            // TODO DI: This should naturally default
-                            o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
-                        });
+                        // TODO DI: This should naturally default
+                        o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
                     });
             }
         }

@@ -352,32 +352,28 @@ namespace SecondaryDependency
                 primaryCompilation.Emit(Path.Combine(sharedAssembliesPath, "PrimaryDependency.dll"));
             }
 
-            public override void ConfigureJobHost(IHostBuilder builder)
+            public override void ConfigureJobHost(IWebJobsBuilder webJobsBuilder)
             {
-                base.ConfigureJobHost(builder);
+                base.ConfigureJobHost(webJobsBuilder);
 
-                builder
-                    .AddAzureStorage()
-                    .ConfigureServices(s =>
+                webJobsBuilder.AddAzureStorage();
+                webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
+                {
+                    // Only load the functions we care about
+                    o.Functions = new[]
                     {
-                        s.Configure<ScriptJobHostOptions>(o =>
-                        {
-                            // Only load the functions we care about
-                            o.Functions = new[]
-                            {
-                                "AssembliesFromSharedLocation",
-                                "HttpTrigger-Dynamic",
-                                "HttpTrigger-Scenarios",
-                                "HttpTriggerToBlob",
-                                "FunctionExecutionContext",
-                                "LoadScriptReference",
-                                "ManualTrigger",
-                                "MultipleOutputs",
-                                "QueueTriggerToBlob",
-                                "Scenarios"
-                            };
-                        });
-                    });
+                        "AssembliesFromSharedLocation",
+                        "HttpTrigger-Dynamic",
+                        "HttpTrigger-Scenarios",
+                        "HttpTriggerToBlob",
+                        "FunctionExecutionContext",
+                        "LoadScriptReference",
+                        "ManualTrigger",
+                        "MultipleOutputs",
+                        "QueueTriggerToBlob",
+                        "Scenarios"
+                    };
+                });
             }
         }
 

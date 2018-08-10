@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public static class WebScriptHostBuilderExtension
     {
         public static IHostBuilder AddWebScriptHost(this IHostBuilder builder, IServiceProvider rootServiceProvider,
-           IServiceScopeFactory rootScopeFactory, IOptions<ScriptApplicationHostOptions> webHostOptions)
+           IServiceScopeFactory rootScopeFactory, IOptions<ScriptApplicationHostOptions> webHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
         {
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();
 
@@ -39,6 +39,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     string appInsightsKey = context.Configuration[EnvironmentSettingNames.AppInsightsInstrumentationKey];
                     // loggingBuilder.Services.AddApplicationInsights(appInsightsKey, (_, level) => level > LogLevel.Debug, null);
                 })
+                .AddScriptHost(webHostOptions, configLoggerFactory, webJobsBuilder =>
+                {
+                    webJobsBuilder.AddWebJobsLogging() // Enables WebJobs v1 classic logging
+                    .AddAzureStorageCoreServices();
+
+                    configureWebJobs?.Invoke(webJobsBuilder);
+
+                    // If there is a script host configuration builder registered, allow it to configure
+                    // the host builder
+                    var scriptBuilder = rootServiceProvider.GetService<IConfigureWebJobsBuilder>();
+                    scriptBuilder?.Configure(webJobsBuilder);
+                })
                 .ConfigureServices(services =>
                 {
                     services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
@@ -48,30 +60,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.AddSingleton<IScriptJobHostEnvironment, WebScriptJobHostEnvironment>();
 
                     // Secret management
-                    services.AddSingleton<ISecretManager>(c => c.GetService<ISecretManagerFactory>().Create());
-                    services.AddSingleton<ISecretsRepository>(c => c.GetService<ISecretsRepositoryFactory>().Create());
+                    services.TryAddSingleton<ISecretManager>(c => c.GetService<ISecretManagerFactory>().Create());
+                    services.TryAddSingleton<ISecretsRepository>(c => c.GetService<ISecretsRepositoryFactory>().Create());
                     services.AddSingleton<ISecretManagerFactory, DefaultSecretManagerFactory>();
                     services.AddSingleton<ISecretsRepositoryFactory, DefaultSecretsRepositoryFactory>();
-                })
-                .AddScriptHost(webHostOptions, configLoggerFactory)
-                .AddWebJobsLogging() // Enables WebJobs v1 classic logging
-                .AddAzureStorageCoreServices();
 
-            // HACK: Remove previous IHostedService registration
-            // TODO: DI (FACAVAL) Remove this and move HttpInitialization to webjobs configuration
-            builder.ConfigureServices(s =>
-            {
-                s.RemoveAll<IHostedService>();
-                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
-                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, JobHostService>());
-                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HttpInitializationService>());
-                s.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
-            });
-
-            // If there is a script host builder registered, allow it to configure
-            // the host builder
-            var scriptBuilder = rootServiceProvider.GetService<IScriptHostBuilder>();
-            scriptBuilder?.Configure(builder);
+                    // Hosted services
+                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HttpInitializationService>());
+                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
+                });
 
             return builder;
         }

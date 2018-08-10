@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                     services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(WebHostOptions)));
                     //services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestChannelLoggerProviderFactory(Channel)));
                     services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
-                    services.AddSingleton<IScriptHostBuilder, ScriptHostBuilder>();
+                    services.AddSingleton<IConfigureWebJobsBuilder, ScriptHostBuilder>();
                 });
 
             _testServer = new TestServer(hostBuilder);
@@ -68,16 +68,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             HttpClient?.Dispose();
         }
 
-        private class ScriptHostBuilder : IScriptHostBuilder
+        private class ScriptHostBuilder : IConfigureWebJobsBuilder
         {
-            public void Configure(IHostBuilder builder)
+            public void Configure(IWebJobsBuilder builder)
             {
-                builder.ConfigureServices(s =>
+                builder.Services.Configure<ScriptJobHostOptions>(o =>
                 {
-                    s.Configure<ScriptJobHostOptions>(o =>
-                    {
-                        o.Functions = new[] { "Scenarios", "HttpTrigger-Scenarios" };
-                    });
+                    o.Functions = new[] { "Scenarios", "HttpTrigger-Scenarios" };
                 });
             }
         }
