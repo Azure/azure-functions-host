@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 {
     /// <summary>
     /// An implementation of an <see cref="IWebJobsStartupTypeDiscoverer"/> that locates startup types
-    /// from extension registrations and function extension references
+    /// from extension registrations.
     /// </summary>
     public class ScriptStartupTypeDiscoverer : IWebJobsStartupTypeDiscoverer
     {
@@ -45,23 +45,23 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         public IEnumerable<Type> GetExtensionsStartupTypes()
         {
             string binPath = Path.Combine(_rootScriptPath, "bin");
-
             string metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
+
+            // parse the extensions file to get declared startup extensions
             ExtensionReference[] extensionItems = ParseExtensions(metadataFilePath);
 
             var startupTypes = new List<Type>();
 
             foreach (var item in extensionItems)
             {
-                string extensionName = item.Name ?? item.TypeName;
+                string startupExtensionName = item.Name ?? item.TypeName;
+                _logger.LogInformation($"Loading startup extension '{startupExtensionName}'");
 
-                _logger.LogInformation($"Loading custom extension '{extensionName}'");
-
+                // load the Type for each startup extension into the function assembly load context
                 Type extensionType = Type.GetType(item.TypeName,
                     assemblyName =>
                     {
                         string path = item.HintPath;
-
                         if (string.IsNullOrEmpty(path))
                         {
                             path = assemblyName.Name + ".dll";
@@ -87,22 +87,16 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
                 if (extensionType == null)
                 {
-                    _logger.LogWarning($"Unable to load custom extension '{extensionName}' (Type: `{item.TypeName}`)." +
-                            $"The type does not exist. Please validate the type and assembly names.");
+                    _logger.LogWarning($"Unable to load startup extension '{startupExtensionName}' (Type: '{item.TypeName}'). The type does not exist. Please validate the type and assembly names.");
+                    continue;
+                }
+                if (!typeof(IWebJobsStartup).IsAssignableFrom(extensionType))
+                {
+                    _logger.LogWarning($"Type '{item.TypeName}' is not a valid startup extension. The type does not implement {nameof(IWebJobsStartup)}.");
                     continue;
                 }
 
-                IEnumerable<Type> assemblyStartupTypes = TryResolveStartupType(extensionType);
-
-                if (!assemblyStartupTypes.Any())
-                {
-                    _logger.LogWarning($"Unable to load custom extension '{extensionName}' (Type: `{item.TypeName}`)." +
-                            $"No WebJobsStartupAttribute applied to the assembly '{extensionType.Assembly}'.");
-                }
-                else
-                {
-                    startupTypes.AddRange(assemblyStartupTypes);
-                }
+                startupTypes.Add(extensionType);
             }
 
             return startupTypes;
@@ -134,24 +128,6 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
                 return Array.Empty<ExtensionReference>();
             }
-        }
-
-        private IEnumerable<Type> TryResolveStartupType(Type extensionType)
-        {
-            // If explicitly referencing a type that implements IWebJobsStartup, return the type
-            if (typeof(IWebJobsStartup).IsAssignableFrom(extensionType))
-            {
-                return new[] { extensionType };
-            }
-
-            return GetAssemblyStartupType(extensionType.Assembly);
-        }
-
-        private IEnumerable<Type> GetAssemblyStartupType(Assembly assembly)
-        {
-            IEnumerable<WebJobsStartupAttribute> startupAttributes = assembly.GetCustomAttributes<WebJobsStartupAttribute>();
-
-            return startupAttributes.Select(a => a.WebJobsStartupType);
         }
 
         private class TypeNameEqualityComparer : IEqualityComparer<Type>

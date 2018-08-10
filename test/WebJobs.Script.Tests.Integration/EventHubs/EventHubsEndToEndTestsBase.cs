@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
             _fixture = fixture;
         }
 
-        [Fact(Skip = "Pending extension installation updates")]
+        [Fact]
         public async Task EventHub()
         {
             // Event Hub needs the following environment vars:

@@ -25,9 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
         {
             _fixture = fixture;
         }
-
-        // TODO: DI (FACAVAL) Re-enable skipped test
-        [Fact(Skip = "Pending extension installation updates")]
+        [Fact]
         public async Task EventHubTrigger()
         {
             // write 3 events
