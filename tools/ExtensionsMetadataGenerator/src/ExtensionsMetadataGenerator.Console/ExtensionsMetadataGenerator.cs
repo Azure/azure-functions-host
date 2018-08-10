@@ -35,7 +35,7 @@ namespace ExtensionsMetadataGenerator
                 {
                     Assembly assembly = Assembly.LoadFrom(path);
                     var currExtensionReferences = GenerateExtensionReferences(assembly);
-                    extensionReferences.AddRange(extensionReferences);
+                    extensionReferences.AddRange(currExtensionReferences);
                 }
                 catch (Exception exc)
                 {
