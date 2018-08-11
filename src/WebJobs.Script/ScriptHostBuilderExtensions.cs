@@ -75,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     o.SetResponse = HttpBinding.SetResponse;
                 })
+                .AddTimers()
                 .AddManualTrigger();
 
                 webJobsBuilder.UseScriptExternalStartup(webHostOptions.Value.ScriptPath);

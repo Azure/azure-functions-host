@@ -3,12 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [DebuggerDisplay("{DebuggerDisplay,nq}")]
     public class TestLogger : ILogger
     {
         private readonly Func<string, LogLevel, bool> _filter;
@@ -71,6 +73,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 _logMessages.Add(logMessage);
             }
+        }
+
+        private string DebuggerDisplay
+        {
+            get { return $"Category: {Category}, Count: {_logMessages.Count}"; }
         }
     }
 

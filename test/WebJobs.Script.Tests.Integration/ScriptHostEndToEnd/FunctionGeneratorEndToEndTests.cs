@@ -20,23 +20,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
 
-        [Fact(Skip = "Pending migration of TimerTrigger")]
+        [Fact]
         public async Task Generate_EndToEnd()
         {
             // construct our TimerTrigger attribute ([TimerTrigger("00:00:02", RunOnStartup = true)])
             Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
 
-            // TODO: DI (FACAVAL) Re-enable when timer is migrated
-            //ParameterDescriptor parameter = new ParameterDescriptor("timerInfo", typeof(TimerInfo));
-            //ConstructorInfo ctorInfo = typeof(TimerTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
-            //PropertyInfo runOnStartupProperty = typeof(TimerTriggerAttribute).GetProperty("RunOnStartup");
-            //CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(
-            //    ctorInfo,
-            //    new object[] { "00:00:02" },
-            //    new PropertyInfo[] { runOnStartupProperty },
-            //    new object[] { true });
-            //parameter.CustomAttributes.Add(attributeBuilder);
-            //parameters.Add(parameter);
+            ParameterDescriptor parameter = new ParameterDescriptor("timerInfo", typeof(TimerInfo));
+            ConstructorInfo ctorInfo = typeof(TimerTriggerAttribute).GetConstructor(new Type[] { typeof(string) });
+            PropertyInfo runOnStartupProperty = typeof(TimerTriggerAttribute).GetProperty("RunOnStartup");
+            CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(
+                ctorInfo,
+                new object[] { "00:00:02" },
+                new PropertyInfo[] { runOnStartupProperty },
+                new object[] { true });
+            parameter.CustomAttributes.Add(attributeBuilder);
+            parameters.Add(parameter);
 
             // create the FunctionDefinition
             FunctionMetadata metadata = new FunctionMetadata();
@@ -54,25 +53,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Type functionType = FunctionGenerator.Generate("TestScriptHost", "TestFunctions", typeAttributes, functions);
 
             // verify the generated function
-            // TODO: DI (FACAVAL) Re-enable when timer is migrated
-            //MethodInfo method = functionType.GetMethod("TimerFunction");
-            //ParameterInfo triggerParameter = method.GetParameters()[0];
-            //TimerTriggerAttribute triggerAttribute = triggerParameter.GetCustomAttribute<TimerTriggerAttribute>();
-            //Assert.NotNull(triggerAttribute);
+            MethodInfo method = functionType.GetMethod("TimerFunction");
+            ParameterInfo triggerParameter = method.GetParameters()[0];
+            TimerTriggerAttribute triggerAttribute = triggerParameter.GetCustomAttribute<TimerTriggerAttribute>();
+            Assert.NotNull(triggerAttribute);
 
             // start the JobHost which will start running the timer function
-            var host = new HostBuilder()
-                .ConfigureWebJobs()
+            var builder = new HostBuilder()
+                .ConfigureWebJobs(b =>
+                {
+                    b.AddTimers()
+                    .AddAzureStorageCoreServices();
+                })
                 .ConfigureServices(s =>
                 {
                     s.AddSingleton<ITypeLocator>(new TestTypeLocator(functionType));
                     s.AddSingleton<ILoggerFactory>(new LoggerFactory());
-                })
-                .Build();
+                });
 
-            await host.StartAsync();
-            await Task.Delay(3000);
-            await host.StopAsync();
+
+            using (var host = builder.Build())
+            {
+
+
+                await host.StartAsync();
+                await Task.Delay(3000);
+                await host.StopAsync();
+            }
 
             // verify our custom invoker was called
             Assert.True(invoker.InvokeCount >= 2);

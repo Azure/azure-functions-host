@@ -26,6 +26,18 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets a value indicating whether the application is running in a Dynamic
+        /// App Service environment.
+        /// </summary>
+        /// <param name="environment">The environment to verify</param>
+        /// <returns><see cref="true"/> if running in a dynamic App Service app; otherwise, false.</returns>
+        public static bool IsDynamic(this IEnvironment environment)
+        {
+            string value = environment.GetEnvironmentVariable(AzureWebsiteSku);
+            return string.Equals(value, ScriptConstants.DynamicSku, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// Gets a value that uniquely identifies the site and slot.
         /// </summary>
         public static string GetAzureWebsiteUniqueSlotName(this IEnvironment environment)

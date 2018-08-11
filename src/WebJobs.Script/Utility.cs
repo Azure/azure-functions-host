@@ -30,22 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AssemblySeparator = "__";
 
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
-        public const string AzureWebsiteSku = "WEBSITE_SKU";
-        public const string DynamicSku = "Dynamic";
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
-
-        /// <summary>
-        /// Gets a value indicating whether the JobHost is running in a Dynamic
-        /// App Service WebApp.
-        /// </summary>
-        public static bool IsDynamic
-        {
-            get
-            {
-                string value = ScriptSettingsManager.Instance.GetSetting(AzureWebsiteSku);
-                return string.Compare(value, DynamicSku, StringComparison.OrdinalIgnoreCase) == 0;
-            }
-        }
 
         /// <summary>
         /// Delays while the specified condition remains true.

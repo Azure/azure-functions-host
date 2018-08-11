@@ -4,6 +4,7 @@ using System;
 using System.Collections.ObjectModel;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NCrontab;
 
@@ -14,9 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     internal class CoreExtensionsScriptBindingProvider : ScriptBindingProvider
     {
-        public CoreExtensionsScriptBindingProvider(ILogger<CoreExtensionsScriptBindingProvider> logger)
+        private readonly INameResolver _nameResolver;
+        private readonly IEnvironment _environment;
+
+        public CoreExtensionsScriptBindingProvider(INameResolver nameResolver, IEnvironment environment, ILogger<CoreExtensionsScriptBindingProvider> logger)
             : base(logger)
         {
+            _nameResolver = nameResolver ?? throw new ArgumentNullException(nameof(nameResolver));
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
         /// <inheritdoc/>
@@ -24,35 +30,31 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             if (context == null)
             {
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
             }
 
             binding = null;
 
-            if (string.Compare(context.Type, "timerTrigger", StringComparison.OrdinalIgnoreCase) == 0)
+            if (string.Equals(context.Type, "timerTrigger", StringComparison.OrdinalIgnoreCase))
             {
-                binding = new TimerTriggerScriptBinding(context);
+                binding = new TimerTriggerScriptBinding(_nameResolver, _environment, context);
             }
 
             return binding != null;
         }
 
-        //TODO: DI(FACAVAL) Re-add when we migrate the timer extension
         internal class TimerTriggerScriptBinding : ScriptBinding
         {
-            public TimerTriggerScriptBinding(ScriptBindingContext context) : base(context)
+            private readonly INameResolver _nameResolver;
+            private readonly IEnvironment _environment;
+
+            public TimerTriggerScriptBinding(INameResolver nameResolver, IEnvironment environment, ScriptBindingContext context) : base(context)
             {
+                _nameResolver = nameResolver ?? throw new ArgumentNullException(nameof(nameResolver));
+                _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             }
 
-            public override Type DefaultType
-            {
-                get
-                {
-                    // TODO: DI (FACAVAL) Fix. Timer needs to be migrated and referenced.
-                    return typeof(object);
-                    //return typeof(TimerInfo);
-                }
-            }
+            public override Type DefaultType => typeof(TimerInfo);
 
             public override Collection<Attribute> GetAttributes()
             {
@@ -61,12 +63,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 string schedule = Context.GetMetadataValue<string>("schedule");
                 bool runOnStartup = Context.GetMetadataValue<bool>("runOnStartup");
                 bool useMonitor = Context.GetMetadataValue<bool>("useMonitor", true);
-
-                if (Utility.IsDynamic)
+                if (_environment.IsDynamic())
                 {
                     // pre-resolve app setting specifiers
-                    var resolver = new DefaultNameResolver();
-                    schedule = resolver.ResolveWholeString(schedule);
+                    schedule = _nameResolver.ResolveWholeString(schedule);
 
                     var options = new CrontabSchedule.ParseOptions()
                     {
@@ -78,12 +78,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     }
                 }
 
-                // TODO: DI (FACAVAL) Fix this once timer is migrated and referenced
-                //attributes.Add(new TimerTriggerAttribute(schedule)
-                //{
-                //    RunOnStartup = runOnStartup,
-                //    UseMonitor = useMonitor
-                //});
+                attributes.Add(new TimerTriggerAttribute(schedule)
+                {
+                    RunOnStartup = runOnStartup,
+                    UseMonitor = useMonitor
+                });
 
                 return attributes;
             }
