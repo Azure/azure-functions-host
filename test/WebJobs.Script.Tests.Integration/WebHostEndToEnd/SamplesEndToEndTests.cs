@@ -946,9 +946,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                         "ManualTrigger",
                         "ManualTrigger-CSharp"
                     };
-
-                    // TODO DI: This should be set automatically
-                    o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
                 });
             }
 

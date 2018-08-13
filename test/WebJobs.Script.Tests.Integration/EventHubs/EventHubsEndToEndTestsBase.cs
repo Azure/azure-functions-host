@@ -65,9 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
                                 "EventHubSender",
                                 "EventHubTrigger"
                             };
-
-                    // TODO DI: This should be set automatically.
-                    o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
                 });
             }
         }

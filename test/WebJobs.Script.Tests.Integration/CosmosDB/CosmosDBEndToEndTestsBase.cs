@@ -99,9 +99,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
                     "CosmosDBIn",
                     "CosmosDBOut"
                 };
-
-                // TODO DI: This should be set automatically
-                o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
             });
         }
 

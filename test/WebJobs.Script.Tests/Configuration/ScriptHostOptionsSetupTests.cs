@@ -4,10 +4,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
@@ -102,9 +106,108 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             //Assert.False(scriptConfig.HostConfig.AllowPartialHostStartup);
         }
 
-        private ScriptHostOptionsSetup CreateSetupWithConfiguration(Dictionary<string, string> settings = null)
+        [Fact]
+        public void ConfigureLanguageWorkers_SetMaxMessageLength_DafaultIfExceedsLimit()
+        {
+            var settings = new Dictionary<string, string>
+            {
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, LanguageWorkerConstants.LanguageWorkersSectionName, "maxMessageLength"), "2500" }
+            };
+
+            ScriptHostOptionsSetup setup = CreateSetupWithConfiguration(settings);
+
+            var options = new ScriptJobHostOptions();
+
+            setup.Configure(options);
+
+            // TODO: Logging in setup currently disabled
+            //var logMessage = loggerProvider.GetAllLogMessages().Single(l => l.FormattedMessage.StartsWith("MaxMessageLength must be between 4MB and 2000MB")).FormattedMessage;
+            //Assert.Equal($"MaxMessageLength must be between 4MB and 2000MB.Default MaxMessageLength: {LanguageWorkerConstants.DefaultMaxMessageLengthBytes} will be used", logMessage);
+            Assert.Equal(LanguageWorkerConstants.DefaultMaxMessageLengthBytes, options.MaxMessageLengthBytes);
+        }
+
+        [Fact]
+        public void ConfigureLanguageWorkers_DefaultMaxMessageLength_IfNotDynamic()
+        {
+            var settings = new Dictionary<string, string>();
+            var options = GetConfiguredOptions(settings);
+
+            Assert.Equal(LanguageWorkerConstants.DefaultMaxMessageLengthBytes, options.MaxMessageLengthBytes);
+        }
+
+        [Fact]
+        public void ConfigureLanguageWorkers_SetMaxMessageLength_IfNotDynamic()
+        {
+            var settings = new Dictionary<string, string>
+            {
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, LanguageWorkerConstants.LanguageWorkersSectionName, "maxMessageLength"), "20" }
+            };
+            var options = GetConfiguredOptions(settings);
+
+            Assert.Equal(20 * 1024 * 1024, options.MaxMessageLengthBytes);
+        }
+
+        [Fact]
+        public void ConfigureLanguageWorkers_DefaultMaxMessageLength_IfDynamic()
+        {
+            var settings = new Dictionary<string, string>
+            {
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, LanguageWorkerConstants.LanguageWorkersSectionName, "maxMessageLength"), "250" }
+            };
+
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
+
+            var options = GetConfiguredOptions(settings, environment);
+
+            // TODO: Logger is currently disabled
+            //string message = $"Cannot set {nameof(scriptConfig.MaxMessageLengthBytes)} on Consumption plan. Default MaxMessageLength: {ScriptHost.DefaultMaxMessageLengthBytesDynamicSku} will be used";
+            //var logs = testLogger.GetLogMessages().Where(log => log.FormattedMessage.Contains(message)).FirstOrDefault();
+            //Assert.NotNull(logs);
+
+            Assert.Equal(LanguageWorkerConstants.DefaultMaxMessageLengthBytesDynamicSku, options.MaxMessageLengthBytes);
+        }
+
+        [Fact]
+        public void ConfigureLanguageWorkers_Default_IfDynamic_NoMaxMessageLength()
+        {
+            var settings = new Dictionary<string, string>
+            {
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, LanguageWorkerConstants.LanguageWorkersSectionName, "maxMessageLength"), "250" }
+            };
+
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
+
+            var options = GetConfiguredOptions(settings, environment);
+
+            Assert.Equal(LanguageWorkerConstants.DefaultMaxMessageLengthBytesDynamicSku, options.MaxMessageLengthBytes);
+        }
+
+        [Fact]
+        public void ConfigureLanguageWorkers_Default_IfNotDynamic_NoMaxMessageLength()
+        {
+            var settings = new Dictionary<string, string>();
+            var options = GetConfiguredOptions(settings);
+
+            Assert.Equal(LanguageWorkerConstants.DefaultMaxMessageLengthBytes, options.MaxMessageLengthBytes);
+        }
+
+        private ScriptJobHostOptions GetConfiguredOptions(Dictionary<string, string> settings, IEnvironment environment = null)
+        {
+            ScriptHostOptionsSetup setup = CreateSetupWithConfiguration(settings, environment);
+
+            var options = new ScriptJobHostOptions();
+
+            setup.Configure(options);
+
+            return options;
+        }
+
+        private ScriptHostOptionsSetup CreateSetupWithConfiguration(Dictionary<string, string> settings = null, IEnvironment environment = null)
         {
             var builder = new ConfigurationBuilder();
+            environment = environment ?? SystemEnvironment.Instance;
 
             if (settings != null)
             {
@@ -113,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var configuration = builder.Build();
 
-            return new ScriptHostOptionsSetup(configuration, new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()));
+            return new ScriptHostOptionsSetup(configuration, environment, new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()));
         }
     }
 }

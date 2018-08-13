@@ -957,9 +957,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                             "TimerTrigger",
                             "Scenarios"
                         };
-
-                        // TODO DI: This should naturally default
-                        o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
                     });
             }
         }

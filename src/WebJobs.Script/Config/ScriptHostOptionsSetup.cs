@@ -1,20 +1,27 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using static Microsoft.Azure.WebJobs.Script.Rpc.LanguageWorkerConstants;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
     internal class ScriptHostOptionsSetup : IConfigureOptions<ScriptJobHostOptions>
     {
         private readonly IConfiguration _configuration;
+        private readonly IEnvironment _environment;
         private readonly IOptions<ScriptApplicationHostOptions> _webHostOptions;
 
-        public ScriptHostOptionsSetup(IConfiguration configuration, IOptions<ScriptApplicationHostOptions> webHostOptions)
+        public ScriptHostOptionsSetup(IConfiguration configuration, IEnvironment environment, IOptions<ScriptApplicationHostOptions> webHostOptions)
         {
             _configuration = configuration;
+            _environment = environment;
             _webHostOptions = webHostOptions;
         }
 
@@ -38,12 +45,52 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 }
             }
 
+            // Worker configuration
+            ConfigureLanguageWorkers(jobHostSection, options);
+
             // Set the root script path to the value the runtime was initialized with:
             ScriptApplicationHostOptions webHostOptions = _webHostOptions.Value;
             options.RootScriptPath = webHostOptions.ScriptPath;
             options.RootLogPath = webHostOptions.LogPath;
             options.IsSelfHost = webHostOptions.IsSelfHost;
             options.TestDataPath = webHostOptions.TestDataPath;
+        }
+
+        private void ConfigureLanguageWorkers(IConfigurationSection rootConfig, ScriptJobHostOptions scriptOptions)
+        {
+            var languageWorkersSection = rootConfig.GetSection(LanguageWorkersSectionName);
+            int requestedGrpcMaxMessageLength = _environment.IsDynamic() ? DefaultMaxMessageLengthBytesDynamicSku : DefaultMaxMessageLengthBytes;
+            if (languageWorkersSection.Exists())
+            {
+                string value = languageWorkersSection.GetValue<string>("maxMessageLength");
+                if (value != null)
+                {
+                    int valueInBytes = int.Parse(value) * 1024 * 1024;
+                    if (_environment.IsDynamic())
+                    {
+                        // TODO: Because of a circular dependency, where logger providers are using ScriptHostOptions, we can't log from here
+                        // need to remove the dependency from the various logger providers.
+                        //string message = $"Cannot set {nameof(scriptOptions.MaxMessageLengthBytes)} on Consumption plan. Default MaxMessageLength: {DefaultMaxMessageLengthBytesDynamicSku} will be used";
+                        //_logger?.LogWarning(message);
+                    }
+                    else
+                    {
+                        if (valueInBytes < 0 || valueInBytes > 2000 * 1024 * 1024)
+                        {
+                            // TODO: Because of a circular dependency, where logger providers are using ScriptHostOptions, we can't log from here
+                            // need to remove the dependency from the various logger providers.
+                            // Current grpc max message limits
+                            //string message = $"MaxMessageLength must be between 4MB and 2000MB.Default MaxMessageLength: {DefaultMaxMessageLengthBytes} will be used";
+                            //_logger?.LogWarning(message);
+                        }
+                        else
+                        {
+                            requestedGrpcMaxMessageLength = valueInBytes;
+                        }
+                    }
+                }
+            }
+            scriptOptions.MaxMessageLengthBytes = requestedGrpcMaxMessageLength;
         }
 
         // TODO: DI (FACAVAL) Moved this from ScriptHost. Validate we're applying all configuration

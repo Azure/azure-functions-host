@@ -28,5 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         // Profiles
         public const string WorkerDescriptionProfiles = "profiles";
         public const string WorkerDescriptionAppServiceEnvProfileName = "AppServiceEnvironment";
+
+        public const int DefaultMaxMessageLengthBytesDynamicSku = 32 * 1024 * 1024;
+        public const int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
     }
 }

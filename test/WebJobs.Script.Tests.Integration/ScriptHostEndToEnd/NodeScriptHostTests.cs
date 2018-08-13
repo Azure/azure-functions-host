@@ -225,15 +225,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 : base(@"TestScripts\Node", "node", null, true, functions, functionsWorkerLanguage)
             {
             }
-
-            public override void ConfigureServices(IServiceCollection services)
-            {
-                services.Configure<ScriptJobHostOptions>(o =>
-                {
-                    // TODO DI: This should be set automatically
-                    o.MaxMessageLengthBytes = ScriptHost.DefaultMaxMessageLengthBytesDynamicSku;
-                });
-            }
         }
     }
 }

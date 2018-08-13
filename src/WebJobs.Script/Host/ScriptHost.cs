@@ -65,8 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static readonly TimeSpan MaxFunctionTimeout = TimeSpan.FromMinutes(10);
         private static readonly Regex ProxyNameValidationRegex = new Regex(@"[^a-zA-Z0-9_-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
-        internal static readonly int DefaultMaxMessageLengthBytesDynamicSku = 32 * 1024 * 1024;
-        internal static readonly int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
         private ScriptSettingsManager _settingsManager;
 
         // TODO: DI (FACAVAL) Review
@@ -839,39 +837,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return httpTrigger.Methods.Intersect(otherHttpTrigger.Methods).Any();
-        }
-
-        private static void ApplyLanguageWorkersConfig(JObject config, ScriptJobHostOptions scriptConfig, ILogger logger)
-        {
-            JToken value = null;
-            JObject languageWorkersSection = (JObject)config[$"{LanguageWorkerConstants.LanguageWorkersSectionName}"];
-            int requestedGrpcMaxMessageLength = ScriptSettingsManager.Instance.IsDynamicSku ? DefaultMaxMessageLengthBytesDynamicSku : DefaultMaxMessageLengthBytes;
-            if (languageWorkersSection != null)
-            {
-                if (languageWorkersSection.TryGetValue("maxMessageLength", out value))
-                {
-                    int valueInBytes = int.Parse((string)value) * 1024 * 1024;
-                    if (ScriptSettingsManager.Instance.IsDynamicSku)
-                    {
-                        string message = $"Cannot set {nameof(scriptConfig.MaxMessageLengthBytes)} on Consumption plan. Default MaxMessageLength: {DefaultMaxMessageLengthBytesDynamicSku} will be used";
-                        logger?.LogWarning(message);
-                    }
-                    else
-                    {
-                        if (valueInBytes < 0 || valueInBytes > 2000 * 1024 * 1024)
-                        {
-                            // Current grpc max message limits
-                            string message = $"MaxMessageLength must be between 4MB and 2000MB.Default MaxMessageLength: {DefaultMaxMessageLengthBytes} will be used";
-                            logger?.LogWarning(message);
-                        }
-                        else
-                        {
-                            requestedGrpcMaxMessageLength = valueInBytes;
-                        }
-                    }
-                }
-            }
-            scriptConfig.MaxMessageLengthBytes = requestedGrpcMaxMessageLength;
         }
 
         internal static void ApplyApplicationInsightsConfig(JObject configJson, ScriptJobHostOptions scriptConfig)

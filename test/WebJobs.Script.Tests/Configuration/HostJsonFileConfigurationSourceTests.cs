@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -81,6 +82,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var logger = loggerProvider.CreatedLoggers.Single(l => l.Category == LogCategories.Startup);
             var logMessage = logger.GetLogMessages().Single(l => l.FormattedMessage.StartsWith("Host configuration file read")).FormattedMessage;
             Assert.Equal($"Host configuration file read:{Environment.NewLine}{hostJson}", logMessage);
+        }
+
+        private IConfiguration GetConfiguration(JObject hostConfiguration)
+        {
+            string rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests");
+
+            string hostJsonContent = hostConfiguration.ToString();
+            File.WriteAllText(Path.Combine(rootPath, "host.json"), hostJsonContent);
+
+            var loggerFactory = new LoggerFactory();
+            TestLoggerProvider loggerProvider = new TestLoggerProvider();
+            loggerFactory.AddProvider(loggerProvider);
+
+            if (!Directory.Exists(rootPath))
+            {
+                Directory.CreateDirectory(rootPath);
+            }
+
+            var webHostOptions = new ScriptApplicationHostOptions
+            {
+                ScriptPath = rootPath
+            };
+
+            var configSource = new HostJsonFileConfigurationSource(new OptionsWrapper<ScriptApplicationHostOptions>(webHostOptions), loggerFactory);
+
+            var configurationBuilder = new ConfigurationBuilder()
+                .Add(configSource);
+
+            return configurationBuilder.Build();
         }
     }
 }
