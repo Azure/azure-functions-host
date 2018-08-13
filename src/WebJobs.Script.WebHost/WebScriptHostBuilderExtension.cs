@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .ConfigureServices(services =>
                 {
                     services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
-                    services.AddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
+                    services.TryAddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
                     // TODO: DI (FACAVAL) Review metrics logger registration
                     services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
                     services.AddSingleton<IScriptJobHostEnvironment, WebScriptJobHostEnvironment>();
