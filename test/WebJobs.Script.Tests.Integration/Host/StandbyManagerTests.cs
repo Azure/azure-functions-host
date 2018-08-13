@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private TestLoggerProvider _loggerProvider;
         private HttpClient _httpClient;
         private TestServer _httpServer;
-        private string _expectedHostId;
+        private string _expectedHostId = "update when tests fixed";
         private ScriptApplicationHostOptions _webHostOptions;
         private string _testRootPath;
 

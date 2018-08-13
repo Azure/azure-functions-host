@@ -5,7 +5,6 @@
     <IsPackable>false</IsPackable>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Scaling.Tests</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Scaling.Tests</RootNamespace>
-    <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\WebJobs.Script.Tests.Shared\TestScopedEnvironmentVariable.cs" Link="TestScopedEnvironmentVariable.cs" />

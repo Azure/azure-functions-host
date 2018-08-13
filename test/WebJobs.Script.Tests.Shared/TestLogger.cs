@@ -27,6 +27,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public string Category { get; private set; }
 
+        private string DebuggerDisplay
+        {
+            get { return $"Category: {Category}, Count: {_logMessages.Count}"; }
+        }
+
         public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope.Push(state);
 
         public bool IsEnabled(LogLevel logLevel)
@@ -73,11 +78,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 _logMessages.Add(logMessage);
             }
-        }
-
-        private string DebuggerDisplay
-        {
-            get { return $"Category: {Category}, Count: {_logMessages.Count}"; }
         }
     }
 

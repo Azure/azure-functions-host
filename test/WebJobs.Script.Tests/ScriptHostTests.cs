@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -71,23 +72,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var path = Path.Combine(TestHelpers.FunctionsTestDirectory, "host.json");
             File.WriteAllText(path, "{ blah");
-            JObject config = null;
+            //JObject config = null;
             var logger = _loggerFactory.CreateLogger(LogCategories.Startup);
             var ex = Assert.Throws<FormatException>(() =>
             {
                 //config = ScriptHost.LoadHostConfig(path, logger);
             });
             Assert.Equal($"Unable to parse host configuration file '{path}'.", ex.Message);
-        }
-
-        [Theory]
-        [InlineData(@"C:\Functions\Scripts\Shared\Test.csx", "Shared")]
-        [InlineData(@"C:\Functions\Scripts\Shared\Sub1\Sub2\Test.csx", "Shared")]
-        [InlineData(@"C:\Functions\Scripts\Shared", "Shared")]
-        public static void GetRelativeDirectory_ReturnsExpectedDirectoryName(string path, string expected)
-        {
-            // TODO: DI (FACAVAL) This logic moved to the FileMonitoringService
-            //Assert.Equal(expected, ScriptHost.GetRelativeDirectory(path, @"C:\Functions\Scripts"));
         }
 
         [Fact]
@@ -1040,13 +1031,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             //Assert.Equal(MetricEventNames.ApplicationInsightsDisabled, metricsLogger.LoggedEvents[0]);
         }
 
-        [Theory]
+        [Theory(Skip = "brettsam working on this functionality")]
         [InlineData("always")]
         [InlineData("never")]
         [InlineData("")]
         [InlineData(null)]
         public void ConfigureLoggerFactory_ApplicationInsights(string consoleLoggingEnabled)
         {
+            // TODO: Brettsam ?
+            System.Diagnostics.Trace.Write(consoleLoggingEnabled);
             //var config = new ScriptHostConfiguration();
             //var loggerFactoryMock = new Mock<ILoggerFactory>(MockBehavior.Loose);
             //loggerFactoryMock.Setup(x => x.AddProvider(It.IsAny<ILoggerProvider>()));

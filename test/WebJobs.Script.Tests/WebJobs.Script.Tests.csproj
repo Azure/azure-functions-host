@@ -8,7 +8,6 @@
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests</AssemblyName>
 
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests</RootNamespace>
-    <CodeAnalysisRuleSet>$(SolutionDir)\src\src.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>TRACE;DEBUG;NETCOREAPP2_0;SCRIPT_TEST</DefineConstants>
