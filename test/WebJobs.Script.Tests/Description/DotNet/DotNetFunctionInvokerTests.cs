@@ -252,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact(Skip = "Test depending on blob/storage extension. We either need to reference them from tests or change to core bindings")]
+        [Fact]
         public void ValidateFunctionBindingArguments_ReturnBinding_Succeeds()
         {
             Collection<FunctionParameter> parameters = new Collection<FunctionParameter>()
@@ -261,9 +261,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             FunctionSignature signature = new FunctionSignature("Test", "Test", ImmutableArray.CreateRange<FunctionParameter>(parameters), "Test", false);
 
+            var host = new HostBuilder().ConfigureDefaultTestWebScriptHost(b =>
+            {
+                b.AddAzureStorage();
+            }).Build();
+
             Collection<FunctionBinding> inputBindings = new Collection<FunctionBinding>()
             {
-                TestHelpers.CreateTestBinding(new JObject
+                TestHelpers.CreateBindingFromHost(host, new JObject
                 {
                     { "type", "blobTrigger" },
                     { "name", "input" },
@@ -271,9 +276,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     { "path", "test" }
                 })
             };
-            Collection<FunctionBinding> outputBindings = new Collection<FunctionBinding>()
-            {
-                TestHelpers.CreateTestBinding(new JObject
+
+            Collection<FunctionBinding> outputBindings = new Collection<FunctionBinding>() {
+                TestHelpers.CreateBindingFromHost(host,new JObject
                 {
                     { "type", "blob" },
                     { "name", ScriptConstants.SystemReturnParameterBindingName },
@@ -281,6 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     { "path", "test/test" }
                 })
             };
+
             var diagnostics = DotNetFunctionInvoker.ValidateFunctionBindingArguments(signature, "input", inputBindings, outputBindings);
             Assert.Equal(0, diagnostics.Count());
         }

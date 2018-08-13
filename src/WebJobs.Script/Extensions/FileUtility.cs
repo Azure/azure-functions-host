@@ -150,6 +150,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static void CopyDirectory(string sourcePath, string targetPath)
         {
+            if (!Directory.Exists(targetPath))
+            {
+                Directory.CreateDirectory(targetPath);
+            }
+
             foreach (string dirPath in Instance.Directory.GetDirectories(sourcePath, "*", SearchOption.AllDirectories))
             {
                 Instance.Directory.CreateDirectory(dirPath.Replace(sourcePath, targetPath));

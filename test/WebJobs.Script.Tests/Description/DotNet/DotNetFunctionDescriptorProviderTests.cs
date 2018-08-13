@@ -6,6 +6,8 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Extensions.Hosting;
+using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -13,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class DotNetFunctionDescriptorProviderTests
     {
-        [Fact(Skip = "Test depending on blob/storage extension. We either need to reference them from tests or change to core bindings")]
+        [Fact]
         public void TryCreateReturnValueParameterDescriptor_ReturnBindingPresent_ReturnsExpectedValue()
         {
             JObject json = new JObject
@@ -23,7 +25,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "direction", "out" },
                 { "path", "foo/bar" }
             };
-            FunctionBinding functionBinding = TestHelpers.CreateTestBinding(json);
+            var host = new HostBuilder().ConfigureDefaultTestWebScriptHost(b =>
+            {
+                b.AddAzureStorage();
+            }).Build();
+            FunctionBinding functionBinding = TestHelpers.CreateBindingFromHost(host, json);
             FunctionBinding[] bindings = new FunctionBinding[] { functionBinding };
 
             ParameterDescriptor descriptor = null;

@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
@@ -43,6 +44,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             return GetDefaultHost(configure)
                 .GetScriptHost();
+        }
+
+        public static FunctionBinding CreateBindingFromHost(IHost host, JObject json)
+        {
+            var bindingProviders = host.Services.GetServices<IScriptBindingProvider>();
+            var context = new ScriptBindingContext(json);
+
+            ScriptBinding scriptBinding = null;
+            bindingProviders.FirstOrDefault(p => p.TryCreate(context, out scriptBinding));
+
+            if (scriptBinding != null)
+            {
+                BindingMetadata bindingMetadata = BindingMetadata.Create(json);
+                var config = new ScriptJobHostOptions();
+                return new ExtensionBinding(config, scriptBinding, bindingMetadata);
+            }
+
+            return null;
         }
 
         public static FunctionBinding CreateTestBinding(JObject json)
