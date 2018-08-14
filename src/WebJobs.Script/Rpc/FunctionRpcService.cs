@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             }
                             catch (Exception subscribeEventEx)
                             {
-                                _eventManager.Publish(new WorkerErrorEvent(workerId, subscribeEventEx));
+                                _eventManager?.Publish(new WorkerErrorEvent(workerId, subscribeEventEx));
                             }
                         });
 
