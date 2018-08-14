@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }));
 
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
-                .Where(msg => Path.GetExtension(msg.FileChangeArguments.FullPath) == Config.Extension)
+                .Where(msg => Config.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 

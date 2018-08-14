@@ -22,12 +22,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string WorkerDescriptionExtension = "extension";
         public const string WorkerDescriptionDefaultExecutablePath = "defaultExecutablePath";
         public const string WorkerDescriptionDefaultWorkerPath = "defaultWorkerPath";
-        public const string WorkerDescription = "Description";
+        public const string WorkerDescription = "description";
         public const string WorkerDescriptionArguments = "arguments";
 
         // Profiles
         public const string WorkerDescriptionProfiles = "profiles";
-        public const string WorkerDescriptionAppServiceEnvProfileName = "AppServiceEnvironment";
+        public const string WorkerDescriptionAppServiceEnvProfileName = "appServiceEnvironment";
 
         public const int DefaultMaxMessageLengthBytesDynamicSku = 32 * 1024 * 1024;
         public const int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;

@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public bool IsSupported(FunctionMetadata functionMetadata)
         {
-            return _workerConfigs.Any(config => config.Extension == Path.GetExtension(functionMetadata.ScriptFile));
+            return _workerConfigs.Any(config => config.Extensions.Contains(Path.GetExtension(functionMetadata.ScriptFile)));
         }
 
         internal LanguageWorkerState CreateWorkerState(WorkerConfig config)
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void Register(FunctionRegistrationContext context)
         {
-            WorkerConfig workerConfig = _workerConfigs.First(config => config.Extension == Path.GetExtension(context.Metadata.ScriptFile));
+            WorkerConfig workerConfig = _workerConfigs.First(config => config.Extensions.Contains(Path.GetExtension(context.Metadata.ScriptFile)));
             var state = _channelStates.GetOrAdd(workerConfig, CreateWorkerState);
             state.Functions.OnNext(context);
         }

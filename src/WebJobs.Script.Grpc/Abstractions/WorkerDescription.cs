@@ -18,8 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
         /// <summary>
         /// Gets or sets the supported file extension type. Functions are registered with workers based on extension.
         /// </summary>
-        [JsonProperty(PropertyName = "extension")]
-        public string Extension { get; set; }
+        [JsonProperty(PropertyName = "extensions")]
+        public List<string> Extensions { get; set; }
 
         /// <summary>
         /// Gets or sets the default executable path.
