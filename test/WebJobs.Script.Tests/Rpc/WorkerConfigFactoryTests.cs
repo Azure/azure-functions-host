@@ -102,6 +102,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
+        public void JavaPath_JavaHome_Set_DefaultExePathSet()
+        {
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var testEnvVariables = new Dictionary<string, string>
+            {
+                { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51" }
+            };
+            using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
+            {
+                var javaPath = configFactory.GetExecutablePathForJava(@"D:\MyCustomPath\Java");
+                Assert.Equal(@"D:\MyCustomPath\Java", javaPath);
+            }
+        }
+
+        [Fact]
         public void JavaPath_JavaHome_NotSet()
         {
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
