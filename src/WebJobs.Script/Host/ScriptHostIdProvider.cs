@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -15,29 +16,30 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class ScriptHostIdProvider : IHostIdProvider
     {
+        private const string HostIdPath = ConfigurationSectionNames.JobHost + ":id";
         private readonly IConfiguration _config;
-        private readonly ScriptSettingsManager _settingsManager;
+        private readonly IEnvironment _environment;
         private readonly ScriptJobHostOptions _options;
 
-        public ScriptHostIdProvider(IConfiguration config, ScriptSettingsManager settingsManager, IOptions<ScriptJobHostOptions> options)
+        public ScriptHostIdProvider(IConfiguration config, IEnvironment environment, IOptions<ScriptJobHostOptions> options)
         {
             _config = config;
-            _settingsManager = settingsManager;
+            _environment = environment;
             _options = options.Value;
         }
 
         public Task<string> GetHostIdAsync(CancellationToken cancellationToken)
         {
-            return Task.FromResult(_config["id"] ?? GetDefaultHostId(_settingsManager, _options));
+            return Task.FromResult(_config[HostIdPath] ?? GetDefaultHostId(_environment, _options));
         }
 
-        internal static string GetDefaultHostId(ScriptSettingsManager settingsManager, ScriptJobHostOptions scriptConfig)
+        internal static string GetDefaultHostId(IEnvironment environment, ScriptJobHostOptions scriptOptions)
         {
             // We're setting the default here on the newly created configuration
             // If the user has explicitly set the HostID via host.json, it will overwrite
             // what we set here
             string hostId = null;
-            if (scriptConfig.IsSelfHost)
+            if (scriptOptions.IsSelfHost)
             {
                 // When running locally, derive a stable host ID from machine name
                 // and root path. We use a hash rather than the path itself to ensure
@@ -48,12 +50,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 string sanitizedMachineName = Environment.MachineName
                     .Where(char.IsLetterOrDigit)
                     .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString();
-                hostId = $"{sanitizedMachineName}-{Math.Abs(GetStableHash(scriptConfig.RootScriptPath))}";
+                hostId = $"{sanitizedMachineName}-{Math.Abs(GetStableHash(scriptOptions.RootScriptPath))}";
             }
-            else if (!string.IsNullOrEmpty(settingsManager?.AzureWebsiteUniqueSlotName))
+            else
             {
-                // If running on Azure Web App, derive the host ID from unique site slot name
-                hostId = settingsManager.AzureWebsiteUniqueSlotName;
+                string uniqueSlotName = environment?.GetAzureWebsiteUniqueSlotName();
+                if (!string.IsNullOrEmpty(uniqueSlotName))
+                {
+                    // If running on Azure Web App, derive the host ID from unique site slot name
+                    hostId = uniqueSlotName;
+                }
             }
 
             if (!string.IsNullOrEmpty(hostId))
