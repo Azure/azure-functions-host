@@ -59,21 +59,15 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IJobHostMetadataProvider _metadataProvider;
         private IPrimaryHostStateProvider _primaryHostStateProvider;
         private string _instanceId;
-        // TODO: DI (FACAVAL) Review
-        internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
-        internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(5);
-        internal static readonly TimeSpan MaxFunctionTimeout = TimeSpan.FromMinutes(10);
         private static readonly Regex ProxyNameValidationRegex = new Regex(@"[^a-zA-Z0-9_-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         private ScriptSettingsManager _settingsManager;
 
-        // TODO: DI (FACAVAL) Review
         private ILogger _startupLogger = null;
+        private ILoggerFactory _loggerFactory = null;
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private ProxyClientExecutor _proxyClient;
         private IFunctionRegistry _functionDispatcher;
-        // TODO: DI (FACAVAL) Review
-        private ILoggerFactory _loggerFactory = null;
         private List<FunctionDescriptorProvider> _descriptorProviders;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
 

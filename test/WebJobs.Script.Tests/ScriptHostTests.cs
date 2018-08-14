@@ -324,18 +324,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact(Skip = "ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)")]
-        public void ApplyConfiguration_TopLevel()
-        {
-            JObject config = new JObject();
-            config["id"] = ID;
-            var scriptConfig = new ScriptJobHostOptions();
-
-            //ScriptHost.ApplyConfiguration(config, scriptConfig);
-
-            //Assert.Equal(ID, scriptConfig.HostConfig.HostId);
-        }
-
         // TODO: Newer TODO - ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)
         // TODO: Move this test into a new WebJobsCoreScriptBindingProvider class since
         // the functionality moved. Also add tests for the ServiceBus config, etc.
@@ -567,105 +555,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             //ScriptHost.ApplyConfiguration(config, scriptConfig);
 
             //Assert.Null(scriptConfig.Functions);
-        }
-
-        [Fact(Skip = "ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)")]
-        public void ApplyConfiguration_AppliesTimeout()
-        {
-            //JObject config = new JObject();
-            //config["id"] = ID;
-
-            //ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-            //Assert.Null(scriptConfig.FunctionTimeout);
-
-            //config["functionTimeout"] = "00:00:30";
-
-            //ScriptHost.ApplyConfiguration(config, scriptConfig);
-            //Assert.Equal(TimeSpan.FromSeconds(30), scriptConfig.FunctionTimeout);
-        }
-
-        [Fact(Skip = "ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)")]
-        public void ApplyConfiguration_TimeoutDefaultsNull_IfNotDynamic()
-        {
-            //JObject config = new JObject();
-            //config["id"] = ID;
-
-            //ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-
-            //ScriptHost.ApplyConfiguration(config, scriptConfig);
-            //Assert.Null(scriptConfig.FunctionTimeout);
-        }
-
-        [Fact(Skip = "ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)")]
-        public void ApplyConfiguration_AppliesDefaults_IfDynamic()
-        {
-            //JObject config = new JObject();
-            //config["id"] = ID;
-
-            //ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-
-            //try
-            //{
-            //    // TODO: DI (FACAVAL) Fix test
-            //    _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
-            //    ScriptHost.ApplyConfiguration(config, scriptConfig);
-            //    Assert.Equal(ScriptHost.DefaultFunctionTimeout, scriptConfig.FunctionTimeout);
-            //    Assert.Equal(ScriptHost.DefaultMaxMessageLengthBytesDynamicSku, scriptConfig.MaxMessageLengthBytes);
-            //    var timeoutConfig = scriptConfig.HostOptions.FunctionTimeout;
-            //    Assert.NotNull(timeoutConfig);
-            //    Assert.True(timeoutConfig.ThrowOnTimeout);
-            //    Assert.Equal(scriptConfig.FunctionTimeout.Value, timeoutConfig.Timeout);
-            //}
-            //finally
-            //{
-            //    _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, null);
-            //}
-        }
-
-        [Fact(Skip = "ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)")]
-        public void ApplyConfiguration_NoTimeoutLimits_IfNotDynamic()
-        {
-            //JObject config = new JObject();
-            //config["id"] = ID;
-
-            //ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-
-            //var timeout = ScriptHost.MaxFunctionTimeout + TimeSpan.FromSeconds(1);
-            //config["functionTimeout"] = timeout.ToString();
-            //ScriptHost.ApplyConfiguration(config, scriptConfig);
-            //Assert.Equal(timeout, scriptConfig.FunctionTimeout);
-
-            //timeout = ScriptHost.MinFunctionTimeout - TimeSpan.FromSeconds(1);
-            //config["functionTimeout"] = timeout.ToString();
-            //ScriptHost.ApplyConfiguration(config, scriptConfig);
-            //Assert.Equal(timeout, scriptConfig.FunctionTimeout);
-        }
-
-        [Fact(Skip = "ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)")]
-        public void ApplyConfiguration_AppliesTimeoutLimits_IfDynamic()
-        {
-            //JObject config = new JObject();
-            //config["id"] = ID;
-
-            //ScriptHostConfiguration scriptConfig = new ScriptHostConfiguration();
-
-            //try
-            //{
-            //    _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
-
-            //    config["functionTimeout"] = (ScriptHost.MaxFunctionTimeout + TimeSpan.FromSeconds(1)).ToString();
-            //    var ex = Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
-            //    var expectedMessage = "FunctionTimeout must be between 00:00:01 and 00:10:00.";
-            //    Assert.Equal(expectedMessage, ex.Message);
-
-            //    config["functionTimeout"] = (ScriptHost.MinFunctionTimeout - TimeSpan.FromSeconds(1)).ToString();
-            //    Assert.Throws<ArgumentException>(() => ScriptHost.ApplyConfiguration(config, scriptConfig));
-            //    Assert.Equal(expectedMessage, ex.Message);
-            //}
-            //finally
-            //{
-            //    _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSku, null);
-            //}
         }
 
         [Fact(Skip = "ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)")]

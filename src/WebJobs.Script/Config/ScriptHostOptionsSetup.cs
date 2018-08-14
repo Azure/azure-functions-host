@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Globalization;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Rpc;
@@ -17,6 +19,10 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
         private readonly IOptions<ScriptApplicationHostOptions> _webHostOptions;
+
+        internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
+        internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(5);
+        internal static readonly TimeSpan MaxFunctionTimeout = TimeSpan.FromMinutes(10);
 
         public ScriptHostOptionsSetup(IConfiguration configuration, IEnvironment environment, IOptions<ScriptApplicationHostOptions> webHostOptions)
         {
@@ -45,6 +51,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 }
             }
 
+            // FunctionTimeout
+            ConfigureFunctionTimeout(jobHostSection, options);
+
             // Worker configuration
             ConfigureLanguageWorkers(jobHostSection, options);
 
@@ -54,6 +63,32 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.RootLogPath = webHostOptions.LogPath;
             options.IsSelfHost = webHostOptions.IsSelfHost;
             options.TestDataPath = webHostOptions.TestDataPath;
+        }
+
+        private void ConfigureFunctionTimeout(IConfigurationSection jobHostSection, ScriptJobHostOptions options)
+        {
+            string value = jobHostSection.GetValue<string>("functionTimeout");
+            if (value != null)
+            {
+                TimeSpan requestedTimeout = TimeSpan.Parse(value, CultureInfo.InvariantCulture);
+
+                // Only apply limits if this is Dynamic.
+                if (_environment.IsDynamic() && (requestedTimeout < MinFunctionTimeout || requestedTimeout > MaxFunctionTimeout))
+                {
+                    string message = $"{nameof(options.FunctionTimeout)} must be between {MinFunctionTimeout} and {MaxFunctionTimeout}.";
+                    throw new ArgumentException(message);
+                }
+
+                options.FunctionTimeout = requestedTimeout;
+            }
+            else if (_environment.IsDynamic())
+            {
+                // Apply a default if this is running on Dynamic.
+                options.FunctionTimeout = DefaultFunctionTimeout;
+            }
+
+            // TODO: DI: JobHostOptions need to me updated.
+            //scriptConfig.HostOptions.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
         }
 
         private void ConfigureLanguageWorkers(IConfigurationSection rootConfig, ScriptJobHostOptions scriptOptions)
@@ -213,27 +248,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         //            scriptConfig.HostHealthMonitor.CounterThreshold = (float)value;
         //        }
         //    }
-
-        //    value = null;
-        //    if (config.TryGetValue("functionTimeout", out value))
-        //    {
-        //        TimeSpan requestedTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-
-        //        // Only apply limits if this is Dynamic.
-        //        if (ScriptSettingsManager.Instance.IsDynamicSku && (requestedTimeout < MinFunctionTimeout || requestedTimeout > MaxFunctionTimeout))
-        //        {
-        //            string message = $"{nameof(scriptConfig.FunctionTimeout)} must be between {MinFunctionTimeout} and {MaxFunctionTimeout}.";
-        //            throw new ArgumentException(message);
-        //        }
-
-        //        scriptConfig.FunctionTimeout = requestedTimeout;
-        //    }
-        //    else if (ScriptSettingsManager.Instance.IsDynamicSku)
-        //    {
-        //        // Apply a default if this is running on Dynamic.
-        //        scriptConfig.FunctionTimeout = DefaultFunctionTimeout;
-        //    }
-        //    scriptConfig.HostOptions.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
 
         //    ApplyLanguageWorkersConfig(config, scriptConfig, logger);
         //    ApplyLoggerConfig(config, scriptConfig);
