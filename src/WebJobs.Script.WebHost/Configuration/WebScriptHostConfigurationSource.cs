@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
             public override void Load()
             {
-                Data[SelfHostProperty] = (_configurationSource.IsAppServiceEnvironment && !_configurationSource.IsLinuxContainerEnvironment).ToString();
+                Data[SelfHostProperty] = (!_configurationSource.IsAppServiceEnvironment && !_configurationSource.IsLinuxContainerEnvironment).ToString();
 
                 if (_configurationSource.IsAppServiceEnvironment)
                 {

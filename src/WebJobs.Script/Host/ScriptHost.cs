@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -12,11 +11,9 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.Implementation;
-using Microsoft.Azure.AppService.Proxy.Client;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
@@ -48,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _storageConnectionString;
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
+        private readonly IProxyMetadataManager _proxyMetadataManager;
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
@@ -57,18 +55,16 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IDebugStateProvider _debugManager;
         private readonly ICollection<IScriptBindingProvider> _bindingProviders;
         private readonly IJobHostMetadataProvider _metadataProvider;
+        private readonly List<FunctionDescriptorProvider> _descriptorProviders = new List<FunctionDescriptorProvider>();
         private IPrimaryHostStateProvider _primaryHostStateProvider;
         private string _instanceId;
-        private static readonly Regex ProxyNameValidationRegex = new Regex(@"[^a-zA-Z0-9_-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         private ScriptSettingsManager _settingsManager;
 
         private ILogger _startupLogger = null;
         private ILoggerFactory _loggerFactory = null;
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
-        private ProxyClientExecutor _proxyClient;
         private IFunctionDispatcher _functionDispatcher;
-        private List<FunctionDescriptorProvider> _descriptorProviders;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
@@ -82,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IFunctionMetadataManager functionMetadataManager,
+            IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metricsLogger,
             IOptions<ScriptJobHostOptions> scriptHostOptions,
             ITypeLocator typeLocator,
@@ -90,8 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IEnumerable<IScriptBindingProvider> bindingProviders,
             IPrimaryHostStateProvider primaryHostStateProvider,
             IJobHostMetadataProvider metadataProvider,
-            ScriptSettingsManager settingsManager = null,
-            ProxyClientExecutor proxyClient = null)
+            ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
             _typeLocator = typeLocator as ScriptTypeLocator
@@ -102,6 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _storageConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
             _functionMetadataManager = functionMetadataManager;
+            _proxyMetadataManager = proxyMetadataManager;
 
             ScriptOptions = scriptHostOptions.Value;
             _scriptHostEnvironment = scriptHostEnvironment;
@@ -110,7 +107,6 @@ namespace Microsoft.Azure.WebJobs.Script
             EventManager = eventManager;
 
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
-            _proxyClient = proxyClient;
 
             // TODO: DI (FACAVAL) See comment on method
             //_metricsLogger = CreateMetricsLogger();
@@ -251,18 +247,42 @@ namespace Microsoft.Azure.WebJobs.Script
                 await InitializeWorkersAsync();
 
                 // Generate Functions
-                var functionMetadata = _functionMetadataManager.Functions;
-                foreach (var error in _functionMetadataManager.Errors)
-                {
-                    FunctionErrors.Add(error.Key, error.Value.ToArray());
-                }
-
-                var directTypes = GetDirectTypes(functionMetadata);
-                InitializeFunctionDescriptors(functionMetadata);
+                IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
+                var directTypes = GetDirectTypes(functions);
+                InitializeFunctionDescriptors(functions);
                 GenerateFunctions(directTypes);
 
                 CleanupFileSystem();
             }
+        }
+
+        /// <summary>
+        /// Gets metadata collection of functions and proxies configured.
+        /// </summary>
+        /// <returns>A metadata collection of functions and proxies configured.</returns>
+        private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
+        {
+            IEnumerable<FunctionMetadata> functionMetadata = _functionMetadataManager.Functions;
+            foreach (var error in _functionMetadataManager.Errors)
+            {
+                FunctionErrors.Add(error.Key, error.Value.ToArray());
+            }
+
+            // Get proxies metadata
+            var proxyMetadata = _proxyMetadataManager.ProxyMedatada;
+            if (!proxyMetadata.Functions.IsDefaultOrEmpty)
+            {
+                // Add the proxy descriptor provider
+                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, proxyMetadata.ProxyClient, _loggerFactory));
+                functionMetadata = proxyMetadata.Functions.Concat(functionMetadata);
+            }
+
+            foreach (var error in proxyMetadata.Errors)
+            {
+                FunctionErrors.Add(error.Key, error.Value.ToArray());
+            }
+
+            return functionMetadata;
         }
 
         // TODO: DI (FACAVAL) This needs to move to an options config setup
@@ -383,9 +403,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Initialize function descriptors from metadata.
         /// </summary>
-        internal void InitializeFunctionDescriptors(ImmutableArray<FunctionMetadata> functionMetadata)
+        internal void InitializeFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            _descriptorProviders = new List<FunctionDescriptorProvider>();
             if (string.IsNullOrEmpty(_language))
             {
                 _startupLogger.LogTrace("Adding Function descriptor providers for all languages.");
@@ -409,7 +428,7 @@ namespace Microsoft.Azure.WebJobs.Script
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
             {
                 _startupLogger.LogTrace("Creating function descriptors.");
-                functions = GetFunctionDescriptors(functionMetadata);
+                functions = GetFunctionDescriptors(functionMetadata, _descriptorProviders);
                 _startupLogger.LogTrace("Function descriptors created.");
             }
 
@@ -632,118 +651,6 @@ namespace Microsoft.Azure.WebJobs.Script
         //    }
         //    return metricsLogger;
         //}
-
-        internal Collection<FunctionMetadata> ReadProxyMetadata(ScriptJobHostOptions config, ScriptSettingsManager settingsManager = null)
-        {
-            // read the proxy config
-            string proxyConfigPath = Path.Combine(config.RootScriptPath, ScriptConstants.ProxyMetadataFileName);
-            if (!File.Exists(proxyConfigPath))
-            {
-                return null;
-            }
-
-            settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
-
-            var proxyAppSettingValue = settingsManager.GetSetting(EnvironmentSettingNames.ProxySiteExtensionEnabledKey);
-
-            // This is for backward compatibility only, if the file is present but the value of proxy app setting(ROUTING_EXTENSION_VERSION) is explicitly set to 'disabled' we will ignore loading the proxies.
-            if (!string.IsNullOrWhiteSpace(proxyAppSettingValue) && proxyAppSettingValue.Equals("disabled", StringComparison.OrdinalIgnoreCase))
-            {
-                return null;
-            }
-
-            string proxiesJson = File.ReadAllText(proxyConfigPath);
-
-            if (!string.IsNullOrWhiteSpace(proxiesJson))
-            {
-                return LoadProxyRoutes(proxiesJson);
-            }
-
-            return null;
-        }
-
-        private Collection<FunctionMetadata> LoadProxyRoutes(string proxiesJson)
-        {
-            var proxies = new Collection<FunctionMetadata>();
-
-            if (_proxyClient == null)
-            {
-                var rawProxyClient = ProxyClientFactory.Create(proxiesJson, _startupLogger);
-                if (rawProxyClient != null)
-                {
-                    _proxyClient = new ProxyClientExecutor(rawProxyClient);
-                }
-            }
-
-            if (_proxyClient == null)
-            {
-                return proxies;
-            }
-
-            var routes = _proxyClient.GetProxyData();
-
-            foreach (var route in routes.Routes)
-            {
-                try
-                {
-                    // Proxy names should follow the same naming restrictions as in function names. If not, invalid characters will be removed.
-                    var proxyName = NormalizeProxyName(route.Name);
-
-                    var proxyMetadata = new FunctionMetadata();
-
-                    var json = new JObject
-                    {
-                        { "authLevel", "anonymous" },
-                        { "name", "req" },
-                        { "type", "httptrigger" },
-                        { "direction", "in" },
-                        { "Route", route.UrlTemplate.TrimStart('/') },
-                        { "Methods",  new JArray(route.Methods.Select(m => m.Method.ToString()).ToArray()) }
-                    };
-
-                    BindingMetadata bindingMetadata = BindingMetadata.Create(json);
-
-                    proxyMetadata.Bindings.Add(bindingMetadata);
-
-                    proxyMetadata.Name = proxyName;
-                    proxyMetadata.ScriptType = ScriptType.Unknown;
-                    proxyMetadata.IsProxy = true;
-
-                    proxies.Add(proxyMetadata);
-                }
-                catch (Exception ex)
-                {
-                    // log any unhandled exceptions and continue
-                    Utility.AddFunctionError(FunctionErrors, route.Name, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
-                }
-            }
-
-            return proxies;
-        }
-
-        internal static string NormalizeProxyName(string name)
-        {
-            return ProxyNameValidationRegex.Replace(name, string.Empty);
-        }
-
-        private Collection<FunctionDescriptor> GetFunctionDescriptors(ImmutableArray<FunctionMetadata> functions)
-        {
-            var proxies = ReadProxyMetadata(ScriptOptions, _settingsManager);
-
-            IEnumerable<FunctionMetadata> combinedFunctionMetadata = null;
-            if (proxies != null && proxies.Any())
-            {
-                combinedFunctionMetadata = proxies.Concat(functions);
-
-                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _proxyClient, _loggerFactory));
-            }
-            else
-            {
-                combinedFunctionMetadata = functions;
-            }
-
-            return GetFunctionDescriptors(combinedFunctionMetadata, _descriptorProviders);
-        }
 
         internal Collection<FunctionDescriptor> GetFunctionDescriptors(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {

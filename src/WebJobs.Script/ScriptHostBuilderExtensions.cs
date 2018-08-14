@@ -91,6 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
+                services.AddSingleton<IProxyMetadataManager, ProxyMetadataManager>();
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
                 services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
                 services.AddSingleton<ScriptSettingsManager>();

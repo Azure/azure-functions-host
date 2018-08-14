@@ -3,8 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -32,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptSettingsManager _settingsManager;
         private readonly IHost _host;
         private readonly ProxyClientExecutor _proxyClient;
-        private Collection<FunctionMetadata> _metadataCollection;
+        private ImmutableArray<FunctionMetadata> _metadataCollection;
 
         public ProxyFunctionDescriptorProviderTests()
         {
@@ -59,7 +61,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task InitializeAsync()
         {
             await _scriptHost.StartAsync();
-            _metadataCollection = _scriptHost.ReadProxyMetadata(_scriptHost.ScriptOptions, _settingsManager);
+
+            _metadataCollection = _host.Services.GetService<IProxyMetadataManager>()
+                .ProxyMedatada.Functions;
         }
 
         public async Task DisposeAsync()
