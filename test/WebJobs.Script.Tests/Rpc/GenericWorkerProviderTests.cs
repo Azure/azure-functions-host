@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             var provider = new GenericWorkerProvider(new WorkerDescription(), string.Empty);
             var args = new WorkerProcessArguments();
-            Assert.True(provider.TryConfigureArguments(args, null, null));
+            Assert.True(provider.TryConfigureArguments(args, null));
         }
 
         [Fact]
@@ -145,20 +145,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.NotNull(errorLog.Exception);
             Assert.True(errorLog.FormattedMessage.Contains("Failed to initialize"));
             Assert.Empty(providers);
-        }
-
-        [Fact]
-        public void ReadWorkerProviderFromConfig_SingleLanguage()
-        {
-            var language1 = "language1";
-            var language2 = "language2";
-            var language1Config = MakeTestConfig(language1, new string[0]);
-            var language2Config = MakeTestConfig(language2, new string[0]);
-            var configs = new List<TestLanguageWorkerConfig>() { language1Config, language2Config };
-            // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
-            var providers = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), language: language1);
-            Assert.Single(providers);
-            Assert.Equal(language1, providers.Single().GetDescription().Language);
         }
 
         [Fact]
@@ -291,10 +277,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                     };
                     using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
                     {
-                        return configFactory.GetWorkerProviders(testLogger, scriptSettingsManager, language: language);
+                        configFactory.BuildWorkerProviderDictionary();
+                        return configFactory.WorkerProviders;
                     }
                 }
-                return configFactory.GetWorkerProviders(testLogger, scriptSettingsManager, language: language);
+                configFactory.BuildWorkerProviderDictionary();
+                return configFactory.WorkerProviders;
             }
             finally
             {

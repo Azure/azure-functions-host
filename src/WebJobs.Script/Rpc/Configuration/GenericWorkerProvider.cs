@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return _workerDescription;
         }
 
-        public bool TryConfigureArguments(WorkerProcessArguments args, IConfiguration config, ILogger logger)
+        public bool TryConfigureArguments(WorkerProcessArguments args, ILogger logger)
         {
             if (_workerDescription.Arguments != null)
             {

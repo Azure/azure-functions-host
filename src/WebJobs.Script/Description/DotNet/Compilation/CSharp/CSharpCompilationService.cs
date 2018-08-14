@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _optimizationLevel = optimizationLevel;
         }
 
-        public string Language => "CSharp";
+        public string Language => DotNetScriptTypes.CSharp;
 
         public IEnumerable<string> SupportedFileTypes => FileTypes;
 

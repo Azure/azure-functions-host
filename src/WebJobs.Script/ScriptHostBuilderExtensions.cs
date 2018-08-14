@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -124,8 +125,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions));
                 services.AddSingleton<IOptionsMonitor<ScriptApplicationHostOptions>>(new ScriptApplicationHostOptionsMonitor(applicationHostOptions));
                 services.ConfigureOptions<ScriptHostOptionsSetup>();
-                services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
+
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
+                // TODO: pgopa only add this to WebHostServiceCollection
+                services.ConfigureOptions<LanguageWorkerOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
                     .Configure<IConfiguration>((o, c) =>
                     {

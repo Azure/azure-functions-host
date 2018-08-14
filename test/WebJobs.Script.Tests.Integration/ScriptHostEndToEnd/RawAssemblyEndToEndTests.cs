@@ -10,6 +10,7 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Properties;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -100,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 CreateFunctionAssembly();
             }
 
-            public TestFixture() : base(ScriptRoot, "dotnet")
+            public TestFixture() : base(ScriptRoot, "dotnet", LanguageWorkerConstants.DotNetLanguageWorkerName)
             {
             }
 

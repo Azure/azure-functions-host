@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
-using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -209,8 +208,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample");
             var functionErrors = new Dictionary<string, ICollection<string>>();
             var functionDirectories = Directory.EnumerateDirectories(functionsPath);
-            var metadata = FunctionMetadataManager.ReadFunctionsMetadata(functionDirectories, null, NullLogger.Instance, functionErrors);
+            var metadata = FunctionMetadataManager.ReadFunctionsMetadata(functionDirectories, null, TestHelpers.GetTestWorkerConfigs(), NullLogger.Instance, functionErrors);
             Assert.Equal(37, metadata.Count);
+        }
+
+        [Theory]
+        [InlineData("node", "test.js")]
+        [InlineData("java", "test.jar")]
+        [InlineData("CSharp", "test.cs")]
+        [InlineData("CSharp", "test.csx")]
+        [InlineData("FSharp", "test.fsx")]
+        [InlineData("DotNetAssembly", "test.dll")]
+        [InlineData(null, "test.x")]
+        public void ParseLanguage_Returns_ExpectedLanguage(string language, string scriptFile)
+        {
+            Assert.Equal(language, FunctionMetadataManager.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigs()));
         }
     }
 }

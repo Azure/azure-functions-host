@@ -6,6 +6,7 @@ using System.Net.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -108,6 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Configuration
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsSetup>());
+            services.ConfigureOptions<LanguageWorkerOptionsSetup>();
         }
 
         private static void AddStandbyServices(this IServiceCollection services)

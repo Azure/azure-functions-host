@@ -15,8 +15,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, nameof(LanguageWorkerSelectionEndToEndTests))]
-    public class LanguageWorkerSelectionEndToEndTests
+    public class LanguageWorkerSelectionEndToEndTests : IClassFixture<LanguageWorkerSelectionEndToEndTests.TestFixture>
     {
+        TestFixture Fixture;
+
+        public LanguageWorkerSelectionEndToEndTests(TestFixture fixture)
+        {
+            Fixture = fixture;
+        }
+
         [Theory]
         [InlineData(null)]
         [InlineData("")]
@@ -25,13 +32,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
         [InlineData("dotNet")]
         public async Task HttpTrigger_Get(string functionsWorkerLanguage)
         {
-            TestFixture fixture = null;
-
             try
             {
                 string functionName = "HttpTrigger";
-                fixture = new TestFixture(new Collection<string> { functionName }, functionsWorkerLanguage);
-                await fixture.InitializeAsync();
+                await Fixture.InitializeAsync();
 
                 string url = $"http://localhost/api/{functionName}?name=test";
                 var request = HttpTestHelpers.CreateHttpRequest("GET", url);
@@ -42,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
                 };
                 if (string.Equals(LanguageWorkerConstants.NodeLanguageWorkerName, functionsWorkerLanguage, System.StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(functionsWorkerLanguage))
                 {
-                    await fixture.Host.CallAsync(functionName, arguments);
+                    await Fixture.Host.CallAsync(functionName, arguments);
                     var result = (IActionResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
                     Assert.IsType<RawScriptResult>(result);
                     var objResult = result as RawScriptResult;
@@ -50,26 +54,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ScriptHostEndToEnd
                 }
                 else
                 {
-                    await Assert.ThrowsAsync<InvalidOperationException>(async () => await fixture.Host.CallAsync(functionName, arguments));
+                    await Assert.ThrowsAsync<InvalidOperationException>(async () => await Fixture.Host.CallAsync(functionName, arguments));
                 }
             }
             finally
             {
-                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
-                await fixture?.DisposeAsync();
+                await Fixture?.DisposeAsync();
             }
         }
 
-        private class TestFixture : NodeScriptHostTests.TestFixture
+        public class TestFixture : ScriptHostEndToEndTestFixture
         {
-            public TestFixture(ICollection<string> functions, string functionsWorkerLanguage)
-                : base(functions, functionsWorkerLanguage)
+            static TestFixture()
+            {
+            }
+
+            public TestFixture() : base(@"TestScripts\Node", "node", LanguageWorkerConstants.NodeLanguageWorkerName)
             {
             }
 
             protected override Task CreateTestStorageEntities()
             {
-                // No need for this, so let's save some time.
+                // No need for this.
                 return Task.CompletedTask;
             }
         }

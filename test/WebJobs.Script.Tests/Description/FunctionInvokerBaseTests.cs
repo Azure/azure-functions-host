@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Name = "TestFunction",
                 ScriptFile = "index.js",
-                ScriptType = ScriptType.Javascript
+                Language = "node"
             };
             JObject binding = JObject.FromObject(new
             {

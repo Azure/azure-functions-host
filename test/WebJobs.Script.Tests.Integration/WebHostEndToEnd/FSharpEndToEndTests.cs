@@ -4,6 +4,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
@@ -84,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 CreateSharedAssemblies();
             }
 
-            public TestFixture() : base(ScriptRoot, "fsharp")
+            public TestFixture() : base(ScriptRoot, "fsharp", LanguageWorkerConstants.DotNetLanguageWorkerName)
             {
             }
 

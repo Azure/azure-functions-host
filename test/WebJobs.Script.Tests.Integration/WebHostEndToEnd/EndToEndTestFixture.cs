@@ -5,12 +5,11 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.WindowsAzure.Storage;
@@ -27,14 +26,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly string _extensionName;
         private readonly string _extensionVersion;
         private string _copiedRootPath;
+        private string _functionsWorkerRuntime;
 
-        protected EndToEndTestFixture(string rootPath, string testId, string extensionName = null, string extensionVersion = null)
+        protected EndToEndTestFixture(string rootPath, string testId, string functionsWorkerRuntime, string extensionName = null, string extensionVersion = null)
         {
             FixtureId = testId;
 
             _rootPath = rootPath;
             _extensionName = extensionName;
             _extensionVersion = extensionVersion;
+            _functionsWorkerRuntime = functionsWorkerRuntime;
         }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
@@ -59,6 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public async Task InitializeAsync()
         {
+            if (!string.IsNullOrEmpty(_functionsWorkerRuntime))
+            {
+                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime);
+            }
+            
             _copiedRootPath = Path.Combine(Path.GetTempPath(), "FunctionsE2E", DateTime.UtcNow.ToString("yyMMdd-HHmmss"));
             FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
 
@@ -194,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     // best effort
                 }
             }
-
+            Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
             return Task.CompletedTask;
         }
 

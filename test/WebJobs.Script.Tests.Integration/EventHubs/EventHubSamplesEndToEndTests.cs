@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.EventHubs;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -71,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"), "samples", "Microsoft.Azure.WebJobs.Extensions.EventHubs", "3.0.0-beta*")
+                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"), "samples", LanguageWorkerConstants.NodeLanguageWorkerName, "Microsoft.Azure.WebJobs.Extensions.EventHubs", "3.0.0-beta*")
             {
             }
 

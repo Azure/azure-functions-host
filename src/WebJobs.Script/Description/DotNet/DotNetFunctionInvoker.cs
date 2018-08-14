@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _metricsLogger = metricsLogger;
             _functionEntryPointResolver = functionEntryPointResolver;
             _metadataResolver = metadataResolver ?? CreateMetadataResolver(host, bindingProviders, functionMetadata, FunctionLogger);
-            _compilationService = compilationServiceFactory.CreateService(functionMetadata.ScriptType, _metadataResolver);
+            _compilationService = compilationServiceFactory.CreateService(functionMetadata.Language, _metadataResolver);
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _triggerInputName = functionMetadata.Bindings.FirstOrDefault(b => b.IsTrigger).Name;

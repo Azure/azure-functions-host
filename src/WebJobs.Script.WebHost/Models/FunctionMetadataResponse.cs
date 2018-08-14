@@ -52,6 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script.Management.Models
         [JsonProperty(PropertyName = "invoke_url_template")]
         public Uri InvokeUrlTemplate { get; set; }
 
+        [JsonProperty(PropertyName = "language")]
+        public string Language { get; set; }
+
         /// <summary>
         /// Gets or sets function config json
         /// </summary>

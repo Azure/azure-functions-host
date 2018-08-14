@@ -38,7 +38,7 @@ $tests = @(
   @{project ="WebJobs.Script.Tests.Integration"; description="Direct load end to end tests"; filter ="Group=DirectLoadEndToEndTests"},
   @{project ="WebJobs.Script.Tests.Integration"; description="F# end to end tests"; filter ="Group=FSharpEndToEndTests"},
   @{project ="WebJobs.Script.Tests.Integration"; description="Language worker end to end tests"; filter ="Group=LanguageWorkerSelectionEndToEndTests"},
-  @{project ="WebJobs.Script.Tests.Integration"; description="Node script host end to end tests"; filter ="Group=NodeScriptHostTests"},
+  @{project ="WebJobs.Script.Tests.Integration"; description="Node script host end to end tests"; filter ="Group=NodeScriptHostTests"}
   @{project ="WebJobs.Script.Tests.Integration"; description="Raw assembly end to end tests"; filter ="Group=RawAssemblyEndToEndTests"},
   @{project ="WebJobs.Script.Tests.Integration"; description="Samples end to end tests"; filter ="Group=SamplesEndToEndTests"}
   @{project ="WebJobs.Script.Tests.Integration"; description="Standby mode end to end tests"; filter ="Group=StandbyModeEndToEndTests"}

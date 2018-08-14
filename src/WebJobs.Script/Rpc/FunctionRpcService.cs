@@ -10,6 +10,7 @@ using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
@@ -18,10 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     internal class FunctionRpcService : FunctionRpc.FunctionRpcBase
     {
         private readonly IScriptEventManager _eventManager;
+        private ILogger _logger;
 
-        public FunctionRpcService(IScriptEventManager eventManager)
+        public FunctionRpcService(IScriptEventManager eventManager, ILogger logger)
         {
             _eventManager = eventManager;
+            _logger = logger;
         }
 
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)

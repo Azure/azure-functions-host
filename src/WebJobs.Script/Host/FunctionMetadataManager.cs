@@ -10,8 +10,8 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -23,14 +23,16 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly Lazy<ImmutableArray<FunctionMetadata>> _metadata;
+        private readonly IEnumerable<WorkerConfig> _workerConfigs;
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
         private readonly ILogger _logger;
 
-        public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory)
+        public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IOptions<LanguageWorkerOptions> workerConfigOptions, ILoggerFactory loggerFactory)
         {
             _scriptOptions = scriptOptions;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _metadata = new Lazy<ImmutableArray<FunctionMetadata>>(LoadFunctionMetadata);
+            _workerConfigs = workerConfigOptions.Value.WorkerConfigs;
         }
 
         public ImmutableArray<FunctionMetadata> Functions => _metadata.Value;
@@ -48,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionMetadata.ToImmutableArray();
         }
 
-        internal static Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<string> functionDirectories, ICollection<string> functionsWhiteList,
+        internal static Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<string> functionDirectories, ICollection<string> functionsWhiteList, IEnumerable<WorkerConfig> workerConfigs,
             ILogger logger, Dictionary<string, ICollection<string>> functionErrors = null, IFileSystem fileSystem = null)
         {
             functionErrors = functionErrors ?? new Dictionary<string, ICollection<string>>();
@@ -62,13 +64,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (var scriptDir in functionDirectories)
             {
-                var function = ReadFunctionMetadata(scriptDir, functionsWhiteList, functionErrors, fileSystem);
+                var function = ReadFunctionMetadata(scriptDir, functionsWhiteList, workerConfigs, functionErrors, fileSystem);
                 if (function != null)
                 {
                     functions.Add(function);
                 }
             }
-
             return functions;
         }
 
@@ -76,10 +77,10 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             _functionErrors.Clear();
             var options = _scriptOptions.Value;
-            return ReadFunctionsMetadata(options.RootScriptDirectorySnapshot, options.Functions, _logger, _functionErrors);
+            return ReadFunctionsMetadata(options.RootScriptDirectorySnapshot, options.Functions, _workerConfigs, _logger, _functionErrors);
         }
 
-        internal static FunctionMetadata ReadFunctionMetadata(string scriptDir, ICollection<string> functionsWhiteList, Dictionary<string, ICollection<string>> functionErrors, IFileSystem fileSystem = null)
+        internal static FunctionMetadata ReadFunctionMetadata(string scriptDir, ICollection<string> functionsWhiteList, IEnumerable<WorkerConfig> workerConfigs, Dictionary<string, ICollection<string>> functionErrors, IFileSystem fileSystem = null)
         {
             string functionName = null;
 
@@ -105,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 JObject functionConfig = JObject.Parse(json);
 
-                if (!TryParseFunctionMetadata(functionName, functionConfig, scriptDir, out FunctionMetadata functionMetadata, out string functionError, fileSystem))
+                if (!TryParseFunctionMetadata(functionName, functionConfig, scriptDir, workerConfigs, out FunctionMetadata functionMetadata, out string functionError, fileSystem))
                 {
                     // for functions in error, log the error and don't
                     // add to the functions collection
@@ -133,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, string scriptDirectory,
+        internal static bool TryParseFunctionMetadata(string functionName, JObject functionConfig, string scriptDirectory, IEnumerable<WorkerConfig> workerConfigs,
               out FunctionMetadata functionMetadata, out string error, IFileSystem fileSystem = null)
         {
             fileSystem = fileSystem ?? new FileSystem();
@@ -150,9 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 error = exc.Message;
                 return false;
             }
-
-            // determine the script type based on the primary script file extension
-            functionMetadata.ScriptType = ParseScriptType(functionMetadata.ScriptFile);
+            functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs);
             functionMetadata.EntryPoint = (string)functionConfig["entryPoint"];
 
             return true;
@@ -256,28 +255,26 @@ namespace Microsoft.Azure.WebJobs.Script
             return Path.GetFullPath(functionPrimary);
         }
 
-        private static ScriptType ParseScriptType(string scriptFilePath)
+        internal static string ParseLanguage(string scriptFilePath, IEnumerable<WorkerConfig> workerConfigs)
         {
+            // determine the script type based on the primary script file extension
             string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
-
             switch (extension)
             {
                 case "csx":
                 case "cs":
-                    return ScriptType.CSharp;
-                case "js":
-                    return ScriptType.Javascript;
-                case "ts":
-                    return ScriptType.TypeScript;
+                    return DotNetScriptTypes.CSharp;
                 case "fsx":
-                    return ScriptType.FSharp;
+                    return DotNetScriptTypes.FSharp;
                 case "dll":
-                    return ScriptType.DotNetAssembly;
-                case "jar":
-                    return ScriptType.JavaArchive;
-                default:
-                    return ScriptType.Unknown;
+                    return DotNetScriptTypes.DotNetAssembly;
             }
+            var workerConfig = workerConfigs.FirstOrDefault(config => config.Extensions.Contains("." + extension));
+            if (workerConfig != null)
+            {
+                return workerConfig.Language;
+            }
+            return null;
         }
     }
 }

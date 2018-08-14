@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public sealed class DotNetCompilationServiceFactory : ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver>
     {
-        private static readonly ImmutableArray<ScriptType> SupportedScriptTypes = new[] { ScriptType.CSharp, ScriptType.FSharp, ScriptType.DotNetAssembly }.ToImmutableArray();
+        private static readonly ImmutableArray<string> SupportedLanguages = new[] { DotNetScriptTypes.CSharp, DotNetScriptTypes.FSharp, DotNetScriptTypes.DotNetAssembly }.ToImmutableArray();
         private static OptimizationLevel? _optimizationLevel;
         private readonly ILoggerFactory _loggerFactory;
 
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _loggerFactory = loggerFactory;
         }
 
-        ImmutableArray<ScriptType> ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver>.SupportedScriptTypes => SupportedScriptTypes;
+        ImmutableArray<string> ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver>.SupportedLanguages => SupportedLanguages;
 
         internal static OptimizationLevel OptimizationLevel
         {
@@ -53,19 +53,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _optimizationLevel = level;
         }
 
-        public ICompilationService<IDotNetCompilation> CreateService(ScriptType scriptType, IFunctionMetadataResolver metadata)
+        public ICompilationService<IDotNetCompilation> CreateService(string language, IFunctionMetadataResolver metadata)
         {
-            switch (scriptType)
+            switch (language)
             {
-                case ScriptType.CSharp:
+                case DotNetScriptTypes.CSharp:
                     return new CSharpCompilationService(metadata, OptimizationLevel);
-                case ScriptType.FSharp:
+                case DotNetScriptTypes.FSharp:
                     return new FSharpCompilationService(metadata, OptimizationLevel, _loggerFactory);
-                case ScriptType.DotNetAssembly:
+                case DotNetScriptTypes.DotNetAssembly:
                     return new RawAssemblyCompilationService();
                 default:
                     throw new NotSupportedException(string.Format(CultureInfo.InvariantCulture,
-                        "The script type {0} is not supported by the {1}", scriptType, typeof(DotNetCompilationServiceFactory).Name));
+                        "The language {0} is not supported by the {1}", language, typeof(DotNetCompilationServiceFactory).Name));
             }
         }
     }

@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs.Script.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class WorkerConfig
+    public class WorkerConfig
     {
         public WorkerDescription Description { get; set; }
 
