@@ -277,8 +277,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
             };
 
-            Collection<FunctionBinding> outputBindings = new Collection<FunctionBinding>() {
-                TestHelpers.CreateBindingFromHost(host,new JObject
+            Collection<FunctionBinding> outputBindings = new Collection<FunctionBinding>()
+            {
+                TestHelpers.CreateBindingFromHost(host, new JObject
                 {
                     { "type", "blob" },
                     { "name", ScriptConstants.SystemReturnParameterBindingName },

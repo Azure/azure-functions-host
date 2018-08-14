@@ -8,6 +8,7 @@ using System.Linq;
 using System.Web;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -17,19 +18,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IOptions<ScriptApplicationHostOptions> _webHostOptions;
         private readonly IOptions<ScriptJobHostOptions> _scriptHostOptions;
-        private readonly IConnectionStringProvider _connectionStringProvider;
+        private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
         private readonly ILogger<DefaultSecretsRepositoryFactory> _logger;
 
         public DefaultSecretsRepositoryFactory(IOptions<ScriptApplicationHostOptions> webHostOptions,
             IOptions<ScriptJobHostOptions> scriptHostOptions,
-            IConnectionStringProvider connectionStringProvider,
+            IConfiguration configuration,
             IEnvironment environment,
             ILogger<DefaultSecretsRepositoryFactory> logger)
         {
             _webHostOptions = webHostOptions ?? throw new ArgumentNullException(nameof(webHostOptions));
             _scriptHostOptions = scriptHostOptions ?? throw new ArgumentNullException(nameof(scriptHostOptions));
-            _connectionStringProvider = connectionStringProvider ?? throw new ArgumentNullException(nameof(connectionStringProvider));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -37,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public ISecretsRepository Create()
         {
             string secretStorageType = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType);
-            string storageString = _connectionStringProvider.GetConnectionString(ConnectionStringNames.Storage);
+            string storageString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             if (secretStorageType != null && secretStorageType.Equals("Blob", StringComparison.OrdinalIgnoreCase) && storageString != null)
             {
                 // TODO: DI (FACAVAL) Review

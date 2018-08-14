@@ -5,6 +5,7 @@ using System.Threading;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -24,7 +25,7 @@ namespace Microsoft.WebJobs.Script.Tests
 
         public static string GetStorageConnectionString(this IHost host)
         {
-            return host.Services.GetService<IConnectionStringProvider>().GetConnectionString("Storage");
+            return host.Services.GetService<IConfiguration>().GetWebJobsConnectionString("Storage");
         }
     }
 }

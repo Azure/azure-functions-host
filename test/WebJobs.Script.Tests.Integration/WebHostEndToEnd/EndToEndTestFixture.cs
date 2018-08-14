@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -83,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Host = new TestFunctionHost(_copiedRootPath, ConfigureJobHost);
 
-            string connectionString = Host.JobHostServices.GetService<IConnectionStringProvider>().GetConnectionString(ConnectionStringNames.Storage);
+            string connectionString = Host.JobHostServices.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
 
             QueueClient = storageAccount.CreateCloudQueueClient();

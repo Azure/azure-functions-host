@@ -157,14 +157,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static IConnectionStringProvider GetTestConnectionStringProvider()
+        public static IConfiguration GetTestConfiguration()
         {
-            var config = new ConfigurationBuilder()
+            return new ConfigurationBuilder()
                     .AddEnvironmentVariables()
                     .AddTestSettings()
                     .Build();
-
-            return new AmbientConnectionStringProvider(config);
         }
 
         // Deleting and recreating a container can result in a 409 as the container name is not

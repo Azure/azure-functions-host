@@ -30,6 +30,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -84,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ScriptHost(IOptions<JobHostOptions> options,
             IJobHostContextFactory jobHostContextFactory,
-            IConnectionStringProvider connectionStringProvider,
+            IConfiguration configuration,
             IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
@@ -106,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _instanceId = Guid.NewGuid().ToString();
             _hostOptions = options;
-            _storageConnectionString = connectionStringProvider.GetConnectionString(ConnectionStringNames.Storage);
+            _storageConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
             _functionMetadataManager = functionMetadataManager;
 
