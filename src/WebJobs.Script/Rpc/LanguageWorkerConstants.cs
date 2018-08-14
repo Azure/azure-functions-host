@@ -31,5 +31,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public const int DefaultMaxMessageLengthBytesDynamicSku = 32 * 1024 * 1024;
         public const int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
+
+        //Logs
+        public const string LanguageWorkerConsoleLogPrefix = "LanguageWorkerConsoleLog";
+        public const string FunctionConsoleLogCategoryName = "Host.Function.Console";
     }
 }
