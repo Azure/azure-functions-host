@@ -3,8 +3,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -17,13 +20,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IServiceProvider _rootServiceProvider;
         private readonly IServiceScopeFactory _rootScopeFactory;
-        private readonly IOptions<ScriptApplicationHostOptions> _webHostOptions;
+        private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly ILogger _logger;
         private CancellationTokenSource _startupLoopTokenSource;
         private bool _disposed = false;
         private IHost _host;
 
-        public WebJobsScriptHostService(IOptions<ScriptApplicationHostOptions> webHostOptions, IServiceProvider rootServiceProvider, IServiceScopeFactory rootScopeFactory, ILoggerFactory loggerFactory)
+        public WebJobsScriptHostService(IOptions<ScriptApplicationHostOptions> applicationHostOptions, IServiceProvider rootServiceProvider, IServiceScopeFactory rootScopeFactory, ILoggerFactory loggerFactory)
         {
             if (loggerFactory == null)
             {
@@ -32,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _rootServiceProvider = rootServiceProvider ?? throw new ArgumentNullException(nameof(rootServiceProvider));
             _rootScopeFactory = rootScopeFactory ?? throw new ArgumentNullException(nameof(rootScopeFactory));
-            _webHostOptions = webHostOptions ?? throw new ArgumentNullException(nameof(webHostOptions));
+            _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
 
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
 
@@ -49,8 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             _startupLoopTokenSource = new CancellationTokenSource();
             var startupLoopToken = _startupLoopTokenSource.Token;
-
-            CancellationTokenSource tokenSource = CancellationTokenSource.CreateLinkedTokenSource(startupLoopToken, cancellationToken);
+            var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(startupLoopToken, cancellationToken);
 
             try
             {
@@ -67,19 +69,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // If the exception was triggered by our loop cancellation token, just ignore as
                 // it doesn't indicate an issue.
             }
-
-            State = ScriptHostState.Running;
         }
 
         private async Task StartHostAsync(CancellationToken cancellationToken, int attemptCount = 0)
         {
-            _logger.LogInformation("Initializing Azure Functions Host.");
             cancellationToken.ThrowIfCancellationRequested();
+
             try
             {
-                _host = BuildHost();
+                bool isOffline = CheckAppOffline();
+                _host = BuildHost(isOffline);
+
+                var log = isOffline ? "Host is offline." : "Initializing Host.";
+                _logger.LogInformation(log);
                 await _host.StartAsync(cancellationToken);
                 LastError = null;
+
+                if (!isOffline)
+                {
+                    State = ScriptHostState.Running;
+                }
             }
             catch (OperationCanceledException)
             {
@@ -121,21 +130,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _startupLoopTokenSource?.Cancel();
 
             State = ScriptHostState.Stopping;
-
-            _logger.LogInformation("Stopping script host.");
+            _logger.LogInformation("Stopping host...");
 
             var currentHost = _host;
-
             Task stopTask = Orphan(currentHost, _logger, cancellationToken);
             Task result = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(10)));
 
             if (result != stopTask)
             {
-                _logger.LogWarning("Script host manager did not shutdown within its allotted time.");
+                _logger.LogWarning("Host did not shutdown within its allotted time.");
             }
             else
             {
-                _logger.LogInformation("Script host manager shutdown completed.");
+                _logger.LogInformation("Host shutdown completed.");
             }
 
             State = ScriptHostState.Stopped;
@@ -163,11 +170,38 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.LogInformation("Script host restarted.");
         }
 
-        private IHost BuildHost()
+        private IHost BuildHost(bool isOffline = false)
         {
-            return new HostBuilder()
-                .AddWebScriptHost(_rootServiceProvider, _rootScopeFactory, _webHostOptions)
-                .Build();
+            var builder = new HostBuilder()
+                .AddWebScriptHost(_rootServiceProvider, _rootScopeFactory, _applicationHostOptions);
+
+            if (isOffline)
+            {
+                builder.ConfigureServices(services =>
+                {
+                    // When offline, we need most general services registered so admin
+                    // APIs can function. However, we want to prevent the ScriptHost from
+                    // actually starting up. To accomplish this, we remove the host service
+                    // responsible for starting the job hst.
+                    var jobHostService = services.FirstOrDefault(p => p.ImplementationType == typeof(JobHostService));
+                    services.Remove(jobHostService);
+                });
+            }
+
+            return builder.Build();
+        }
+
+        private bool CheckAppOffline()
+        {
+            // check if we should be in an offline state
+            string offlineFilePath = Path.Combine(_applicationHostOptions.Value.ScriptPath, ScriptConstants.AppOfflineFileName);
+            if (File.Exists(offlineFilePath))
+            {
+                State = ScriptHostState.Offline;
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>

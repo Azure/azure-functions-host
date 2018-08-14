@@ -13,17 +13,17 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
     {
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
-        private readonly IOptions<ScriptApplicationHostOptions> _webHostOptions;
+        private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
 
         internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
         internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(5);
         internal static readonly TimeSpan MaxFunctionTimeout = TimeSpan.FromMinutes(10);
 
-        public ScriptHostOptionsSetup(IConfiguration configuration, IEnvironment environment, IOptions<ScriptApplicationHostOptions> webHostOptions)
+        public ScriptHostOptionsSetup(IConfiguration configuration, IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
         {
             _configuration = configuration;
             _environment = environment;
-            _webHostOptions = webHostOptions;
+            _applicationHostOptions = applicationHostOptions;
         }
 
         public void Configure(ScriptJobHostOptions options)
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             ConfigureLanguageWorkers(jobHostSection, options);
 
             // Set the root script path to the value the runtime was initialized with:
-            ScriptApplicationHostOptions webHostOptions = _webHostOptions.Value;
+            ScriptApplicationHostOptions webHostOptions = _applicationHostOptions.Value;
             options.RootScriptPath = webHostOptions.ScriptPath;
             options.RootLogPath = webHostOptions.LogPath;
             options.IsSelfHost = webHostOptions.IsSelfHost;

@@ -56,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly List<FunctionDescriptorProvider> _descriptorProviders = new List<FunctionDescriptorProvider>();
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly string _instanceId;
+        private readonly IEnvironment _environment;
 
         private IPrimaryHostStateProvider _primaryHostStateProvider;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
@@ -71,6 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
 
         public ScriptHost(IOptions<JobHostOptions> options,
+            IEnvironment environment,
             IJobHostContextFactory jobHostContextFactory,
             IConfiguration configuration,
             IDistributedLockManager distributedLockManager,
@@ -89,6 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
+            _environment = environment;
             _typeLocator = typeLocator as ScriptTypeLocator
                 ?? throw new ArgumentException(nameof(typeLocator), $"A {nameof(ScriptTypeLocator)} instance is required.");
 
@@ -380,7 +383,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             FileUtility.EnsureDirectoryExists(_hostLogPath);
 
-            if (!_settingsManager.FileSystemIsReadOnly)
+            if (!_environment.FileSystemIsReadOnly())
             {
                 FileUtility.EnsureDirectoryExists(ScriptOptions.RootScriptPath);
             }

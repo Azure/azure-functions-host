@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -19,6 +20,15 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             get { return _instance ?? _default; }
             set { _instance = value; }
+        }
+
+        public static string ReadResourceString(string resourcePath)
+        {
+            Assembly assembly = Assembly.GetCallingAssembly();
+            using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream(resourcePath)))
+            {
+                return reader.ReadToEnd();
+            }
         }
 
         public static void EnsureDirectoryExists(string path)

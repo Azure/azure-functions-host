@@ -25,6 +25,16 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(RemoteDebuggingPort));
         }
 
+        public static bool IsZipDeployment(this IEnvironment environment)
+        {
+            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment));
+        }
+
+        public static bool FileSystemIsReadOnly(this IEnvironment environment)
+        {
+            return environment.IsZipDeployment();
+        }
+
         /// <summary>
         /// Gets a value indicating whether the application is running in a Dynamic
         /// App Service environment.

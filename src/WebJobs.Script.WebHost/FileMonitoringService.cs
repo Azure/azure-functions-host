@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
@@ -122,6 +123,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 changeDescription = "Watched directory";
             }
+            else if (string.Compare(fileName, ScriptConstants.AppOfflineFileName, StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                OnOfflineFileChanged(e);
+            }
             else if (string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
                 string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
                 string.Compare(fileName, ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0)
@@ -232,6 +237,41 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public void Dispose()
         {
             Dispose(true);
+        }
+
+        private void OnOfflineFileChanged(FileSystemEventArgs e)
+        {
+            if (e.ChangeType == WatcherChangeTypes.Created)
+            {
+                // when app_offline.htm is created, trigger
+                // a shutdown so when the host starts back up it
+                // will be offline
+                Shutdown();
+            }
+            else if (e.ChangeType == WatcherChangeTypes.Deleted)
+            {
+                // after deleting app_offline.htm trigger a reinitialization
+                // to bring the host back online
+                _scriptEnvironment.RestartHost();
+            }
+        }
+
+        internal static async Task SetAppOfflineState(string rootPath, bool offline)
+        {
+            string path = Path.Combine(rootPath, ScriptConstants.AppOfflineFileName);
+            bool offlineFileExists = File.Exists(path);
+
+            if (offline && !offlineFileExists)
+            {
+                // create the app_offline.htm file in the root script directory
+                string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.{ScriptConstants.AppOfflineFileName}");
+                await FileUtility.WriteAsync(path, content);
+            }
+            else if (!offline && offlineFileExists)
+            {
+                // delete the app_offline.htm file
+                FileUtility.DeleteFileSafe(path);
+            }
         }
     }
 }

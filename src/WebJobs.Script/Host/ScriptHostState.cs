@@ -40,6 +40,11 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// The host is stopped.
         /// </summary>
-        Stopped
+        Stopped,
+
+        /// <summary>
+        /// The host is offline
+        /// </summary>
+        Offline
     }
 }

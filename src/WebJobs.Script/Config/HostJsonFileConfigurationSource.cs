@@ -20,14 +20,14 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
     {
         private readonly ILogger _logger;
 
-        public HostJsonFileConfigurationSource(IOptions<ScriptApplicationHostOptions> scriptHostOptions, ILoggerFactory loggerFactory)
+        public HostJsonFileConfigurationSource(IOptions<ScriptApplicationHostOptions> applicationHostOptions, ILoggerFactory loggerFactory)
         {
             if (loggerFactory == null)
             {
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
 
-            HostOptions = scriptHostOptions;
+            HostOptions = applicationHostOptions;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
         }
 

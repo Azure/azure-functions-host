@@ -23,6 +23,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Remove="applicationHost.xdt" />
+    <None Remove="Resources\app_offline.htm" />
     <None Remove="Resources\Functions\WarmUp\run.csx" />
     <None Remove="web.InProcess.win-x64.xdt" />
     <None Remove="web.InProcess.win-x86.xdt" />
@@ -65,6 +66,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Home.html" />
+    <EmbeddedResource Include="Resources\app_offline.htm" />
     <EmbeddedResource Include="Resources\Functions\host.json" />
     <EmbeddedResource Include="Resources\Functions\WarmUp\function.json" />
     <EmbeddedResource Include="Resources\Functions\WarmUp\run.csx" />

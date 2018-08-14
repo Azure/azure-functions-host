@@ -31,15 +31,11 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// </summary>
         public virtual bool IsAppServiceEnvironment => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId));
 
-        public virtual bool IsZipDeployment => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteZipDeployment));
-
         public virtual bool ContainerReady => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady));
 
         public string WebsiteSku => GetSetting(EnvironmentSettingNames.AzureWebsiteSku);
 
         public bool IsDynamicSku => WebsiteSku == ScriptConstants.DynamicSku;
-
-        public virtual bool FileSystemIsReadOnly => IsZipDeployment;
 
         public virtual string AzureWebsiteDefaultSubdomain
         {

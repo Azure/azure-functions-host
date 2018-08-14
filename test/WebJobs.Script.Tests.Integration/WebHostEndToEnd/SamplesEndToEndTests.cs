@@ -43,6 +43,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public object AuthorizationLevelAttribute { get; private set; }
 
         [Fact]
+        public async Task SetHostState_Offline_Succeeds()
+        {
+            // verify host is up and running
+            var response = await GetHostStatusAsync();
+            var hostStatus = response.Content.ReadAsAsync<HostStatus>();
+
+            // verify functions can be invoked
+            await InvokeAndValidateHttpTrigger("HttpTrigger");
+
+            // take host offline
+            await SetHostStateAsync("offline");
+
+            // when testing taking the host offline doesn't seem to stop all
+            // application services, so we issue a restart
+            await RestartHostAsync();
+
+            // wait for the host to go offline
+            await AwaitHostStateAsync(ScriptHostState.Offline);
+
+            // verify that when offline function requests return 503
+            response = await InvokeHttpTrigger("HttpTrigger");
+            await VerifyOfflineResponse(response);
+
+            // verify that the root returns 503 when offline
+            var request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            await VerifyOfflineResponse(response);
+
+            // bring host back online
+            await SetHostStateAsync("running");
+
+            await AwaitHostStateAsync(ScriptHostState.Running);
+
+            // verify functions can be invoked
+            await InvokeAndValidateHttpTrigger("HttpTrigger");
+        }
+
+        private static async Task VerifyOfflineResponse(HttpResponseMessage response)
+        {
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            Assert.Equal("text/html", response.Content.Headers.ContentType.MediaType);
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.True(content.Contains("Host is offline"));
+        }
+
+        [Fact]
         public async Task AdminRequests_PutHostInDebugMode()
         {
             var debugSentinelFilePath = Path.Combine(_fixture.Host.LogPath, "Host", ScriptConstants.DebugSentinelFileName);
@@ -200,16 +246,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task HttpTrigger_Get_Succeeds()
         {
-            await InvokeHttpTrigger("HttpTrigger");
+            await InvokeAndValidateHttpTrigger("HttpTrigger");
         }
 
         [Fact]
         public async Task HttpTrigger_Java_Get_Succeeds()
         {
-            await InvokeHttpTrigger("HttpTrigger-Java");
+            await InvokeAndValidateHttpTrigger("HttpTrigger-Java");
         }
 
-        private async Task InvokeHttpTrigger(string functionName)
+        private async Task InvokeAndValidateHttpTrigger(string functionName)
         {
             string functionKey = await _fixture.Host.GetFunctionSecretAsync($"{functionName}");
             string uri = $"api/{functionName}?code={functionKey}&name=Mathew";
@@ -227,6 +273,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             uri = $"api/{functionName}?code={masterKey}&name=Mathew";
             request = new HttpRequestMessage(HttpMethod.Get, uri);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        private async Task<HttpResponseMessage> InvokeHttpTrigger(string functionName)
+        {
+            string functionKey = await _fixture.Host.GetFunctionSecretAsync($"{functionName}");
+            string uri = $"api/{functionName}?code={functionKey}&name=Mathew";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+            return await _fixture.Host.HttpClient.SendAsync(request);
         }
 
         [Fact]
@@ -910,6 +966,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             string uri = "admin/host/status";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
+
+            return await _fixture.Host.HttpClient.SendAsync(request);
+        }
+
+        private async Task SetHostStateAsync(string state)
+        {
+            var masterKey = await _fixture.Host.GetMasterKeyAsync();
+            var request = new HttpRequestMessage(HttpMethod.Put, "admin/host/state");
+            request.Content = new StringContent($"'{state}'");
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
+            var response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(response.StatusCode, HttpStatusCode.Accepted);
+        }
+
+        private async Task AwaitHostStateAsync(ScriptHostState state)
+        {
+            await TestHelpers.Await(async () =>
+            {
+                var response = await GetHostStatusAsync();
+                var hostStatus = response.Content.ReadAsAsync<HostStatus>();
+                return string.Compare(hostStatus.Result.State, state.ToString(), StringComparison.OrdinalIgnoreCase) == 0;
+            });
+        }
+
+        private async Task<HttpResponseMessage> RestartHostAsync()
+        {
+            string uri = "admin/host/restart";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
 
             return await _fixture.Host.HttpClient.SendAsync(request);

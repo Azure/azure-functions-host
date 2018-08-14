@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
 
             IFunctionExecutionFeature functionExecution = context.Features.Get<IFunctionExecutionFeature>();
-            if (functionExecution != null && !context.Response.HasStarted)
+            if (functionExecution != null && !context.Response.HasStarted())
             {
                 int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
                 IActionResult result = await GetResultAsync(context, functionExecution);

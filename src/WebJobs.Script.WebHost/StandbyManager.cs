@@ -4,11 +4,9 @@
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
@@ -59,27 +57,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 FileUtility.DeleteDirectoryAsync(scriptPath, true).GetAwaiter().GetResult();
                 FileUtility.EnsureDirectoryExists(scriptPath);
 
-                string content = ReadResourceString("Functions.host.json");
+                string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.Functions.host.json");
                 File.WriteAllText(Path.Combine(scriptPath, "host.json"), content);
 
                 string functionPath = Path.Combine(scriptPath, WarmUpFunctionName);
                 Directory.CreateDirectory(functionPath);
-                content = ReadResourceString($"Functions.{WarmUpFunctionName}.function.json");
+                content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpFunctionName}.function.json");
                 File.WriteAllText(Path.Combine(functionPath, "function.json"), content);
-                content = ReadResourceString($"Functions.{WarmUpFunctionName}.run.csx");
+                content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpFunctionName}.run.csx");
                 File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
 
                 logger.LogInformation($"StandbyMode placeholder function directory created");
-            }
-        }
-
-        private static string ReadResourceString(string fileName)
-        {
-            string resourcePath = string.Format("Microsoft.Azure.WebJobs.Script.WebHost.Resources.{0}", fileName);
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream(resourcePath)))
-            {
-                return reader.ReadToEnd();
             }
         }
     }

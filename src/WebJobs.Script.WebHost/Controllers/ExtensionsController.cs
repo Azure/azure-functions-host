@@ -89,8 +89,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public async Task<IActionResult> GetJobs()
         {
             IEnumerable<ExtensionsRestoreJob> jobs = await GetInProgressJobs();
+
             var jobContent = new { jobs };
             var result = ApiModelUtility.CreateApiModel(jobContent, Request);
+
             return Ok(result);
         }
 
@@ -155,7 +157,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     { "version", package.Version }
                 }
             };
+
             await SaveJob(job);
+
             return job;
         }
 
@@ -171,6 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             string home = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
             string basePath = null;
+
             if (!string.IsNullOrEmpty(home))
             {
                 basePath = Path.Combine(home, "data", "Functions", "extensions");
@@ -200,6 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             var jobPaths = await FileUtility.GetFilesAsync(GetJobBasePath(), "*.json");
             List<ExtensionsRestoreJob> jobs = new List<ExtensionsRestoreJob>();
+
             foreach (var jobPath in jobPaths)
             {
                 if (System.IO.File.Exists(jobPath))
@@ -212,6 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     }
                 }
             }
+
             return jobs;
         }
     }

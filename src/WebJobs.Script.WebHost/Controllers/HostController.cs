@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -31,23 +32,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     /// </summary>
     public class HostController : Controller
     {
-        private readonly IOptions<ScriptApplicationHostOptions> _webHostSettings;
+        private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly ILogger _logger;
         private readonly IAuthorizationService _authorizationService;
         private readonly IWebFunctionsManager _functionsManager;
+        private readonly IEnvironment _environment;
+        private readonly IScriptHostManager _scriptHostManager;
 
-        public HostController(IOptions<ScriptApplicationHostOptions> webHostSettings,
+        public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
             IOptions<JobHostOptions> hostOptions,
             ILoggerFactory loggerFactory,
             IAuthorizationService authorizationService,
-            IWebFunctionsManager functionsManager)
+            IWebFunctionsManager functionsManager,
+            IEnvironment environment,
+            IScriptHostManager scriptHostManager)
         {
-            _webHostSettings = webHostSettings;
+            _applicationHostOptions = applicationHostOptions;
             _hostOptions = hostOptions;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostController);
             _authorizationService = authorizationService;
             _functionsManager = functionsManager;
+            _environment = environment;
+            _scriptHostManager = scriptHostManager;
         }
 
         [HttpGet]
@@ -119,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [TypeFilter(typeof(EnableDebugModeFilter))]
         public IActionResult LaunchDebugger()
         {
-            if (_webHostSettings.Value.IsSelfHost)
+            if (_applicationHostOptions.Value.IsSelfHost)
             {
                 // If debugger is already running, this will be a no-op returning true.
                 if (Debugger.Launch())
@@ -154,7 +161,56 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public IActionResult Restart([FromServices] IScriptHostManager hostManager)
         {
             Task ignore = hostManager.RestartHostAsync();
-            return Ok(_webHostSettings.Value);
+            return Ok(_applicationHostOptions.Value);
+        }
+
+        /// <summary>
+        /// Currently this endpoint only supports taking the host offline and bringing it back online.
+        /// </summary>
+        /// <param name="state">The desired host state. See <see cref="ScriptHostState"/>.</param>
+        [HttpPut]
+        [Route("admin/host/state")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        public async Task<IActionResult> SetState([FromBody] string state)
+        {
+            if (!Enum.TryParse<ScriptHostState>(state, ignoreCase: true, out ScriptHostState desiredState) ||
+                !(desiredState == ScriptHostState.Offline || desiredState == ScriptHostState.Running))
+            {
+                // currently we only allow states Offline and Running
+                return BadRequest();
+            }
+
+            var currentState = _scriptHostManager.State;
+            if (desiredState == currentState)
+            {
+                return Ok();
+            }
+            else if (desiredState == ScriptHostState.Running && currentState == ScriptHostState.Offline)
+            {
+                if (_environment.FileSystemIsReadOnly())
+                {
+                    return BadRequest();
+                }
+
+                // we're currently offline and the request is to bring the host back online
+                await FileMonitoringService.SetAppOfflineState(_applicationHostOptions.Value.ScriptPath, false);
+            }
+            else if (desiredState == ScriptHostState.Offline && currentState != ScriptHostState.Offline)
+            {
+                if (_environment.FileSystemIsReadOnly())
+                {
+                    return BadRequest();
+                }
+
+                // we're currently online and the request is to take the host offline
+                await FileMonitoringService.SetAppOfflineState(_applicationHostOptions.Value.ScriptPath, true);
+            }
+            else
+            {
+                return BadRequest();
+            }
+
+            return Accepted();
         }
 
         [HttpGet]
