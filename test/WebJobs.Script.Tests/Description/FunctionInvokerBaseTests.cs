@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -197,9 +198,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public MockInvoker(ScriptHost host, IMetricsLogger metrics, FunctionMetadata metadata, ILoggerFactory loggerFactory)
                 : base(host, metadata, loggerFactory)
             {
-                _fastLogger = new FunctionInstanceLogger(
-                    (name) => this.Host.GetFunctionOrNull(name),
-                    metrics);
+                var metadataManagerMock = new Mock<IFunctionMetadataManager>();
+                metadataManagerMock.Setup(m => m.Functions)
+                    .Returns(new[] { metadata }.ToImmutableArray());
+                var proxyMetadataManagerMock = new Mock<IProxyMetadataManager>();
+                _fastLogger = new FunctionInstanceLogger(metadataManagerMock.Object, proxyMetadataManagerMock.Object,  metrics);
             }
 
             protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)

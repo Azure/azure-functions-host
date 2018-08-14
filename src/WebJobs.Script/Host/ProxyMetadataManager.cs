@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _metadata = new Lazy<ProxyMetadataInfo>(LoadFunctionMetadata);
         }
 
-        public ProxyMetadataInfo ProxyMedatada => _metadata.Value;
+        public ProxyMetadataInfo ProxyMetadata => _metadata.Value;
 
         private ProxyMetadataInfo LoadFunctionMetadata()
         {

@@ -107,12 +107,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("TimerTrigger");
             TestHelpers.ClearFunctionLogs("ListenerStartupException");
 
-            Func<string, FunctionDescriptor> funcLookup = (name) => this.Host.GetFunctionOrNull(name);
-            var fastLogger = new FunctionInstanceLogger(funcLookup, new MetricsLogger());
-
-            // TODO: DI (FACAVAL) Fix
-            //config.HostConfig.AddService<IAsyncCollector<FunctionInstanceLogEntry>>(fastLogger);
-
             var host = new HostBuilder()
                 .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
                 {

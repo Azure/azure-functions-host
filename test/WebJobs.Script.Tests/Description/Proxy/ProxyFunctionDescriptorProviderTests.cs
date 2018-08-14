@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await _scriptHost.StartAsync();
 
             _metadataCollection = _host.Services.GetService<IProxyMetadataManager>()
-                .ProxyMedatada.Functions;
+                .ProxyMetadata.Functions;
         }
 
         public async Task DisposeAsync()

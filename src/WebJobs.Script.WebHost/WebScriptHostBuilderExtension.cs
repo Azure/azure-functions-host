@@ -55,9 +55,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
                     services.TryAddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
-                    // TODO: DI (FACAVAL) Review metrics logger registration
-                    services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
                     services.AddSingleton<IScriptJobHostEnvironment, WebScriptJobHostEnvironment>();
+
+                    // Logging and diagnostics
+                    services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
+                    services.AddSingleton<IAsyncCollector<Host.Loggers.FunctionInstanceLogEntry>, FunctionInstanceLogger>();
 
                     // Secret management
                     services.TryAddSingleton<ISecretManager>(c => c.GetService<ISecretManagerFactory>().Create());

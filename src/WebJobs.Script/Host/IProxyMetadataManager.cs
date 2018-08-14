@@ -7,6 +7,6 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public interface IProxyMetadataManager
     {
-        ProxyMetadataInfo ProxyMedatada { get; }
+        ProxyMetadataInfo ProxyMetadata { get; }
     }
 }

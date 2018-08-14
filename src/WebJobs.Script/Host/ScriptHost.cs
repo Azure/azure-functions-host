@@ -269,7 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // Get proxies metadata
-            var proxyMetadata = _proxyMetadataManager.ProxyMedatada;
+            var proxyMetadata = _proxyMetadataManager.ProxyMetadata;
             if (!proxyMetadata.Functions.IsDefaultOrEmpty)
             {
                 // Add the proxy descriptor provider
