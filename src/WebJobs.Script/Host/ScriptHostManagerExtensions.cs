@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class ScriptHostManagerExtensions
     {
-        internal static async Task<bool> DelayUntilHostReady(this IScriptHostManager hostManager, int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds)
+        public static async Task<bool> DelayUntilHostReady(this IScriptHostManager hostManager, int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds)
         {
             bool CanInvoke()
             {
