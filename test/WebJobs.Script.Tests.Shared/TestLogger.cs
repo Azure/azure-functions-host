@@ -13,30 +13,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
     public class TestLogger : ILogger
     {
-        private readonly Func<string, LogLevel, bool> _filter;
         private IList<LogMessage> _logMessages = new List<LogMessage>();
 
         // protect against changes to _logMessages while enumerating
-        private object _syncLock = new object();
+        private readonly object _syncLock = new object();
 
-        public TestLogger(string category, Func<string, LogLevel, bool> filter = null)
+        public TestLogger(string category)
         {
             Category = category;
-            _filter = filter;
         }
 
         public string Category { get; private set; }
 
-        private string DebuggerDisplay
-        {
-            get { return $"Category: {Category}, Count: {_logMessages.Count}"; }
-        }
+        private string DebuggerDisplay => $"Category: {Category}, Count: {_logMessages.Count}";
 
-        public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope.Push(state);
+        public IDisposable BeginScope<TState>(TState state)
+        {
+            return DictionaryLoggerScope.Push(state);
+        }
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            return _filter?.Invoke(Category, logLevel) ?? true;
+            return true;
         }
 
         public IList<LogMessage> GetLogMessages()
@@ -57,12 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            if (!IsEnabled(logLevel))
-            {
-                return;
-            }
-
-            var logMessage = new LogMessage
+            LogMessage logMessage = new LogMessage
             {
                 Level = logLevel,
                 EventId = eventId,
@@ -99,6 +92,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public DateTime Timestamp { get; set; }
 
-        public override string ToString() => $"[{Timestamp.ToString("HH:mm:ss.fff")}] [{Category}] {FormattedMessage}";
+        public override string ToString()
+        {
+            return $"[{Timestamp.ToString("HH:mm:ss.fff")}] [{Category}] {FormattedMessage}";
+        }
     }
 }

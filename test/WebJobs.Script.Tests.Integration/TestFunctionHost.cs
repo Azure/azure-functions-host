@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -35,7 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
         private readonly WebJobsScriptHostService _hostService;
 
-        public TestFunctionHost(string appRoot, Action<IWebJobsBuilder> configureJobHost)
+        public TestFunctionHost(string appRoot,
+            Action<IWebJobsBuilder> configureJobHost,
+            Action<IConfigurationBuilder> configureAppConfiguration = null)
         {
             _appRoot = appRoot;
 
@@ -47,27 +50,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 SecretsPath = Environment.CurrentDirectory // not used
             };
 
-            _testServer = new TestServer(new WebHostBuilder()
-                 .ConfigureServices(services =>
-                 {
-                     services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
+            var builder = new WebHostBuilder()
+                .ConfigureServices(services =>
+                  {
+                      services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
+                      services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
+                      services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions)));
 
-                     services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions)));
-                 })
-                 .AddScriptHostBuilder(webJobsBuilder =>
-                 {
-                     var loggingBuilder = new LoggingBuilder(webJobsBuilder.Services);
-                     loggingBuilder.AddProvider(_loggerProvider);
-                     loggingBuilder.AddFilter<TestLoggerProvider>(_ => true);
+                      services.AddSingleton<IConfigureBuilder<IConfigurationBuilder>>(_ => new DelegatedConfigureBuilder<IConfigurationBuilder>(configureAppConfiguration));
+                  })
+                  .AddScriptHostBuilder(webJobsBuilder =>
+                  {
+                      var loggingBuilder = new LoggingBuilder(webJobsBuilder.Services);
+                      loggingBuilder.AddProvider(_loggerProvider);
+                      loggingBuilder.AddFilter<TestLoggerProvider>(_ => true);
 
+                      webJobsBuilder.AddAzureStorage();
 
-                     webJobsBuilder.Services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
+                      configureJobHost?.Invoke(webJobsBuilder);
+                  })
+                  .UseStartup<Startup>();
 
-                     webJobsBuilder.AddAzureStorage();
-
-                     configureJobHost?.Invoke(webJobsBuilder);
-                 })
-                 .UseStartup<Startup>());
+            _testServer = new TestServer(builder);
 
             HttpClient = new HttpClient(new UpdateContentLengthHandler(_testServer.CreateHandler()));
             HttpClient.BaseAddress = new Uri("https://localhost/");
@@ -82,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public ScriptJobHostOptions ScriptOptions => JobHostServices.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
-        public ISecretManager SecretManager => JobHostServices.GetService<ISecretManager>();
+        public ISecretManager SecretManager => _testServer.Host.Services.GetService<ISecretManager>();
 
         public string LogPath => _hostOptions.LogPath;
 

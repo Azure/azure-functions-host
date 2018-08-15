@@ -3,12 +3,7 @@
 
 using System;
 using System.Globalization;
-using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Configuration;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.Rpc.LanguageWorkerConstants;
 

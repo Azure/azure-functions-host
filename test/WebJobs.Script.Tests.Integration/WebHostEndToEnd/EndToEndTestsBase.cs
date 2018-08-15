@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return logs.Any(p => p.Contains(guid2));
             });
 
-            Assert.True(logs.Count == 5, string.Join(Environment.NewLine, logs));
+            Assert.True(logs.Count == 4, string.Join(Environment.NewLine, logs));
 
             // No need for assert; this will throw if there's not one and only one
             logs.Single(p => p.EndsWith($"From TraceWriter: {guid1}"));
@@ -341,8 +341,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // We know the tests are using the default INameResolver and the default setting.
             var connectionString = _nameResolver.Resolve("AzureWebJobsCosmosDBConnectionString");
-            var builder = new DbConnectionStringBuilder();
-            builder.ConnectionString = connectionString;
+            var builder = new DbConnectionStringBuilder
+            {
+                ConnectionString = connectionString
+            };
             var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
             var client = new DocumentClient(serviceUri, builder["AccountKey"].ToString());
 

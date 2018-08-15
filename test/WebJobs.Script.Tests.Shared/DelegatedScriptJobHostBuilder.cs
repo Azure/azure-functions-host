@@ -2,23 +2,21 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class DelegatedScriptJobHostBuilder : IConfigureWebJobsBuilder
+    public class DelegatedConfigureBuilder<TBuilder> : IConfigureBuilder<TBuilder>
     {
-        private readonly Action<IWebJobsBuilder> _builder;
+        private readonly Action<TBuilder> _builder;
 
-        public DelegatedScriptJobHostBuilder(Action<IWebJobsBuilder> builder)
+        public DelegatedConfigureBuilder(Action<TBuilder> builder)
         {
             _builder = builder;
         }
 
-        public void Configure(IWebJobsBuilder builder)
+        public void Configure(TBuilder builder)
         {
-            _builder(builder);
+            _builder?.Invoke(builder);
         }
     }
 }

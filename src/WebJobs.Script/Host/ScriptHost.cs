@@ -13,7 +13,6 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.Implementation;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
@@ -30,7 +29,6 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json.Linq;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -56,13 +54,14 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ICollection<IScriptBindingProvider> _bindingProviders;
         private readonly IJobHostMetadataProvider _metadataProvider;
         private readonly List<FunctionDescriptorProvider> _descriptorProviders = new List<FunctionDescriptorProvider>();
+        private readonly ILoggerFactory _loggerFactory = null;
+        private readonly string _instanceId;
+
         private IPrimaryHostStateProvider _primaryHostStateProvider;
-        private string _instanceId;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         private ScriptSettingsManager _settingsManager;
-
         private ILogger _startupLogger = null;
-        private ILoggerFactory _loggerFactory = null;
+
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionDispatcher _functionDispatcher;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
@@ -361,6 +360,16 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void PreInitialize()
         {
+            // Log whether App Insights is enabled
+            if (!string.IsNullOrEmpty(_settingsManager.ApplicationInsightsInstrumentationKey))
+            {
+                _metricsLogger.LogEvent(MetricEventNames.ApplicationInsightsEnabled);
+            }
+            else
+            {
+                _metricsLogger.LogEvent(MetricEventNames.ApplicationInsightsDisabled);
+            }
+
             InitializeFileSystem();
         }
 
@@ -573,8 +582,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (scriptFile != null && scriptFile.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
                 {
                     bool isDirect = metadata.IsDirect;
-                    bool prevIsDirect;
-                    if (mapAssemblySettings.TryGetValue(scriptFile, out prevIsDirect))
+                    if (mapAssemblySettings.TryGetValue(scriptFile, out bool prevIsDirect))
                     {
                         if (prevIsDirect != isDirect)
                         {
@@ -756,37 +764,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return httpTrigger.Methods.Intersect(otherHttpTrigger.Methods).Any();
         }
 
-        internal static void ApplyApplicationInsightsConfig(JObject configJson, ScriptJobHostOptions scriptConfig)
-        {
-            scriptConfig.ApplicationInsightsSamplingSettings = new SamplingPercentageEstimatorSettings();
-            JObject configSection = (JObject)configJson["applicationInsights"];
-            if (configSection != null)
-            {
-                JObject samplingSection = (JObject)configSection["sampling"];
-                if (samplingSection != null)
-                {
-                    if (samplingSection.TryGetValue("isEnabled", out JToken value))
-                    {
-                        if (bool.TryParse(value.ToString(), out bool isEnabled) && !isEnabled)
-                        {
-                            scriptConfig.ApplicationInsightsSamplingSettings = null;
-                        }
-                    }
-
-                    if (scriptConfig.ApplicationInsightsSamplingSettings != null)
-                    {
-                        if (samplingSection.TryGetValue("maxTelemetryItemsPerSecond", out value))
-                        {
-                            if (double.TryParse(value.ToString(), out double itemsPerSecond))
-                            {
-                                scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond = itemsPerSecond;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         private void HandleHostError(Exception exception)
         {
             if (exception == null)
@@ -822,8 +799,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // See if we can identify which function caused the error, and if we can
                 // log the error as needed to its function specific logs.
-                FunctionDescriptor function = null;
-                if (TryGetFunctionFromException(Functions, exception, out function))
+                if (TryGetFunctionFromException(Functions, exception, out FunctionDescriptor function))
                 {
                     NotifyInvoker(function.Name, exception);
                 }
@@ -874,7 +850,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             // TODO: DI (FACAVAL) Review
             foreach (var function in Functions)
-           {
+            {
                 var metadata = _metadataProvider.GetFunctionMetadata(function.Metadata.Name);
                 if (metadata != null)
                 {

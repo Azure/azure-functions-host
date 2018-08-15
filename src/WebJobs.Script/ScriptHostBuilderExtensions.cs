@@ -2,6 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
@@ -11,11 +14,13 @@ using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -29,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentNullException(nameof(configureOptions));
             }
 
-            var options = new ScriptApplicationHostOptions();
+            ScriptApplicationHostOptions options = new ScriptApplicationHostOptions();
 
             configureOptions(options);
 
@@ -43,15 +48,18 @@ namespace Microsoft.Azure.WebJobs.Script
             // Host configuration
             builder.ConfigureLogging((context, loggingBuilder) =>
             {
+                string loggingPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "Logging");
+                loggingBuilder.AddConfiguration(context.Configuration.GetSection(loggingPath));
+
                 loggingBuilder.Services.AddSingleton<ILoggerProvider, HostFileLoggerProvider>();
                 loggingBuilder.Services.AddSingleton<ILoggerProvider, FunctionFileLoggerProvider>();
 
                 if (ConsoleLoggingEnabled(context))
                 {
                     loggingBuilder.AddConsole(c => { c.DisableColors = false; });
-                    loggingBuilder.SetMinimumLevel(LogLevel.Trace);
-                    loggingBuilder.AddFilter(f => true);
                 }
+
+                ConfigureApplicationInsights(context, loggingBuilder);
             })
             .ConfigureAppConfiguration(c =>
             {
@@ -133,14 +141,37 @@ namespace Microsoft.Azure.WebJobs.Script
             // TODO: This doesn't seem to be picking up that it's in Development when running locally.
             bool enableConsole = context.HostingEnvironment.IsDevelopment();
 
-            string configValue = context.Configuration.GetSection(ScriptConstants.ConsoleLoggingMode).Value;
-            if (!string.IsNullOrEmpty(configValue))
+            string consolePath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "Logging", "Console", "IsEnabled");
+            IConfigurationSection configSection = context.Configuration.GetSection(consolePath);
+
+            if (configSection.Exists())
             {
                 // if it has been explicitly configured that value overrides default
-                enableConsole = string.Compare(configValue, "always", StringComparison.OrdinalIgnoreCase) == 0 ? true : false;
+                enableConsole = configSection.Get<bool>();
             }
 
             return enableConsole;
+        }
+
+        internal static void ConfigureApplicationInsights(HostBuilderContext context, ILoggingBuilder builder)
+        {
+            string appInsightsKey = context.Configuration[EnvironmentSettingNames.AppInsightsInstrumentationKey];
+            if (!string.IsNullOrEmpty(appInsightsKey))
+            {
+                builder.AddApplicationInsights(o => o.InstrumentationKey = appInsightsKey);
+                builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
+
+                // Override the default SdkVersion with the functions key
+                builder.Services.AddSingleton<TelemetryClient>(provider =>
+                {
+                    TelemetryConfiguration configuration = provider.GetService<TelemetryConfiguration>();
+                    TelemetryClient client = new TelemetryClient(configuration);
+
+                    client.Context.GetInternalContext().SdkVersion = $"azurefunctions: {ScriptHost.Version}";
+
+                    return client;
+                });
+            }
         }
     }
 }

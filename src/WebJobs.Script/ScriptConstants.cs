@@ -49,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategoryFunction = "Function";
         public const string LogCategoryWorker = "Worker";
         public const string LogCategoryMigration = "Host.Migration";
-        public const string ConsoleLoggingMode = "consoleLoggingMode";
 
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters

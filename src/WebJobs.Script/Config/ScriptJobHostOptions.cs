@@ -6,8 +6,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
-using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.Implementation;
-using Microsoft.Azure.WebJobs.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -130,12 +128,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// locally or via CLI.
         /// </summary>
         public bool IsSelfHost { get; set; }
-
-        /// <summary>
-        /// Gets or sets the <see cref="SamplingPercentageEstimatorSettings"/> to be used for Application
-        /// Insights client-side sampling. If null, client-side sampling is disabled.
-        /// </summary>
-        public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
 
         /// <summary>
         /// Gets the <see cref="HostHealthMonitorConfiguration"/> to use.

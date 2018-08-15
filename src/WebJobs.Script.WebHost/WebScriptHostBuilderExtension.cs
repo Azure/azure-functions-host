@@ -2,11 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -26,30 +22,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();
 
             builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory))
-                .ConfigureLogging((context, loggingBuilder) =>
+                .ConfigureAppConfiguration(configurationBuilder =>
                 {
-                    // TODO: DI (FACAVAL) Temporary - replace with proper logger factory using
-                    // job host configuration
+                    ConfigureRegisteredBuilders(configurationBuilder, rootServiceProvider);
+                })
+                .ConfigureLogging(loggingBuilder =>
+                {
                     loggingBuilder.Services.AddSingleton<ILoggerFactory, ScriptLoggerFactory>();
 
                     loggingBuilder.Services.AddSingleton<ILoggerProvider, SystemLoggerProvider>();
 
-                    // TODO: DI (BRETTSAM) re-enable app insights
-                    // If the instrumentation key is null, the call to AddApplicationInsights is a no-op.
-                    string appInsightsKey = context.Configuration[EnvironmentSettingNames.AppInsightsInstrumentationKey];
-                    // loggingBuilder.Services.AddApplicationInsights(appInsightsKey, (_, level) => level > LogLevel.Debug, null);
+                    ConfigureRegisteredBuilders(loggingBuilder, rootServiceProvider);
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, webJobsBuilder =>
                 {
-                    webJobsBuilder.AddWebJobsLogging() // Enables WebJobs v1 classic logging
-                    .AddAzureStorageCoreServices();
+                    webJobsBuilder
+                        .AddWebJobsLogging() // Enables WebJobs v1 classic logging
+                        .AddAzureStorageCoreServices();
 
                     configureWebJobs?.Invoke(webJobsBuilder);
 
-                    // If there is a script host configuration builder registered, allow it to configure
-                    // the host builder
-                    var scriptBuilder = rootServiceProvider.GetService<IConfigureWebJobsBuilder>();
-                    scriptBuilder?.Configure(webJobsBuilder);
+                    ConfigureRegisteredBuilders(webJobsBuilder, rootServiceProvider);
                 })
                 .ConfigureServices(services =>
                 {
@@ -73,6 +66,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 });
 
             return builder;
+        }
+
+        private static void ConfigureRegisteredBuilders<TBuilder>(TBuilder builder, IServiceProvider services)
+        {
+            foreach (IConfigureBuilder<TBuilder> configureBuilder in services.GetServices<IConfigureBuilder<TBuilder>>())
+            {
+                configureBuilder.Configure(builder);
+            }
         }
     }
 }

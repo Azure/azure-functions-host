@@ -14,18 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class ScriptHostOptionsSetupTests
     {
-        [Fact(Skip = "Re-enable after Application Insights DI changes")]
-        public void Configure_ApplicationInsightsConfig_NoSettings_CreatesDefaultSettings()
-        {
-            ScriptHostOptionsSetup setup = CreateSetupWithConfiguration();
-
-            var options = new ScriptJobHostOptions();
-            setup.Configure(options);
-
-            Assert.NotNull(options.ApplicationInsightsSamplingSettings);
-            Assert.Equal(5, options.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
-        }
-
         [Fact]
         public void Configure_FileWatching()
         {

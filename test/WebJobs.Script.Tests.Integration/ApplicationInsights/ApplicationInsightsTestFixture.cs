@@ -5,21 +5,16 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
+using Microsoft.ApplicationInsights.Channel;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 {
     public abstract class ApplicationInsightsTestFixture : IDisposable
     {
-        private readonly TestServer _testServer;
+        public const string ApplicationInsightsKey = "some_key";
 
         public ApplicationInsightsTestFixture(string scriptRoot, string testId)
         {
@@ -31,32 +26,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 SecretsPath = Environment.CurrentDirectory // not used
             };
 
-            var hostBuilder = Program.CreateWebHostBuilder()
-                .ConfigureAppConfiguration((builderContext, config) =>
+            TestHost = new TestFunctionHost(Path.Combine(Environment.CurrentDirectory, scriptRoot),
+                jobHostBuilder =>
                 {
-                    config.AddInMemoryCollection(new Dictionary<string, string>
+                    jobHostBuilder.Services.AddSingleton<ITelemetryChannel>(_ => Channel);
+
+                    jobHostBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                     {
-                        [EnvironmentSettingNames.AppInsightsInstrumentationKey] = ""//TestChannelLoggerProviderFactory.ApplicationInsightsKey - TODO: review (brettsam)
+                        o.Functions = new[]
+                        {
+                            "Scenarios",
+                            "HttpTrigger-Scenarios"
+                        };
                     });
-                })
-                .ConfigureServices(services =>
+                },
+                configurationBuilder =>
                 {
-                    services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(WebHostOptions)));
-                    //services.Replace(new ServiceDescriptor(typeof(ILoggerProviderFactory), new TestChannelLoggerProviderFactory(Channel)));
-                    services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
-                    services.AddSingleton<IConfigureWebJobsBuilder, ScriptHostBuilder>();
+                    configurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        [EnvironmentSettingNames.AppInsightsInstrumentationKey] = ApplicationInsightsKey
+                    });
                 });
 
-            _testServer = new TestServer(hostBuilder);
-
-            HttpClient = _testServer.CreateClient();
+            HttpClient = TestHost.HttpClient;
             HttpClient.BaseAddress = new Uri("https://localhost/");
 
             TestHelpers.WaitForWebHost(HttpClient);
         }
 
-        // TODO: DI (FACAVAL) brettsam - missing type?
-        // public TestTelemetryChannel Channel { get; private set; } = new TestTelemetryChannel();
+        public TestTelemetryChannel Channel { get; private set; } = new TestTelemetryChannel();
+
+        public TestFunctionHost TestHost { get; }
 
         public ScriptApplicationHostOptions WebHostOptions { get; private set; }
 
@@ -64,11 +64,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public void Dispose()
         {
-            _testServer?.Dispose();
+            TestHost?.Dispose();
             HttpClient?.Dispose();
         }
 
-        private class ScriptHostBuilder : IConfigureWebJobsBuilder
+        private class ScriptHostBuilder : IConfigureBuilder<IWebJobsBuilder>
         {
             public void Configure(IWebJobsBuilder builder)
             {
