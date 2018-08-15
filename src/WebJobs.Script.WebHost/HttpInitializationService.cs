@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -24,13 +23,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IWebJobsRouter _router;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IScriptJobHost _host;
+        private readonly IEnvironment _environment;
 
-        public HttpInitializationService(IOptions<HttpOptions> httpOptions, IWebJobsRouter router, ILoggerFactory loggerFactory, IScriptJobHost host)
+        public HttpInitializationService(IOptions<HttpOptions> httpOptions, IWebJobsRouter router, ILoggerFactory loggerFactory, IScriptJobHost host, IEnvironment environment)
         {
             _httpOptions = httpOptions;
             _router = router;
             _loggerFactory = loggerFactory;
             _host = host;
+            _environment = environment;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -50,12 +51,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _router.ClearRoutes();
 
             // TODO: FACAVAL Instantiation of the ScriptRouteHandler should be cleaned up
-            // TODO: DI (FACAVAL) Remove settings manager usage
-            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, _host, ScriptSettingsManager.Instance, false), httpOptions.RoutePrefix);
+            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, _host, _environment, false), httpOptions.RoutePrefix);
 
             // Proxies do not honor the route prefix defined in host.json
-            // TODO: DI (FACAVAL) Remove settings manager usage
-            WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, _host, ScriptSettingsManager.Instance, true), routePrefix: null);
+            WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, _host, _environment, true), routePrefix: null);
 
             foreach (var function in functions)
             {

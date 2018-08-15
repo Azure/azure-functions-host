@@ -20,14 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public abstract class FunctionBinding
     {
-        private readonly ScriptJobHostOptions _config;
-        private readonly INameResolver _nameResolver;
+        private readonly ScriptJobHostOptions _options;
 
-        protected FunctionBinding(ScriptJobHostOptions config, BindingMetadata metadata, FileAccess access)
+        protected FunctionBinding(ScriptJobHostOptions options, BindingMetadata metadata, FileAccess access)
         {
-            // TODO: DI (FACAVAL) Inject...
-            _nameResolver = null;
-            _config = config;
+            _options = options;
             Access = access;
             Metadata = metadata;
         }
@@ -96,12 +93,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             functionBinding = new ExtensionBinding(config, scriptBinding, bindingMetadata);
 
             return true;
-        }
-
-        protected string Resolve(string name)
-        {
-            // TODO: DI (FACAVAL) Inject resolver
-            return _nameResolver?.ResolveWholeString(name) ?? name;
         }
 
         internal static IEnumerable ReadAsEnumerable(object value)

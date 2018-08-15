@@ -19,14 +19,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
     {
         private readonly IScriptJobHost _scriptHost;
         private readonly ILoggerFactory _loggerFactory;
-        private readonly ScriptSettingsManager _settingsManager;
+        private readonly IEnvironment _environment;
         private readonly bool _isProxy;
 
-        public ScriptRouteHandler(ILoggerFactory loggerFactory, IScriptJobHost scriptHost, ScriptSettingsManager settingsManager, bool isProxy)
+        public ScriptRouteHandler(ILoggerFactory loggerFactory, IScriptJobHost scriptHost, IEnvironment environment, bool isProxy)
         {
             _scriptHost = scriptHost;
             _loggerFactory = loggerFactory;
-            _settingsManager = settingsManager;
+            _environment = environment;
             _isProxy = isProxy;
         }
 
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
             }
 
             var descriptor = _scriptHost.Functions.FirstOrDefault(f => string.Equals(f.Name, functionName));
-            var executionFeature = new FunctionExecutionFeature(_scriptHost, descriptor, _settingsManager, _loggerFactory);
+            var executionFeature = new FunctionExecutionFeature(_scriptHost, descriptor, _environment, _loggerFactory);
             context.Features.Set<IFunctionExecutionFeature>(executionFeature);
 
             await Task.CompletedTask;

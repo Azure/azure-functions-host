@@ -68,47 +68,5 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return new Collection<Attribute> { attribute };
             }
         }
-
-        // TODO: DI (FACAVAL) Load storage extensions dynamically
-        //private class BlobScriptBinding : ScriptBinding
-        //{
-        //    public BlobScriptBinding(ScriptBindingContext context) : base(context)
-        //    {
-        //    }
-
-        //    public override Type DefaultType
-        //    {
-        //        get
-        //        {
-        //            return typeof(Stream);
-        //        }
-        //    }
-
-        //    public override Collection<Attribute> GetAttributes()
-        //    {
-        //        Collection<Attribute> attributes = new Collection<Attribute>();
-
-        //        string path = Context.GetMetadataValue<string>("path");
-        //        Attribute attribute = null;
-        //        if (Context.IsTrigger)
-        //        {
-        //            attribute = new BlobTriggerAttribute(path);
-        //        }
-        //        else
-        //        {
-        //            attribute = new BlobAttribute(path, Context.Access);
-        //        }
-        //        attributes.Add(attribute);
-
-        //        var connectionProvider = (IConnectionProvider)attribute;
-        //        string connection = Context.GetMetadataValue<string>("connection");
-        //        if (!string.IsNullOrEmpty(connection))
-        //        {
-        //            connectionProvider.Connection = connection;
-        //        }
-
-        //        return attributes;
-        //    }
-        //}
     }
 }

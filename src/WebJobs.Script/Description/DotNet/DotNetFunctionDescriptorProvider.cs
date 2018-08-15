@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.Extensions.Logging;
@@ -18,19 +19,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal sealed class DotNetFunctionDescriptorProvider : FunctionDescriptorProvider, IDisposable
     {
+        private readonly IMetricsLogger _metricsLogger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> _compilationServiceFactory;
 
-        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, ILoggerFactory loggerFactory)
-           : this(host, config, bindingProviders, new DotNetCompilationServiceFactory(loggerFactory), loggerFactory)
+        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, IMetricsLogger metricsLogger, ILoggerFactory loggerFactory)
+           : this(host, config, bindingProviders, new DotNetCompilationServiceFactory(loggerFactory), metricsLogger, loggerFactory)
         {
         }
 
         public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
-            ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory,
-            ILoggerFactory loggerFactory)
+            ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory, IMetricsLogger metricsLogger, ILoggerFactory loggerFactory)
             : base(host, config, bindingProviders)
         {
+            _metricsLogger = metricsLogger;
             _loggerFactory = loggerFactory;
             _compilationServiceFactory = compilationServiceFactory;
         }
@@ -74,6 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 new FunctionEntryPointResolver(functionMetadata.EntryPoint),
                 _compilationServiceFactory,
                 _loggerFactory,
+                _metricsLogger,
                 BindingProviders);
         }
 

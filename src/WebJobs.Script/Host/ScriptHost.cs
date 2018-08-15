@@ -417,7 +417,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (string.IsNullOrEmpty(_language))
             {
                 _startupLogger.LogTrace("Adding Function descriptor providers for all languages.");
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
                 _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
             }
             else
@@ -425,7 +425,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _startupLogger.LogTrace($"Adding Function descriptor provider for language {_language}.");
                 if (string.Equals(_language, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
-                    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
+                    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
                 }
                 else
                 {
@@ -647,18 +647,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             return visitedTypes;
         }
-
-        // TODO: DI (FACAVAL) All of this just gets replaced with a metrics logger registration
-        //private IMetricsLogger CreateMetricsLogger()
-        //{
-        //    IMetricsLogger metricsLogger = ScriptConfig.HostOptions.GetService<IMetricsLogger>();
-        //    if (metricsLogger == null)
-        //    {
-        //        metricsLogger = new MetricsLogger();
-        //        ScriptConfig.HostOptions.AddService<IMetricsLogger>(metricsLogger);
-        //    }
-        //    return metricsLogger;
-        //}
 
         internal Collection<FunctionDescriptor> GetFunctionDescriptors(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {

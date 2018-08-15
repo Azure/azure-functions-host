@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             metadata.Bindings.Add(new BindingMetadata() { Name = "Test", Type = "ManualTrigger" });
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host, metadata, new Collection<FunctionBinding>(), new Collection<FunctionBinding>(),
-                dependencies.EntrypointResolver.Object, dependencies.CompilationServiceFactory.Object, dependencies.LoggerFactory,
+                dependencies.EntrypointResolver.Object, dependencies.CompilationServiceFactory.Object, dependencies.LoggerFactory, dependencies.MetricsLogger,
                 new Collection<IScriptBindingProvider>());
 
             // Send file change notification to trigger a reload
@@ -167,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host, metadata, new Collection<FunctionBinding>(),
                     new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new DotNetCompilationServiceFactory(null),
-                    dependencies.LoggerFactory, new Collection<IScriptBindingProvider>());
+                    dependencies.LoggerFactory, dependencies.MetricsLogger, new Collection<IScriptBindingProvider>());
 
                 try
                 {
@@ -227,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host, metadata, new Collection<FunctionBinding>(),
                     new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(), new DotNetCompilationServiceFactory(null),
-                    dependencies.LoggerFactory, new Collection<IScriptBindingProvider>());
+                    dependencies.LoggerFactory, dependencies.MetricsLogger, new Collection<IScriptBindingProvider>());
                 try
                 {
                     await invoker.GetFunctionTargetAsync();
@@ -330,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host, metadata, new Collection<FunctionBinding>(),
                 new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(),
-                compilationFactory.Object, dependencies.LoggerFactory, new Collection<IScriptBindingProvider>(), new Mock<IFunctionMetadataResolver>().Object);
+                compilationFactory.Object, dependencies.LoggerFactory, dependencies.MetricsLogger, new Collection<IScriptBindingProvider>(), new Mock<IFunctionMetadataResolver>().Object);
 
             var arguments = new object[]
             {
@@ -393,7 +393,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host, metadata, new Collection<FunctionBinding>(),
                   new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(),
-                  new DotNetCompilationServiceFactory(null), dependencies.LoggerFactory, new Collection<IScriptBindingProvider>(), metadataResolver.Object);
+                  new DotNetCompilationServiceFactory(null), dependencies.LoggerFactory, dependencies.MetricsLogger, new Collection<IScriptBindingProvider>(), metadataResolver.Object);
 
                 await invoker.RestorePackagesAsync(true);
 
@@ -457,7 +457,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 CompilationService = compilationService,
                 CompilationServiceFactory = compilationServiceFactory,
                 LoggerProvider = loggerProvider,
-                LoggerFactory = loggerFactory
+                LoggerFactory = loggerFactory,
+                MetricsLogger = metricsLogger
             };
         }
 
@@ -476,6 +477,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public TestLoggerProvider LoggerProvider { get; set; }
 
             public ILoggerFactory LoggerFactory { get; set; }
+
+            public MetricsLogger MetricsLogger { get; set; }
         }
     }
 }

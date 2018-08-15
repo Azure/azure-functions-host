@@ -174,12 +174,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     _logger.LogWarning("Host id explicitly set in the host.json. It is recommended that you remove the \"id\" property in your host.json.");
                 }
 
-                // TODO: DI (FACAVAL) Move to options setup
-                //if (string.IsNullOrEmpty(_hostOptions.HostId))
-                //{
-                //    _hostOptions.HostId = Utility.GetDefaultHostId(_settingsManager, ScriptConfig);
-                //}
-
                 // TODO: DI (FACAVAL) Move to setup
                 //if (string.IsNullOrEmpty(_hostOptions.HostId))
                 //{
