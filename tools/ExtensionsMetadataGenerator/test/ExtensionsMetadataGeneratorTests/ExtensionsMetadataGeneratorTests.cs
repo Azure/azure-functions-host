@@ -36,5 +36,17 @@ namespace ExtensionsMetadataGeneratorTests
             Assert.Equal("BarExtension", extensions[1]["name"]);
             Assert.Equal(typeof(BarWebJobsStartup).AssemblyQualifiedName, extensions[1]["typeName"]);
         }
+
+        [Theory]
+        [InlineData("System.Linq.dll", true)]
+        [InlineData("Microsoft.Azure.WebJobs.Extensions.dll", true)]
+        [InlineData("Microsoft.Azure.WebJobs.Extensions.Http.dll", true)]
+        [InlineData("microsoft.azure.webjobs.extensions.http.dll", true)]
+        [InlineData("Microsoft.Azure.EventGrid.dll", false)]
+        [InlineData("MyCoolExtension.dll", false)]
+        public void SomeAssembliesAreSkipped(string assemblyFileName, bool shouldSkip)
+        {
+            Assert.Equal(shouldSkip, ExtensionsMetadataGenerator.ExtensionsMetadataGenerator.AssemblyShouldBeSkipped(assemblyFileName));
+        }
     }
 }

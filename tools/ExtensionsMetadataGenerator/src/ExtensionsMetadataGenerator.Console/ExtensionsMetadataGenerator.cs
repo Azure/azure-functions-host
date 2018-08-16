@@ -17,6 +17,9 @@ namespace ExtensionsMetadataGenerator
     {
         private const string WebJobsStartupAttributeType = "Microsoft.Azure.WebJobs.Hosting.WebJobsStartupAttribute";
 
+        // These assemblies are always loaded by the functions runtime and should not be listed in extensions.json
+        private static readonly string[] ExcludedAssemblies = new[] { "Microsoft.Azure.WebJobs.Extensions.dll", "Microsoft.Azure.WebJobs.Extensions.Http.dll" };
+
         public static void Generate(string sourcePath, string outputPath, Action<string> logger)
         {
             if (!Directory.Exists(sourcePath))
@@ -27,7 +30,7 @@ namespace ExtensionsMetadataGenerator
             var extensionReferences = new List<ExtensionReference>();
 
             var targetAssemblies = Directory.EnumerateFiles(sourcePath, "*.dll")
-                .Where(f => !Path.GetFileName(f).StartsWith("System", StringComparison.OrdinalIgnoreCase));
+                .Where(f => !AssemblyShouldBeSkipped(Path.GetFileName(f)));
 
             foreach (var path in targetAssemblies)
             {
@@ -46,6 +49,8 @@ namespace ExtensionsMetadataGenerator
             string json = GenerateExtensionsJson(extensionReferences);
             File.WriteAllText(outputPath, json);
         }
+
+        public static bool AssemblyShouldBeSkipped(string fileName) => fileName.StartsWith("System", StringComparison.OrdinalIgnoreCase) || ExcludedAssemblies.Contains(fileName, StringComparer.OrdinalIgnoreCase);
 
         public static string GenerateExtensionsJson(IEnumerable<ExtensionReference> extensionReferences)
         {
