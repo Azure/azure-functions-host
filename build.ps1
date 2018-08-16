@@ -180,7 +180,30 @@ function CreateZips([string] $runtimeSuffix) {
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\runtimes\osx" -ErrorAction SilentlyContinue
 
     # Create site extension packages
-    ZipContent $publishTarget "$buildOutput\Functions.Private.$extensionVersion-alpha$runtimeSuffix.zip"
+
+    # Prepare private "no-runtime" with custom xdt
+    if ($runtimeSuffix -eq  ".no-runtime") {
+        $currentXdtPath = "$privateSiteExtensionPath\applicationHost.xdt"
+        $tempXdtDir = "$buildOutput\xdt-temp"
+        $tempPublicXdtPath = "$tempXdtDir\applicationHost-public.xdt"
+
+        # Make a temp location
+        New-Item -Itemtype directory -path $tempXdtDir -ErrorAction SilentlyContinue
+
+        # Move the current (public) xdt to the temp location
+        Move-Item $currentXdtPath $tempPublicXdtPath
+
+        # Drop in the private XDT
+        Copy-Item .\src\WebJobs.Script.WebHost\applicationHost-private.xdt $currentXdtPath
+
+        # Make the zip
+        ZipContent $publishTarget "$buildOutput\Functions.Private.$extensionVersion-alpha$runtimeSuffix.zip"
+
+        # Restore the public XDT
+        Move-Item $tempPublicXdtPath $currentXdtPath -Force
+
+        Remove-Item $tempXdtDir -Recurse
+    }
 
     #Build site extension
     Write-Host "privateSiteExtensionPath: " $privateSiteExtensionPath
