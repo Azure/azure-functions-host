@@ -22,6 +22,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();
 
             builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory))
+                .AddScriptHost(webHostOptions, configLoggerFactory, webJobsBuilder =>
+                {
+                    webJobsBuilder
+                        .AddWebJobsLogging() // Enables WebJobs v1 classic logging
+                        .AddAzureStorageCoreServices();
+
+                    configureWebJobs?.Invoke(webJobsBuilder);
+
+                    ConfigureRegisteredBuilders(webJobsBuilder, rootServiceProvider);
+                })
                 .ConfigureAppConfiguration(configurationBuilder =>
                 {
                     ConfigureRegisteredBuilders(configurationBuilder, rootServiceProvider);
@@ -33,16 +43,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     loggingBuilder.Services.AddSingleton<ILoggerProvider, SystemLoggerProvider>();
 
                     ConfigureRegisteredBuilders(loggingBuilder, rootServiceProvider);
-                })
-                .AddScriptHost(webHostOptions, configLoggerFactory, webJobsBuilder =>
-                {
-                    webJobsBuilder
-                        .AddWebJobsLogging() // Enables WebJobs v1 classic logging
-                        .AddAzureStorageCoreServices();
-
-                    configureWebJobs?.Invoke(webJobsBuilder);
-
-                    ConfigureRegisteredBuilders(webJobsBuilder, rootServiceProvider);
                 })
                 .ConfigureServices(services =>
                 {
