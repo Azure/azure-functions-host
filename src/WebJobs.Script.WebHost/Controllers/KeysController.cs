@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
@@ -25,12 +26,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private static readonly Lazy<Dictionary<string, string>> EmptyKeys = new Lazy<Dictionary<string, string>>(() => new Dictionary<string, string>());
         private readonly ISecretManager _secretManager;
         private readonly ILogger _logger;
-        private readonly ScriptApplicationHostOptions _settings;
+        private readonly IOptions<ScriptApplicationHostOptions> _applicationOptions;
         private readonly IFileSystem _fileSystem;
 
-        public KeysController(ScriptApplicationHostOptions settings, ISecretManager secretManager, ILoggerFactory loggerFactory, IFileSystem fileSystem)
+        public KeysController(IOptions<ScriptApplicationHostOptions> applicationOptions, ISecretManager secretManager, ILoggerFactory loggerFactory, IFileSystem fileSystem)
         {
-            _settings = settings;
+            _applicationOptions = applicationOptions;
             _secretManager = secretManager;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryKeysController);
             _fileSystem = fileSystem;
@@ -250,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private bool IsFunction(string functionName)
         {
             string json = null;
-            string functionPath = Path.Combine(_settings.ScriptPath, functionName);
+            string functionPath = Path.Combine(_applicationOptions.Value.ScriptPath, functionName);
             return Utility.TryReadFunctionConfig(functionPath, out json, _fileSystem);
         }
     }

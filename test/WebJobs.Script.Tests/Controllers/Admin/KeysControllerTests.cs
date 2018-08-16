@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
@@ -59,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "TestFunction2", ScriptConstants.FunctionMetadataFileName))).Returns("{}");
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "DNE", ScriptConstants.FunctionMetadataFileName))).Throws(new DirectoryNotFoundException());
 
-            _testController = new KeysController(settings, _secretsManagerMock.Object, new LoggerFactory(), fileSystem.Object);
+            _testController = new KeysController(new OptionsWrapper<ScriptApplicationHostOptions>(settings), _secretsManagerMock.Object, new LoggerFactory(), fileSystem.Object);
 
             var keys = new Dictionary<string, string>
             {

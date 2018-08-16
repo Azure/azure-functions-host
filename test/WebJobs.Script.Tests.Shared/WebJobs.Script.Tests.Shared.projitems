@@ -9,7 +9,7 @@
     <Import_RootNamespace>Microsoft.Azure.WebJobs.Script.Tests</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)DelegatedScriptJobHostBuilder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)DelegatedConfigureBuilder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HttpTestHelpers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)NullScriptHostEnvironment.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SingleThreadedSynchronizationContext.cs" />
@@ -24,7 +24,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)TestHelpers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHelpers.Functions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestInvoker.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)TestChannelLoggerProviderFactory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestTelemetryChannel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestLogger.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestLoggerProviderFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestLoggerProvider.cs" />

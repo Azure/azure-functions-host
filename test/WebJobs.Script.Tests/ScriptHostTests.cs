@@ -604,8 +604,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             //Assert.Equal(0.77F, scriptConfig.HostHealthMonitor.CounterThreshold);
         }
 
-    
-
         [Fact]
         public void TryGetFunctionFromException_FunctionMatch()
         {

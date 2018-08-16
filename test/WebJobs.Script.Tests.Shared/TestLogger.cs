@@ -13,10 +13,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
     public class TestLogger : ILogger
     {
-        private IList<LogMessage> _logMessages = new List<LogMessage>();
-
         // protect against changes to _logMessages while enumerating
         private readonly object _syncLock = new object();
+
+        private IList<LogMessage> _logMessages = new List<LogMessage>();
 
         public TestLogger(string category)
         {
