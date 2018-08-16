@@ -45,7 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDBTrigger
             await Task.Delay(FileTraceWriter.LogFlushIntervalMs);
 
             // now wait for function to be invoked
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob,
+                userMessageCallback: Fixture.TraceWriter.GetLog);
 
             if (collectionsCreated)
             {

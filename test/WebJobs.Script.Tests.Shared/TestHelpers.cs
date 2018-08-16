@@ -66,9 +66,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static string RemoveByteOrderMarkAndWhitespace(string s) => Utility.RemoveUtf8ByteOrderMark(s).Trim().Replace(" ", string.Empty);
 
-        public static async Task<string> WaitForBlobAndGetStringAsync(CloudBlockBlob blob)
+        public static async Task<string> WaitForBlobAndGetStringAsync(CloudBlockBlob blob, Func<string> userMessageCallback = null)
         {
-            await WaitForBlobAsync(blob);
+            await WaitForBlobAsync(blob, userMessageCallback);
 
             string result = await blob.DownloadTextAsync(Encoding.UTF8,
                 null, new BlobRequestOptions(), new Microsoft.WindowsAzure.Storage.OperationContext());
@@ -76,12 +76,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return result;
         }
 
-        public static async Task WaitForBlobAsync(CloudBlockBlob blob)
+        public static async Task WaitForBlobAsync(CloudBlockBlob blob, Func<string> userMessageCallback = null)
         {
             await TestHelpers.Await(() =>
             {
                 return blob.Exists();
-            });
+            }, userMessageCallback: userMessageCallback);
         }
 
         public static void ClearFunctionLogs(string functionName)
