@@ -11,7 +11,7 @@ module.exports = function (context, input) {
         var bindingData = context.bindingData,
             eventProperties = bindingData.propertiesArray[i],
             systemProperties = bindingData.systemPropertiesArray[i],
-            id = input[i].value;
+            id = JSON.parse(input[i]).value;
 
         context.log('EventId: %s, EnqueuedTime: %s, Sequence: %d, Index: %s',
             id,
