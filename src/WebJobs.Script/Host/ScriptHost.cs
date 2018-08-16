@@ -246,7 +246,10 @@ namespace Microsoft.Azure.WebJobs.Script
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
                 PreInitialize();
-                await InitializeWorkersAsync();
+                using (_metricsLogger.LatencyEvent(MetricEventNames.OutOfProcWorkerLatency))
+                {
+                    await InitializeWorkersAsync();
+                }
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
@@ -452,7 +455,10 @@ namespace Microsoft.Azure.WebJobs.Script
             var serverImpl = new FunctionRpcService(EventManager);
             var server = new GrpcServer(serverImpl, ScriptOptions.MaxMessageLengthBytes);
 
-            await server.StartAsync();
+            using (_metricsLogger.LatencyEvent(MetricEventNames.OutOfProcGrpcServerStartLatency))
+            {
+                await server.StartAsync();
+            }
 
             var processFactory = new DefaultWorkerProcessFactory();
 
