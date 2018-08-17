@@ -729,61 +729,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // Assert.Equal(rawBody, (string)resultObject["reqRawBody"]);
         }
 
-        [Fact(Skip = "unsupported")]
-        public void WebHookTrigger_GenericJson()
-        {
-            //string testData = Guid.NewGuid().ToString();
-            //JObject testObject = new JObject
-            //{
-            //    { "a", testData }
-            //};
-            //HttpRequestMessage request = new HttpRequestMessage
-            //{
-            //    RequestUri = new Uri(string.Format("http://localhost/api/webhooktrigger?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5")),
-            //    Method = HttpMethod.Post,
-            //    Content = new StringContent(testObject.ToString())
-            //};
-            //request.SetConfiguration(Fixture.RequestConfiguration);
-            //request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-            //request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-
-            //Dictionary<string, object> arguments = new Dictionary<string, object>
-            //{
-            //    { "payload", request }
-            //};
-            //await Fixture.Host.CallAsync("WebHookTrigger", arguments);
-
-            //HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
-            //Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-            //string body = await response.Content.ReadAsStringAsync();
-            //Assert.Equal(string.Format("WebHook processed successfully! {0}", testData), body);
-        }
-
-        [Fact(Skip = "unsupported")]
-        public void WebHookTrigger_NoContent()
-        {
-            //HttpRequestMessage request = new HttpRequestMessage
-            //{
-            //    RequestUri = new Uri(string.Format("http://localhost/api/webhooktrigger?code=1388a6b0d05eca2237f10e4a4641260b0a08f3a5")),
-            //    Method = HttpMethod.Post,
-            //};
-            //request.SetConfiguration(Fixture.RequestConfiguration);
-            //request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-
-            //Dictionary<string, object> arguments = new Dictionary<string, object>
-            //{
-            //    { "payload", request }
-            //};
-            //await Fixture.Host.CallAsync("WebHookTrigger", arguments);
-
-            //HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
-            //Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-            //string body = await response.Content.ReadAsStringAsync();
-            //Assert.Equal(string.Format("No content"), body);
-        }
-
         [Fact(Skip = "Needs investigation")]
         public async Task HttpTrigger_Scenarios_Buffer()
         {

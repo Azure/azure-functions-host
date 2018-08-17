@@ -54,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 new DirectSharedAssemblyProvider(typeof(Newtonsoft.Json.JsonConvert).Assembly), /* Newtonsoft.Json */
                 new DirectSharedAssemblyProvider(typeof(WindowsAzure.Storage.StorageUri).Assembly), /* Microsoft.WindowsAzure.Storage */
-                new LocalSharedAssemblyProvider(@"^Microsoft\.AspNet\.WebHooks\..*"), /* Microsoft.AspNet.WebHooks.* */
             };
 
         private static readonly string[] DefaultNamespaceImports =

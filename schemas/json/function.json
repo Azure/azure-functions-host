@@ -255,10 +255,6 @@
               "type": "string",
               "description": "The function HTTP route template."
             },
-            "webHookType": {
-              "type": "string",
-              "description": "The type of WebHook handled by the trigger (if handling a pre-defined WebHook)."
-            },
             "authLevel": {
               "type": "string",
               "default": "function",
