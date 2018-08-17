@@ -14,8 +14,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string HostStartupInitializeBindingProvidersLatency = "host.startup.initializebindingproviders.latency";
         public const string HostStartupCreateMetadataProviderLatency = "host.startup.createmetadataprovider.latency";
         public const string HostStartupGetFunctionDescriptorsLatency = "host.startup.getfunctiondescriptors.latency";
-        public const string HostStartupInitializeWorkersLatency = "host.startup.outofproc.initializeworkers.latency";
-        public const string HostStartupGrpcServerLatency = "host.startup.outofproc.initializeworkers.grpcserver.latency";
+        public const string HostStartupGrpcServerLatency = "host.startup.outofproc.grpcserver.initialize.latency";
+
+        // language worker level events
+        public const string WorkerInitializeLatency = "host.startup.outofproc.{0}worker.initialize.latency";
 
         // function level events
         public const string FunctionInvokeLatency = "function.invoke.latency";

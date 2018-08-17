@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -50,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startSubscription;
+        private IDisposable _startLatencyMetric;
 
         private JsonSerializerSettings _verboseSerializerSettings = new JsonSerializerSettings()
         {
@@ -74,7 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             IObservable<FunctionRegistrationContext> functionRegistrations,
             WorkerConfig workerConfig,
             Uri serverUri,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            IMetricsLogger metricsLogger)
         {
             _workerId = Guid.NewGuid().ToString();
 
@@ -108,6 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Where(msg => Config.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
+
+            _startLatencyMetric = metricsLogger.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language));
 
             StartWorker();
         }
@@ -295,6 +300,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void WorkerReady(RpcEvent initEvent)
         {
+            _startLatencyMetric.Dispose();
+
             var initMessage = initEvent.Message.WorkerInitResponse;
             if (initMessage.Result.IsFailure(out Exception exc))
             {

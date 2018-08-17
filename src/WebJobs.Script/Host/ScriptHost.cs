@@ -246,10 +246,7 @@ namespace Microsoft.Azure.WebJobs.Script
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
                 PreInitialize();
-                using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupInitializeWorkersLatency))
-                {
-                    await InitializeWorkersAsync();
-                }
+                await InitializeWorkersAsync();
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
@@ -481,7 +478,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     registrations,
                     languageWorkerConfig,
                     server.Uri,
-                    _loggerFactory); // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
+                    _loggerFactory, // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
+                    _metricsLogger);
             };
             var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
             var providers = new List<IWorkerProvider>();
