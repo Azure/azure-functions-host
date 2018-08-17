@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal LanguageWorkerState CreateWorkerState(WorkerConfig config)
         {
             var state = new LanguageWorkerState();
-            state.Channel = _channelFactory(config, state.Functions);
+            state.Channel = _channelFactory(config, state.Functions, 0);
             _channelsDictionary[state.Channel.Id] = state.Channel;
             return state;
         }
@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         state.Errors.Add(workerError.Exception);
                         if (state.Errors.Count < 3)
                         {
-                            state.Channel = _channelFactory(config, state.Functions);
+                            state.Channel = _channelFactory(config, state.Functions, state.Errors.Count);
                             _channelsDictionary[state.Channel.Id] = state.Channel;
                         }
                         else

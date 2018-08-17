@@ -468,7 +468,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _startupLogger.LogWarning(e, "Unable to create process registry");
             }
 
-            CreateChannel channelFactory = (languageWorkerConfig, registrations) =>
+            CreateChannel channelFactory = (languageWorkerConfig, registrations, attemptCount) =>
             {
                 return new LanguageWorkerChannel(
                     ScriptOptions,
@@ -479,7 +479,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     languageWorkerConfig,
                     server.Uri,
                     _loggerFactory, // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
-                    _metricsLogger);
+                    _metricsLogger,
+                    attemptCount);
             };
             var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
             var providers = new List<IWorkerProvider>();

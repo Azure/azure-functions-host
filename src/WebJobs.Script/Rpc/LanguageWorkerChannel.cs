@@ -77,7 +77,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             WorkerConfig workerConfig,
             Uri serverUri,
             ILoggerFactory loggerFactory,
-            IMetricsLogger metricsLogger)
+            IMetricsLogger metricsLogger,
+            int attemptCount)
         {
             _workerId = Guid.NewGuid().ToString();
 
@@ -112,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 
-            _startLatencyMetric = metricsLogger.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language));
+            _startLatencyMetric = metricsLogger.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
 
             StartWorker();
         }
@@ -477,6 +478,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 if (!_disposed)
                 {
+                    _startLatencyMetric?.Dispose();
                     _startSubscription?.Dispose();
                     _process?.Dispose();
 
