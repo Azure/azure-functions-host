@@ -173,6 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private IHost BuildHost(bool isOffline = false)
         {
             var builder = new HostBuilder()
+                .SetAzureFunctionsEnvironment()
                 .AddWebScriptHost(_rootServiceProvider, _rootScopeFactory, _applicationHostOptions);
 
             if (isOffline)

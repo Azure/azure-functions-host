@@ -4,7 +4,6 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -26,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Host
             }
 
             var host = new HostBuilder()
+                .SetAzureFunctionsEnvironment()
                 .ConfigureLogging(b =>
                 {
                     b.SetMinimumLevel(LogLevel.Information);

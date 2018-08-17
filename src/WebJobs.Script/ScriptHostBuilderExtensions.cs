@@ -135,19 +135,38 @@ namespace Microsoft.Azure.WebJobs.Script
             return builder.UseExternalStartup(new ScriptStartupTypeDiscoverer(rootScriptPath));
         }
 
+        public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)
+        {
+            if (builder == null)
+            {
+                throw new ArgumentNullException(nameof(builder));
+            }
+
+            string azureFunctionsEnvironment = Environment.GetEnvironmentVariable(EnvironmentSettingNames.EnvironmentNameKey);
+
+            if (azureFunctionsEnvironment != null)
+            {
+                builder.UseEnvironment(azureFunctionsEnvironment);
+            }
+
+            return builder;
+        }
+
         internal static bool ConsoleLoggingEnabled(HostBuilderContext context)
         {
             // console logging defaults to false, except for self host
-            // TODO: This doesn't seem to be picking up that it's in Development when running locally.
             bool enableConsole = context.HostingEnvironment.IsDevelopment();
 
-            string consolePath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "Logging", "Console", "IsEnabled");
-            IConfigurationSection configSection = context.Configuration.GetSection(consolePath);
-
-            if (configSection.Exists())
+            if (!enableConsole)
             {
-                // if it has been explicitly configured that value overrides default
-                enableConsole = configSection.Get<bool>();
+                string consolePath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "Logging", "Console", "IsEnabled");
+                IConfigurationSection configSection = context.Configuration.GetSection(consolePath);
+
+                if (configSection.Exists())
+                {
+                    // if it has been explicitly configured that value overrides default
+                    enableConsole = configSection.Get<bool>();
+                }
             }
 
             return enableConsole;
