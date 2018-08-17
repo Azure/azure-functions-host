@@ -5,8 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -24,13 +22,28 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
     public class ScriptStartupTypeDiscoverer : IWebJobsStartupTypeDiscoverer
     {
         private readonly string _rootScriptPath;
-        // TODO: DI (FACAVAL) Pass a logger. This will be the root application logger.
-        // need to forward this to the user logs once created
-        private readonly ILogger _logger = NullLogger.Instance;
+        private readonly ILogger _logger;
+
+        private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
         public ScriptStartupTypeDiscoverer(string rootScriptPath)
+            : this(rootScriptPath, NullLogger.Instance)
+        {
+        }
+
+        public ScriptStartupTypeDiscoverer(string rootScriptPath, ILogger logger)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
+            _logger = logger;
+        }
+
+        private static string[] GetBuiltinExtensionAssemblies()
+        {
+            return new[]
+            {
+                typeof(WebJobs.Extensions.Http.HttpWebJobsStartup).Assembly.GetName().Name,
+                typeof(WebJobs.Extensions.ExtensionsWebJobsStartup).Assembly.GetName().Name
+            };
         }
 
         public Type[] GetStartupTypes()
@@ -61,6 +74,12 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 Type extensionType = Type.GetType(item.TypeName,
                     assemblyName =>
                     {
+                        if (_builtinExtensionAssemblies.Contains(assemblyName.Name, StringComparer.OrdinalIgnoreCase))
+                        {
+                            _logger.LogWarning($"The extension startup type '{item.TypeName}' belongs to a builtin extension");
+                            return null;
+                        }
+
                         string path = item.HintPath;
                         if (string.IsNullOrEmpty(path))
                         {
