@@ -256,6 +256,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(LanguageWorkerConstants.DefaultMaxMessageLengthBytes, options.MaxMessageLengthBytes);
         }
 
+        [Fact]
+        public void Configure_Default_AppliesFileLoggingMode()
+        {
+            var settings = new Dictionary<string, string>();
+            var options = GetConfiguredOptions(settings);
+
+            Assert.Equal(FileLoggingMode.DebugOnly, options.FileLoggingMode);
+        }
+
+        [Theory]
+        [InlineData("never", FileLoggingMode.Never)]
+        [InlineData("always", FileLoggingMode.Always)]
+        [InlineData("debugOnly", FileLoggingMode.DebugOnly)]
+        public void ConfigureW_WithConfiguration_AppliesFileLoggingMode(string setting, FileLoggingMode expectedMode)
+        {
+            var settings = new Dictionary<string, string>
+            {
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.JobHostLogger, "fileLoggingMode"), setting }
+            };
+
+            var options = GetConfiguredOptions(settings);
+
+            Assert.Equal(expectedMode, options.FileLoggingMode);
+        }
+
         private ScriptJobHostOptions GetConfiguredOptions(Dictionary<string, string> settings, IEnvironment environment = null)
         {
             ScriptHostOptionsSetup setup = CreateSetupWithConfiguration(settings, environment);

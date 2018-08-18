@@ -31,6 +31,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             // Add the standard built in watched directories set to any the user may have specified
             options.WatchDirectories.Add("node_modules");
 
+            // Set default logging mode
+            options.FileLoggingMode = FileLoggingMode.DebugOnly;
+
             // Bind to all configuration properties
             IConfigurationSection jobHostSection = _configuration.GetSection(ConfigurationSectionNames.JobHost);
 
