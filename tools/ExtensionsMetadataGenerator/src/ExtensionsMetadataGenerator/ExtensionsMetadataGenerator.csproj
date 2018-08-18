@@ -10,6 +10,8 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <Description>Azure Functions extensions metadata generator</Description>
+    <RepositoryUrl>https://github.com/Azure/azure-functions-host.git</RepositoryUrl> 
+    <RepositoryType>git</RepositoryType> 
   </PropertyGroup>
 
   <ItemGroup>
