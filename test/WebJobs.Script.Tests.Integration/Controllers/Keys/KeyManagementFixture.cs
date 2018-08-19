@@ -5,13 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Net.Http;
-using Autofac;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Moq;
 using Newtonsoft.Json.Linq;
 
