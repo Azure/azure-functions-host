@@ -287,6 +287,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Disabled", "Htt
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestFunctions", "test\TestFunctions\TestFunctions.csproj", "{5C308A72-5CF3-45E8-B64F-2C98F567054A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-CSharp-Compat", "HttpTrigger-CSharp-Compat", "{C8C88A61-54F2-494B-B4DC-1A5D18E0C37C}"
+	ProjectSection(SolutionItems) = preProject
+		sample\HttpTrigger-CSharp-Compat\function.json = sample\HttpTrigger-CSharp-Compat\function.json
+		sample\HttpTrigger-CSharp-Compat\function.proj = sample\HttpTrigger-CSharp-Compat\function.proj
+		sample\HttpTrigger-CSharp-Compat\run.csx = sample\HttpTrigger-CSharp-Compat\run.csx
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
@@ -388,6 +395,7 @@ Global
 		{38920568-003E-448F-963B-41B739D1E01C} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{C7E0020B-6581-4065-A204-99302938A85C} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{5C308A72-5CF3-45E8-B64F-2C98F567054A} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
+		{C8C88A61-54F2-494B-B4DC-1A5D18E0C37C} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}

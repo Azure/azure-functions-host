@@ -225,6 +225,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task Legacy_RequestTypes_Succeed()
+        {
+            string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CSharp-Compat");
+            string id = Guid.NewGuid().ToString();
+            string uri = $"api/HttpTrigger-CSharp-Compat?code={functionKey}";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            string responseContent = await response.Content.ReadAsAsync<string>();
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("Hello from HttpResponseMessage", responseContent);
+        }
+
+        [Fact]
         public async Task HttpTrigger_CSharp_Poco_Get_Succeeds()
         {
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CSharp-Poco");
@@ -887,6 +902,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     {
                         "HttpTrigger",
                         "HttpTrigger-CSharp",
+                        "HttpTrigger-CSharp-Compat",
                         "HttpTrigger-CSharp-CustomRoute",
                         "HttpTrigger-CSharp-POCO",
                         "HttpTrigger-CustomRoute-Get",
