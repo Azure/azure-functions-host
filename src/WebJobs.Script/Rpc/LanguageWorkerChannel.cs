@@ -475,27 +475,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void HandleWorkerError(Exception exc)
         {
-            try
-            {
-                if (!_disposed)
-                {
-                    _startLatencyMetric?.Dispose();
-                    _startSubscription?.Dispose();
-                    _process?.Dispose();
-
-                    // unlink function inputs
-                    foreach (var link in _inputLinks)
-                    {
-                        link.Dispose();
-                    }
-                    _workerChannelLogger.LogError(exc, $"Language Worker Process exited.", _process.StartInfo.FileName);
-                    _eventManager.Publish(new WorkerErrorEvent(Id, exc));
-                }
-            }
-            catch (Exception e)
-            {
-                _workerChannelLogger.LogError(e, "LanguageWorkerChannel Error handler failure");
-            }
+            // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
+            _workerChannelLogger.LogError(exc, $"Language Worker Process exited.", _process.StartInfo.FileName);
+            _eventManager.Publish(new WorkerErrorEvent(Id, exc));
         }
 
         private void Send(StreamingMessage msg)
@@ -510,14 +492,30 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (disposing)
                 {
                     _startLatencyMetric?.Dispose();
+                    _startSubscription?.Dispose();
+
+                    // unlink function inputs
+                    foreach (var link in _inputLinks)
+                    {
+                        link.Dispose();
+                    }
+
                     // best effort process disposal
                     try
                     {
-                        _process?.Kill();
-                        _process?.Dispose();
+                        if (_process != null)
+                        {
+                            if (!_process.HasExited)
+                            {
+                                _process.Kill();
+                                _process.WaitForExit();
+                            }
+                            _process.Dispose();
+                        }
                     }
-                    catch
+                    catch (Exception e)
                     {
+                        _workerChannelLogger.LogError(e, "LanguageWorkerChannel Dispose failure");
                     }
 
                     foreach (var sub in _eventSubscriptions)
