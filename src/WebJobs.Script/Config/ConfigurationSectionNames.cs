@@ -13,5 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public const string WebHost = "AzureFunctionsWebHost";
         public const string JobHost = "AzureFunctionsJobHost";
         public const string JobHostLogger = "logger";
+        public const string HealthMonitor = "healthMonitor";
     }
 }

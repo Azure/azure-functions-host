@@ -18,7 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             FileWatchingEnabled = true;
             FileLoggingMode = FileLoggingMode.Never;
-            HostHealthMonitor = new HostHealthMonitorConfiguration();
             InstanceId = Guid.NewGuid().ToString();
             WatchDirectories = new Collection<string>();
         }
@@ -128,10 +127,5 @@ namespace Microsoft.Azure.WebJobs.Script
         /// locally or via CLI.
         /// </summary>
         public bool IsSelfHost { get; set; }
-
-        /// <summary>
-        /// Gets the <see cref="HostHealthMonitorConfiguration"/> to use.
-        /// </summary>
-        public HostHealthMonitorConfiguration HostHealthMonitor { get; }
     }
 }

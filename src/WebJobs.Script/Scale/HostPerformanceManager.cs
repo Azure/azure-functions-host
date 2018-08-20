@@ -3,35 +3,30 @@
 
 using System;
 using System.Collections.ObjectModel;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Scale
 {
     public class HostPerformanceManager
     {
-        private readonly ScriptSettingsManager _settingsManager;
-        private readonly HostHealthMonitorConfiguration _healthMonitorConfig;
+        private readonly IEnvironment _environment;
+        private readonly IOptions<HostHealthMonitorOptions> _healthMonitorOptions;
 
-        // for mock testing
-        public HostPerformanceManager()
+        public HostPerformanceManager(IEnvironment environment, IOptions<HostHealthMonitorOptions> healthMonitorOptions)
         {
-        }
-
-        public HostPerformanceManager(ScriptSettingsManager settingsManager, HostHealthMonitorConfiguration healthMonitorConfig)
-        {
-            if (settingsManager == null)
+            if (environment == null)
             {
-                throw new ArgumentNullException(nameof(settingsManager));
+                throw new ArgumentNullException(nameof(environment));
             }
-            if (healthMonitorConfig == null)
+            if (healthMonitorOptions == null)
             {
-                throw new ArgumentNullException(nameof(healthMonitorConfig));
+                throw new ArgumentNullException(nameof(healthMonitorOptions));
             }
 
-            _settingsManager = settingsManager;
-            _healthMonitorConfig = healthMonitorConfig;
+            _environment = environment;
+            _healthMonitorOptions = healthMonitorOptions;
         }
 
         public virtual bool IsUnderHighLoad(Collection<string> exceededCounters = null, ILogger logger = null)
@@ -39,13 +34,13 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             var counters = GetPerformanceCounters(logger);
             if (counters != null)
             {
-                return IsUnderHighLoad(counters, exceededCounters, _healthMonitorConfig.CounterThreshold);
+                return IsUnderHighLoad(counters, exceededCounters, _healthMonitorOptions.Value.CounterThreshold);
             }
 
             return false;
         }
 
-        internal static bool IsUnderHighLoad(ApplicationPerformanceCounters counters, Collection<string> exceededCounters = null, float threshold = HostHealthMonitorConfiguration.DefaultCounterThreshold)
+        internal static bool IsUnderHighLoad(ApplicationPerformanceCounters counters, Collection<string> exceededCounters = null, float threshold = HostHealthMonitorOptions.DefaultCounterThreshold)
         {
             bool exceeded = false;
 
@@ -78,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
 
         internal ApplicationPerformanceCounters GetPerformanceCounters(ILogger logger = null)
         {
-            string json = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteAppCountersName);
+            string json = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteAppCountersName);
             if (!string.IsNullOrEmpty(json))
             {
                 try

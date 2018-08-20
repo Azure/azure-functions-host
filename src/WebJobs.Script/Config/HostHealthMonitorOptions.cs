@@ -5,11 +5,11 @@ using System;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class HostHealthMonitorConfiguration
+    public class HostHealthMonitorOptions
     {
         internal const float DefaultCounterThreshold = 0.80F;
 
-        public HostHealthMonitorConfiguration()
+        public HostHealthMonitorOptions()
         {
             Enabled = true;
 

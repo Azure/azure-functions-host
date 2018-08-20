@@ -3,9 +3,8 @@
 
 using System.Collections.ObjectModel;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Scale;
-using Microsoft.WebJobs.Script.Tests;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -16,12 +15,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public void GetCounters_ReturnsExpectedResult()
         {
-            var mockSettings = new Mock<ScriptSettingsManager>(MockBehavior.Strict, null);
+            var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
             string value = string.Empty;
             var logger = new TestLogger("Test");
-            mockSettings.Setup(p => p.GetSetting(EnvironmentSettingNames.AzureWebsiteAppCountersName)).Returns(() => value);
-            var healthMonitorConfig = new HostHealthMonitorConfiguration();
-            var performanceManager = new HostPerformanceManager(mockSettings.Object, healthMonitorConfig);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteAppCountersName)).Returns(() => value);
+            var options = new HostHealthMonitorOptions();
+            var performanceManager = new HostPerformanceManager(mockEnvironment.Object, new OptionsWrapper<HostHealthMonitorOptions>(options));
 
             value = "{\"userTime\": 30000000,\"kernelTime\": 16562500,\"pageFaults\": 131522,\"processes\": 1,\"processLimit\": 32,\"threads\": 32,\"threadLimit\": 512,\"connections\": 4,\"connectionLimit\": 300,\"sections\": 3,\"sectionLimit\": 256,\"namedPipes\": 0,\"namedPipeLimit\": 128,\"readIoOperations\": 675,\"writeIoOperations\": 18,\"otherIoOperations\": 9721,\"readIoBytes\": 72585119,\"writeIoBytes\": 5446,\"otherIoBytes\": 393926,\"privateBytes\": 33759232,\"handles\": 987,\"contextSwitches\": 15535,\"remoteOpens\": 250}";
             var counters = performanceManager.GetPerformanceCounters(logger);
