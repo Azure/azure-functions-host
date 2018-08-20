@@ -20,6 +20,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static IApplicationBuilder UseWebJobsScriptHost(this IApplicationBuilder builder, IApplicationLifetime applicationLifetime, Action<WebJobsRouteBuilder> routes)
         {
+            // This middleware must be registered before we establish the request service provider.
+            builder.UseWhen(context => !context.Request.Path.StartsWithSegments("/admin"), config =>
+            {
+                config.UseMiddleware<HostAvailabilityCheckMiddleware>();
+            });
+
+            // This middleware must be registered before any other middleware depending on
+            // JobHost/ScriptHost scoped services.
             builder.UseMiddleware<ScriptHostRequestServiceProviderMiddleware>();
 
             if (!ScriptSettingsManager.Instance.IsAppServiceEnvironment)
@@ -33,11 +41,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMiddleware<HomepageMiddleware>();
             builder.UseMiddleware<FunctionInvocationMiddleware>();
             builder.UseMiddleware<HostWarmupMiddleware>();
-
-            builder.UseWhen(context => !context.Request.Path.StartsWithSegments("/admin"), config =>
-            {
-                config.UseMiddleware<HostAvailabilityCheckMiddleware>();
-            });
 
             // Register /admin/vfs, and /admin/zip to the VirtualFileSystem middleware.
             builder.UseWhen(VirtualFileSystemMiddleware.IsVirtualFileSystemRequest, config => config.UseMiddleware<VirtualFileSystemMiddleware>());
