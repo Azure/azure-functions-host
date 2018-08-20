@@ -302,6 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void WorkerReady(RpcEvent initEvent)
         {
             _startLatencyMetric.Dispose();
+            _startLatencyMetric = null;
 
             var initMessage = initEvent.Message.WorkerInitResponse;
             if (initMessage.Result.IsFailure(out Exception exc))
@@ -508,6 +509,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 if (disposing)
                 {
+                    _startLatencyMetric?.Dispose();
                     // best effort process disposal
                     try
                     {
