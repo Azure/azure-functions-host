@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
     {
         private readonly ILogger _logger;
 
-        public HostJsonFileConfigurationSource(IOptions<ScriptApplicationHostOptions> applicationHostOptions, ILoggerFactory loggerFactory)
+        public HostJsonFileConfigurationSource(ScriptApplicationHostOptions applicationHostOptions, ILoggerFactory loggerFactory)
         {
             if (loggerFactory == null)
             {
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
         }
 
-        public IOptions<ScriptApplicationHostOptions> HostOptions { get; }
+        public ScriptApplicationHostOptions HostOptions { get; }
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
                 // TODO: DI (FACAVAL) Logger configuration to move to startup:
                 // Logger = _startupLogger = _hostOptions.LoggerFactory.CreateLogger(LogCategories.Startup);
-                ScriptApplicationHostOptions options = _configurationSource.HostOptions.Value;
+                ScriptApplicationHostOptions options = _configurationSource.HostOptions;
                 string hostFilePath = Path.Combine(options.ScriptPath, ScriptConstants.HostMetadataFileName);
                 string readingFileMessage = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostFilePath);
                 JObject hostConfigObject = LoadHostConfig(hostFilePath);

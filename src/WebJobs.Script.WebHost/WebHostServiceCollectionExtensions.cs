@@ -14,10 +14,12 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
+using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -60,7 +62,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddMvc()
                 .AddXmlDataContractSerializerFormatters();
 
-            // Core script host service
+            // Standby services
+            services.AddStandbyServices();
+
+            // Core script host services
             services.AddSingleton<WebJobsScriptHostService>();
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
@@ -112,23 +117,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // builder.Register(ct => ct.Resolve<WebHostResolver>().GetLoggerFactory(ct.Resolve<WebHostSettings>())).As<ILoggerFactory>().ExternallyOwned();
 
             // Configuration
-            services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<ScriptApplicationHostOptions>, ScriptWebHostOptionsSetup>());
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsSetup>());
         }
 
-        // TODO: DI (FACAVAL) Removing this. We need to ensure system logs are properly written now when using the default provider.
-        //private static ILoggerFactory CreateLoggerFactory(string hostInstanceId, ScriptSettingsManager settingsManager, IEventGenerator eventGenerator, WebHostSettings settings)
-        //{
-        //    var loggerFactory = new LoggerFactory(Enumerable.Empty<ILoggerProvider>(), Utility.CreateLoggerFilterOptions());
+        private static void AddStandbyServices(this IServiceCollection services)
+        {
+            services.AddSingleton<IOptionsChangeTokenSource<ScriptApplicationHostOptions>, StandbyChangeTokenSource>();
 
-        //    var systemLoggerProvider = new SystemLoggerProvider(hostInstanceId, eventGenerator, settingsManager);
-        //    loggerFactory.AddProvider(systemLoggerProvider);
+            // Core script host service
+            services.AddSingleton<IHostedService>(p =>
+            {
+                var hostEnvironment = p.GetService<IScriptWebHostEnvironment>();
+                if (hostEnvironment.InStandbyMode)
+                {
+                    var applicationHostOptions = p.GetService<IOptions<ScriptApplicationHostOptions>>();
+                    var loggerFactory = p.GetService<ILoggerFactory>();
 
-        //    // This loggerFactory logs everything to host files. No filter is applied because it is created
-        //    // before we parse host.json.
-        //    var hostFileLogger = new HostFileLoggerProvider(hostInstanceId, settings.LogPath, () => true);
-        //    loggerFactory.AddProvider(hostFileLogger);
+                    return new StandbyInitializationService(applicationHostOptions, loggerFactory);
+                }
 
-        //    return loggerFactory;
-        //}
+                return NullHostedService.Instance;
+            });
+        }
     }
 }

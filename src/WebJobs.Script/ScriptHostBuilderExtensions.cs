@@ -39,10 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
             configureOptions(options);
 
-            return builder.AddScriptHost(new OptionsWrapper<ScriptApplicationHostOptions>(options), loggerFactory, null);
+            return builder.AddScriptHost(options, loggerFactory, null);
         }
 
-        public static IHostBuilder AddScriptHost(this IHostBuilder builder, IOptions<ScriptApplicationHostOptions> applicationOptions, ILoggerFactory loggerFactory, Action<IWebJobsBuilder> configureWebJobs = null)
+        public static IHostBuilder AddScriptHost(this IHostBuilder builder, ScriptApplicationHostOptions applicationOptions, ILoggerFactory loggerFactory, Action<IWebJobsBuilder> configureWebJobs = null)
         {
             loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
 
@@ -73,14 +73,14 @@ namespace Microsoft.Azure.WebJobs.Script
             return builder.AddScriptHostCore(applicationOptions, configureWebJobs);
         }
 
-        public static IHostBuilder AddScriptHostCore(this IHostBuilder builder, IOptions<ScriptApplicationHostOptions> webHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
+        public static IHostBuilder AddScriptHostCore(this IHostBuilder builder, ScriptApplicationHostOptions webHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
         {
             builder.ConfigureWebJobs(webJobsBuilder =>
             {
                 // Built in binding registrations
                 webJobsBuilder.AddExecutionContextBinding(o =>
                 {
-                    o.AppDirectory = webHostOptions.Value.ScriptPath;
+                    o.AppDirectory = webHostOptions.ScriptPath;
                 })
                 .AddHttp(o =>
                 {
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 .AddTimers()
                 .AddManualTrigger();
 
-                webJobsBuilder.UseScriptExternalStartup(webHostOptions.Value.ScriptPath);
+                webJobsBuilder.UseScriptExternalStartup(webHostOptions.ScriptPath);
 
                 configureWebJobs?.Invoke(webJobsBuilder);
             }, o => o.AllowPartialHostStartup = true);
@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IScriptBindingProvider, GeneralScriptBindingProvider>());
 
                 // Configuration
-                services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(webHostOptions);
+                services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(webHostOptions));
                 services.ConfigureOptions<ScriptHostOptionsSetup>();
 
                 services.AddSingleton<IDebugManager, DebugManager>();

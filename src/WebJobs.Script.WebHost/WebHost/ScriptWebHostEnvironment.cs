@@ -55,13 +55,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     return _standbyMode.Value;
                 }
-                if (_environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1")
+                if (_environment.IsPlaceholderModeEnabled())
                 {
                     return true;
                 }
 
                 // no longer standby mode
                 _standbyMode = false;
+
+                StandbyManager.NotifyChange();
 
                 return _standbyMode.Value;
             }

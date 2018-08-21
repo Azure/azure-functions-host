@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 ScriptPath = rootPath
             };
 
-            var configSource = new HostJsonFileConfigurationSource(new OptionsWrapper<ScriptApplicationHostOptions>(webHostOptions), loggerFactory);
+            var configSource = new HostJsonFileConfigurationSource(webHostOptions, loggerFactory);
 
             var configurationBuilder = new ConfigurationBuilder();
             IConfigurationProvider provider = configSource.Build(configurationBuilder);
@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 ScriptPath = rootPath
             };
 
-            var configSource = new HostJsonFileConfigurationSource(new OptionsWrapper<ScriptApplicationHostOptions>(webHostOptions), loggerFactory);
+            var configSource = new HostJsonFileConfigurationSource(webHostOptions, loggerFactory);
 
             var configurationBuilder = new ConfigurationBuilder()
                 .Add(configSource);
