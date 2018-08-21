@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
@@ -44,6 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public static IHostBuilder AddScriptHost(this IHostBuilder builder, IOptions<ScriptApplicationHostOptions> applicationOptions, ILoggerFactory loggerFactory, Action<IWebJobsBuilder> configureWebJobs = null)
         {
             loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
+
+            builder.SetAzureFunctionsConfigurationRoot();
 
             // Host configuration
             builder.ConfigureLogging((context, loggingBuilder) =>
@@ -148,6 +151,19 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 builder.UseEnvironment(azureFunctionsEnvironment);
             }
+
+            return builder;
+        }
+
+        public static IHostBuilder SetAzureFunctionsConfigurationRoot(this IHostBuilder builder)
+        {
+            builder.ConfigureAppConfiguration(c =>
+             {
+                 c.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        { "AzureWebJobsConfigurationSection", ConfigurationSectionNames.JobHost }
+                    });
+             });
 
             return builder;
         }
