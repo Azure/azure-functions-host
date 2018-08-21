@@ -24,7 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private ConcurrentDictionary<WorkerConfig, LanguageWorkerState> _channelStates = new ConcurrentDictionary<WorkerConfig, LanguageWorkerState>();
         private IDisposable _workerErrorSubscription;
         private IList<IDisposable> _workerStateSubscriptions = new List<IDisposable>();
-        private List<ILanguageWorkerChannel> _erroredChannels = new List<ILanguageWorkerChannel>();
         private ConcurrentDictionary<string, ILanguageWorkerChannel> _channelsDictionary = new ConcurrentDictionary<string, ILanguageWorkerChannel>();
         private bool disposedValue = false;
 
@@ -52,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal LanguageWorkerState CreateWorkerState(WorkerConfig config)
         {
             var state = new LanguageWorkerState();
-            state.Channel = _channelFactory(config, state.Functions);
+            state.Channel = _channelFactory(config, state.Functions, 0);
             _channelsDictionary[state.Channel.Id] = state.Channel;
             return state;
         }
@@ -74,11 +73,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     CreateWorkerState,
                     (config, state) =>
                     {
-                        _erroredChannels.Add(state.Channel);
+                        erroredChannel.Dispose();
                         state.Errors.Add(workerError.Exception);
                         if (state.Errors.Count < 3)
                         {
-                            state.Channel = _channelFactory(config, state.Functions);
+                            state.Channel = _channelFactory(config, state.Functions, state.Errors.Count);
                             _channelsDictionary[state.Channel.Id] = state.Channel;
                         }
                         else
@@ -114,12 +113,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                     foreach (var pair in _channelStates)
                     {
+                        // TODO #3296 - send WorkerTerminate message to shut down language worker process gracefully (instead of just a killing)
                         pair.Value.Channel.Dispose();
                         pair.Value.Functions.Dispose();
-                    }
-                    foreach (var channel in _erroredChannels)
-                    {
-                        channel.Dispose();
                     }
                     _server.ShutdownAsync().GetAwaiter().GetResult();
                 }

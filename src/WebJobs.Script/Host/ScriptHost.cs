@@ -452,7 +452,10 @@ namespace Microsoft.Azure.WebJobs.Script
             var serverImpl = new FunctionRpcService(EventManager);
             var server = new GrpcServer(serverImpl, ScriptOptions.MaxMessageLengthBytes);
 
-            await server.StartAsync();
+            using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGrpcServerLatency))
+            {
+                await server.StartAsync();
+            }
 
             var processFactory = new DefaultWorkerProcessFactory();
 
@@ -465,7 +468,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _startupLogger.LogWarning(e, "Unable to create process registry");
             }
 
-            CreateChannel channelFactory = (languageWorkerConfig, registrations) =>
+            CreateChannel channelFactory = (languageWorkerConfig, registrations, attemptCount) =>
             {
                 return new LanguageWorkerChannel(
                     ScriptOptions,
@@ -475,7 +478,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     registrations,
                     languageWorkerConfig,
                     server.Uri,
-                    _loggerFactory); // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
+                    _loggerFactory, // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
+                    _metricsLogger,
+                    attemptCount);
             };
             var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
             var providers = new List<IWorkerProvider>();

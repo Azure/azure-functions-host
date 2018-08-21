@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -50,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startSubscription;
+        private IDisposable _startLatencyMetric;
 
         private JsonSerializerSettings _verboseSerializerSettings = new JsonSerializerSettings()
         {
@@ -74,7 +76,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             IObservable<FunctionRegistrationContext> functionRegistrations,
             WorkerConfig workerConfig,
             Uri serverUri,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            IMetricsLogger metricsLogger,
+            int attemptCount)
         {
             _workerId = Guid.NewGuid().ToString();
 
@@ -108,6 +112,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Where(msg => Config.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
+
+            _startLatencyMetric = metricsLogger.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
 
             StartWorker();
         }
@@ -295,6 +301,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void WorkerReady(RpcEvent initEvent)
         {
+            _startLatencyMetric.Dispose();
+            _startLatencyMetric = null;
+
             var initMessage = initEvent.Message.WorkerInitResponse;
             if (initMessage.Result.IsFailure(out Exception exc))
             {
@@ -466,26 +475,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void HandleWorkerError(Exception exc)
         {
-            try
-            {
-                if (!_disposed)
-                {
-                    _startSubscription?.Dispose();
-                    _process?.Dispose();
-
-                    // unlink function inputs
-                    foreach (var link in _inputLinks)
-                    {
-                        link.Dispose();
-                    }
-                    _workerChannelLogger.LogError(exc, $"Language Worker Process exited.", _process.StartInfo.FileName);
-                    _eventManager.Publish(new WorkerErrorEvent(Id, exc));
-                }
-            }
-            catch (Exception e)
-            {
-                _workerChannelLogger.LogError(e, "LanguageWorkerChannel Error handler failure");
-            }
+            // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
+            _workerChannelLogger.LogError(exc, $"Language Worker Process exited.", _process.StartInfo.FileName);
+            _eventManager.Publish(new WorkerErrorEvent(Id, exc));
         }
 
         private void Send(StreamingMessage msg)
@@ -499,14 +491,31 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 if (disposing)
                 {
+                    _startLatencyMetric?.Dispose();
+                    _startSubscription?.Dispose();
+
+                    // unlink function inputs
+                    foreach (var link in _inputLinks)
+                    {
+                        link.Dispose();
+                    }
+
                     // best effort process disposal
                     try
                     {
-                        _process?.Kill();
-                        _process?.Dispose();
+                        if (_process != null)
+                        {
+                            if (!_process.HasExited)
+                            {
+                                _process.Kill();
+                                _process.WaitForExit();
+                            }
+                            _process.Dispose();
+                        }
                     }
-                    catch
+                    catch (Exception e)
                     {
+                        _workerChannelLogger.LogError(e, "LanguageWorkerChannel Dispose failure");
                     }
 
                     foreach (var sub in _eventSubscriptions)

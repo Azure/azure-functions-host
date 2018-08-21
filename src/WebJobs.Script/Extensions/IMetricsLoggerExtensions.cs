@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             private readonly object _metricEvent;
             private readonly IMetricsLogger _metricsLogger;
+            private bool _disposed;
 
             public DisposableEvent(string eventName, string functionName, IMetricsLogger metricsLogger)
             {
@@ -26,10 +27,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
             public void Dispose()
             {
-                if (_metricsLogger != null && _metricEvent != null)
+                if (!_disposed)
                 {
-                    _metricsLogger.EndEvent(_metricEvent);
+                    if (_metricsLogger != null && _metricEvent != null)
+                    {
+                        _metricsLogger.EndEvent(_metricEvent);
+                    }
                 }
+                _disposed = true;
             }
         }
     }
