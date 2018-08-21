@@ -17,6 +17,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Xunit;
+using static Microsoft.Azure.WebJobs.Script.Tests.TestFunctionHost;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 {
@@ -59,11 +60,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets")
             };
 
+            var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(HostOptions);
+            var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, Array.Empty<IOptionsChangeTokenSource<ScriptApplicationHostOptions>>(), factory);
             var webHostBuilder = new WebHostBuilder()
                 .ConfigureServices(services =>
                 {
                     services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
                     services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions));
+                    services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
                 })
                 .AddScriptHostBuilder(ConfigureJobHostBuilder)
                 .ConfigureAppConfiguration((builderContext, config) =>

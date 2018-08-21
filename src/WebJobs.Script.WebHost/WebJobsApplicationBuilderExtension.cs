@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Buffering;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -20,6 +20,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static IApplicationBuilder UseWebJobsScriptHost(this IApplicationBuilder builder, IApplicationLifetime applicationLifetime, Action<WebJobsRouteBuilder> routes)
         {
+            IEnvironment environment = builder.ApplicationServices.GetService<IEnvironment>() ?? SystemEnvironment.Instance;
+
+            if (environment.IsPlaceholderModeEnabled())
+            {
+                builder.UseMiddleware<PlaceholderSpecializationMiddleware>();
+            }
+
             // This middleware must be registered before we establish the request service provider.
             builder.UseWhen(context => !context.Request.Path.StartsWithSegments("/admin"), config =>
             {
@@ -30,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // JobHost/ScriptHost scoped services.
             builder.UseMiddleware<ScriptHostRequestServiceProviderMiddleware>();
 
-            if (!ScriptSettingsManager.Instance.IsAppServiceEnvironment)
+            if (!environment.IsAppServiceEnvironment())
             {
                 builder.UseMiddleware<AppServiceHeaderFixupMiddleware>();
             }

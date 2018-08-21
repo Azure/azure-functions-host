@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -22,13 +21,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IServiceProvider _rootServiceProvider;
         private readonly IServiceScopeFactory _rootScopeFactory;
-        private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
+        private readonly IScriptWebHostEnvironment _scriptWebHostEnvironment;
         private readonly ILogger _logger;
         private CancellationTokenSource _startupLoopTokenSource;
         private bool _disposed = false;
         private IHost _host;
 
-        public WebJobsScriptHostService(IOptions<ScriptApplicationHostOptions> applicationHostOptions, IServiceProvider rootServiceProvider, IServiceScopeFactory rootScopeFactory, ILoggerFactory loggerFactory)
+        public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IServiceProvider rootServiceProvider,
+            IServiceScopeFactory rootScopeFactory, IScriptWebHostEnvironment scriptWebHostEnvironment, ILoggerFactory loggerFactory)
         {
             if (loggerFactory == null)
             {
@@ -38,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _rootServiceProvider = rootServiceProvider ?? throw new ArgumentNullException(nameof(rootServiceProvider));
             _rootScopeFactory = rootScopeFactory ?? throw new ArgumentNullException(nameof(rootScopeFactory));
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
+            _scriptWebHostEnvironment = scriptWebHostEnvironment ?? throw new ArgumentNullException(nameof(scriptWebHostEnvironment));
 
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
 
@@ -176,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             var builder = new HostBuilder()
                 .SetAzureFunctionsEnvironment()
-                .AddWebScriptHost(_rootServiceProvider, _rootScopeFactory, _applicationHostOptions);
+                .AddWebScriptHost(_rootServiceProvider, _rootScopeFactory, _applicationHostOptions.CurrentValue);
 
             if (isOffline)
             {
@@ -197,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private bool CheckAppOffline()
         {
             // check if we should be in an offline state
-            string offlineFilePath = Path.Combine(_applicationHostOptions.Value.ScriptPath, ScriptConstants.AppOfflineFileName);
+            string offlineFilePath = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.AppOfflineFileName);
             if (File.Exists(offlineFilePath))
             {
                 State = ScriptHostState.Offline;

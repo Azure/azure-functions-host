@@ -37,28 +37,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Mock<IEventGenerator> eventGeneratorMock = new Mock<IEventGenerator>();
         }
 
-        [Fact]
-        public void InStandbyMode_ReturnsExpectedValue()
-        {
-            var environment = new Tests.TestEnvironment();
-            var scriptHostEnvironment = new ScriptWebHostEnvironment(environment);
-
-            // initially false
-            Assert.Equal(false, scriptHostEnvironment.InStandbyMode);
-
-            scriptHostEnvironment = new ScriptWebHostEnvironment(environment);
-
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            Assert.Equal(true, scriptHostEnvironment.InStandbyMode);
-
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-            Assert.Equal(false, scriptHostEnvironment.InStandbyMode);
-
-            // test only set one way
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            Assert.Equal(false, scriptHostEnvironment.InStandbyMode);
-        }
-
         [Fact(Skip = "Review test")]
         public async Task GetScriptHostConfiguration_ReturnsExpectedValue()
         {
@@ -83,24 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             //await TestGetter(_webHostResolver.GetWebScriptHostManager);
         }
 
-        [Fact(Skip = "Review test")]
-        public async Task EnsureInitialized_NonPlaceholderMode()
-        {
-            using (new TestEnvironment())
-            {
-                // TODO: DI (FACAVAL) Logic here has changed significantly - Mathewc - please review
-                var settings = await GetWebHostSettings();
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-                Assert.False(new ScriptWebHostEnvironment().InStandbyMode);
-                //_webHostResolver.EnsureInitialized(settings);
-
-                // ensure specialization message is NOT written
-                var traces = _loggerProvider.GetAllLogMessages().ToArray();
-                var traceEvent = traces.SingleOrDefault(p => p.FormattedMessage.Contains(Resources.HostSpecializationTrace));
-                Assert.Null(traceEvent);
-            }
-        }
-
+     
         [Fact(Skip = "Review test")]
         public async Task EnsureInitialized_PlaceholderMode()
         {

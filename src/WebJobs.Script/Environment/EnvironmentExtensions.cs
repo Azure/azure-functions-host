@@ -20,6 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return !environment.IsAppServiceEnvironment() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName));
         }
 
+        public static bool IsPlaceholderModeEnabled(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(AzureWebsitePlaceholderMode) == "1";
+        }
+
         public static bool IsRemoteDebuggingEnabled(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(RemoteDebuggingPort));

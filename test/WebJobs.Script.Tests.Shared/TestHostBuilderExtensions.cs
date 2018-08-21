@@ -47,7 +47,7 @@ namespace Microsoft.WebJobs.Script.Tests
             var rootProvider = new WebHostServiceProvider(services);
 
             builder
-                .AddWebScriptHost(rootProvider, rootProvider, new OptionsWrapper<ScriptApplicationHostOptions>(webHostOptions), configureWebJobs)
+                .AddWebScriptHost(rootProvider, rootProvider, webHostOptions, configureWebJobs)
                 .ConfigureAppConfiguration(c =>
                 {
                     c.AddTestSettings();

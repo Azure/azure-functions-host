@@ -15,9 +15,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<HostAvailabilityCheckMiddleware> _logger;
-        private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
 
-        public HostAvailabilityCheckMiddleware(RequestDelegate next, ILoggerFactory loggerFactory, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
+        public HostAvailabilityCheckMiddleware(RequestDelegate next, ILoggerFactory loggerFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
         {
             _next = next;
             _logger = loggerFactory.CreateLogger<HostAvailabilityCheckMiddleware>();
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             else
             {
                 // host is offline so return the app_offline.htm file content
-                var offlineFilePath = Path.Combine(_applicationHostOptions.Value.ScriptPath, ScriptConstants.AppOfflineFileName);
+                var offlineFilePath = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.AppOfflineFileName);
                 httpContext.Response.ContentType = "text/html";
                 httpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
                 await httpContext.Response.SendFileAsync(offlineFilePath);
