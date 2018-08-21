@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.EventHubs;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,8 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
 
             var bindingData = payload["bindingData"];
             int sequenceNumber = (int)bindingData["sequenceNumber"];
-            var systemProperties = bindingData["systemProperties"];
-            Assert.Equal(sequenceNumber, (int)systemProperties["x-opt-sequence-number"]);
+            IDictionary<string, object> systemProperties = bindingData["systemProperties"].ToObject<Dictionary<string, object>>();
+            Assert.Equal(sequenceNumber, (long)systemProperties["sequenceNumber"]);
         }
 
         public class TestFixture : EndToEndTestFixture
