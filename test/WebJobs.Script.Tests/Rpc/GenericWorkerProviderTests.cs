@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
@@ -257,14 +258,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [MemberData(nameof(InvalidWorkerDescriptions))]
         public void InvalidWorkerDescription_Throws(WorkerDescription workerDescription)
         {
-            Assert.Throws<ArgumentNullException>(() => workerDescription.IsValid());
+            Assert.Throws<ValidationException>(() => workerDescription.Validate());
         }
 
         [Theory]
         [MemberData(nameof(ValidWorkerDescriptions))]
-        public void ValidWorkerDescription_Returns_True(WorkerDescription workerDescription)
+        public void ValidateWorkerDescription_Succeeds(WorkerDescription workerDescription)
         {
-            Assert.True(workerDescription.IsValid());
+            workerDescription.Validate();
         }
 
         private IEnumerable<IWorkerProvider> TestReadWorkerProviderFromConfig(IEnumerable<TestLanguageWorkerConfig> configs, ILogger testLogger, string language = null, Dictionary<string, string> keyValuePairs = null, bool appSvcEnv = false)

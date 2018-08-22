@@ -19,7 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         // Worker description constants
         public const string WorkerDescriptionLanguage = "language";
-        public const string WorkerDescriptionExtension = "extension";
         public const string WorkerDescriptionDefaultExecutablePath = "defaultExecutablePath";
         public const string WorkerDescriptionDefaultWorkerPath = "defaultWorkerPath";
         public const string WorkerDescription = "description";

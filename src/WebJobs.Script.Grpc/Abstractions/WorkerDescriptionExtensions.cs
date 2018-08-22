@@ -1,31 +1,30 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace Microsoft.Azure.WebJobs.Script.Abstractions
 {
     public static class WorkerDescriptionExtensions
     {
-        public static bool IsValid(this WorkerDescription workerDescription)
+        public static void Validate(this WorkerDescription workerDescription)
         {
             if (string.IsNullOrEmpty(workerDescription.Language))
             {
-                throw new ArgumentNullException(nameof(workerDescription.Language));
+                throw new ValidationException($"WorkerDescription {nameof(workerDescription.Language)} cannot be empty");
             }
             if (workerDescription.Extensions == null)
             {
-                throw new ArgumentNullException(nameof(workerDescription.Extensions));
+                throw new ValidationException($"WorkerDescription {nameof(workerDescription.Extensions)} cannot be null");
             }
             if (string.IsNullOrEmpty(workerDescription.DefaultExecutablePath))
             {
-                throw new ArgumentNullException(nameof(workerDescription.DefaultExecutablePath));
+                throw new ValidationException($"WorkerDescription {nameof(workerDescription.DefaultExecutablePath)} cannot be empty");
             }
             if (string.IsNullOrEmpty(workerDescription.DefaultWorkerPath))
             {
-                throw new ArgumentNullException(nameof(workerDescription.DefaultWorkerPath));
+                throw new ValidationException($"WorkerDescription {nameof(workerDescription.DefaultWorkerPath)} cannot be empty");
             }
-            return true;
         }
     }
 }
