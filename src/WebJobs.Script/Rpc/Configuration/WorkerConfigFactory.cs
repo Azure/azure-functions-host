@@ -143,7 +143,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (File.Exists(workerDescription.GetWorkerPath()))
                 {
                     logger.LogTrace($"Will load worker provider for language: {workerDescription.Language}");
-                    _workerProviderDictionary[workerDescription.Language] = new GenericWorkerProvider(workerDescription, workerDir);
+                    if (workerDescription.IsValid())
+                    {
+                        _workerProviderDictionary[workerDescription.Language] = new GenericWorkerProvider(workerDescription, workerDir);
+                    }
                 }
                 else
                 {
@@ -181,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 profileDescription.Arguments = profileDescription.Arguments?.Count > 0 ? profileDescription.Arguments : defaultWorkerDescription.Arguments;
                 profileDescription.DefaultExecutablePath = string.IsNullOrEmpty(profileDescription.DefaultExecutablePath) ? defaultWorkerDescription.DefaultExecutablePath : profileDescription.DefaultExecutablePath;
                 profileDescription.DefaultWorkerPath = string.IsNullOrEmpty(profileDescription.DefaultWorkerPath) ? defaultWorkerDescription.DefaultWorkerPath : profileDescription.DefaultWorkerPath;
-                profileDescription.Extensions = (profileDescription.Extensions != null && profileDescription.Extensions.Count > 0) ? defaultWorkerDescription.Extensions : profileDescription.Extensions;
+                profileDescription.Extensions = profileDescription.Extensions ?? defaultWorkerDescription.Extensions;
                 profileDescription.Language = string.IsNullOrEmpty(profileDescription.Language) ? defaultWorkerDescription.Language : profileDescription.Language;
                 profileDescription.WorkerDirectory = string.IsNullOrEmpty(profileDescription.WorkerDirectory) ? defaultWorkerDescription.WorkerDirectory : profileDescription.WorkerDirectory;
                 return profileDescription;
