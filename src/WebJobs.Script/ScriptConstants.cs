@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TraceSourceHostAdmin = "HostAdmin";
         public const string TraceSourceFileWatcher = "FileWatcher";
         public const string TraceSourceHttpHandler = "HttpRequestTraceHandler";
+        public const string TraceSourceHttpThrottleMiddleware = "HttpThrottleMiddleware";
 
         public const string LoggerHttpRequest = "MS_HttpRequest";
 
