@@ -28,6 +28,13 @@
           ContinueOnError="true"/>
   </Target>
 
+  <Target Name="_GenerateFunctionsExtensionsMetadataPostPublish"
+          AfterTargets="Publish">
+    <GenerateFunctionsExtensionsMetadata
+          SourcePath="$(PublishDir)bin"
+          OutputPath="$(PublishDir)bin"/>
+  </Target>
+
   <Target Name="_ResolveAdditionalReferenceCopyLocalPathsForFunctionsExtensions"
           AfterTargets="ResolveReferences"
           Condition="$(_IsFunctionsSdkBuild) != 'true'">
