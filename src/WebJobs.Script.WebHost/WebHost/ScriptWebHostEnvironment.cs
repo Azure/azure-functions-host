@@ -2,8 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -24,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public ScriptWebHostEnvironment(IEnvironment environment)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _delayTaskCompletionSource = new TaskCompletionSource<object>();
+            _delayTaskCompletionSource = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             _delayTaskCompletionSource.SetResult(null);
         }
 
@@ -62,8 +60,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 // no longer standby mode
                 _standbyMode = false;
-
-                StandbyManager.NotifyChange();
 
                 return _standbyMode.Value;
             }

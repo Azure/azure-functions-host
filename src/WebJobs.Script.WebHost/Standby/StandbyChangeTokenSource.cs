@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Threading;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
@@ -14,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Standby
 
         public IChangeToken GetChangeToken()
         {
-            return StandbyManager.GetChangeToken();
+            return StandbyManager.ChangeToken;
         }
     }
 }

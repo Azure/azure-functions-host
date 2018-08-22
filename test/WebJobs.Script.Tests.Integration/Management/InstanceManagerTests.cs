@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public void StartAssignment_ReturnsFalse_WhenNotInStandbyMode()
         {
-            Assert.False(new ScriptWebHostEnvironment().InStandbyMode);
+            Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
 
             var context = new HostAssignmentContext();
             bool result = _instanceManager.StartAssignment(context);

@@ -11,19 +11,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     public class PlaceholderSpecializationMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly IScriptHostManager _hostManager;
-        private readonly Lazy<Task> _specializationTask;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
-        private Func<HttpContext, Task> _invoke;
+        private readonly IStandbyManager _standbyManager;
+        private RequestDelegate _invoke;
 
-        public PlaceholderSpecializationMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment, IScriptHostManager hostManager)
+        public PlaceholderSpecializationMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment, IStandbyManager standbyManager)
         {
             _next = next;
-            _hostManager = hostManager;
             _invoke = InvokeSpecializationCheck;
             _webHostEnvironment = webHostEnvironment;
-
-            _specializationTask = new Lazy<Task>(SpecializeHost, LazyThreadSafetyMode.ExecutionAndPublication);
+            _standbyManager = standbyManager;
         }
 
         public async Task Invoke(HttpContext httpContext)
@@ -35,23 +32,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             if (!_webHostEnvironment.InStandbyMode)
             {
-                await _specializationTask.Value;
+                await _standbyManager.SpecializeHostAsync();
+
+                Interlocked.Exchange(ref _invoke, _next);
             }
 
             await _next(httpContext);
-        }
-
-        private Task InvokeNext(HttpContext httpContext)
-        {
-            return _next(httpContext);
-        }
-
-        private async Task SpecializeHost()
-        {
-            await _hostManager.RestartHostAsync();
-            await _hostManager.DelayUntilHostReady();
-
-            Interlocked.Exchange(ref _invoke, InvokeNext);
         }
     }
 }

@@ -48,62 +48,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             CleanupTestDirectory();
         }
 
-        [Fact]
-        public void IsWarmUpRequest_ReturnsExpectedValue()
-        {
-            var environment = new ScriptWebHostEnvironment();
-            var request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
-            Assert.False(StandbyManager.IsWarmUpRequest(request, environment));
-
-            var vars = new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0" },
-                { EnvironmentSettingNames.AzureWebsiteInstanceId, null }
-            };
-            using (var env = new TestScopedEnvironmentVariable(vars))
-            {
-                // Get a new instance of the host environemnt, which
-                // will reset the standby flag.
-                environment = new ScriptWebHostEnvironment();
-
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-                Assert.False(StandbyManager.IsWarmUpRequest(request, environment));
-
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId, "12345");
-                Assert.True(StandbyManager.IsWarmUpRequest(request, environment));
-
-                request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/csharphttpwarmup");
-                Assert.True(StandbyManager.IsWarmUpRequest(request, environment));
-
-                request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
-                request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, "xyz123");
-                Assert.False(StandbyManager.IsWarmUpRequest(request, environment));
-
-                request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/foo");
-                Assert.False(StandbyManager.IsWarmUpRequest(request, environment));
-            }
-
-            vars = new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0" },
-                { EnvironmentSettingNames.AzureWebsiteInstanceId, null }
-            };
-            using (var env = new TestScopedEnvironmentVariable(vars))
-            {
-                // Get a new instance of the host environemnt, which
-                // will reset the standby flag.
-                environment = new ScriptWebHostEnvironment();
-
-                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-                Assert.False(StandbyManager.IsWarmUpRequest(request, environment));
-
-                request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
-                _settingsManager.SetSetting(EnvironmentSettingNames.ContainerName, "TestContainer");
-                Assert.True(SystemEnvironment.Instance.IsLinuxContainerEnvironment());
-                Assert.True(StandbyManager.IsWarmUpRequest(request, environment));
-            }
-        }
-
         [Fact(Skip = "facaval - investigating")]
         public async Task StandbyMode_EndToEnd()
         {
@@ -127,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                 ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
 
-                Assert.False(new ScriptWebHostEnvironment().InStandbyMode);
+                Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
                 Assert.True(ScriptSettingsManager.Instance.ContainerReady);
 
                 _httpServer.Dispose();
@@ -200,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 response = await _httpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-                Assert.False(new ScriptWebHostEnvironment().InStandbyMode);
+                Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
                 Assert.True(ScriptSettingsManager.Instance.ContainerReady);
 
                 // verify warmup function no longer there

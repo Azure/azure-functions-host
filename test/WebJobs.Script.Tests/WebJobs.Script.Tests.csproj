@@ -81,10 +81,6 @@
     </None>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Middleware\" />
-  </ItemGroup>
-
   <Import Project="..\..\build\GrpcTestFix.targets" />
   <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
 

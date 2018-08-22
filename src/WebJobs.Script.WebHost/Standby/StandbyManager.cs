@@ -8,9 +8,11 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -18,39 +20,48 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     /// <summary>
     /// Contains methods related to standby mode (placeholder) app initialization.
     /// </summary>
-    public static class StandbyManager
+    public class StandbyManager : IStandbyManager
     {
-        private const string WarmUpFunctionName = "WarmUp";
-        private const string WarmUpAlternateRoute = "CSharpHttpWarmup";
+        private readonly IScriptHostManager _scriptHostManager;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
+        private readonly Lazy<Task> _specializationTask;
+        private readonly ILogger _logger;
         private static CancellationTokenSource _standbyCancellationTokenSource = new CancellationTokenSource();
         private static IChangeToken _standbyChangeToken = new CancellationChangeToken(_standbyCancellationTokenSource.Token);
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
-        public static async Task<HttpResponseMessage> WarmUp(HttpRequest request, IScriptHostManager scriptHostManager)
+        public StandbyManager(IScriptHostManager scriptHostManager, IOptionsMonitor<ScriptApplicationHostOptions> options, ILoggerFactory loggerFactory)
         {
-            if (request.Query.TryGetValue("restart", out StringValues value) && string.Compare("1", value) == 0)
-            {
-                await scriptHostManager.RestartHostAsync(CancellationToken.None);
+            _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
+            _options = options ?? throw new ArgumentNullException(nameof(options));
+            _logger = loggerFactory.CreateLogger(LogCategories.Startup);
+            _specializationTask = new Lazy<Task>(SpecializeHostCoreAsync, LazyThreadSafetyMode.ExecutionAndPublication);
+        }
 
-                // This call is here for sanity, but we should be fully initialized.
-                await scriptHostManager.DelayUntilHostReady();
+        public static IChangeToken ChangeToken => _standbyChangeToken;
+
+        public Task SpecializeHostAsync()
+        {
+            return _specializationTask.Value;
+        }
+
+        public async Task SpecializeHostCoreAsync()
+        {
+            NotifyChange();
+
+            await _scriptHostManager.RestartHostAsync();
+            await _scriptHostManager.DelayUntilHostReady();
+        }
+
+        public IChangeToken GetChangeToken() => _standbyChangeToken;
+
+        public void NotifyChange()
+        {
+            if (_standbyCancellationTokenSource == null)
+            {
+                return;
             }
 
-            return new HttpResponseMessage(HttpStatusCode.OK);
-        }
-
-        public static bool IsWarmUpRequest(HttpRequest request, IScriptWebHostEnvironment webHostEnvironment)
-        {
-            return webHostEnvironment.InStandbyMode &&
-                ((SystemEnvironment.Instance.IsAppServiceEnvironment() && request.IsAntaresInternalRequest()) || SystemEnvironment.Instance.IsLinuxContainerEnvironment()) &&
-                (request.Path.StartsWithSegments(new PathString($"/api/{WarmUpFunctionName}")) ||
-                request.Path.StartsWithSegments(new PathString($"/api/{WarmUpAlternateRoute}")));
-        }
-
-        public static IChangeToken GetChangeToken() => _standbyChangeToken;
-
-        internal static void NotifyChange()
-        {
             var tokenSource = Interlocked.Exchange(ref _standbyCancellationTokenSource, null);
 
             if (tokenSource != null &&
@@ -66,18 +77,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public static async Task InitializeAsync(ScriptApplicationHostOptions options, ILogger logger)
-        {
-            await CreateStandbyFunctionsAsync(options.ScriptPath, logger);
-        }
-
-        private static async Task CreateStandbyFunctionsAsync(string scriptPath, ILogger logger)
+        public async Task InitializeAsync()
         {
             if (await _semaphore.WaitAsync(timeout: TimeSpan.FromSeconds(30)))
             {
                 try
                 {
-                    logger.LogInformation($"Creating StandbyMode placeholder function directory ({scriptPath})");
+                    string scriptPath = _options.CurrentValue.ScriptPath;
+                    _logger.LogInformation($"Creating StandbyMode placeholder function directory ({scriptPath})");
 
                     await FileUtility.DeleteDirectoryAsync(scriptPath, true);
                     FileUtility.EnsureDirectoryExists(scriptPath);
@@ -85,14 +92,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.host.json");
                     File.WriteAllText(Path.Combine(scriptPath, "host.json"), content);
 
-                    string functionPath = Path.Combine(scriptPath, WarmUpFunctionName);
+                    string functionPath = Path.Combine(scriptPath, WarmUpConstants.FunctionName);
                     Directory.CreateDirectory(functionPath);
-                    content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpFunctionName}.function.json");
+                    content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.function.json");
                     File.WriteAllText(Path.Combine(functionPath, "function.json"), content);
-                    content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpFunctionName}.run.csx");
+                    content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.run.csx");
                     File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
 
-                    logger.LogInformation($"StandbyMode placeholder function directory created");
+                    _logger.LogInformation($"StandbyMode placeholder function directory created");
                 }
                 finally
                 {

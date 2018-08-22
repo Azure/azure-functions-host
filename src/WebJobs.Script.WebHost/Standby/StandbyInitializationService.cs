@@ -4,28 +4,22 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class StandbyInitializationService : IHostedService
     {
-        private readonly IOptions<ScriptApplicationHostOptions> _applicationOptions;
-        private readonly ILoggerFactory _loggerFactory;
+        private readonly IStandbyManager _standbyManager;
 
-        public StandbyInitializationService(IOptions<ScriptApplicationHostOptions> applicationOptions, ILoggerFactory loggerFactory)
+        public StandbyInitializationService(IStandbyManager standbyManager)
         {
-            _applicationOptions = applicationOptions ?? throw new ArgumentNullException(nameof(applicationOptions));
-            _loggerFactory = loggerFactory;
+            _standbyManager = standbyManager ?? throw new ArgumentNullException(nameof(standbyManager));
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            ILogger logger = _loggerFactory.CreateLogger(LogCategories.Startup);
-            await StandbyManager.InitializeAsync(_applicationOptions.Value, logger);
+            await _standbyManager.InitializeAsync();
         }
 
         public Task StopAsync(CancellationToken cancellationToken)

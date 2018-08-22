@@ -12,12 +12,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
     public class ScriptApplicationHostOptionsSetup : IConfigureOptions<ScriptApplicationHostOptions>
     {
         private readonly IConfiguration _configuration;
-        private readonly IScriptWebHostEnvironment _hostEnvironment;
+        private readonly IEnvironment _environment;
 
-        public ScriptApplicationHostOptionsSetup(IConfiguration configuration, IScriptWebHostEnvironment hostEnvironment)
+        public ScriptApplicationHostOptionsSetup(IConfiguration configuration)
+            : this(configuration, SystemEnvironment.Instance)
+        {
+        }
+
+        internal ScriptApplicationHostOptionsSetup(IConfiguration configuration, IEnvironment environment)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _hostEnvironment = hostEnvironment ?? throw new ArgumentNullException(nameof(hostEnvironment));
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
         public void Configure(ScriptApplicationHostOptions options)
@@ -25,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             _configuration.GetSection(ConfigurationSectionNames.WebHost)
                     ?.Bind(options);
 
-            if (_hostEnvironment.InStandbyMode)
+            if (_environment.IsPlaceholderModeEnabled())
             {
                 // If we're in standby mode, override relevant properties with values
                 // to be used by the placeholder site.
@@ -33,9 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 // to ensure that placeholder files are isolated
                 string tempRoot = Path.GetTempPath();
 
-                options.LogPath = Path.Combine(tempRoot, @"Functions\Standby\Logs");
-                options.ScriptPath = Path.Combine(tempRoot, @"Functions\Standby\WWWRoot");
-                options.SecretsPath = Path.Combine(tempRoot, @"Functions\Standby\Secrets");
+                options.LogPath = Path.Combine(tempRoot, @"functions\standby\logs");
+                options.ScriptPath = Path.Combine(tempRoot, @"functions\standby\wwwroot");
+                options.SecretsPath = Path.Combine(tempRoot, @"functions\standby\secrets");
                 options.IsSelfHost = options.IsSelfHost;
             }
         }

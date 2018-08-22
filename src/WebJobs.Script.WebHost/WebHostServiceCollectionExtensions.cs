@@ -70,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
+            services.AddSingleton<IStandbyManager, StandbyManager>();
 
             if (SystemEnvironment.Instance.IsLinuxContainerEnvironment())
             {
@@ -130,10 +131,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var hostEnvironment = p.GetService<IScriptWebHostEnvironment>();
                 if (hostEnvironment.InStandbyMode)
                 {
-                    var applicationHostOptions = p.GetService<IOptions<ScriptApplicationHostOptions>>();
-                    var loggerFactory = p.GetService<ILoggerFactory>();
-
-                    return new StandbyInitializationService(applicationHostOptions, loggerFactory);
+                    var standbyManager = p.GetService<IStandbyManager>();
+                    return new StandbyInitializationService(standbyManager);
                 }
 
                 return NullHostedService.Instance;

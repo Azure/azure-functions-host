@@ -23,6 +23,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _variables = variables ?? throw new ArgumentNullException(nameof(variables));
         }
 
+        public void Clear()
+        {
+            _variables.Clear();
+        }
+
         public string GetEnvironmentVariable(string name)
         {
             _variables.TryGetValue(name, out string result);
@@ -32,6 +37,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void SetEnvironmentVariable(string name, string value)
         {
+            if (value == null && _variables.ContainsKey(name))
+            {
+                _variables.Remove(name);
+                return;
+            }
+
             _variables[name] = value;
         }
 

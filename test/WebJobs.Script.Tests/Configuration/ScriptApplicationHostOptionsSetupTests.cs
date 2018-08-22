@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
@@ -23,34 +24,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" }
             };
 
-            var webEnvironment = CreateEnvironment(new TestEnvironment(settings));
-
-            ScriptApplicationHostOptionsSetup setup = CreateSetupWithConfiguration(webEnvironment);
+            ScriptApplicationHostOptionsSetup setup = CreateSetupWithConfiguration(new TestEnvironment(settings));
 
             var options = new ScriptApplicationHostOptions();
             setup.Configure(options);
 
-            Assert.EndsWith(@"Functions\Standby\Logs", options.LogPath);
-            Assert.EndsWith(@"Functions\Standby\WWWRoot", options.ScriptPath);
-            Assert.EndsWith(@"Functions\Standby\Secrets", options.SecretsPath);
+            Assert.EndsWith(@"functions\standby\logs", options.LogPath);
+            Assert.EndsWith(@"functions\standby\wwwroot", options.ScriptPath);
+            Assert.EndsWith(@"functions\standby\secrets", options.SecretsPath);
             Assert.False(options.IsSelfHost);
         }
 
-        private ScriptApplicationHostOptionsSetup CreateSetupWithConfiguration(IScriptWebHostEnvironment environment = null)
+        private ScriptApplicationHostOptionsSetup CreateSetupWithConfiguration(IEnvironment environment = null)
         {
             var builder = new ConfigurationBuilder();
-            environment = environment ?? CreateEnvironment(SystemEnvironment.Instance);
+            environment = environment ?? SystemEnvironment.Instance;
 
             var configuration = builder.Build();
 
             return new ScriptApplicationHostOptionsSetup(configuration, environment);
-        }
-
-        private IScriptWebHostEnvironment CreateEnvironment(IEnvironment environment)
-        {
-            environment = environment ?? SystemEnvironment.Instance;
-
-            return new ScriptWebHostEnvironment(environment);
         }
     }
 }
