@@ -18,8 +18,9 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public void Configure(HostHealthMonitorOptions options)
         {
-            var section = _configuration.GetSection(ConfigurationSectionNames.HealthMonitor);
-            section.Bind(options);
+            IConfigurationSection jobHostSection = _configuration.GetSection(ConfigurationSectionNames.JobHost);
+            var healthMonitorSection = jobHostSection.GetSection(ConfigurationSectionNames.HealthMonitor);
+            healthMonitorSection.Bind(options);
         }
     }
 }
