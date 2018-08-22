@@ -205,6 +205,12 @@ function CreateZips([string] $runtimeSuffix) {
         Remove-Item $tempXdtDir -Recurse
     }
 
+    # Zip up symbols for builds with runtime embedded
+    if ($runtimeSuffix -eq  "") {
+        ZipContent "$buildOutput\publish.win-x86\Symbols" "$buildOutput\Functions.Symbols.$extensionVersion-alpha.win-x86.zip"
+        ZipContent "$buildOutput\publish.win-x64\Symbols" "$buildOutput\Functions.Symbols.$extensionVersion-alpha.win-x64.zip"
+    }
+
     #Build site extension
     Write-Host "privateSiteExtensionPath: " $privateSiteExtensionPath
     Rename-Item "$privateSiteExtensionPath" "$siteExtensionPath\$extensionVersion-alpha"
