@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.EventHubs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json.Linq;
@@ -19,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
             _fixture = fixture;
         }
 
-        [Fact(Skip = "Assertion on system properties is failing since the update to 2.1. Investigate")]
+        [Fact]
         public async Task EventHub()
         {
             // Event Hub needs the following environment vars:
@@ -45,8 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
 
             var bindingData = payload["bindingData"];
             int sequenceNumber = (int)bindingData["sequenceNumber"];
-            var systemProperties = bindingData["systemProperties"];
-            Assert.Equal(sequenceNumber, (int)systemProperties["sequenceNumber"]);
+            IDictionary<string, object> systemProperties = bindingData["systemProperties"].ToObject<Dictionary<string, object>>();
+            Assert.Equal(sequenceNumber, (long)systemProperties["sequenceNumber"]);
         }
 
         public class TestFixture : EndToEndTestFixture
