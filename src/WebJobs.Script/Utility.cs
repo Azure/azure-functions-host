@@ -305,13 +305,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return JObject.Parse(json);
         }
 
-        public static IJobHostMetadataProvider CreateMetadataProvider(this JobHost host)
-        {
-            // TODO: DI (FACAVAL) Review
-            //return (IJobHostMetadataProvider)host.Services.GetService(typeof(IJobHostMetadataProvider));
-            return null;
-        }
-
         internal static bool IsNullable(Type type)
         {
             return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);

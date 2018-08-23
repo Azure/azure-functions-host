@@ -110,8 +110,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
 
-            // TODO: DI (FACAVAL) See comment on method
-            //_metricsLogger = CreateMetricsLogger();
             _metricsLogger = metricsLogger;
 
             _hostLogPath = Path.Combine(ScriptOptions.RootLogPath, "Host");
@@ -127,9 +125,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _bindingProviders = new List<IScriptBindingProvider>(bindingProviders);
             _metadataProvider = metadataProvider;
         }
-
-        // TODO: DI (FACAVAL) Do we still need this event?
-        //public event EventHandler HostInitializing;
 
         public event EventHandler HostInitialized;
 
@@ -285,22 +280,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return functionMetadata;
-        }
-
-        // TODO: DI (FACAVAL) This needs to move to an options config setup
-        // Create a TimeoutConfiguration specified by scriptConfig knobs; else null.
-        internal static JobHostFunctionTimeoutOptions CreateTimeoutConfiguration(ScriptJobHostOptions scriptConfig)
-        {
-            if (scriptConfig.FunctionTimeout == null)
-            {
-                return null;
-            }
-            return new JobHostFunctionTimeoutOptions
-            {
-                Timeout = scriptConfig.FunctionTimeout.Value,
-                ThrowOnTimeout = true,
-                TimeoutWhileDebugging = true
-            };
         }
 
         internal static Collection<CustomAttributeBuilder> CreateTypeAttributes(ScriptJobHostOptions scriptConfig)

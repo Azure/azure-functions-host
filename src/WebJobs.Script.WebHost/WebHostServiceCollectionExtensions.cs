@@ -92,17 +92,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
             });
 
-            //services.AddSingleton<ILoggerProviderFactory, WebHostLoggerProviderFactory>();
-
-            // TODO: DI (FACAVAL) Removed the previous workaround to pass a logger factory into the host resolver
-            // this is no longer needed, but we need to validate log output.
-            // Remove the need to have the WebHostResolver
-            //services.AddSingleton<WebHostResolver>();
-
-            // The services below need to be scoped to a pseudo-tenant (warm/specialized environment)
-            // TODO: DI (FACAVAL) This will need the child container/scoping logic for warm/specialized hosts
-            //services.AddSingleton<WebScriptHostManager>(c => c.GetService<WebHostResolver>().GetWebScriptHostManager());
-
             // Management services
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
@@ -117,10 +106,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Register common services with the WebHost
             ScriptHostBuilderExtensions.AddCommonServices(services);
-
-            // we want all ILoggerFactory resolution to go through WebHostResolver
-            // TODO: DI (FACAVAL) This is no longer the case... perform cleanup (/cc brettsam)
-            // builder.Register(ct => ct.Resolve<WebHostResolver>().GetLoggerFactory(ct.Resolve<WebHostSettings>())).As<ILoggerFactory>().ExternallyOwned();
 
             // Configuration
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsSetup>());

@@ -23,7 +23,7 @@ namespace Microsoft.WebJobs.Script.Tests
         }
 
         public static IHostBuilder ConfigureDefaultTestWebScriptHost(this IHostBuilder builder, Action<IWebJobsBuilder> configureWebJobs,
-            Action<ScriptApplicationHostOptions> configure = null, bool runStartupHostedServices = false)
+            Action<ScriptApplicationHostOptions> configure = null, bool runStartupHostedServices = false, Action<IServiceCollection> configureRootServices = null)
         {
             var webHostOptions = new ScriptApplicationHostOptions()
             {
@@ -42,6 +42,8 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<AspNetCore.Hosting.IApplicationLifetime>(services);
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
+
+            configureRootServices?.Invoke(services);
 
             var rootProvider = new WebHostServiceProvider(services);
 

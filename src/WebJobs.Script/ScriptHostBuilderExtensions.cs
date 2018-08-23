@@ -122,6 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IOptionsMonitor<ScriptApplicationHostOptions>>(new ScriptApplicationHostOptionsMonitor(applicationHostOptions));
                 services.ConfigureOptions<ScriptHostOptionsSetup>();
                 services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
+                services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
                     .Configure<IConfiguration>((o, c) =>
                     {

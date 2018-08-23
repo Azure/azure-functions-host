@@ -128,11 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 // to the startup logger until we've read configuration settings and can create the real logger.
                 // The "startup" logger is used in this class for startup related logs. The public logger is used
                 // for all other logging after startup.
-                // TODO: DI (FACAVAL) Fix this
-                //ConfigureLoggerFactory();
 
-                // TODO: DI (FACAVAL) Logger configuration to move to startup:
-                // Logger = _startupLogger = _hostOptions.LoggerFactory.CreateLogger(LogCategories.Startup);
                 ScriptApplicationHostOptions options = _configurationSource.HostOptions;
                 string hostFilePath = Path.Combine(options.ScriptPath, ScriptConstants.HostMetadataFileName);
                 string readingFileMessage = string.Format(CultureInfo.InvariantCulture, "Reading host configuration file '{0}'", hostFilePath);

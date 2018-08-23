@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -867,11 +868,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(scriptHost.IsFunction(null));
         }
 
-        [Fact(Skip = "Fix test")]
-        public void Initialize_LogsWarningForExplicitlySetHostId()
+        [Fact]
+        public async Task Initialize_LogsWarningForExplicitlySetHostId()
         {
             var loggerProvider = new TestLoggerProvider();
-            //var loggerProviderFactory = new TestLoggerProviderFactory(loggerProvider, false);
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
 
             string rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests_Initialize_LogsWarningForExplicitlySetHostId");
             if (!Directory.Exists(rootPath))
@@ -891,17 +893,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootScriptPath = rootPath
             };
 
-            // This id will be over written
-            // TODO: DI (FACAVAL) Review
-            //config.HostConfig.HostId = ID;
-            var environment = new Mock<IScriptJobHostEnvironment>();
-            var eventManager = new Mock<IScriptEventManager>();
+            var host = new HostBuilder()
+                .ConfigureDefaultTestWebScriptHost(_ => { },
+                options =>
+                {
+                    options.ScriptPath = rootPath;
+                    options.LogPath = Path.GetTempPath();
+                }, false,
+                rootServices =>
+                {
+                    rootServices.AddSingleton<ILoggerFactory>(loggerFactory);
+                })
+                .Build();
 
-            //var host = new ScriptHost(environment.Object, eventManager.Object, config, null, loggerProviderFactory);
-            //host.Initialize();
+            await host.StartAsync();
 
-            //Assert.DoesNotMatch(ID, config.HostConfig.HostId);
-            //Assert.Matches("foobar", config.HostConfig.HostId);
+            var idProvider = host.Services.GetService<IHostIdProvider>();
+            string hostId = await idProvider.GetHostIdAsync(CancellationToken.None);
+
+            await host.StopAsync();
+            host.Dispose();
+
+            Assert.Matches("foobar", hostId);
 
             // We should have a warning for host id in the start up logger
             var logger = loggerProvider.CreatedLoggers.First(x => x.Category == "Host.Startup");
