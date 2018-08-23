@@ -43,7 +43,7 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
     dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -r $runtime -o "$selfContained" -v q /p:BuildNumber=$buildNumber    
 
     # Modify web.config for inproc
-    dotnet tool install -g dotnet-xdt --version 2.1.0-rc.1
+    dotnet tool install -g dotnet-xdt --version 2.1.0 2> $null
     dotnet-xdt -s "$privateSiteExtensionPath\web.config" -t "$privateSiteExtensionPath\web.InProcess.$runtime.xdt" -o "$privateSiteExtensionPath\web.config"
 
     $successfullDlls =@()
@@ -94,6 +94,21 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
     #read-host "Press ENTER to continue..."
     Remove-Item -Recurse -Force $selfContained -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force $publishTarget\download -ErrorAction SilentlyContinue
+}
+
+function AddDiaSymReaderToPath()
+{
+    $infoContent = dotnet --info
+    $sdkBasePath = $infoContent  |
+        Where-Object {$_ -match 'Base Path:'} |
+        ForEach-Object {
+            $_ -replace '\s+Base Path:',''
+        }
+
+    $diaSymPath = Join-Path $sdkBasePath.Trim() "Roslyn\bincore\runtimes\win\native"
+
+    Write-Host "Adding DiaSymReader location to path ($diaSymPath)" -ForegroundColor Yellow
+    $env:Path = "$diaSymPath;$env:Path"
 }
 
 function DownloadNupkg([string] $nupkgPath, [string[]]$from, [string[]]$to) {
@@ -244,6 +259,8 @@ $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PUL
 if ($bypassPackaging){
     Write-Host "Bypassing artifact packaging and CrossGen for pull request." -ForegroundColor Yellow
 } else {
+    AddDiaSymReaderToPath
+
     # build no-runntime extension
     BuildPackages 1
 
