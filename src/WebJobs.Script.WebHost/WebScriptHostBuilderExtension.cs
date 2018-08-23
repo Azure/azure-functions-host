@@ -54,12 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
                     services.AddSingleton<IAsyncCollector<Host.Loggers.FunctionInstanceLogEntry>, FunctionInstanceLogger>();
 
-                    // Secret management
-                    services.TryAddSingleton<ISecretManager>(c => c.GetService<ISecretManagerFactory>().Create());
-                    services.TryAddSingleton<ISecretsRepository>(c => c.GetService<ISecretsRepositoryFactory>().Create());
-                    services.AddSingleton<ISecretManagerFactory, DefaultSecretManagerFactory>();
-                    services.AddSingleton<ISecretsRepositoryFactory, DefaultSecretsRepositoryFactory>();
-
                     // Hosted services
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HttpInitializationService>());
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());

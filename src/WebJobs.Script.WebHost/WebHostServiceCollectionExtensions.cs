@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.IO.Abstractions;
 using System.Net.Http;
 using Microsoft.AspNetCore.Authorization;
@@ -112,6 +111,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
+
+            // Secret management
+            services.TryAddSingleton<ISecretManagerProvider, DefaultSecretManagerProvider>();
+
+            // Register common services with the WebHost
+            ScriptHostBuilderExtensions.AddCommonServices(services);
 
             // we want all ILoggerFactory resolution to go through WebHostResolver
             // TODO: DI (FACAVAL) This is no longer the case... perform cleanup (/cc brettsam)

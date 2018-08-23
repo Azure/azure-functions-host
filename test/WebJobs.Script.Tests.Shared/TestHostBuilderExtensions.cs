@@ -11,7 +11,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using Moq;
 
 namespace Microsoft.WebJobs.Script.Tests
@@ -30,7 +29,7 @@ namespace Microsoft.WebJobs.Script.Tests
             {
                 IsSelfHost = true,
                 ScriptPath = TestHelpers.FunctionsTestDirectory,
-                LogPath = TestHelpers.GetHostLogFileDirectory().FullName,
+                LogPath = TestHelpers.GetHostLogFileDirectory().FullName
             };
 
             configure?.Invoke(webHostOptions);

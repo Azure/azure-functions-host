@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
                 .ConfigureServices(s =>
                 {
                     s.AddSingleton<IWebJobsRouter>(mockRouter.Object);
-                    s.AddSingleton<ISecretManagerFactory>(new TestSecretManagerFactory());
+                    s.AddSingleton<ISecretManagerProvider>(new TestSecretManagerProvider());
                     s.AddSingleton<IScriptEventManager>(mockEventManager.Object);
                     s.AddSingleton<IOptions<ScriptJobHostOptions>>(new OptionsWrapper<ScriptJobHostOptions>(options));
                     s.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions { SecretsPath = _secretsDirectory.Path }));

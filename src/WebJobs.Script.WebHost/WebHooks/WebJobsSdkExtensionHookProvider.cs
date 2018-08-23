@@ -15,14 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     // This is registered with the JobHostConfiguration and extensions will call on it to register for a handler.
     internal class WebJobsSdkExtensionHookProvider : IScriptWebHookProvider
     {
-        private readonly ISecretManager _secretManager;
+        private readonly ISecretManagerProvider _secretManagerProvider;
 
         // Map from an extension name to a http handler.
         private IDictionary<string, HttpHandler> _customHttpHandlers = new Dictionary<string, HttpHandler>(StringComparer.OrdinalIgnoreCase);
 
-        public WebJobsSdkExtensionHookProvider(ISecretManager secretManager)
+        public WebJobsSdkExtensionHookProvider(ISecretManagerProvider secretManagerProvider)
         {
-            _secretManager = secretManager;
+            _secretManagerProvider = secretManagerProvider;
         }
 
         public bool TryGetHandler(string name, out HttpHandler handler)
@@ -65,14 +65,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task<string> GetOrCreateExtensionKey(string extensionName)
         {
-            var hostSecrets = _secretManager.GetHostSecretsAsync().GetAwaiter().GetResult();
+            ISecretManager secretManager = _secretManagerProvider.Current;
+            var hostSecrets = secretManager.GetHostSecretsAsync().GetAwaiter().GetResult();
             string keyName = GetKeyName(extensionName);
             string keyValue = null;
             if (!hostSecrets.SystemKeys.TryGetValue(keyName, out keyValue))
             {
                 // if the requested secret doesn't exist, create it on demand
                 keyValue = SecretManager.GenerateSecret();
-                await _secretManager.AddOrUpdateFunctionSecretAsync(keyName, keyValue, HostKeyScopes.SystemKeys, ScriptSecretsType.Host);
+                await secretManager.AddOrUpdateFunctionSecretAsync(keyName, keyValue, HostKeyScopes.SystemKeys, ScriptSecretsType.Host);
             }
 
             return keyValue;

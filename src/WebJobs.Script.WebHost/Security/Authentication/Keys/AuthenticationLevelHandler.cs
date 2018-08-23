@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
     internal class AuthenticationLevelHandler : AuthenticationHandler<AuthenticationLevelOptions>
     {
         public const string FunctionsKeyHeaderName = "x-functions-key";
-        private readonly ISecretManager _secretManager;
+        private readonly ISecretManagerProvider _secretManagerProvider;
 
         public AuthenticationLevelHandler(
             IOptionsMonitor<AuthenticationLevelOptions> options,
@@ -30,16 +30,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             UrlEncoder encoder,
             IDataProtectionProvider dataProtection,
             ISystemClock clock,
-            ISecretManager secretManager)
+            ISecretManagerProvider secretManagerProvider)
             : base(options, logger, encoder, clock)
         {
-            _secretManager = secretManager;
+            _secretManagerProvider = secretManagerProvider;
         }
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             // Get the authorization level for the current request
-            (string name, AuthorizationLevel requestAuthorizationLevel) = await GetAuthorizationKeyInfoAsync(Context.Request, _secretManager);
+            (string name, AuthorizationLevel requestAuthorizationLevel) = await GetAuthorizationKeyInfoAsync(Context.Request, _secretManagerProvider);
 
             if (requestAuthorizationLevel != AuthorizationLevel.Anonymous)
             {
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             }
         }
 
-        internal static async Task<(string, AuthorizationLevel)> GetAuthorizationKeyInfoAsync(HttpRequest request, ISecretManager secretManager)
+        internal static async Task<(string, AuthorizationLevel)> GetAuthorizationKeyInfoAsync(HttpRequest request, ISecretManagerProvider secretManagerProvider)
         {
             // first see if a key value is specified via headers or query string (header takes precedence)
             string keyValue = null;
@@ -77,6 +77,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
 
             if (!string.IsNullOrEmpty(keyValue))
             {
+                ISecretManager secretManager = secretManagerProvider.Current;
+
                 // see if the key specified is the master key
                 HostSecretsInfo hostSecrets = await secretManager.GetHostSecretsAsync().ConfigureAwait(false);
                 if (!string.IsNullOrEmpty(hostSecrets.MasterKey) &&

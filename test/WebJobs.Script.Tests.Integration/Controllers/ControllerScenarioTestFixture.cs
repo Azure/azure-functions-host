@@ -32,10 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         public TestServer HttpServer { get; set; }
 
-        protected virtual void ConfigureJobHostBuilder(IWebJobsBuilder webJobsBuilder)
-        {
-        }
-
         protected virtual void ConfigureWebHostBuilder(IWebHostBuilder webHostBuilder)
         {
             webHostBuilder.ConfigureServices(c => c.AddSingleton(HostOptions));
@@ -57,7 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 IsSelfHost = true,
                 ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"),
                 LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
-                SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets")
+                SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets"),
+                HasParentScope = true
             };
 
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(HostOptions);
@@ -69,7 +66,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                     services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions));
                     services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
                 })
-                .AddScriptHostBuilder(ConfigureJobHostBuilder)
                 .ConfigureAppConfiguration((builderContext, config) =>
                 {
                     config.Add(new WebScriptHostConfigurationSource

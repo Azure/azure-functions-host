@@ -30,6 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             _configuration.GetSection(ConfigurationSectionNames.WebHost)
                     ?.Bind(options);
 
+            // Indicate that a WebHost is hosting the ScriptHost
+            options.HasParentScope = true;
+
             if (_environment.IsPlaceholderModeEnabled())
             {
                 // If we're in standby mode, override relevant properties with values

@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.EventHubs;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -25,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
         {
             _fixture = fixture;
         }
+
         [Fact]
         public async Task EventHubTrigger()
         {

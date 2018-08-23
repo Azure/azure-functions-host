@@ -105,10 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
                 services.AddSingleton<IProxyMetadataManager, ProxyMetadataManager>();
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
-                services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
                 services.AddSingleton<ScriptSettingsManager>();
-                services.AddSingleton<IScriptEventManager, ScriptEventManager>();
-                services.AddSingleton<IEnvironment>(SystemEnvironment.Instance);
                 services.AddTransient<IExtensionsManager, ExtensionsManager>();
                 services.TryAddSingleton<IMetricsLogger, MetricsLogger>();
                 services.TryAddSingleton<IScriptJobHostEnvironment, ConsoleScriptJobHostEnvironment>();
@@ -121,19 +118,32 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Configuration
                 services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions));
+                services.AddSingleton<IOptionsMonitor<ScriptApplicationHostOptions>>(new ScriptApplicationHostOptionsMonitor(applicationHostOptions));
                 services.ConfigureOptions<ScriptHostOptionsSetup>();
                 services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
 
-                services.AddSingleton<IDebugManager, DebugManager>();
-                services.AddSingleton<IDebugStateProvider, DebugStateProvider>();
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
                 services.AddSingleton<IPrimaryHostStateProvider, PrimaryHostStateProvider>();
+
+                if (!applicationHostOptions.HasParentScope)
+                {
+                    AddCommonServices(services);
+                }
 
                 // Hosted services
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
             });
 
             return builder;
+        }
+
+        public static void AddCommonServices(IServiceCollection services)
+        {
+            services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
+            services.TryAddSingleton<IDebugManager, DebugManager>();
+            services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
+            services.TryAddSingleton<IHostIdProvider, ScriptHostIdProvider>();
+            services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
         }
 
         public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, string rootScriptPath)

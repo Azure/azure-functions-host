@@ -24,15 +24,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private const string MasterKeyName = "_master";
 
         private static readonly Lazy<Dictionary<string, string>> EmptyKeys = new Lazy<Dictionary<string, string>>(() => new Dictionary<string, string>());
-        private readonly ISecretManager _secretManager;
+        private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly ILogger _logger;
         private readonly IOptions<ScriptApplicationHostOptions> _applicationOptions;
         private readonly IFileSystem _fileSystem;
 
-        public KeysController(IOptions<ScriptApplicationHostOptions> applicationOptions, ISecretManager secretManager, ILoggerFactory loggerFactory, IFileSystem fileSystem)
+        public KeysController(IOptions<ScriptApplicationHostOptions> applicationOptions, ISecretManagerProvider secretManagerProvider, ILoggerFactory loggerFactory, IFileSystem fileSystem)
         {
             _applicationOptions = applicationOptions;
-            _secretManager = secretManager;
+            _secretManagerProvider = secretManagerProvider;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryKeysController);
             _fileSystem = fileSystem;
         }
@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return null;
             }
 
-            return await _secretManager.GetFunctionSecretsAsync(functionName);
+            return await _secretManagerProvider.Current.GetFunctionSecretsAsync(functionName);
         }
 
         [HttpPost]
@@ -172,11 +172,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             KeyOperationResult operationResult;
             if (secretsType == ScriptSecretsType.Host && string.Equals(keyName, MasterKeyName, StringComparison.OrdinalIgnoreCase))
             {
-                operationResult = await _secretManager.SetMasterKeyAsync(value);
+                operationResult = await _secretManagerProvider.Current.SetMasterKeyAsync(value);
             }
             else
             {
-                operationResult = await _secretManager.AddOrUpdateFunctionSecretAsync(keyName, value, keyScope, secretsType);
+                operationResult = await _secretManagerProvider.Current.AddOrUpdateFunctionSecretAsync(keyName, value, keyScope, secretsType);
             }
 
             _logger.LogDebug(string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", operationResult.Result));
@@ -204,7 +204,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private async Task<Dictionary<string, string>> GetHostSecretsByScope(string secretsScope, bool includeMasterInSystemKeys = false)
         {
-            var hostSecrets = await _secretManager.GetHostSecretsAsync();
+            var hostSecrets = await _secretManagerProvider.Current.GetHostSecretsAsync();
 
             if (string.Equals(secretsScope, HostKeyScopes.FunctionKeys, StringComparison.OrdinalIgnoreCase))
             {
@@ -237,7 +237,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             if ((secretsType == ScriptSecretsType.Function && keyScope != null && !IsFunction(keyScope)) ||
-                !await _secretManager.DeleteSecretAsync(keyName, keyScope, secretsType))
+                !await _secretManagerProvider.Current.DeleteSecretAsync(keyName, keyScope, secretsType))
             {
                 // Either the function or the key were not found
                 return NotFound();

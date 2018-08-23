@@ -1,10 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Net.Http;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,19 +27,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         public virtual ScriptSecretsType SecretsType => ScriptSecretsType.Function;
 
-        protected override void ConfigureJobHostBuilder(IWebJobsBuilder webJobsBuilder)
+        protected override void ConfigureWebHostBuilder(IWebHostBuilder webHostBuilder)
         {
-            TestFunctionKeys = new Dictionary<string, string>
+            base.ConfigureWebHostBuilder(webHostBuilder);
+
+            webHostBuilder.ConfigureServices(s =>
             {
-                { "key1", "1234" },
-                { "key2", "1234" }
-            };
+                TestFunctionKeys = new Dictionary<string, string>
+                {
+                    { "key1", "1234" },
+                    { "key2", "1234" }
+                };
 
-            SecretManagerMock = BuildSecretManager();
+                SecretManagerMock = BuildSecretManager();
 
-            webJobsBuilder.Services.AddSingleton<ISecretManager>(SecretManagerMock.Object);
-
-            base.ConfigureJobHostBuilder(webJobsBuilder);
+                s.AddSingleton<ISecretManagerProvider>(new TestSecretManagerProvider(SecretManagerMock.Object));
+            });
         }
 
         public static ApiModel ReadApiModelContent(HttpResponseMessage response)

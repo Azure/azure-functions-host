@@ -13,14 +13,14 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         internal const int DebugModeTimeoutMinutes = 15;
         private readonly IDebugStateProvider _debugStateProvider;
-        private readonly string _rootLogPath;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _scriptOptions;
         private readonly ILogger _logger;
 
-        public DebugManager(IOptions<ScriptJobHostOptions> scriptOptions, IDebugStateProvider debugStateProvider,
+        public DebugManager(IOptionsMonitor<ScriptApplicationHostOptions> scriptOptions, IDebugStateProvider debugStateProvider,
             IScriptEventManager eventManager, ILogger<DebugManager> logger)
         {
             _debugStateProvider = debugStateProvider;
-            _rootLogPath = scriptOptions.Value.RootLogPath;
+            _scriptOptions = scriptOptions;
             _logger = logger;
         }
 
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // create or update the debug sentinel file to trigger a
                 // debug timeout update across all instances
-                string debugSentinelFileName = Path.Combine(_rootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
+                string debugSentinelFileName = Path.Combine(_scriptOptions.CurrentValue.LogPath, "Host", ScriptConstants.DebugSentinelFileName);
                 if (!File.Exists(debugSentinelFileName))
                 {
                     File.WriteAllText(debugSentinelFileName, "This is a system managed marker file used to control runtime debug mode behavior.");

@@ -8,11 +8,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class TestSecretManagerFactory : ISecretManagerFactory
+    public class TestSecretManagerProvider : ISecretManagerProvider
     {
         private readonly ISecretManager _secretManager;
 
-        public TestSecretManagerFactory(bool cacheResult = true)
+        public TestSecretManagerProvider(bool cacheResult = true)
         {
             if (cacheResult)
             {
@@ -20,11 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public TestSecretManagerFactory(ISecretManager secretManager)
+        public TestSecretManagerProvider(ISecretManager secretManager)
         {
             _secretManager = secretManager;
         }
 
-        public ISecretManager Create() => _secretManager ?? new SecretManager();
+        public ISecretManager Current => _secretManager ?? new SecretManager();
     }
 }

@@ -47,7 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 IsSelfHost = true,
                 ScriptPath = _appRoot,
                 LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
-                SecretsPath = Environment.CurrentDirectory // not used
+                SecretsPath = Environment.CurrentDirectory, // not used
+                HasParentScope = true
             };
 
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_hostOptions);
@@ -55,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var builder = new WebHostBuilder()
                 .ConfigureServices(services =>
                   {
-                      services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
+                      services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
                       services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
                       services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions)));
                       services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
@@ -89,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public ScriptJobHostOptions ScriptOptions => JobHostServices.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
-        public ISecretManager SecretManager => _testServer.Host.Services.GetService<ISecretManager>();
+        public ISecretManager SecretManager => _testServer.Host.Services.GetService<ISecretManagerProvider>().Current;
 
         public string LogPath => _hostOptions.LogPath;
 
@@ -246,47 +247,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _services = services;
             }
             public IServiceCollection Services => _services;
-        }
-
-        public class TestOptionsFactory<T> : IOptionsFactory<T>, IOptionsMonitorCache<T> where T : class, new()
-        {
-            private readonly T _options;
-            private readonly Dictionary<string, T> _cache = new Dictionary<string, T>();
-
-            public TestOptionsFactory(T options)
-            {
-                _options = options;
-            }
-
-            public void Clear()
-            {
-                _cache.Clear();
-            }
-
-            public T Create(string name)
-            {
-                return _options;
-            }
-
-            public T GetOrAdd(string name, Func<T> createOptions)
-            {
-                return _options;
-            }
-
-            public bool TryAdd(string name, T options)
-            {
-                return _cache.TryAdd(name, options);
-            }
-
-            public bool TryRemove(string name)
-            {
-                if (!_cache.ContainsKey(name))
-                {
-                    return false;
-                }
-
-                return _cache.Remove(name);
-            }
         }
     }
 }
