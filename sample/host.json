@@ -24,12 +24,19 @@
             "maxOutstandingRequests": 30
         },
         "queues": {
-            "visibilityTimeout": "00:00:10"
+            "visibilityTimeout": "00:00:10",
+            "maxDequeueCount": 3
         },
-        "eventHub": {
+        "eventHubs": {
             "maxBatchSize": 1000,
             "prefetchCount": 1000,
             "batchCheckpointFrequency": 1
+        },
+        "serviceBus": {
+            "prefetchCount": 100,
+            "messageHandlerOptions": {
+                "maxConcurrentCalls": 32
+            }
         }
     }
 }
