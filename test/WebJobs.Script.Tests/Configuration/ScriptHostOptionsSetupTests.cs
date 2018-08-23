@@ -273,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             var settings = new Dictionary<string, string>
             {
-                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.JobHostLogger, "fileLoggingMode"), setting }
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.Logging, "fileLoggingMode"), setting }
             };
 
             var options = GetConfiguredOptions(settings);

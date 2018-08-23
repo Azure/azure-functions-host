@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             {
                 jobHostSection.Bind(options);
 
-                var fileLoggingMode = jobHostSection.GetSection(ConfigurationSectionNames.JobHostLogger)
+                var fileLoggingMode = jobHostSection.GetSection(ConfigurationSectionNames.Logging)
                     ?.GetValue<FileLoggingMode?>("fileLoggingMode");
                 if (fileLoggingMode != null)
                 {
@@ -248,67 +248,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         //    }
 
         //    ApplyLanguageWorkersConfig(config, scriptConfig, logger);
-        //    ApplyLoggerConfig(config, scriptConfig);
-        //    ApplyApplicationInsightsConfig(config, scriptConfig);
-        //}
-
-        // TODO: DI (FACAVAL) All configuration needs to move to initialization
-        //internal static void ApplyLoggerConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
-        //{
-        //    scriptConfig.LogFilter = new LogCategoryFilter();
-        //    JObject configSection = (JObject)configJson["logger"];
-        //    JToken value;
-        //    if (configSection != null)
-        //    {
-        //        JObject filterSection = (JObject)configSection["categoryFilter"];
-        //        if (filterSection != null)
-        //        {
-        //            if (filterSection.TryGetValue("defaultLevel", out value))
-        //            {
-        //                LogLevel level;
-        //                if (Enum.TryParse(value.ToString(), out level))
-        //                {
-        //                    scriptConfig.LogFilter.DefaultLevel = level;
-        //                }
-        //            }
-
-        //            if (filterSection.TryGetValue("categoryLevels", out value))
-        //            {
-        //                scriptConfig.LogFilter.CategoryLevels.Clear();
-        //                foreach (var prop in ((JObject)value).Properties())
-        //                {
-        //                    LogLevel level;
-        //                    if (Enum.TryParse(prop.Value.ToString(), out level))
-        //                    {
-        //                        scriptConfig.LogFilter.CategoryLevels[prop.Name] = level;
-        //                    }
-        //                }
-        //            }
-        //        }
-
-        //        JObject aggregatorSection = (JObject)configSection["aggregator"];
-        //        if (aggregatorSection != null)
-        //        {
-        //            if (aggregatorSection.TryGetValue("batchSize", out value))
-        //            {
-        //                scriptConfig.HostOptions.Aggregator.BatchSize = (int)value;
-        //            }
-
-        //            if (aggregatorSection.TryGetValue("flushTimeout", out value))
-        //            {
-        //                scriptConfig.HostOptions.Aggregator.FlushTimeout = TimeSpan.Parse(value.ToString());
-        //            }
-        //        }
-
-        //        if (configSection.TryGetValue("fileLoggingMode", out value))
-        //        {
-        //            FileLoggingMode fileLoggingMode;
-        //            if (Enum.TryParse<FileLoggingMode>((string)value, true, out fileLoggingMode))
-        //            {
-        //                scriptConfig.FileLoggingMode = fileLoggingMode;
-        //            }
-        //        }
-        //    }
         //}
     }
 }

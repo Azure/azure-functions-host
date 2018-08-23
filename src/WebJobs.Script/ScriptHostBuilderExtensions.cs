@@ -7,6 +7,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -121,6 +122,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IOptionsMonitor<ScriptApplicationHostOptions>>(new ScriptApplicationHostOptionsMonitor(applicationHostOptions));
                 services.ConfigureOptions<ScriptHostOptionsSetup>();
                 services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
+                services.AddOptions<FunctionResultAggregatorOptions>()
+                    .Configure<IConfiguration>((o, c) =>
+                    {
+                        c.GetSection(ConfigurationSectionNames.JobHost)
+                         .GetSection(ConfigurationSectionNames.Aggregator)
+                         .Bind(o);
+                    });
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
                 services.AddSingleton<IPrimaryHostStateProvider, PrimaryHostStateProvider>();
