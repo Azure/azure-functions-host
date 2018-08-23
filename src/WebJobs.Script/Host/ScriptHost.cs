@@ -11,6 +11,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
@@ -43,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _storageConnectionString;
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
+        private readonly IHostIdProvider _hostIdProvider;
         private readonly IProxyMetadataManager _proxyMetadataManager;
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
@@ -61,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private IPrimaryHostStateProvider _primaryHostStateProvider;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         private ScriptSettingsManager _settingsManager;
-        private ILogger _startupLogger = null;
+        private ILogger _logger = null;
 
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionDispatcher _functionDispatcher;
@@ -88,6 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IEnumerable<IScriptBindingProvider> bindingProviders,
             IPrimaryHostStateProvider primaryHostStateProvider,
             IJobHostMetadataProvider metadataProvider,
+            IHostIdProvider hostIdProvider,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -100,6 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _storageConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
             _functionMetadataManager = functionMetadataManager;
+            _hostIdProvider = hostIdProvider;
             _proxyMetadataManager = proxyMetadataManager;
 
             ScriptOptions = scriptHostOptions.Value;
@@ -117,8 +121,8 @@ namespace Microsoft.Azure.WebJobs.Script
             _language = _settingsManager.Configuration[LanguageWorkerConstants.FunctionWorkerRuntimeSettingName];
 
             _loggerFactory = loggerFactory;
-            _startupLogger = loggerFactory.CreateLogger(LogCategories.Startup);
-            Logger = _startupLogger;
+            _logger = loggerFactory.CreateLogger(LogCategories.Startup);
+            Logger = _logger;
 
             _debugManager = debugManager;
             _primaryHostStateProvider = primaryHostStateProvider;
@@ -227,8 +231,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected override async Task StartAsyncCore(CancellationToken cancellationToken)
         {
+            var ignore = LogInitializationAsync();
+
             await InitializeAsync();
             await base.StartAsyncCore(cancellationToken);
+
+            LogHostFunctionErrors();
         }
 
         /// <summary>
@@ -250,6 +258,30 @@ namespace Microsoft.Azure.WebJobs.Script
                 GenerateFunctions(directTypes);
 
                 CleanupFileSystem();
+            }
+        }
+
+        private async Task LogInitializationAsync()
+        {
+            string extensionVersion = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion);
+            string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
+            string message = $"Starting Host (HostId={hostId}, InstanceId={InstanceId}, Version={Version}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={InDebugMode}, FunctionsExtensionVersion={extensionVersion})";
+            _logger.LogInformation(message);
+        }
+
+        private void LogHostFunctionErrors()
+        {
+            if (FunctionErrors.Count > 0)
+            {
+                var builder = new StringBuilder();
+                builder.AppendLine(string.Format(CultureInfo.InvariantCulture, "The following {0} functions are in error:", FunctionErrors.Count));
+                foreach (var error in FunctionErrors)
+                {
+                    string functionErrors = string.Join(Environment.NewLine, error.Value);
+                    builder.AppendLine(string.Format(CultureInfo.InvariantCulture, "{0}: {1}", error.Key, functionErrors));
+                }
+                string message = builder.ToString();
+                _logger.LogError(message);
             }
         }
 
@@ -377,7 +409,7 @@ namespace Microsoft.Azure.WebJobs.Script
             var typeAttributes = CreateTypeAttributes(ScriptOptions);
 
             string generatingMsg = string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", Functions.Count);
-            _startupLogger?.LogInformation(generatingMsg);
+            _logger?.LogInformation(generatingMsg);
 
             // generate the Type wrapper
             string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", GeneratedTypeNamespace, GeneratedTypeName);
@@ -398,13 +430,13 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (string.IsNullOrEmpty(_language))
             {
-                _startupLogger.LogTrace("Adding Function descriptor providers for all languages.");
+                _logger.LogTrace("Adding Function descriptor providers for all languages.");
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
                 _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
             }
             else
             {
-                _startupLogger.LogTrace($"Adding Function descriptor provider for language {_language}.");
+                _logger.LogTrace($"Adding Function descriptor provider for language {_language}.");
                 if (string.Equals(_language, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
                     _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
@@ -418,9 +450,9 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functions;
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
             {
-                _startupLogger.LogTrace("Creating function descriptors.");
+                _logger.LogTrace("Creating function descriptors.");
                 functions = GetFunctionDescriptors(functionMetadata, _descriptorProviders);
-                _startupLogger.LogTrace("Function descriptors created.");
+                _logger.LogTrace("Function descriptors created.");
             }
 
             Functions = functions;
@@ -444,7 +476,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             catch (Exception e)
             {
-                _startupLogger.LogWarning(e, "Unable to create process registry");
+                _logger.LogWarning(e, "Unable to create process registry");
             }
 
             CreateChannel channelFactory = (languageWorkerConfig, registrations, attemptCount) =>
@@ -461,20 +493,20 @@ namespace Microsoft.Azure.WebJobs.Script
                     _metricsLogger,
                     attemptCount);
             };
-            var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _startupLogger);
+            var configFactory = new WorkerConfigFactory(ScriptSettingsManager.Instance.Configuration, _logger);
             var providers = new List<IWorkerProvider>();
             if (!string.IsNullOrEmpty(_language))
             {
                 if (!string.Equals(_language, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
-                    _startupLogger.LogInformation($"'{LanguageWorkerConstants.FunctionWorkerRuntimeSettingName}' is specified, only '{_language}' will be enabled");
-                    providers.AddRange(configFactory.GetWorkerProviders(_startupLogger, language: _language));
+                    _logger.LogInformation($"'{LanguageWorkerConstants.FunctionWorkerRuntimeSettingName}' is specified, only '{_language}' will be enabled");
+                    providers.AddRange(configFactory.GetWorkerProviders(_logger, language: _language));
                 }
             }
             else
             {
                 // load all providers if no specific language is specified
-                providers.AddRange(configFactory.GetWorkerProviders(_startupLogger));
+                providers.AddRange(configFactory.GetWorkerProviders(_logger));
             }
 
             var workerConfigs = configFactory.GetConfigs(providers);
@@ -538,7 +570,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         {
                             // destructive operation, thus log
                             string removeLogMessage = $"Deleting log directory '{logDir.FullName}'";
-                            _startupLogger.LogDebug(removeLogMessage);
+                            _logger.LogDebug(removeLogMessage);
                             logDir.Delete(recursive: true);
                         }
                         catch
@@ -552,7 +584,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Purge is best effort
                 string errorMsg = "An error occurred while purging log files";
-                _startupLogger.LogError(0, ex, errorMsg);
+                _logger.LogError(0, ex, errorMsg);
             }
         }
 
@@ -594,7 +626,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Adding a function error will cause this function to get ignored
                     Utility.AddFunctionError(this.FunctionErrors, metadata.Name, msg);
 
-                    _startupLogger.LogInformation(msg);
+                    _logger.LogInformation(msg);
                 }
 
                 return;
@@ -629,7 +661,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // This likely means the function.json and dlls are out of sync. Perhaps a badly generated function.json?
                     string msg = $"Failed to load type '{typeName}' from '{path}'";
-                    _startupLogger.LogWarning(msg);
+                    _logger.LogWarning(msg);
                 }
             }
             return visitedTypes;
@@ -845,7 +877,7 @@ namespace Microsoft.Azure.WebJobs.Script
             ApplyJobHostMetadata();
 
             string message = $"Host initialized ({_stopwatch.ElapsedMilliseconds}ms)";
-            _startupLogger.LogInformation(message);
+            _logger.LogInformation(message);
 
             HostInitialized?.Invoke(this, EventArgs.Empty);
 
@@ -859,7 +891,7 @@ namespace Microsoft.Azure.WebJobs.Script
             base.OnHostStarted();
 
             string message = $"Host started ({_stopwatch.ElapsedMilliseconds}ms)";
-            _startupLogger.LogInformation(message);
+            _logger.LogInformation(message);
         }
 
         protected override void Dispose(bool disposing)

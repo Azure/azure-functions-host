@@ -2,8 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -22,9 +24,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IScriptWebHostEnvironment _scriptWebHostEnvironment;
         private readonly ILogger _logger;
-        private CancellationTokenSource _startupLoopTokenSource;
-        private bool _disposed = false;
         private IHost _host;
+        private CancellationTokenSource _startupLoopTokenSource;
+        private int _hostStartCount;
+        private bool _disposed = false;
 
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IServiceProvider rootServiceProvider,
             IServiceScopeFactory rootScopeFactory, IScriptWebHostEnvironment scriptWebHostEnvironment, ILoggerFactory loggerFactory)
@@ -83,9 +86,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 _host = BuildHost(isOffline);
 
-                var log = isOffline ? "Host is offline." : "Initializing Host.";
-                _logger.LogInformation(log);
+                LogInitialization(_host, isOffline, attemptCount, _hostStartCount++);
+
                 await _host.StartAsync(cancellationToken);
+
                 LastError = null;
 
                 if (!isOffline)
@@ -103,8 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 State = ScriptHostState.Error;
                 attemptCount++;
 
-                var hostLoggerFactory = _host?.Services.GetService<ILoggerFactory>();
-                var logger = hostLoggerFactory?.CreateLogger(LogCategories.Startup) ?? _logger;
+                ILogger logger = GetHostLogger(_host);
 
                 logger.LogError(exc, "A ScriptHost error has occurred");
 
@@ -193,6 +196,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             return builder.Build();
+        }
+
+        private ILogger GetHostLogger(IHost host)
+        {
+            var hostLoggerFactory = _host?.Services.GetService<ILoggerFactory>();
+
+            // Attempt to get the host loger with JobHost configuration applied
+            // using the default logger as a fallback
+            return hostLoggerFactory?.CreateLogger(LogCategories.Startup) ?? _logger;
+        }
+
+        private void LogInitialization(IHost host, bool isOffline, int attemptCount, int v)
+        {
+            var logger = GetHostLogger(host);
+
+            var log = isOffline ? "Host is offline." : "Initializing Host.";
+            logger.LogInformation(log);
+            logger.LogInformation($"Host initialization: ConsecutiveErrors={attemptCount}, StartupCount={_hostStartCount++}");
         }
 
         private bool CheckAppOffline()

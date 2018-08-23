@@ -228,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // slightly out-of-order or on different threads
             TraceTelemetry[] traces = null;
 
-            int expectedCount = 7;
+            int expectedCount = 10;
 
             await TestHelpers.Await(() =>
             {
@@ -253,10 +253,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTrace(traces[0], "A function whitelist has been specified", LogCategories.Startup);
             ValidateTrace(traces[1], "Found the following functions:\r\n", LogCategories.Startup);
             ValidateTrace(traces[2], "Generating 2 job function(s)", LogCategories.Startup);
-            ValidateTrace(traces[3], "Host initialized (", LogCategories.Startup);
-            ValidateTrace(traces[4], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
-            ValidateTrace(traces[5], "Host started (", LogCategories.Startup);
-            ValidateTrace(traces[6], "Job host started", LogCategories.Startup);
+            ValidateTrace(traces[3], "Host initialization: ConsecutiveErrors=0, StartupCount=1", LogCategories.Startup);
+            ValidateTrace(traces[4], "Host initialized (", LogCategories.Startup);
+            ValidateTrace(traces[5], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
+            ValidateTrace(traces[6], "Host started (", LogCategories.Startup);
+            ValidateTrace(traces[7], "Initializing Host", LogCategories.Startup);
+            ValidateTrace(traces[8], "Job host started", LogCategories.Startup);
+            ValidateTrace(traces[9], "Starting Host (HostId=", LogCategories.Startup);
         }
 
         [Fact]
