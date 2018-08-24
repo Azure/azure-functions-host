@@ -148,10 +148,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static void AddCommonServices(IServiceCollection services)
         {
+            services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
-            services.TryAddSingleton<IHostIdProvider, ScriptHostIdProvider>();
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
         }
 
