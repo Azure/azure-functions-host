@@ -334,8 +334,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (scriptFile != null && scriptFile.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
                 {
                     bool isDirect = metadata.IsDirect;
-                    bool prevIsDirect;
-                    if (mapAssemblySettings.TryGetValue(scriptFile, out prevIsDirect))
+                    if (mapAssemblySettings.TryGetValue(scriptFile, out bool prevIsDirect))
                     {
                         if (prevIsDirect != isDirect)
                         {
@@ -844,8 +843,21 @@ namespace Microsoft.Azure.WebJobs.Script
             // for all other logging after startup.
             FunctionTraceWriterFactory = new FunctionTraceWriterFactory(ScriptConfig, t =>
             {
-                // File logging is done conditionally.
-                return FileLoggingEnabled && (!(t.Properties?.ContainsKey(ScriptConstants.TracePropertyPrimaryHostKey) ?? false) || IsPrimary);
+                // Short-circuit if FileLogging is not enabled
+                if (!FileLoggingEnabled)
+                {
+                    return false;
+                }
+
+                // If FileLogging is enabled, we may still block if this trace requires a primary host.
+                bool requirePrimaryHost = t.Properties?.ContainsKey(ScriptConstants.TracePropertyPrimaryHostKey) ?? false;
+                if (requirePrimaryHost)
+                {
+                    return IsPrimary;
+                }
+
+                // This does not require a primary host, so allow it to be logged.
+                return true;
             });
 
             ConfigureLoggerFactory();
@@ -1064,15 +1076,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 functionMetadata.IsDisabled = true;
             }
 
-            JToken value = null;
-            if (configMetadata.TryGetValue("excluded", StringComparison.OrdinalIgnoreCase, out value) &&
+            if (configMetadata.TryGetValue("excluded", StringComparison.OrdinalIgnoreCase, out JToken value) &&
                 value.Type == JTokenType.Boolean)
             {
                 functionMetadata.IsExcluded = (bool)value;
             }
 
-            JToken isDirect;
-            if (configMetadata.TryGetValue("configurationSource", StringComparison.OrdinalIgnoreCase, out isDirect))
+            if (configMetadata.TryGetValue("configurationSource", StringComparison.OrdinalIgnoreCase, out JToken isDirect))
             {
                 var isDirectValue = isDirect.ToString();
                 if (string.Equals(isDirectValue, "attributes", StringComparison.OrdinalIgnoreCase))
@@ -1118,8 +1128,7 @@ namespace Microsoft.Azure.WebJobs.Script
             try
             {
                 // read the function config
-                string json = null;
-                if (!TryReadFunctionConfig(functionDirectory, out json))
+                if (!TryReadFunctionConfig(functionDirectory, out string json))
                 {
                     // not a function directory
                     return null;
@@ -1137,10 +1146,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 ValidateName(functionName);
 
                 JObject functionConfig = JObject.Parse(json);
-
-                string functionError = null;
-                FunctionMetadata functionMetadata = null;
-                if (!TryParseFunctionMetadata(functionName, functionConfig, traceWriter, logger, functionDirectory, settingsManager, out functionMetadata, out functionError))
+                if (!TryParseFunctionMetadata(functionName, functionConfig, traceWriter, logger, functionDirectory, settingsManager, out FunctionMetadata functionMetadata, out string functionError))
                 {
                     // for functions in error, log the error and don't
                     // add to the functions collection
@@ -1558,7 +1564,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // We may already have a host id, but the one from the JSON takes precedence
-            JToken hostId = (JToken)config["id"];
+            JToken hostId = config["id"];
             if (hostId != null)
             {
                 hostConfig.HostId = (string)hostId;
@@ -1567,13 +1573,13 @@ namespace Microsoft.Azure.WebJobs.Script
             // Default AllowHostPartialStartup to true, but allow it
             // to be overridden by config
             hostConfig.AllowPartialHostStartup = true;
-            JToken allowPartialHostStartup = (JToken)config["allowPartialHostStartup"];
+            JToken allowPartialHostStartup = config["allowPartialHostStartup"];
             if (allowPartialHostStartup != null && allowPartialHostStartup.Type == JTokenType.Boolean)
             {
                 hostConfig.AllowPartialHostStartup = (bool)allowPartialHostStartup;
             }
 
-            JToken fileWatchingEnabled = (JToken)config["fileWatchingEnabled"];
+            JToken fileWatchingEnabled = config["fileWatchingEnabled"];
             if (fileWatchingEnabled != null && fileWatchingEnabled.Type == JTokenType.Boolean)
             {
                 scriptConfig.FileWatchingEnabled = (bool)fileWatchingEnabled;
@@ -1655,8 +1661,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (configSection.TryGetValue("consoleLevel", out value))
                 {
-                    TraceLevel consoleLevel;
-                    if (Enum.TryParse<TraceLevel>((string)value, true, out consoleLevel))
+                    if (Enum.TryParse<TraceLevel>((string)value, true, out TraceLevel consoleLevel))
                     {
                         hostConfig.Tracing.ConsoleLevel = consoleLevel;
                     }
@@ -1664,8 +1669,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (configSection.TryGetValue("fileLoggingMode", out value))
                 {
-                    FileLoggingMode fileLoggingMode;
-                    if (Enum.TryParse<FileLoggingMode>((string)value, true, out fileLoggingMode))
+                    if (Enum.TryParse<FileLoggingMode>((string)value, true, out FileLoggingMode fileLoggingMode))
                     {
                         scriptConfig.FileLoggingMode = fileLoggingMode;
                     }
@@ -1696,10 +1700,9 @@ namespace Microsoft.Azure.WebJobs.Script
             scriptConfig.SwaggerEnabled = false;
 
             configSection = (JObject)config["swagger"];
-            JToken swaggerEnabled;
 
             if (configSection != null &&
-                configSection.TryGetValue("enabled", out swaggerEnabled) &&
+                configSection.TryGetValue("enabled", out JToken swaggerEnabled) &&
                 swaggerEnabled.Type == JTokenType.Boolean)
             {
                 scriptConfig.SwaggerEnabled = (bool)swaggerEnabled;
@@ -1721,8 +1724,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     if (filterSection.TryGetValue("defaultLevel", out value))
                     {
-                        LogLevel level;
-                        if (Enum.TryParse(value.ToString(), out level))
+                        if (Enum.TryParse(value.ToString(), out LogLevel level))
                         {
                             scriptConfig.LogFilter.DefaultLevel = level;
                         }
@@ -1733,8 +1735,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         scriptConfig.LogFilter.CategoryLevels.Clear();
                         foreach (var prop in ((JObject)value).Properties())
                         {
-                            LogLevel level;
-                            if (Enum.TryParse(prop.Value.ToString(), out level))
+                            if (Enum.TryParse(prop.Value.ToString(), out LogLevel level))
                             {
                                 scriptConfig.LogFilter.CategoryLevels[prop.Name] = level;
                             }
@@ -1762,16 +1763,14 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             scriptConfig.ApplicationInsightsSamplingSettings = new SamplingPercentageEstimatorSettings();
             JObject configSection = (JObject)configJson["applicationInsights"];
-            JToken value;
             if (configSection != null)
             {
                 JObject samplingSection = (JObject)configSection["sampling"];
                 if (samplingSection != null)
                 {
-                    if (samplingSection.TryGetValue("isEnabled", out value))
+                    if (samplingSection.TryGetValue("isEnabled", out JToken value))
                     {
-                        bool isEnabled;
-                        if (bool.TryParse(value.ToString(), out isEnabled) && !isEnabled)
+                        if (bool.TryParse(value.ToString(), out bool isEnabled) && !isEnabled)
                         {
                             scriptConfig.ApplicationInsightsSamplingSettings = null;
                         }
@@ -1781,8 +1780,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         if (samplingSection.TryGetValue("maxTelemetryItemsPerSecond", out value))
                         {
-                            double itemsPerSecond;
-                            if (double.TryParse(value.ToString(), out itemsPerSecond))
+                            if (double.TryParse(value.ToString(), out double itemsPerSecond))
                             {
                                 scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond = itemsPerSecond;
                             }
@@ -1846,8 +1844,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // See if we can identify which function caused the error, and if we can
                 // log the error as needed to its function specific logs.
-                FunctionDescriptor function = null;
-                if (TryGetFunctionFromException(Functions, exception, out function))
+                if (TryGetFunctionFromException(Functions, exception, out FunctionDescriptor function))
                 {
                     NotifyInvoker(function.Name, exception);
                 }
