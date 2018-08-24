@@ -3,8 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
+using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Config;
 using HttpHandler = Microsoft.Azure.WebJobs.IAsyncConverter<System.Net.Http.HttpRequestMessage, System.Net.Http.HttpResponseMessage>;
@@ -13,14 +14,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     // Gives binding extensions access to a http handler.
     // This is registered with the JobHostConfiguration and extensions will call on it to register for a handler.
-    internal class WebJobsSdkExtensionHookProvider : IScriptWebHookProvider
+    internal class DefaultScriptWebHookProvider : IScriptWebHookProvider
     {
         private readonly ISecretManagerProvider _secretManagerProvider;
 
         // Map from an extension name to a http handler.
         private IDictionary<string, HttpHandler> _customHttpHandlers = new Dictionary<string, HttpHandler>(StringComparer.OrdinalIgnoreCase);
 
-        public WebJobsSdkExtensionHookProvider(ISecretManagerProvider secretManagerProvider)
+        public DefaultScriptWebHookProvider(ISecretManagerProvider secretManagerProvider)
         {
             _secretManagerProvider = secretManagerProvider;
         }
@@ -33,14 +34,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         // Exposed to extensions to get the URL for their http handler.
         public Uri GetUrl(IExtensionConfigProvider extension)
         {
-            var extensionType = extension.GetType();
             var handler = extension as HttpHandler;
             if (handler == null)
             {
                 throw new InvalidOperationException($"Extension must implement IAsyncConverter<HttpRequestMessage, HttpResponseMessage> in order to receive webhooks");
             }
 
-            string name = extensionType.Name;
+            // use the config section moniker for the extension as the URL name
+            var extensionType = extension.GetType();
+            var attrib = extensionType.GetCustomAttribute<ExtensionAttribute>();
+            string name = (attrib?.ConfigurationSection ?? extensionType.Name).ToLowerInvariant();
             _customHttpHandlers[name] = handler;
 
             return GetExtensionWebHookRoute(name);
@@ -66,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private async Task<string> GetOrCreateExtensionKey(string extensionName)
         {
             ISecretManager secretManager = _secretManagerProvider.Current;
-            var hostSecrets = secretManager.GetHostSecretsAsync().GetAwaiter().GetResult();
+            var hostSecrets = await secretManager.GetHostSecretsAsync();
             string keyName = GetKeyName(extensionName);
             string keyValue = null;
             if (!hostSecrets.SystemKeys.TryGetValue(keyName, out keyValue))

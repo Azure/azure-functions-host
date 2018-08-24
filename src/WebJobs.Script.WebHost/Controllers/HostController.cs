@@ -222,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             if (provider.TryGetHandler(name, out HttpHandler handler))
             {
-                string keyName = WebJobsSdkExtensionHookProvider.GetKeyName(name);
+                string keyName = DefaultScriptWebHookProvider.GetKeyName(name);
                 var authResult = await _authorizationService.AuthorizeAsync(User, keyName, PolicyNames.SystemAuthLevel);
                 if (!authResult.Succeeded)
                 {
