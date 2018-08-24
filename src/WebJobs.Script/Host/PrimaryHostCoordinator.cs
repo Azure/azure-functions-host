@@ -227,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _timer.Change(TimeSpan.Zero, _leaseRetryInterval);
+            _timer.Change(_leaseRetryInterval, _leaseRetryInterval);
             return Task.CompletedTask;
         }
 
