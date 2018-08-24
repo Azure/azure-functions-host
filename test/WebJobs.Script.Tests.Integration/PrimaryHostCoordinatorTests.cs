@@ -219,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await host.StartAsync();
 
                 // Make sure we have enough time to trace the renewal
-                await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.StartsWith("Host lock lease acquired by instance ID ")), 5000, 500);
+                await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.StartsWith("Host lock lease acquired by instance ID ")), 10000, 500);
 
                 LogMessage acquisitionEvent = _loggerProvider.GetAllLogMessages().First();
                 Assert.Contains($"Host lock lease acquired by instance ID '{instanceId}'.", acquisitionEvent.FormattedMessage);
@@ -256,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await host.StartAsync();
 
                 renewResetEvent.Wait(TimeSpan.FromSeconds(10));
-                await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.StartsWith("Failed to renew host lock lease: ")), 5000, 500);
+                await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.StartsWith("Failed to renew host lock lease: ")), 10000, 500);
 
                 await host.StopAsync();
             }
