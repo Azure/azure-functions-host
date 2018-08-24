@@ -1,14 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
 using Moq;
 using Xunit;
 
@@ -23,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         public SecretManagerProviderTests()
         {
             var mockIdProvider = new Mock<IHostIdProvider>();
-            var mockConfiguration = new Mock<IConfiguration>();
 
             _options = new ScriptApplicationHostOptions
             {
@@ -34,7 +30,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var changeTokens = new[] { _tokenSource };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
 
-            _provider = new DefaultSecretManagerProvider(optionsMonitor, mockIdProvider.Object, mockConfiguration.Object,
+            var config = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .Build();
+
+            _provider = new DefaultSecretManagerProvider(optionsMonitor, mockIdProvider.Object, config,
                 new TestEnvironment(), NullLoggerFactory.Instance);
         }
 

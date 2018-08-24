@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public sealed class DefaultSecretManagerProvider : ISecretManagerProvider
     {
+        private const string FileStorage = "Files";
         private readonly ILogger _logger;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
         private readonly IHostIdProvider _hostIdProvider;
@@ -50,16 +51,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             string secretStorageType = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType);
             string storageString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-            if (secretStorageType != null && secretStorageType.Equals("Blob", StringComparison.OrdinalIgnoreCase) && storageString != null)
+            if (secretStorageType != null && secretStorageType.Equals(FileStorage, StringComparison.OrdinalIgnoreCase))
             {
-                string siteSlotName = _environment.GetEnvironmentVariable(_environment.GetAzureWebsiteUniqueSlotName()) ??
-                    _hostIdProvider.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult();
-
-                return new BlobStorageSecretsMigrationRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), storageString, siteSlotName, _logger);
+                return new FileSystemSecretsRepository(_options.CurrentValue.SecretsPath);
+            }
+            else if (storageString == null)
+            {
+                throw new InvalidOperationException($"Secret initialization from Blob storage failed due to a missing Azure Storage connection string. If you intend to use files for secrets, add an App Setting key '{EnvironmentSettingNames.AzureWebJobsSecretStorageType}' with value '{FileStorage}'.");
             }
             else
             {
-                return new FileSystemSecretsRepository(_options.CurrentValue.SecretsPath);
+                string siteSlotName = _environment.GetAzureWebsiteUniqueSlotName() ?? _hostIdProvider.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+                return new BlobStorageSecretsMigrationRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), storageString, siteSlotName, _logger);
             }
         }
     }
