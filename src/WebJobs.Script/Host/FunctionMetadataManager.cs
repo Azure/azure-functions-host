@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 functionMetadata.ScriptFile = DeterminePrimaryScriptFile(functionConfig, scriptDirectory, fileSystem);
             }
-            catch (ScriptConfigurationException exc)
+            catch (FunctionConfigurationException exc)
             {
                 error = exc.Message;
                 return false;
@@ -216,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string scriptPath = fileSystem.Path.Combine(scriptDirectory, scriptFile);
                 if (!fileSystem.File.Exists(scriptPath))
                 {
-                    throw new ScriptConfigurationException("Invalid script file name configuration. The 'scriptFile' property is set to a file that does not exist.");
+                    throw new FunctionConfigurationException("Invalid script file name configuration. The 'scriptFile' property is set to a file that does not exist.");
                 }
 
                 functionPrimary = scriptPath;
@@ -229,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (functionFiles.Length == 0)
                 {
-                    throw new ScriptConfigurationException("No function script files present.");
+                    throw new FunctionConfigurationException("No function script files present.");
                 }
 
                 if (functionFiles.Length == 1)
@@ -249,7 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (string.IsNullOrEmpty(functionPrimary))
             {
-                throw new ScriptConfigurationException("Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
+                throw new FunctionConfigurationException("Unable to determine the primary function script. Try renaming your entry point script to 'run' (or 'index' in the case of Node), " +
                     "or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.");
             }
 

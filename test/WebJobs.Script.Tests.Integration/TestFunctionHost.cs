@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -81,9 +80,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpClient.BaseAddress = new Uri("https://localhost/");
 
             var manager = _testServer.Host.Services.GetService<IScriptHostManager>();
-            manager.DelayUntilHostReady().GetAwaiter().GetResult();
-
             _hostService = manager as WebJobsScriptHostService;
+
+            StartAsync().GetAwaiter().GetResult();
         }
 
         public IServiceProvider JobHostServices => _hostService.Services;
@@ -110,16 +109,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return secrets.First().Value;
         }
 
-        public async Task StartAsync()
+        private async Task StartAsync()
         {
             bool running = false;
             while (!running)
             {
-                running = await IsHostRunning(HttpClient);
+                running = await IsHostStarted(HttpClient);
 
                 if (!running)
                 {
-                    await Task.Delay(500);
+                    await Task.Delay(50);
                 }
             }
         }
@@ -203,20 +202,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testServer.Dispose();
         }
 
-        private async Task<bool> IsHostRunning(HttpClient client)
+        private async Task<bool> IsHostStarted(HttpClient client)
         {
-            HostSecretsInfo secrets = await SecretManager.GetHostSecretsAsync();
-
-            // Workaround for https://github.com/Azure/azure-functions-host/issues/2397 as the base URL
-            // doesn't currently start the host.
-            // Note: the master key "1234" is from the TestSecretManager.
-            using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"/admin/functions/dummyName/status?code={secrets.MasterKey}"))
-            {
-                using (HttpResponseMessage response = await client.SendAsync(request))
-                {
-                    return response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.NotFound;
-                }
-            }
+            HostStatus status = await GetHostStatusAsync();
+            return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}";
         }
 
         private class UpdateContentLengthHandler : DelegatingHandler

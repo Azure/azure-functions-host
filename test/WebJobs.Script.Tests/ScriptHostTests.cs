@@ -15,7 +15,6 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -294,6 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Directory.CreateDirectory(invalidFunctionNamePath);
 
                 JObject config = new JObject();
+                config["version"] = "2.0";
                 config["id"] = ID;
 
                 File.WriteAllText(Path.Combine(rootPath, ScriptConstants.HostMetadataFileName), config.ToString());
@@ -616,8 +616,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var exception = new InvalidOperationException(stack);
 
             // no match - empty functions
-            FunctionDescriptor functionResult = null;
-            bool result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
+            bool result = ScriptHost.TryGetFunctionFromException(functions, exception, out FunctionDescriptor functionResult);
             Assert.False(result);
             Assert.Null(functionResult);
 
@@ -884,6 +883,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Set id in the host.json
             string hostJsonContent = @"
             {
+                'version': '2.0',
                 'id': 'foobar'
             }";
             File.WriteAllText(Path.Combine(rootPath, "host.json"), hostJsonContent);

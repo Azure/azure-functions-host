@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (unresolvedBindings.Any())
             {
                 string allUnresolvedBindings = string.Join(", ", unresolvedBindings);
-                throw new ScriptConfigurationException($"The binding type(s) '{allUnresolvedBindings}' are not registered. " +
+                throw new FunctionConfigurationException($"The binding type(s) '{allUnresolvedBindings}' are not registered. " +
                         $"Please ensure the type is correct and the binding extension is installed.");
             }
         }
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             else
             {
-                throw new ScriptConfigurationException($"The binding type '{triggerMetadata.Type}' is not registered. " +
+                throw new FunctionConfigurationException($"The binding type '{triggerMetadata.Type}' is not registered. " +
                     $"Please ensure the type is correct and the binding extension is installed.");
             }
 

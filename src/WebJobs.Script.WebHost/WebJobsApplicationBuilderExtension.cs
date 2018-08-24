@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Buffering;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -46,7 +47,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMiddleware<HttpExceptionMiddleware>();
             builder.UseMiddleware<ResponseBufferingMiddleware>();
             builder.UseMiddleware<HomepageMiddleware>();
-            builder.UseMiddleware<HttpThrottleMiddleware>();
+            builder.UseWhen(context => context.Features.Get<IFunctionExecutionFeature>() != null, config =>
+            {
+                config.UseMiddleware<HttpThrottleMiddleware>();
+            });
             builder.UseMiddleware<FunctionInvocationMiddleware>();
             builder.UseMiddleware<HostWarmupMiddleware>();
 

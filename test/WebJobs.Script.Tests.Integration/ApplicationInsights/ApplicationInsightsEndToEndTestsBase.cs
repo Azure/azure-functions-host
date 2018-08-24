@@ -248,6 +248,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // TODO: Remove this once the issue https://github.com/Azure/azure-functions-nodejs-worker/issues/98 is resolved
             traces = traces.Where(t => !t.Message.Contains("[DEP0005]")).ToArray();
 
+            // We may have any number of "Host Status" calls as we wait for startup. Let's ignore them.
+            traces = traces.Where(t => !t.Message.StartsWith("Host Status")).ToArray();
+
             Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
             ValidateTrace(traces[0], "A function whitelist has been specified", LogCategories.Startup);

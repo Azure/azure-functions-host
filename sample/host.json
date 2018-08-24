@@ -1,4 +1,5 @@
 {
+    "version": "2.0",
     "watchDirectories": [ "Shared", "Test" ],
     "healthMonitor": {
         "enabled": true,

@@ -50,6 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategoryWorker = "Worker";
         public const string LogCategoryMigration = "Host.Migration";
 
+        public const string SkipHostJsonConfigurationKey = "MS_SkipHostJsonConfiguration";
+
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters
         public const string SystemTriggerParameterName = "_triggerValue";

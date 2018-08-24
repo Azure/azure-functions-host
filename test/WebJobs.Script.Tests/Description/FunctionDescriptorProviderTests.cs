@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             functionMetadata.Bindings.Add(triggerMetadata);
             functionMetadata.Bindings.Add(bindingMetadata);
 
-            var ex = Assert.Throws<ScriptConfigurationException>(() =>
+            var ex = Assert.Throws<FunctionConfigurationException>(() =>
             {
                 _provider.TryCreate(functionMetadata, out FunctionDescriptor descriptor);
             });
@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             functionMetadata.Bindings.Add(metadata);
 
-            var ex = Assert.Throws<ScriptConfigurationException>(() =>
+            var ex = Assert.Throws<FunctionConfigurationException>(() =>
             {
                 _provider.TryCreate(functionMetadata, out FunctionDescriptor descriptor);
             });

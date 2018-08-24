@@ -2,10 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -76,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private async Task StartHostAsync(CancellationToken cancellationToken, int attemptCount = 0)
+        private async Task StartHostAsync(CancellationToken cancellationToken, int attemptCount = 0, bool skipHostJsonConfiguration = false)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -84,15 +82,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 bool isOffline = CheckAppOffline();
 
-                _host = BuildHost(isOffline);
+                _host = BuildHost(isOffline, skipHostJsonConfiguration);
 
                 LogInitialization(_host, isOffline, attemptCount, _hostStartCount++);
 
                 await _host.StartAsync(cancellationToken);
 
-                LastError = null;
+                // This means we had an error on a previous load, so we want to keep the LastError around
+                if (!skipHostJsonConfiguration)
+                {
+                    LastError = null;
+                }
 
-                if (!isOffline)
+                if (!isOffline && !skipHostJsonConfiguration)
                 {
                     State = ScriptHostState.Running;
                 }
@@ -122,12 +124,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                await Utility.DelayWithBackoffAsync(attemptCount, cancellationToken, min: TimeSpan.FromSeconds(1), max: TimeSpan.FromMinutes(2))
-                    .ContinueWith(t =>
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        return StartHostAsync(cancellationToken, attemptCount);
-                    });
+                if (exc is HostConfigurationException)
+                {
+                    // Try starting the host without parsing host.json. This will start up a
+                    // minimal host and allow the portal to see the error. Any modification will restart again.
+                    Task ignore = StartHostAsync(cancellationToken, attemptCount, skipHostJsonConfiguration: true);
+                }
+                else
+                {
+                    await Utility.DelayWithBackoffAsync(attemptCount, cancellationToken, min: TimeSpan.FromSeconds(1), max: TimeSpan.FromMinutes(2))
+                        .ContinueWith(t =>
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            return StartHostAsync(cancellationToken, attemptCount);
+                        });
+                }
             }
         }
 
@@ -176,10 +187,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.LogInformation("Script host restarted.");
         }
 
-        private IHost BuildHost(bool isOffline = false)
+        private IHost BuildHost(bool isOffline = false, bool skipHostJsonConfiguration = false)
         {
-            var builder = new HostBuilder()
-                .SetAzureFunctionsEnvironment()
+            var builder = new HostBuilder();
+
+            if (skipHostJsonConfiguration)
+            {
+                builder.ConfigureAppConfiguration((context, _) =>
+                {
+                    context.Properties[ScriptConstants.SkipHostJsonConfigurationKey] = true;
+                });
+            }
+
+            builder.SetAzureFunctionsEnvironment()
                 .AddWebScriptHost(_rootServiceProvider, _rootScopeFactory, _applicationHostOptions.CurrentValue);
 
             if (isOffline)
@@ -238,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             try
             {
-                await instance?.StopAsync(cancellationToken);
+                await (instance?.StopAsync(cancellationToken) ?? Task.CompletedTask);
             }
             catch (Exception)
             {

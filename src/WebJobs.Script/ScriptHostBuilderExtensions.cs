@@ -66,9 +66,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 ConfigureApplicationInsights(context, loggingBuilder);
             })
-            .ConfigureAppConfiguration(c =>
+            .ConfigureAppConfiguration((context, configBuilder) =>
             {
-                c.Add(new HostJsonFileConfigurationSource(applicationOptions, loggerFactory));
+                if (!context.Properties.ContainsKey(ScriptConstants.SkipHostJsonConfigurationKey))
+                {
+                    configBuilder.Add(new HostJsonFileConfigurationSource(applicationOptions, SystemEnvironment.Instance, loggerFactory));
+                }
             });
 
             // WebJobs configuration

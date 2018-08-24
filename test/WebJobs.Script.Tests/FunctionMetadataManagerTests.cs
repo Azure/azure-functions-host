@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
-            Assert.Throws<ScriptConfigurationException>(() => FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
+            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
         }
 
         [Fact]
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fileSystem = new MockFileSystem();
             fileSystem.AddDirectory(@"c:\functions");
 
-            Assert.Throws<ScriptConfigurationException>(() => FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
+            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
         }
 
         [Fact]

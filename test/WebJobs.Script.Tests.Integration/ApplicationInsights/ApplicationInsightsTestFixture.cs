@@ -49,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 });
 
             HttpClient = TestHost.HttpClient;
-            HttpClient.BaseAddress = new Uri("https://localhost/");
 
             TestHelpers.WaitForWebHost(HttpClient);
         }

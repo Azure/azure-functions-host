@@ -1,3 +1,4 @@
 {
-  "id": "function-tests-csharp"
+    "version":  "2.0",
+    "id": "function-tests-csharp"
 }
