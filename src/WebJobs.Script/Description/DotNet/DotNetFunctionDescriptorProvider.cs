@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             functionDescriptor = null;
 
             // We can only handle script types supported by the current compilation service factory
-            if (!_compilationServiceFactory.SupportedScriptTypes.Contains(functionMetadata.ScriptType))
+            if (!_compilationServiceFactory.SupportedLanguages.Contains(functionMetadata.Language))
             {
                 return false;
             }
@@ -151,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         //   Justification for this cariation of the programming model is that declaring 'out' parameters is (deliberately)
                         //   awkward in F#, they require opening System.Runtime.InteropServices and adding the [<Out>] attribute, and using
                         //   a byref parameter. In contrast declaring a byref parameter alone (neither labelled In nor Out) is simple enough.
-                        if (parameter.IsOut || (functionMetadata.ScriptType == ScriptType.FSharp && parameterIsByRef && !parameter.IsIn))
+                        if (parameter.IsOut || (functionMetadata.Language == DotNetScriptTypes.FSharp && parameterIsByRef && !parameter.IsIn))
                         {
                             descriptor.Attributes |= ParameterAttributes.Out;
                         }

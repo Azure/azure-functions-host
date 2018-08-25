@@ -12,6 +12,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -235,6 +237,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 return await sr.ReadToEndAsync();
             }
+        }
+
+        public static IEnumerable<WorkerConfig> GetTestWorkerConfigs()
+        {
+            var nodeWorkerDesc = GetTestWorkerDescription("node", ".js");
+            var javaWorkerDesc = GetTestWorkerDescription("java", ".jar");
+
+            return new List<WorkerConfig>()
+            {
+                new WorkerConfig() { Description = nodeWorkerDesc },
+                new WorkerConfig() { Description = javaWorkerDesc },
+            };
+        }
+
+        public static WorkerDescription GetTestWorkerDescription(string language, string extension)
+        {
+            return new WorkerDescription()
+            {
+                Extensions = new List<string>()
+                 {
+                     { extension }
+                 },
+                Language = language
+            };
         }
     }
 }

@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 IsDirect = functionMetadata.IsDirect,
                 IsDisabled = functionMetadata.IsDisabled,
                 IsProxy = functionMetadata.IsProxy,
+                Language = functionMetadata.Language,
                 InvokeUrlTemplate = GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata.Name, router)
             };
             return response;

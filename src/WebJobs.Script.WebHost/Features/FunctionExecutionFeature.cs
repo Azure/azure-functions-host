@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
                 coldStartData = new JObject
                 {
                     { "requestId", request.GetRequestId() },
-                    { "language", Descriptor.Metadata.ScriptType.ToString() },
+                    { "language", Descriptor.Metadata.Language },
                     { "sku", _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku) }
                 };
 

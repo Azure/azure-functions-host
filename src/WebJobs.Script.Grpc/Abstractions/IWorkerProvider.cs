@@ -21,9 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
         /// Tries to configure the arguments with any configuration / environment specific settings.
         /// </summary>
         /// <param name="args">The default arguments constructed by the host.</param>
-        /// <param name="config">The host-level IConfiguration.</param>
         /// <param name="logger">The startup ILogger.</param>
         /// <returns>A bool that indicates if the args were configured successfully.</returns>
-        bool TryConfigureArguments(WorkerProcessArguments args, IConfiguration config, ILogger logger);
+        bool TryConfigureArguments(WorkerProcessArguments args, ILogger logger);
     }
 }

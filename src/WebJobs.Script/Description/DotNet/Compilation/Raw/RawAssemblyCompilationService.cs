@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private static string[] _supportedFileTypes = new[] { ".dll", ".exe" };
 
-        public string Language => "RawDotNetAssembly";
+        public string Language => DotNetScriptTypes.RawDotNetAssembly;
 
         public IEnumerable<string> SupportedFileTypes => _supportedFileTypes;
 

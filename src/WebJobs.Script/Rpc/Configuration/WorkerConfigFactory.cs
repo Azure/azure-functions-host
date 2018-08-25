@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
@@ -23,8 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public WorkerConfigFactory(IConfiguration config, ILogger logger)
         {
-            _config = config;
-            _logger = logger;
+            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             WorkersDirPath = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
             var workersDirectorySection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.WorkersDirectorySectionName}");
             if (!string.IsNullOrEmpty(workersDirectorySection.Value))
@@ -33,11 +34,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
+        public List<IWorkerProvider> WorkerProviders => _workerProviderDictionary.Values.ToList();
+
         public string WorkersDirPath { get; }
 
-        public IEnumerable<WorkerConfig> GetConfigs(IEnumerable<IWorkerProvider> providers)
+        public IEnumerable<WorkerConfig> GetConfigs()
         {
-            foreach (var provider in providers)
+            BuildWorkerProviderDictionary();
+            foreach (var provider in WorkerProviders)
             {
                 var description = provider.GetDescription();
                 _logger.LogTrace($"Worker path for language worker {description.Language}: {description.WorkerDirectory}");
@@ -53,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     arguments.ExecutablePath = GetExecutablePathForJava(description.DefaultExecutablePath);
                 }
 
-                if (provider.TryConfigureArguments(arguments, _config, _logger))
+                if (provider.TryConfigureArguments(arguments, _logger))
                 {
                     yield return new WorkerConfig()
                     {
@@ -68,38 +72,28 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public List<IWorkerProvider> GetWorkerProviders(ILogger logger, ScriptSettingsManager settingsManager = null, string language = null)
+        internal void BuildWorkerProviderDictionary()
         {
-            AddProviders(logger, language);
-            AddProvidersFromAppSettings(logger);
-            return _workerProviderDictionary.Values.ToList();
+            AddProviders();
+            AddProvidersFromAppSettings();
         }
 
-        internal void AddProviders(ILogger logger, string language = null)
+        internal void AddProviders()
         {
             var providers = new List<IWorkerProvider>();
-            logger.LogTrace($"Workers Directory set to: {WorkersDirPath}");
+            _logger.LogTrace($"Workers Directory set to: {WorkersDirPath}");
 
-            if (!string.IsNullOrEmpty(language))
+            foreach (var workerDir in Directory.EnumerateDirectories(WorkersDirPath))
             {
-                logger.LogInformation($"Reading Worker config for the language: {language}");
-                AddProvider(Path.Combine(WorkersDirPath, language), logger);
-            }
-            else
-            {
-                logger.LogTrace($"Loading worker providers from the workers directory: {WorkersDirPath}");
-                foreach (var workerDir in Directory.EnumerateDirectories(WorkersDirPath))
+                string workerConfigPath = Path.Combine(workerDir, LanguageWorkerConstants.WorkerConfigFileName);
+                if (File.Exists(workerConfigPath))
                 {
-                    string workerConfigPath = Path.Combine(workerDir, LanguageWorkerConstants.WorkerConfigFileName);
-                    if (File.Exists(workerConfigPath))
-                    {
-                        AddProvider(workerDir, logger);
-                    }
+                    AddProvider(workerDir);
                 }
             }
         }
 
-        internal void AddProvidersFromAppSettings(ILogger logger)
+        internal void AddProvidersFromAppSettings()
         {
             var languagesSection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}");
             foreach (var languageSection in languagesSection.GetChildren())
@@ -108,12 +102,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (workerDirectorySection.Value != null)
                 {
                     _workerProviderDictionary.Remove(languageSection.Key);
-                    AddProvider(Path.Combine(workerDirectorySection.Value, languageSection.Key), logger);
+                    AddProvider(Path.Combine(workerDirectorySection.Value, languageSection.Key));
                 }
             }
         }
 
-        internal void AddProvider(string workerDir, ILogger logger)
+        internal void AddProvider(string workerDir)
         {
             try
             {
@@ -121,10 +115,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 string workerConfigPath = Path.Combine(workerDir, LanguageWorkerConstants.WorkerConfigFileName);
                 if (!File.Exists(workerConfigPath))
                 {
-                    logger.LogTrace($"Did not find worker config file at: {workerConfigPath}");
+                    _logger.LogTrace($"Did not find worker config file at: {workerConfigPath}");
                     return;
                 }
-                logger.LogTrace($"Found worker config: {workerConfigPath}");
+                _logger.LogTrace($"Found worker config: {workerConfigPath}");
                 string json = File.ReadAllText(workerConfigPath);
                 JObject workerConfig = JObject.Parse(json);
                 WorkerDescription workerDescription = workerConfig.Property(LanguageWorkerConstants.WorkerDescription).Value.ToObject<WorkerDescription>();
@@ -142,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
                 if (File.Exists(workerDescription.GetWorkerPath()))
                 {
-                    logger.LogTrace($"Will load worker provider for language: {workerDescription.Language}");
+                    _logger.LogTrace($"Will load worker provider for language: {workerDescription.Language}");
                     workerDescription.Validate();
                     _workerProviderDictionary[workerDescription.Language] = new GenericWorkerProvider(workerDescription, workerDir);
                 }
@@ -153,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, $"Failed to initialize worker provider for: {workerDir}");
+                _logger?.LogError(ex, $"Failed to initialize worker provider for: {workerDir}");
             }
         }
 
@@ -207,15 +201,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal string GetExecutablePathForJava(string defaultExecutablePath)
         {
-                string javaHome = ScriptSettingsManager.Instance.GetSetting("JAVA_HOME");
-                if (string.IsNullOrEmpty(javaHome) || Path.IsPathRooted(defaultExecutablePath))
-                {
-                    return defaultExecutablePath;
-                }
-                else
-                {
-                    return Path.GetFullPath(Path.Combine(javaHome, "bin", defaultExecutablePath));
-                }
+            string javaHome = ScriptSettingsManager.Instance.GetSetting("JAVA_HOME");
+            if (string.IsNullOrEmpty(javaHome) || Path.IsPathRooted(defaultExecutablePath))
+            {
+                return defaultExecutablePath;
+            }
+            else
+            {
+                return Path.GetFullPath(Path.Combine(javaHome, "bin", defaultExecutablePath));
+            }
         }
     }
 }

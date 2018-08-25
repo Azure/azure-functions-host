@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public string EntryPoint { get; set; }
 
-        public ScriptType ScriptType { get; set; }
+        public string Language { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the function is disabled.

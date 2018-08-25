@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -20,23 +21,26 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IScriptEventManager _eventManager;
         private IRpcServer _server;
         private CreateChannel _channelFactory;
-        private List<WorkerConfig> _workerConfigs;
+        private IEnumerable<WorkerConfig> _workerConfigs;
         private ConcurrentDictionary<WorkerConfig, LanguageWorkerState> _channelStates = new ConcurrentDictionary<WorkerConfig, LanguageWorkerState>();
         private IDisposable _workerErrorSubscription;
         private IList<IDisposable> _workerStateSubscriptions = new List<IDisposable>();
         private ConcurrentDictionary<string, ILanguageWorkerChannel> _channelsDictionary = new ConcurrentDictionary<string, ILanguageWorkerChannel>();
+        private string _language;
         private bool disposedValue = false;
 
         public FunctionDispatcher(
             IScriptEventManager manager,
             IRpcServer server,
             CreateChannel channelFactory,
-            IEnumerable<WorkerConfig> workers)
+            IEnumerable<WorkerConfig> workerConfigs,
+            string language)
         {
             _eventManager = manager;
             _server = server;
             _channelFactory = channelFactory;
-            _workerConfigs = workers?.ToList() ?? new List<WorkerConfig>();
+            _language = language;
+            _workerConfigs = workerConfigs ?? throw new ArgumentNullException("workerConfigs");
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                 .Subscribe(WorkerError);
         }
@@ -45,7 +49,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public bool IsSupported(FunctionMetadata functionMetadata)
         {
-            return _workerConfigs.Any(config => config.Extensions.Contains(Path.GetExtension(functionMetadata.ScriptFile)));
+            if (string.IsNullOrEmpty(functionMetadata.Language))
+            {
+                return false;
+            }
+            if (string.IsNullOrEmpty(_language))
+            {
+                return true;
+            }
+            return functionMetadata.Language.Equals(_language, StringComparison.OrdinalIgnoreCase);
         }
 
         internal LanguageWorkerState CreateWorkerState(WorkerConfig config)
@@ -90,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             });
                             _workerStateSubscriptions.Add(state.Functions.Subscribe(reg =>
                             {
-                                state.RegisteredFunctions.Add(reg);
+                                state.AddRegistration(reg);
                                 reg.InputBuffer.LinkTo(errorBlock);
                             }));
                             _eventManager.Publish(new WorkerProcessErrorEvent(state.Channel.Id, config.Language, languageWorkerChannelException));
@@ -117,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         pair.Value.Channel.Dispose();
                         pair.Value.Functions.Dispose();
                     }
-                    _server.ShutdownAsync().GetAwaiter().GetResult();
+                    _server.ShutdownAsync().ContinueWith(t => t.Exception.Handle(e => true), TaskContinuationOptions.OnlyOnFaulted);
                 }
                 disposedValue = true;
             }

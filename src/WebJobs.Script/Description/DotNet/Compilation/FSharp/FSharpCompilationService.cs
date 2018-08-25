@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
         }
 
-        public string Language => "FSharp";
+        public string Language => DotNetScriptTypes.FSharp;
 
         public IEnumerable<string> SupportedFileTypes => FileTypes;
 

@@ -8,18 +8,13 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -109,57 +104,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task ManualTrigger_CSharp_Invoke_Succeeds()
-        {
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-            string inId = Guid.NewGuid().ToString();
-            string outId = Guid.NewGuid().ToString();
-            CloudBlockBlob statusBlob = outputContainer.GetBlockBlobReference(inId);
-            await statusBlob.UploadTextAsync("Hello C#!");
-
-            JObject input = new JObject()
-            {
-                { "InId", inId },
-                { "OutId", outId }
-            };
-
-            await _fixture.Host.BeginFunctionAsync("manualtrigger-csharp", input);
-
-            // wait for completion
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(outId);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
-            Assert.Equal("Hello C#!", Utility.RemoveUtf8ByteOrderMark(result));
-        }
-
-        [Fact]
-        public async Task ManualTrigger_Invoke_Succeeds()
-        {
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-            string inId = Guid.NewGuid().ToString();
-            string outId = Guid.NewGuid().ToString();
-            CloudBlockBlob statusBlob = outputContainer.GetBlockBlobReference(inId);
-            JObject testData = new JObject()
-            {
-                { "first", "Mathew" },
-                { "last", "Charles" }
-            };
-            await statusBlob.UploadTextAsync(testData.ToString(Formatting.None));
-
-            JObject input = new JObject()
-            {
-                { "inId", inId },
-                { "outId", outId }
-            };
-
-            await _fixture.Host.BeginFunctionAsync("manualtrigger", input);
-
-            // wait for completion
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(outId);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
-            Assert.Equal("Mathew Charles", result);
-        }
-
-        [Fact]
         public async Task Home_Get_Succeeds()
         {
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
@@ -196,80 +140,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
-        [Fact]
-        public async Task HttpTrigger_CSharp_Poco_Post_Succeeds()
-        {
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CSharp-POCO");
-
-            string uri = $"api/httptrigger-csharp-poco?code={functionKey}";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-
-            string id = Guid.NewGuid().ToString();
-            JObject requestBody = new JObject
-            {
-                { "Id", id },
-                { "Value", "Testing" }
-            };
-
-            request.Content = new StringContent(requestBody.ToString(), Encoding.UTF8, "application/json");
-
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-            // wait for function to execute and produce its result blob
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
-
-            Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
-        }
-
-        [Fact]
-        public async Task Legacy_RequestTypes_Succeed()
-        {
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CSharp-Compat");
-            string id = Guid.NewGuid().ToString();
-            string uri = $"api/HttpTrigger-CSharp-Compat?code={functionKey}";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            string responseContent = await response.Content.ReadAsAsync<string>();
-
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal("Hello from HttpResponseMessage", responseContent);
-        }
-
-        [Fact]
-        public async Task HttpTrigger_CSharp_Poco_Get_Succeeds()
-        {
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CSharp-Poco");
-            string id = Guid.NewGuid().ToString();
-            string uri = $"api/httptrigger-csharp-poco?code={functionKey}&Id={id}&Value=Testing";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-            // wait for function to execute and produce its result blob
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
-
-            Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
-        }
-
-        [Fact]
-        public async Task HttpTrigger_Get_Succeeds()
-        {
-            await InvokeAndValidateHttpTrigger("HttpTrigger");
-        }
-
-        [Fact]
-        public async Task HttpTrigger_Java_Get_Succeeds()
-        {
-            await InvokeAndValidateHttpTrigger("HttpTrigger-Java");
-        }
-
         private async Task InvokeAndValidateHttpTrigger(string functionName)
         {
             string functionKey = await _fixture.Host.GetFunctionSecretAsync($"{functionName}");
@@ -298,255 +168,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             return await _fixture.Host.HttpClient.SendAsync(request);
-        }
-
-        [Fact]
-        public async Task HttpTrigger_DuplicateQueryParams_Succeeds()
-        {
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger");
-            string uri = $"api/httptrigger?code={functionKey}&name=Mathew&name=Amy";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string body = await response.Content.ReadAsStringAsync();
-            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("Hello Mathew,Amy", body);
-        }
-
-        [Fact]
-        public async Task HttpTrigger_CSharp_DuplicateQueryParams_Succeeds()
-        {
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger-csharp");
-            string uri = $"api/httptrigger-csharp?code={functionKey}&name=Mathew&name=Amy";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string body = await response.Content.ReadAsStringAsync();
-            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("Hello, Mathew,Amy", body);
-        }
-
-        [Fact]
-        public async Task HttpTrigger_CustomRoute_Get_ReturnsExpectedResponse()
-        {
-            var id = "4e2796ae-b865-4071-8a20-2a15cbaf856c";
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CustomRoute-Get");
-            string uri = $"api/node/products/electronics/{id}?code={functionKey}";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string json = await response.Content.ReadAsStringAsync();
-            JArray products = JArray.Parse(json);
-            Assert.Equal(1, products.Count);
-            var product = products[0];
-            Assert.Equal("electronics", (string)product["category"]);
-            Assert.Equal(id, (string)product["id"]);
-
-            // test optional route param (id)
-            uri = $"api/node/products/electronics?code={functionKey}";
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            json = await response.Content.ReadAsStringAsync();
-            products = JArray.Parse(json);
-            Assert.Equal(2, products.Count);
-
-            // test optional route param (category)
-            uri = $"api/node/products?code={functionKey}";
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            json = await response.Content.ReadAsStringAsync();
-            products = JArray.Parse(json);
-            Assert.Equal(3, products.Count);
-
-            // test a constraint violation (invalid id)
-            uri = $"api/node/products/electronics/notaguid?code={functionKey}";
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-
-            // test a constraint violation (invalid category)
-            uri = $"api/node/products/999/{id}?code={functionKey}";
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-
-            // verify route parameters were part of binding data
-            var logs = _fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory("HttpTrigger-CustomRoute-Get"));
-            var log = logs.Single(p => p.FormattedMessage.Contains($"category: electronics id: {id}"));
-            Assert.NotNull(log);
-        }
-
-        [Fact(Skip = "http://github.com/Azure/azure-functions-host/issues/2812")]
-        public async Task HttpTrigger_CustomRoute_Post_ReturnsExpectedResponse()
-        {
-            string id = Guid.NewGuid().ToString();
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CustomRoute-Post");
-            string uri = $"api/node/products/housewares/{id}?code={functionKey}";
-            JObject product = new JObject
-            {
-                { "id", id },
-                { "name", "Waffle Maker Pro" },
-                { "category", "Housewares" }
-            };
-
-            var request = new HttpRequestMessage(HttpMethod.Post, uri)
-            {
-                Content = new StringContent(product.ToString())
-            };
-
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-
-            // wait for function to execute and produce its result blob
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-            string path = $"housewares/{id}";
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(path);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
-            JObject resultProduct = JObject.Parse(Utility.RemoveUtf8ByteOrderMark(result));
-            Assert.Equal(id, (string)resultProduct["id"]);
-            Assert.Equal((string)product["name"], (string)resultProduct["name"]);
-        }
-
-        [Fact]
-        public async Task SharedDirectory_Node_ReloadsOnFileChange()
-        {
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger");
-
-            string uri = $"api/httptrigger?code={functionKey}&name=Mathew";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            string initialTimestamp = response.Headers.GetValues("Shared-Module").First();
-
-            // make the request again and verify the timestamp is the same
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            string timestamp = response.Headers.GetValues("Shared-Module").First();
-            Assert.Equal(initialTimestamp, timestamp);
-
-            // now "touch" a file in the shared directory to trigger a restart
-            string sharedModulePath = Path.Combine(_fixture.Host.ScriptPath, "Shared\\test.js");
-            File.SetLastWriteTimeUtc(sharedModulePath, DateTime.UtcNow);
-
-            // wait for the module to be reloaded
-            await TestHelpers.Await(async () =>
-            {
-                request = new HttpRequestMessage(HttpMethod.Get, uri);
-                response = await _fixture.Host.HttpClient.SendAsync(request);
-                timestamp = response.Headers.GetValues("Shared-Module").First();
-                return initialTimestamp != timestamp;
-            }, timeout: 5000, pollingInterval: 500);
-            Assert.NotEqual(initialTimestamp, timestamp);
-
-            initialTimestamp = timestamp;
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            timestamp = response.Headers.GetValues("Shared-Module").First();
-            Assert.Equal(initialTimestamp, timestamp);
-        }
-
-        [Fact]
-        public async Task HttpTrigger_CSharp_CustomRoute_ReturnsExpectedResponse()
-        {
-            string functionName = "HttpTrigger-CSharp-CustomRoute";
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync(functionName);
-            string uri = $"api/csharp/products/electronics/123?code={functionKey}";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string json = await response.Content.ReadAsStringAsync();
-            var product = JObject.Parse(json);
-            Assert.Equal("electronics", (string)product["category"]);
-            Assert.Equal(123, (int?)product["id"]);
-
-            // test optional id parameter
-            uri = $"api/csharp/products/electronics?code={functionKey}";
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            json = await response.Content.ReadAsStringAsync();
-            product = JObject.Parse(json);
-            Assert.Equal("electronics", (string)product["category"]);
-            Assert.Null((int?)product["id"]);
-
-            // test optional category parameter
-            uri = $"api/csharp/products?code={functionKey}";
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            json = await response.Content.ReadAsStringAsync();
-            product = JObject.Parse(json);
-            Assert.Null((string)product["category"]);
-            Assert.Null((int?)product["id"]);
-
-            // test a constraint violation (invalid id)
-            uri = $"api/csharp/products/electronics/1x3?code={functionKey}";
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-
-            // test a constraint violation (invalid category)
-            uri = $"api/csharp/products/999/123?code={functionKey}";
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-
-            // verify route parameters were part of binding data
-            var logs = _fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory(functionName));
-            Assert.True(logs.Any(p => p.FormattedMessage.Contains("Parameters: category=electronics id=123")));
-            Assert.True(logs.Any(p => p.FormattedMessage.Contains("ProductInfo: Category=electronics Id=123")));
-        }
-
-        [Fact]
-        public async Task HttpTrigger_Disabled_SucceedsWithAdminKey()
-        {
-            // first try with function key only - expect 404
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Disabled");
-            string uri = $"api/httptrigger-disabled?code={functionKey}";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-
-            // now try with admin key
-            string masterKey = await _fixture.Host.GetMasterKeyAsync();
-            uri = $"api/httptrigger-disabled?code={masterKey}";
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string body = await response.Content.ReadAsStringAsync();
-            Assert.Equal("Hello World!", body);
-        }
-
-        [Fact]
-        public async Task HttpTriggerWithObject_CSharp_Post_Succeeds()
-        {
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTriggerWithObject-CSharp");
-
-            string uri = $"api/httptriggerwithobject-csharp?code={functionKey}";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-            request.Content = new StringContent("{ 'SenderName': 'Fabio' }");
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
-            string body = await response.Content.ReadAsStringAsync();
-            JObject jsonObject = JObject.Parse(body);
-            Assert.Equal("Hello, Fabio", jsonObject["greeting"]);
         }
 
         [Fact(Skip = "Not currently supported.")]
@@ -888,7 +509,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
 
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"), "samples")
+                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample"), "samples", null)
             {
             }
 
@@ -901,16 +522,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     o.Functions = new[]
                     {
                         "HttpTrigger",
-                        "HttpTrigger-CSharp",
-                        "HttpTrigger-CSharp-Compat",
-                        "HttpTrigger-CSharp-CustomRoute",
-                        "HttpTrigger-CSharp-POCO",
-                        "HttpTrigger-CustomRoute-Get",
-                        "HttpTrigger-Disabled",
-                        "HttpTrigger-Java",
-                        "HttpTriggerWithObject-CSharp",
-                        "ManualTrigger",
-                        "ManualTrigger-CSharp"
                     };
                 });
             }

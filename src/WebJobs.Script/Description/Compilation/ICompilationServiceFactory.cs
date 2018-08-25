@@ -8,8 +8,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public interface ICompilationServiceFactory<TCompilationService, TMetadata> where TCompilationService : ICompilationService
     {
-        ImmutableArray<ScriptType> SupportedScriptTypes { get; }
+        ImmutableArray<string> SupportedLanguages { get; }
 
-        TCompilationService CreateService(ScriptType scriptType, TMetadata metadata);
+        TCompilationService CreateService(string language, TMetadata metadata);
     }
 }

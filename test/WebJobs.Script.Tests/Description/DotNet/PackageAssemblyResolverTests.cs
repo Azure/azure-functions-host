@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Name = "TestFunction",
                 ScriptFile = _lockFilePath, /*We just need the path from this*/
-                ScriptType = ScriptType.CSharp
+                Language = DotNetScriptTypes.CSharp
             };
 
             string functionDirectory = Path.GetDirectoryName(functionMetadata.ScriptFile);

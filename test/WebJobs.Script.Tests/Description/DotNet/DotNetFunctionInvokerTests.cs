@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ScriptFile = filePath,
                 FunctionDirectory = Path.GetDirectoryName(filePath),
                 Name = functionName,
-                ScriptType = ScriptType.CSharp
+                Language = DotNetScriptTypes.CSharp
             };
 
             metadata.Bindings.Add(new BindingMetadata() { Name = "Test", Type = "ManualTrigger" });
@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     ScriptFile = filePath,
                     FunctionDirectory = Path.GetDirectoryName(filePath),
                     Name = Guid.NewGuid().ToString(),
-                    ScriptType = ScriptType.CSharp
+                    Language = DotNetScriptTypes.CSharp
                 };
 
                 metadata.Bindings.Add(new BindingMetadata() { Name = "myQueueItem", Type = "ManualTrigger" });
@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     ScriptFile = filePath,
                     FunctionDirectory = Path.GetDirectoryName(filePath),
                     Name = Guid.NewGuid().ToString(),
-                    ScriptType = ScriptType.CSharp
+                    Language = DotNetScriptTypes.CSharp
                 };
 
                 metadata.Bindings.Add(new BindingMetadata() { Name = "myQueueItem", Type = "ManualTrigger" });
@@ -307,7 +307,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ScriptFile = "run.csx",
                 FunctionDirectory = "c:\\somedir",
                 Name = Guid.NewGuid().ToString(),
-                ScriptType = ScriptType.CSharp
+                Language = DotNetScriptTypes.CSharp
             };
 
             metadata.Bindings.Add(new BindingMetadata() { Name = "myQueueItem", Type = "ManualTrigger" });
@@ -325,7 +325,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var compilationFactory = new Mock<ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver>>();
             compilationFactory
-                .Setup(f => f.CreateService(ScriptType.CSharp, It.IsAny<IFunctionMetadataResolver>()))
+                .Setup(f => f.CreateService(DotNetScriptTypes.CSharp, It.IsAny<IFunctionMetadataResolver>()))
                 .Returns(dotnetCompilationService.Object);
 
             var invoker = new DotNetFunctionInvoker(dependencies.Host, metadata, new Collection<FunctionBinding>(),
@@ -380,7 +380,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     ScriptFile = filePath,
                     Name = Guid.NewGuid().ToString(),
-                    ScriptType = ScriptType.CSharp,
+                    Language = DotNetScriptTypes.CSharp,
                 };
 
                 metadata.Bindings.Add(new BindingMetadata { Type = "TestTrigger", Direction = BindingDirection.In });
@@ -428,7 +428,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ReturnsAsync(compilation.Object);
 
             var compilationServiceFactory = new Mock<ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver>>();
-            compilationServiceFactory.Setup(f => f.CreateService(ScriptType.CSharp, It.IsAny<IFunctionMetadataResolver>()))
+            compilationServiceFactory.Setup(f => f.CreateService(DotNetScriptTypes.CSharp, It.IsAny<IFunctionMetadataResolver>()))
                 .Returns(compilationService.Object);
 
             var metricsLogger = new MetricsLogger();
