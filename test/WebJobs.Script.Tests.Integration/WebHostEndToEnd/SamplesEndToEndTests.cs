@@ -2,26 +2,19 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Rpc;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -108,34 +101,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             response = await GetHostStatusAsync();
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.True(lastModified < File.GetLastWriteTime(debugSentinelFilePath));
-        }
-
-        [Fact]
-        public async Task ManualTrigger_Invoke_Succeeds()
-        {
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-            string inId = Guid.NewGuid().ToString();
-            string outId = Guid.NewGuid().ToString();
-            CloudBlockBlob statusBlob = outputContainer.GetBlockBlobReference(inId);
-            JObject testData = new JObject()
-            {
-                { "first", "Mathew" },
-                { "last", "Charles" }
-            };
-            await statusBlob.UploadTextAsync(testData.ToString(Formatting.None));
-
-            JObject input = new JObject()
-            {
-                { "inId", inId },
-                { "outId", outId }
-            };
-
-            await _fixture.Host.BeginFunctionAsync("manualtrigger", input);
-
-            // wait for completion
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(outId);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
-            Assert.Equal("Mathew Charles", result);
         }
 
         [Fact]
@@ -541,7 +506,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             static TestFixture()
             {
                 Environment.SetEnvironmentVariable("AzureWebJobs.HttpTrigger-Disabled.Disabled", "1");
-                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName);
             }
 
             public TestFixture()
@@ -558,10 +522,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     o.Functions = new[]
                     {
                         "HttpTrigger",
-                        "HttpTrigger-CustomRoute-Get",
-                        "HttpTrigger-Disabled",
-                        "HttpTrigger-Java",
-                        "ManualTrigger"
                     };
                 });
             }
