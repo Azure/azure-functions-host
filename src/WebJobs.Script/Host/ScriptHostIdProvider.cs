@@ -26,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _config = config;
             _environment = environment;
             _options = options;
-            // _options.RootScriptPath = _options.RootScriptPath ?? config[EnvironmentSettingNames.AzureWebJobsScriptRoot];
         }
 
         public Task<string> GetHostIdAsync(CancellationToken cancellationToken)
