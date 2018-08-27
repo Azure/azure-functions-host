@@ -106,7 +106,6 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
             try
             {
-                string runtimeIdentifierParameter = GetRuntimeIdentifier();
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = dotnetPath,
@@ -116,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                     UseShellExecute = false,
                     ErrorDialog = false,
                     WorkingDirectory = projectFolder,
-                    Arguments = $"build \"{ExtensionsProjectFileName}\" -o bin --force --no-incremental -r {runtimeIdentifierParameter}"
+                    Arguments = $"build \"{ExtensionsProjectFileName}\" -o bin --force --no-incremental"
                 };
 
                 string nugetPath = Path.Combine(Path.GetDirectoryName(ProjectPath), "nuget.config");
@@ -278,7 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
             root.AddItemGroup()
                 .AddItem(PackageReferenceElementName, ExtensionsPackageId)
-                .AddMetadata(PackageReferenceVersionElementName, "1.0.0-beta6", true);
+                .AddMetadata(PackageReferenceVersionElementName, "1.0.0", true);
 
             return root;
         }
