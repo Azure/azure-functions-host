@@ -45,6 +45,10 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             }
 
             var project = await GetOrCreateProjectAsync(ProjectPath);
+
+            // Ensure the metadata generator version we're using is what we expect
+            project.AddPackageReference(ExtensionsPackageId, "1.0.0");
+
             foreach (var extensionReference in references)
             {
                 project.AddPackageReference(extensionReference.Id, extensionReference.Version);
