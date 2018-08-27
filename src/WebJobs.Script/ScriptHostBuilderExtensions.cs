@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions));
                 services.AddSingleton<IOptionsMonitor<ScriptApplicationHostOptions>>(new ScriptApplicationHostOptionsMonitor(applicationHostOptions));
                 services.ConfigureOptions<ScriptHostOptionsSetup>();
-
+                services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 // TODO: pgopa only add this to WebHostServiceCollection
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
