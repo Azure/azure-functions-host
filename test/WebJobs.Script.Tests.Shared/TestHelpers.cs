@@ -264,12 +264,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
         }
 
-        public static IOptionsMonitor<T> CreateOptionsMonitor<T>() where T: class, new()
+        public static IOptionsMonitor<T> CreateOptionsMonitor<T>() where T : class, new()
         {
             return CreateOptionsMonitor<T>(new T());
         }
 
-        public static IOptionsMonitor<T> CreateOptionsMonitor<T>(T options) where T: class, new()
+        public static IOptionsMonitor<T> CreateOptionsMonitor<T>(T options) where T : class, new()
         {
             var factory = new TestOptionsFactory<T>(options);
             return new OptionsMonitor<T>(factory, Array.Empty<IOptionsChangeTokenSource<T>>(), factory);

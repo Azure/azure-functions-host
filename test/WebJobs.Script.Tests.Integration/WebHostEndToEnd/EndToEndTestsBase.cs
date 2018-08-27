@@ -171,9 +171,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return logs.Any(p => p.Contains(guid2));
             });
 
-            Assert.True(logs.Count == 4, string.Join(Environment.NewLine, logs));
-
-            // No need for assert; this will throw if there's not one and only one
             logs.Single(p => p.EndsWith($"From TraceWriter: {guid1}"));
             logs.Single(p => p.EndsWith($"From ILogger: {guid2}"));
         }

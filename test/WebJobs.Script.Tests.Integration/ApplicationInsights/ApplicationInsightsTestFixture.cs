@@ -18,15 +18,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public ApplicationInsightsTestFixture(string scriptRoot, string testId)
         {
+            string scriptPath = Path.Combine(Environment.CurrentDirectory, scriptRoot);
+            string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
+
             WebHostOptions = new ScriptApplicationHostOptions
             {
                 IsSelfHost = true,
-                ScriptPath = Path.Combine(Environment.CurrentDirectory, scriptRoot),
-                LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
+                ScriptPath = scriptPath,
+                LogPath = logPath,
                 SecretsPath = Environment.CurrentDirectory // not used
             };
 
-            TestHost = new TestFunctionHost(Path.Combine(Environment.CurrentDirectory, scriptRoot),
+            TestHost = new TestFunctionHost(scriptPath, logPath,
                 jobHostBuilder =>
                 {
                     jobHostBuilder.Services.AddSingleton<ITelemetryChannel>(_ => Channel);

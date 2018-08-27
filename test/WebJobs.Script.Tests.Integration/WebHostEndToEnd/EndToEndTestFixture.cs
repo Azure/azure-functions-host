@@ -88,7 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
             }
 
-            Host = new TestFunctionHost(_copiedRootPath, ConfigureJobHost);
+            string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
+            Host = new TestFunctionHost(_copiedRootPath, logPath, ConfigureJobHost);
 
             string connectionString = Host.JobHostServices.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);

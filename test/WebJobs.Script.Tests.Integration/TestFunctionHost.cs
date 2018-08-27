@@ -35,23 +35,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
         private readonly WebJobsScriptHostService _hostService;
 
-        public TestFunctionHost(string appRoot,
-            Action<IWebJobsBuilder> configureJobHost,
-            Action<IConfigurationBuilder> configureAppConfiguration = null)
+        public TestFunctionHost(string scriptPath, string logPath,
+            Action<IWebJobsBuilder> configureJobHost = null,
+            Action<IConfigurationBuilder> configureAppConfiguration = null,
+            Action<IServiceCollection> configureServices = null)
         {
-            _appRoot = appRoot;
+            _appRoot = scriptPath;
 
             _hostOptions = new ScriptApplicationHostOptions
             {
                 IsSelfHost = true,
                 ScriptPath = _appRoot,
-                LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
+                LogPath = logPath,
                 SecretsPath = Environment.CurrentDirectory, // not used
                 HasParentScope = true
             };
 
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_hostOptions);
             var builder = new WebHostBuilder()
+                .ConfigureLogging(b =>
+                {
+                    b.AddProvider(_loggerProvider);
+                })
                 .ConfigureServices(services =>
                   {
                       services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
@@ -60,6 +65,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                       services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
 
                       services.AddSingleton<IConfigureBuilder<IConfigurationBuilder>>(_ => new DelegatedConfigureBuilder<IConfigurationBuilder>(configureAppConfiguration));
+
+                      configureServices?.Invoke(services);
                   })
                   .AddScriptHostBuilder(webJobsBuilder =>
                   {

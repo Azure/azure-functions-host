@@ -132,6 +132,8 @@ namespace Microsoft.Azure.WebJobs.Script
             _metadataProvider = metadataProvider;
         }
 
+        public event EventHandler HostInitializing;
+
         public event EventHandler HostInitialized;
 
         public event EventHandler HostStarted;
@@ -251,6 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
                 PreInitialize();
+                HostInitializing?.Invoke(this, EventArgs.Empty);
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();

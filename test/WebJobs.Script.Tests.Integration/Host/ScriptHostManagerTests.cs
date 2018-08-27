@@ -361,75 +361,6 @@
 //        }
 
 //        [Fact]
-//        public async Task HostHealthMonitor_TriggersShutdown_WhenHostUnhealthy()
-//        {
-//            string functionDir = Path.Combine(TestHelpers.FunctionsTestDirectory, "Functions", Guid.NewGuid().ToString());
-//            Directory.CreateDirectory(functionDir);
-//            string logDir = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString());
-
-//            JObject hostConfig = new JObject
-//            {
-//                { "id", "123456" }
-//            };
-//            File.WriteAllText(Path.Combine(functionDir, ScriptConstants.HostMetadataFileName), hostConfig.ToString());
-
-//            var config = new ScriptHostConfiguration
-//            {
-//                RootScriptPath = functionDir,
-//                RootLogPath = logDir,
-//                FileLoggingMode = FileLoggingMode.Always,
-//            };
-
-//            // configure the monitor so it will fail within a couple seconds
-//            config.HostHealthMonitor.HealthCheckInterval = TimeSpan.FromMilliseconds(100);
-//            config.HostHealthMonitor.HealthCheckWindow = TimeSpan.FromSeconds(1);
-//            config.HostHealthMonitor.HealthCheckThreshold = 5;
-
-//            var environmentMock = new Mock<IScriptHostEnvironment>(MockBehavior.Strict);
-//            environmentMock.Setup(p => p.Shutdown());
-
-//            var mockSettings = new Mock<ScriptSettingsManager>(null);
-//            mockSettings.Setup(p => p.IsAppServiceEnvironment).Returns(true);
-
-//            var eventManagerMock = new Mock<IScriptEventManager>();
-//            var hostHealthConfig = new HostHealthMonitorConfiguration();
-//            var mockHostPerformanceManager = new Mock<HostPerformanceManager>(mockSettings.Object, hostHealthConfig);
-
-//            bool underHighLoad = false;
-//            mockHostPerformanceManager.Setup(p => p.IsUnderHighLoad(It.IsAny<Collection<string>>(), It.IsAny<ILogger>()))
-//                .Callback<Collection<string>, ILogger>((c, l) =>
-//                {
-//                    c.Add("Connections");
-//                })
-//                .Returns(() => underHighLoad);
-
-//            var loggerProvider = new TestLoggerProvider();
-//            var loggerProviderFactory = new TestLoggerProviderFactory(loggerProvider);
-//            var hostManager = new ScriptHostManager(config, mockSettings.Object, new ScriptHostFactory(), eventManagerMock.Object, environmentMock.Object, loggerProviderFactory, mockHostPerformanceManager.Object);
-//            Assert.True(hostManager.ShouldMonitorHostHealth);
-//            Task runTask = Task.Run(() => hostManager.RunAndBlock());
-//            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Running);
-
-//            // now that host is running make host unhealthy and wait
-//            // for host shutdown
-//            underHighLoad = true;
-
-//            await TestHelpers.Await(() => hostManager.State == ScriptHostState.Error);
-
-//            Assert.Equal(ScriptHostState.Error, hostManager.State);
-//            environmentMock.Verify(p => p.Shutdown(), Times.Once);
-
-//            // we expect a few restart iterations
-//            var thresholdErrors = loggerProvider.GetAllLogMessages().Where(p => p.Exception is InvalidOperationException && p.Exception.Message == "Host thresholds exceeded: [Connections]. For more information, see https://aka.ms/functions-thresholds.");
-//            Assert.True(thresholdErrors.Count() > 1);
-
-//            var log = loggerProvider.GetAllLogMessages().Last();
-//            Assert.True(loggerProvider.GetAllLogMessages().Count(p => p.FormattedMessage == "Host is unhealthy. Initiating a restart." && p.Level == LogLevel.Error) > 0);
-//            Assert.Equal("Host unhealthy count exceeds the threshold of 5 for time window 00:00:01. Initiating shutdown.", log.FormattedMessage);
-//            Assert.Equal(LogLevel.Error, log.Level);
-//        }
-
-//        [Fact]
 //        public async Task RunAndBlock_SetsLastError_WhenExceptionIsThrown()
 //        {
 //            ScriptHostConfiguration config = new ScriptHostConfiguration()
@@ -494,59 +425,6 @@
 //                Assert.Equal(ScriptHostState.Running, manager.State);
 //                Assert.Equal(0, logs.Count(p => p.Level == LogLevel.Error));
 //            }
-//        }
-
-//        [Fact]
-//        public void IsHostHealthy_ReturnsExpectedResult()
-//        {
-//            var config = new ScriptHostConfiguration()
-//            {
-//                RootScriptPath = Environment.CurrentDirectory
-//            };
-
-//            var mockSettings = new Mock<ScriptSettingsManager>(MockBehavior.Strict, null);
-//            var eventManager = new Mock<IScriptEventManager>();
-//            var hostMock = new Mock<ScriptHost>(new NullScriptHostEnvironment(), eventManager.Object, config, null, null, null);
-//            var factoryMock = new Mock<IScriptHostFactory>();
-//            factoryMock.Setup(f => f.Create(It.IsAny<IScriptHostEnvironment>(), It.IsAny<IScriptEventManager>(), mockSettings.Object, It.IsAny<ScriptHostConfiguration>(), It.IsAny<ILoggerProviderFactory>()))
-//                .Returns(hostMock.Object);
-
-//            var hostHealthConfig = new HostHealthMonitorConfiguration();
-//            var mockHostPerformanceManager = new Mock<HostPerformanceManager>(mockSettings.Object, hostHealthConfig);
-//            var target = new Mock<ScriptHostManager>(config, mockSettings.Object, factoryMock.Object, eventManager.Object, new NullScriptHostEnvironment(), null, mockHostPerformanceManager.Object);
-
-//            Collection<string> exceededCounters = new Collection<string>();
-//            bool isUnderHighLoad = false;
-//            mockHostPerformanceManager.Setup(p => p.IsUnderHighLoad(It.IsAny<Collection<string>>(), It.IsAny<ILogger>()))
-//                .Callback<Collection<string>, ILogger>((c, t) =>
-//                {
-//                    foreach (var counter in exceededCounters)
-//                    {
-//                        c.Add(counter);
-//                    }
-//                })
-//                .Returns(() => isUnderHighLoad);
-
-//            bool isAzureEnvironment = false;
-//            mockSettings.Setup(p => p.IsAppServiceEnvironment).Returns(() => isAzureEnvironment);
-//            mockSettings.Setup(p => p.FileSystemIsReadOnly).Returns(false);
-
-//            config.HostHealthMonitor.Enabled = false;
-//            Assert.True(target.Object.IsHostHealthy());
-
-//            config.HostHealthMonitor.Enabled = true;
-//            Assert.True(target.Object.IsHostHealthy());
-
-//            isAzureEnvironment = true;
-//            Assert.True(target.Object.IsHostHealthy());
-
-//            isUnderHighLoad = true;
-//            exceededCounters.Add("Foo");
-//            exceededCounters.Add("Bar");
-//            Assert.False(target.Object.IsHostHealthy());
-
-//            var ex = Assert.Throws<InvalidOperationException>(() => target.Object.IsHostHealthy(true));
-//            Assert.Equal("Host thresholds exceeded: [Foo, Bar]. For more information, see https://aka.ms/functions-thresholds.", ex.Message);
 //        }
 
 //        [Fact]
