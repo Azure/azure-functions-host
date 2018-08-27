@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -49,6 +50,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
                     services.TryAddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
                     services.AddSingleton<IScriptJobHostEnvironment, WebScriptJobHostEnvironment>();
+
+                    services.AddSingleton<DefaultScriptWebHookProvider>();
+                    services.TryAddSingleton<IScriptWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
+                    services.TryAddSingleton<IWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
 
                     // Logging and diagnostics
                     services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();

@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -54,6 +55,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 Assert.True(logs.Any(p => Regex.IsMatch($"{p.Level} {p.FormattedMessage}", pattern)), $"Expected trace event {pattern} not found.");
             }
+        }
+
+        [Fact]
+        public void WebhookProvider_IsRegistered()
+        {
+            var hostService = ((WebJobsScriptHostService)_fixture.ScriptHostManager);
+            var sdkProvider = hostService.Services.GetService<IWebHookProvider>();
+            var scriptProvider = hostService.Services.GetService<IScriptWebHookProvider>();
+
+            Assert.NotNull(sdkProvider);
+            Assert.NotNull(scriptProvider);
         }
 
         public class Fixture : IAsyncLifetime
