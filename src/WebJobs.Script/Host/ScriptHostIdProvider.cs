@@ -19,22 +19,22 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string HostIdPath = ConfigurationSectionNames.JobHost + ":id";
         private readonly IConfiguration _config;
         private readonly IEnvironment _environment;
-        private readonly ScriptJobHostOptions _options;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
 
-        public ScriptHostIdProvider(IConfiguration config, IEnvironment environment, IOptions<ScriptJobHostOptions> options)
+        public ScriptHostIdProvider(IConfiguration config, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options)
         {
             _config = config;
             _environment = environment;
-            _options = options.Value;
-            _options.RootScriptPath = _options.RootScriptPath ?? config[EnvironmentSettingNames.AzureWebJobsScriptRoot];
+            _options = options;
+            // _options.RootScriptPath = _options.RootScriptPath ?? config[EnvironmentSettingNames.AzureWebJobsScriptRoot];
         }
 
         public Task<string> GetHostIdAsync(CancellationToken cancellationToken)
         {
-            return Task.FromResult(_config[HostIdPath] ?? GetDefaultHostId(_environment, _options));
+            return Task.FromResult(_config[HostIdPath] ?? GetDefaultHostId(_environment, _options.CurrentValue));
         }
 
-        internal static string GetDefaultHostId(IEnvironment environment, ScriptJobHostOptions scriptOptions)
+        internal static string GetDefaultHostId(IEnvironment environment, ScriptApplicationHostOptions scriptOptions)
         {
             // We're setting the default here on the newly created configuration
             // If the user has explicitly set the HostID via host.json, it will overwrite
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string sanitizedMachineName = Environment.MachineName
                     .Where(char.IsLetterOrDigit)
                     .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString();
-                hostId = $"{sanitizedMachineName}-{Math.Abs(GetStableHash(scriptOptions.RootScriptPath))}";
+                hostId = $"{sanitizedMachineName}-{Math.Abs(GetStableHash(scriptOptions.ScriptPath))}";
             }
 
             if (!string.IsNullOrEmpty(hostId))
