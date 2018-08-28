@@ -57,7 +57,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.TryAddSingleton<IWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
 
                     // Make sure the registered IHostIdProvider is used
-                    services.AddSingleton<IHostIdProvider>(rootServiceProvider.GetRequiredService<IHostIdProvider>());
+                    IHostIdProvider provider = rootServiceProvider.GetService<IHostIdProvider>();
+                    if (provider != null)
+                    {
+                        services.AddSingleton<IHostIdProvider>(provider);
+                    }
 
                     // Logging and diagnostics
                     services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
