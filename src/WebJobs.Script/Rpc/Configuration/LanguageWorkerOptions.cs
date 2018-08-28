@@ -7,6 +7,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public class LanguageWorkerOptions
     {
-        public IEnumerable<WorkerConfig> WorkerConfigs { get; set; }
+        public IList<WorkerConfig> WorkerConfigs { get; set; }
     }
 }
