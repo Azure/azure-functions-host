@@ -239,7 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static IEnumerable<WorkerConfig> GetTestWorkerConfigs()
+        public static IList<WorkerConfig> GetTestWorkerConfigs()
         {
             var nodeWorkerDesc = GetTestWorkerDescription("node", ".js");
             var javaWorkerDesc = GetTestWorkerDescription("java", ".jar");
