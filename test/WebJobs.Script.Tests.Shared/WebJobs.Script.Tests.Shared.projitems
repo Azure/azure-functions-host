@@ -21,6 +21,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)TestHostExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestNameResolver.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestOptionsFactory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestOptionsMonitor.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestTraits.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHelpers.cs" />
