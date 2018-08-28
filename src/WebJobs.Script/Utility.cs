@@ -13,8 +13,9 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -32,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
+        private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.FSharp, DotNetScriptTypes.DotNetAssembly };
 
         /// <summary>
         /// Delays while the specified condition remains true.
@@ -445,6 +447,38 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
             return true;
+        }
+
+        internal static bool ShouldInitiliazeLanguageWorkers(IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
+        {
+            if (!string.IsNullOrEmpty(currentRuntimeLanguage) && currentRuntimeLanguage.Equals(LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(currentRuntimeLanguage) && ContainsFunctionWithCurrentLanguage(functions, currentRuntimeLanguage))
+            {
+                return true;
+            }
+            return ContainsNonDotNetFunctions(functions);
+        }
+
+        private static bool ContainsNonDotNetFunctions(IEnumerable<FunctionMetadata> functions)
+        {
+            if (functions != null && functions.Any())
+            {
+                return functions.Any(f => !dotNetLanguages.Contains(f.Language, StringComparer.OrdinalIgnoreCase));
+            }
+            return false;
+        }
+
+        private static bool ContainsFunctionWithCurrentLanguage(IEnumerable<FunctionMetadata> functions, string currentLanguage)
+        {
+            if (functions != null && functions.Any())
+            {
+                return functions.Any(f => f.Language.Equals(currentLanguage, StringComparison.OrdinalIgnoreCase));
+            }
+            return false;
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
