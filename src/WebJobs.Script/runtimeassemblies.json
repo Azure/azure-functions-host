@@ -679,10 +679,6 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Microsoft.WindowsAzure.Storage",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "mscorlib",
       "resolutionPolicy": "minorMatchOrLower"
     },
