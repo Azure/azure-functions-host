@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public string WorkersDirPath { get; }
 
-        public IEnumerable<WorkerConfig> GetConfigs()
+        public IList<WorkerConfig> GetConfigs()
         {
             BuildWorkerProviderDictionary();
             var result = new List<WorkerConfig>();
