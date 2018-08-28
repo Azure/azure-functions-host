@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -54,6 +55,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.AddSingleton<DefaultScriptWebHookProvider>();
                     services.TryAddSingleton<IScriptWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
+
+                    // Make sure the registered IHostIdProvider is used
+                    services.AddSingleton<IHostIdProvider>(rootServiceProvider.GetRequiredService<IHostIdProvider>());
 
                     // Logging and diagnostics
                     services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
