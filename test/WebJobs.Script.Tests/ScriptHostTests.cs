@@ -788,9 +788,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "funcJs1",
                 Language = "node"
             };
+            FunctionMetadata funcCS1 = new FunctionMetadata()
+            {
+                Name = "funcCS1",
+                Language = "csharp"
+            };
             IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
             {
-                funcJs1
+                funcJs1, funcCS1
             };
             Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
         }
