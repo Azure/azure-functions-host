@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -753,6 +754,79 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void IsSingleLanguage_FunctionsList_Null_Returns_False()
         {
             Assert.True(Utility.IsSingleLanguage(null, null));
+        }
+
+        [Fact]
+        public void ShouldInitializeLanguageWorkers_Language_NotSet_Returns_False()
+        {
+            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), null));
+        }
+
+        [Fact]
+        public void ShouldInitializeLanguageWorkers_Language_Set_Returns_False()
+        {
+           Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), LanguageWorkerConstants.DotNetLanguageWorkerName));
+        }
+
+        [Fact]
+        public void ShouldInitializeLanguageWorkers_Language_Set_DotNetFunctions_Returns_False()
+        {
+           Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), LanguageWorkerConstants.NodeLanguageWorkerName));
+        }
+
+        [Fact]
+        public void ShouldInitializeLanguageWorkers_Language_Set_EmptyFunctions_Returns_False()
+        {
+            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(null, LanguageWorkerConstants.NodeLanguageWorkerName));
+        }
+
+        [Fact]
+        public void ShouldInitializeLanguageWorkers_Language_Set_NodeFunctions_Returns_True()
+        {
+            FunctionMetadata funcJs1 = new FunctionMetadata()
+            {
+                Name = "funcJs1",
+                Language = "node"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJs1
+            };
+            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
+        }
+
+        [Fact]
+        public void ShouldInitializeLanguageWorkers_Language_Not_Set_Returns_True()
+        {
+            FunctionMetadata funcJs1 = new FunctionMetadata()
+            {
+                Name = "funcJs1",
+                Language = "node"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJs1
+            };
+            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, null));
+        }
+
+        private static IEnumerable<FunctionMetadata> GetDotNetFunctionsMetadata()
+        {
+            FunctionMetadata funcCS1 = new FunctionMetadata()
+            {
+                Name = "funcCS1",
+                Language = "csharp"
+            };
+            FunctionMetadata funcFS1 = new FunctionMetadata()
+            {
+                Name = "funcFs1",
+                Language = "FSHArp",
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcCS1, funcFS1
+            };
+            return functionsList;
         }
 
 #if WEBROUTING

@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
-        private readonly string _language;
+        private readonly string _currentRuntimelanguage;
         private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly ScriptTypeLocator _typeLocator;
         private readonly IDebugStateProvider _debugManager;
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _hostLogPath = Path.Combine(ScriptOptions.RootLogPath, "Host");
 
-            _language = _settingsManager.Configuration[LanguageWorkerConstants.FunctionWorkerRuntimeSettingName];
+            _currentRuntimelanguage = _settingsManager.Configuration[LanguageWorkerConstants.FunctionWorkerRuntimeSettingName];
 
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
@@ -251,10 +251,13 @@ namespace Microsoft.Azure.WebJobs.Script
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
                 PreInitialize();
-                await InitializeWorkersAsync();
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
+                if (Utility.ShouldInitiliazeLanguageWorkers(functions, _currentRuntimelanguage))
+                {
+                    await InitializeWorkersAsync();
+                }
                 var directTypes = GetDirectTypes(functions);
                 InitializeFunctionDescriptors(functions);
                 GenerateFunctions(directTypes);
@@ -430,7 +433,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal void InitializeFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            if (string.IsNullOrEmpty(_language))
+            if (string.IsNullOrEmpty(_currentRuntimelanguage))
             {
                 _logger.LogTrace("Adding Function descriptor providers for all languages.");
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
@@ -438,8 +441,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                _logger.LogTrace($"Adding Function descriptor provider for language {_language}.");
-                if (string.Equals(_language, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+                _logger.LogTrace($"Adding Function descriptor provider for language {_currentRuntimelanguage}.");
+                if (string.Equals(_currentRuntimelanguage, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
                     _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
                 }
@@ -496,7 +499,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     attemptCount);
             };
 
-            _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, _workerConfigs, _language);
+            _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, _workerConfigs, _currentRuntimelanguage);
 
             _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
                 .Subscribe(evt =>
@@ -657,7 +660,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-            if (!Utility.IsSingleLanguage(functions, _language))
+            if (!Utility.IsSingleLanguage(functions, _currentRuntimelanguage))
             {
                 _logger.LogError($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
                 return functionDescriptors;
