@@ -456,13 +456,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 return false;
             }
 
-            bool containsNonDotNetFunctions = ContainsNonDotNetFunctions(functions);
-
-            if (!string.IsNullOrEmpty(currentRuntimeLanguage) && containsNonDotNetFunctions && ContainsFunctionWithCurrentLanguage(functions, currentRuntimeLanguage))
+            if (!string.IsNullOrEmpty(currentRuntimeLanguage) && ContainsFunctionWithCurrentLanguage(functions, currentRuntimeLanguage))
             {
                 return true;
             }
-            return containsNonDotNetFunctions;
+            return ContainsNonDotNetFunctions(functions);
         }
 
         private static bool ContainsNonDotNetFunctions(IEnumerable<FunctionMetadata> functions)
