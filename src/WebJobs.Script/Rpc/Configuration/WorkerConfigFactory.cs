@@ -41,6 +41,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public IEnumerable<WorkerConfig> GetConfigs()
         {
             BuildWorkerProviderDictionary();
+            var result = new List<WorkerConfig>();
+
             foreach (var provider in WorkerProviders)
             {
                 var description = provider.GetDescription();
@@ -59,17 +61,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
                 if (provider.TryConfigureArguments(arguments, _logger))
                 {
-                    yield return new WorkerConfig()
+                    var config = new WorkerConfig()
                     {
                         Description = description,
                         Arguments = arguments
                     };
+                    result.Add(config);
                 }
                 else
                 {
                     _logger.LogError($"Could not configure language worker {description.Language}.");
                 }
             }
+
+            return result;
         }
 
         internal void BuildWorkerProviderDictionary()
