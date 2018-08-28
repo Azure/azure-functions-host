@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                     "Information Host configuration file read",
                     @"Information Generating ([0-9]+) job function\(s\)",
                     "Host initialization: ConsecutiveErrors=0, StartupCount=1",
-                    @"Information Starting Host \(HostId=function-tests-node, InstanceId=(.*), Version=(.+), ProcessId=[0-9]+, AppDomainId=[0-9]+, Debug=False, FunctionsExtensionVersion=\)",
+                    @"Information Starting Host \(HostId=(.*), InstanceId=(.*), Version=(.+), ProcessId=[0-9]+, AppDomainId=[0-9]+, Debug=False, FunctionsExtensionVersion=\)",
                     "Information Found the following functions:",
                     "Information The next 5 occurrences of the schedule will be:",
                     "Information Job host started",
