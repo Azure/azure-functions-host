@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -25,17 +26,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
         private readonly Lazy<Task> _specializationTask;
+        private readonly IConfigurationRoot _configuration;
         private readonly ILogger _logger;
         private static CancellationTokenSource _standbyCancellationTokenSource = new CancellationTokenSource();
         private static IChangeToken _standbyChangeToken = new CancellationChangeToken(_standbyCancellationTokenSource.Token);
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
-        public StandbyManager(IScriptHostManager scriptHostManager, IOptionsMonitor<ScriptApplicationHostOptions> options, ILoggerFactory loggerFactory)
+        public StandbyManager(IScriptHostManager scriptHostManager, IConfiguration configuration, IOptionsMonitor<ScriptApplicationHostOptions> options, ILoggerFactory loggerFactory)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _specializationTask = new Lazy<Task>(SpecializeHostCoreAsync, LazyThreadSafetyMode.ExecutionAndPublication);
+
+            _configuration = configuration as IConfigurationRoot;
         }
 
         public static IChangeToken ChangeToken => _standbyChangeToken;
@@ -47,6 +51,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task SpecializeHostCoreAsync()
         {
+            // Trigger a configuration reload to pick up all current settings
+            _configuration?.Reload();
+
             NotifyChange();
 
             await _scriptHostManager.RestartHostAsync();
