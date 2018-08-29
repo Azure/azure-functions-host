@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -16,7 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class ScriptHostIdProvider : IHostIdProvider
     {
-        private const string HostIdPath = ConfigurationSectionNames.JobHost + ":id";
         private readonly IConfiguration _config;
         private readonly IEnvironment _environment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
@@ -30,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public Task<string> GetHostIdAsync(CancellationToken cancellationToken)
         {
-            return Task.FromResult(_config[HostIdPath] ?? GetDefaultHostId(_environment, _options.CurrentValue));
+            return Task.FromResult(_config[ConfigurationSectionNames.HostIdPath] ?? GetDefaultHostId(_environment, _options.CurrentValue));
         }
 
         internal static string GetDefaultHostId(IEnvironment environment, ScriptApplicationHostOptions scriptOptions)

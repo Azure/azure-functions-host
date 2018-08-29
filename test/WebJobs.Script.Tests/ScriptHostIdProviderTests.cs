@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
-                    { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "id"), "test-host-id" }
+                    { ConfigurationPath.Combine(ConfigurationSectionNames.HostIdPath), "test-host-id" }
                 })
                 .Build();
 

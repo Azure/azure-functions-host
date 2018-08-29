@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -51,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly Stopwatch _stopwatch = new Stopwatch();
         private readonly string _currentRuntimelanguage;
         private readonly IOptions<JobHostOptions> _hostOptions;
+        private readonly IConfiguration _configuration;
         private readonly ScriptTypeLocator _typeLocator;
         private readonly IDebugStateProvider _debugManager;
         private readonly ICollection<IScriptBindingProvider> _bindingProviders;
@@ -101,6 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _instanceId = Guid.NewGuid().ToString();
             _hostOptions = options;
+            _configuration = configuration;
             _storageConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
             _functionMetadataManager = functionMetadataManager;
@@ -271,6 +274,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private async Task LogInitializationAsync()
         {
+            // If the host id is explicitly set, emit a warning that this could cause issues and shouldn't be done
+            if (_configuration[ConfigurationSectionNames.HostIdPath] != null)
+            {
+                _logger.LogWarning("Host id explicitly set in configuration. This is not a recommended configuration and may lead to unexpected behavior.");
+            }
+
             string extensionVersion = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion);
             string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
             string message = $"Starting Host (HostId={hostId}, InstanceId={InstanceId}, Version={Version}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={InDebugMode}, FunctionsExtensionVersion={extensionVersion})";
