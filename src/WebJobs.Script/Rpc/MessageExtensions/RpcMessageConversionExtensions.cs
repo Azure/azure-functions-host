@@ -92,7 +92,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     Dictionary<string, object> parameters = (Dictionary<string, object>)routeData;
                     foreach (var pair in parameters)
                     {
-                        http.Params.Add(pair.Key, pair.Value.ToString());
+                        if (pair.Value != null)
+                        {
+                            http.Params.Add(pair.Key, pair.Value.ToString());
+                        }
                     }
                 }
 

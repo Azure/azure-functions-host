@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 string functionName = "HttpTrigger-CSharp-CustomRoute";
                 string functionKey = await _fixture.Host.GetFunctionSecretAsync(functionName);
-                string uri = $"api/csharp/products/electronics/123?code={functionKey}";
+                string uri = $"api/csharp/products/electronics/123/extra?code={functionKey}";
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
                 HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
@@ -227,8 +227,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 var product = JObject.Parse(json);
                 Assert.Equal("electronics", (string)product["category"]);
                 Assert.Equal(123, (int?)product["id"]);
+                var logs = _fixture.Host.GetLogMessages("Function.HttpTrigger-CSharp-CustomRoute.User");
+                Assert.Contains(logs, l => string.Equals(l.FormattedMessage, "Parameters: category=electronics id=123 extra=extra"));
+                Assert.True(logs.Any(p => p.FormattedMessage.Contains("ProductInfo: Category=electronics Id=123")));
 
                 // test optional id parameter
+                // test optional extra parameter (not in POCO binding contract)
+                _fixture.Host.ClearLogMessages();
                 uri = $"api/csharp/products/electronics?code={functionKey}";
                 request = new HttpRequestMessage(HttpMethod.Get, uri);
                 response = await _fixture.Host.HttpClient.SendAsync(request);
@@ -237,8 +242,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 product = JObject.Parse(json);
                 Assert.Equal("electronics", (string)product["category"]);
                 Assert.Null((int?)product["id"]);
+                logs = _fixture.Host.GetLogMessages("Function.HttpTrigger-CSharp-CustomRoute.User");
+                Assert.Contains(logs, l => string.Equals(l.FormattedMessage, "Parameters: category=electronics id= extra="));
 
                 // test optional category parameter
+                _fixture.Host.ClearLogMessages();
                 uri = $"api/csharp/products?code={functionKey}";
                 request = new HttpRequestMessage(HttpMethod.Get, uri);
                 response = await _fixture.Host.HttpClient.SendAsync(request);
@@ -247,6 +255,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 product = JObject.Parse(json);
                 Assert.Null((string)product["category"]);
                 Assert.Null((int?)product["id"]);
+                logs = _fixture.Host.GetLogMessages("Function.HttpTrigger-CSharp-CustomRoute.User");
+                Assert.Contains(logs, l => string.Equals(l.FormattedMessage, "Parameters: category= id= extra="));
 
                 // test a constraint violation (invalid id)
                 uri = $"api/csharp/products/electronics/1x3?code={functionKey}";
@@ -259,11 +269,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 request = new HttpRequestMessage(HttpMethod.Get, uri);
                 response = await _fixture.Host.HttpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-
-                // verify route parameters were part of binding data
-                var logs = _fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory(functionName));
-                Assert.True(logs.Any(p => p.FormattedMessage.Contains("Parameters: category=electronics id=123")));
-                Assert.True(logs.Any(p => p.FormattedMessage.Contains("ProductInfo: Category=electronics Id=123")));
             }
         }
         

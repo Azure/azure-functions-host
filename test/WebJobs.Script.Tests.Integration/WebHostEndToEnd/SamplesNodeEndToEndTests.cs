@@ -119,8 +119,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task HttpTrigger_CustomRoute_Get_ReturnsExpectedResponse()
         {
-
-
             var id = "4e2796ae-b865-4071-8a20-2a15cbaf856c";
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CustomRoute-Get");
             string uri = $"api/node/products/electronics/{id}?code={functionKey}";
