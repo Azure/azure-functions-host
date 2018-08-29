@@ -46,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/functions")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        [ClientCanRequestRunningHost]
         public async Task<IActionResult> List()
         {
             return Ok(await _functionsManager.GetFunctionsMetadata(Request, _webJobsRouter));
@@ -54,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/functions/{name}")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        [ClientCanRequestRunningHost]
         public async Task<IActionResult> Get(string name)
         {
             (var success, var function) = await _functionsManager.TryGetFunction(name, Request, _webJobsRouter);
