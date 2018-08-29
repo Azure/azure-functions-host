@@ -46,9 +46,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/functions")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> List()
+        public async Task<IActionResult> List(bool includeProxies = false)
         {
-            return Ok(await _functionsManager.GetFunctionsMetadata(Request, _webJobsRouter));
+            var result = await _functionsManager.GetFunctionsMetadata(Request, includeProxies);
+            return Ok(result);
         }
 
         [HttpGet]
@@ -56,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> Get(string name)
         {
-            (var success, var function) = await _functionsManager.TryGetFunction(name, Request, _webJobsRouter);
+            (var success, var function) = await _functionsManager.TryGetFunction(name, Request);
 
             return success
                 ? Ok(function)

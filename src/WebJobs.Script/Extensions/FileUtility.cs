@@ -246,8 +246,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static void DeleteFileSafe(string path)
         {
-            var info = FileInfoFromFileName(path);
-            DeleteFileSystemInfo(info, ignoreErrors: true);
+            try
+            {
+                var info = FileInfoFromFileName(path);
+                DeleteFileSystemInfo(info, ignoreErrors: true);
+            }
+            catch
+            {
+            }
         }
 
         public static IEnumerable<string> EnumerateDirectories(string path) => Instance.Directory.EnumerateDirectories(path);

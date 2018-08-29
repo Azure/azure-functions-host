@@ -5,7 +5,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 {
     public static class WebHostSettingsExtensions
     {
-        public static ScriptJobHostOptions ToScriptHostConfiguration(this ScriptApplicationHostOptions settings, bool inStandbyMode = false)
+        public static ScriptJobHostOptions ToHostOptions(this ScriptApplicationHostOptions settings, bool inStandbyMode = false)
         {
             var scriptHostConfig = new ScriptJobHostOptions()
             {

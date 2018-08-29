@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
@@ -10,6 +11,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -21,6 +23,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 {
     public class WebFunctionsManagerTests : IDisposable
     {
+        private readonly string _testRootScriptPath;
+        private readonly string _testHostConfigFilePath;
+
+        public WebFunctionsManagerTests()
+        {
+            _testRootScriptPath = Path.GetTempPath();
+            _testHostConfigFilePath = Path.Combine(_testRootScriptPath, ScriptConstants.HostMetadataFileName);
+            FileUtility.DeleteFileSafe(_testHostConfigFilePath);
+        }
+
         [Fact]
         public async Task VerifyDurableTaskHubNameIsAdded()
         {
@@ -40,7 +52,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
                 var contentBuilder = new StringBuilder();
                 var httpClient = CreateHttpClient(contentBuilder);
-                var webManager = new WebFunctionsManager(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient);
+                var proxyMetadataManager = new Mock<IProxyMetadataManager>(MockBehavior.Strict);
+                var proxyMetadata = new ProxyMetadataInfo(new FunctionMetadata[0].ToImmutableArray(), null, null);
+                proxyMetadataManager.SetupGet(p => p.ProxyMetadata).Returns(proxyMetadata);
+                var webManager = new WebFunctionsManager(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, proxyMetadataManager.Object);
 
                 FileUtility.Instance = fileSystem;
 
@@ -84,7 +99,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
             var contentBuilder = new StringBuilder();
             var httpClient = CreateHttpClient(contentBuilder);
-            var webManager = new WebFunctionsManager(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient);
+            var proxyMetadataManager = new Mock<IProxyMetadataManager>(MockBehavior.Strict);
+            var proxyMetadata = new ProxyMetadataInfo(new FunctionMetadata[0].ToImmutableArray(), null, null);
+            proxyMetadataManager.SetupGet(p => p.ProxyMetadata).Returns(proxyMetadata);
+            var webManager = new WebFunctionsManager(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, proxyMetadataManager.Object);
 
             FileUtility.Instance = fileSystem;
             IEnumerable<FunctionMetadata> metadata = webManager.GetFunctionsMetadata();
@@ -93,6 +111,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             Assert.Equal(2, jsFunctions.Count());
             Assert.Equal(1, unknownFunctions.Count());
+        }
+
+        [Theory]
+        [InlineData(null, "api")]
+        [InlineData("", "api")]
+        [InlineData("this { not json", "api")]
+        [InlineData("{}", "api")]
+        [InlineData("{ extensions: {} }", "api")]
+        [InlineData("{ extensions: { http: {} }", "api")]
+        [InlineData("{ extensions: { http: { routePrefix: 'test' }, foo: {} } }", "test")]
+        public async Task GetRoutePrefix_Succeeds(string content, string expected)
+        {
+            if (content != null)
+            {
+                File.WriteAllText(_testHostConfigFilePath, content);
+            }
+
+            string prefix = await WebFunctionsManager.GetRoutePrefix(_testRootScriptPath);
+            Assert.Equal(expected, prefix);
         }
 
         private static HttpClient CreateHttpClient(StringBuilder writeContent)
@@ -219,6 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             FileUtility.Instance = null;
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, string.Empty);
             Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", string.Empty);
+            FileUtility.DeleteFileSafe(_testHostConfigFilePath);
         }
 
         private class MockHttpHandler : HttpClientHandler

@@ -225,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Starting Host (HostId=placeholder-host")));
             Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Host is in standby mode")));
 
-            var hostConfig = _webHostOptions.ToScriptHostConfiguration(true);
+            var hostConfig = _webHostOptions.ToHostOptions(true);
             // TODO: DI (FACAVAL) Review
             // _expectedHostId = hostConfig.HostConfig.HostId;
         }

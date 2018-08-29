@@ -21,13 +21,13 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private static readonly Regex ProxyNameValidationRegex = new Regex(@"[^a-zA-Z0-9_-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private readonly Lazy<ProxyMetadataInfo> _metadata;
-        private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
 
-        public ProxyMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IEnvironment environment, ILoggerFactory loggerFactory)
+        public ProxyMetadataManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory)
         {
-            _scriptOptions = scriptOptions;
+            _applicationHostOptions = applicationHostOptions;
             _environment = environment;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _metadata = new Lazy<ProxyMetadataInfo>(LoadFunctionMetadata);
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script
         internal (Collection<FunctionMetadata>, ProxyClientExecutor) ReadProxyMetadata(Dictionary<string, ICollection<string>> functionErrors)
         {
             // read the proxy config
-            string proxyConfigPath = Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.ProxyMetadataFileName);
+            string proxyConfigPath = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.ProxyMetadataFileName);
             if (!File.Exists(proxyConfigPath))
             {
                 return (null, null);

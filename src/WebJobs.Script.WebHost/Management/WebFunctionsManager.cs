@@ -9,7 +9,6 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.Rpc;
@@ -30,17 +29,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const string DurableTaskStorageConnectionName = "azureStorageConnectionStringName";
         private const string DurableTask = "durableTask";
 
-        private readonly ScriptJobHostOptions _config;
+        private readonly ScriptJobHostOptions _hostOptions;
         private readonly ILogger _logger;
         private readonly HttpClient _client;
         private readonly IEnumerable<WorkerConfig> _workerConfigs;
+        private readonly IProxyMetadataManager _proxyMetadataManager;
 
-        public WebFunctionsManager(IOptions<ScriptApplicationHostOptions> webSettings, IOptions<LanguageWorkerOptions> workerConfigOptions, ILoggerFactory loggerFactory, HttpClient client)
+        public WebFunctionsManager(IOptions<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient client, IProxyMetadataManager proxyMetadataManager)
         {
-            _config = webSettings.Value.ToScriptHostConfiguration();
+            _hostOptions = applicationHostOptions.Value.ToHostOptions();
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryKeysController);
             _client = client;
-            _workerConfigs = workerConfigOptions.Value.WorkerConfigs;
+            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
+            _proxyMetadataManager = proxyMetadataManager;
         }
 
         /// <summary>
@@ -49,9 +50,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// </summary>
         /// <param name="request">Current HttpRequest for figuring out baseUrl</param>
         /// <returns>collection of FunctionMetadataResponse</returns>
-        public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(HttpRequest request, IWebJobsRouter router = null)
+        public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(HttpRequest request, bool includeProxies)
         {
-            return await GetFunctionsMetadata().Select(fm => fm.ToFunctionMetadataResponse(request, _config, router)).WhenAll();
+            string routePrefix = await GetRoutePrefix(_hostOptions.RootScriptPath);
+            var tasks = GetFunctionsMetadata(includeProxies).Select(p => p.ToFunctionMetadataResponse(request, _hostOptions, routePrefix));
+            return await tasks.WhenAll();
         }
 
         /// <summary>
@@ -66,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public async Task<(bool, bool, FunctionMetadataResponse)> CreateOrUpdate(string name, FunctionMetadataResponse functionMetadata, HttpRequest request)
         {
             var configChanged = false;
-            var functionDir = Path.Combine(_config.RootScriptPath, name);
+            var functionDir = Path.Combine(_hostOptions.RootScriptPath, name);
 
             // Make sure the function folder exists
             if (!FileUtility.DirectoryExists(functionDir))
@@ -78,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             string newConfig = null;
             string configPath = Path.Combine(functionDir, ScriptConstants.FunctionMetadataFileName);
-            string dataFilePath = FunctionMetadataExtensions.GetTestDataFilePath(name, _config);
+            string dataFilePath = FunctionMetadataExtensions.GetTestDataFilePath(name, _hostOptions);
 
             // If files are included, write them out
             if (functionMetadata?.Files != null)
@@ -133,14 +136,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <param name="name">Function name to retrieve</param>
         /// <param name="request">Current HttpRequest</param>
         /// <returns>(success, FunctionMetadataResponse)</returns>
-        public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request, IWebJobsRouter router = null)
+        public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request)
         {
             // TODO: DI (FACAVAL) Follow up with ahmels - Since loading of function metadata is no longer tied to the script host, we
-            // should be able to inject an IFunctionMedatadaManager here and bypass this step.
-            var functionMetadata = FunctionMetadataManager.ReadFunctionMetadata(Path.Combine(_config.RootScriptPath, name), null, _workerConfigs, new Dictionary<string, ICollection<string>>(), fileSystem: FileUtility.Instance);
+            // should be able to inject an IFunctionMetadataManager here and bypass this step.
+            var functionMetadata = FunctionMetadataManager.ReadFunctionMetadata(Path.Combine(_hostOptions.RootScriptPath, name), null, _workerConfigs, new Dictionary<string, ICollection<string>>(), fileSystem: FileUtility.Instance);
             if (functionMetadata != null)
             {
-                return (true, await functionMetadata.ToFunctionMetadataResponse(request, _config, router));
+                string routePrefix = await GetRoutePrefix(_hostOptions.RootScriptPath);
+                return (true, await functionMetadata.ToFunctionMetadataResponse(request, _hostOptions, routePrefix));
             }
             else
             {
@@ -157,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             try
             {
-                var functionPath = function.GetFunctionPath(_config);
+                var functionPath = function.GetFunctionPath(_hostOptions);
                 if (!string.IsNullOrEmpty(functionPath))
                 {
                     FileUtility.DeleteDirectoryContentsSafe(functionPath);
@@ -180,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             var durableTaskConfig = await ReadDurableTaskConfig();
             var functionsTriggers = (await GetFunctionsMetadata()
-                .Select(f => f.ToFunctionTrigger(_config))
+                .Select(f => f.ToFunctionTrigger(_hostOptions))
                 .WhenAll())
                 .Where(t => t != null)
                 .Select(t =>
@@ -204,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     return t;
                 });
 
-            if (FileUtility.FileExists(Path.Combine(_config.RootScriptPath, ScriptConstants.ProxyMetadataFileName)))
+            if (FileUtility.FileExists(Path.Combine(_hostOptions.RootScriptPath, ScriptConstants.ProxyMetadataFileName)))
             {
                 // This is because we still need to scale function apps that are proxies only
                 functionsTriggers = functionsTriggers.Append(new JObject(new { type = "routingTrigger" }));
@@ -248,15 +252,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        internal IEnumerable<FunctionMetadata> GetFunctionsMetadata()
+        internal IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool includeProxies = false)
         {
-            return FunctionMetadataManager
-                .ReadFunctionsMetadata(FileUtility.EnumerateDirectories(_config.RootScriptPath), null, _workerConfigs, _logger, fileSystem: FileUtility.Instance);
+            // get functions metadata
+            var functionDirectories = FileUtility.EnumerateDirectories(_hostOptions.RootScriptPath);
+            IEnumerable<FunctionMetadata> functionsMetadata = FunctionMetadataManager.ReadFunctionsMetadata(functionDirectories, null, _workerConfigs, _logger, fileSystem: FileUtility.Instance);
+
+            if (includeProxies)
+            {
+                // get proxies metadata
+                var proxyMetadata = _proxyMetadataManager.ProxyMetadata;
+                if (!proxyMetadata.Functions.IsDefaultOrEmpty)
+                {
+                    functionsMetadata = proxyMetadata.Functions.Concat(functionsMetadata);
+                }
+            }
+
+            return functionsMetadata;
         }
 
         private async Task<Dictionary<string, string>> ReadDurableTaskConfig()
         {
-            string hostJsonPath = Path.Combine(_config.RootScriptPath, ScriptConstants.HostMetadataFileName);
+            string hostJsonPath = Path.Combine(_hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);
             var config = new Dictionary<string, string>();
             if (FileUtility.FileExists(hostJsonPath))
             {
@@ -300,12 +317,41 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private void DeleteFunctionArtifacts(FunctionMetadataResponse function)
         {
-            var testDataPath = function.GetFunctionTestDataFilePath(_config);
+            var testDataPath = function.GetFunctionTestDataFilePath(_hostOptions);
 
             if (!string.IsNullOrEmpty(testDataPath))
             {
                 FileUtility.DeleteFileSafe(testDataPath);
             }
+        }
+
+        // TODO : Due to lifetime scoping issues (this service lifetime is longer than the lifetime
+        // of HttpOptions sourced from host.json) we're reading the http route prefix anew each time
+        // to ensure we have the latest configured value.
+        internal static async Task<string> GetRoutePrefix(string rootScriptPath)
+        {
+            string routePrefix = "api";
+
+            string hostConfigFile = Path.Combine(rootScriptPath, ScriptConstants.HostMetadataFileName);
+            if (File.Exists(hostConfigFile))
+            {
+                string hostConfigJson = await File.ReadAllTextAsync(hostConfigFile);
+                try
+                {
+                    var jo = JObject.Parse(hostConfigJson);
+                    var token = jo.SelectToken("extensions['http'].routePrefix", errorWhenNoMatch: false);
+                    if (token != null)
+                    {
+                        routePrefix = (string)token;
+                    }
+                }
+                catch
+                {
+                    // best effort
+                }
+            }
+
+            return routePrefix;
         }
     }
 }

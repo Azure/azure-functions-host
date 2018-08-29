@@ -13,7 +13,9 @@ using System.Web.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -31,6 +33,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
+        }
+
+        [Fact]
+        public async Task ListFunctions_Proxies_Succeeds()
+        {
+            // get functions including proxies
+            string uri = "admin/functions?includeProxies=true";
+            var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, "1234");
+            var response = await _fixture.HttpClient.SendAsync(request);
+            var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
+
+            Assert.Equal(18, metadata.Length);
+            var function = metadata.Single(p => p.Name == "PingRoute");
+            Assert.Equal("https://localhost/myroute/mysubroute", function.InvokeUrlTemplate.AbsoluteUri);
+
+            function = metadata.Single(p => p.Name == "Ping");
+            Assert.Equal("https://localhost/api/ping", function.InvokeUrlTemplate.AbsoluteUri);
+
+            function = metadata.Single(p => p.Name == "LocalFunctionCall");
+            Assert.Equal("https://localhost/myhttptrigger", function.InvokeUrlTemplate.AbsoluteUri);
+
+            // get functions omitting proxies
+            uri = "admin/functions";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, "1234");
+            response = await _fixture.HttpClient.SendAsync(request);
+            metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
+            Assert.False(metadata.Any(p => p.IsProxy));
+            Assert.Equal(2, metadata.Length);
         }
 
         [Fact]
@@ -268,29 +300,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public class TestFixture : IDisposable
         {
             private readonly TestServer _testServer;
+            private readonly string _testHome;
 
             public TestFixture()
             {
+                // copy test files to temp directory, since accessing the metadata APIs will result
+                // in file creations (for test data files)
+                var scriptSource = Path.Combine(Environment.CurrentDirectory, @"..\..\..\TestScripts\Proxies");
+                _testHome = Path.Combine(Path.GetTempPath(), @"ProxyTests");
+                var scriptRoot = Path.Combine(_testHome, @"site\wwwroot");
+                FileUtility.CopyDirectory(scriptSource, scriptRoot);
+
                 HostOptions = new ScriptApplicationHostOptions
                 {
                     IsSelfHost = true,
-                    ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\TestScripts\Proxies"),
-                    LogPath = Path.Combine(Path.GetTempPath(), @"ProxyTests\Logs"),
-                    SecretsPath = Path.Combine(Path.GetTempPath(), @"ProxyTests\Secrets")
+                    ScriptPath = scriptRoot,
+                    LogPath = Path.Combine(_testHome, @"LogFiles\Application\Functions"),
+                    SecretsPath = Path.Combine(_testHome, @"data\Functions\Secrets"),
+                    TestDataPath = Path.Combine(_testHome, @"data\Functions\SampleData")
                 };
+
+                FileUtility.EnsureDirectoryExists(HostOptions.TestDataPath);
 
                 var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(HostOptions);
                 var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, Array.Empty<IOptionsChangeTokenSource<ScriptApplicationHostOptions>>(), factory);
 
-                _testServer = new TestServer(
-               AspNetCore.WebHost.CreateDefaultBuilder()
-               .UseStartup<Startup>()
-               .ConfigureServices(services =>
-               {
-                   services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions)));
-                   services.Replace(new ServiceDescriptor(typeof(ISecretManager), new TestSecretManager()));
-                   services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
-               }));
+                var builder = AspNetCore.WebHost.CreateDefaultBuilder()
+                   .UseStartup<Startup>()
+                   .ConfigureServices(services =>
+                   {
+                       services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions)));
+                       services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
+                       services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
+                   });
+                   
+                _testServer = new TestServer(builder);
 
                 var scriptConfig = _testServer.Host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
@@ -313,6 +357,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 HttpClient?.Dispose();
 
                 TestHelpers.ClearHostLogs();
+                FileUtility.DeleteDirectoryAsync(_testHome, recursive: true);
             }
         }
     }

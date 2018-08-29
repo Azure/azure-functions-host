@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public VirtualFileSystem(ScriptApplicationHostOptions settings, ILoggerFactory loggerFactory)
         {
-            _config = settings.ToScriptHostConfiguration();
+            _config = settings.ToHostOptions();
             _logger = loggerFactory.CreateLogger<VirtualFileSystem>();
             MediaTypeMap = MediaTypeMap.Default;
         }

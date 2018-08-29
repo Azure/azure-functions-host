@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -11,6 +12,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -101,6 +103,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             response = await GetHostStatusAsync();
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.True(lastModified < File.GetLastWriteTime(debugSentinelFilePath));
+        }
+
+        [Fact]
+        public async Task ListFunctions_Succeeds()
+        {
+            string uri = "admin/functions";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
+
+            var response = await _fixture.Host.HttpClient.SendAsync(request);
+            var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
+
+            Assert.Equal(37, metadata.Length);
+            var function = metadata.Single(p => p.Name == "HttpTrigger-CSharp-CustomRoute");
+            Assert.Equal("https://localhost/csharp/products/{category:alpha?}/{id:int?}", function.InvokeUrlTemplate.ToString());
+
+            function = metadata.Single(p => p.Name == "HttpTrigger");
+            Assert.Equal("https://localhost/api/httptrigger", function.InvokeUrlTemplate.ToString());
         }
 
         [Fact]

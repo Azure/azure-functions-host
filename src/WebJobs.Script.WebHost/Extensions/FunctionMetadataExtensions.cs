@@ -6,7 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
@@ -22,11 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// </summary>
         /// <param name="functionMetadata">FunctionMetadata to be mapped.</param>
         /// <param name="request">Current HttpRequest</param>
-        /// <param name="config">ScriptHostConfig</param>
+        /// <param name="hostOptions">The host options</param>
         /// <returns>Promise of a FunctionMetadataResponse</returns>
-        public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, HttpRequest request, ScriptJobHostOptions config, IWebJobsRouter router = null)
+        public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, HttpRequest request, ScriptJobHostOptions hostOptions, string routePrefix)
         {
-            var functionPath = Path.Combine(config.RootScriptPath, functionMetadata.Name);
+            var functionPath = Path.Combine(hostOptions.RootScriptPath, functionMetadata.Name);
             var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
             var baseUrl = request != null
                 ? $"{request.Scheme}://{request.Host}"
@@ -35,14 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             var response = new FunctionMetadataResponse
             {
                 Name = functionMetadata.Name,
-
-                // Q: can functionMetadata.ScriptFile be null or empty?
-                ScriptHref = VirtualFileSystem.FilePathToVfsUri(Path.Combine(config.RootScriptPath, functionMetadata.ScriptFile), baseUrl, config),
-                ConfigHref = VirtualFileSystem.FilePathToVfsUri(functionMetadataFilePath, baseUrl, config),
-                ScriptRootPathHref = VirtualFileSystem.FilePathToVfsUri(functionPath, baseUrl, config, isDirectory: true),
-                TestDataHref = VirtualFileSystem.FilePathToVfsUri(functionMetadata.GetTestDataFilePath(config), baseUrl, config),
+                ConfigHref = VirtualFileSystem.FilePathToVfsUri(functionMetadataFilePath, baseUrl, hostOptions),
+                ScriptRootPathHref = VirtualFileSystem.FilePathToVfsUri(functionPath, baseUrl, hostOptions, isDirectory: true),
                 Href = GetFunctionHref(functionMetadata.Name, baseUrl),
-                TestData = await GetTestData(functionMetadata.GetTestDataFilePath(config), config),
                 Config = await GetFunctionConfig(functionMetadataFilePath),
 
                 // Properties below this comment are not present in the kudu version.
@@ -50,8 +44,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 IsDisabled = functionMetadata.IsDisabled,
                 IsProxy = functionMetadata.IsProxy,
                 Language = functionMetadata.Language,
-                InvokeUrlTemplate = GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata.Name, router)
+                InvokeUrlTemplate = GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, routePrefix)
             };
+
+            if (!string.IsNullOrEmpty(hostOptions.TestDataPath))
+            {
+                var testDataFilePath = functionMetadata.GetTestDataFilePath(hostOptions);
+                response.TestDataHref = VirtualFileSystem.FilePathToVfsUri(testDataFilePath, baseUrl, hostOptions);
+                response.TestData = await GetTestData(testDataFilePath, hostOptions);
+            }
+
+            if (!string.IsNullOrEmpty(functionMetadata.ScriptFile))
+            {
+                response.ScriptHref = VirtualFileSystem.FilePathToVfsUri(Path.Combine(hostOptions.RootScriptPath, functionMetadata.ScriptFile), baseUrl, hostOptions);
+            }
+
             return response;
         }
 
@@ -91,11 +98,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             return null;
         }
 
-        public static string GetTestDataFilePath(this FunctionMetadata functionMetadata, ScriptJobHostOptions config) =>
-            GetTestDataFilePath(functionMetadata.Name, config);
+        public static string GetTestDataFilePath(this FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions) =>
+            GetTestDataFilePath(functionMetadata.Name, hostOptions);
 
-        public static string GetTestDataFilePath(string functionName, ScriptJobHostOptions config) =>
-            Path.Combine(config.TestDataPath, $"{functionName}.dat");
+        public static string GetTestDataFilePath(string functionName, ScriptJobHostOptions hostOptions) =>
+            Path.Combine(hostOptions.TestDataPath, $"{functionName}.dat");
 
         private static async Task<JObject> GetFunctionConfig(string path)
         {
@@ -130,13 +137,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         private static Uri GetFunctionHref(string functionName, string baseUrl) =>
             new Uri($"{baseUrl}/admin/functions/{functionName}");
 
-        private static Uri GetFunctionInvokeUrlTemplate(string baseUrl, string functionName, IWebJobsRouter router)
+        private static Uri GetFunctionInvokeUrlTemplate(string baseUrl, FunctionMetadata functionMetadata, string routePrefix)
         {
-            var template = router?.GetFunctionRouteTemplate(functionName);
-
-            if (template != null)
+            var httpBinding = functionMetadata.InputBindings.FirstOrDefault(p => string.Compare(p.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase) == 0);
+            string template = null;
+            if (httpBinding != null)
             {
-                return new Uri($"{baseUrl}/{template}");
+                if (httpBinding.Raw != null && httpBinding.Raw.TryGetValue("route", StringComparison.OrdinalIgnoreCase, out JToken value))
+                {
+                    // a custom route is specified
+                    template = (string)value;
+                }
+                else
+                {
+                    // form the default function route
+                    template = $"{routePrefix}/{functionMetadata.Name}";
+                }
+
+                string uriString = $"{baseUrl}/{template}";
+                return new Uri(uriString.ToLowerInvariant());
             }
 
             return null;
