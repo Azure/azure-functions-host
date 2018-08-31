@@ -30,7 +30,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public string GetArguments(WorkerCreateContext context)
         {
             var argumentsBuilder = context.Arguments.ExecutableArguments.Aggregate(new StringBuilder(), MergeArguments);
-            argumentsBuilder.AppendFormat(" \"{0}\"", context.Arguments.WorkerPath);
+            if (!string.IsNullOrEmpty(context.Arguments.WorkerPath))
+            {
+                argumentsBuilder.AppendFormat(" \"{0}\"", context.Arguments.WorkerPath);
+            }
             context.Arguments.WorkerArguments.Aggregate(argumentsBuilder, MergeArguments);
             argumentsBuilder.AppendFormat(" --host {0} --port {1} --workerId {2} --requestId {3} --grpcMaxMessageLength {4}",
                 context.ServerUri.Host, context.ServerUri.Port, context.WorkerId, context.RequestId, context.MaxMessageLength);

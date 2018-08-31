@@ -142,7 +142,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
 
-                if (File.Exists(workerDescription.GetWorkerPath()))
+                string workerPath = workerDescription.GetWorkerPath();
+                if (string.IsNullOrEmpty(workerPath) || File.Exists(workerPath))
                 {
                     _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
                     workerDescription.Validate();
@@ -150,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
                 else
                 {
-                    throw new FileNotFoundException($"Did not find worker for for language: {workerDescription.Language}", workerDescription.GetWorkerPath());
+                    throw new FileNotFoundException($"Did not find worker for for language: {workerDescription.Language}", workerPath);
                 }
             }
             catch (Exception ex)

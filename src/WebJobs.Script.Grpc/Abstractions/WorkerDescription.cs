@@ -47,7 +47,14 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
 
         public string GetWorkerPath()
         {
-            return Path.Combine(WorkerDirectory, DefaultWorkerPath);
+            if (string.IsNullOrEmpty(DefaultWorkerPath))
+            {
+                return null;
+            }
+            else
+            {
+                return Path.Combine(WorkerDirectory, DefaultWorkerPath);
+            }
         }
     }
 }
