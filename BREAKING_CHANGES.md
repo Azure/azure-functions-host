@@ -19,5 +19,6 @@ Some changes are due to changes in our dependencies.
 
 Topic         | V1      | V2 
 ---          | ---       | --- 
-ServiceBus SDK binding object in C# | [`BrokeredMessage`](https://docs.microsoft.com/en-us/dotnet/api/microsoft.servicebus.messaging.brokeredmessage?view=azure-dotnet) class  | [`Message`](https://docs.microsoft.com/en-us/dotnet/api/microsoft.azure.servicebus.message?view=azure-dotnet) class
+ServiceBus/EventHubs SDK binding object in C# | [`BrokeredMessage`](https://docs.microsoft.com/en-us/dotnet/api/microsoft.servicebus.messaging.brokeredmessage?view=azure-dotnet) class  | [`Message`](https://docs.microsoft.com/en-us/dotnet/api/microsoft.azure.servicebus.message?view=azure-dotnet) class
 Twilio SDK binding object in C# | `SMSMessage` class | [`CreateMessageOptions`](https://www.twilio.com/docs/libraries/reference/twilio-php/5.7.3/class-Twilio.Rest.Api.V2010.Account.CreateMessageOptions.html) class
+Extension WebHook URL (e.g. for EventGrid and Microsoft Graph) | `https://<myapp>.azurewebsites.net/runtime/webhooks/EventGridExtensionConfig` | `https://<myapp>.azurewebsites.net/runtime/webhooks/eventgrid`
