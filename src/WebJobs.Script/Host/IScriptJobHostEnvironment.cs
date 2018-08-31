@@ -15,6 +15,11 @@ namespace Microsoft.Azure.WebJobs.Script
     public interface IScriptJobHostEnvironment
     {
         /// <summary>
+        /// Gets the current environment name
+        /// </summary>
+        string EnvironmentName { get; }
+
+        /// <summary>
         /// Restarts the <see cref="IScriptJobHost"/>.
         /// </summary>
         void RestartHost();

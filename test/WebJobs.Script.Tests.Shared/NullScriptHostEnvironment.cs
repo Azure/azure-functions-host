@@ -10,6 +10,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class NullScriptHostEnvironment : IScriptJobHostEnvironment
     {
+        public string EnvironmentName => string.Empty;
+
         public void RestartHost()
         {
         }

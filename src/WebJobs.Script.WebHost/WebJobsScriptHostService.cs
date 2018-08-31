@@ -3,10 +3,8 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -17,32 +15,38 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class WebJobsScriptHostService : IHostedService, IScriptHostManager, IDisposable
     {
-        private readonly IServiceProvider _rootServiceProvider;
-        private readonly IServiceScopeFactory _rootScopeFactory;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
-        private readonly IScriptWebHostEnvironment _scriptWebHostEnvironment;
+        private readonly IScriptHostBuilder _scriptHostBuilder;
         private readonly ILogger _logger;
         private IHost _host;
         private CancellationTokenSource _startupLoopTokenSource;
         private int _hostStartCount;
         private bool _disposed = false;
 
-        public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IServiceProvider rootServiceProvider,
-            IServiceScopeFactory rootScopeFactory, IScriptWebHostEnvironment scriptWebHostEnvironment, ILoggerFactory loggerFactory)
+        public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory)
         {
             if (loggerFactory == null)
             {
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
 
-            _rootServiceProvider = rootServiceProvider ?? throw new ArgumentNullException(nameof(rootServiceProvider));
-            _rootScopeFactory = rootScopeFactory ?? throw new ArgumentNullException(nameof(rootScopeFactory));
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
-            _scriptWebHostEnvironment = scriptWebHostEnvironment ?? throw new ArgumentNullException(nameof(scriptWebHostEnvironment));
+            _scriptHostBuilder = scriptHostBuilder ?? throw new ArgumentNullException(nameof(scriptHostBuilder));
 
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
 
             State = ScriptHostState.Default;
+        }
+
+        [Flags]
+        private enum JobHostStartupMode
+        {
+            Normal = 0,
+            Offline = 1,
+            HandlingError = 2,
+            HandlingNonTransientError = 4 | HandlingError,
+            HandlingConfigurationParsingError = 8 | HandlingError,
+            HandlingInitializationError = 16 | HandlingNonTransientError
         }
 
         public IServiceProvider Services => _host?.Services;
@@ -74,29 +78,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private async Task StartHostAsync(CancellationToken cancellationToken, int attemptCount = 0, bool skipHostJsonConfiguration = false)
+        private async Task StartHostAsync(CancellationToken cancellationToken, int attemptCount = 0, JobHostStartupMode startupMode = JobHostStartupMode.Normal)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             try
             {
                 bool isOffline = CheckAppOffline();
+                bool hasNonTransientErrors = startupMode.HasFlag(JobHostStartupMode.HandlingNonTransientError);
 
-                _host = BuildHost(isOffline, skipHostJsonConfiguration);
+                // If we're in a non-transient error state or offline, skip host initialization
+                bool skipJobHostStartup = isOffline || hasNonTransientErrors;
+
+                _host = BuildHost(skipJobHostStartup, skipHostJsonConfiguration: startupMode == JobHostStartupMode.HandlingConfigurationParsingError);
 
                 LogInitialization(_host, isOffline, attemptCount, _hostStartCount++);
 
                 await _host.StartAsync(cancellationToken);
 
-                // This means we had an error on a previous load, so we want to keep the LastError around
-                if (!skipHostJsonConfiguration)
+                if (!startupMode.HasFlag(JobHostStartupMode.HandlingError))
                 {
                     LastError = null;
-                }
 
-                if (!isOffline && !skipHostJsonConfiguration)
-                {
-                    State = ScriptHostState.Running;
+                    if (!isOffline)
+                    {
+                        State = ScriptHostState.Running;
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -124,11 +131,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 cancellationToken.ThrowIfCancellationRequested();
 
+                var nextStartupAttemptMode = JobHostStartupMode.Normal;
+
                 if (exc is HostConfigurationException)
                 {
                     // Try starting the host without parsing host.json. This will start up a
                     // minimal host and allow the portal to see the error. Any modification will restart again.
-                    Task ignore = StartHostAsync(cancellationToken, attemptCount, skipHostJsonConfiguration: true);
+                    nextStartupAttemptMode = JobHostStartupMode.HandlingConfigurationParsingError;
+                }
+                else if (exc is HostInitializationException)
+                {
+                    nextStartupAttemptMode = JobHostStartupMode.HandlingInitializationError;
+                }
+
+                if (nextStartupAttemptMode != JobHostStartupMode.Normal)
+                {
+                    Task ignore = StartHostAsync(cancellationToken, attemptCount, nextStartupAttemptMode);
                 }
                 else
                 {
@@ -187,35 +205,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.LogInformation("Script host restarted.");
         }
 
-        private IHost BuildHost(bool isOffline = false, bool skipHostJsonConfiguration = false)
+        private IHost BuildHost(bool skipHostStartup = false, bool skipHostJsonConfiguration = false)
         {
-            var builder = new HostBuilder();
-
-            if (skipHostJsonConfiguration)
-            {
-                builder.ConfigureAppConfiguration((context, _) =>
-                {
-                    context.Properties[ScriptConstants.SkipHostJsonConfigurationKey] = true;
-                });
-            }
-
-            builder.SetAzureFunctionsEnvironment()
-                .AddWebScriptHost(_rootServiceProvider, _rootScopeFactory, _applicationHostOptions.CurrentValue);
-
-            if (isOffline)
-            {
-                builder.ConfigureServices(services =>
-                {
-                    // When offline, we need most general services registered so admin
-                    // APIs can function. However, we want to prevent the ScriptHost from
-                    // actually starting up. To accomplish this, we remove the host service
-                    // responsible for starting the job hst.
-                    var jobHostService = services.FirstOrDefault(p => p.ImplementationType == typeof(JobHostService));
-                    services.Remove(jobHostService);
-                });
-            }
-
-            return builder.Build();
+            return _scriptHostBuilder.BuildHost(skipHostStartup, skipHostJsonConfiguration);
         }
 
         private ILogger GetHostLogger(IHost host)

@@ -7,12 +7,16 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class ConsoleScriptJobHostEnvironment : IScriptJobHostEnvironment
     {
+        private readonly IHostingEnvironment _hostingEnvironment;
         private IApplicationLifetime _applicationLifetime;
 
-        public ConsoleScriptJobHostEnvironment(IApplicationLifetime applicationLifetime)
+        public ConsoleScriptJobHostEnvironment(IApplicationLifetime applicationLifetime, IHostingEnvironment hostingEnvironment)
         {
-            _applicationLifetime = applicationLifetime;
+            _applicationLifetime = applicationLifetime ?? throw new System.ArgumentNullException(nameof(applicationLifetime));
+            _hostingEnvironment = hostingEnvironment ?? throw new System.ArgumentNullException(nameof(hostingEnvironment));
         }
+
+        public string EnvironmentName => _hostingEnvironment.EnvironmentName;
 
         public void RestartHost()
         {

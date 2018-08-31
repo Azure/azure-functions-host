@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _hostLogPath = Path.Combine(ScriptOptions.RootLogPath, "Host");
 
-            _currentRuntimelanguage = _settingsManager.Configuration[LanguageWorkerConstants.FunctionWorkerRuntimeSettingName];
+            _currentRuntimelanguage = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
 
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
@@ -660,10 +660,9 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-            if (!Utility.IsSingleLanguage(functions, _currentRuntimelanguage))
+            if (!_scriptHostEnvironment.IsDevelopment() && !Utility.IsSingleLanguage(functions, _currentRuntimelanguage))
             {
-                _logger.LogError($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
-                return functionDescriptors;
+                throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
             }
 
             foreach (FunctionMetadata metadata in functions)

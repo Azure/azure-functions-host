@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         }
         public class TestFixture : EndToEndTestFixture
         {

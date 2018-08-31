@@ -2,11 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using ExtensionsHostingEnvironment = Microsoft.Extensions.Hosting.IHostingEnvironment;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -14,14 +12,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly IScriptHostManager _hostManager;
+        private readonly ExtensionsHostingEnvironment _hostingEnvironment;
         private int _shutdownRequested;
         private int _restartRequested;
 
-        public WebScriptJobHostEnvironment(IApplicationLifetime applicationLifetime, IScriptHostManager hostManager)
+        public WebScriptJobHostEnvironment(IApplicationLifetime applicationLifetime, IScriptHostManager hostManager, ExtensionsHostingEnvironment hostingEnvironment)
         {
             _applicationLifetime = applicationLifetime ?? throw new ArgumentNullException(nameof(applicationLifetime));
             _hostManager = hostManager ?? throw new ArgumentNullException(nameof(hostManager));
+            _hostingEnvironment = hostingEnvironment ?? throw new ArgumentNullException(nameof(hostingEnvironment));
         }
+
+        public string EnvironmentName => _hostingEnvironment.EnvironmentName;
 
         public void RestartHost()
         {
