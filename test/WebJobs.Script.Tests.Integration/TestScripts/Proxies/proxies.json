@@ -133,7 +133,7 @@
         ],
         "route": "/myexternalhttpoverride"
       },
-      "backendUri": "https://gibraltarintegrationtestbackend.azurewebsites.net/api/HttpGet_CRUD_CSharp",
+      "backendUri": "https://www.msn.com",
       "responseOverrides": {
         "response.statusCode": "201",
         "response.statusReason": "test",
