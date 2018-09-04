@@ -9,8 +9,10 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
-    public class ScriptApplicationHostOptionsSetup : IConfigureOptions<ScriptApplicationHostOptions>
+    public class ScriptApplicationHostOptionsSetup : IConfigureNamedOptions<ScriptApplicationHostOptions>
     {
+        public const string SkipPlaceholder = "SkipPlaceholder";
+
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
 
@@ -19,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         {
         }
 
-        internal ScriptApplicationHostOptionsSetup(IConfiguration configuration, IEnvironment environment)
+        public ScriptApplicationHostOptionsSetup(IConfiguration configuration, IEnvironment environment)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -27,13 +29,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
         public void Configure(ScriptApplicationHostOptions options)
         {
+            Configure(null, options);
+        }
+
+        public void Configure(string name, ScriptApplicationHostOptions options)
+        {
             _configuration.GetSection(ConfigurationSectionNames.WebHost)
-                    ?.Bind(options);
+                ?.Bind(options);
 
             // Indicate that a WebHost is hosting the ScriptHost
             options.HasParentScope = true;
 
-            if (_environment.IsPlaceholderModeEnabled())
+            // During assignment, we need a way to get the non-placeholder ScriptPath
+            // while we are still in PlaceholderMode. This is a way for us to request it from the
+            // OptionsFactory and still allow other setups to run.
+            if (_environment.IsPlaceholderModeEnabled() &&
+                !string.Equals(name, SkipPlaceholder, StringComparison.Ordinal))
             {
                 // If we're in standby mode, override relevant properties with values
                 // to be used by the placeholder site.

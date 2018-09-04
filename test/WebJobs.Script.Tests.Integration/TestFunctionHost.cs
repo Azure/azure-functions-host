@@ -50,8 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 HasParentScope = true
             };
 
-            var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_hostOptions);
-            var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, Array.Empty<IOptionsChangeTokenSource<ScriptApplicationHostOptions>>(), factory);
+            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_hostOptions);
             var builder = new WebHostBuilder()
                 .ConfigureServices(services =>
                   {

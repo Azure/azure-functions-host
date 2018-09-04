@@ -7,8 +7,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,30 +16,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
     public class InstanceManager : IInstanceManager
     {
+        private static readonly object _assignmentLock = new object();
         private static HostAssignmentContext _assignmentContext;
-        private static object _assignmentLock = new object();
 
-        private readonly ScriptApplicationHostOptions _webHostSettings;
         private readonly ILogger _logger;
+        private readonly IEnvironment _environment;
+        private readonly IOptionsFactory<ScriptApplicationHostOptions> _optionsFactory;
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
 
-        public InstanceManager(IOptions<ScriptApplicationHostOptions> webHostSettings, ILoggerFactory loggerFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment)
+        public InstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment,
+            IEnvironment environment, ILogger<InstanceManager> logger)
         {
-            if (webHostSettings == null)
-            {
-                throw new ArgumentNullException(nameof(webHostSettings));
-            }
-
-            if (loggerFactory == null)
-            {
-                throw new ArgumentNullException(nameof(loggerFactory));
-            }
-
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
-            _webHostSettings = webHostSettings.Value;
-            _logger = loggerFactory.CreateLogger(LogCategories.Startup);
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _optionsFactory = optionsFactory ?? throw new ArgumentNullException(nameof(optionsFactory));
         }
 
         public bool StartAssignment(HostAssignmentContext context)
@@ -131,17 +123,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private async Task ApplyContext(HostAssignmentContext assignmentContext)
         {
             _logger.LogInformation($"Applying {assignmentContext.Environment.Count} app setting(s)");
-            assignmentContext.ApplyAppSettings();
+            assignmentContext.ApplyAppSettings(_environment);
 
-            if (!string.IsNullOrEmpty(assignmentContext.ZipUrl))
+            // We need to get the non-PlaceholderMode script path so we can unzip to the correct location.
+            // This asks the factory to skip the PlaceholderMode check when configuring options.
+            var options = _optionsFactory.Create(ScriptApplicationHostOptionsSetup.SkipPlaceholder);
+
+            var zipPath = assignmentContext.ZipUrl;
+            if (!string.IsNullOrEmpty(zipPath))
             {
                 // download zip and extract
-                var zipUri = new Uri(assignmentContext.ZipUrl);
+                var zipUri = new Uri(zipPath);
                 var filePath = Path.GetTempFileName();
                 await DownloadAsync(zipUri, filePath);
 
-                _logger.LogInformation($"Extracting files to '{_webHostSettings.ScriptPath}'");
-                ZipFile.ExtractToDirectory(filePath, _webHostSettings.ScriptPath, overwriteFiles: true);
+                _logger.LogInformation($"Extracting files to '{options.ScriptPath}'");
+                ZipFile.ExtractToDirectory(filePath, options.ScriptPath, overwriteFiles: true);
                 _logger.LogInformation($"Zip extraction complete");
             }
         }

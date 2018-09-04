@@ -18,6 +18,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -261,6 +262,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                  },
                 Language = language
             };
+        }
+
+        public static IOptionsMonitor<T> CreateOptionsMonitor<T>() where T: class, new()
+        {
+            return CreateOptionsMonitor<T>(new T());
+        }
+
+        public static IOptionsMonitor<T> CreateOptionsMonitor<T>(T options) where T: class, new()
+        {
+            var factory = new TestOptionsFactory<T>(options);
+            return new OptionsMonitor<T>(factory, Array.Empty<IOptionsChangeTokenSource<T>>(), factory);
         }
     }
 }

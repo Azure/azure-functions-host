@@ -1,6 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license Informationrmation.
 
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Host.Config;
@@ -11,16 +18,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Xunit;
-using static Microsoft.Azure.WebJobs.Script.Tests.TestFunctionHost;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 {
@@ -95,8 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 
                 LoggerProvider = new TestLoggerProvider();
 
-                var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(ApplicationOptions);
-                var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(optionsFactory, Array.Empty<IOptionsChangeTokenSource<ScriptApplicationHostOptions>>(), optionsFactory);
+                var optionsMonitor = TestHelpers.CreateOptionsMonitor(ApplicationOptions);
 
                 TestServer = new TestServer(AspNetCore.WebHost.CreateDefaultBuilder()
                     .ConfigureLogging(b =>

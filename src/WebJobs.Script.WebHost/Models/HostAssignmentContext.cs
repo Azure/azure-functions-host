@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
@@ -51,11 +50,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             return SiteId == other.SiteId && LastModifiedTime.CompareTo(other.LastModifiedTime) == 0;
         }
 
-        public void ApplyAppSettings()
+        public void ApplyAppSettings(IEnvironment environment)
         {
             foreach (var pair in Environment)
             {
-                System.Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+                environment.SetEnvironmentVariable(pair.Key, pair.Value);
             }
         }
     }

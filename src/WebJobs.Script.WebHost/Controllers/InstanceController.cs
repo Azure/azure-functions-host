@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
@@ -19,12 +18,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     /// </summary>
     public class InstanceController : Controller
     {
-        private readonly ScriptSettingsManager _settingsManager;
+        private readonly IEnvironment _environment;
         private readonly IInstanceManager _instanceManager;
 
-        public InstanceController(ScriptSettingsManager settingsManager, IInstanceManager instanceManager)
+        public InstanceController(IEnvironment environment, IInstanceManager instanceManager)
         {
-            _settingsManager = settingsManager;
+            _environment = environment;
             _instanceManager = instanceManager;
         }
 
@@ -33,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> Assign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext)
         {
-            var containerKey = _settingsManager.GetSetting(EnvironmentSettingNames.ContainerEncryptionKey);
+            var containerKey = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey);
             var assignmentContext = encryptedAssignmentContext.Decrypt(containerKey);
 
             // before starting the assignment we want to perform as much

@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             environmentMock.Setup(env => env.GetEnvironmentVariable(ContainerName)).Returns<string>(null);
             environmentMock.Setup(env => env.GetEnvironmentVariable(AzureWebsiteInstanceId)).Returns<string>(null);
 
-            var initializationHostService = new LinuxContainerInitializationHostService(environmentMock.Object, _instanceManagerMock.Object, NullLoggerFactory.Instance);
+            var initializationHostService = new LinuxContainerInitializationHostService(environmentMock.Object, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance);
             await initializationHostService.StartAsync(CancellationToken.None);
 
             // Make sure no other environment variables were checked
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context)))).Returns(true);
 
             var environment = new TestEnvironment(vars);
-            var initializationHostService = new LinuxContainerInitializationHostService(environment, _instanceManagerMock.Object, NullLoggerFactory.Instance);
+            var initializationHostService = new LinuxContainerInitializationHostService(environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance);
             await initializationHostService.StartAsync(CancellationToken.None);
 
             _instanceManagerMock.Verify(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context))), Times.Once);
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
 
             var environment = new TestEnvironment(vars);
 
-            var initializationHostService = new Mock<LinuxContainerInitializationHostService>(MockBehavior.Strict, environment, _instanceManagerMock.Object, NullLoggerFactory.Instance);
+            var initializationHostService = new Mock<LinuxContainerInitializationHostService>(MockBehavior.Strict, environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance);
 
             initializationHostService.Setup(service => service.Read(ContainerStartContextUri))
                 .Returns(Task.FromResult(serializedContext));
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             AddLinuxContainerSettings(vars);
 
             var environment = new TestEnvironment(vars);
-            var initializationHostService = new LinuxContainerInitializationHostService(environment, _instanceManagerMock.Object, NullLoggerFactory.Instance);
+            var initializationHostService = new LinuxContainerInitializationHostService(environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance);
             await initializationHostService.StartAsync(CancellationToken.None);
 
             _instanceManagerMock.Verify(manager => manager.StartAssignment(It.IsAny<HostAssignmentContext>()), Times.Never);

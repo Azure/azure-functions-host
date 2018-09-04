@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _delayTaskCompletionSource.SetResult(null);
         }
 
-        public bool DelayRequestsEnabled => DelayCompletionTask.IsCompleted;
+        public bool DelayRequestsEnabled => !DelayCompletionTask.IsCompleted;
 
         public Task DelayCompletionTask
         {

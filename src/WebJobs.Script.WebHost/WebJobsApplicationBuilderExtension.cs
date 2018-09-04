@@ -23,6 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             IEnvironment environment = builder.ApplicationServices.GetService<IEnvironment>() ?? SystemEnvironment.Instance;
 
+            builder.UseMiddleware<EnvironmentReadyCheckMiddleware>();
+
             if (environment.IsPlaceholderModeEnabled())
             {
                 builder.UseMiddleware<PlaceholderSpecializationMiddleware>();
@@ -34,6 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.UseMiddleware<HostAvailabilityCheckMiddleware>();
             });
 
+            builder.UseMiddleware<HostWarmupMiddleware>();
+
             // This middleware must be registered before any other middleware depending on
             // JobHost/ScriptHost scoped services.
             builder.UseMiddleware<ScriptHostRequestServiceProviderMiddleware>();
@@ -43,7 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 builder.UseMiddleware<AppServiceHeaderFixupMiddleware>();
             }
 
-            builder.UseMiddleware<EnvironmentReadyCheckMiddleware>();
             builder.UseMiddleware<HttpExceptionMiddleware>();
             builder.UseMiddleware<ResponseBufferingMiddleware>();
             builder.UseMiddleware<HomepageMiddleware>();
@@ -52,7 +55,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.UseMiddleware<HttpThrottleMiddleware>();
             });
             builder.UseMiddleware<FunctionInvocationMiddleware>();
-            builder.UseMiddleware<HostWarmupMiddleware>();
 
             // Register /admin/vfs, and /admin/zip to the VirtualFileSystem middleware.
             builder.UseWhen(VirtualFileSystemMiddleware.IsVirtualFileSystemRequest, config => config.UseMiddleware<VirtualFileSystemMiddleware>());

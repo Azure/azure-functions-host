@@ -17,7 +17,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Xunit;
-using static Microsoft.Azure.WebJobs.Script.Tests.TestFunctionHost;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 {
@@ -57,8 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 HasParentScope = true
             };
 
-            var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(HostOptions);
-            var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, Array.Empty<IOptionsChangeTokenSource<ScriptApplicationHostOptions>>(), factory);
+            var optionsMonitor = TestHelpers.CreateOptionsMonitor(HostOptions);
             var webHostBuilder = new WebHostBuilder()
                 .ConfigureServices(services =>
                 {

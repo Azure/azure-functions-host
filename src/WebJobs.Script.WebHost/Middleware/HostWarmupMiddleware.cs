@@ -1,12 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Extensions;
-using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
@@ -15,18 +13,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
+        private readonly IEnvironment _environment;
         private readonly IScriptHostManager _hostManager;
 
-        public HostWarmupMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment, IScriptHostManager hostManager)
+        public HostWarmupMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, IScriptHostManager hostManager)
         {
             _next = next;
             _webHostEnvironment = webHostEnvironment;
+            _environment = environment;
             _hostManager = hostManager;
         }
 
         public async Task Invoke(HttpContext httpContext)
         {
-            if (IsWarmUpRequest(httpContext.Request, _webHostEnvironment))
+            if (IsWarmUpRequest(httpContext.Request, _webHostEnvironment, _environment))
             {
                 await WarmUp(httpContext.Request);
             }
@@ -45,9 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
         }
 
-        public static bool IsWarmUpRequest(HttpRequest request, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment = null)
+        public static bool IsWarmUpRequest(HttpRequest request, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)
         {
-            environment = environment ?? SystemEnvironment.Instance;
             return webHostEnvironment.InStandbyMode &&
                 ((environment.IsAppServiceEnvironment() && request.IsAntaresInternalRequest(environment)) || environment.IsLinuxContainerEnvironment()) &&
                 (request.Path.StartsWithSegments(new PathString($"/api/{WarmUpConstants.FunctionName}")) ||

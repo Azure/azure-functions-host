@@ -1,10 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,12 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
-
-            if (SystemEnvironment.Instance.IsLinuxContainerEnvironment())
-            {
-                // Linux containers always start out in placeholder mode
-                ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            }
         }
 
         public IConfiguration Configuration { get; }
@@ -41,6 +33,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 loggerFactory.AddConsole(LogLevel.Trace, true);
                 app.UseDeveloperExceptionPage();
+            }
+
+            var environment = app.ApplicationServices.GetService<IEnvironment>();
+            if (environment.IsLinuxContainerEnvironment())
+            {
+                // Linux containers always start out in placeholder mode
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             }
 
             app.UseWebJobsScriptHost(applicationLifetime);

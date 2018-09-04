@@ -19,6 +19,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -72,18 +73,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IStandbyManager, StandbyManager>();
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
 
-            if (SystemEnvironment.Instance.IsLinuxContainerEnvironment())
-            {
-                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, LinuxContainerInitializationHostService>());
-            }
+            // Linux container services
+            services.AddLinuxContainerServices();
 
             // ScriptSettingsManager should be replaced. We're setting this here as a temporary step until
             // broader configuaration changes are made:
             services.AddSingleton<ScriptSettingsManager>();
             services.AddSingleton<IEventGenerator>(p =>
             {
-                var settingsManager = p.GetService<ScriptSettingsManager>();
-                if (SystemEnvironment.Instance.IsLinuxContainerEnvironment())
+                var environment = p.GetService<IEnvironment>();
+                if (environment.IsLinuxContainerEnvironment())
                 {
                     return new LinuxContainerEventGenerator();
                 }
@@ -125,6 +124,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     var standbyManager = p.GetService<IStandbyManager>();
                     return new StandbyInitializationService(standbyManager);
+                }
+
+                return NullHostedService.Instance;
+            });
+        }
+
+        private static void AddLinuxContainerServices(this IServiceCollection services)
+        {
+            services.AddSingleton<IHostedService>(s =>
+            {
+                var environment = s.GetService<IEnvironment>();
+                if (environment.IsLinuxContainerEnvironment())
+                {
+                    var instanceManager = s.GetService<IInstanceManager>();
+                    var logger = s.GetService<ILogger<LinuxContainerInitializationHostService>>();
+                    return new LinuxContainerInitializationHostService(environment, instanceManager, logger);
                 }
 
                 return NullHostedService.Instance;

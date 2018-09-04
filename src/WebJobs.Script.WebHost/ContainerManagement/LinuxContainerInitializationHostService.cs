@@ -4,7 +4,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Hosting;
@@ -21,11 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
         private readonly ILogger _logger;
         private CancellationToken _cancellationToken;
 
-        public LinuxContainerInitializationHostService(IEnvironment environment, IInstanceManager instanceManager, ILoggerFactory loggerFactory)
+        public LinuxContainerInitializationHostService(IEnvironment environment, IInstanceManager instanceManager, ILogger<LinuxContainerInitializationHostService> logger)
         {
             _environment = environment;
             _instanceManager = instanceManager;
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+            _logger = logger;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)

@@ -9,8 +9,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public interface IStandbyManager
     {
-        IChangeToken GetChangeToken();
-
         Task InitializeAsync();
 
         Task SpecializeHostAsync();

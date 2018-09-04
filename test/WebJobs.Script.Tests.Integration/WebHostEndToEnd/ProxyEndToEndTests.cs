@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -20,7 +19,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Xunit;
-using static Microsoft.Azure.WebJobs.Script.Tests.TestFunctionHost;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -178,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task TrailingSlashRemoved()
         {
             HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, $"staticBackendUrlTest/blahblah/");
-            req.Headers.Add("return_incoming_url","1");
+            req.Headers.Add("return_incoming_url", "1");
             HttpResponseMessage response = await _fixture.HttpClient.SendAsync(req);
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal("200", response.StatusCode.ToString("D"));
@@ -322,8 +320,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 FileUtility.EnsureDirectoryExists(HostOptions.TestDataPath);
 
-                var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(HostOptions);
-                var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, Array.Empty<IOptionsChangeTokenSource<ScriptApplicationHostOptions>>(), factory);
+                var optionsMonitor = TestHelpers.CreateOptionsMonitor(HostOptions);
 
                 var builder = AspNetCore.WebHost.CreateDefaultBuilder()
                    .UseStartup<Startup>()
@@ -333,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                        services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
                        services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
                    });
-                   
+
                 _testServer = new TestServer(builder);
 
                 var scriptConfig = _testServer.Host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value;

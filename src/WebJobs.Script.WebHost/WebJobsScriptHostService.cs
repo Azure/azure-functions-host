@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 _host = BuildHost(skipJobHostStartup, skipHostJsonConfiguration: startupMode == JobHostStartupMode.HandlingConfigurationParsingError);
 
-                LogInitialization(_host, isOffline, attemptCount, _hostStartCount++);
+                LogInitialization(isOffline, attemptCount, ++_hostStartCount);
 
                 await _host.StartAsync(cancellationToken);
 
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 State = ScriptHostState.Error;
                 attemptCount++;
 
-                ILogger logger = GetHostLogger(_host);
+                ILogger logger = GetHostLogger();
 
                 logger.LogError(exc, "A ScriptHost error has occurred");
 
@@ -210,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return _scriptHostBuilder.BuildHost(skipHostStartup, skipHostJsonConfiguration);
         }
 
-        private ILogger GetHostLogger(IHost host)
+        private ILogger GetHostLogger()
         {
             var hostLoggerFactory = _host?.Services.GetService<ILoggerFactory>();
 
@@ -219,13 +219,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return hostLoggerFactory?.CreateLogger(LogCategories.Startup) ?? _logger;
         }
 
-        private void LogInitialization(IHost host, bool isOffline, int attemptCount, int v)
+        private void LogInitialization(bool isOffline, int attemptCount, int startCount)
         {
-            var logger = GetHostLogger(host);
+            var logger = GetHostLogger();
 
             var log = isOffline ? "Host is offline." : "Initializing Host.";
             logger.LogInformation(log);
-            logger.LogInformation($"Host initialization: ConsecutiveErrors={attemptCount}, StartupCount={_hostStartCount++}");
+            logger.LogInformation($"Host initialization: ConsecutiveErrors={attemptCount}, StartupCount={startCount}");
+
+            if (_scriptWebHostEnvironment.InStandbyMode)
+            {
+                logger.LogInformation("Host is in standby mode");
+            }
         }
 
         private bool CheckAppOffline()

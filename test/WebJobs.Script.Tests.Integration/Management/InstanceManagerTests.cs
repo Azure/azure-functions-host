@@ -7,14 +7,11 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
-using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
@@ -39,8 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             _environment = new TestEnvironment();
             _scriptWebEnvironment = new ScriptWebHostEnvironment(_environment);
-            _instanceManager = new InstanceManager(new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()),
-                loggerFactory, _httpClient, _scriptWebEnvironment);
+
+            var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions());
+            _instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment, loggerFactory.CreateLogger<InstanceManager>());
         }
 
         [Fact]
@@ -67,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             // specialization is done in the background
             await Task.Delay(500);
 
-            var value = Environment.GetEnvironmentVariable(envValue.Name);
+            var value = _environment.GetEnvironmentVariable(envValue.Name);
             Assert.Equal(value, envValue.Value);
 
             // verify logs
