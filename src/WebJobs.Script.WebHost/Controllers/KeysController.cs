@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [HttpGet]
+        [HttpPost]
         [Route("admin/functions/{name}/keys")]
         public async Task<IActionResult> Get(string name)
         {
