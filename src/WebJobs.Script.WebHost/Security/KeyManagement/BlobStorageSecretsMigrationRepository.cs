@@ -16,12 +16,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly string _secretSentinelDirectoryPath;
         private readonly string _accountConnectionString;
         private readonly string _siteSlotName;
+        private readonly string _migrateSentinelPath;
         private readonly ILogger _logger;
         private readonly Lazy<Task<BlobStorageSecretsRepository>> _blobStorageSecretsRepositoryTask;
 
         public BlobStorageSecretsMigrationRepository(string secretSentinelDirectoryPath, string accountConnectionString, string siteSlotName, ILogger logger)
         {
             _secretSentinelDirectoryPath = secretSentinelDirectoryPath;
+            _migrateSentinelPath = Path.Combine(_secretSentinelDirectoryPath, "migrate-sentinel.json");
             _accountConnectionString = accountConnectionString;
             _siteSlotName = siteSlotName;
             _logger = logger;
@@ -40,17 +42,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task<BlobStorageSecretsRepository> BlobStorageSecretsRepositoryFactory()
         {
-            BlobStorageSecretsRepository blobStorageSecretsRepository = new BlobStorageSecretsRepository(_secretSentinelDirectoryPath, _accountConnectionString, _siteSlotName);
-            blobStorageSecretsRepository.SecretsChanged += BlobStorageSecretsMigrationRepository_SecretsChanged;
+            BlobStorageSecretsRepository blobStorageSecretsRepository = null;
             try
             {
+                blobStorageSecretsRepository = new BlobStorageSecretsRepository(_secretSentinelDirectoryPath, _accountConnectionString, _siteSlotName);
+                blobStorageSecretsRepository.SecretsChanged += BlobStorageSecretsMigrationRepository_SecretsChanged;
                 await CopyKeysFromFileSystemToBlobStorage(blobStorageSecretsRepository);
+                return blobStorageSecretsRepository;
             }
             catch (Exception ex)
             {
-                _logger?.LogTrace("{0}", ex.ToString());
+                _logger?.LogTrace("Secret keys migration is failed. {0}", ex.ToString());
+
+                // Delete sentinel file and secrets container so we can try to copy keys once again
+                File.Delete(_migrateSentinelPath);
+                await blobStorageSecretsRepository?.BlobContainer.DeleteIfExistsAsync();
+
+                throw new InvalidOperationException($"Secret keys migration is failed.", ex);
             }
-            return blobStorageSecretsRepository;
         }
 
         public async Task<string> ReadAsync(ScriptSecretsType type, string functionName)
@@ -85,17 +94,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task CopyKeysFromFileSystemToBlobStorage(BlobStorageSecretsRepository blobStorageSecretsRepository)
         {
-            string migrateSentinelPath = Path.Combine(blobStorageSecretsRepository.SecretsSentinelFilePath, "migrate-sentinel.json");
-            if (File.Exists(migrateSentinelPath))
+            if (File.Exists(_migrateSentinelPath))
             {
                 // Migration is already done
                 _logger?.LogTrace("Sentinel file is detected.");
                 return;
             }
 
+            // Create sentinel before migration as we do not want other instances to perform migration
             try
             {
-                using (var stream = new FileStream(migrateSentinelPath, FileMode.CreateNew))
+                using (var stream = new FileStream(_migrateSentinelPath, FileMode.CreateNew))
                 using (var writer = new StreamWriter(stream))
                 {
                     //write file
