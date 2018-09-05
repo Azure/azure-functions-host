@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.ApplicationInsights.SnapshotCollector;
 using Microsoft.ApplicationInsights.WindowsServer.Channel.Implementation;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
@@ -21,17 +20,16 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         public void Configure(ApplicationInsightsLoggerOptions options)
         {
-            // Make sure we have snapshot enabled by default. Config can set the "IsEnabled" property to disable.
-            options.SnapshotConfiguration = new SnapshotCollectorConfiguration();
-
+            // SnapshotConfiguration will be null by default. The presence of a SnapshotConfiguration section in
+            // IConfiguration will cause the SnapshotConfiguration to be created and the TelemetryProcessor to be applied.
             _configuration.Bind(options);
 
-            // Sampling settings do not have a built-in "IsEnabled" value, so we are making our own.
             ConfigureSampling(options);
         }
 
         private void ConfigureSampling(ApplicationInsightsLoggerOptions options)
         {
+            // Sampling settings do not have a built-in "IsEnabled" value, so we are making our own.
             string samplingPath = nameof(ApplicationInsightsLoggerOptions.SamplingSettings);
             bool samplingEnabled = _configuration.GetSection(samplingPath).GetValue("IsEnabled", true);
 
