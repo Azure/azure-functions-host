@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -109,6 +110,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             }
         }
 
+        [Fact]
+        public async Task SecretMigrate_Failed()
+        {
+            using (var directory = new TempDirectory())
+            {
+                try
+                {
+                    await _fixture.TestInitialize(SecretsRepositoryType.FileSystem, directory.Path);
+                    var loggerProvider = new TestLoggerProvider();
+
+                    var fileRepo = _fixture.GetFileSystemSecretsRepository();
+                    string hostContent = Guid.NewGuid().ToString();
+                    string functionContent = Guid.NewGuid().ToString();
+                    await fileRepo.WriteAsync(ScriptSecretsType.Host, "host", hostContent);
+                    await fileRepo.WriteAsync(ScriptSecretsType.Function, "test1", functionContent);
+
+                    _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSlotName, "Production");
+                    _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteName, "test-app");
+
+                    var repo = _fixture.GetBrowkenBlobStorageSecretsMigrationRepository(loggerProvider.CreateLogger(ScriptConstants.LogCategoryMigration));
+                    Assert.Throws(typeof(AggregateException), () =>
+                    {
+                        repo.ReadAsync(ScriptSecretsType.Host, string.Empty).GetAwaiter().GetResult();
+                    });
+                    var logs = loggerProvider.GetAllLogMessages().ToArray();
+                    Assert.Contains("Secret keys migration is failed", loggerProvider.GetAllLogMessages().ToList().Last().FormattedMessage);
+
+                    var repo1 = _fixture.GetBlobStorageSecretsMigrationRepository(loggerProvider.CreateLogger(ScriptConstants.LogCategoryMigration));
+                    string hostContentFromBlob1 = await repo1.ReadAsync(ScriptSecretsType.Host, string.Empty);
+                    var logs1 = loggerProvider.GetAllLogMessages().ToArray();
+
+                    Assert.Equal(hostContent, hostContentFromBlob1);
+                }
+                finally
+                {
+                    _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteSlotName, null);
+                    _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteName, null);
+                }
+            }
+        }
+
         public class Fixture : SecretsRepositoryTests.Fixture
         {
             public Fixture() : base()
@@ -128,6 +170,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             public BlobStorageSecretsMigrationRepository GetBlobStorageSecretsMigrationRepository(ILogger logger)
             {
                 var repo = new BlobStorageSecretsMigrationRepository(Path.Combine(SecretsDirectory, "Sentinels"), BlobConnectionString, TestSiteName, logger);
+                return repo;
+            }
+
+            public BlobStorageSecretsMigrationRepository GetBrowkenBlobStorageSecretsMigrationRepository(ILogger logger)
+            {
+                var repo = new BlobStorageSecretsMigrationRepository(Path.Combine(SecretsDirectory, "Sentinels"), string.Empty, TestSiteName, logger);
                 return repo;
             }
         }
