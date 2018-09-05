@@ -16,8 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
 
         internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
-        internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(5);
-        internal static readonly TimeSpan MaxFunctionTimeout = TimeSpan.FromMinutes(10);
+        internal static readonly TimeSpan DefaultFunctionTimeoutDynamic = TimeSpan.FromMinutes(5);
+        internal static readonly TimeSpan MaxFunctionTimeoutDynamic = TimeSpan.FromMinutes(10);
+        internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(30);
 
         public ScriptHostOptionsSetup(IConfiguration configuration, IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
         {
@@ -65,25 +66,26 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private void ConfigureFunctionTimeout(IConfigurationSection jobHostSection, ScriptJobHostOptions options)
         {
+            TimeSpan functionTimeout = _environment.IsDynamic() ? DefaultFunctionTimeoutDynamic : DefaultFunctionTimeout;
             string value = jobHostSection.GetValue<string>("functionTimeout");
             if (value != null)
             {
                 TimeSpan requestedTimeout = TimeSpan.Parse(value, CultureInfo.InvariantCulture);
-
-                // Only apply limits if this is Dynamic.
-                if (_environment.IsDynamic() && (requestedTimeout < MinFunctionTimeout || requestedTimeout > MaxFunctionTimeout))
+                if (requestedTimeout < MinFunctionTimeout)
                 {
-                    string message = $"{nameof(options.FunctionTimeout)} must be between {MinFunctionTimeout} and {MaxFunctionTimeout}.";
+                    string message = $"{nameof(options.FunctionTimeout)} must be greater than {MinFunctionTimeout}.";
+                    throw new ArgumentException(message);
+                }
+                // Only apply max limit if this is Dynamic.
+                if (_environment.IsDynamic() && requestedTimeout > MaxFunctionTimeoutDynamic)
+                {
+                    string message = $"{nameof(options.FunctionTimeout)} must be less than {MaxFunctionTimeoutDynamic}.";
                     throw new ArgumentException(message);
                 }
 
-                options.FunctionTimeout = requestedTimeout;
+                functionTimeout = requestedTimeout;
             }
-            else if (_environment.IsDynamic())
-            {
-                // Apply a default if this is running on Dynamic.
-                options.FunctionTimeout = DefaultFunctionTimeout;
-            }
+            options.FunctionTimeout = functionTimeout;
 
             // TODO: DI: JobHostOptions need to me updated.
             //scriptConfig.HostOptions.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
@@ -101,20 +103,15 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     int valueInBytes = int.Parse(value) * 1024 * 1024;
                     if (_environment.IsDynamic())
                     {
-                        // TODO: Because of a circular dependency, where logger providers are using ScriptHostOptions, we can't log from here
-                        // need to remove the dependency from the various logger providers.
-                        //string message = $"Cannot set {nameof(scriptOptions.MaxMessageLengthBytes)} on Consumption plan. Default MaxMessageLength: {DefaultMaxMessageLengthBytesDynamicSku} will be used";
-                        //_logger?.LogWarning(message);
+                        string message = $"Cannot set MaxMessageLength on Consumption plan.";
+                        throw new ArgumentException(message);
                     }
                     else
                     {
                         if (valueInBytes < 0 || valueInBytes > 2000 * 1024 * 1024)
                         {
-                            // TODO: Because of a circular dependency, where logger providers are using ScriptHostOptions, we can't log from here
-                            // need to remove the dependency from the various logger providers.
-                            // Current grpc max message limits
-                            //string message = $"MaxMessageLength must be between 4MB and 2000MB.Default MaxMessageLength: {DefaultMaxMessageLengthBytes} will be used";
-                            //_logger?.LogWarning(message);
+                            string message = $"MaxMessageLength must be between 4MB and 2000MB.";
+                            throw new ArgumentException(message);
                         }
                         else
                         {
