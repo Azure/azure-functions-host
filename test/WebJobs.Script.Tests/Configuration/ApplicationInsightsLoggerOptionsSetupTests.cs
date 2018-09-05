@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public void Configure_SnapshotEnabled_ByDefault()
+        public void Configure_SnapshotDisabled_ByDefault()
         {
             IConfiguration config = new ConfigurationBuilder().Build();
 
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
 
-            Assert.True(options.SnapshotConfiguration.IsEnabled);
+            Assert.Null(options.SnapshotConfiguration);
         }
 
         [Fact]
