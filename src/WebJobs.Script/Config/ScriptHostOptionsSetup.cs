@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private void ConfigureFunctionTimeout(IConfigurationSection jobHostSection, ScriptJobHostOptions options)
         {
-            TimeSpan functionTimeout = DefaultFunctionTimeout;
+            TimeSpan functionTimeout = options.FunctionTimeout ?? DefaultFunctionTimeout;
             var maxTimeout = TimeSpan.MaxValue;
             if (_environment.IsDynamic())
             {
