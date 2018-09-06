@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
     {
         public const string FunctionsKeyHeaderName = "x-functions-key";
         private readonly ISecretManagerProvider _secretManagerProvider;
+        private readonly bool _isEasyAuthEnabled;
 
         public AuthenticationLevelHandler(
             IOptionsMonitor<AuthenticationLevelOptions> options,
@@ -30,10 +31,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             UrlEncoder encoder,
             IDataProtectionProvider dataProtection,
             ISystemClock clock,
-            ISecretManagerProvider secretManagerProvider)
+            ISecretManagerProvider secretManagerProvider,
+            IEnvironment environment)
             : base(options, logger, encoder, clock)
         {
             _secretManagerProvider = secretManagerProvider;
+            _isEasyAuthEnabled = environment.IsEasyAuthEnabled();
         }
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -53,8 +56,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
                     claims.Add(new Claim(SecurityConstants.AuthLevelKeyNameClaimType, name));
                 }
 
-                var identity = new ClaimsIdentity(claims, AuthLevelAuthenticationDefaults.AuthenticationScheme);
-                return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name));
+                List<ClaimsIdentity> claimsIdentities = new List<ClaimsIdentity>();
+                var keyIdentity = new ClaimsIdentity(claims, AuthLevelAuthenticationDefaults.AuthenticationScheme);
+                if (_isEasyAuthEnabled)
+                {
+                    ClaimsIdentity easyAuthIdentity = Context.Request.GetAppServiceIdentity();
+                    if (easyAuthIdentity != null)
+                    {
+                        claimsIdentities.Add(easyAuthIdentity);
+                    }
+                }
+                claimsIdentities.Add(keyIdentity);
+
+                return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(claimsIdentities), Scheme.Name));
             }
             else
             {

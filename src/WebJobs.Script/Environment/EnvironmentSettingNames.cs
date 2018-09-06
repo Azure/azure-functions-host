@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ConsoleLoggingDisabled = "CONSOLE_LOGGING_DISABLED";
         public const string SkipSslValidation = "SCM_SKIP_SSL_VALIDATION";
         public const string EnvironmentNameKey = "AZURE_FUNCTIONS_ENVIRONMENT";
+        public const string EasyAuthEnabled = "WEBSITE_AUTH_ENABLED";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
