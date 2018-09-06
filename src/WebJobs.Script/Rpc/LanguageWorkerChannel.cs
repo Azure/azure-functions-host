@@ -28,8 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class LanguageWorkerChannel : ILanguageWorkerChannel
     {
-        private readonly TimeSpan timeoutStart = TimeSpan.FromSeconds(20);
-        private readonly TimeSpan timeoutInit = TimeSpan.FromSeconds(20);
+        private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
+        private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly ScriptJobHostOptions _scriptConfig;
         private readonly IScriptEventManager _eventManager;
         private readonly IWorkerProcessFactory _processFactory;
@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void StartWorker()
         {
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
-                .Timeout(timeoutStart)
+                .Timeout(processStartTimeout)
                 .Take(1)
                 .Subscribe(InitWorker, HandleWorkerError);
 
@@ -286,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void InitWorker(RpcEvent startEvent)
         {
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
-                .Timeout(timeoutInit)
+                .Timeout(workerInitTimeout)
                 .Take(1)
                 .Subscribe(WorkerReady, HandleWorkerError);
 
