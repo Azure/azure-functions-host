@@ -66,23 +66,22 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private void ConfigureFunctionTimeout(IConfigurationSection jobHostSection, ScriptJobHostOptions options)
         {
-            TimeSpan functionTimeout = _environment.IsDynamic() ? DefaultFunctionTimeoutDynamic : DefaultFunctionTimeout;
+            TimeSpan functionTimeout = DefaultFunctionTimeout;
+            var maxTimeout = TimeSpan.MaxValue;
+            if (_environment.IsDynamic())
+            {
+                functionTimeout = DefaultFunctionTimeoutDynamic;
+                maxTimeout = MaxFunctionTimeoutDynamic;
+            }
             string value = jobHostSection.GetValue<string>("functionTimeout");
             if (value != null)
             {
                 TimeSpan requestedTimeout = TimeSpan.Parse(value, CultureInfo.InvariantCulture);
-                if (requestedTimeout < MinFunctionTimeout)
+                if (requestedTimeout < MinFunctionTimeout || requestedTimeout > maxTimeout)
                 {
-                    string message = $"{nameof(options.FunctionTimeout)} must be greater than {MinFunctionTimeout}.";
+                    string message = $"{nameof(options.FunctionTimeout)} must be greater than {MinFunctionTimeout} and less than {maxTimeout}.";
                     throw new ArgumentException(message);
                 }
-                // Only apply max limit if this is Dynamic.
-                if (_environment.IsDynamic() && requestedTimeout > MaxFunctionTimeoutDynamic)
-                {
-                    string message = $"{nameof(options.FunctionTimeout)} must be less than {MaxFunctionTimeoutDynamic}.";
-                    throw new ArgumentException(message);
-                }
-
                 functionTimeout = requestedTimeout;
             }
             options.FunctionTimeout = functionTimeout;

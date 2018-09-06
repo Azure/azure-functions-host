@@ -157,12 +157,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
 
             var ex = Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings, environment));
-            var expectedMessage = "FunctionTimeout must be less than 00:10:00.";
+            var expectedMessage = "FunctionTimeout must be greater than 00:00:01 and less than 00:10:00.";
             Assert.Equal(expectedMessage, ex.Message);
 
             settings[configPath] = (ScriptHostOptionsSetup.MinFunctionTimeout - TimeSpan.FromSeconds(1)).ToString();
             ex = Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings, environment));
-            expectedMessage = "FunctionTimeout must be greater than 00:00:01.";
             Assert.Equal(expectedMessage, ex.Message);
         }
 
@@ -176,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             };
 
             var ex = Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings));
-            var expectedMessage = "FunctionTimeout must be greater than 00:00:01.";
+            var expectedMessage = $"FunctionTimeout must be greater than 00:00:01 and less than {TimeSpan.MaxValue}.";
             Assert.Equal(expectedMessage, ex.Message);
         }
 
