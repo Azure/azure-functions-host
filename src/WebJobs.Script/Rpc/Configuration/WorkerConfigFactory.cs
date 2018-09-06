@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (workerDirectorySection.Value != null)
                 {
                     _workerProviderDictionary.Remove(languageSection.Key);
-                    AddProvider(Path.Combine(workerDirectorySection.Value, languageSection.Key));
+                    AddProvider(workerDirectorySection.Value);
                 }
             }
         }

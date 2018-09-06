@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             CreateWorkerFolder(customRootPath, testConfig);
             Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
             {
-                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{LanguageWorkerConstants.WorkerDirectorySectionName}"] = customRootPath
+                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{LanguageWorkerConstants.WorkerDirectorySectionName}"] = Path.Combine(customRootPath, testLanguage)
             };
 
             var providers = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), null, keyValuePairs);
