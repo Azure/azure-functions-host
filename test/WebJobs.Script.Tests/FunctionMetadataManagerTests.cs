@@ -229,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionErrors = new Dictionary<string, ICollection<string>>();
             var functionDirectories = Directory.EnumerateDirectories(functionsPath);
             var metadata = FunctionMetadataManager.ReadFunctionsMetadata(functionDirectories, null, TestHelpers.GetTestWorkerConfigs(), NullLogger.Instance, functionErrors);
-            Assert.Equal(17, metadata.Count);
+            Assert.Equal(18, metadata.Count);
         }
 
         [Theory]

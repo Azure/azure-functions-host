@@ -293,7 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
 
-            Assert.Equal(15, metadata.Length);
+            Assert.Equal(16, metadata.Length);
             var function = metadata.Single(p => p.Name == "HttpTrigger-CustomRoute");
             Assert.Equal("https://localhost/csharp/products/{category:alpha?}/{id:int?}/{extra?}", function.InvokeUrlTemplate.ToString());
 
@@ -610,6 +610,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Fact]
+        public async Task HttpTrigger_Identities_Succeeds()
+        {
+            var vars = new Dictionary<string, string>
+            {
+                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName},
+                { "WEBSITE_AUTH_ENABLED", "TRUE"}
+            };
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Identities");
+                string uri = $"api/httptrigger-identities?code={functionKey}";
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+                MockEasyAuth(request, "facebook", "Connor McMahon", "10241897674253170");
+
+                HttpResponseMessage response = await this._fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                string responseContent = await response.Content.ReadAsStringAsync();
+                string[] identityStrings = StripBookendQuotations(responseContent).Split(';');
+                Assert.Equal("Identity: (facebook, Connor McMahon, 10241897674253170)", identityStrings[0]);
+                Assert.Equal("Identity: (WebJobsAuthLevel, Function, Key1)", identityStrings[1]);
+            }
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Identities_BlocksSpoofedEasyAuthIdentity()
+        {
+            var vars = new Dictionary<string, string>
+            {
+                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName},
+                { "WEBSITE_AUTH_ENABLED", "FALSE"}
+            };
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Identities");
+                string uri = $"api/httptrigger-identities?code={functionKey}";
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+                MockEasyAuth(request, "facebook", "Connor McMahon", "10241897674253170");
+
+                HttpResponseMessage response = await this._fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                string responseContent = await response.Content.ReadAsStringAsync();
+                string identityString = StripBookendQuotations(responseContent);
+                Assert.Equal("Identity: (WebJobsAuthLevel, Function, Key1)", identityString);
+            }
+        }
+
         private async Task<HttpResponseMessage> GetHostStatusAsync()
         {
             string uri = "admin/host/status";
@@ -657,6 +706,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             return await _fixture.Host.HttpClient.SendAsync(request);
         }
 
+        internal static string StripBookendQuotations(string response)
+        {
+            if (response.StartsWith("\"") && response.EndsWith("\""))
+            {
+                return response.Substring(1, response.Length - 2);
+            }
+            return response;
+        }
+
+        internal static void MockEasyAuth(HttpRequestMessage request, string provider, string name, string id)
+        {
+            string userIdentityJson = @"{
+  ""auth_typ"": """ + provider + @""",
+  ""claims"": [
+    {
+      ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"",
+      ""val"": """ + name + @"""
+    },
+    {
+      ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn"",
+      ""val"": """ + name + @"""
+    },
+    {
+      ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"",
+      ""val"": """ + id + @"""
+    }
+  ],
+  ""name_typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"",
+  ""role_typ"": ""http://schemas.microsoft.com/ws/2008/06/identity/claims/role""
+}";
+            string easyAuthHeaderValue = Convert.ToBase64String(Encoding.UTF8.GetBytes(userIdentityJson));
+            request.Headers.Add("x-ms-client-principal", easyAuthHeaderValue);
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
             static TestFixture()
@@ -680,6 +763,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                         "HttpTrigger-Compat",
                         "HttpTrigger-CustomRoute",
                         "HttpTrigger-POCO",
+                        "HttpTrigger-Identities",
                         "HttpTriggerWithObject",
                         "ManualTrigger"
                     };
