@@ -67,6 +67,24 @@ namespace Microsoft.Azure.WebJobs.Script
             return name?.ToLowerInvariant();
         }
 
+        /// <summary>
+        /// Gets a the subscription Id of the current site.
+        /// </summary>
+        public static string GetSubscriptionId(this IEnvironment environment)
+        {
+            string ownerName = environment.GetEnvironmentVariable(AzureWebsiteOwnerName) ?? string.Empty;
+            if (!string.IsNullOrEmpty(ownerName))
+            {
+                int idx = ownerName.IndexOf('+');
+                if (idx > 0)
+                {
+                    return ownerName.Substring(0, idx);
+                }
+            }
+
+            return null;
+        }
+
         public static bool IsContainerReady(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteContainerReady));

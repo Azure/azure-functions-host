@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -12,13 +11,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly MetricsEventManager _metricsEventManager;
         private bool disposed = false;
 
-        public WebHostMetricsLogger()
-            : this(ScriptSettingsManager.Instance, new EtwEventGenerator(), 5)
-        {
-        }
-
-        public WebHostMetricsLogger(IEventGenerator eventGenerator)
-            : this(ScriptSettingsManager.Instance, eventGenerator, 5)
+        public WebHostMetricsLogger(IEnvironment environment, IEventGenerator eventGenerator)
+            : this(environment, eventGenerator, 5)
         {
         }
 
@@ -27,9 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _metricsEventManager = eventManager;
         }
 
-        protected WebHostMetricsLogger(ScriptSettingsManager settingsManager, IEventGenerator eventGenerator, int metricEventIntervalInSeconds)
+        protected WebHostMetricsLogger(IEnvironment environment, IEventGenerator eventGenerator, int metricEventIntervalInSeconds)
         {
-            _metricsEventManager = new MetricsEventManager(settingsManager, eventGenerator, metricEventIntervalInSeconds);
+            _metricsEventManager = new MetricsEventManager(environment, eventGenerator, metricEventIntervalInSeconds);
         }
 
         public object BeginEvent(string eventName, string functionName = null)
@@ -62,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
             else
             {
-                _metricsEventManager.EndEvent((object)metricEvent);
+                _metricsEventManager.EndEvent(metricEvent);
             }
         }
 

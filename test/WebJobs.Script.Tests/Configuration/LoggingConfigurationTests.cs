@@ -68,17 +68,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             LoggerFilterOptions filterOptions = host.Services.GetService<IOptions<LoggerFilterOptions>>().Value;
 
-            Assert.Equal(3, filterOptions.Rules.Count);
+            Assert.Equal(6, filterOptions.Rules.Count);
 
-            Assert.Equal(LogLevel.Trace, filterOptions.Rules[0].LogLevel);
-            Assert.Equal("Console", filterOptions.Rules[0].ProviderName);
+            var rules = filterOptions.Rules.ToArray();
 
-            Assert.Equal(LogLevel.Trace, filterOptions.Rules[1].LogLevel);
-            Assert.Null(filterOptions.Rules[1].ProviderName);
-            Assert.Equal("Some.Custom.Category", filterOptions.Rules[1].CategoryName);
+            var rule = rules[0];
+            Assert.Null(rule.ProviderName);
+            Assert.Null(rule.CategoryName);
+            Assert.Null(rule.LogLevel);
+            Assert.NotNull(rule.Filter); // The broad "allowed category" filter.
 
-            Assert.Equal(LogLevel.Error, filterOptions.Rules[2].LogLevel);
-            Assert.Null(filterOptions.Rules[2].ProviderName);
+            rule = rules[1];
+            Assert.Equal(LogLevel.Trace, rule.LogLevel);
+            Assert.Equal("Console", rule.ProviderName);
+
+            rule = rules[2];
+            Assert.Equal(LogLevel.Trace, rule.LogLevel);
+            Assert.Null(rule.ProviderName);
+            Assert.Equal("Some.Custom.Category", rule.CategoryName);
+
+            rule = rules[3];
+            Assert.Equal(LogLevel.Error, rule.LogLevel);
+            Assert.Null(rule.ProviderName);
+
+            rule = rules[4];
+            Assert.Equal(typeof(SystemLoggerProvider).FullName, rule.ProviderName);
+            Assert.Null(rule.CategoryName);
+            Assert.Equal(LogLevel.None, rule.LogLevel);
+            Assert.Null(rule.Filter);
+
+            rule = rules[5];
+            Assert.Equal(typeof(SystemLoggerProvider).FullName, rule.ProviderName);
+            Assert.Null(rule.CategoryName);
+            Assert.Null(rule.LogLevel);
+            Assert.NotNull(rule.Filter); // The system-specific "allowed category" filter
         }
 
         [Fact]
@@ -90,8 +113,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             LoggerFilterOptions filterOptions = host.Services.GetService<IOptions<LoggerFilterOptions>>().Value;
 
-            Assert.Equal(LogLevel.Information, filterOptions.MinLevel);
-            Assert.Empty(filterOptions.Rules);
+            Assert.Equal(LogLevel.None, filterOptions.MinLevel);
+
+            var rules = filterOptions.Rules.ToArray();
+            Assert.Equal(3, rules.Length);
+
+            var rule = rules[0];
+            Assert.Null(rule.ProviderName);
+            Assert.Null(rule.CategoryName);
+            Assert.Null(rule.LogLevel);
+            Assert.NotNull(rule.Filter); // The broad "allowed category" filter.
+
+            rule = rules[1];
+            Assert.Equal(typeof(SystemLoggerProvider).FullName, rule.ProviderName);
+            Assert.Null(rule.CategoryName);
+            Assert.Equal(LogLevel.None, rule.LogLevel);
+            Assert.Null(rule.Filter);
+
+            rule = rules[2];
+            Assert.Equal(typeof(SystemLoggerProvider).FullName, rule.ProviderName);
+            Assert.Null(rule.CategoryName);
+            Assert.Null(rule.LogLevel);
+            Assert.NotNull(rule.Filter); // The system-specific "allowed category" filter
         }
 
         [Fact]

@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc;
@@ -106,21 +107,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return delay;
-        }
-
-        public static string GetSubscriptionId(ScriptSettingsManager settingsManager)
-        {
-            string ownerName = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteOwnerName) ?? string.Empty;
-            if (!string.IsNullOrEmpty(ownerName))
-            {
-                int idx = ownerName.IndexOf('+');
-                if (idx > 0)
-                {
-                    return ownerName.Substring(0, idx);
-                }
-            }
-
-            return null;
         }
 
         public static string GetInformationalVersion(Type type)
@@ -330,16 +316,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static LoggerFilterOptions CreateLoggerFilterOptions()
-        {
-            // TODO: Whitelist should be configurable
-            // Whitelist our log categories to remove large amounts of ASP.NET logs.
-            var filterOptions = new LoggerFilterOptions();
-            filterOptions.AddFilter((category, level) => category.StartsWith($"{ScriptConstants.LogCategoryHost}.") || category.StartsWith($"{ScriptConstants.LogCategoryFunction}.") || category.StartsWith($"{ScriptConstants.LogCategoryWorker}."));
-
-            return filterOptions;
-        }
-
         public static bool GetStateBoolValue(IEnumerable<KeyValuePair<string, object>> state, string key)
         {
             if (state == null)
@@ -390,8 +366,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static string GetValueFromScope(IDictionary<string, object> scopeProperties, string key)
         {
-            object value;
-            if (scopeProperties != null && scopeProperties.TryGetValue(key, out value) && value != null)
+            if (scopeProperties != null && scopeProperties.TryGetValue(key, out object value) && value != null)
             {
                 return value.ToString();
             }

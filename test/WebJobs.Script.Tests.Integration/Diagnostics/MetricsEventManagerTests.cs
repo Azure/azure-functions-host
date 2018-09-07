@@ -7,7 +7,6 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -27,11 +26,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly WebHostMetricsLogger _metricsLogger;
         private readonly List<FunctionExecutionEventArguments> _functionExecutionEventArguments;
         private readonly List<SystemMetricEvent> _events;
-        private readonly ScriptSettingsManager _settingsManager;
 
         public MetricsEventManagerTests()
         {
-            _settingsManager = ScriptSettingsManager.Instance;
             _functionExecutionEventArguments = new List<FunctionExecutionEventArguments>();
 
             var mockEventGenerator = new Mock<IEventGenerator>();
@@ -74,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     _events.Add(evt);
                 });
 
-            _metricsEventManager = new MetricsEventManager(_settingsManager, mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000);
+            _metricsEventManager = new MetricsEventManager(new TestEnvironment(), mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000);
             _metricsLogger = new WebHostMetricsLogger(_metricsEventManager);
         }
 
@@ -379,7 +376,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             int flushInterval = 10;
             Mock<IEventGenerator> mockGenerator = new Mock<IEventGenerator>();
-            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(_settingsManager, mockGenerator.Object, flushInterval, flushInterval) { CallBase = true };
+            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(new TestEnvironment(), mockGenerator.Object, flushInterval, flushInterval) { CallBase = true };
             MetricsEventManager eventManager = mockEventManager.Object;
 
             int numFlushes = 0;
@@ -390,7 +387,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
 
             // here we're just verifying that we're called multiple times
-            await TestHelpers.Await(() => numFlushes >= 5, timeout: 2000, pollingInterval: 100, userMessageCallback: () => $"Expected numFlushes >= 5; Actual: {numFlushes}");                        
+            await TestHelpers.Await(() => numFlushes >= 5, timeout: 2000, pollingInterval: 100, userMessageCallback: () => $"Expected numFlushes >= 5; Actual: {numFlushes}");
 
             mockEventManager.VerifyAll();
         }
@@ -545,11 +542,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private static void ValidateFunctionExecutionEventArgumentsList(List<FunctionExecutionEventArguments> list, int noOfFuncExecutions)
         {
-            FunctionExecutionEventArguments invalidElement = null;
-            string errorMessage = null;
 
             Assert.True(
-                ValidateFunctionExecutionEventArgumentsList(list, noOfFuncExecutions, out invalidElement, out errorMessage),
+                ValidateFunctionExecutionEventArgumentsList(list, noOfFuncExecutions, out FunctionExecutionEventArguments invalidElement, out string errorMessage),
                 string.Format("ErrorMessage:{0} InvalidElement:{1} List:{2}", errorMessage, invalidElement.ToString(), SerializeFunctionExecutionEventArguments(list)));
         }
 
@@ -617,8 +612,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             hashes.Add(lastEvent.InvocationId);
                         }
 
-                        var minEventsExpected = Math.Floor((double)lastEvent.ExecutionTimeSpan / (double)MinimumLongRunningDurationInMs) - 2;
-                        var maxEventsExpected = Math.Ceiling((double)lastEvent.ExecutionTimeSpan / (double)MinimumLongRunningDurationInMs) + 2;
+                        var minEventsExpected = Math.Floor(lastEvent.ExecutionTimeSpan / (double)MinimumLongRunningDurationInMs) - 2;
+                        var maxEventsExpected = Math.Ceiling(lastEvent.ExecutionTimeSpan / (double)MinimumLongRunningDurationInMs) + 2;
 
                         // We should see atleast one InProgress event if it takes more than 5 seconds
                         if (lastEvent.ExecutionTimeSpan >= MinimumLongRunningDurationInMs

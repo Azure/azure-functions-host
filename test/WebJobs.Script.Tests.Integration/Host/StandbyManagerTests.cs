@@ -112,6 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var vars = new Dictionary<string, string>
             {
+                { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
                 { EnvironmentSettingNames.ContainerName, "TestApp" },
                 { EnvironmentSettingNames.AzureWebsiteName, "TestApp" },
                 { EnvironmentSettingNames.ContainerEncryptionKey, encryptionKey },

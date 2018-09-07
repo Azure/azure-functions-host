@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -13,19 +12,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     public class SystemLogger : ILogger
     {
         private readonly IEventGenerator _eventGenerator;
-        private readonly ScriptSettingsManager _settingsManager;
-        private readonly string _appName;
-        private readonly string _subscriptionId;
         private readonly string _categoryName;
         private readonly string _functionName;
         private readonly bool _isUserFunction;
         private readonly string _hostInstanceId;
+        private readonly IEnvironment _environment;
 
-        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, ScriptSettingsManager settingsManager)
+        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment)
         {
-            _settingsManager = settingsManager;
-            _appName = _settingsManager.AzureWebsiteUniqueSlotName;
-            _subscriptionId = Utility.GetSubscriptionId(settingsManager);
+            _environment = environment;
             _eventGenerator = eventGenerator;
             _categoryName = categoryName ?? string.Empty;
             _functionName = LogCategories.IsFunctionCategory(_categoryName) ? _categoryName.Split('.')[1] : string.Empty;
@@ -74,8 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // Apply standard event properties
             // Note: we must be sure to default any null values to empty string
             // otherwise the ETW event will fail to be persisted (silently)
-            string subscriptionId = _subscriptionId ?? string.Empty;
-            string appName = _appName ?? string.Empty;
+            string subscriptionId = _environment.GetSubscriptionId() ?? string.Empty;
+            string appName = _environment.GetAzureWebsiteUniqueSlotName() ?? string.Empty;
             string source = _categoryName ?? Utility.GetValueFromState(state, ScriptConstants.LogPropertySourceKey);
             string summary = Sanitizer.Sanitize(formattedMessage) ?? string.Empty;
             string innerExceptionType = string.Empty;

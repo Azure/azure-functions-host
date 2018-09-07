@@ -12,7 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -41,7 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .ConfigureLogging(loggingBuilder =>
                 {
                     loggingBuilder.Services.AddSingleton<ILoggerFactory, ScriptLoggerFactory>();
-                    loggingBuilder.Services.AddSingleton<ILoggerProvider, SystemLoggerProvider>();
+
+                    loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
 
                     ConfigureRegisteredBuilders(loggingBuilder, rootServiceProvider);
                 })

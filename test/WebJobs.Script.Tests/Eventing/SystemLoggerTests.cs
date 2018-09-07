@@ -4,9 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -19,7 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IEventGenerator> _mockEventGenerator;
         private readonly string _websiteName;
         private readonly string _subscriptionId;
-        private readonly ScriptSettingsManager _settingsManager;
         private readonly string _category;
         private readonly string _functionName = "TestFunction";
         private readonly string _hostInstanceId;
@@ -32,21 +29,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _mockEventGenerator = new Mock<IEventGenerator>(MockBehavior.Strict);
 
-            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string>
+            var environment = new TestEnvironment(new Dictionary<string, string>
                 {
                     { EnvironmentSettingNames.AzureWebsiteOwnerName,  $"{_subscriptionId}+westuswebspace" },
                     { EnvironmentSettingNames.AzureWebsiteName,  _websiteName },
                 });
-            var config = configBuilder.Build();
-            _settingsManager = new ScriptSettingsManager(config);
 
             _category = LogCategories.CreateFunctionCategory(_functionName);
-            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, _settingsManager);
+            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, environment);
         }
 
         [Fact]
-        public void Trace_Verbose_EmitsExpectedEvent()
+        public void Log_Verbose_EmitsExpectedEvent()
         {
             string eventName = string.Empty;
             string details = string.Empty;
@@ -62,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Trace_Verbose_LogData_EmitsExpectedEvent()
+        public void Log_Verbose_LogData_EmitsExpectedEvent()
         {
             string eventName = string.Empty;
             string details = string.Empty;
@@ -90,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Trace_Error_EmitsExpectedEvent()
+        public void Log_Error_EmitsExpectedEvent()
         {
             string eventName = string.Empty;
             string message = "TestMessage";
@@ -107,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Trace_Sanitizes()
+        public void Log_Sanitizes()
         {
             string secretReplacement = "[Hidden Credential]";
             string secretString = "{ \"AzureWebJobsStorage\": \"DefaultEndpointsProtocol=https;AccountName=testAccount1;AccountKey=mykey1;EndpointSuffix=core.windows.net\", \"AnotherKey\": \"AnotherValue\" }";
@@ -131,10 +125,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Trace_Ignores_FunctionUserCategory()
+        public void Log_Ignores_FunctionUserCategory()
         {
             // Create a logger with the Function.{FunctionName}.User category, which is what determines user logs.
-            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, _settingsManager);
+            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment());
             logger.LogDebug("TestMessage");
 
             // Make sure it's never been called.
@@ -142,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Trace_Ignores_UserLogStateValue()
+        public void Log_Ignores_UserLogStateValue()
         {
             var logState = new Dictionary<string, object>
             {
