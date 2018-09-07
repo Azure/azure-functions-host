@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -34,6 +36,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\queueTrigger.py", scriptFile, StringComparer.OrdinalIgnoreCase);
+        }
+
+        [Theory]
+        [InlineData(@"NonExistentPath")]
+        [InlineData(null)]
+        public void InitializesEmptyOrMissingDirectorySnapshot(string rootScriptPath)
+        {
+            var scriptConfig = new ScriptJobHostOptions()
+            {
+                RootScriptPath = rootScriptPath
+            };
+
+            IOptions<ScriptJobHostOptions> scriptOptions = new OptionsManager<ScriptJobHostOptions>(new TestOptionsFactory<ScriptJobHostOptions>(scriptConfig));
+            IOptions<LanguageWorkerOptions> languageWorkerOptions = new OptionsManager<LanguageWorkerOptions>(new TestOptionsFactory<LanguageWorkerOptions>(new LanguageWorkerOptions()));
+
+            var functionMetadataManager = new FunctionMetadataManager(scriptOptions, languageWorkerOptions, NullLoggerFactory.Instance);
+            Assert.False(functionMetadataManager.Functions.IsDefault);
+            Assert.True(functionMetadataManager.Functions.IsEmpty);
         }
 
         [Fact]

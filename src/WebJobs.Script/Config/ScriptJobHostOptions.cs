@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script
             get => _rootScriptPath;
             set
             {
-                _directorySnapshot = default;
+                _directorySnapshot = ImmutableArray<string>.Empty;
                 _rootScriptPath = value;
             }
         }
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             get
             {
-                if (_rootScriptPath != null && _directorySnapshot.IsDefault)
+                if (_rootScriptPath != null && _directorySnapshot.IsDefaultOrEmpty)
                 {
                     // take a startup time function directory snapshot so we can detect function additions/removals
                     // we'll also use this snapshot when reading function metadata as part of startup
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                     catch (DirectoryNotFoundException)
                     {
-                        _directorySnapshot = default;
+                        _directorySnapshot = ImmutableArray<string>.Empty;
                     }
                 }
 
