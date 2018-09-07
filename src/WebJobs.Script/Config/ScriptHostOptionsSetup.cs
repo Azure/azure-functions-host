@@ -66,28 +66,42 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private void ConfigureFunctionTimeout(IConfigurationSection jobHostSection, ScriptJobHostOptions options)
         {
-            TimeSpan functionTimeout = options.FunctionTimeout ?? DefaultFunctionTimeout;
-            var maxTimeout = TimeSpan.MaxValue;
-            if (_environment.IsDynamic())
+            if (options.FunctionTimeout != null)
             {
-                functionTimeout = DefaultFunctionTimeoutDynamic;
-                maxTimeout = MaxFunctionTimeoutDynamic;
+                ValidateTimeoutValue(options, options.FunctionTimeout);
             }
-            string value = jobHostSection.GetValue<string>("functionTimeout");
-            if (value != null)
+            else
             {
-                TimeSpan requestedTimeout = TimeSpan.Parse(value, CultureInfo.InvariantCulture);
-                if (requestedTimeout < MinFunctionTimeout || requestedTimeout > maxTimeout)
+                TimeSpan functionTimeout = _environment.IsDynamic() ? DefaultFunctionTimeoutDynamic : DefaultFunctionTimeout;
+                string value = jobHostSection.GetValue<string>("functionTimeout");
+                if (value != null)
+                {
+                    TimeSpan requestedTimeout = TimeSpan.Parse(value, CultureInfo.InvariantCulture);
+                    ValidateTimeoutValue(options, requestedTimeout);
+                    functionTimeout = requestedTimeout;
+                }
+                options.FunctionTimeout = functionTimeout;
+            }
+
+            // TODO: DI: JobHostOptions need to me updated.
+            //scriptConfig.HostOptions.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
+        }
+
+        private void ValidateTimeoutValue(ScriptJobHostOptions options, TimeSpan? timeoutValue)
+        {
+            if (timeoutValue != null)
+            {
+                var maxTimeout = TimeSpan.MaxValue;
+                if (_environment.IsDynamic())
+                {
+                    maxTimeout = MaxFunctionTimeoutDynamic;
+                }
+                if (timeoutValue < MinFunctionTimeout || timeoutValue > maxTimeout)
                 {
                     string message = $"{nameof(options.FunctionTimeout)} must be greater than {MinFunctionTimeout} and less than {maxTimeout}.";
                     throw new ArgumentException(message);
                 }
-                functionTimeout = requestedTimeout;
             }
-            options.FunctionTimeout = functionTimeout;
-
-            // TODO: DI: JobHostOptions need to me updated.
-            //scriptConfig.HostOptions.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
         }
 
         private void ConfigureLanguageWorkers(IConfigurationSection rootConfig, ScriptJobHostOptions scriptOptions)
