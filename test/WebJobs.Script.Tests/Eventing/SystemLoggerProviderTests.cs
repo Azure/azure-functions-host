@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 using System.IO;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -12,7 +11,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class SystemLoggerProviderTests
     {
-        private IOptions<ScriptJobHostOptions> _options;
+        private readonly IOptions<ScriptJobHostOptions> _options;
+        private readonly IEnvironment _environment = new TestEnvironment();
 
         public SystemLoggerProviderTests()
         {
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void CreateLogger_ReturnsSystemLogger_ForNonUserCategories()
         {
-            var provider = new SystemLoggerProvider(_options, null, ScriptSettingsManager.Instance);
+            var provider = new SystemLoggerProvider(_options, null, _environment);
 
             Assert.IsType<SystemLogger>(provider.CreateLogger(LogCategories.CreateFunctionCategory("TestFunction")));
             Assert.IsType<SystemLogger>(provider.CreateLogger(ScriptConstants.LogCategoryHostGeneral));
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void CreateLogger_ReturnsNullLogger_ForUserCategory()
         {
-            var provider = new SystemLoggerProvider(_options, null, ScriptSettingsManager.Instance);
+            var provider = new SystemLoggerProvider(_options, null, _environment);
 
             Assert.IsType<NullLogger>(provider.CreateLogger(LogCategories.CreateFunctionUserCategory("TestFunction")));
         }

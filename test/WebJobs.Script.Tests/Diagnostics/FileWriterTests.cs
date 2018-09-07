@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var logFiles = new List<FileInfo>();
             for (int i = 0; i < 5; i++)
             {
-                string fileName = string.Format("{0}-{1}.log", i, FileWriter.GetInstanceId());
+                string fileName = string.Format("{0}-{1}.log", i, FileWriter.GetInstanceId(new TestEnvironment()));
                 string path = Path.Combine(_logFilePath, fileName);
                 File.WriteAllText(path, "Test Logs");
                 logFiles.Add(new FileInfo(path));
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // now cause a new log file to be created by writing a huge
             // log pushing the current file over limit
-            var fileWriter = new FileWriter(_logFilePath);
+            var fileWriter = new FileWriter(_logFilePath, new TestEnvironment());
             fileWriter.AppendLine(maxLog);
 
             // wait for the new file to be created and the old files to be purged
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var directory = new DirectoryInfo(_logFilePath);
             directory.Create();
 
-            var fileWriter = new FileWriter(_logFilePath);
+            var fileWriter = new FileWriter(_logFilePath, new TestEnvironment());
 
             var files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
             Assert.Equal(0, files.Length);
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var writers = new List<FileWriter>();
             for (int i = 0; i < 5; i++)
             {
-                writers.Add(new FileWriter(_logFilePath));
+                writers.Add(new FileWriter(_logFilePath, new TestEnvironment()));
                 await Task.Delay(400);
             }
 
@@ -203,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Flush_LogFileDeleted_CreatesNewFile()
         {
-            var fileWriter = new FileWriter(_logFilePath);
+            var fileWriter = new FileWriter(_logFilePath, new TestEnvironment());
 
             fileWriter.AppendLine("test trace");
             fileWriter.Flush();
@@ -233,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private void WriteLogs(string logFilePath, int numLogs)
         {
-            FileWriter fileWriter = new FileWriter(logFilePath);
+            FileWriter fileWriter = new FileWriter(logFilePath, new TestEnvironment());
 
             for (int i = 0; i < numLogs; i++)
             {

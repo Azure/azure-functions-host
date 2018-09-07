@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 Directory.Delete(_logFilePath, recursive: true);
             }
 
-            _fileWriter = new FileWriter(_logFilePath);
+            _fileWriter = new FileWriter(_logFilePath, new TestEnvironment());
         }
 
         [Fact]

@@ -38,7 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly string _testRootPath;
         private string _expectedHostId;
-        private TestLoggerProvider _loggerProvider;
+        private readonly TestLoggerProvider _webHostLoggerProvider = new TestLoggerProvider();
+        private readonly TestLoggerProvider _jobHostLoggerProvider = new TestLoggerProvider();
         private string _expectedScriptPath;
         private HttpClient _httpClient;
         private TestServer _httpServer;
@@ -79,26 +80,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(environment.IsContainerReady());
 
             // give time for the specialization to happen
-            string[] logLines = null;
+            string[] jobHostLogLines = null;
             await TestHelpers.Await(() =>
             {
                 // wait for the trace indicating that the host has been specialized
-                logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
-                return logLines.Contains("Generating 0 job function(s)") && logLines.Contains("Stopping JobHost");
-            }, userMessageCallback: () => string.Join(Environment.NewLine, _loggerProvider.GetAllLogMessages().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.FormattedMessage}")));
+                jobHostLogLines = _jobHostLoggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+                return jobHostLogLines.Contains("Generating 0 job function(s)") && jobHostLogLines.Contains("Stopping JobHost");
+            }, userMessageCallback: () => string.Join(Environment.NewLine, _jobHostLoggerProvider.GetAllLogMessages().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.FormattedMessage}")));
 
             _httpServer.Dispose();
             _httpClient.Dispose();
 
             // verify the rest of the expected logs
-            Assert.True(logLines.Count(p => p.Contains("Stopping JobHost")) >= 1);
-            Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
-            Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
-            Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
-            Assert.Equal(3, logLines.Count(p => p.Contains($"Starting Host (HostId={_expectedHostId}")));
-            Assert.Contains("Generating 0 job function(s)", logLines);
+            string[] webHostLogLines = _webHostLoggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+            Assert.Equal(1, webHostLogLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
+            Assert.Equal(1, webHostLogLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
+            Assert.Equal(1, webHostLogLines.Count(p => p.Contains("Starting host specialization")));
+
+            Assert.True(jobHostLogLines.Count(p => p.Contains("Stopping JobHost")) >= 1);
+            Assert.Equal(2, jobHostLogLines.Count(p => p.Contains("Host is in standby mode")));
+            Assert.Equal(2, jobHostLogLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
+            Assert.Equal(3, jobHostLogLines.Count(p => p.Contains($"Starting Host (HostId={_expectedHostId}")));
+            Assert.Contains("Generating 0 job function(s)", jobHostLogLines);
 
             // Verify that the internal cache has reset
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
@@ -112,6 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var vars = new Dictionary<string, string>
             {
+                { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
                 { EnvironmentSettingNames.ContainerName, "TestApp" },
                 { EnvironmentSettingNames.AzureWebsiteName, "TestApp" },
                 { EnvironmentSettingNames.ContainerEncryptionKey, encryptionKey },
@@ -167,24 +171,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     .ToString().ToLowerInvariant();
 
             // verify the expected logs
-            var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
-            Assert.True(logLines.Count(p => p.Contains("Stopping JobHost")) >= 1);
-            Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
-            Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
-            Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("Validating host assignment context")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("Starting Assignment")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("Applying 1 app setting(s)")));
-            Assert.Equal(1, logLines.Count(p => p.Contains($"Extracting files to '{_expectedScriptPath}'")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("Zip extraction complete")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("Triggering specialization")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
-            Assert.Equal(3, logLines.Count(p => p.Contains($"Starting Host (HostId={sanitizedMachineName}")));
-            Assert.Contains("Node.js HttpTrigger function invoked.", logLines);
+            var webHostLogLines = _webHostLoggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+            Assert.Equal(1, webHostLogLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
+            Assert.Equal(1, webHostLogLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
+            Assert.Equal(1, webHostLogLines.Count(p => p.Contains("Validating host assignment context")));
+            Assert.Equal(1, webHostLogLines.Count(p => p.Contains("Starting Assignment")));
+            Assert.Equal(1, webHostLogLines.Count(p => p.Contains("Applying 1 app setting(s)")));
+            Assert.Equal(1, webHostLogLines.Count(p => p.Contains($"Extracting files to '{_expectedScriptPath}'")));
+            Assert.Equal(1, webHostLogLines.Count(p => p.Contains("Zip extraction complete")));
+            Assert.Equal(1, webHostLogLines.Count(p => p.Contains("Triggering specialization")));
+            Assert.Equal(1, webHostLogLines.Count(p => p.Contains("Starting host specialization")));
+
+            var jobHostLogLines = _jobHostLoggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+            Assert.True(jobHostLogLines.Count(p => p.Contains("Stopping JobHost")) >= 1);
+            Assert.Equal(2, jobHostLogLines.Count(p => p.Contains("Host is in standby mode")));
+            Assert.Equal(2, jobHostLogLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
+            Assert.Equal(3, jobHostLogLines.Count(p => p.Contains($"Starting Host (HostId={sanitizedMachineName}")));
+            Assert.Contains("Node.js HttpTrigger function invoked.", jobHostLogLines);
 
             // verify cold start log entry
-            var coldStartLog = _loggerProvider.GetAllLogMessages().FirstOrDefault(p => p.Category == ScriptConstants.LogCategoryHostMetrics);
+            var coldStartLog = _jobHostLoggerProvider.GetAllLogMessages().FirstOrDefault(p => p.Category == ScriptConstants.LogCategoryHostMetrics);
             JObject coldStartData = JObject.Parse(coldStartLog.FormattedMessage);
             Assert.Equal("Dynamic", coldStartData["sku"]);
             Assert.True((int)coldStartData["dispatchDuration"] > 0);
@@ -198,8 +204,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var httpConfig = new HttpConfiguration();
             var uniqueTestRootPath = Path.Combine(_testRootPath, testDirName, Guid.NewGuid().ToString());
-
-            _loggerProvider = new TestLoggerProvider();
 
             if (environment.IsAppServiceEnvironment())
             {
@@ -222,7 +226,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .ConfigureLogging(c =>
                 {
-                    c.AddProvider(_loggerProvider);
+                    c.AddProvider(_webHostLoggerProvider);
                 })
                 .ConfigureServices(c =>
                 {
@@ -236,7 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                     c.AddSingleton<IEnvironment>(_ => environment);
 
-                    c.AddSingleton<IConfigureBuilder<ILoggingBuilder>>(new DelegatedConfigureBuilder<ILoggingBuilder>(b => b.AddProvider(_loggerProvider)));
+                    c.AddSingleton<IConfigureBuilder<ILoggingBuilder>>(new DelegatedConfigureBuilder<ILoggingBuilder>(b => b.AddProvider(_jobHostLoggerProvider)));
                 });
 
             _httpServer = new TestServer(webHostBuilder);
@@ -245,7 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             TestHelpers.WaitForWebHost(_httpClient);
 
-            var traces = _loggerProvider.GetAllLogMessages().ToArray();
+            var traces = _jobHostLoggerProvider.GetAllLogMessages().ToArray();
 
             Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Host is in standby mode")));
 

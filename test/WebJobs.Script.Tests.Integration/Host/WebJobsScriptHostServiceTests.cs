@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         private readonly HostHealthMonitorOptions _healthMonitorOptions;
         private bool _underHighLoad;
         private bool _shutdownCalled;
-
+        
         public WebJobsScriptHostServiceTests()
         {
             string testScriptPath = @"TestScripts\CSharp";
@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                         foreach (var counter in _exceededCounters)
                         {
                             c.Add(counter);
-                        }  
+                        }
                     }
                 })
                 .Returns(() => _underHighLoad);
@@ -199,9 +199,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 
             var ex = Assert.Throws<InvalidOperationException>(() => _scriptHostService.IsHostHealthy(true));
             Assert.Equal("Host thresholds exceeded: [Foo, Bar]. For more information, see https://aka.ms/functions-thresholds.", ex.Message);
-
-            _healthMonitorOptions.Enabled = false;
-            Assert.True(_scriptHostService.IsHostHealthy());
         }
     }
 }

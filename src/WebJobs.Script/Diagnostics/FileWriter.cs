@@ -9,7 +9,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Timers;
-using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -23,17 +22,17 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _instanceId;
 
         private readonly DirectoryInfo _logDirectory;
-        private static object _syncLock = new object();
+        private static readonly object _syncLock = new object();
         private FileInfo _currentLogFileInfo;
         private bool _disposed = false;
 
         private Timer _flushTimer;
         private ConcurrentQueue<string> _logBuffer = new ConcurrentQueue<string>();
 
-        public FileWriter(string logFilePath)
+        public FileWriter(string logFilePath, IEnvironment environment)
         {
             _logFilePath = logFilePath;
-            _instanceId = GetInstanceId();
+            _instanceId = GetInstanceId(environment);
             _logDirectory = new DirectoryInfo(logFilePath);
 
             // start a timer to flush accumulated logs in batches
@@ -272,9 +271,9 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal static string GetInstanceId()
+        internal static string GetInstanceId(IEnvironment environment)
         {
-            string instanceId = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId);
+            string instanceId = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId);
             if (string.IsNullOrEmpty(instanceId))
             {
                 instanceId = Environment.MachineName;

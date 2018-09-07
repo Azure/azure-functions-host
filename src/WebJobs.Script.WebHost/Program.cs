@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,8 +19,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         public static void Main(string[] args)
         {
-            BuildWebHost(args)
-                .RunAsync()
+            var host = BuildWebHost(args);
+
+            var environment = host.Services.GetService<IEnvironment>();
+            if (environment.IsLinuxContainerEnvironment())
+            {
+                // Linux containers always start out in placeholder mode
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            }
+
+            host.RunAsync()
                 .Wait();
         }
 
@@ -53,7 +62,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsLinuxContainerEnvironment()
                     });
                 })
-                .ConfigureLogging(b => b.ClearProviders())
+                .ConfigureLogging((context, loggingBuilder) =>
+                {
+                    loggingBuilder.Services.AddSingleton<ILoggerFactory, FilteringLoggerFactory>();
+
+                    loggingBuilder.ClearProviders();
+
+                    loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
+                    loggingBuilder.AddDeferred();
+                })
                 .UseStartup<Startup>();
         }
     }

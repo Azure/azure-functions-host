@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             LoggerFilterOptions filterOptions = host.Services.GetService<IOptions<LoggerFilterOptions>>().Value;
 
-            Assert.Equal(3, filterOptions.Rules.Count);
+            Assert.Equal(4, filterOptions.Rules.Count);
 
             Assert.Equal(LogLevel.Trace, filterOptions.Rules[0].LogLevel);
             Assert.Equal("Console", filterOptions.Rules[0].ProviderName);
@@ -79,6 +79,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             Assert.Equal(LogLevel.Error, filterOptions.Rules[2].LogLevel);
             Assert.Null(filterOptions.Rules[2].ProviderName);
+
+            Assert.Equal(typeof(SystemLoggerProvider).FullName, filterOptions.Rules[3].ProviderName);
+            Assert.Equal(LogLevel.Debug, filterOptions.Rules[3].LogLevel);
+            Assert.Null(filterOptions.Rules[3].CategoryName);
+            Assert.Null(filterOptions.Rules[3].Filter);
         }
 
         [Fact]
@@ -91,7 +96,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             LoggerFilterOptions filterOptions = host.Services.GetService<IOptions<LoggerFilterOptions>>().Value;
 
             Assert.Equal(LogLevel.Information, filterOptions.MinLevel);
-            Assert.Empty(filterOptions.Rules);
+            LoggerFilterRule rule = filterOptions.Rules.Single();
+            Assert.Equal(typeof(SystemLoggerProvider).FullName, rule.ProviderName);
+            Assert.Equal(LogLevel.Debug, rule.LogLevel);
+            Assert.Null(rule.CategoryName);
+            Assert.Null(rule.Filter);
         }
 
         [Fact]

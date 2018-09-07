@@ -3,7 +3,6 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,14 +13,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     public class SystemLoggerProvider : ILoggerProvider
     {
         private readonly string _hostInstanceId;
-        private IEventGenerator _eventGenerator;
-        private ScriptSettingsManager _settingsManager;
+        private readonly IEventGenerator _eventGenerator;
+        private readonly IEnvironment _environment;
 
-        public SystemLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IEventGenerator eventGenerator, ScriptSettingsManager settingsManager)
+        public SystemLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IEventGenerator eventGenerator, IEnvironment environment)
+            : this(scriptOptions.Value.InstanceId, eventGenerator, environment)
+        {
+        }
+
+        protected SystemLoggerProvider(string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment)
         {
             _eventGenerator = eventGenerator;
-            _settingsManager = settingsManager;
-            _hostInstanceId = scriptOptions.Value.InstanceId;
+            _environment = environment;
+            _hostInstanceId = hostInstanceId;
         }
 
         public ILogger CreateLogger(string categoryName)
@@ -31,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 return NullLogger.Instance;
             }
-            return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _settingsManager);
+            return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment);
         }
 
         private bool IsUserLogCategory(string categoryName)

@@ -9,8 +9,8 @@
         "counterThreshold": 0.80
     },
     "functionTimeout": "00:05:00",
-    "logger": {
-        "fileLoggingMode": "always"
+    "logging": {
+        "fileLoggingMode": "always"        
     },
     "swagger": {
         "enabled": true

@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         /// <param name="level">The event level.</param>
         /// <param name="line">The log line to format.</param>
         /// <returns>The formatted log message.</returns>
-        protected virtual string FormatLine(IEnumerable<KeyValuePair<string, object>> stateValues, LogLevel level, string line)
+        private string FormatLine(IEnumerable<KeyValuePair<string, object>> stateValues, LogLevel level, string line)
         {
             string tracePrefix = GetLogPrefix(stateValues, level, _logType);
             string timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture);

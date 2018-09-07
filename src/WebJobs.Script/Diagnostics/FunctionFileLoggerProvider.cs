@@ -23,17 +23,19 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         private readonly Func<bool> _isPrimary;
         private readonly string _roogLogPath;
         private readonly string _hostInstanceId;
+        private readonly IEnvironment _environment;
         private static readonly Regex _workerCategoryRegex = new Regex(@"^Worker\.[^\s]+\.[^\s]+");
 
         private bool _disposed = false;
 
         public FunctionFileLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IFileLoggingStatusManager fileLoggingStatusManager,
-            IPrimaryHostStateProvider primaryHostStateProvider)
+            IPrimaryHostStateProvider primaryHostStateProvider, IEnvironment environment)
         {
             _roogLogPath = scriptOptions.Value.RootLogPath;
             _isFileLoggingEnabled = () => fileLoggingStatusManager.IsFileLoggingEnabled;
             _isPrimary = () => primaryHostStateProvider.IsPrimary;
             _hostInstanceId = scriptOptions.Value.InstanceId;
+            _environment = environment;
         }
 
         // For testing
@@ -47,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             {
                 // Make sure that we return the same fileWriter if multiple loggers write to the same path. This happens
                 // with Function logs as Function.{FunctionName} and Function.{FunctionName}.User both go to the same file.
-                FileWriter fileWriter = _fileWriterCache.GetOrAdd(filePath, (p) => new FileWriter(Path.Combine(_roogLogPath, filePath)));
+                FileWriter fileWriter = _fileWriterCache.GetOrAdd(filePath, (p) => new FileWriter(Path.Combine(_roogLogPath, filePath), _environment));
                 return new FileLogger(categoryName, fileWriter, _isFileLoggingEnabled, _isPrimary, LogType.Function);
             }
 

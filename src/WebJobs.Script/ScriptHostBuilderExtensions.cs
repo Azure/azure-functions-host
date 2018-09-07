@@ -60,10 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 loggingBuilder.Services.AddSingleton<ILoggerProvider, HostFileLoggerProvider>();
                 loggingBuilder.Services.AddSingleton<ILoggerProvider, FunctionFileLoggerProvider>();
 
-                if (ConsoleLoggingEnabled(context))
-                {
-                    loggingBuilder.AddConsole(c => { c.DisableColors = false; });
-                }
+                loggingBuilder.AddConsoleIfEnabled(context);
 
                 ConfigureApplicationInsights(context, loggingBuilder);
             })
@@ -194,26 +191,6 @@ namespace Microsoft.Azure.WebJobs.Script
              });
 
             return builder;
-        }
-
-        internal static bool ConsoleLoggingEnabled(HostBuilderContext context)
-        {
-            // console logging defaults to false, except for self host
-            bool enableConsole = context.HostingEnvironment.IsDevelopment();
-
-            if (!enableConsole)
-            {
-                string consolePath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "Logging", "Console", "IsEnabled");
-                IConfigurationSection configSection = context.Configuration.GetSection(consolePath);
-
-                if (configSection.Exists())
-                {
-                    // if it has been explicitly configured that value overrides default
-                    enableConsole = configSection.Get<bool>();
-                }
-            }
-
-            return enableConsole;
         }
 
         internal static void ConfigureApplicationInsights(HostBuilderContext context, ILoggingBuilder builder)

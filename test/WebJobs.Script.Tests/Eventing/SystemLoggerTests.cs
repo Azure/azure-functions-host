@@ -3,11 +3,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
@@ -19,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IEventGenerator> _mockEventGenerator;
         private readonly string _websiteName;
         private readonly string _subscriptionId;
-        private readonly ScriptSettingsManager _settingsManager;
         private readonly string _category;
         private readonly string _functionName = "TestFunction";
         private readonly string _hostInstanceId;
@@ -32,21 +35,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _mockEventGenerator = new Mock<IEventGenerator>(MockBehavior.Strict);
 
-            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string>
+            var environment = new TestEnvironment(new Dictionary<string, string>
                 {
                     { EnvironmentSettingNames.AzureWebsiteOwnerName,  $"{_subscriptionId}+westuswebspace" },
                     { EnvironmentSettingNames.AzureWebsiteName,  _websiteName },
                 });
-            var config = configBuilder.Build();
-            _settingsManager = new ScriptSettingsManager(config);
 
             _category = LogCategories.CreateFunctionCategory(_functionName);
-            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, _settingsManager);
+            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, environment);
         }
 
         [Fact]
-        public void Trace_Verbose_EmitsExpectedEvent()
+        public void Log_Verbose_EmitsExpectedEvent()
         {
             string eventName = string.Empty;
             string details = string.Empty;
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Trace_Verbose_LogData_EmitsExpectedEvent()
+        public void Log_Verbose_LogData_EmitsExpectedEvent()
         {
             string eventName = string.Empty;
             string details = string.Empty;
@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Trace_Error_EmitsExpectedEvent()
+        public void Log_Error_EmitsExpectedEvent()
         {
             string eventName = string.Empty;
             string message = "TestMessage";
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Trace_Sanitizes()
+        public void Log_Sanitizes()
         {
             string secretReplacement = "[Hidden Credential]";
             string secretString = "{ \"AzureWebJobsStorage\": \"DefaultEndpointsProtocol=https;AccountName=testAccount1;AccountKey=mykey1;EndpointSuffix=core.windows.net\", \"AnotherKey\": \"AnotherValue\" }";
@@ -131,10 +131,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Trace_Ignores_FunctionUserCategory()
+        public void Log_Ignores_FunctionUserCategory()
         {
             // Create a logger with the Function.{FunctionName}.User category, which is what determines user logs.
-            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, _settingsManager);
+            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment());
             logger.LogDebug("TestMessage");
 
             // Make sure it's never been called.
@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Trace_Ignores_UserLogStateValue()
+        public void Log_Ignores_UserLogStateValue()
         {
             var logState = new Dictionary<string, object>
             {
@@ -155,6 +155,82 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Make sure it's never been called.
             _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), string.Empty, string.Empty, string.Empty, string.Empty, string.Empty), Times.Never);
+        }
+
+        [Fact]
+        public async Task Log_Ignores_DeferredLogs()
+        {
+            // Use the DeferredLoggerService to write a log, which marks logs as "Deferred".
+            // The SystemLogger ignores these as they are logged directly by the WebHost.
+
+            // Produce logs from the WebHost.
+            var provider = new DeferredLoggerProvider(new ScriptWebHostEnvironment(new TestEnvironment()));
+            var webLogger = provider.CreateLogger("FromWebHost");
+
+            webLogger.LogInformation("1");
+
+            provider.Dispose();
+
+            // Now consume those and make sure they don't flow through to the SystemLogger.
+            var testProvider = new TestLoggerProvider();
+            var options = new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions());
+            var eventGenerator = new MockEventGenerator();
+            var systemProvider = new SystemLoggerProvider(options, eventGenerator, new TestEnvironment());
+            var factory = new LoggerFactory();
+            factory.AddProvider(testProvider);
+            factory.AddProvider(systemProvider);
+
+            var service = new DeferredLoggerService(provider, factory);
+            await service.StartAsync(CancellationToken.None);
+
+            // This will complete when the buffer has been emptied.
+            await provider.LogBuffer.Completion;
+
+            await service.StopAsync(CancellationToken.None);
+
+            // Make sure that everything is actually wired up. This one should show up in both.
+            var jobLogger = factory.CreateLogger("FromJobHost");
+            jobLogger.LogInformation("2");
+
+            // The TestLogger sees both; SystemLogger only sees "2"
+            var testLogs = testProvider.GetAllLogMessages();
+            Assert.Equal(2, testLogs.Count);
+            Assert.Equal("1", testLogs[0].FormattedMessage);
+            Assert.Equal("2", testLogs[1].FormattedMessage);
+            Assert.Equal("2", eventGenerator.Summaries.Single());
+        }
+
+        // Simplify tracking of logs.
+        private class MockEventGenerator : IEventGenerator
+        {
+            private readonly IList<string> _summaries = new List<string>();
+
+            public IEnumerable<string> Summaries => _summaries;
+
+            public void LogFunctionDetailsEvent(string siteName, string functionName, string inputBindings, string outputBindings, string scriptType, bool isDisabled)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId)
+            {
+                _summaries.Add(summary);
+            }
         }
     }
 }

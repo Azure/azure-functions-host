@@ -15,10 +15,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         private readonly FileWriter _writer;
         private bool _disposedValue = false;
 
-        public StructuredLogWriter(IScriptEventManager eventManager, string baseLogPath)
+        public StructuredLogWriter(IScriptEventManager eventManager, IEnvironment environment, string baseLogPath)
         {
             string logPath = Path.Combine(baseLogPath, "structured");
-            _writer = new FileWriter(logPath);
+            _writer = new FileWriter(logPath, environment);
 
             _subscription = eventManager.OfType<StructuredLogEntryEvent>()
                 .Subscribe(OnLogEntry);

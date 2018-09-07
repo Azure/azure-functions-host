@@ -32,7 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var fileStatus = new Mock<IFileLoggingStatusManager>();
             var primaryStatus = new Mock<IPrimaryHostStateProvider>();
 
-            using (var provider = new FunctionFileLoggerProvider(new OptionsWrapper<ScriptJobHostOptions>(options), fileStatus.Object, primaryStatus.Object))
+            using (var provider = new FunctionFileLoggerProvider(new OptionsWrapper<ScriptJobHostOptions>(options),
+                fileStatus.Object, primaryStatus.Object, new TestEnvironment()))
             {
                 provider.CreateLogger(LogCategories.CreateFunctionCategory("Test1"));
                 provider.CreateLogger(LogCategories.CreateFunctionUserCategory("Test1"));

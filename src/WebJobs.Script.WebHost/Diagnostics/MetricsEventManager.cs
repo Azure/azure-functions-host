@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -23,16 +22,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IEventGenerator _eventGenerator;
         private readonly int _functionActivityFlushIntervalSeconds;
         private readonly Timer _metricsFlushTimer;
-        private object _functionActivityTrackerLockObject = new object();
+        private readonly object _functionActivityTrackerLockObject = new object();
         private static string appName;
         private static string subscriptionId;
         private bool _disposed;
 
-        public MetricsEventManager(ScriptSettingsManager settingsManager, IEventGenerator generator, int functionActivityFlushIntervalSeconds, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
+        public MetricsEventManager(IEnvironment environment, IEventGenerator generator, int functionActivityFlushIntervalSeconds, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
         {
             // we read these in the ctor (not static ctor) since it can change on the fly
-            appName = GetNormalizedString(settingsManager.AzureWebsiteUniqueSlotName);
-            subscriptionId = Utility.GetSubscriptionId(settingsManager) ?? string.Empty;
+            appName = GetNormalizedString(environment.GetAzureWebsiteUniqueSlotName());
+            subscriptionId = environment.GetSubscriptionId() ?? string.Empty;
 
             _eventGenerator = generator;
             _functionActivityFlushIntervalSeconds = functionActivityFlushIntervalSeconds;
@@ -497,8 +496,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 for (int iterator = 0; iterator < currentQueueLength; iterator++)
                 {
-                    FunctionMetrics queueItem;
-                    if (_functionMetricsQueue.TryDequeue(out queueItem))
+                    if (_functionMetricsQueue.TryDequeue(out FunctionMetrics queueItem))
                     {
                         queueSnapshot.Add(queueItem);
                     }

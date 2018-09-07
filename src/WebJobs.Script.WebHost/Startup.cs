@@ -31,15 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (env.IsDevelopment())
             {
-                loggerFactory.AddConsole(LogLevel.Trace, true);
                 app.UseDeveloperExceptionPage();
-            }
-
-            var environment = app.ApplicationServices.GetService<IEnvironment>();
-            if (environment.IsLinuxContainerEnvironment())
-            {
-                // Linux containers always start out in placeholder mode
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             }
 
             app.UseWebJobsScriptHost(applicationLifetime);

@@ -4,6 +4,7 @@
 using System;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -42,6 +43,7 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<AspNetCore.Hosting.IApplicationLifetime>(services);
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
+            services.AddSingleton<IScriptEventManager, ScriptEventManager>();
 
             configureRootServices?.Invoke(services);
 
