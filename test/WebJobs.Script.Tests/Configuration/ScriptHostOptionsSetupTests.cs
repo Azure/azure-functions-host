@@ -93,17 +93,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void Configure_AppliesDefaults_IfDynamic()
         {
-            var settings = new Dictionary<string, string>
-            {
-                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, LanguageWorkerConstants.LanguageWorkersSectionName, "maxMessageLength"), "2500" }
-            };
+            var settings = new Dictionary<string, string>();
 
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
 
             var options = GetConfiguredOptions(settings, environment);
 
-            Assert.Equal(ScriptHostOptionsSetup.DefaultFunctionTimeout, options.FunctionTimeout);
+            Assert.Equal(ScriptHostOptionsSetup.DefaultFunctionTimeoutDynamic, options.FunctionTimeout);
             Assert.Equal(LanguageWorkerConstants.DefaultMaxMessageLengthBytesDynamicSku, options.MaxMessageLengthBytes);
 
             // TODO: DI Need to ensure JobHostOptions is correctly configured
@@ -130,13 +127,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void Configure_TimeoutDefaultsNull_IfNotDynamic()
         {
             var options = GetConfiguredOptions(new Dictionary<string, string>());
-            Assert.Null(options.FunctionTimeout);
+            Assert.Equal(ScriptHostOptionsSetup.DefaultFunctionTimeout, options.FunctionTimeout);
         }
 
         [Fact]
-        public void Configure_NoTimeoutLimits_IfNotDynamic()
+        public void Configure_NoMaxTimeoutLimits_IfNotDynamic()
         {
-            var timeout = ScriptHostOptionsSetup.MaxFunctionTimeout + TimeSpan.FromSeconds(1);
+            var timeout = ScriptHostOptionsSetup.MaxFunctionTimeoutDynamic + TimeSpan.FromMinutes(10);
             string configPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout");
             var settings = new Dictionary<string, string>
             {
@@ -144,11 +141,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             };
 
             var options = GetConfiguredOptions(settings);
-            Assert.Equal(timeout, options.FunctionTimeout);
-
-            timeout = ScriptHostOptionsSetup.MinFunctionTimeout - TimeSpan.FromSeconds(1);
-            settings[configPath] = timeout.ToString();
-            options = GetConfiguredOptions(settings);
             Assert.Equal(timeout, options.FunctionTimeout);
         }
 
@@ -158,35 +150,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string configPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout");
             var settings = new Dictionary<string, string>
             {
-                { configPath, (ScriptHostOptionsSetup.MaxFunctionTimeout + TimeSpan.FromSeconds(1)).ToString() }
+                { configPath, (ScriptHostOptionsSetup.MaxFunctionTimeoutDynamic + TimeSpan.FromSeconds(1)).ToString() }
             };
 
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
 
             var ex = Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings, environment));
-            var expectedMessage = "FunctionTimeout must be between 00:00:01 and 00:10:00.";
+            var expectedMessage = "FunctionTimeout must be greater than 00:00:01 and less than 00:10:00.";
             Assert.Equal(expectedMessage, ex.Message);
 
             settings[configPath] = (ScriptHostOptionsSetup.MinFunctionTimeout - TimeSpan.FromSeconds(1)).ToString();
-            Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings, environment));
+            ex = Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings, environment));
             Assert.Equal(expectedMessage, ex.Message);
         }
 
         [Fact]
-        public void ConfigureLanguageWorkers_SetMaxMessageLength_DafaultIfExceedsLimit()
+        public void Configure_MinTimeoutLimit_IfNotDynamic()
+        {
+            string configPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout");
+            var settings = new Dictionary<string, string>
+            {
+                { configPath, (ScriptHostOptionsSetup.MinFunctionTimeout - TimeSpan.FromSeconds(1)).ToString() }
+            };
+
+            var ex = Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings));
+            var expectedMessage = $"FunctionTimeout must be greater than 00:00:01 and less than {TimeSpan.MaxValue}.";
+            Assert.Equal(expectedMessage, ex.Message);
+        }
+
+        [Fact]
+        public void ConfigureLanguageWorkers_ApplyLimits_IfNotDynmic()
         {
             var settings = new Dictionary<string, string>
             {
                 { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, LanguageWorkerConstants.LanguageWorkersSectionName, "maxMessageLength"), "2500" }
             };
 
-            var options = GetConfiguredOptions(settings);
-
-            // TODO: Logging in setup currently disabled
-            //var logMessage = loggerProvider.GetAllLogMessages().Single(l => l.FormattedMessage.StartsWith("MaxMessageLength must be between 4MB and 2000MB")).FormattedMessage;
-            //Assert.Equal($"MaxMessageLength must be between 4MB and 2000MB.Default MaxMessageLength: {LanguageWorkerConstants.DefaultMaxMessageLengthBytes} will be used", logMessage);
-            Assert.Equal(LanguageWorkerConstants.DefaultMaxMessageLengthBytes, options.MaxMessageLengthBytes);
+            var ex = Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings));
+            var expectedMessage = "MaxMessageLength must be between 4MB and 2000MB.";
+            Assert.Equal(expectedMessage, ex.Message);
         }
 
         [Fact]
@@ -211,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public void ConfigureLanguageWorkers_DefaultMaxMessageLength_IfDynamic()
+        public void ConfigureLanguageWorkers_CannotSetMaxMessageLength_IfDynamic()
         {
             var settings = new Dictionary<string, string>
             {
@@ -221,24 +224,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
 
-            var options = GetConfiguredOptions(settings, environment);
-
-            // TODO: Logger is currently disabled
-            //string message = $"Cannot set {nameof(scriptConfig.MaxMessageLengthBytes)} on Consumption plan. Default MaxMessageLength: {ScriptHost.DefaultMaxMessageLengthBytesDynamicSku} will be used";
-            //var logs = testLogger.GetLogMessages().Where(log => log.FormattedMessage.Contains(message)).FirstOrDefault();
-            //Assert.NotNull(logs);
-
-            Assert.Equal(LanguageWorkerConstants.DefaultMaxMessageLengthBytesDynamicSku, options.MaxMessageLengthBytes);
+            var ex = Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings, environment));
+            var expectedMessage = "Cannot set MaxMessageLength on Consumption plan.";
+            Assert.Equal(expectedMessage, ex.Message);
         }
 
         [Fact]
-        public void ConfigureLanguageWorkers_Default_IfDynamic_NoMaxMessageLength()
+        public void ConfigureLanguageWorkers_Default_IfDynamic()
         {
-            var settings = new Dictionary<string, string>
-            {
-                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, LanguageWorkerConstants.LanguageWorkersSectionName, "maxMessageLength"), "250" }
-            };
-
+            var settings = new Dictionary<string, string>();
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
 

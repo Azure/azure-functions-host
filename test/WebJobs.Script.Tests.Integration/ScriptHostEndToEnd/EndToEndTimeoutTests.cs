@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             TestHelpers.ClearFunctionLogs(functionName);
             TimeSpan testTimeout = TimeSpan.FromSeconds(3);
-            IHostBuilder builder = CreateTimeoutHostBuilder($@"TestScripts\{scriptLang}", TimeSpan.FromSeconds(3), functionName);
+            IHostBuilder builder = CreateTimeoutHostBuilder($@"TestScripts\{scriptLang}", testTimeout, functionName);
             using (var host = builder.Build())
             {
                 await host.StartAsync();
