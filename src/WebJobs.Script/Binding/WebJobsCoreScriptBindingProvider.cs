@@ -61,8 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                 var attribute = new HttpTriggerAttribute(authLevel, methods)
                 {
-                    Route = Context.GetMetadataValue<string>("route"),
-                    WebHookType = Context.GetMetadataValue<string>("webHookType")
+                    Route = Context.GetMetadataValue<string>("route")
                 };
 
                 return new Collection<Attribute> { attribute };

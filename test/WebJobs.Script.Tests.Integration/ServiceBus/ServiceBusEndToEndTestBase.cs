@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ServiceBus
         public string TestTopicName2 = EntityNameHelper.FormatSubscriptionPath("core-test-topic1", "sub2");
         private string connectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
 
-        protected ServiceBusTestFixture(string rootPath, string testId) : base(rootPath, testId, "Microsoft.Azure.WebJobs.ServiceBus", "3.0.0-beta4-11270")
+        protected ServiceBusTestFixture(string rootPath, string testId) : base(rootPath, testId, "Microsoft.Azure.WebJobs.ServiceBus", "3.0.0-rc*")
         {
         }
 

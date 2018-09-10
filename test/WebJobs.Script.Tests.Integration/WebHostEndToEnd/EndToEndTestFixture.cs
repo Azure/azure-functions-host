@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var extensionsToInstall = GetExtensionsToInstall();
             if (extensionsToInstall != null && extensionsToInstall.Length > 0)
             {
-                TestFunctionHost.WriteNugetPackageSources(_copiedRootPath, "http://www.myget.org/F/azure-appservice/api/v2", "https://api.nuget.org/v3/index.json");
+                TestFunctionHost.WriteNugetPackageSources(_copiedRootPath, "http://www.myget.org/F/azure-appservice/api/v2", "https://www.myget.org/F/azure-appservice-staging/api/v2", "https://api.nuget.org/v3/index.json");
                 var options = new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions
                 {
                     RootScriptPath = _copiedRootPath

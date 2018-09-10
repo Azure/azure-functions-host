@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .AddScriptHost(webHostOptions, configLoggerFactory, webJobsBuilder =>
                 {
                     webJobsBuilder
-                        .AddWebJobsLogging() // Enables WebJobs v1 classic logging
+                        .AddDashboardLogging() // Enables WebJobs v1 classic logging
                         .AddAzureStorageCoreServices();
 
                     configureWebJobs?.Invoke(webJobsBuilder);

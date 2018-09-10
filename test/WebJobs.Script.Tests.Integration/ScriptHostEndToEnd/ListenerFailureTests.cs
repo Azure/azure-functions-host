@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             private const string ScriptRoot = @"TestScripts\ListenerExceptions";
 
-            public TestFixture() : base(ScriptRoot, "node", "Microsoft.Azure.WebJobs.Extensions.EventHubs", "3.0.0-beta6-11300")
+            public TestFixture() : base(ScriptRoot, "node", "Microsoft.Azure.WebJobs.Extensions.EventHubs", "3.0.0-rc*")
             {
             }
 
