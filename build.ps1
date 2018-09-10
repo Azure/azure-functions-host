@@ -189,15 +189,11 @@ function CreateZips([string] $runtimeSuffix) {
 
     ZipContent $privateSiteExtensionPath "$buildOutput\Functions.Binaries.$extensionVersion-alpha$runtimeSuffix.zip"
 
-    # Project cleanup (trim some project files - this should be revisited)
-    Remove-Item -Recurse -Force "$privateSiteExtensionPath\publish" -ErrorAction SilentlyContinue
-    Remove-Item -Recurse -Force "$privateSiteExtensionPath\runtimes\linux" -ErrorAction SilentlyContinue
-    Remove-Item -Recurse -Force "$privateSiteExtensionPath\runtimes\osx" -ErrorAction SilentlyContinue
-
-    # Create site extension packages
-
-    # Prepare private "no-runtime" with custom xdt
     if ($runtimeSuffix -eq  ".no-runtime") {
+        # Project cleanup (trim some project files - this should be revisited)
+        cleanExtension ""
+
+        # Prepare private "no-runtime" with custom xdt
         $currentXdtPath = "$privateSiteExtensionPath\applicationHost.xdt"
         $tempXdtDir = "$buildOutput\xdt-temp"
         $tempPublicXdtPath = "$tempXdtDir\applicationHost-public.xdt"
@@ -218,6 +214,10 @@ function CreateZips([string] $runtimeSuffix) {
         Move-Item $tempPublicXdtPath $currentXdtPath -Force
 
         Remove-Item $tempXdtDir -Recurse
+    } else {
+        # Project cleanup (trim some project files - this should be revisited)
+        cleanExtension "32bit"
+        cleanExtension "64bit"
     }
 
     # Zip up symbols for builds with runtime embedded
@@ -232,6 +232,19 @@ function CreateZips([string] $runtimeSuffix) {
     Copy-Item .\src\WebJobs.Script.WebHost\extension.xml "$siteExtensionPath"
     ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion-alpha$runtimeSuffix.zip"
 
+}
+
+function cleanExtension([string] $bitness) {
+    Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\publish" -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\linux" -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\osx" -ErrorAction SilentlyContinue
+
+    Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\node\grpc\src\node\extension_binary" | 
+    Foreach-Object {
+        if (-Not ($_.FullName -Match "win32")) {
+            Remove-Item -Recurse -Force $_.FullName
+        }
+    }
 }
 
 dotnet --version
