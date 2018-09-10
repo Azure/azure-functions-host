@@ -13,9 +13,11 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -1053,9 +1055,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Set id in the host.json
             string hostJsonContent = @"
             {
-                'version': '2.0',
-                'id': 'foobar'
+                'version': '2.0'
             }";
+
             File.WriteAllText(Path.Combine(rootPath, "host.json"), hostJsonContent);
 
             var config = new ScriptJobHostOptions()
@@ -1064,15 +1066,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var host = new HostBuilder()
+                .ConfigureAppConfiguration(b =>
+                {
+                    b.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        { ConfigurationSectionNames.HostIdPath, "foobar" }
+                    });
+                })
                 .ConfigureDefaultTestWebScriptHost(_ => { },
                 options =>
                 {
                     options.ScriptPath = rootPath;
                     options.LogPath = Path.GetTempPath();
-                }, false,
+                },
+                runStartupHostedServices: true,
                 rootServices =>
                 {
                     rootServices.AddSingleton<ILoggerFactory>(loggerFactory);
+                })
+                .ConfigureServices(s =>
+                {
+                    s.AddSingleton<ILoggerFactory>(loggerFactory);
                 })
                 .Build();
 
@@ -1088,7 +1102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // We should have a warning for host id in the start up logger
             var logger = loggerProvider.CreatedLoggers.First(x => x.Category == "Host.Startup");
-            Assert.Single(logger.GetLogMessages(), x => x.FormattedMessage.Contains("Host id explicitly set in the host.json."));
+            Assert.Single(logger.GetLogMessages(), x => x.FormattedMessage.Contains("Host id explicitly set in configuration."));
         }
 
         public class AssemblyMock : Assembly

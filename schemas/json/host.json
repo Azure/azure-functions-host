@@ -5,12 +5,6 @@
     "type": "object",
 
     "properties": {
-        "id": {
-            "description": "The unique ID for this job host. Can be a lower case GUID with dashes removed",
-            "type": "string",
-            "minLength": 1
-        },
-
         "functions": {
             "description": "The list of functions the host should load.",
             "type": "array",

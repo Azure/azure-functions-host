@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         {
             private static readonly string[] WellKnownHostJsonProperties = new[]
             {
-                "version", "id", "functionTimeout", "functions", "http", "watchDirectories", "queues", "serviceBus",
+                "version", "functionTimeout", "functions", "http", "watchDirectories", "queues", "serviceBus",
                 "eventHub", "singleton", "logging", "aggregator", "healthMonitor"
             };
 
@@ -165,13 +165,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 // Do not log these until after all the configuration is done so the proper filters are applied.
                 _logger.LogInformation(readingFileMessage);
                 _logger.LogInformation(readFileMessage);
-
-                // TODO: DI (FACAVAL) Move this to a more appropriate place
-                // If they set the host id in the JSON, emit a warning that this could cause issues and they shouldn't do it.
-                if (hostConfigObject["id"] != null)
-                {
-                    _logger.LogWarning("Host id explicitly set in the host.json. It is recommended that you remove the \"id\" property in your host.json.");
-                }
 
                 // TODO: DI (FACAVAL) Move to setup
                 //if (string.IsNullOrEmpty(_hostOptions.HostId))
