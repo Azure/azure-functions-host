@@ -815,7 +815,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, null));
         }
 
-
         [Fact]
         public void ShouldInitializeLanguageWorkers_WithProxy_Language_Set_NodeFunctions_Returns_True()
         {
@@ -829,14 +828,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "funcJS1",
                 Language = "node"
             };
-            FunctionMetadata poxy1 = new FunctionMetadata()
+            FunctionMetadata proxy1 = new FunctionMetadata()
             {
                 Name = "funcproxy1",
                 IsProxy = true
             };
             IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
             {
-                funcCS1, poxy1, funcJS1
+                funcCS1, proxy1, funcJS1
             };
             Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
         }
@@ -849,14 +848,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "funcCS1",
                 Language = "csharp"
             };
-            FunctionMetadata poxy1 = new FunctionMetadata()
+            FunctionMetadata proxy1 = new FunctionMetadata()
             {
                 Name = "funcproxy1",
                 IsProxy = true
             };
             IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
             {
-                funcCS1, poxy1
+                funcCS1, proxy1
+            };
+            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
+        }
+
+        [Fact]
+        public void ShouldInitializeLanguageWorkers_OnlyProxies_Returns_False()
+        {
+            FunctionMetadata proxy1 = new FunctionMetadata()
+            {
+                Name = "funcproxy1",
+                IsProxy = true
+            };
+            FunctionMetadata proxy2 = new FunctionMetadata()
+            {
+                Name = "funcproxy2",
+                IsProxy = true
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                proxy2, proxy1
             };
             Assert.False(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
         }
@@ -869,14 +888,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "funcJs1",
                 Language = "node"
             };
-            FunctionMetadata poxy1 = new FunctionMetadata()
+            FunctionMetadata proxy1 = new FunctionMetadata()
             {
                 Name = "funcproxy1",
                 IsProxy = true
             };
             IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
             {
-                funcJs1, poxy1
+                funcJs1, proxy1
             };
             Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, null));
         }
