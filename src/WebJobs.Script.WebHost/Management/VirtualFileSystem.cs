@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
@@ -33,12 +34,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private static readonly MediaTypeHeaderValue _directoryMediaType = MediaTypeHeaderValue.Parse("inode/directory");
 
         protected const int BufferSize = 32 * 1024;
-        private readonly ScriptJobHostOptions _config;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
         private readonly ILogger _logger;
 
-        public VirtualFileSystem(ScriptApplicationHostOptions settings, ILoggerFactory loggerFactory)
+        public VirtualFileSystem(IOptionsMonitor<ScriptApplicationHostOptions> options, ILoggerFactory loggerFactory)
         {
-            _config = settings.ToHostOptions();
+            _options = options;
             _logger = loggerFactory.CreateLogger<VirtualFileSystem>();
             MediaTypeMap = MediaTypeMap.Default;
         }
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             get
             {
                 return RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                    ? ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath) ?? Path.GetFullPath(_config.RootScriptPath)
+                    ? ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath) ?? Path.GetFullPath(_options.CurrentValue.ScriptPath)
                     : Path.DirectorySeparatorChar.ToString();
             }
         }
