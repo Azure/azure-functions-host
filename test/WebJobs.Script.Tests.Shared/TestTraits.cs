@@ -17,6 +17,8 @@ namespace Microsoft.WebJobs.Script.Tests
 
         public const string EndToEnd = "E2E";
 
+        public const string SamplesEndToEnd = "SamplesEndToEndTests";
+
         /// <summary>
         /// Standby mode tests are special in that they set uni-directional
         /// static state, and benefit from test isolation.

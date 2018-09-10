@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.EventHubs;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -55,8 +56,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture()
-                : base(@"TestScripts\Node", "node", LanguageWorkerConstants.NodeLanguageWorkerName,"Microsoft.Azure.WebJobs.Extensions.EventHubs", "3.0.0-beta*")
+                : base(@"TestScripts\Node", "node", LanguageWorkerConstants.NodeLanguageWorkerName)
             {
+            }
+
+            protected override ExtensionPackageReference[] GetExtensionsToInstall()
+            {
+                return new ExtensionPackageReference[]
+                {
+                    new ExtensionPackageReference
+                    {
+                        Id = "Microsoft.Azure.WebJobs.Extensions.EventHubs",
+                        Version = "3.0.0-beta*"
+                    }
+                };
             }
 
             public override void ConfigureJobHost(IWebJobsBuilder webJobsBuilder)

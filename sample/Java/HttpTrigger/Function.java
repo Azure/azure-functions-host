@@ -9,18 +9,13 @@ import com.microsoft.azure.functions.*;
  * Create jar file for this function following instructions at:
  * https://docs.microsoft.com/en-us/azure/azure-functions/functions-create-first-java-maven
  * groupId: Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
- * artifactId: HttpTrigger-Java
+ * artifactId: HttpTrigger
  * Accept defaults for rest of the identifiers
  * Run mvn clean package
  */
 public class Function {
-    /**
-     * This function listens at endpoint "/api/HttpTrigger-Java". Two ways to invoke it using "curl" command in bash:
-     * 1. curl -d "HTTP Body" {your host}/api/HttpTrigger-Java
-     * 2. curl {your host}/api/HttpTrigger-Java?name=HTTP%20Query
-     */
-    @FunctionName("HttpTrigger-Java")
-    public HttpResponseMessage HttpTriggerJava(
+    @FunctionName("HttpTrigger")
+    public HttpResponseMessage HttpTrigger(
             @HttpTrigger(name = "req", methods = {HttpMethod.GET, HttpMethod.POST}, authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<String>> request,
             final ExecutionContext context) {
         context.getLogger().info("Java HTTP trigger processed a request.");

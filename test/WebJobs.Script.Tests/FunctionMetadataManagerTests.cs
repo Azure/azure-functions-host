@@ -225,11 +225,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ReadFunctionMetadata_Succeeds()
         {
-            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample");
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
             var functionErrors = new Dictionary<string, ICollection<string>>();
             var functionDirectories = Directory.EnumerateDirectories(functionsPath);
             var metadata = FunctionMetadataManager.ReadFunctionsMetadata(functionDirectories, null, TestHelpers.GetTestWorkerConfigs(), NullLogger.Instance, functionErrors);
-            Assert.Equal(37, metadata.Count);
+            Assert.Equal(17, metadata.Count);
         }
 
         [Theory]

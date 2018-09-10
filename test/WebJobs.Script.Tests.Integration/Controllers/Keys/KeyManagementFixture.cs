@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 {
     public class KeyManagementFixture : ControllerScenarioTestFixture
     {
-        private readonly string _testFunctionName = "httptrigger-csharp";
+        private readonly string _testFunctionName = "httptrigger";
 
         public Dictionary<string, string> TestFunctionKeys { get; set; }
 

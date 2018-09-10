@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -84,11 +85,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
     public abstract class CosmosDBTestFixture : EndToEndTestFixture
     {
         protected CosmosDBTestFixture(string rootPath, string testId, string language) :
-            base(rootPath, testId, language, "Microsoft.Azure.WebJobs.Extensions.CosmosDB", "3.0.0-beta9*")
+            base(rootPath, testId, language)
         {
         }
 
         public DocumentClient DocumentClient { get; private set; }
+
+        protected override ExtensionPackageReference[] GetExtensionsToInstall()
+        {
+            return new ExtensionPackageReference[]
+            {
+                    new ExtensionPackageReference
+                    {
+                        Id = "Microsoft.Azure.WebJobs.Extensions.CosmosDB",
+                        Version = "3.0.0-beta9*"
+                    }
+            };
+        }
 
         public override void ConfigureJobHost(IWebJobsBuilder webJobsBuilder)
         {

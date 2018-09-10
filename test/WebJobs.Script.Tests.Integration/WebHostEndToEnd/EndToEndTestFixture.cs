@@ -23,18 +23,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public abstract class EndToEndTestFixture : IAsyncLifetime
     {
         private readonly string _rootPath;
-        private readonly string _extensionName;
-        private readonly string _extensionVersion;
         private string _copiedRootPath;
         private string _functionsWorkerRuntime;
 
-        protected EndToEndTestFixture(string rootPath, string testId, string functionsWorkerRuntime, string extensionName = null, string extensionVersion = null)
+        protected EndToEndTestFixture(string rootPath, string testId, string functionsWorkerRuntime)
         {
             FixtureId = testId;
 
             _rootPath = rootPath;
-            _extensionName = extensionName;
-            _extensionVersion = extensionVersion;
             _functionsWorkerRuntime = functionsWorkerRuntime;
         }
 
@@ -58,18 +54,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public string FixtureId { get; private set; }
 
+        protected virtual ExtensionPackageReference[] GetExtensionsToInstall()
+        {
+            return null;
+        }
+
         public async Task InitializeAsync()
         {
-            if (!string.IsNullOrEmpty(_functionsWorkerRuntime))
-            {
-                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime);
-            }
+            Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime);
             
             _copiedRootPath = Path.Combine(Path.GetTempPath(), "FunctionsE2E", DateTime.UtcNow.ToString("yyMMdd-HHmmss"));
             FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
 
-            // We can currently only support a single extension.
-            if (_extensionName != null && _extensionVersion != null)
+            var extensionsToInstall = GetExtensionsToInstall();
+            if (extensionsToInstall != null && extensionsToInstall.Length > 0)
             {
                 TestFunctionHost.WriteNugetPackageSources(_copiedRootPath, "http://www.myget.org/F/azure-appservice/api/v2", "https://api.nuget.org/v3/index.json");
                 var options = new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions
@@ -78,14 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
 
                 var manager = new ExtensionsManager(options, NullLogger<ExtensionsManager>.Instance);
-                await manager.AddExtensions(new[]
-                {
-                    new ExtensionPackageReference
-                    {
-                        Id = _extensionName,
-                        Version = _extensionVersion
-                    }
-                });
+                await manager.AddExtensions(extensionsToInstall);
             }
 
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
