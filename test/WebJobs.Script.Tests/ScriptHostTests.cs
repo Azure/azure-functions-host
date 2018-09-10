@@ -817,6 +817,91 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, null));
         }
 
+        [Fact]
+        public void ShouldInitializeLanguageWorkers_WithProxy_Language_Set_NodeFunctions_Returns_True()
+        {
+            FunctionMetadata funcCS1 = new FunctionMetadata()
+            {
+                Name = "funcCS1",
+                Language = "csharp"
+            };
+            FunctionMetadata funcJS1 = new FunctionMetadata()
+            {
+                Name = "funcJS1",
+                Language = "node"
+            };
+            FunctionMetadata proxy1 = new FunctionMetadata()
+            {
+                Name = "funcproxy1",
+                IsProxy = true
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcCS1, proxy1, funcJS1
+            };
+            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
+        }
+
+        [Fact]
+        public void ShouldInitializeLanguageWorkers_WithProxy_Language_Set_NodeFunctions_Returns_False()
+        {
+            FunctionMetadata funcCS1 = new FunctionMetadata()
+            {
+                Name = "funcCS1",
+                Language = "csharp"
+            };
+            FunctionMetadata proxy1 = new FunctionMetadata()
+            {
+                Name = "funcproxy1",
+                IsProxy = true
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcCS1, proxy1
+            };
+            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
+        }
+
+        [Fact]
+        public void ShouldInitializeLanguageWorkers_OnlyProxies_Returns_False()
+        {
+            FunctionMetadata proxy1 = new FunctionMetadata()
+            {
+                Name = "funcproxy1",
+                IsProxy = true
+            };
+            FunctionMetadata proxy2 = new FunctionMetadata()
+            {
+                Name = "funcproxy2",
+                IsProxy = true
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                proxy2, proxy1
+            };
+            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
+        }
+
+        [Fact]
+        public void ShouldInitializeLanguageWorkers_WithProxy_Language_Not_Set_Returns_True()
+        {
+            FunctionMetadata funcJs1 = new FunctionMetadata()
+            {
+                Name = "funcJs1",
+                Language = "node"
+            };
+            FunctionMetadata proxy1 = new FunctionMetadata()
+            {
+                Name = "funcproxy1",
+                IsProxy = true
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJs1, proxy1
+            };
+            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, null));
+        }
+
         private static IEnumerable<FunctionMetadata> GetDotNetFunctionsMetadata()
         {
             FunctionMetadata funcCS1 = new FunctionMetadata()

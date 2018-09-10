@@ -430,12 +430,12 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return false;
             }
-
-            if (!string.IsNullOrEmpty(currentRuntimeLanguage) && ContainsFunctionWithCurrentLanguage(functions, currentRuntimeLanguage))
+            var functionsListWithoutProxies = functions?.Where(f => f.IsProxy == false);
+            if (!string.IsNullOrEmpty(currentRuntimeLanguage) && ContainsFunctionWithCurrentLanguage(functionsListWithoutProxies, currentRuntimeLanguage))
             {
                 return true;
             }
-            return ContainsNonDotNetFunctions(functions);
+            return ContainsNonDotNetFunctions(functionsListWithoutProxies);
         }
 
         private static bool ContainsNonDotNetFunctions(IEnumerable<FunctionMetadata> functions)
