@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();
 
             builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory))
+                .ConfigureServices(services =>
+                {
+                    // register default configuration
+                    // must happen before the script host is added below
+                    services.ConfigureOptions<HttpOptionsSetup>();
+                })
                 .AddScriptHost(webHostOptions, configLoggerFactory, webJobsBuilder =>
                 {
                     webJobsBuilder
