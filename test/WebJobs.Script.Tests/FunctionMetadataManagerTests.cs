@@ -237,7 +237,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("java", "test.jar")]
         [InlineData("CSharp", "test.cs")]
         [InlineData("CSharp", "test.csx")]
-        [InlineData("FSharp", "test.fsx")]
         [InlineData("DotNetAssembly", "test.dll")]
         [InlineData(null, "test.x")]
         public void ParseLanguage_Returns_ExpectedLanguage(string language, string scriptFile)
