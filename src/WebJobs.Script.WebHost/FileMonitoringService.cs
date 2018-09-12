@@ -118,6 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             string changeDescription = string.Empty;
             string directory = GetRelativeDirectory(e.FullPath, _scriptOptions.RootScriptPath);
             string fileName = Path.GetFileName(e.Name);
+            bool shutdown = false;
 
             if (_scriptOptions.WatchDirectories.Contains(directory))
             {
@@ -125,7 +126,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             else if (string.Compare(fileName, ScriptConstants.AppOfflineFileName, StringComparison.OrdinalIgnoreCase) == 0)
             {
-                OnOfflineFileChanged(e);
+                // app_offline.htm has changed
+                // when app_offline.htm is created, we trigger
+                // a shutdown so when the host starts back up it
+                // will be offline
+                // when app_offline.htm is deleted, we trigger
+                // a restart to bring the host back online
+                changeDescription = "File";
+                if (File.Exists(e.FullPath))
+                {
+                    shutdown = true;
+                }
             }
             else if (string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
                 string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
@@ -142,7 +153,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (!string.IsNullOrEmpty(changeDescription))
             {
-                bool shutdown = false;
                 string fileExtension = Path.GetExtension(fileName);
                 if (!string.IsNullOrEmpty(fileExtension) && ScriptConstants.AssemblyFileTypes.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
                 {
@@ -237,23 +247,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public void Dispose()
         {
             Dispose(true);
-        }
-
-        private void OnOfflineFileChanged(FileSystemEventArgs e)
-        {
-            if (e.ChangeType == WatcherChangeTypes.Created)
-            {
-                // when app_offline.htm is created, trigger
-                // a shutdown so when the host starts back up it
-                // will be offline
-                Shutdown();
-            }
-            else if (e.ChangeType == WatcherChangeTypes.Deleted)
-            {
-                // after deleting app_offline.htm trigger a reinitialization
-                // to bring the host back online
-                _scriptEnvironment.RestartHost();
-            }
         }
 
         internal static async Task SetAppOfflineState(string rootPath, bool offline)
