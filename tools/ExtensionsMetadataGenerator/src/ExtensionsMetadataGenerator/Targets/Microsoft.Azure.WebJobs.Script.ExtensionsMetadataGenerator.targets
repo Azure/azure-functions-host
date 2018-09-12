@@ -37,7 +37,8 @@
 
   <Target Name="_ResolveAdditionalReferenceCopyLocalPathsForFunctionsExtensions"
           AfterTargets="ResolveReferences"
-          Condition="$(_IsFunctionsSdkBuild) != 'true'">
+          Condition="$(_IsFunctionsSdkBuild) != 'true'"
+          DependsOnTargets="RunResolvePublishAssemblies">
 
     <!--
       Copy publish assemblies that not already included in ReferenceCopyLocalPaths
