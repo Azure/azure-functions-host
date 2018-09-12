@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -22,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> _compilationServiceFactory;
+        private static readonly Lazy<Regex> _taskOfUnitType = new Lazy<Regex>(() => new Regex(@"^System\.Threading\.Tasks\.Task`1\[\[Microsoft\.FSharp\.Core\.Unit, FSharp\.Core, Version=\d*\.\d*\.\d*\.\d*, Culture=.*, PublicKeyToken=b03f5f7f11d50a3a\]\]$", RegexOptions.Compiled));
 
         public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, IMetricsLogger metricsLogger, ILoggerFactory loggerFactory)
            : this(host, config, bindingProviders, new DotNetCompilationServiceFactory(loggerFactory), metricsLogger, loggerFactory)
@@ -146,12 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                             }
                         }
 
-                        // In the C# programming model, IsOut is set for out parameters
-                        // In the F# programming model, neither IsOut nor IsIn are set for byref parameters (which are used as out parameters).
-                        //   Justification for this cariation of the programming model is that declaring 'out' parameters is (deliberately)
-                        //   awkward in F#, they require opening System.Runtime.InteropServices and adding the [<Out>] attribute, and using
-                        //   a byref parameter. In contrast declaring a byref parameter alone (neither labelled In nor Out) is simple enough.
-                        if (parameter.IsOut || (functionMetadata.Language == DotNetScriptTypes.FSharp && parameterIsByRef && !parameter.IsIn))
+                        if (parameter.IsOut)
                         {
                             descriptor.Attributes |= ParameterAttributes.Out;
                         }
@@ -197,8 +194,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         internal static bool TryCreateReturnValueParameterDescriptor(Type functionReturnType, IEnumerable<FunctionBinding> bindings, out ParameterDescriptor descriptor)
         {
             descriptor = null;
-            if (functionReturnType == typeof(Microsoft.FSharp.Core.Unit) ||
-                functionReturnType == typeof(Task<Microsoft.FSharp.Core.Unit>))
+            if (string.Equals(functionReturnType.FullName, "Microsoft.FSharp.Core.Unit", StringComparison.Ordinal) ||
+                _taskOfUnitType.Value.IsMatch(functionReturnType.FullName))
             {
                 return false;
             }

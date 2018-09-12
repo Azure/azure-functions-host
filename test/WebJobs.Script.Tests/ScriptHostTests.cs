@@ -909,14 +909,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "funcCS1",
                 Language = "csharp"
             };
-            FunctionMetadata funcFS1 = new FunctionMetadata()
-            {
-                Name = "funcFs1",
-                Language = "FSHArp",
-            };
             IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
             {
-                funcCS1, funcFS1
+                funcCS1
             };
             return functionsList;
         }
