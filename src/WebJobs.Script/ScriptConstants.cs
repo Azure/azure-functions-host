@@ -101,7 +101,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const int DynamicSkuConnectionLimit = 50;
 
         public const string ExtensionsProjectFileName = "extensions.csproj";
-        public const string ExtensionsPackageId = "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator";
+        public const string MetadataGeneratorPackageId = "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator";
+        public const string MetadataGeneratorPackageVersion = "1.0.*";
         public const string PackageReferenceElementName = "PackageReference";
         public const string PackageReferenceVersionElementName = "Version";
         public const int HostTimeoutSeconds = 30;
