@@ -9,6 +9,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
@@ -33,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected ICollection<IScriptBindingProvider> BindingProviders { get; private set; }
 
-        public virtual bool TryCreate(FunctionMetadata functionMetadata, out FunctionDescriptor functionDescriptor)
+        public virtual async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
         {
             if (functionMetadata == null)
             {
@@ -49,7 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             BindingMetadata triggerMetadata = functionMetadata.InputBindings.FirstOrDefault(p => p.IsTrigger);
             string scriptFilePath = Path.Combine(Config.RootScriptPath, functionMetadata.ScriptFile ?? string.Empty);
-            functionDescriptor = null;
             IFunctionInvoker invoker = null;
 
             try
@@ -57,11 +57,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 invoker = CreateFunctionInvoker(scriptFilePath, triggerMetadata, functionMetadata, inputBindings, outputBindings);
 
                 Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
-                Collection<ParameterDescriptor> parameters = GetFunctionParameters(invoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
+                Collection<ParameterDescriptor> parameters = await GetFunctionParametersAsync(invoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
 
-                functionDescriptor = new FunctionDescriptor(functionMetadata.Name, invoker, functionMetadata, parameters, methodAttributes, inputBindings, outputBindings);
+                var functionDescriptor = new FunctionDescriptor(functionMetadata.Name, invoker, functionMetadata, parameters, methodAttributes, inputBindings, outputBindings);
 
-                return true;
+                return (true, functionDescriptor);
             }
             catch (Exception ex)
             {
@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        protected virtual Collection<ParameterDescriptor> GetFunctionParameters(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,
+        protected virtual Task<Collection<ParameterDescriptor>> GetFunctionParametersAsync(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,
             BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
             if (functionInvoker == null)
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             parameters.Add(new ParameterDescriptor(ScriptConstants.SystemLoggerParameterName, typeof(ILogger)));
 
-            return parameters;
+            return Task.FromResult(parameters);
         }
 
         protected virtual ParameterDescriptor CreateTriggerParameter(BindingMetadata triggerMetadata, Type parameterType = null)

@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Script.Binding;
@@ -29,15 +30,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _loggerFactory = loggerFactory;
         }
 
-        public override bool TryCreate(FunctionMetadata functionMetadata, out FunctionDescriptor functionDescriptor)
+        public override async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
         {
             if (functionMetadata == null)
             {
                 throw new ArgumentNullException(nameof(functionMetadata));
             }
-            functionDescriptor = null;
-            return _dispatcher.IsSupported(functionMetadata)
-                && base.TryCreate(functionMetadata, out functionDescriptor);
+
+            if (!_dispatcher.IsSupported(functionMetadata))
+            {
+                return (false, null);
+            }
+
+            return await base.TryCreate(functionMetadata);
         }
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
@@ -51,10 +56,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return new WorkerLanguageInvoker(Host, triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, inputBuffer);
         }
 
-        protected override Collection<ParameterDescriptor> GetFunctionParameters(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,
+        protected override async Task<Collection<ParameterDescriptor>> GetFunctionParametersAsync(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,
             BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            var parameters = base.GetFunctionParameters(functionInvoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
+            var parameters = await base.GetFunctionParametersAsync(functionInvoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
 
             var bindings = inputBindings.Union(outputBindings);
 

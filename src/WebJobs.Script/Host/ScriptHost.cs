@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     await InitializeWorkersAsync();
                 }
                 var directTypes = GetDirectTypes(functions);
-                InitializeFunctionDescriptors(functions);
+                await InitializeFunctionDescriptorsAsync(functions);
                 GenerateFunctions(directTypes);
 
                 CleanupFileSystem();
@@ -445,7 +445,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Initialize function descriptors from metadata.
         /// </summary>
-        internal void InitializeFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
+        internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata)
         {
             if (string.IsNullOrEmpty(_currentRuntimelanguage))
             {
@@ -470,7 +470,7 @@ namespace Microsoft.Azure.WebJobs.Script
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
             {
                 _logger.LogTrace("Creating function descriptors.");
-                functions = GetFunctionDescriptors(functionMetadata, _descriptorProviders);
+                functions = await GetFunctionDescriptorsAsync(functionMetadata, _descriptorProviders);
                 _logger.LogTrace("Function descriptors created.");
             }
 
@@ -680,7 +680,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return visitedTypes;
         }
 
-        internal Collection<FunctionDescriptor> GetFunctionDescriptors(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
+        internal async Task<Collection<FunctionDescriptor>> GetFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
@@ -694,10 +694,12 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 try
                 {
+                    bool created = false;
                     FunctionDescriptor descriptor = null;
                     foreach (var provider in descriptorProviders)
                     {
-                        if (provider.TryCreate(metadata, out descriptor))
+                        (created, descriptor) = await provider.TryCreate(metadata);
+                        if (created)
                         {
                             break;
                         }

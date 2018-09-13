@@ -51,22 +51,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        public override bool TryCreate(FunctionMetadata functionMetadata, out FunctionDescriptor functionDescriptor)
+        public override async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
         {
             if (functionMetadata == null)
             {
                 throw new ArgumentNullException("functionMetadata");
             }
 
-            functionDescriptor = null;
-
             // We can only handle script types supported by the current compilation service factory
             if (!_compilationServiceFactory.SupportedLanguages.Contains(functionMetadata.Language))
             {
-                return false;
+                return (false, null);
             }
 
-            return base.TryCreate(functionMetadata, out functionDescriptor);
+            return await base.TryCreate(functionMetadata);
         }
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
@@ -82,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 BindingProviders);
         }
 
-        protected override Collection<ParameterDescriptor> GetFunctionParameters(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,
+        protected override async Task<Collection<ParameterDescriptor>> GetFunctionParametersAsync(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,
             BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
             if (functionInvoker == null)
@@ -112,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 ApplyMethodLevelAttributes(functionMetadata, triggerMetadata, methodAttributes);
 
-                MethodInfo functionTarget = dotNetInvoker.GetFunctionTargetAsync().Result;
+                MethodInfo functionTarget = await dotNetInvoker.GetFunctionTargetAsync();
                 ParameterInfo[] parameters = functionTarget.GetParameters();
                 Collection<ParameterDescriptor> descriptors = new Collection<ParameterDescriptor>();
                 IEnumerable<FunctionBinding> bindings = inputBindings.Union(outputBindings);
@@ -188,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // We were unable to compile the function to get its signature,
             // setup the descriptor with the default parameters
             methodAttributes.Clear();
-            return base.GetFunctionParameters(functionInvoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
+            return await base.GetFunctionParametersAsync(functionInvoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
         }
 
         internal static bool TryCreateReturnValueParameterDescriptor(Type functionReturnType, IEnumerable<FunctionBinding> bindings, out ParameterDescriptor descriptor)
