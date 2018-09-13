@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Tests.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -914,6 +915,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcCS1
             };
             return functionsList;
+        }
+
+        [Fact]
+        public async Task InitializeRpcService_Throws()
+        {
+            await Assert.ThrowsAsync<HostInitializationException>(async () =>
+            {
+                await _fixture.ScriptHost.InitializeRpcServiceAsync(new TestRpcServer());
+            });
         }
 
 #if WEBROUTING

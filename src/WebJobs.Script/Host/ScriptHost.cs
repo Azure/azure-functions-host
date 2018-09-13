@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -67,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ScriptSettingsManager _settingsManager;
         private ILogger _logger = null;
 
+        private IRpcServer _rpcService;
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionDispatcher _functionDispatcher;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
@@ -478,15 +480,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private async Task InitializeWorkersAsync()
         {
             var serverImpl = new FunctionRpcService(EventManager, _logger);
-            var server = new GrpcServer(serverImpl, ScriptOptions.MaxMessageLengthBytes);
-
-            using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGrpcServerLatency))
-            {
-                await server.StartAsync();
-            }
+            await InitializeRpcServiceAsync(new GrpcServer(serverImpl, ScriptOptions.MaxMessageLengthBytes));
 
             var processFactory = new DefaultWorkerProcessFactory();
-
             try
             {
                 _processRegistry = ProcessRegistryFactory.Create();
@@ -505,19 +501,36 @@ namespace Microsoft.Azure.WebJobs.Script
                     _processRegistry,
                     registrations,
                     languageWorkerConfig,
-                    server.Uri,
+                    _rpcService.Uri,
                     _loggerFactory, // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
                     _metricsLogger,
                     attemptCount);
             };
 
-            _functionDispatcher = new FunctionDispatcher(EventManager, server, channelFactory, _workerConfigs, _currentRuntimelanguage);
+            _functionDispatcher = new FunctionDispatcher(EventManager, _rpcService, channelFactory, _workerConfigs, _currentRuntimelanguage);
 
             _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
                 .Subscribe(evt =>
                 {
                     HandleHostError(evt.Exception);
                 }));
+        }
+
+        internal async Task InitializeRpcServiceAsync(IRpcServer rpcService)
+        {
+            _rpcService = rpcService;
+
+            using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGrpcServerLatency))
+            {
+                try
+                {
+                    await _rpcService.StartAsync();
+                }
+                catch (Exception grpcInitEx)
+                {
+                    throw new HostInitializationException($"Failed to start Grpc Service. See https://docs.microsoft.com/en-us/azure/app-service/app-service-diagnostics to check if your app is hitting connection limits.", grpcInitEx);
+                }
+            }
         }
 
         /// <summary>
