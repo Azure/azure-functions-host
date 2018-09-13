@@ -218,6 +218,23 @@ function CreateZips([string] $runtimeSuffix) {
         # Project cleanup (trim some project files - this should be revisited)
         cleanExtension "32bit"
         cleanExtension "64bit"
+
+        # Create private extension for internal usage. To minimize size remove 64bit folder.
+        $tempPath = "$buildOutput\win-x32.inproc.temp\SiteExtensions"
+
+        # Make a temp location
+        New-Item -Itemtype directory -path $tempPath -ErrorAction SilentlyContinue
+       
+        # Copy all files to temp folder
+        Copy-Item -Path $privateSiteExtensionPath -Destination $tempPath -Recurse
+
+        # Delete x64 folder to reduce size
+        Remove-Item "$tempPath\Functions\64bit" -Recurse
+
+        # Make the zip
+        ZipContent "$buildOutput\win-x32.inproc.temp" "$buildOutput\Functions.Private.$extensionVersion-alpha.win-x32.inproc.zip"
+
+        Remove-Item $tempPath -Recurse
     }
 
     # Zip up symbols for builds with runtime embedded
