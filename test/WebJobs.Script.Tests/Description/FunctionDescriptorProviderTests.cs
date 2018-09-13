@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -88,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void VerifyResolvedBindings_WithNoBindingMatch_ThrowsExpectedException()
+        public async Task VerifyResolvedBindings_WithNoBindingMatch_ThrowsExpectedException()
         {
             FunctionMetadata functionMetadata = new FunctionMetadata();
             BindingMetadata triggerMetadata = BindingMetadata.Create(JObject.Parse("{\"type\": \"blobTrigger\",\"name\": \"req\",\"direction\": \"in\", \"blobPath\": \"test\"}"));
@@ -97,16 +98,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             functionMetadata.Bindings.Add(triggerMetadata);
             functionMetadata.Bindings.Add(bindingMetadata);
 
-            var ex = Assert.Throws<FunctionConfigurationException>(() =>
+            var ex = await Assert.ThrowsAsync<FunctionConfigurationException>(async () =>
             {
-                _provider.TryCreate(functionMetadata, out FunctionDescriptor descriptor);
+                var (created, descriptor) = await _provider.TryCreate(functionMetadata);
             });
 
             Assert.Contains("unknownbinding", ex.Message);
         }
 
         [Fact]
-        public void VerifyResolvedBindings_WithValidBindingMatch_DoesNotThrow()
+        public async Task VerifyResolvedBindings_WithValidBindingMatch_DoesNotThrow()
         {
             FunctionMetadata functionMetadata = new FunctionMetadata();
             BindingMetadata triggerMetadata = BindingMetadata.Create(JObject.Parse("{\"type\": \"httpTrigger\",\"name\": \"req\",\"direction\": \"in\"}"));
@@ -116,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             functionMetadata.Bindings.Add(bindingMetadata);
             try
             {
-                _provider.TryCreate(functionMetadata, out FunctionDescriptor descriptor);
+                var (created, descriptor) = await _provider.TryCreate(functionMetadata);
                 Assert.True(true, "No exception thrown");
             }
             catch (Exception ex)
@@ -127,16 +128,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void CreateTriggerParameter_WithNoBindingMatch_ThrowsExpectedException()
+        public async Task CreateTriggerParameter_WithNoBindingMatch_ThrowsExpectedException()
         {
             FunctionMetadata functionMetadata = new FunctionMetadata();
             BindingMetadata metadata = BindingMetadata.Create(JObject.Parse("{\"type\": \"someInvalidTrigger\",\"name\": \"req\",\"direction\": \"in\"}"));
 
             functionMetadata.Bindings.Add(metadata);
 
-            var ex = Assert.Throws<FunctionConfigurationException>(() =>
+            var ex = await Assert.ThrowsAsync<FunctionConfigurationException>(async () =>
             {
-                _provider.TryCreate(functionMetadata, out FunctionDescriptor descriptor);
+                var (created, descriptor) = await _provider.TryCreate(functionMetadata);
             });
 
             Assert.Contains("someInvalidTrigger", ex.Message);

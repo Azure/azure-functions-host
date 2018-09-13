@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
@@ -23,21 +24,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _loggerFactory = loggerFactory;
         }
 
-        public override bool TryCreate(FunctionMetadata functionMetadata, out FunctionDescriptor functionDescriptor)
+        public override Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
         {
             if (functionMetadata == null)
             {
                 throw new ArgumentNullException("functionMetadata");
             }
 
-            functionDescriptor = null;
-
             if (functionMetadata.IsProxy)
             {
-                return base.TryCreate(functionMetadata, out functionDescriptor);
+                return base.TryCreate(functionMetadata);
             }
 
-            return false;
+            return Task.FromResult<(bool, FunctionDescriptor)>((false, null));
         }
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
