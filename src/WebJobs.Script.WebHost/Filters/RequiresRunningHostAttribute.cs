@@ -4,9 +4,10 @@
 using System;
 using System.Net;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 {
@@ -49,10 +50,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
         private class RunningHostCheckAttribute : ActionFilterAttribute
         {
             private readonly IScriptHostManager _hostManager;
+            private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
 
-            public RunningHostCheckAttribute(IScriptHostManager hostManager)
+            public RunningHostCheckAttribute(IScriptHostManager hostManager, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
             {
                 _hostManager = hostManager;
+                _applicationHostOptions = applicationHostOptions;
             }
 
             public int TimeoutSeconds { get; internal set; }
@@ -61,17 +64,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 
             public override async Task OnActionExecutionAsync(ActionExecutingContext actionContext, ActionExecutionDelegate next)
             {
-                // If the host is not ready, we'll wait a bit for it to initialize.
-                // This might happen if http requests come in while the host is starting
-                // up for the first time, or if it is restarting.
-                bool hostReady = await _hostManager.DelayUntilHostReady(TimeoutSeconds, PollingIntervalMilliseconds);
-
-                if (!hostReady)
+                if (_hostManager.State == ScriptHostState.Offline)
                 {
-                    throw new HttpException(HttpStatusCode.ServiceUnavailable, "Function host is not running.");
+                    await actionContext.HttpContext.SetOfflineResponseAsync(_applicationHostOptions.CurrentValue.ScriptPath);
                 }
+                else
+                {
+                    // If the host is not ready, we'll wait a bit for it to initialize.
+                    // This might happen if http requests come in while the host is starting
+                    // up for the first time, or if it is restarting.
+                    bool hostReady = await _hostManager.DelayUntilHostReady(TimeoutSeconds, PollingIntervalMilliseconds);
 
-                await next();
+                    if (!hostReady)
+                    {
+                        throw new HttpException(HttpStatusCode.ServiceUnavailable, "Function host is not running.");
+                    }
+
+                    await next();
+                }
             }
         }
     }

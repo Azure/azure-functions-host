@@ -12,6 +12,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.Rpc;
@@ -195,12 +196,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task SetHostState_Offline_Succeeds()
         {
+            string functionName = "HttpTrigger";
+
             // verify host is up and running
             var response = await GetHostStatusAsync();
             var hostStatus = response.Content.ReadAsAsync<HostStatus>();
 
             // verify functions can be invoked
-            await InvokeAndValidateHttpTrigger("HttpTrigger");
+            await InvokeAndValidateHttpTrigger(functionName);
+
+            // verify function status is ok
+            response = await GetFunctionStatusAsync(functionName);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var functionStatus = await response.Content.ReadAsAsync<FunctionStatus>();
+            Assert.Null(functionStatus.Errors);
 
             // take host offline
             await SetHostStateAsync("offline");
@@ -212,13 +221,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // wait for the host to go offline
             await AwaitHostStateAsync(ScriptHostState.Offline);
 
+            // verify function status returns 503 immediately
+            await TestHelpers.RunWithTimeoutAsync(async () =>
+            {
+                response = await GetFunctionStatusAsync(functionName);
+            }, TimeSpan.FromSeconds(1));
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Null(functionStatus.Errors);
+
             // verify that when offline function requests return 503
-            response = await InvokeHttpTrigger("HttpTrigger");
+            response = await InvokeHttpTrigger(functionName);
             await VerifyOfflineResponse(response);
 
-            // verify that the root returns 503 when offline
+            // verify that the root returns 503 immediately when offline
             var request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
             response = await _fixture.Host.HttpClient.SendAsync(request);
+            await VerifyOfflineResponse(response);
+
+            // verify the same thing when invoking via admin api
+            response = await AdminInvokeFunction(functionName);
             await VerifyOfflineResponse(response);
 
             // bring host back online
@@ -227,7 +248,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await AwaitHostStateAsync(ScriptHostState.Running);
 
             // verify functions can be invoked
-            await InvokeAndValidateHttpTrigger("HttpTrigger");
+            await InvokeAndValidateHttpTrigger(functionName);
+
+            // verify the same thing via admin api
+            response = await AdminInvokeFunction(functionName);
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         }
 
         private static async Task VerifyOfflineResponse(HttpResponseMessage response)
@@ -447,6 +472,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        // invoke a function via the admin invoke api
+        private async Task<HttpResponseMessage> AdminInvokeFunction(string functionName, string input = null)
+        {
+            string masterKey = await _fixture.Host.GetMasterKeyAsync();
+            string uri = $"admin/functions/{functionName}?code={masterKey}";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            JObject jo = new JObject
+            {
+                { "input", input }
+            };
+            request.Content = new StringContent(jo.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            return await _fixture.Host.HttpClient.SendAsync(request);
+        }
+
         private async Task<HttpResponseMessage> InvokeHttpTrigger(string functionName)
         {
             string functionKey = await _fixture.Host.GetFunctionSecretAsync($"{functionName}");
@@ -588,6 +628,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(response.StatusCode, HttpStatusCode.Accepted);
+        }
+
+        private async Task<HttpResponseMessage> GetFunctionStatusAsync(string functionName)
+        {
+            var masterKey = await _fixture.Host.GetMasterKeyAsync();
+            var request = new HttpRequestMessage(HttpMethod.Get, $"admin/functions/{functionName}/status");
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
+            return await _fixture.Host.HttpClient.SendAsync(request);
         }
 
         private async Task AwaitHostStateAsync(ScriptHostState state)

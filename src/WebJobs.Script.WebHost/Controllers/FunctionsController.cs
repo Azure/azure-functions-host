@@ -121,12 +121,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/functions/{name}/status")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        [RequiresRunningHost]
-        public IActionResult GetFunctionStatus(string name, [FromServices] IScriptJobHost scriptHost)
+        public async Task<IActionResult> GetFunctionStatus(string name, [FromServices] IScriptJobHost scriptHost)
         {
             FunctionStatus status = new FunctionStatus();
 
             // first see if the function has any errors
+            // if the host is not running or is offline
+            // there will be no error info
             if (scriptHost.FunctionErrors.TryGetValue(name, out ICollection<string> functionErrors))
             {
                 status.Errors = functionErrors;
@@ -135,7 +136,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 // if we don't have any errors registered, make sure the function exists
                 // before returning empty errors
-                FunctionDescriptor function = scriptHost.Functions.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
+                var result = await _functionsManager.GetFunctionsMetadata(Request, includeProxies: true);
+                var function = result.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
                 if (function == null)
                 {
                     return NotFound();
