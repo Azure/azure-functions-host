@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Buffering;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Script.WebHost.Features;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             // This middleware must be registered before we establish the request service provider.
-            builder.UseWhen(context => !context.Request.Path.StartsWithSegments("/admin"), config =>
+            builder.UseWhen(context => !context.Request.IsAdminRequest(), config =>
             {
                 config.UseMiddleware<HostAvailabilityCheckMiddleware>();
             });
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMiddleware<HttpExceptionMiddleware>();
             builder.UseMiddleware<ResponseBufferingMiddleware>();
             builder.UseMiddleware<HomepageMiddleware>();
-            builder.UseWhen(context => context.Features.Get<IFunctionExecutionFeature>() != null, config =>
+            builder.UseWhen(context => !context.Request.IsAdminRequest(), config =>
             {
                 config.UseMiddleware<HttpThrottleMiddleware>();
             });

@@ -6,13 +6,17 @@ using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.Extensions
 {
     public static class HttpRequestExtensions
     {
+        public static bool IsAdminRequest(this HttpRequest request)
+        {
+            return request.Path.StartsWithSegments("/admin");
+        }
+
         public static AuthorizationLevel GetAuthorizationLevel(this HttpRequest request)
         {
             return request.GetRequestPropertyOrDefault<AuthorizationLevel>(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey);
