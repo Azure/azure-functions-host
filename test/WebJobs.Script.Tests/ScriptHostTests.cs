@@ -927,67 +927,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Failed to start Grpc Service. Check if your app is hitting connection limits.", ex.Message);
         }
 
-#if WEBROUTING
-        [Fact]
-        public void HttpRoutesConflict_ReturnsExpectedResult()
-        {
-            var first = new HttpTriggerAttribute
-            {
-                Route = "foo/bar/baz"
-            };
-            var second = new HttpTriggerAttribute
-            {
-                Route = "foo/bar"
-            };
-            Assert.False(ScriptHost.HttpRoutesConflict(first, second));
-            Assert.False(ScriptHost.HttpRoutesConflict(second, first));
-
-            first = new HttpTriggerAttribute
-            {
-                Route = "foo/bar/baz"
-            };
-            second = new HttpTriggerAttribute
-            {
-                Route = "foo/bar/baz"
-            };
-            Assert.True(ScriptHost.HttpRoutesConflict(first, second));
-            Assert.True(ScriptHost.HttpRoutesConflict(second, first));
-
-            // no conflict since methods do not intersect
-            first = new HttpTriggerAttribute(AuthorizationLevel.Function, "get", "head")
-            {
-                Route = "foo/bar/baz"
-            };
-            second = new HttpTriggerAttribute(AuthorizationLevel.Function, "post", "put")
-            {
-                Route = "foo/bar/baz"
-            };
-            Assert.False(ScriptHost.HttpRoutesConflict(first, second));
-            Assert.False(ScriptHost.HttpRoutesConflict(second, first));
-
-            first = new HttpTriggerAttribute(AuthorizationLevel.Function, "get", "head")
-            {
-                Route = "foo/bar/baz"
-            };
-            second = new HttpTriggerAttribute
-            {
-                Route = "foo/bar/baz"
-            };
-            Assert.True(ScriptHost.HttpRoutesConflict(first, second));
-            Assert.True(ScriptHost.HttpRoutesConflict(second, first));
-
-            first = new HttpTriggerAttribute(AuthorizationLevel.Function, "get", "head", "put", "post")
-            {
-                Route = "foo/bar/baz"
-            };
-            second = new HttpTriggerAttribute(AuthorizationLevel.Function, "put")
-            {
-                Route = "foo/bar/baz"
-            };
-            Assert.True(ScriptHost.HttpRoutesConflict(first, second));
-            Assert.True(ScriptHost.HttpRoutesConflict(second, first));
-        }
-
         [Fact]
         public void ValidateFunction_ValidatesHttpRoutes()
         {
@@ -1056,16 +995,88 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
             Assert.Equal("The specified route conflicts with one or more built in routes.", ex.Message);
 
-            // verify that empty route is defaulted to function name
+            // try to add a route under reserved runtime route
             function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test6", null, metadata, null, null, null, null);
+            attribute = new HttpTriggerAttribute
+            {
+                Route = "runtime/foo/bar"
+            };
+            function.Setup(p => p.GetTriggerAttributeOrNull<HttpTriggerAttribute>()).Returns(() => attribute);
+            ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                ScriptHost.ValidateFunction(function.Object, httpFunctions);
+            });
+            Assert.Equal("The specified route conflicts with one or more built in routes.", ex.Message);
+
+            // verify that empty route is defaulted to function name
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test7", null, metadata, null, null, null, null);
             attribute = new HttpTriggerAttribute();
             function.Setup(p => p.GetTriggerAttributeOrNull<HttpTriggerAttribute>()).Returns(() => attribute);
             ScriptHost.ValidateFunction(function.Object, httpFunctions);
             Assert.Equal(4, httpFunctions.Count);
-            Assert.True(httpFunctions.ContainsKey("test6"));
-            Assert.Equal("test6", attribute.Route);
+            Assert.True(httpFunctions.ContainsKey("test7"));
+            Assert.Equal("test7", attribute.Route);
         }
-#endif
+
+        [Fact]
+        public void HttpRoutesConflict_ReturnsExpectedResult()
+        {
+            var first = new HttpTriggerAttribute
+            {
+                Route = "foo/bar/baz"
+            };
+            var second = new HttpTriggerAttribute
+            {
+                Route = "foo/bar"
+            };
+            Assert.False(ScriptHost.HttpRoutesConflict(first, second));
+            Assert.False(ScriptHost.HttpRoutesConflict(second, first));
+
+            first = new HttpTriggerAttribute
+            {
+                Route = "foo/bar/baz"
+            };
+            second = new HttpTriggerAttribute
+            {
+                Route = "foo/bar/baz"
+            };
+            Assert.True(ScriptHost.HttpRoutesConflict(first, second));
+            Assert.True(ScriptHost.HttpRoutesConflict(second, first));
+
+            // no conflict since methods do not intersect
+            first = new HttpTriggerAttribute(AuthorizationLevel.Function, "get", "head")
+            {
+                Route = "foo/bar/baz"
+            };
+            second = new HttpTriggerAttribute(AuthorizationLevel.Function, "post", "put")
+            {
+                Route = "foo/bar/baz"
+            };
+            Assert.False(ScriptHost.HttpRoutesConflict(first, second));
+            Assert.False(ScriptHost.HttpRoutesConflict(second, first));
+
+            first = new HttpTriggerAttribute(AuthorizationLevel.Function, "get", "head")
+            {
+                Route = "foo/bar/baz"
+            };
+            second = new HttpTriggerAttribute
+            {
+                Route = "foo/bar/baz"
+            };
+            Assert.True(ScriptHost.HttpRoutesConflict(first, second));
+            Assert.True(ScriptHost.HttpRoutesConflict(second, first));
+
+            first = new HttpTriggerAttribute(AuthorizationLevel.Function, "get", "head", "put", "post")
+            {
+                Route = "foo/bar/baz"
+            };
+            second = new HttpTriggerAttribute(AuthorizationLevel.Function, "put")
+            {
+                Route = "foo/bar/baz"
+            };
+            Assert.True(ScriptHost.HttpRoutesConflict(first, second));
+            Assert.True(ScriptHost.HttpRoutesConflict(second, first));
+        }
 
         [Fact]
         public void ValidateFunction_ThrowsOnDuplicateName()

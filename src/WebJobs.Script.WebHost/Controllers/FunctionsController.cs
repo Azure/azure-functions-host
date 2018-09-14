@@ -121,14 +121,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/functions/{name}/status")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> GetFunctionStatus(string name, [FromServices] IScriptJobHost scriptHost)
+        public async Task<IActionResult> GetFunctionStatus(string name, [FromServices] IScriptJobHost scriptHost = null)
         {
             FunctionStatus status = new FunctionStatus();
 
             // first see if the function has any errors
             // if the host is not running or is offline
             // there will be no error info
-            if (scriptHost.FunctionErrors.TryGetValue(name, out ICollection<string> functionErrors))
+            if (scriptHost != null &&
+                scriptHost.FunctionErrors.TryGetValue(name, out ICollection<string> functionErrors))
             {
                 status.Errors = functionErrors;
             }
