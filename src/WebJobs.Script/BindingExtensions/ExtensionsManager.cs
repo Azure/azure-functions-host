@@ -185,15 +185,6 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
         private void SetupProcessEnvironment(ProcessStartInfo startInfo)
         {
-            foreach (DictionaryEntry environmentVariable in Environment.GetEnvironmentVariables(EnvironmentVariableTarget.Process))
-            {
-                if (!TryAdd(startInfo.Environment, environmentVariable.Key?.ToString(), environmentVariable.Value?.ToString()))
-                {
-                    _logger.LogWarning($"Unable to set environment variable '{environmentVariable.Key}' during extension installation. "
-                        + "A key with the same name already exists");
-                }
-            }
-
             TryAdd(startInfo.Environment, "DOTNET_SKIP_FIRST_TIME_EXPERIENCE", "true");
             TryAdd(startInfo.Environment, NugetXmlDocModeSettingName, NugetXmlDocSkipMode);
         }
