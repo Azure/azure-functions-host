@@ -2,10 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.IO;
-using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -50,11 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
             else
             {
-                // host is offline so return the app_offline.htm file content
-                var offlineFilePath = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.AppOfflineFileName);
-                httpContext.Response.ContentType = "text/html";
-                httpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-                await httpContext.Response.SendFileAsync(offlineFilePath);
+                await httpContext.SetOfflineResponseAsync(_applicationHostOptions.CurrentValue.ScriptPath);
             }
         }
     }
