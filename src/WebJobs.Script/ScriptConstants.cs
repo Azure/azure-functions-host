@@ -51,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategoryMigration = "Host.Migration";
 
         public const string SkipHostJsonConfigurationKey = "MS_SkipHostJsonConfiguration";
+        public const string SkipHostInitializationKey = "MS_SkipHostInitialization";
 
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters

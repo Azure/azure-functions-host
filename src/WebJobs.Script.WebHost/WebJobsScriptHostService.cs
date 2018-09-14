@@ -263,6 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private IHost BuildHost(bool skipHostStartup = false, bool skipHostJsonConfiguration = false)
         {
+            _logger.LogInformation("Building host: startup suppressed:{skipHostStartup}, configuration suppressed: {skipHostJsonConfiguration}", skipHostStartup, skipHostJsonConfiguration);
             return _scriptHostBuilder.BuildHost(skipHostStartup, skipHostJsonConfiguration);
         }
 
