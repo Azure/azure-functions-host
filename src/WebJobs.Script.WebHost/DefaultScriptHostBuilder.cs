@@ -27,6 +27,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             var builder = new HostBuilder();
 
+            if (skipHostStartup)
+            {
+                builder.Properties[ScriptConstants.SkipHostInitializationKey] = bool.TrueString;
+            }
+
             if (skipHostConfigurationParsing)
             {
                 builder.ConfigureAppConfiguration((context, _) =>
@@ -42,10 +47,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 builder.ConfigureServices(services =>
                 {
-                    // When offline, we need most general services registered so admin
+                    // When skipping host startup (e.g. offline), we need most general services registered so admin
                     // APIs can function. However, we want to prevent the ScriptHost from
                     // actually starting up. To accomplish this, we remove the host service
-                    // responsible for starting the job hst.
+                    // responsible for starting the job host.
                     var jobHostService = services.FirstOrDefault(p => p.ImplementationType == typeof(JobHostService));
                     services.Remove(jobHostService);
                 });

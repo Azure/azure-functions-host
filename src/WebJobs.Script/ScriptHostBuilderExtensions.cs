@@ -80,6 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static IHostBuilder AddScriptHostCore(this IHostBuilder builder, ScriptApplicationHostOptions applicationHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
         {
+            var skipHostInitialization = builder.Properties.ContainsKey(ScriptConstants.SkipHostInitializationKey);
+
             builder.ConfigureWebJobs(webJobsBuilder =>
             {
                 // Built in binding registrations
@@ -94,7 +96,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 .AddTimers()
                 .AddManualTrigger();
 
-                webJobsBuilder.UseScriptExternalStartup(applicationHostOptions.ScriptPath);
+                if (!skipHostInitialization)
+                {
+                    // Only set our external startup if we're not suppressing host initialization
+                    // as we don't want to load user assemblies otherwise.
+                    webJobsBuilder.UseScriptExternalStartup(applicationHostOptions.ScriptPath);
+                }
 
                 configureWebJobs?.Invoke(webJobsBuilder);
             }, o => o.AllowPartialHostStartup = true);
