@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/functions/{name}")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         [RequiresRunningHost]
-        public IActionResult Invoke(string name, [FromBody] FunctionInvocation invocation, [FromServices] IScriptJobHost scriptHost)
+        public IActionResult Invoke(string name, [FromBody] FunctionInvocation invocation, [FromServices] IScriptJobHost scriptHost = null)
         {
             if (invocation == null)
             {
