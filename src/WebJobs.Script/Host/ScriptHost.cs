@@ -528,7 +528,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 catch (Exception grpcInitEx)
                 {
-                    throw new HostInitializationException($"Failed to start Grpc Service. See https://docs.microsoft.com/en-us/azure/app-service/app-service-diagnostics to check if your app is hitting connection limits.", grpcInitEx);
+                    throw new HostInitializationException($"Failed to start Grpc Service. Check if your app is hitting connection limits.", grpcInitEx);
                 }
             }
         }

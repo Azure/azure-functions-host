@@ -768,13 +768,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ShouldInitializeLanguageWorkers_Language_Set_Returns_False()
         {
-           Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), LanguageWorkerConstants.DotNetLanguageWorkerName));
+            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), LanguageWorkerConstants.DotNetLanguageWorkerName));
         }
 
         [Fact]
         public void ShouldInitializeLanguageWorkers_Language_Set_DotNetFunctions_Returns_False()
         {
-           Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), LanguageWorkerConstants.NodeLanguageWorkerName));
         }
 
         [Fact]
@@ -920,10 +920,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task InitializeRpcService_Throws()
         {
-            await Assert.ThrowsAsync<HostInitializationException>(async () =>
+            var ex = await Assert.ThrowsAsync<HostInitializationException>(async () =>
             {
                 await _fixture.ScriptHost.InitializeRpcServiceAsync(new TestRpcServer());
             });
+            Assert.Equal("Failed to start Grpc Service. Check if your app is hitting connection limits.", ex.Message);
         }
 
 #if WEBROUTING
