@@ -56,6 +56,13 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             // Worker configuration
             ConfigureLanguageWorkers(jobHostSection, options);
 
+            // If we have a read only file system, override any configuration and
+            // disable file watching
+            if (_environment.FileSystemIsReadOnly())
+            {
+                options.FileWatchingEnabled = false;
+            }
+
             // Set the root script path to the value the runtime was initialized with:
             ScriptApplicationHostOptions webHostOptions = _applicationHostOptions.Value;
             options.RootScriptPath = webHostOptions.ScriptPath;
@@ -135,129 +142,5 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             }
             scriptOptions.MaxMessageLengthBytes = requestedGrpcMaxMessageLength;
         }
-
-        // TODO: DI (FACAVAL) Moved this from ScriptHost. Validate we're applying all configuration
-        // Also noticed a lot of discrepancy between the original logic and the documentation and schema. We need to address
-        // that. The current implemenation will match the original, which means that schema and docs will need to be udpated.
-        //internal static void ApplyConfiguration(JObject config, ScriptHostConfiguration scriptConfig, ILogger logger = null)
-        //{
-        //    var hostConfig = scriptConfig.HostOptions;
-
-        //    hostConfig.HostConfigMetadata = config;
-
-        //    JArray functions = (JArray)config["functions"];
-        //    if (functions != null && functions.Count > 0)
-        //    {
-        //        scriptConfig.Functions = new Collection<string>();
-        //        foreach (var function in functions)
-        //        {
-        //            scriptConfig.Functions.Add((string)function);
-        //        }
-        //    }
-        //    else
-        //    {
-        //        scriptConfig.Functions = null;
-        //    }
-
-        //    // We may already have a host id, but the one from the JSON takes precedence
-        //    JToken hostId = (JToken)config["id"];
-        //    if (hostId != null)
-        //    {
-        //        hostConfig.HostId = (string)hostId;
-        //    }
-
-        //    // Default AllowHostPartialStartup to true, but allow it
-        //    // to be overridden by config
-        //    hostConfig.AllowPartialHostStartup = true;
-        //    JToken allowPartialHostStartup = (JToken)config["allowPartialHostStartup"];
-        //    if (allowPartialHostStartup != null && allowPartialHostStartup.Type == JTokenType.Boolean)
-        //    {
-        //        hostConfig.AllowPartialHostStartup = (bool)allowPartialHostStartup;
-        //    }
-
-        //    JToken fileWatchingEnabled = (JToken)config["fileWatchingEnabled"];
-        //    if (fileWatchingEnabled != null && fileWatchingEnabled.Type == JTokenType.Boolean)
-        //    {
-        //        scriptConfig.FileWatchingEnabled = (bool)fileWatchingEnabled;
-        //    }
-
-        //    // Configure the set of watched directories, adding the standard built in
-        //    // set to any the user may have specified
-        //    if (scriptConfig.WatchDirectories == null)
-        //    {
-        //        scriptConfig.WatchDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        //    }
-        //    scriptConfig.WatchDirectories.Add("node_modules");
-        //    JToken watchDirectories = config["watchDirectories"];
-        //    if (watchDirectories != null && watchDirectories.Type == JTokenType.Array)
-        //    {
-        //        foreach (JToken directory in watchDirectories.Where(p => p.Type == JTokenType.String))
-        //        {
-        //            scriptConfig.WatchDirectories.Add((string)directory);
-        //        }
-        //    }
-
-        //    JToken nugetFallbackFolder = config["nugetFallbackFolder"];
-        //    if (nugetFallbackFolder != null && nugetFallbackFolder.Type == JTokenType.String)
-        //    {
-        //        scriptConfig.NugetFallBackPath = (string)nugetFallbackFolder;
-        //    }
-
-        //    // Apply Singleton configuration
-        //    JObject configSection = (JObject)config["singleton"];
-        //    JToken value = null;
-        //    if (configSection != null)
-        //    {
-        //        if (configSection.TryGetValue("lockPeriod", out value))
-        //        {
-        //            hostConfig.Singleton.LockPeriod = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //        if (configSection.TryGetValue("listenerLockPeriod", out value))
-        //        {
-        //            hostConfig.Singleton.ListenerLockPeriod = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //        if (configSection.TryGetValue("listenerLockRecoveryPollingInterval", out value))
-        //        {
-        //            hostConfig.Singleton.ListenerLockRecoveryPollingInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //        if (configSection.TryGetValue("lockAcquisitionTimeout", out value))
-        //        {
-        //            hostConfig.Singleton.LockAcquisitionTimeout = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //        if (configSection.TryGetValue("lockAcquisitionPollingInterval", out value))
-        //        {
-        //            hostConfig.Singleton.LockAcquisitionPollingInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //    }
-
-        //    // Apply Host Health Montitor configuration
-        //    configSection = (JObject)config["healthMonitor"];
-        //    value = null;
-        //    if (configSection != null)
-        //    {
-        //        if (configSection.TryGetValue("enabled", out value) && value.Type == JTokenType.Boolean)
-        //        {
-        //            scriptConfig.HostHealthMonitor.Enabled = (bool)value;
-        //        }
-        //        if (configSection.TryGetValue("healthCheckInterval", out value))
-        //        {
-        //            scriptConfig.HostHealthMonitor.HealthCheckInterval = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //        if (configSection.TryGetValue("healthCheckWindow", out value))
-        //        {
-        //            scriptConfig.HostHealthMonitor.HealthCheckWindow = TimeSpan.Parse((string)value, CultureInfo.InvariantCulture);
-        //        }
-        //        if (configSection.TryGetValue("healthCheckThreshold", out value))
-        //        {
-        //            scriptConfig.HostHealthMonitor.HealthCheckThreshold = (int)value;
-        //        }
-        //        if (configSection.TryGetValue("counterThreshold", out value))
-        //        {
-        //            scriptConfig.HostHealthMonitor.CounterThreshold = (float)value;
-        //        }
-        //    }
-
-        //    ApplyLanguageWorkersConfig(config, scriptConfig, logger);
-        //}
     }
 }
