@@ -139,49 +139,11 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 string sanitizedJson = SanitizeHostJson(hostConfigObject);
                 string readFileMessage = $"Host configuration file read:{NewLine}{sanitizedJson}";
 
-                // TODO: DI (FACAVAL) See method comments in ScriptHost
-                //ApplyConfiguration(hostConfigObject, ScriptConfig, _startupLogger);
-
-                // TODO: DI (FACAVAL) Review - this should likely move and not be just config
-                //if (_settingsManager.FileSystemIsReadOnly)
-                //{
-                //    // we're in read-only mode so source files can't change
-                //    ScriptConfig.FileWatchingEnabled = false;
-                //}
-
-                // now the configuration has been read and applied re-create the logger
-                // factory and loggers ensuring that filters and settings have been applied
-                // TODO: DI (FACAVAL) TODO
-                //ConfigureLoggerFactory(recreate: true);
-
-                // TODO: DI (FACAVAL) Logger configuration to move to startup
-                //_startupLogger = _hostOptions.LoggerFactory.CreateLogger(LogCategories.Startup);
-                //Logger = _hostOptions.LoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
-
-                // Allow tests to modify anything initialized by host.json
-                //ScriptConfig.OnConfigurationApplied?.Invoke(ScriptConfig);
                 _logger.LogTrace("Host configuration applied.");
 
                 // Do not log these until after all the configuration is done so the proper filters are applied.
                 _logger.LogInformation(readingFileMessage);
                 _logger.LogInformation(readFileMessage);
-
-                // TODO: DI (FACAVAL) Move to setup
-                //if (string.IsNullOrEmpty(_hostOptions.HostId))
-                //{
-                //    throw new InvalidOperationException("An 'id' must be specified in the host configuration.");
-                //}
-
-                // TODO: DI (FACAVAL) Disabling core storage is now just a matter of
-                // registering the appropriate services.
-                //if (_storageConnectionString == null)
-                //{
-                //    // Disable core storage
-                //    _hostOptions.StorageConnectionString = null;
-                //}
-
-                // only after configuration has been applied and loggers
-                // have been created, raise the initializing event
 
                 return hostConfigObject;
             }
