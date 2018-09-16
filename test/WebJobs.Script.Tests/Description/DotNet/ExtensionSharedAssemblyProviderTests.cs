@@ -4,6 +4,7 @@
 using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Runtime.Loader;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
