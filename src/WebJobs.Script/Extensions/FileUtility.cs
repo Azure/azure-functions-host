@@ -76,10 +76,24 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             encoding = encoding ?? Encoding.UTF8;
-            using (Stream fileStream = OpenFile(path, FileMode.Create, FileAccess.Write, FileShare.Read))
-            using (var writer = new StreamWriter(fileStream, encoding, 4096))
+
+            try
             {
-                await writer.WriteAsync(contents);
+                await TryWrite();
+            }
+            catch (DirectoryNotFoundException)
+            {
+                EnsureDirectoryExists(Path.GetDirectoryName(path));
+                await TryWrite();
+            }
+
+            async Task TryWrite()
+            {
+                using (Stream fileStream = OpenFile(path, FileMode.Create, FileAccess.Write, FileShare.Read))
+                using (var writer = new StreamWriter(fileStream, encoding, 4096))
+                {
+                    await writer.WriteAsync(contents);
+                }
             }
         }
 
