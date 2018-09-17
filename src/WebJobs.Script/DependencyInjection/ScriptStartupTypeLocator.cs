@@ -16,22 +16,22 @@ using Newtonsoft.Json.Linq;
 namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 {
     /// <summary>
-    /// An implementation of an <see cref="IWebJobsStartupTypeDiscoverer"/> that locates startup types
+    /// An implementation of an <see cref="IWebJobsStartupTypeLocator"/> that locates startup types
     /// from extension registrations.
     /// </summary>
-    public class ScriptStartupTypeDiscoverer : IWebJobsStartupTypeDiscoverer
+    public class ScriptStartupTypeLocator : IWebJobsStartupTypeLocator
     {
         private readonly string _rootScriptPath;
         private readonly ILogger _logger;
 
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
-        public ScriptStartupTypeDiscoverer(string rootScriptPath)
+        public ScriptStartupTypeLocator(string rootScriptPath)
             : this(rootScriptPath, NullLogger.Instance)
         {
         }
 
-        public ScriptStartupTypeDiscoverer(string rootScriptPath, ILogger logger)
+        public ScriptStartupTypeLocator(string rootScriptPath, ILogger logger)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
             _logger = logger;

@@ -169,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, string rootScriptPath)
         {
-            return builder.UseExternalStartup(new ScriptStartupTypeDiscoverer(rootScriptPath));
+            return builder.UseExternalStartup(new ScriptStartupTypeLocator(rootScriptPath));
         }
 
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)

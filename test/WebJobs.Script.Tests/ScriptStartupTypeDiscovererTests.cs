@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
 
                 var testLogger = new TestLogger("test");
-                var discoverer = new ScriptStartupTypeDiscoverer(directory.Path, testLogger);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger);
 
                 // Act
                 var types = discoverer.GetExtensionsStartupTypes();

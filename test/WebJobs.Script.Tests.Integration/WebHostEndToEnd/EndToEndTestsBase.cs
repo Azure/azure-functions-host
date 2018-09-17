@@ -12,6 +12,7 @@ using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.MobileServices;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -26,11 +27,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public abstract class EndToEndTestsBase<TTestFixture> :
         IClassFixture<TTestFixture> where TTestFixture : EndToEndTestFixture, new()
     {
-        private INameResolver _nameResolver = new DefaultNameResolver();
+        private INameResolver _nameResolver;
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
 
         public EndToEndTestsBase(TTestFixture fixture)
         {
+            var config = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .Build();
+
+            _nameResolver = new DefaultNameResolver(config);
             Fixture = fixture;
         }
 
