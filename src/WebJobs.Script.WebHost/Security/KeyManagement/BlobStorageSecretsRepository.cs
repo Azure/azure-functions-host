@@ -67,30 +67,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public event EventHandler<SecretsChangedEventArgs> SecretsChanged;
 
-        public CloudBlobContainer BlobContainer
-        {
-            get
-            {
-                return _blobContainer;
-            }
-        }
-
-        public string SecretsSentinelFilePath
-        {
-            get
-            {
-                return _secretsSentinelFilePath;
-            }
-        }
-
-        public string SecretsBlobPath
-        {
-            get
-            {
-                return _secretsBlobPath;
-            }
-        }
-
         private string GetSecretsBlobPath(ScriptSecretsType secretsType, string functionName = null)
         {
             return secretsType == ScriptSecretsType.Host

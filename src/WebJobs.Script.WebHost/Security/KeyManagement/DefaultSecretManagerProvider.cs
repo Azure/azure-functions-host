@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 string siteSlotName = _environment.GetAzureWebsiteUniqueSlotName() ?? _hostIdProvider.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult();
 
-                return new BlobStorageSecretsMigrationRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), storageString, siteSlotName, _logger);
+                return new BlobStorageSecretsRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), storageString, siteSlotName);
             }
         }
     }

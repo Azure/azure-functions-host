@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using System.Threading;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Security
@@ -33,6 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var config = new ConfigurationBuilder()
                 .AddEnvironmentVariables()
                 .Build();
+
+            mockIdProvider.Setup(p => p.GetHostIdAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync("testhostid");
 
             _provider = new DefaultSecretManagerProvider(optionsMonitor, mockIdProvider.Object, config,
                 new TestEnvironment(), NullLoggerFactory.Instance);
