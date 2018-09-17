@@ -187,7 +187,7 @@ function CreateZips([string] $runtimeSuffix) {
         $runtimesuffix = "";
     }
 
-    ZipContent $privateSiteExtensionPath "$buildOutput\Functions.Binaries.$extensionVersion-alpha$runtimeSuffix.zip"
+    ZipContent $privateSiteExtensionPath "$buildOutput\Functions.Binaries.$extensionVersion$runtimeSuffix.zip"
 
     if ($runtimeSuffix -eq  ".no-runtime") {
         # Project cleanup (trim some project files - this should be revisited)
@@ -208,7 +208,7 @@ function CreateZips([string] $runtimeSuffix) {
         Copy-Item .\src\WebJobs.Script.WebHost\applicationHost-private.xdt $currentXdtPath
 
         # Make the zip
-        ZipContent $publishTarget "$buildOutput\Functions.Private.$extensionVersion-alpha$runtimeSuffix.zip"
+        ZipContent $publishTarget "$buildOutput\Functions.Private.$extensionVersion$runtimeSuffix.zip"
 
         # Restore the public XDT
         Move-Item $tempPublicXdtPath $currentXdtPath -Force
@@ -232,22 +232,22 @@ function CreateZips([string] $runtimeSuffix) {
         Remove-Item "$tempPath\Functions\64bit" -Recurse
 
         # Make the zip
-        ZipContent "$buildOutput\win-x32.inproc.temp" "$buildOutput\Functions.Private.$extensionVersion-alpha.win-x32.inproc.zip"
+        ZipContent "$buildOutput\win-x32.inproc.temp" "$buildOutput\Functions.Private.$extensionVersion.win-x32.inproc.zip"
 
         Remove-Item $tempPath -Recurse
     }
 
     # Zip up symbols for builds with runtime embedded
     if ($runtimeSuffix -eq  "") {
-        ZipContent "$buildOutput\publish.win-x86\Symbols" "$buildOutput\Functions.Symbols.$extensionVersion-alpha.win-x86.zip"
-        ZipContent "$buildOutput\publish.win-x64\Symbols" "$buildOutput\Functions.Symbols.$extensionVersion-alpha.win-x64.zip"
+        ZipContent "$buildOutput\publish.win-x86\Symbols" "$buildOutput\Functions.Symbols.$extensionVersion.win-x86.zip"
+        ZipContent "$buildOutput\publish.win-x64\Symbols" "$buildOutput\Functions.Symbols.$extensionVersion.win-x64.zip"
     }
 
     #Build site extension
     Write-Host "privateSiteExtensionPath: " $privateSiteExtensionPath
-    Rename-Item "$privateSiteExtensionPath" "$siteExtensionPath\$extensionVersion-alpha"
+    Rename-Item "$privateSiteExtensionPath" "$siteExtensionPath\$extensionVersion"
     Copy-Item .\src\WebJobs.Script.WebHost\extension.xml "$siteExtensionPath"
-    ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion-alpha$runtimeSuffix.zip"
+    ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
 
 }
 
