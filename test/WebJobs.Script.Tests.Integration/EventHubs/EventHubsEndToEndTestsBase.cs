@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
                     new ExtensionPackageReference
                     {
                         Id = "Microsoft.Azure.WebJobs.Extensions.EventHubs",
-                        Version = "3.0.0-rc*"
+                        Version = "3.0.0-rc1"
                     }
                 };
             }

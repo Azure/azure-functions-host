@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.2</LangVersion>
-    <RuntimeReleaseSuffix>-rc1</RuntimeReleaseSuffix>
+    <RuntimeReleaseSuffix></RuntimeReleaseSuffix>
     <BuildNumber Condition=" '$(BuildNumber)' == '' ">1</BuildNumber>
     <MajorMinorProductVersion>2.0</MajorMinorProductVersion>
     <Version>$(MajorMinorProductVersion).0$(RuntimeReleaseSuffix)$(VersionSuffix)</Version>
