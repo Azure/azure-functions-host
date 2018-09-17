@@ -7,33 +7,74 @@ using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Microsoft.Azure.AppService.Proxy.Client;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class ProxyMetadataManager : IProxyMetadataManager
+    public class ProxyMetadataManager : IProxyMetadataManager, IDisposable
     {
         private static readonly Regex ProxyNameValidationRegex = new Regex(@"[^a-zA-Z0-9_-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private readonly Lazy<ProxyMetadataInfo> _metadata;
+        private readonly ReaderWriterLockSlim _metadataLock = new ReaderWriterLockSlim();
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
+        private readonly IDisposable _fileChangeSubscription;
+        private Lazy<ProxyMetadataInfo> _metadata;
+        private bool _disposed = false;
 
-        public ProxyMetadataManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory)
+        public ProxyMetadataManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IScriptEventManager eventManager, ILoggerFactory loggerFactory)
         {
             _applicationHostOptions = applicationHostOptions;
             _environment = environment;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _metadata = new Lazy<ProxyMetadataInfo>(LoadFunctionMetadata);
+
+            _fileChangeSubscription = eventManager.OfType<FileEvent>()
+                       .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal) &&
+                       string.Equals(Path.GetFileName(f.FileChangeArguments.Name), ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase))
+                       .Subscribe(e => HandleProxyFileChange());
         }
 
-        public ProxyMetadataInfo ProxyMetadata => _metadata.Value;
+        public ProxyMetadataInfo ProxyMetadata
+        {
+            get
+            {
+                _metadataLock.EnterReadLock();
+                try
+                {
+                    return _metadata.Value;
+                }
+                finally
+                {
+                    _metadataLock.ExitReadLock();
+                }
+            }
+        }
+
+        private void HandleProxyFileChange()
+        {
+            _metadataLock.EnterWriteLock();
+            try
+            {
+                if (_metadata.IsValueCreated)
+                {
+                    _metadata = new Lazy<ProxyMetadataInfo>(LoadFunctionMetadata);
+                }
+            }
+            finally
+            {
+                _metadataLock.ExitWriteLock();
+            }
+        }
 
         private ProxyMetadataInfo LoadFunctionMetadata()
         {
@@ -136,6 +177,24 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static string NormalizeProxyName(string name)
         {
             return ProxyNameValidationRegex.Replace(name, string.Empty);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _fileChangeSubscription?.Dispose();
+                }
+
+                _disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
         }
     }
 }
