@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void LoggerProviders_ConsoleEnabled_IfDevelopmentEnvironment()
         {
             IHost host = new HostBuilder()
-                .UseEnvironment("Development")
+                .UseEnvironment(EnvironmentName.Development)
                 .ConfigureDefaultTestWebScriptHost()
                 .Build();
 

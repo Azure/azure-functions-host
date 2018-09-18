@@ -36,6 +36,7 @@ namespace Microsoft.WebJobs.Script.Tests
 
             // Register root services
             var services = new ServiceCollection();
+            AddMockedSingleton<IDebugStateProvider>(services);
             AddMockedSingleton<IScriptHostManager>(services);
             AddMockedSingleton<IScriptWebHostEnvironment>(services);
             AddMockedSingleton<IEventGenerator>(services);

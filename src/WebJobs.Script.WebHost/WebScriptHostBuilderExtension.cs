@@ -78,6 +78,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
                 });
 
+            var debugStateProvider = rootServiceProvider.GetService<IDebugStateProvider>();
+            if (debugStateProvider.InDebugMode)
+            {
+                builder.UseEnvironment(EnvironmentName.Development);
+            }
+
             return builder;
         }
 
