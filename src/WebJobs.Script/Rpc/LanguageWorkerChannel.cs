@@ -432,18 +432,26 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void InvokeResponse(InvocationResponse invokeResponse)
         {
-            if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
-                && invokeResponse.Result.IsSuccess(context.ResultSource))
+            if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context))
             {
-                IDictionary<string, object> bindingsDictionary = invokeResponse.OutputData
+                if (invokeResponse.Result.IsSuccess(context.ResultSource))
+                {
+                    IDictionary<string, object> bindingsDictionary = invokeResponse.OutputData
                     .ToDictionary(binding => binding.Name, binding => binding.Data.ToObject());
 
-                var result = new ScriptInvocationResult()
+                    var result = new ScriptInvocationResult()
+                    {
+                        Outputs = bindingsDictionary,
+                        Return = invokeResponse?.ReturnValue?.ToObject()
+                    };
+                    context.ResultSource.SetResult(result);
+                }
+                else
                 {
-                    Outputs = bindingsDictionary,
-                    Return = invokeResponse?.ReturnValue?.ToObject()
-                };
-                context.ResultSource.SetResult(result);
+                    Exception invocationException = invokeResponse.Result.InvocationResultException();
+                    context.Logger.LogError(invocationException.Message);
+                    context.ResultSource.TrySetException(invocationException);
+                }
             }
         }
 
