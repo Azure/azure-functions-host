@@ -28,18 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private const string Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         private static readonly Random Random = new Random();
 
-        public static async Task RunWithTimeoutAsync(Func<Task> action, TimeSpan timeout)
-        {
-            Task timeoutTask = Task.Delay(timeout);
-            Task actionTask = action();
-            Task completedTask = await Task.WhenAny(actionTask, timeoutTask);
-
-            if (completedTask == timeoutTask)
-            {
-                throw new Exception($"Task did not complete within timeout interval {timeout}.");
-            }
-        }
-
         /// <summary>
         /// Gets the common root directory that functions tests create temporary directories under.
         /// This enables us to clean up test files by deleting this single directory.
@@ -49,6 +37,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             get
             {
                 return Path.Combine(Path.GetTempPath(), "FunctionsTest");
+            }
+        }
+
+        public static async Task RunWithTimeoutAsync(Func<Task> action, TimeSpan timeout)
+        {
+            Task timeoutTask = Task.Delay(timeout);
+            Task actionTask = action();
+            Task completedTask = await Task.WhenAny(actionTask, timeoutTask);
+
+            if (completedTask == timeoutTask)
+            {
+                throw new Exception($"Task did not complete within timeout interval {timeout}.");
             }
         }
 
