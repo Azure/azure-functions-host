@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
@@ -155,6 +156,62 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.Collection(lines,
                 t => Assert.EndsWith("[Trace] Test Message", t),
                 t => Assert.EndsWith("[Information,TestFunction] Test Message With Function", t));
+        }
+
+        [Fact]
+        public void FileLogger_LogsFunctionInvocationException()
+        {
+            var logger = new FileLogger(_category, _fileWriter, () => true, isPrimary: () => true, logType: LogType.Host);
+
+            // throw an exception so we have a stack
+            try
+            {
+                var innerEx = new InvalidOperationException("boom!");
+                var ex = new FunctionInvocationException("Error executing function.", innerEx);
+                throw ex;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Test Message");
+            }
+
+            _fileWriter.Flush();
+
+            string logFile = Directory.EnumerateFiles(_logFilePath).Single();
+            string[] lines = File.ReadAllLines(logFile);
+
+            // A FunctionInvocationException only logs the message.
+            Assert.Collection(lines,
+                t => Assert.EndsWith("[Error] Test Message", t),
+                t => Assert.Equal("boom!", t));
+        }
+
+        [Fact]
+        public void FileLogger_LogsException()
+        {
+            var logger = new FileLogger(_category, _fileWriter, () => true, isPrimary: () => true, logType: LogType.Host);
+
+            // throw an exception so we have a stack
+            try
+            {
+                var ex = new InvalidOperationException("boom!");
+                throw ex;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Test Message");
+            }
+
+            _fileWriter.Flush();
+
+            string logFile = Directory.EnumerateFiles(_logFilePath).Single();
+            string[] lines = File.ReadAllLines(logFile);
+
+            // This isn't a FunctionInvocationException, which means we'll see the stack.
+            Assert.Collection(lines,
+                t => Assert.EndsWith("[Error] Test Message", t),
+                t => Assert.Equal("System.InvalidOperationException : boom!", t),
+                t => Assert.Contains("at Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.FileLoggerTests.FileLogger_LogsException()", t));
         }
 
         [Fact]

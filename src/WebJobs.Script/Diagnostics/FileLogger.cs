@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
@@ -60,6 +61,28 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             if (isPrimaryHostTrace && !_isPrimary())
             {
                 return;
+            }
+
+            if (exception != null)
+            {
+                if (exception is FunctionInvocationException ||
+                    exception is AggregateException)
+                {
+                    // we want to minimize the stack traces for function invocation
+                    // failures, so we drill into the very inner exception, which will
+                    // be the script error
+                    Exception actualException = exception;
+                    while (actualException.InnerException != null)
+                    {
+                        actualException = actualException.InnerException;
+                    }
+
+                    formattedMessage += $"{Environment.NewLine}{actualException.Message}";
+                }
+                else
+                {
+                    formattedMessage += $"{Environment.NewLine}{exception.ToFormattedString()}";
+                }
             }
 
             formattedMessage = FormatLine(stateValues, logLevel, formattedMessage);
