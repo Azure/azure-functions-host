@@ -10,8 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
-using Microsoft.ServiceBus;
-using Microsoft.ServiceBus.Messaging;
+using Microsoft.Azure.ServiceBus.Management;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -151,10 +150,13 @@ namespace WebJobs.Script.EndToEndTests
         public async Task ServiceBus_Node_DoesNotExhaustConnections()
         {
             var connectionString = Environment.GetEnvironmentVariable("AzureWebJobsServiceBus");
-            NamespaceManager manager = NamespaceManager.CreateFromConnectionString(connectionString);
+            ManagementClient manager = new ManagementClient(connectionString);
 
             // Start with an empty queue
-            await manager.DeleteQueueAsync("node");
+            if (await manager.QueueExistsAsync("node"))
+            {
+                await manager.DeleteQueueAsync("node");
+            }
 
             // Pre-create the queue as we can end up with 409s if a bunch of requests
             // try to create the queue at once
@@ -199,50 +201,8 @@ namespace WebJobs.Script.EndToEndTests
                 }
             }
 
-            QueueDescription queueDescription = manager.GetQueue("node");
-            Assert.Equal(i * j, queueDescription.MessageCountDetails.ActiveMessageCount);
-        }
-
-        [Fact(Skip = "Proxy not yet enabled.")]
-        [TestTrace]
-        public async Task FileExtension()
-        {
-            using (var client = CreateClient())
-            {
-                HttpResponseMessage response = await client.GetAsync($"test.txt");
-
-                string content = await response.Content.ReadAsStringAsync();
-                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
-                _fixture.Assert.Equals("test", content);
-            }
-        }
-
-        [Fact(Skip = "Proxy not yet enabled.")]
-        [TestTrace]
-        public async Task RootCheck()
-        {
-            using (var client = CreateClient())
-            {
-                HttpResponseMessage response = await client.GetAsync("/");
-
-                string content = await response.Content.ReadAsStringAsync();
-                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
-                _fixture.Assert.Equals("Root", content);
-            }
-        }
-
-        [Fact(Skip = "Proxy not yet enabled.")]
-        [TestTrace]
-        public async Task LocalFunctionCall()
-        {
-            using (var client = CreateClient())
-            {
-                HttpResponseMessage response = await client.GetAsync($"myhttptrigger?code={_fixture.FunctionDefaultKey}");
-
-                string content = await response.Content.ReadAsStringAsync();
-                _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));
-                _fixture.Assert.Equals("Pong", content);
-            }
+            var queueInfo = await manager.GetQueueRuntimeInfoAsync("node");
+            Assert.Equal(i * j, queueInfo.MessageCount);
         }
 
         // Assumes we have a valid function name.

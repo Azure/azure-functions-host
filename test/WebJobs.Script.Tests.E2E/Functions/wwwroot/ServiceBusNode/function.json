@@ -16,7 +16,6 @@
           "name": "outputSbMsg",
           "queueName": "node",
           "connection": "AzureWebJobsServiceBus",
-          "accessRights_": "Manage",
           "direction": "out"
         }
     ],
