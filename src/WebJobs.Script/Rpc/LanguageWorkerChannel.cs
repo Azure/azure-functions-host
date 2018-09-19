@@ -405,7 +405,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     };
                     foreach (var pair in context.BindingData)
                     {
-                        invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc());
+                        if (pair.Value != null)
+                        {
+                            invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc());
+                        }
                     }
                     foreach (var input in context.Inputs)
                     {

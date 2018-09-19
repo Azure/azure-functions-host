@@ -326,6 +326,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             json = await response.Content.ReadAsStringAsync();
             products = JArray.Parse(json);
             Assert.Equal(2, products.Count);
+            var logs = _fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory("HttpTrigger-CustomRoute-Get"));
+            var log = logs.Single(p => p.FormattedMessage.Contains($"category: electronics id: <empty>"));
+            _fixture.Host.ClearLogMessages();
 
             // test optional route param (category)
             uri = $"api/node/products?code={functionKey}";
@@ -336,6 +339,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             json = await response.Content.ReadAsStringAsync();
             products = JArray.Parse(json);
             Assert.Equal(3, products.Count);
+            logs = _fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory("HttpTrigger-CustomRoute-Get"));
+            log = logs.Single(p => p.FormattedMessage.Contains($"category: <empty> id: <empty>"));
 
             // test a constraint violation (invalid id)
             uri = $"api/node/products/electronics/notaguid?code={functionKey}";
@@ -350,11 +355,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
             response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-
-            // verify route parameters were part of binding data
-            var logs = _fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory("HttpTrigger-CustomRoute-Get"));
-            var log = logs.Single(p => p.FormattedMessage.Contains($"category: electronics id: {id}"));
-            Assert.NotNull(log);
         }
 
         [Fact(Skip = "http://github.com/Azure/azure-functions-host/issues/2812")]
