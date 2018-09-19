@@ -186,16 +186,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private async Task<bool> AuthenticateAndAuthorizeAsync(HttpContext context, FunctionDescriptor descriptor)
         {
-            var policyEvaluator = context.RequestServices.GetRequiredService<IPolicyEvaluator>();
-            AuthorizationPolicy policy = AuthUtility.CreateFunctionPolicy();
+            if (!descriptor.Metadata.IsProxy)
+            {
+                var policyEvaluator = context.RequestServices.GetRequiredService<IPolicyEvaluator>();
+                AuthorizationPolicy policy = AuthUtility.CreateFunctionPolicy();
 
-            // Authenticate the request
-            var authenticateResult = await policyEvaluator.AuthenticateAsync(policy, context);
+                // Authenticate the request
+                var authenticateResult = await policyEvaluator.AuthenticateAsync(policy, context);
 
-            // Authorize using the function policy and resource
-            var authorizeResult = await policyEvaluator.AuthorizeAsync(policy, authenticateResult, context, descriptor);
+                // Authorize using the function policy and resource
+                var authorizeResult = await policyEvaluator.AuthorizeAsync(policy, authenticateResult, context, descriptor);
 
-            return authorizeResult.Succeeded;
+                return authorizeResult.Succeeded;
+            }
+            else
+            {
+                return true;
+            }
         }
 
         internal static void SetRequestId(HttpRequest request)
