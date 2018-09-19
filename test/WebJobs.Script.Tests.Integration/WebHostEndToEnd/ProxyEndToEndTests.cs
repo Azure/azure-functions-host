@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -43,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var response = await _fixture.HttpClient.SendAsync(request);
             var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
 
-            Assert.Equal(18, metadata.Length);
+            Assert.Equal(20, metadata.Length);
             var function = metadata.Single(p => p.Name == "PingRoute");
             Assert.Equal("https://localhost/myroute/mysubroute", function.InvokeUrlTemplate.AbsoluteUri);
 
@@ -60,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response = await _fixture.HttpClient.SendAsync(request);
             metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
             Assert.False(metadata.Any(p => p.IsProxy));
-            Assert.Equal(2, metadata.Length);
+            Assert.Equal(3, metadata.Length);
         }
 
         [Fact]
@@ -103,6 +104,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task LocalFunctionCall()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"myhttptrigger");
+
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("200", response.StatusCode.ToString("D"));
+            Assert.Equal("Pong", content);
+        }
+
+        [Fact]
+        public async Task LocalFunctionCallWithAuth()
+        {
+            string functionKey = await _fixture.GetFunctionSecretAsync("PingAuth");
+
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"myhttptriggerauth?code={functionKey}");
 
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal("200", response.StatusCode.ToString("D"));
@@ -339,6 +352,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 HttpClient.BaseAddress = new Uri("https://localhost/");
 
                 TestHelpers.WaitForWebHost(HttpClient);
+            }
+
+            public async Task<string> GetFunctionSecretAsync(string functionName)
+            {
+                var secretManager = _testServer.Host.Services.GetService<ISecretManagerProvider>().Current;
+                var secrets = await secretManager.GetFunctionSecretsAsync(functionName);
+                return secrets.First().Value;
             }
 
             public ScriptApplicationHostOptions HostOptions { get; private set; }

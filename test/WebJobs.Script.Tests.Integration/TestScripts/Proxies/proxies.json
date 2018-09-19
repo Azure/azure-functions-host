@@ -49,6 +49,18 @@
         "backend.request.headers.accept": "text/plain"
       }
     },
+    "LocalFunctionCallWithAuth": {
+      "matchCondition": {
+        "methods": [
+          "GET"
+        ],
+        "route": "/myhttptriggerauth"
+      },
+      "backendUri": "https://localhost/api/PingAuth",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
+    },
     "LongRoute": {
       "matchCondition": {
         "route": "/test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234"
