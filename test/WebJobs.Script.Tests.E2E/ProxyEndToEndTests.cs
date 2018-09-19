@@ -2,17 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Threading.Tasks;
-using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.DataContracts;
-using Microsoft.ServiceBus;
-using Microsoft.ServiceBus.Messaging;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace WebJobs.Script.EndToEndTests
@@ -79,7 +70,7 @@ namespace WebJobs.Script.EndToEndTests
                 HttpResponseMessage response = await client.GetAsync(longRoute);
 
                 string content = await response.Content.ReadAsStringAsync();
-                
+
                 // This is to make sure the url is greater than the default asp.net 260 characters.
                 _fixture.Assert.True(longRoute.Length > 260);
                 _fixture.Assert.Equals("200", response.StatusCode.ToString("D"));

@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -13,6 +12,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -24,10 +24,12 @@ namespace WebJobs.Script.EndToEndTests
         private bool _disposed;
         private KuduClient _kuduClient;
         private readonly TrackedAssert _assert;
+        private readonly ILogger _logger;
 
         public FunctionAppFixture()
         {
-            Trace.Listeners.Add(new ConsoleTraceListener());
+            ILoggerFactory loggerFactory = new LoggerFactory().AddConsole();
+            _logger = loggerFactory.CreateLogger<FunctionAppFixture>();
 
             _assert = new TrackedAssert(Telemetry);
 
@@ -49,7 +51,7 @@ namespace WebJobs.Script.EndToEndTests
         private async Task Initialize()
         {
             Telemetry.TrackEvent(new EventTelemetry("EnvironmentInitialization"));
-            Trace.WriteLine("Initializing environment...");
+            _logger.LogInformation("Initializing environment...");
 
             _kuduClient = new KuduClient($"https://{Settings.SiteName}.scm.azurewebsites.net", Settings.SitePublishingUser, Settings.SitePublishingPassword);
             FunctionAppMasterKey = await _kuduClient.GetFunctionsMasterKey();
@@ -65,10 +67,10 @@ namespace WebJobs.Script.EndToEndTests
             // after all initialization is done, do a final restart for good measure
             await RestartSite();
 
-            Trace.WriteLine("Environment initialized");
+            _logger.LogInformation("Environment initialized");
             Telemetry.TrackEvent(new EventTelemetry("EnvironmentInitialized"));
 
-            Trace.WriteLine("Test run starting...");
+            _logger.LogInformation("Test run starting...");
         }
 
         private async Task RedeployTestSite()
@@ -88,7 +90,7 @@ namespace WebJobs.Script.EndToEndTests
 
         private async Task InitializeFunctionKeys()
         {
-            Trace.WriteLine("Initializing keys...");
+            _logger.LogInformation("Initializing keys...");
 
             using (var keysUpdate = Telemetry.StartOperation<RequestTelemetry>("KeysUpdate"))
             {
@@ -111,10 +113,13 @@ namespace WebJobs.Script.EndToEndTests
                 }
             }
         }
-
+        
         private async Task WaitForSite()
         {
-            Trace.WriteLine("Waiting for site...");
+            _logger.LogInformation("Waiting for site...");
+
+            TimeSpan delay = TimeSpan.FromSeconds(3);
+            int attemptsCount = 5;
 
             using (var client = new HttpClient())
             {
@@ -124,35 +129,42 @@ namespace WebJobs.Script.EndToEndTests
                 {
                     if (attempts++ > 0)
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(3));
+                        await Task.Delay(delay);
                     }
 
                     // Workaround for https://github.com/Azure/azure-functions-host/issues/2397 as the base URL
                     // doesn't currently start the host.
                     // var result = await client.GetAsync($"{Settings.SiteBaseAddress}");
                     var functions = await _kuduClient.GetFunctions();
-                    var result = await client.GetAsync($"{Settings.SiteBaseAddress}/admin/functions/{functions.First().Name}/status?code={FunctionAppMasterKey}");
+                    var result = await client.GetAsync($"{Settings.SiteBaseAddress}/admin/functions/{functions.First().Name}/status?code={FunctionAppMasterKey}");                    
                     statusCode = result.StatusCode;
+                    if (statusCode == HttpStatusCode.OK)
+                    {
+                        _logger.LogInformation("Site is up and running!");
+                        return;
+                    }
                 }
-                while (statusCode != HttpStatusCode.OK && attempts < 5);
+                while (attempts < attemptsCount);
+                
             }
 
-            Trace.WriteLine("Site is up and running!");
+            throw new InvalidOperationException("Wait for site timeout: {delay.TotalSeconds * 5} seconds.");
+            
         }
 
         private async Task AddSettings()
         {
-            Trace.WriteLine("Updating app settings...");
+            _logger.LogInformation("Updating app settings...");
             Telemetry.TrackEvent("SettingsUpdate");
 
             await AddAppSetting(Constants.ServiceBusKey, Environment.GetEnvironmentVariable(Constants.ServiceBusKey));
 
-            Trace.WriteLine("App settings updated");
+            _logger.LogInformation("App settings updated");
         }
 
         private async Task UpdateSiteContents()
         {
-            Trace.WriteLine("Updating site contents...");
+            _logger.LogInformation("Updating site contents...");
             Telemetry.TrackEvent("ContentUpdate");
 
             await _kuduClient.DeleteDirectory("site/wwwroot", true);
@@ -161,12 +173,12 @@ namespace WebJobs.Script.EndToEndTests
 
             await _kuduClient.UploadZip("site", filePath);
 
-            Trace.WriteLine("Site contents updated");
+            _logger.LogInformation("Site contents updated");
         }
 
         private async Task UpdateRuntime()
         {
-            Trace.WriteLine($"Updating runtime from: {Settings.RuntimeExtensionPackageUrl}");
+            _logger.LogInformation($"Updating runtime from: {Settings.RuntimeExtensionPackageUrl}");
             Telemetry.TrackEvent("RuntimeUpdate", new Dictionary<string, string> { { "runtimeSource", Settings.RuntimeExtensionPackageUrl } });
 
             string extensionFilePath = Path.ChangeExtension(Path.GetTempFileName(), "zip");
@@ -192,34 +204,34 @@ namespace WebJobs.Script.EndToEndTests
             await _kuduClient.DeleteDirectory("SiteExtensions", true);
             await _kuduClient.UploadZip("/", extensionFilePath);
 
-            Trace.WriteLine($"Updated to function runtime version: {Settings.RuntimeVersion}");
+            _logger.LogInformation($"Updated to function runtime version: {Settings.RuntimeVersion}");
         }
 
         public async Task RestartSite()
         {
-            Trace.WriteLine("Restarting site...");
+            _logger.LogInformation("Restarting site...");
 
             await IssueSiteCommand($"/subscriptions/{Settings.SiteSubscriptionId}/resourceGroups/{Settings.SiteResourceGroup}/providers/Microsoft.Web/sites/{Settings.SiteName}/restart?api-version=2015-08-01&softRestart=true&synchronous=true");
 
-            Trace.WriteLine("Site restarted");
+            _logger.LogInformation("Site restarted");
         }
 
         public async Task StopSite()
         {
-            Trace.WriteLine("Stopping site...");
+            _logger.LogInformation("Stopping site...");
 
             await IssueSiteCommand($"/subscriptions/{Settings.SiteSubscriptionId}/resourceGroups/{Settings.SiteResourceGroup}/providers/Microsoft.Web/sites/{Settings.SiteName}/stop?api-version=2015-08-01");
 
-            Trace.WriteLine("Site stopped");
+            _logger.LogInformation("Site stopped");
         }
 
         public async Task StartSite()
         {
-            Trace.WriteLine("Starting site...");
+            _logger.LogInformation("Starting site...");
 
             await IssueSiteCommand($"/subscriptions/{Settings.SiteSubscriptionId}/resourceGroups/{Settings.SiteResourceGroup}/providers/Microsoft.Web/sites/{Settings.SiteName}/start?api-version=2015-08-01");
 
-            Trace.WriteLine("Site started");
+            _logger.LogInformation("Site started");
         }
 
         public async Task AddAppSetting(string name, string value)
