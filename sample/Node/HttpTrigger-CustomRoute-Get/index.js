@@ -18,7 +18,7 @@ var catalog = [
 module.exports = function (context, req) {
     context.log('Node.js HTTP trigger function processed a request. Name=%s', req.query.name);
 
-    context.log('category: %s id: %s', context.bindingData.category, context.bindingData.id);
+    context.log('category: %s id: %s', context.bindingData.category || '<empty>', context.bindingData.id || '<empty>');
 
     var results = [];
     catalog.forEach(function (product) {
