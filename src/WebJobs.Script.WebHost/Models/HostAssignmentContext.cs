@@ -25,7 +25,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         {
             get
             {
-                if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteAltZipDeployment))
+                if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteRunFromPackage))
+                {
+                    return Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage];
+                }
+                else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteAltZipDeployment))
                 {
                     return Environment[EnvironmentSettingNames.AzureWebsiteAltZipDeployment];
                 }

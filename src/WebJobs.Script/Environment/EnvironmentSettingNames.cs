@@ -11,8 +11,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteOwnerName = "WEBSITE_OWNER_NAME";
         public const string AzureWebsiteInstanceId = "WEBSITE_INSTANCE_ID";
         public const string AzureWebsiteSku = "WEBSITE_SKU";
-        public const string AzureWebsiteZipDeployment = "WEBSITE_USE_ZIP";
-        public const string AzureWebsiteAltZipDeployment = "WEBSITE_RUN_FROM_ZIP";
         public const string RemoteDebuggingPort = "REMOTEDEBUGGINGPORT";
         public const string AzureWebsitePlaceholderMode = "WEBSITE_PLACEHOLDER_MODE";
         public const string AzureWebsiteHomePath = "HOME";
@@ -40,5 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string ContainerStartContext = "CONTAINER_START_CONTEXT";
         public const string ContainerStartContextSasUri = "CONTAINER_START_CONTEXT_SAS_URI";
+
+        // unfortunately there are 3 versions of this setting that have to be supported
+        // due to renames
+        public const string AzureWebsiteZipDeployment = "WEBSITE_USE_ZIP";
+        public const string AzureWebsiteAltZipDeployment = "WEBSITE_RUN_FROM_ZIP";
+        public const string AzureWebsiteRunFromPackage = "WEBSITE_RUN_FROM_PACKAGE";
     }
 }

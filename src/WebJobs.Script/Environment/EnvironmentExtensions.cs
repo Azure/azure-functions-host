@@ -30,7 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsZipDeployment(this IEnvironment environment)
         {
-            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment));
+            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment)) ||
+                !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteAltZipDeployment)) ||
+                !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage));
         }
 
         public static bool FileSystemIsReadOnly(this IEnvironment environment)
