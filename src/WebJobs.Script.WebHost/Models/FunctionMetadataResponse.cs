@@ -3,12 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Management.Models
 {
-    public class FunctionMetadataResponse
+    public class FunctionMetadataResponse : INamedObject
     {
         /// <summary>
         /// Gets or sets the function name

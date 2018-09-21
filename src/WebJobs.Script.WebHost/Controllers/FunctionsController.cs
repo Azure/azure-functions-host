@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
@@ -49,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public async Task<IActionResult> List(bool includeProxies = false)
         {
             var result = await _functionsManager.GetFunctionsMetadata(Request, includeProxies);
-            return Ok(result);
+            return Ok(ArmHelpers.AddEnvelopeOnArmRequest(result, Request));
         }
 
         [HttpGet]
@@ -60,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             (var success, var function) = await _functionsManager.TryGetFunction(name, Request);
 
             return success
-                ? Ok(function)
+                ? Ok(ArmHelpers.AddEnvelopeOnArmRequest(function, Request))
                 : NotFound() as IActionResult;
         }
 
@@ -83,11 +84,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     // TODO: sync triggers
                 }
 
-                return Created(Request.GetDisplayUrl(), functionMetadataResponse);
+                return Created(Request.GetDisplayUrl(), ArmHelpers.AddEnvelopeOnArmRequest(functionMetadataResponse, Request));
             }
             else
             {
-                return StatusCode(500);
+                return StatusCode(500, ArmHelpers.CreateErrorResponse(500, $"Error creating or updating function {name}"));
             }
         }
 
