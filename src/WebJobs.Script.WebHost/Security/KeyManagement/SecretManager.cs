@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
@@ -21,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ILogger _logger;
         private readonly ISecretsRepository _repository;
         private HostSecretsInfo _hostSecrets;
+        private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
 
         // for testing
         public SecretManager()
@@ -65,43 +67,53 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (_hostSecrets == null)
             {
-                HostSecrets hostSecrets = await LoadSecretsAsync<HostSecrets>();
-
-                if (hostSecrets == null)
-                {
-                    // host secrets do not yet exist so generate them
-                    _logger.LogDebug(Resources.TraceHostSecretGeneration);
-                    hostSecrets = GenerateHostSecrets();
-                    await PersistSecretsAsync(hostSecrets);
-                }
-
+                HostSecrets hostSecrets;
+                // Allow only one thread to modify the secrets
+                await _semaphoreSlim.WaitAsync();
                 try
                 {
-                    // Host secrets will be in the original persisted state at this point (e.g. encrypted),
-                    // so we read the secrets running them through the appropriate readers
-                    hostSecrets = ReadHostSecrets(hostSecrets);
-                }
-                catch (CryptographicException)
-                {
-                    _logger?.LogDebug(Resources.TraceNonDecryptedHostSecretRefresh);
-                    await PersistSecretsAsync(hostSecrets, null, true);
-                    await RefreshSecretsAsync(hostSecrets);
-                }
+                    hostSecrets = await LoadSecretsAsync<HostSecrets>();
 
-                // If the persistence state of any of our secrets is stale (e.g. the encryption key has been rotated), update
-                // the state and persist the secrets
-                if (hostSecrets.HasStaleKeys)
-                {
-                    _logger.LogDebug(Resources.TraceStaleHostSecretRefresh);
-                    await RefreshSecretsAsync(hostSecrets);
-                }
+                    if (hostSecrets == null)
+                    {
+                        // host secrets do not yet exist so generate them
+                        _logger.LogDebug(Resources.TraceHostSecretGeneration);
+                        hostSecrets = GenerateHostSecrets();
+                        await PersistSecretsAsync(hostSecrets);
+                    }
 
-                _hostSecrets = new HostSecretsInfo
+                    try
+                    {
+                        // Host secrets will be in the original persisted state at this point (e.g. encrypted),
+                        // so we read the secrets running them through the appropriate readers
+                        hostSecrets = ReadHostSecrets(hostSecrets);
+                    }
+                    catch (CryptographicException)
+                    {
+                        _logger?.LogDebug(Resources.TraceNonDecryptedHostSecretRefresh);
+                        await PersistSecretsAsync(hostSecrets, null, true);
+                        await RefreshSecretsAsync(hostSecrets);
+                    }
+
+                    // If the persistence state of any of our secrets is stale (e.g. the encryption key has been rotated), update
+                    // the state and persist the secrets
+                    if (hostSecrets.HasStaleKeys)
+                    {
+                        _logger.LogDebug(Resources.TraceStaleHostSecretRefresh);
+                        await RefreshSecretsAsync(hostSecrets);
+                    }
+
+                    _hostSecrets = new HostSecretsInfo
+                    {
+                        MasterKey = hostSecrets.MasterKey.Value,
+                        FunctionKeys = hostSecrets.FunctionKeys.ToDictionary(s => s.Name, s => s.Value),
+                        SystemKeys = hostSecrets.SystemKeys.ToDictionary(s => s.Name, s => s.Value)
+                    };
+                }
+                finally
                 {
-                    MasterKey = hostSecrets.MasterKey.Value,
-                    FunctionKeys = hostSecrets.FunctionKeys.ToDictionary(s => s.Name, s => s.Value),
-                    SystemKeys = hostSecrets.SystemKeys.ToDictionary(s => s.Name, s => s.Value)
-                };
+                    _semaphoreSlim.Release();
+                }
             }
 
             return _hostSecrets;
