@@ -22,9 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script
             set { _instance = value; }
         }
 
-        public static string ReadResourceString(string resourcePath)
+        public static string ReadResourceString(string resourcePath, Assembly assembly = null)
         {
-            Assembly assembly = Assembly.GetCallingAssembly();
+            assembly = assembly ?? Assembly.GetCallingAssembly();
             using (StreamReader reader = new StreamReader(assembly.GetManifestResourceStream(resourcePath)))
             {
                 return reader.ReadToEnd();

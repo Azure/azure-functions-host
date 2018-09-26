@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             return default(TValue);
         }
 
-        public static bool IsAntaresInternalRequest(this HttpRequest request, IEnvironment environment = null)
+        public static bool IsAppServiceInternalRequest(this HttpRequest request, IEnvironment environment = null)
         {
             environment = environment ?? SystemEnvironment.Instance;
             if (!environment.IsAppServiceEnvironment())

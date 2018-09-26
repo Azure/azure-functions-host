@@ -34,6 +34,36 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
         private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.DotNetAssembly };
 
+        internal static async Task InvokeWithRetriesAsync(Action action, int maxRetries, TimeSpan retryInterval)
+        {
+            await InvokeWithRetriesAsync(() =>
+            {
+                action();
+                return Task.CompletedTask;
+            }, maxRetries, retryInterval);
+        }
+
+        internal static async Task InvokeWithRetriesAsync(Func<Task> action, int maxRetries, TimeSpan retryInterval)
+        {
+            int attempt = 0;
+            while (true)
+            {
+                try
+                {
+                    await action();
+                    return;
+                }
+                catch (Exception ex) when (!ex.IsFatal())
+                {
+                    if (++attempt > maxRetries)
+                    {
+                        throw;
+                    }
+                    await Task.Delay(retryInterval);
+                }
+            }
+        }
+
         /// <summary>
         /// Delays while the specified condition remains true.
         /// </summary>

@@ -5,14 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Dynamic;
-using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.WebJobs.Script.Tests;
-using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -49,6 +45,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
     public class UtilityTests
     {
+        [Fact]
+        public async Task InvokeWithRetriesAsync_Throws_WhenRetryCountExceeded()
+        {
+            var ex = new Exception("Kaboom!");
+            var result = await Assert.ThrowsAsync<Exception>(async () =>
+            {
+                await Utility.InvokeWithRetriesAsync(() => throw ex, maxRetries: 4, retryInterval: TimeSpan.FromMilliseconds(25));
+            });
+            Assert.Same(ex, result);
+        }
+
+        [Fact]
+        public async Task InvokeWithRetriesAsync_Succeeds_AfterSeveralRetries()
+        {
+            int count = 0;
+            await Utility.InvokeWithRetriesAsync(() =>
+            {
+                if (count++ < 3)
+                {
+                    throw new Exception("Kaboom!");
+                }
+            }, maxRetries: 4, retryInterval: TimeSpan.FromMilliseconds(25));
+        }
+
         [Fact]
         public async Task DelayWithBackoffAsync_Returns_WhenCancelled()
         {

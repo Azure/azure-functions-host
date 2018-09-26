@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         {
             // not running under Azure
             var request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar");
-            Assert.False(request.IsAntaresInternalRequest());
+            Assert.False(request.IsAppServiceInternalRequest());
 
             // running under Azure
             var vars = new Dictionary<string, string>
@@ -33,10 +33,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 headers.Add(ScriptConstants.AntaresLogIdHeaderName, "123");
 
                 request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar", headers);
-                Assert.False(request.IsAntaresInternalRequest());
+                Assert.False(request.IsAppServiceInternalRequest());
 
                 request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar");
-                Assert.True(request.IsAntaresInternalRequest());
+                Assert.True(request.IsAppServiceInternalRequest());
             }
         }
     }

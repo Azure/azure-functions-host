@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             {
                 IActionResult result = null;
 
-                if (IsHomepageDisabled || context.Request.IsAntaresInternalRequest())
+                if (IsHomepageDisabled || context.Request.IsAppServiceInternalRequest())
                 {
                     result = new NoContentResult();
                 }

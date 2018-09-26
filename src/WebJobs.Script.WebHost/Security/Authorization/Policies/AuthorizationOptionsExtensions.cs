@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
                 {
                     if (c.Resource is AuthorizationFilterContext filterContext)
                     {
-                        if (filterContext.HttpContext.Request.IsAntaresInternalRequest())
+                        if (filterContext.HttpContext.Request.IsAppServiceInternalRequest())
                         {
                             return true;
                         }

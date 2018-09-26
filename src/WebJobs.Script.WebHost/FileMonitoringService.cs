@@ -263,7 +263,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             else if (!offline && offlineFileExists)
             {
                 // delete the app_offline.htm file
-                FileUtility.DeleteFileSafe(path);
+                await Utility.InvokeWithRetriesAsync(() =>
+                {
+                    if (File.Exists(path))
+                    {
+                        File.Delete(path);
+                    }
+                }, maxRetries: 3, retryInterval: TimeSpan.FromSeconds(1));
             }
         }
     }
