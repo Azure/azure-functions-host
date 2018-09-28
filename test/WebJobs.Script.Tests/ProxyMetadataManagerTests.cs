@@ -7,6 +7,7 @@ using System.IO;
 using System.Text;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using WebJobs.Script.Tests;
 using Xunit;
 
@@ -20,15 +21,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (var tempDirectory = new TempDirectory())
             {
                 var testProxiesPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Proxies");
-                var monitor = new TestOptionsMonitor<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions
+                var options = new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions
                 {
-                    ScriptPath = tempDirectory.Path
+                    RootScriptPath = tempDirectory.Path
                 });
 
                 var environment = new TestEnvironment();
                 var eventManager = new ScriptEventManager();
 
-                var manager = new ProxyMetadataManager(monitor, environment, eventManager, NullLoggerFactory.Instance);
+                var manager = new ProxyMetadataManager(options, environment, eventManager, NullLoggerFactory.Instance);
 
                 // Get metadata before proxies exist
                 ProxyMetadataInfo proxyMetadata1 = manager.ProxyMetadata;

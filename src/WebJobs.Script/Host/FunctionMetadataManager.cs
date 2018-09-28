@@ -45,7 +45,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private ImmutableArray<FunctionMetadata> LoadFunctionMetadata()
         {
+            _logger.LogInformation("Loading functions metadata");
             Collection<FunctionMetadata> functionMetadata = ReadFunctionsMetadata();
+            _logger.LogInformation($"{functionMetadata.Count} functions loaded");
 
             return functionMetadata.ToImmutableArray();
         }

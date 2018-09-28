@@ -91,6 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _httpClient.Dispose();
 
             // verify the rest of the expected logs
+            logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
             Assert.True(logLines.Count(p => p.Contains("Stopping JobHost")) >= 1);
             Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
             Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
@@ -98,6 +99,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
             Assert.Equal(3, logLines.Count(p => p.Contains($"Starting Host (HostId={_expectedHostId}")));
+            Assert.Equal(3, logLines.Count(p => p.Contains($"Loading functions metadata")));
+            Assert.Equal(2, logLines.Count(p => p.Contains($"1 functions loaded")));
+            Assert.Equal(1, logLines.Count(p => p.Contains($"0 functions loaded")));
+            Assert.Equal(1, logLines.Count(p => p.Contains($"Loading proxies metadata")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
+            Assert.Equal(1, logLines.Count(p => p.Contains($"0 proxies loaded")));       
             Assert.Contains("Generating 0 job function(s)", logLines);
 
             // Verify that the internal cache has reset
@@ -162,6 +169,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _httpServer.Dispose();
             _httpClient.Dispose();
 
+            // make sure there are no errors
+            var logs = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null);
+            var error = logs.Where(p => p.Level == Microsoft.Extensions.Logging.LogLevel.Error).FirstOrDefault();
+            Assert.True(error == null, $"Unexpected error: {error?.FormattedMessage} - {error?.Exception.ToFormattedString()}");
+
             string sanitizedMachineName = Environment.MachineName
                     .Where(char.IsLetterOrDigit)
                     .Aggregate(new StringBuilder(), (b, c) => b.Append(c))
@@ -182,6 +194,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logLines.Count(p => p.Contains("Triggering specialization")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
             Assert.Equal(3, logLines.Count(p => p.Contains($"Starting Host (HostId={sanitizedMachineName}")));
+            Assert.Equal(1, logLines.Count(p => p.Contains($"Loading proxies metadata")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
+            Assert.Equal(1, logLines.Count(p => p.Contains($"0 proxies loaded")));
             Assert.Contains("Node.js HttpTrigger function invoked.", logLines);
 
             // verify cold start log entry
@@ -199,6 +214,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var httpConfig = new HttpConfiguration();
             var uniqueTestRootPath = Path.Combine(_testRootPath, testDirName, Guid.NewGuid().ToString());
+            var scriptRootPath = Path.Combine(uniqueTestRootPath, "wwwroot");
+
+            FileUtility.EnsureDirectoryExists(scriptRootPath);
+            string proxyConfigPath = Path.Combine(scriptRootPath, "proxies.json");
+            File.WriteAllText(proxyConfigPath, "{}");
+            await TestHelpers.Await(() => File.Exists(proxyConfigPath));
 
             _loggerProvider = new TestLoggerProvider();
 
@@ -232,11 +253,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         o.IsSelfHost = true;
                         o.LogPath = Path.Combine(uniqueTestRootPath, "logs");
                         o.SecretsPath = Path.Combine(uniqueTestRootPath, "secrets");
-                        o.ScriptPath = _expectedScriptPath = Path.Combine(uniqueTestRootPath, "wwwroot");
+                        o.ScriptPath = _expectedScriptPath = scriptRootPath;
                     });
 
                     c.AddSingleton<IEnvironment>(_ => environment);
-
                     c.AddSingleton<IConfigureBuilder<ILoggingBuilder>>(new DelegatedConfigureBuilder<ILoggingBuilder>(b => b.AddProvider(_loggerProvider)));
                 });
 
@@ -353,7 +373,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var testRootPath = Path.Combine(Path.GetTempPath(), "StandbyManagerTests");
             try
             {
-                FileUtility.DeleteDirectoryAsync(testRootPath, true);
+                FileUtility.DeleteDirectoryAsync(testRootPath, true).GetAwaiter().GetResult();
             }
             catch
             {

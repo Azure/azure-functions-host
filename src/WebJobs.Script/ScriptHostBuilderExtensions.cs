@@ -106,7 +106,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 configureWebJobs?.Invoke(webJobsBuilder);
             }, o => o.AllowPartialHostStartup = true);
 
-            // Script host services
+            // Script host services - these services are scoped to a host instance, and when a new host
+            // is created, these services are recreated
             builder.ConfigureServices(services =>
             {
                 // Core WebJobs/Script Host services
@@ -114,6 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
+                services.AddSingleton<IProxyMetadataManager, ProxyMetadataManager>();
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
                 services.AddSingleton<ScriptSettingsManager>();
                 services.AddTransient<IExtensionsManager, ExtensionsManager>();
@@ -157,12 +159,16 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static void AddCommonServices(IServiceCollection services)
         {
+            // The scope for these services is beyond a single host instance.
+            // They are not recreated for each new host instance, so you have
+            // to be careful with caching, etc. E.g. these services will get
+            // initially created in placeholder mode and live on through the
+            // specialized app.
             services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
-            services.AddSingleton<IProxyMetadataManager, ProxyMetadataManager>();
             services.TryAddSingleton<HostPerformanceManager>();
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
         }
