@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
@@ -138,8 +139,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 await DownloadAsync(zipUri, filePath);
 
                 _logger.LogInformation($"Extracting files to '{options.ScriptPath}'");
-                ZipFile.ExtractToDirectory(filePath, options.ScriptPath, overwriteFiles: true);
-                _logger.LogInformation($"Zip extraction complete");
+                if (zipUri.AbsolutePath.EndsWith(".tar"))
+                {
+                    using (var process = Process.Start("tar", $"xf {filePath} -C {options.ScriptPath}"))
+                    {
+                        process.WaitForExit();
+                        if (process.ExitCode != 0)
+                        {
+                            _logger.LogError($"Error extracting tar");
+                            throw new Exception("error tar");
+                        }
+                    }
+                    _logger.LogInformation($"tar extraction complete");
+                }
+                else
+                {
+                    ZipFile.ExtractToDirectory(filePath, options.ScriptPath, overwriteFiles: true);
+                    _logger.LogInformation($"Zip extraction complete");
+                }
             }
         }
 

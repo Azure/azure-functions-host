@@ -5,7 +5,6 @@ ENV PublishWithAspNetCoreTargetManifest false
 COPY . /workingdir
 
 RUN cd workingdir && \
-    dotnet build WebJobs.Script.sln && \
     dotnet publish src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj --output /azure-functions-host
 
 # Runtime image
@@ -18,7 +17,7 @@ RUN apt-get update && \
     apt-get install -y nodejs
 
 COPY --from=installer-env ["/azure-functions-host", "/azure-functions-host"]
-COPY --from=installer-env ["/workingdir/sample", "/home/site/wwwroot"]
+# COPY --from=installer-env ["/workingdir/sample", "/home/site/wwwroot"]
 
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot
 ENV HOME=/home
