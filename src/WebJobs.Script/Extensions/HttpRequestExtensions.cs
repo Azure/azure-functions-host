@@ -17,11 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             return request.Path.StartsWithSegments("/admin");
         }
 
-        public static AuthorizationLevel GetAuthorizationLevel(this HttpRequest request)
-        {
-            return request.GetRequestPropertyOrDefault<AuthorizationLevel>(ScriptConstants.AzureFunctionsHttpRequestAuthorizationLevelKey);
-        }
-
         public static TValue GetRequestPropertyOrDefault<TValue>(this HttpRequest request, string key)
         {
             if (request.HttpContext != null &&

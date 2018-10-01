@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             IEnvironment environment = builder.ApplicationServices.GetService<IEnvironment>() ?? SystemEnvironment.Instance;
 
+            builder.UseMiddleware<SystemTraceMiddleware>();
             builder.UseMiddleware<EnvironmentReadyCheckMiddleware>();
 
             if (environment.IsPlaceholderModeEnabled())

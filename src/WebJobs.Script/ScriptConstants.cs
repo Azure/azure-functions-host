@@ -7,13 +7,12 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class ScriptConstants
     {
-        public const string AzureFunctionsWebHookContextKey = "MS_AzureFunctionsWebHookContext";
         public const string AzureFunctionsHttpResponseKey = "MS_AzureFunctionsHttpResponse";
-        public const string AzureFunctionsHttpRequestAuthorizationLevelKey = "MS_AzureFunctionsAuthorizationLevel";
         public const string AzureFunctionsHttpRequestKeyNameKey = "MS_AzureFunctionsKeyId";
         public const string AzureFunctionsHttpRequestAuthorizationDisabledKey = "MS_AzureFunctionsAuthorizationDisabled";
         public const string AzureFunctionsRequestIdKey = "MS_AzureFunctionsRequestID";
         public const string AzureFunctionsColdStartKey = "MS_AzureFunctionsColdStart";
+        public const string AzureFunctionsRequestTimer = "MS_AzureFunctionsRequestTimer";
         public const string AzureFunctionsHttpRequestKey = "MS_AzureFunctionsHttpRequest";
         public const string AzureProxyFunctionExecutorKey = "MS_AzureProxyFunctionExecutor";
         public const string AzureFunctionsHostKey = "MS_AzureFunctionsHost";

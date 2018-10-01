@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -42,7 +43,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             //    // downstream middleware and filters rely on this
             //    context.Items[ScriptConstants.AzureFunctionsHostKey] = scriptHost;
             //}
-            SetRequestId(context.Request);
 
             if (_next != null)
             {
@@ -203,12 +203,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             {
                 return true;
             }
-        }
-
-        internal static void SetRequestId(HttpRequest request)
-        {
-            string requestID = request.GetHeaderValueOrDefault(ScriptConstants.AntaresLogIdHeaderName) ?? Guid.NewGuid().ToString();
-            request.HttpContext.Items[ScriptConstants.AzureFunctionsRequestIdKey] = requestID;
         }
     }
 }
