@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
 using DryIoc;
@@ -16,18 +16,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         {
             Container = resolver ?? throw new ArgumentNullException(nameof(resolver));
             IsRootResolver = isRootResolver;
-            ChildScopes = new HashSet<ServiceScope>();
+            ChildScopes = new ConcurrentDictionary<ServiceScope, object>();
         }
 
         public IContainer Container { get; }
 
-        public HashSet<ServiceScope> ChildScopes { get; }
+        public ConcurrentDictionary<ServiceScope, object> ChildScopes { get; }
 
         public bool IsRootResolver { get; }
 
         public void Dispose()
         {
-            Task childScopeTasks = Task.WhenAll(ChildScopes.Select(s => s.DisposalTask));
+            Task childScopeTasks = Task.WhenAll(ChildScopes.Keys.Select(s => s.DisposalTask));
             Task.WhenAny(childScopeTasks, Task.Delay(5000))
                 .ContinueWith(t =>
                 {
@@ -52,9 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
               }));
 
             var scope = new ServiceScope(resolver, scopedRoot);
-            ChildScopes.Add(scope);
+            ChildScopes.TryAdd(scope, null);
 
-            scope.DisposalTask.ContinueWith(t => ChildScopes.Remove(scope));
+            scope.DisposalTask.ContinueWith(t => ChildScopes.TryRemove(scope, out object _));
 
             return scope;
         }
