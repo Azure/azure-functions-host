@@ -2,8 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Internal;
 using Microsoft.AspNetCore.Http;
@@ -23,9 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public async Task Invoke(HttpContext httpContext, WebJobsScriptHostService manager)
         {
-            // TODO: DI (FACAVAL) Remove this once the host check middleware is updated.
-            //await Task.Delay(5000);
-
             if (manager.Services is IServiceScopeFactory scopedServiceProvider)
             {
                 var features = httpContext.Features;

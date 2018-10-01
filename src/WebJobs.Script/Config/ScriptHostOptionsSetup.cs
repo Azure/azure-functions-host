@@ -89,9 +89,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 }
                 options.FunctionTimeout = functionTimeout;
             }
-
-            // TODO: DI: JobHostOptions need to me updated.
-            //scriptConfig.HostOptions.FunctionTimeout = ScriptHost.CreateTimeoutConfiguration(scriptConfig);
         }
 
         private void ValidateTimeoutValue(ScriptJobHostOptions options, TimeSpan? timeoutValue)
