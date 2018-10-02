@@ -7,9 +7,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
 
@@ -24,8 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
         protected async Task CosmosDBTriggerToBlobTest()
         {
-            // CosmosDB tests need the following environment vars:
-            // "AzureWebJobsCosmosDBConnectionString" -- the connection string to the account
+            // CosmosDB tests need the following connection string:
+            // "ConnectionStrings:CosmosDB" -- the connection string to the account
 
             // Waiting for the Processor to acquire leases
             await Task.Delay(10000);
@@ -59,8 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
         protected async Task CosmosDBTest()
         {
-            // DocumentDB tests need the following environment vars:
-            // "AzureWebJobsCosmosDBConnectionString" -- the connection string to the account
+            // DocumentDB tests need the following connection string:
+            // "ConnectionStrings:CosmosDB" -- the connection string to the account
             string id = Guid.NewGuid().ToString();
 
             await Fixture.Host.BeginFunctionAsync("CosmosDBOut", id);
@@ -98,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
                     new ExtensionPackageReference
                     {
                         Id = "Microsoft.Azure.WebJobs.Extensions.CosmosDB",
-                        Version = "3.0.0-beta9*"
+                        Version = "3.0.1"
                     }
             };
         }
@@ -120,8 +119,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         {
             if (DocumentClient == null)
             {
-                var builder = new System.Data.Common.DbConnectionStringBuilder();
-                builder.ConnectionString = Environment.GetEnvironmentVariable("AzureWebJobsCosmosDBConnectionString");
+                var builder = new System.Data.Common.DbConnectionStringBuilder
+                {
+                    ConnectionString = TestHelpers.GetTestConfiguration().GetConnectionString("CosmosDB")
+                };
+
                 var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
 
                 DocumentClient = new DocumentClient(serviceUri, builder["AccountKey"].ToString());

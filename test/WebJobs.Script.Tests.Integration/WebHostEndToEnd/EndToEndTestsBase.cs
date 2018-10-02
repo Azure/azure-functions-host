@@ -28,15 +28,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         IClassFixture<TTestFixture> where TTestFixture : EndToEndTestFixture, new()
     {
         private INameResolver _nameResolver;
+        private IConfiguration _configuration;
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
 
         public EndToEndTestsBase(TTestFixture fixture)
         {
-            var config = new ConfigurationBuilder()
-                .AddEnvironmentVariables()
-                .Build();
+            _configuration = TestHelpers.GetTestConfiguration();
 
-            _nameResolver = new DefaultNameResolver(config);
+            _nameResolver = new DefaultNameResolver(_configuration);
             Fixture = fixture;
         }
 
@@ -342,8 +341,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var docUri = UriFactory.CreateDocumentUri("ItemDb", "ItemCollection", itemId);
 
-            // We know the tests are using the default INameResolver and the default setting.
-            var connectionString = _nameResolver.Resolve("AzureWebJobsCosmosDBConnectionString");
+            // We know the tests are using the default connection string.
+            var connectionString = _configuration.GetConnectionString("CosmosDB");
             var builder = new DbConnectionStringBuilder
             {
                 ConnectionString = connectionString

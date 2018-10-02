@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -61,8 +62,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public async Task InitializeAsync()
         {
-            Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime);
-            
             _copiedRootPath = Path.Combine(Path.GetTempPath(), "FunctionsE2E", DateTime.UtcNow.ToString("yyMMdd-HHmmss"));
             FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
 
@@ -80,7 +79,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
-            Host = new TestFunctionHost(_copiedRootPath, logPath, ConfigureJobHost);
+            Host = new TestFunctionHost(_copiedRootPath, logPath, ConfigureJobHost, configureAppConfiguration: s =>
+            {
+                s.AddInMemoryCollection(new Dictionary<string, string>()
+                {
+                    { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime }
+                });
+            });
 
             string connectionString = Host.JobHostServices.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
