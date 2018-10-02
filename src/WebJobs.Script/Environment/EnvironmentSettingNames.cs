@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string ContainerStartContext = "CONTAINER_START_CONTEXT";
         public const string ContainerStartContextSasUri = "CONTAINER_START_CONTEXT_SAS_URI";
+        public const string FunctionsLogsMountPath = "FUNCTIONS_LOGS_MOUNT_PATH";
 
         // unfortunately there are 3 versions of this setting that have to be supported
         // due to renames

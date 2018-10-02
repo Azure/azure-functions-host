@@ -18,6 +18,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return !environment.IsAppServiceEnvironment() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName));
         }
 
+        public static bool IsLinuxAppServiceEnvironment(this IEnvironment environment)
+        {
+            return environment.IsAppServiceEnvironment() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(FunctionsLogsMountPath));
+        }
+
         public static bool IsPlaceholderModeEnabled(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariable(AzureWebsitePlaceholderMode) == "1";

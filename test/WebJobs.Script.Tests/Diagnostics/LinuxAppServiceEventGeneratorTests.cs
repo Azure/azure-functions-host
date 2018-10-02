@@ -3,30 +3,36 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 {
-    public class LinuxContainerEventGeneratorTests
+    public class LinuxAppServiceEventGeneratorTests
     {
-        private readonly LinuxContainerEventGenerator _generator;
-        private readonly List<string> _events;
+        private readonly LinuxAppServiceEventGenerator _generator;
+        private readonly Dictionary<string, MockLinuxAppServiceFileLogger> _loggers;
 
-        public LinuxContainerEventGeneratorTests()
+        public LinuxAppServiceEventGeneratorTests()
         {
-            _events = new List<string>();
-            Action<string> writer = (s) =>
+            _loggers = new Dictionary<string, MockLinuxAppServiceFileLogger>
             {
-                _events.Add(s);
+                [LinuxEventGenerator.FunctionsLogsCategory] =
+                    new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsLogsCategory, string.Empty, null),
+                [LinuxEventGenerator.FunctionsMetricsCategory] =
+                    new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsMetricsCategory, string.Empty, null),
+                [LinuxEventGenerator.FunctionsDetailsCategory] =
+                    new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsDetailsCategory, string.Empty, null)
             };
-            _generator = new LinuxContainerEventGenerator(writer);
+
+            var loggerFactoryMock = new Mock<LinuxAppServiceFileLoggerFactory>(MockBehavior.Strict);
+            loggerFactoryMock.Setup(f => f.GetOrCreate(It.IsAny<string>())).Returns<string>(s => _loggers[s]);
+
+            _generator = new LinuxAppServiceEventGenerator(loggerFactoryMock.Object);
         }
 
         [Theory]
@@ -35,10 +41,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             _generator.LogFunctionTraceEvent(level, subscriptionId, appName, functionName, eventName, source, details, summary, exceptionType, exceptionMessage, functionInvocationId, hostInstanceId, activityId);
 
-            string evt = _events.Single();
-            evt = JsonSerializeEvent(evt);
+            var evt = _loggers[LinuxEventGenerator.FunctionsLogsCategory].Events.Single();
 
-            Regex regex = new Regex(LinuxContainerEventGenerator.TraceEventRegex);
+            var regex = new Regex(LinuxAppServiceEventGenerator.TraceEventRegex);
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
@@ -53,42 +58,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(functionName, p),
                 p => Assert.Equal(eventName, p),
                 p => Assert.Equal(source, p),
-                p => Assert.Equal(details, JsonUnescape(p)),
-                p => Assert.Equal(summary, JsonUnescape(p)),
+                p => Assert.Equal(details, p),
+                p => Assert.Equal(summary, p),
                 p => Assert.Equal(ScriptHost.Version, p),
                 p => Assert.True(DateTime.TryParse(p, out dt)),
                 p => Assert.Equal(exceptionType, p),
-                p => Assert.Equal(exceptionMessage, JsonUnescape(p)),
+                p => Assert.Equal(exceptionMessage, p),
                 p => Assert.Equal(functionInvocationId, p),
                 p => Assert.Equal(hostInstanceId, p),
                 p => Assert.Equal(activityId, p));
-        }
-
-        private static string JsonUnescape(string value)
-        {
-            // Because the log data is being JSON serialized it ends up getting
-            // escaped. This function reverses that escaping.
-            return value.Replace("\\", string.Empty);
-        }
-
-        private static string JsonSerializeEvent(string evt)
-        {
-            // the logging pipeline currently wraps our raw log data with JSON
-            // schema like the below
-            JObject attribs = new JObject
-            {
-                { "ApplicationName", "TestApp" },
-                { "CodePackageName", "TestCodePackage" }
-            };
-            JObject jo = new JObject
-            {
-                { "log", evt },
-                { "stream", "stdout" },
-                { "attrs", attribs },
-                { "time", DateTime.UtcNow.ToString("o") }
-            };
-
-            return jo.ToString(Formatting.None);
         }
 
         [Theory]
@@ -97,10 +75,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             _generator.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, DateTime.Now);
 
-            string evt = _events.Single();
-            evt = JsonSerializeEvent(evt);
+            string evt = _loggers[LinuxEventGenerator.FunctionsMetricsCategory].Events.Single();
 
-            Regex regex = new Regex(LinuxContainerEventGenerator.MetricEventRegex);
+            Regex regex = new Regex(LinuxAppServiceEventGenerator.MetricEventRegex);
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
@@ -127,10 +104,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             _generator.LogFunctionDetailsEvent(siteName, functionName, inputBindings, outputBindings, scriptType, isDisabled);
 
-            string evt = _events.Single();
-            evt = JsonSerializeEvent(evt);
+            string evt = _loggers[LinuxEventGenerator.FunctionsDetailsCategory].Events.Single();
 
-            Regex regex = new Regex(LinuxContainerEventGenerator.DetailsEventRegex);
+            Regex regex = new Regex(LinuxAppServiceEventGenerator.DetailsEventRegex);
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
@@ -140,23 +116,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.Collection(groupMatches,
                 p => Assert.Equal(siteName, p),
                 p => Assert.Equal(functionName, p),
-                p => Assert.Equal(inputBindings, JsonUnescape(p)),
-                p => Assert.Equal(outputBindings, JsonUnescape(p)),
+                p => Assert.Equal(inputBindings, p),
+                p => Assert.Equal(outputBindings, p),
                 p => Assert.Equal(scriptType, p),
                 p => Assert.Equal(isDisabled ? "1" : "0", p));
-        }
-
-        [Theory]
-        [InlineData(LogLevel.Trace, EventLevel.Verbose)]
-        [InlineData(LogLevel.Debug, EventLevel.Verbose)]
-        [InlineData(LogLevel.Information, EventLevel.Informational)]
-        [InlineData(LogLevel.Warning, EventLevel.Warning)]
-        [InlineData(LogLevel.Error, EventLevel.Error)]
-        [InlineData(LogLevel.Critical, EventLevel.Critical)]
-        [InlineData(LogLevel.None, EventLevel.LogAlways)]
-        public void ToEventLevel_ReturnsExpectedValue(LogLevel logLevel, EventLevel eventLevel)
-        {
-            Assert.Equal(eventLevel, LinuxEventGenerator.ToEventLevel(logLevel));
         }
     }
 }
