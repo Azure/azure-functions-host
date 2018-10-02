@@ -64,7 +64,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                       services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions)));
                       services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
 
-                      services.AddSingleton<IConfigureBuilder<IConfigurationBuilder>>(_ => new DelegatedConfigureBuilder<IConfigurationBuilder>(configureAppConfiguration));
+                      services.AddSingleton<IConfigureBuilder<IConfigurationBuilder>>(_ => new DelegatedConfigureBuilder<IConfigurationBuilder>(c =>
+                      {
+                          c.AddTestSettings();
+                          configureAppConfiguration?.Invoke(c);
+                      }));
 
                       configureServices?.Invoke(services);
                   })
