@@ -33,15 +33,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly ILogger _logger;
         private readonly HttpClient _client;
         private readonly IEnumerable<WorkerConfig> _workerConfigs;
-        private readonly IProxyMetadataManager _proxyMetadataManager;
 
-        public WebFunctionsManager(IOptions<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient client, IProxyMetadataManager proxyMetadataManager)
+        public WebFunctionsManager(IOptions<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient client)
         {
             _hostOptions = applicationHostOptions.Value.ToHostOptions();
-            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryKeysController);
+            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
             _client = client;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
-            _proxyMetadataManager = proxyMetadataManager;
         }
 
         /// <summary>
@@ -261,10 +259,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             if (includeProxies)
             {
                 // get proxies metadata
-                var proxyMetadata = _proxyMetadataManager.ProxyMetadata;
-                if (!proxyMetadata.Functions.IsDefaultOrEmpty)
+                var values = ProxyMetadataManager.ReadProxyMetadata(_hostOptions.RootScriptPath, _logger);
+                var proxyFunctionsMetadata = values.Item1;
+                if (proxyFunctionsMetadata?.Count > 0)
                 {
-                    functionsMetadata = proxyMetadata.Functions.Concat(functionsMetadata);
+                    functionsMetadata = proxyFunctionsMetadata.Concat(functionsMetadata);
                 }
             }
 

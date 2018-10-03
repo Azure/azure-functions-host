@@ -52,10 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
                 var contentBuilder = new StringBuilder();
                 var httpClient = CreateHttpClient(contentBuilder);
-                var proxyMetadataManager = new Mock<IProxyMetadataManager>(MockBehavior.Strict);
-                var proxyMetadata = new ProxyMetadataInfo(new FunctionMetadata[0].ToImmutableArray(), null, null);
-                proxyMetadataManager.SetupGet(p => p.ProxyMetadata).Returns(proxyMetadata);
-                var webManager = new WebFunctionsManager(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, proxyMetadataManager.Object);
+                var webManager = new WebFunctionsManager(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient);
 
                 FileUtility.Instance = fileSystem;
 
@@ -99,10 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
             var contentBuilder = new StringBuilder();
             var httpClient = CreateHttpClient(contentBuilder);
-            var proxyMetadataManager = new Mock<IProxyMetadataManager>(MockBehavior.Strict);
-            var proxyMetadata = new ProxyMetadataInfo(new FunctionMetadata[0].ToImmutableArray(), null, null);
-            proxyMetadataManager.SetupGet(p => p.ProxyMetadata).Returns(proxyMetadata);
-            var webManager = new WebFunctionsManager(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, proxyMetadataManager.Object);
+            var webManager = new WebFunctionsManager(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient);
 
             FileUtility.Instance = fileSystem;
             IEnumerable<FunctionMetadata> metadata = webManager.GetFunctionsMetadata();

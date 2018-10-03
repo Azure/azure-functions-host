@@ -228,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // slightly out-of-order or on different threads
             TraceTelemetry[] traces = null;
 
-            int expectedCount = 10;
+            int expectedCount = 12;
 
             await TestHelpers.Await(() =>
             {
@@ -253,16 +253,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
             Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
-            ValidateTrace(traces[0], "A function whitelist has been specified", LogCategories.Startup);
-            ValidateTrace(traces[1], "Found the following functions:\r\n", LogCategories.Startup);
-            ValidateTrace(traces[2], "Generating 2 job function(s)", LogCategories.Startup);
-            ValidateTrace(traces[3], "Host initialization: ConsecutiveErrors=0, StartupCount=1", LogCategories.Startup);
-            ValidateTrace(traces[4], "Host initialized (", LogCategories.Startup);
-            ValidateTrace(traces[5], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
-            ValidateTrace(traces[6], "Host started (", LogCategories.Startup);
-            ValidateTrace(traces[7], "Initializing Host", LogCategories.Startup);
-            ValidateTrace(traces[8], "Job host started", LogCategories.Startup);
-            ValidateTrace(traces[9], "Starting Host (HostId=", LogCategories.Startup);
+            ValidateTrace(traces[0], "2 functions loaded", LogCategories.Startup);
+            ValidateTrace(traces[1], "A function whitelist has been specified", LogCategories.Startup);
+            ValidateTrace(traces[2], "Found the following functions:\r\n", LogCategories.Startup);
+            ValidateTrace(traces[3], "Generating 2 job function(s)", LogCategories.Startup);
+            ValidateTrace(traces[4], "Host initialization: ConsecutiveErrors=0, StartupCount=1", LogCategories.Startup);
+            ValidateTrace(traces[5], "Host initialized (", LogCategories.Startup);
+            ValidateTrace(traces[6], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
+            ValidateTrace(traces[7], "Host started (", LogCategories.Startup);
+            ValidateTrace(traces[8], "Initializing Host", LogCategories.Startup);
+            ValidateTrace(traces[9], "Job host started", LogCategories.Startup);
+            ValidateTrace(traces[10], "Loading functions metadata", LogCategories.Startup);
+            ValidateTrace(traces[11], "Starting Host (HostId=", LogCategories.Startup);
         }
 
         [Fact]

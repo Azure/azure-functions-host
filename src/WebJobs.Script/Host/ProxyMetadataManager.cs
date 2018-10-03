@@ -24,16 +24,16 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private static readonly Regex ProxyNameValidationRegex = new Regex(@"[^a-zA-Z0-9_-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private readonly ReaderWriterLockSlim _metadataLock = new ReaderWriterLockSlim();
-        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
+        private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
         private readonly IDisposable _fileChangeSubscription;
         private Lazy<ProxyMetadataInfo> _metadata;
         private bool _disposed = false;
 
-        public ProxyMetadataManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IScriptEventManager eventManager, ILoggerFactory loggerFactory)
+        public ProxyMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IEnvironment environment, IScriptEventManager eventManager, ILoggerFactory loggerFactory)
         {
-            _applicationHostOptions = applicationHostOptions;
+            _scriptOptions = scriptOptions;
             _environment = environment;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _metadata = new Lazy<ProxyMetadataInfo>(LoadFunctionMetadata);
@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ProxyMetadataInfo LoadFunctionMetadata()
         {
             var functionErrors = new Dictionary<string, ICollection<string>>();
-            (Collection<FunctionMetadata> proxies, ProxyClientExecutor client) = ReadProxyMetadata(functionErrors);
+            (Collection<FunctionMetadata> proxies, ProxyClientExecutor client) = ReadProxyMetadata(_scriptOptions.Value.RootScriptPath, _logger, functionErrors);
 
             ImmutableArray<FunctionMetadata> metadata;
             if (proxies != null && proxies.Any())
@@ -91,39 +91,35 @@ namespace Microsoft.Azure.WebJobs.Script
             return new ProxyMetadataInfo(metadata, errors, client);
         }
 
-        internal (Collection<FunctionMetadata>, ProxyClientExecutor) ReadProxyMetadata(Dictionary<string, ICollection<string>> functionErrors)
+        internal static (Collection<FunctionMetadata>, ProxyClientExecutor) ReadProxyMetadata(string scriptPath, ILogger logger, Dictionary<string, ICollection<string>> functionErrors = null)
         {
+            functionErrors = functionErrors ?? new Dictionary<string, ICollection<string>>();
+
             // read the proxy config
-            string proxyConfigPath = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.ProxyMetadataFileName);
+            string proxyConfigPath = Path.Combine(scriptPath, ScriptConstants.ProxyMetadataFileName);
             if (!File.Exists(proxyConfigPath))
             {
                 return (null, null);
             }
 
-            var proxyAppSettingValue = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ProxySiteExtensionEnabledKey);
-
-            // This is for backward compatibility only, if the file is present but the value of proxy app setting(ROUTING_EXTENSION_VERSION) is explicitly set to 'disabled' we will ignore loading the proxies.
-            if (!string.IsNullOrWhiteSpace(proxyAppSettingValue) && proxyAppSettingValue.Equals("disabled", StringComparison.OrdinalIgnoreCase))
-            {
-                return (null, null);
-            }
-
             string proxiesJson = File.ReadAllText(proxyConfigPath);
-
             if (!string.IsNullOrWhiteSpace(proxiesJson))
             {
-                return LoadProxyMetadata(proxiesJson, functionErrors);
+                logger.LogInformation("Loading proxies metadata");
+                var values = LoadProxyMetadata(proxiesJson, functionErrors, logger);
+                logger.LogInformation($"{values.Item1.Count} proxies loaded");
+                return values;
             }
 
             return (null, null);
         }
 
-        private (Collection<FunctionMetadata>, ProxyClientExecutor) LoadProxyMetadata(string proxiesJson, Dictionary<string, ICollection<string>> functionErrors)
+        private static (Collection<FunctionMetadata>, ProxyClientExecutor) LoadProxyMetadata(string proxiesJson, Dictionary<string, ICollection<string>> functionErrors, ILogger logger)
         {
             var proxies = new Collection<FunctionMetadata>();
             ProxyClientExecutor client = null;
 
-            var rawProxyClient = ProxyClientFactory.Create(proxiesJson, _logger);
+            var rawProxyClient = ProxyClientFactory.Create(proxiesJson, logger);
             if (rawProxyClient != null)
             {
                 client = new ProxyClientExecutor(rawProxyClient);
