@@ -17,23 +17,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly bool _isUserFunction;
         private readonly string _hostInstanceId;
         private readonly IEnvironment _environment;
+        private readonly LogLevel _logLevel;
+        private readonly IDebugStateProvider _debugStateProvider;
 
-        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment)
+        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider)
         {
             _environment = environment;
             _eventGenerator = eventGenerator;
             _categoryName = categoryName ?? string.Empty;
+            _logLevel = LogLevel.Debug;
             _functionName = LogCategories.IsFunctionCategory(_categoryName) ? _categoryName.Split('.')[1] : string.Empty;
             _isUserFunction = LogCategories.IsFunctionUserCategory(_categoryName);
             _hostInstanceId = hostInstanceId;
+            _debugStateProvider = debugStateProvider;
         }
 
         public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope.Push(state);
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            // The SystemLogger logs all levels.
-            return true;
+            if (_debugStateProvider.InDiagnosticMode)
+            {
+                // when in diagnostic mode, we log everything
+                return true;
+            }
+            return logLevel >= _logLevel;
         }
 
         private bool IsUserLog<TState>(TState state)

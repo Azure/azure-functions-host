@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 "Information Host configuration file read",
                 @"Information Generating 2 job function\(s\)",
                 "Host initialization: ConsecutiveErrors=0, StartupCount=1",
-                @"Information Starting Host \(HostId=(.*), InstanceId=(.*), Version=(.+), ProcessId=[0-9]+, AppDomainId=[0-9]+, Debug=False, FunctionsExtensionVersion=\)",
+                @"Information Starting Host \(HostId=(.*), InstanceId=(.*), Version=(.+), ProcessId=[0-9]+, AppDomainId=[0-9]+, InDebugMode=False, InDiagnosticMode=False, FunctionsExtensionVersion=\)",
                 "Information Found the following functions:",
                 "Information Job host started",
             };

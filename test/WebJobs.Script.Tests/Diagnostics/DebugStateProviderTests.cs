@@ -33,7 +33,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public void LastDebugNotify_IsRefreshed_OnOptionsChange()
         {
-            // Put a file in "DebugPath2"
             var newLogPath = Path.Combine(Directory.GetCurrentDirectory(), "DebugPath2");
             var newHostLogPath = Path.Combine(newLogPath, "Host");
 
@@ -50,6 +49,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
                 Assert.Equal(DateTime.UtcNow, _provider.LastDebugNotify, TimeSpan.FromMinutes(5));
                 Assert.True(_provider.InDebugMode);
+            }
+            finally
+            {
+                Directory.Delete(newLogPath, true);
+            }
+        }
+
+        [Fact]
+        public void LastDiagnosticNotify_IsRefreshed_OnOptionsChange()
+        {
+            var newLogPath = Path.Combine(Directory.GetCurrentDirectory(), "DiagnosticPath1");
+            var newHostLogPath = Path.Combine(newLogPath, "Host");
+
+            try
+            {
+                Directory.CreateDirectory(newHostLogPath);
+                File.WriteAllText(Path.Combine(newHostLogPath, ScriptConstants.DiagnosticSentinelFileName), string.Empty);
+
+                Assert.Equal(DateTime.MinValue, _provider.LastDiagnosticNotify);
+                Assert.False(_provider.InDiagnosticMode);
+
+                _options.LogPath = newLogPath;
+                _tokenSource.SignalChange();
+
+                Assert.Equal(DateTime.UtcNow, _provider.LastDiagnosticNotify, TimeSpan.FromMinutes(5));
+                Assert.True(_provider.InDiagnosticMode);
             }
             finally
             {

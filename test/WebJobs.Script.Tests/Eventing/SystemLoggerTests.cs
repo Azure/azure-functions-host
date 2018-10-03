@@ -20,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly string _category;
         private readonly string _functionName = "TestFunction";
         private readonly string _hostInstanceId;
+        private readonly Mock<IDebugStateProvider> _debugStateProvider;
+        private bool _inDiagnosticMode;
 
         public SystemLoggerTests()
         {
@@ -35,8 +37,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     { EnvironmentSettingNames.AzureWebsiteName,  _websiteName },
                 });
 
+            _inDiagnosticMode = false;
             _category = LogCategories.CreateFunctionCategory(_functionName);
-            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, environment);
+            _debugStateProvider = new Mock<IDebugStateProvider>(MockBehavior.Strict);
+            _debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
+            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, environment, _debugStateProvider.Object);
+        }
+
+        [Fact]
+        public void Log_Trace_LogsOnlyWhenInDebugMode()
+        {
+            string eventName = string.Empty;
+            string details = string.Empty;
+            string summary = "TestMessage";
+            string functionInvocationId = string.Empty;
+            string activityId = string.Empty;
+
+            _logger.LogTrace(summary);
+
+            _inDiagnosticMode = true;
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Trace, _subscriptionId, _websiteName, _functionName, eventName, _category, details, summary, string.Empty, string.Empty, functionInvocationId, _hostInstanceId, activityId));
+            _logger.LogTrace(summary);
+
+            _mockEventGenerator.VerifyAll();
         }
 
         [Fact]
@@ -128,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Log_Ignores_FunctionUserCategory()
         {
             // Create a logger with the Function.{FunctionName}.User category, which is what determines user logs.
-            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment());
+            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment(), _debugStateProvider.Object);
             logger.LogDebug("TestMessage");
 
             // Make sure it's never been called.

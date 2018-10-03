@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly Func<Task> _restart;
         private readonly Action _shutdown;
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
+        private AutoRecoveringFileSystemWatcher _diagnosticModeFileWatcher;
         private FileWatcherEventSource _fileEventSource;
         private bool _shutdownScheduled;
         private bool _disposed = false;
@@ -73,9 +74,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             _debugModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DebugSentinelFileName,
                    includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
-
             _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
-            _logger.LogTrace("Debug file watch initialized.");
+            _logger.LogDebug("Debug file watch initialized.");
+
+            _diagnosticModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DiagnosticSentinelFileName,
+                   includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
+            _diagnosticModeFileWatcher.Changed += OnDiagnosticModeFileChanged;
+            _logger.LogDebug("Diagnostic file watch initialized.");
 
             if (_scriptOptions.FileWatchingEnabled)
             {
@@ -85,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
                         .Subscribe(e => OnFileChanged(e.FileChangeArguments)));
 
-                _logger.LogTrace("File event source initialized.");
+                _logger.LogDebug("File event source initialized.");
             }
 
             _eventSubscriptions.Add(_eventManager.OfType<HostRestartEvent>()
@@ -95,13 +100,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         /// <summary>
-        /// Whenever the debug marker file changes we update our debug timeout
+        /// Whenever the debug sentinel file changes we update our debug timeout
         /// </summary>
         private void OnDebugModeFileChanged(object sender, FileSystemEventArgs e)
         {
             if (!_disposed)
             {
                 _eventManager.Publish(new DebugNotification(nameof(FileMonitoringService), DateTime.UtcNow));
+            }
+        }
+
+        /// <summary>
+        /// Whenever the diagnostic sentinel file changes we update our debug timeout
+        /// </summary>
+        private void OnDiagnosticModeFileChanged(object sender, FileSystemEventArgs e)
+        {
+            if (!_disposed)
+            {
+                _eventManager.Publish(new DiagnosticNotification(nameof(FileMonitoringService), DateTime.UtcNow));
             }
         }
 
@@ -232,6 +248,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         _debugModeFileWatcher.Changed -= OnDebugModeFileChanged;
                         _debugModeFileWatcher.Dispose();
+                    }
+
+                    if (_diagnosticModeFileWatcher != null)
+                    {
+                        _diagnosticModeFileWatcher.Changed -= OnDiagnosticModeFileChanged;
+                        _diagnosticModeFileWatcher.Dispose();
                     }
 
                     foreach (var subscription in _eventSubscriptions)

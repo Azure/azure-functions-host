@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             foreach (var provider in WorkerProviders)
             {
                 var description = provider.GetDescription();
-                _logger.LogTrace($"Worker path for language worker {description.Language}: {description.WorkerDirectory}");
+                _logger.LogDebug($"Worker path for language worker {description.Language}: {description.WorkerDirectory}");
 
                 var arguments = new WorkerProcessArguments()
                 {
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void AddProviders()
         {
             var providers = new List<IWorkerProvider>();
-            _logger.LogTrace($"Workers Directory set to: {WorkersDirPath}");
+            _logger.LogDebug($"Workers Directory set to: {WorkersDirPath}");
 
             foreach (var workerDir in Directory.EnumerateDirectories(WorkersDirPath))
             {
@@ -120,10 +120,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 string workerConfigPath = Path.Combine(workerDir, LanguageWorkerConstants.WorkerConfigFileName);
                 if (!File.Exists(workerConfigPath))
                 {
-                    _logger.LogTrace($"Did not find worker config file at: {workerConfigPath}");
+                    _logger.LogDebug($"Did not find worker config file at: {workerConfigPath}");
                     return;
                 }
-                _logger.LogTrace($"Found worker config: {workerConfigPath}");
+                _logger.LogDebug($"Found worker config: {workerConfigPath}");
                 string json = File.ReadAllText(workerConfigPath);
                 JObject workerConfig = JObject.Parse(json);
                 WorkerDescription workerDescription = workerConfig.Property(LanguageWorkerConstants.WorkerDescription).Value.ToObject<WorkerDescription>();
@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
                 if (File.Exists(workerDescription.GetWorkerPath()))
                 {
-                    _logger.LogTrace($"Will load worker provider for language: {workerDescription.Language}");
+                    _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
                     workerDescription.Validate();
                     _workerProviderDictionary[workerDescription.Language] = new GenericWorkerProvider(workerDescription, workerDir);
                 }

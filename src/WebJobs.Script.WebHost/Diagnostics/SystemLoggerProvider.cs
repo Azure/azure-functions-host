@@ -15,27 +15,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly string _hostInstanceId;
         private readonly IEventGenerator _eventGenerator;
         private readonly IEnvironment _environment;
+        private readonly IDebugStateProvider _debugStateProvider;
 
-        public SystemLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IEventGenerator eventGenerator, IEnvironment environment)
-            : this(scriptOptions.Value.InstanceId, eventGenerator, environment)
+        public SystemLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider)
+            : this(scriptOptions.Value.InstanceId, eventGenerator, environment, debugStateProvider)
         {
         }
 
-        protected SystemLoggerProvider(string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment)
+        protected SystemLoggerProvider(string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider)
         {
             _eventGenerator = eventGenerator;
             _environment = environment;
             _hostInstanceId = hostInstanceId;
+            _debugStateProvider = debugStateProvider;
         }
 
         public ILogger CreateLogger(string categoryName)
         {
-            // The SystemLogger is not used for user logs.
             if (IsUserLogCategory(categoryName))
             {
+                // The SystemLogger is not used for user logs.
                 return NullLogger.Instance;
             }
-            return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment);
+            return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment, _debugStateProvider);
         }
 
         private bool IsUserLogCategory(string categoryName)

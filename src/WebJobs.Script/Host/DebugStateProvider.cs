@@ -12,37 +12,46 @@ namespace Microsoft.Azure.WebJobs.Script
     internal class DebugStateProvider : IDebugStateProvider, IDisposable
     {
         internal const int DebugModeTimeoutMinutes = 15;
+        internal const int DiagnosticModeTimeoutHours = 3;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _scriptOptions;
-        private IDisposable _event;
+        private IDisposable _debugModeEvent;
+        private IDisposable _diagnosticModeEvent;
         private bool _disposed;
 
         public DebugStateProvider(IOptionsMonitor<ScriptApplicationHostOptions> scriptOptions, IScriptEventManager eventManager)
         {
-            _event = eventManager.OfType<DebugNotification>()
+            _debugModeEvent = eventManager.OfType<DebugNotification>()
                 .Subscribe(evt => LastDebugNotify = evt.NotificationTime);
+            _diagnosticModeEvent = eventManager.OfType<DiagnosticNotification>()
+               .Subscribe(evt => LastDiagnosticNotify = evt.NotificationTime);
 
             _scriptOptions = scriptOptions;
+            _scriptOptions.OnChange(_ => InitializeLastNotificationTimes());
 
-            InitializeLastDebugNotify();
-
-            // If these settings changes, we need to refresh our LastDebugNotify value
-            _scriptOptions.OnChange(_ => InitializeLastDebugNotify());
+            InitializeLastNotificationTimes();
         }
 
         public DateTime LastDebugNotify { get; set; }
 
-        /// <summary>
-        /// Gets a value indicating whether the host is in debug mode.
-        /// </summary>
         public virtual bool InDebugMode => (DateTime.UtcNow - LastDebugNotify).TotalMinutes < DebugModeTimeoutMinutes;
 
-        private void InitializeLastDebugNotify()
+        public DateTime LastDiagnosticNotify { get; set; }
+
+        public virtual bool InDiagnosticMode => (DateTime.UtcNow - LastDiagnosticNotify).TotalHours < DiagnosticModeTimeoutHours;
+
+        private void InitializeLastNotificationTimes()
+        {
+            LastDebugNotify = GetLastWriteTime(ScriptConstants.DebugSentinelFileName);
+            LastDiagnosticNotify = GetLastWriteTime(ScriptConstants.DiagnosticSentinelFileName);
+        }
+
+        private DateTime GetLastWriteTime(string fileName)
         {
             string hostLogPath = Path.Combine(_scriptOptions.CurrentValue.LogPath, "Host");
+            string filePath = Path.Combine(hostLogPath, fileName);
 
-            string debugSentinelFileName = Path.Combine(hostLogPath, ScriptConstants.DebugSentinelFileName);
-            LastDebugNotify = File.Exists(debugSentinelFileName)
-                ? File.GetLastWriteTimeUtc(debugSentinelFileName)
+            return File.Exists(filePath)
+                ? File.GetLastWriteTimeUtc(filePath)
                 : DateTime.MinValue;
         }
 
@@ -50,7 +59,8 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (!_disposed)
             {
-                _event.Dispose();
+                _debugModeEvent.Dispose();
+                _diagnosticModeEvent.Dispose();
                 _disposed = true;
             }
         }

@@ -188,6 +188,11 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public virtual bool InDebugMode => _debugManager.InDebugMode;
 
+        /// <summary>
+        /// Gets a value indicating whether the host is in diagnostic mode.
+        /// </summary>
+        public virtual bool InDiagnosticMode => _debugManager.InDiagnosticMode;
+
         internal IFunctionDispatcher FunctionDispatcher => _functionDispatcher;
 
         /// <summary>
@@ -284,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             string extensionVersion = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion);
             string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
-            string message = $"Starting Host (HostId={hostId}, InstanceId={InstanceId}, Version={Version}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, Debug={InDebugMode}, FunctionsExtensionVersion={extensionVersion})";
+            string message = $"Starting Host (HostId={hostId}, InstanceId={InstanceId}, Version={Version}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, InDebugMode={InDebugMode}, InDiagnosticMode={InDiagnosticMode}, FunctionsExtensionVersion={extensionVersion})";
             _logger.LogInformation(message);
         }
 
@@ -449,13 +454,13 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (string.IsNullOrEmpty(_currentRuntimelanguage))
             {
-                _logger.LogTrace("Adding Function descriptor providers for all languages.");
+                _logger.LogDebug("Adding Function descriptor providers for all languages.");
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
                 _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
             }
             else
             {
-                _logger.LogTrace($"Adding Function descriptor provider for language {_currentRuntimelanguage}.");
+                _logger.LogDebug($"Adding Function descriptor provider for language {_currentRuntimelanguage}.");
                 if (string.Equals(_currentRuntimelanguage, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
                     _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
@@ -469,9 +474,9 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functions;
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
             {
-                _logger.LogTrace("Creating function descriptors.");
+                _logger.LogDebug("Creating function descriptors.");
                 functions = await GetFunctionDescriptorsAsync(functionMetadata, _descriptorProviders);
-                _logger.LogTrace("Function descriptors created.");
+                _logger.LogDebug("Function descriptors created.");
             }
 
             Functions = functions;

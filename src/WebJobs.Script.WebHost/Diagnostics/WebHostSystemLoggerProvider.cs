@@ -9,8 +9,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     /// </summary>
     public class WebHostSystemLoggerProvider : SystemLoggerProvider
     {
-        public WebHostSystemLoggerProvider(IEventGenerator eventGenerator, IEnvironment environment)
-            : base(string.Empty, eventGenerator, environment)
+        public WebHostSystemLoggerProvider(IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider)
+            : base(string.Empty, eventGenerator, environment, debugStateProvider)
         {
         }
     }

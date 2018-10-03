@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public LanguageWorkerOptionsSetup(IConfiguration configuration, ILoggerFactory loggerFactory)
         {
             _configuration = configuration;
-            _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfigOptionsSetup");
+            _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
         }
 
         public void Configure(LanguageWorkerOptions options)

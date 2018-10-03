@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     .Subscribe(msg =>
                     {
                         var jsonMsg = JsonConvert.SerializeObject(msg, _verboseSerializerSettings);
-                        _userLogsConsoleLogger.LogTrace(jsonMsg);
+                        _userLogsConsoleLogger.LogDebug(jsonMsg);
                     }));
 
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
@@ -384,7 +384,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.FunctionId))
                 {
-                    _workerChannelLogger.LogTrace($"Function {context.FunctionMetadata.Name} failed to load");
+                    _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
                     context.ResultSource.TrySetException(_functionLoadErrors[context.FunctionMetadata.FunctionId]);
                     _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
                 }

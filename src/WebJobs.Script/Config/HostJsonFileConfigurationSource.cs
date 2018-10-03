@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 string sanitizedJson = SanitizeHostJson(hostConfigObject);
                 string readFileMessage = $"Host configuration file read:{NewLine}{sanitizedJson}";
 
-                _logger.LogTrace("Host configuration applied.");
+                _logger.LogDebug("Host configuration applied.");
 
                 // Do not log these until after all the configuration is done so the proper filters are applied.
                 _logger.LogInformation(readingFileMessage);
