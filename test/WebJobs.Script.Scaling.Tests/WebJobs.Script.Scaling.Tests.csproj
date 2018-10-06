@@ -6,6 +6,16 @@
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Scaling.Tests</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Scaling.Tests</RootNamespace>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\WebJobs.Script.Tests.Shared\TestScopedEnvironmentVariable.cs" Link="TestScopedEnvironmentVariable.cs" />
   </ItemGroup>
