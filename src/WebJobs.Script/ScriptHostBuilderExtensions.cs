@@ -45,6 +45,9 @@ namespace Microsoft.Azure.WebJobs.Script
             return builder.AddScriptHost(options, loggerFactory, null);
         }
 
+        public static IHostBuilder AddScriptHost(this IHostBuilder builder, ScriptApplicationHostOptions applicationOptions, Action<IWebJobsBuilder> configureWebJobs = null)
+            => builder.AddScriptHost(applicationOptions, null, configureWebJobs);
+
         public static IHostBuilder AddScriptHost(this IHostBuilder builder, ScriptApplicationHostOptions applicationOptions, ILoggerFactory loggerFactory, Action<IWebJobsBuilder> configureWebJobs = null)
         {
             loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;

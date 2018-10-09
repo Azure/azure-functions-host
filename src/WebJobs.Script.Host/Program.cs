@@ -24,6 +24,13 @@ namespace Microsoft.Azure.WebJobs.Script.Host
                 rootPath = (string)args[0];
             }
 
+            var options = new ScriptApplicationHostOptions
+            {
+                ScriptPath = rootPath,
+                LogPath = Path.Combine(Path.GetTempPath(), "functionshost"),
+                IsSelfHost = true
+            };
+
             var host = new HostBuilder()
                 .SetAzureFunctionsEnvironment()
                 .ConfigureLogging(b =>
@@ -31,11 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.Host
                     b.SetMinimumLevel(LogLevel.Information);
                     b.AddConsole();
                 })
-                .AddScriptHost(o =>
+                .AddScriptHost(options, webJobsBuilder =>
                 {
-                    o.ScriptPath = rootPath;
-                    o.LogPath = Path.Combine(Path.GetTempPath(), "functionshost");
-                    o.IsSelfHost = true;
+                    webJobsBuilder.AddAzureStorageCoreServices();
                 })
                 .UseConsoleLifetime()
                 .Build();
