@@ -329,6 +329,78 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public async Task Initialize_WithInvalidSiteExtensionVersion_Throws(string extensionVersion)
+        {
+            try
+            {
+                string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                var environment = new TestEnvironment();
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion, extensionVersion);
+
+                EnvironmentExtensions.BaseDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "SiteExtensions", "Functions", "2.0.0");
+
+                IHost host = new HostBuilder()
+                    .ConfigureServices(s =>
+                    {
+                        s.AddSingleton<IEnvironment>(environment);
+                    })
+                    .ConfigureDefaultTestWebScriptHost(o =>
+                    {
+                        o.ScriptPath = rootPath;
+                    })
+                    .Build();
+
+                var scriptHost = host.GetScriptHost();
+                await Assert.ThrowsAsync<HostInitializationException>(() => scriptHost.InitializeAsync());
+            }
+            finally
+            {
+                EnvironmentExtensions.BaseDirectory = null;
+            }
+        }
+
+        [Fact]
+        public async Task Initialize_WithLatestSiteExtensionVersion_LogsWarning()
+        {
+            try
+            {
+                string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                var loggerProvider = new TestLoggerProvider();
+                var environment = new TestEnvironment();
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion, "latest");
+
+                EnvironmentExtensions.BaseDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "SiteExtensions", "Functions", "2.0.0");
+
+                IHost host = new HostBuilder()
+                    .ConfigureServices(s =>
+                    {
+                        s.AddSingleton<IEnvironment>(environment);
+                    })
+                    .ConfigureLogging(l =>
+                    {
+                        l.AddProvider(loggerProvider);
+                    })
+                    .ConfigureDefaultTestWebScriptHost(o =>
+                    {
+                        o.ScriptPath = rootPath;
+                    })
+                    .Build();
+
+                var scriptHost = host.GetScriptHost();
+                await scriptHost.InitializeAsync();
+                Assert.Single(loggerProvider.GetAllLogMessages(), m => m.Level == LogLevel.Warning && m.FormattedMessage.StartsWith("Site extension version currently set to 'latest'."));
+            }
+            finally
+            {
+                EnvironmentExtensions.BaseDirectory = null;
+            }
+        }
+
         // TODO: Newer TODO - ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)
         // TODO: Move this test into a new WebJobsCoreScriptBindingProvider class since
         // the functionality moved. Also add tests for the ServiceBus config, etc.
