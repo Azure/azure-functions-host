@@ -398,6 +398,25 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void PreInitialize()
         {
+            // Validate extension configuration
+            if (_environment.IsRunningAsHostedSiteExtension())
+            {
+                string extensionVersion = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion);
+
+                if (string.IsNullOrEmpty(extensionVersion))
+                {
+                    throw new HostInitializationException($"Invalid site extension configuration. " +
+                        $"Please update the App Setting '{EnvironmentSettingNames.FunctionsExtensionVersion}' to a valid value (e.g. ~2). " +
+                        $"The value cannot be missing or an empty string.");
+                }
+                else if (string.Equals(extensionVersion, "latest", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning($"Site extension version currently set to '{extensionVersion}'. " +
+                        $"It is recommended that you target a major version (e.g. ~2) to avoid unintended upgrades. " +
+                        $"You can change that value by updating the '{EnvironmentSettingNames.FunctionsExtensionVersion}' App Setting.");
+                }
+            }
+
             // Log whether App Insights is enabled
             if (!string.IsNullOrEmpty(_settingsManager.ApplicationInsightsInstrumentationKey))
             {
