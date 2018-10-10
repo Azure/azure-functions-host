@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>82d61060-8774-491c-9d73-9798a34c2399</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>WebJobs.Script.Tests.E2E.Shared</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)ArmAuthenticationHelpers.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Constants.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Extensions.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Function.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)FunctionAppFixture.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)KuduClient.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Settings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TelemetryContext.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TraceAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TrackedAssert.cs" />
+  </ItemGroup>
+</Project>

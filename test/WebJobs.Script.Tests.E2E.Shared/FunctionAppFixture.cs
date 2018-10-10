@@ -17,7 +17,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace WebJobs.Script.EndToEndTests
+namespace WebJobs.Script.Tests.EndToEnd.Shared
 {
     public class FunctionAppFixture : IDisposable
     {
@@ -33,9 +33,21 @@ namespace WebJobs.Script.EndToEndTests
 
             _assert = new TrackedAssert(Telemetry);
 
-            FunctionDefaultKey = Guid.NewGuid().ToString().ToLower();
+            FunctionDefaultKey = Settings.SiteFunctionKey ?? Guid.NewGuid().ToString().ToLower();
 
-            Initialize().Wait();
+            for (int i = 0; i < 3; i++)
+            {
+                try
+                {
+                    Initialize().Wait();
+                    break;
+                }
+                catch
+                {
+                    // Best effort.
+                    System.Threading.Thread.Sleep(5000);
+                }
+            }
         }
 
         public TrackedAssert Assert => _assert;
@@ -54,7 +66,7 @@ namespace WebJobs.Script.EndToEndTests
             _logger.LogInformation("Initializing environment...");
 
             _kuduClient = new KuduClient($"https://{Settings.SiteName}.scm.azurewebsites.net", Settings.SitePublishingUser, Settings.SitePublishingPassword);
-            FunctionAppMasterKey = await _kuduClient.GetFunctionsMasterKey();
+            FunctionAppMasterKey = Settings.SiteMasterKey ?? await _kuduClient.GetFunctionsMasterKey();
 
             // to run tests against currently deployed site, skip
             // this step (can take over 2 minutes)
@@ -136,7 +148,7 @@ namespace WebJobs.Script.EndToEndTests
                     // doesn't currently start the host.
                     // var result = await client.GetAsync($"{Settings.SiteBaseAddress}");
                     var functions = await _kuduClient.GetFunctions();
-                    var result = await client.GetAsync($"{Settings.SiteBaseAddress}/admin/functions/{functions.First().Name}/status?code={FunctionAppMasterKey}");                    
+                    var result = await client.GetAsync($"{Settings.SiteBaseAddress}/admin/functions/{functions.First().Name}/status?code={FunctionAppMasterKey}");
                     statusCode = result.StatusCode;
                     if (statusCode == HttpStatusCode.OK)
                     {
@@ -148,8 +160,23 @@ namespace WebJobs.Script.EndToEndTests
                 
             }
 
-            throw new InvalidOperationException("Wait for site timeout: {delay.TotalSeconds * 5} seconds.");
+            throw new InvalidOperationException($"Wait for site timeout: {delay.TotalSeconds * 5} seconds.");
             
+        }
+
+        private async Task CheckVersionsMatch()
+        {
+            using (var client = new HttpClient())
+            {
+                HttpResponseMessage response = await client.GetAsync($"/admin/host/status?code={FunctionAppMasterKey}");
+
+                var status = await response.Content.ReadAsAsync<dynamic>();
+
+                if (!string.Equals(Settings.RuntimeVersion, status.version.ToString()))
+                {
+                    throw new InvalidOperationException($"Versions aren't match. Actual version: {status.version.ToString()}, Package version: {Settings.RuntimeVersion}");
+                }
+            }
         }
 
         private async Task AddSettings()
@@ -171,7 +198,7 @@ namespace WebJobs.Script.EndToEndTests
             string filePath = Path.ChangeExtension(Path.GetTempFileName(), "zip");
             ZipFile.CreateFromDirectory(Path.Combine(Environment.CurrentDirectory, "Functions"), filePath);
 
-            await _kuduClient.UploadZip("site", filePath);
+            await _kuduClient.DeployZip(filePath);
 
             _logger.LogInformation("Site contents updated");
         }
