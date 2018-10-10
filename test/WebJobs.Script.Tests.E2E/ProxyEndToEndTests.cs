@@ -4,9 +4,10 @@
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
+using WebJobs.Script.Tests.EndToEnd.Shared;
 using Xunit;
 
-namespace WebJobs.Script.EndToEndTests
+namespace WebJobs.Script.Tests.E2E
 {
     [Collection(Constants.FunctionAppCollectionName)]
     public class ProxyEndToEndTests

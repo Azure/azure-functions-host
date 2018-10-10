@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.ApplicationInsights;
 using Xunit;
 
-namespace WebJobs.Script.EndToEndTests
+namespace WebJobs.Script.Tests.EndToEnd.Shared
 {
     public class TrackedAssert
     {

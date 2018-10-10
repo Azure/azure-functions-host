@@ -3,7 +3,7 @@
 
 using Newtonsoft.Json;
 
-namespace WebJobs.Script.EndToEndTests
+namespace WebJobs.Script.Tests.EndToEnd.Shared
 {
     public class Function
     {
