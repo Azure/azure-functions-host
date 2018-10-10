@@ -12,9 +12,11 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.Azure.ServiceBus.Management;
 using Newtonsoft.Json.Linq;
+using WebJobs.Script.Tests.EndToEnd.Shared;
 using Xunit;
 
-namespace WebJobs.Script.EndToEndTests
+
+namespace WebJobs.Script.Tests.EndToEnd
 {
     [Collection(Constants.FunctionAppCollectionName)]
     public class GeneralEndToEndTests
@@ -57,20 +59,6 @@ namespace WebJobs.Script.EndToEndTests
 
         [Fact]
         [TestTrace]
-        public async Task Version_MatchesExpectedVersion()
-        {
-            using (var client = CreateClient())
-            {
-                HttpResponseMessage response = await client.GetAsync($"/admin/host/status?code={_fixture.FunctionAppMasterKey}");
-
-                var status = await response.Content.ReadAsAsync<dynamic>();
-
-                _fixture.Assert.Equals(Settings.RuntimeVersion, status.version.ToString());
-            }
-        }
-
-        [Fact]
-        [TestTrace]
         public async Task AppSettingInformation_ReturnsAppSettingValue()
         {
             using (var client = CreateClient())
@@ -79,7 +67,7 @@ namespace WebJobs.Script.EndToEndTests
 
                 string response = await client.GetStringAsync($"api/appsettinginformation?code={_fixture.FunctionDefaultKey}");
 
-                _fixture.Assert.Equals("beta", response);
+                _fixture.Assert.Equals("~2", response);
             }
         }
 
@@ -108,40 +96,6 @@ namespace WebJobs.Script.EndToEndTests
                  });
 
                 _fixture.Assert.True(requestsSucceeded);
-            }
-        }
-
-        [Fact]
-        [TestTrace]
-        public async Task Invocation_Logs_AreReturned()
-        {
-            using (var client = CreateClient())
-            {
-                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-
-                string invocationId = await client.GetStringAsync($"api/GetInvocationId?code={_fixture.FunctionDefaultKey}");
-
-                string siteName = NormalizeFunctionName(Settings.SiteName);
-                JToken resultToken = null;
-                // We retry for a bit as data may take a while to become available
-                for (int i = 0; i < 20; i++)
-                {
-                    var invocationsRequest = new HttpRequestMessage(HttpMethod.Get, $"azurejobs/api/functions/definitions/{siteName}-GetInvocationId/invocations?limit=10");
-                    var response = await _fixture.KuduClient.SendAsync(invocationsRequest);
-
-                    var results = await response.Content.ReadAsAsync<JObject>();
-
-                    resultToken = results.SelectToken($"$..entries[?(@.id == '{invocationId}')]");
-
-                    if (resultToken != null)
-                    {
-                        break;
-                    }
-
-                    await Task.Delay(3000);
-                }
-
-                _fixture.Assert.True(resultToken != null);
             }
         }
 

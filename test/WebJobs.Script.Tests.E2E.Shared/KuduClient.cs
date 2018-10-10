@@ -10,7 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
-namespace WebJobs.Script.EndToEndTests
+namespace WebJobs.Script.Tests.EndToEnd.Shared
 {
     public class KuduClient : IDisposable
     {
@@ -34,7 +34,15 @@ namespace WebJobs.Script.EndToEndTests
 
         public async Task DeleteDirectory(string path, bool recursive)
         {
-            await _client.DeleteAsync($"api/vfs/{path}/?recursive={recursive}");
+            HttpResponseMessage response = await _client.DeleteAsync($"api/vfs/{path}/?recursive={recursive}");
+            response.EnsureSuccessStatusCode();
+        }
+
+        public async Task DeployZip(string zipPath)
+        {
+            var content = new StreamContent(File.Open(zipPath, FileMode.Open));
+            HttpResponseMessage response = await _client.PostAsync("/api/zipdeploy", content);
+            response.EnsureSuccessStatusCode();
         }
 
         public async Task UploadZip(string sitePath, string zipPath)
@@ -59,7 +67,13 @@ namespace WebJobs.Script.EndToEndTests
             return result.GetValue("masterKey").ToString();
         }
 
-        public Task<HttpResponseMessage> SendAsync(HttpRequestMessage request) => _client.SendAsync(request);        
+        public async Task SetAppSetting(string name, string value)
+        {
+            var httpContent = new StringContent($"{{ {name} : {value} }}", Encoding.UTF8, "application/json");
+            await _client.PostAsync($"/api/settings", httpContent);
+        }
+
+        public Task<HttpResponseMessage> SendAsync(HttpRequestMessage request) => _client.SendAsync(request);
 
         protected virtual void Dispose(bool disposing)
         {

@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Reflection;
 using Xunit.Sdk;
 
-namespace WebJobs.Script.EndToEndTests
+namespace WebJobs.Script.Tests.EndToEnd.Shared
 {
     public class TestTraceAttribute : BeforeAfterTestAttribute
     {

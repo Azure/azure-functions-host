@@ -4,7 +4,7 @@
 using System;
 using Microsoft.ApplicationInsights;
 
-namespace WebJobs.Script.EndToEndTests
+namespace WebJobs.Script.Tests.EndToEnd.Shared
 {
     public static class TelemetryContext
     {

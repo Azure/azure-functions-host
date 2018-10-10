@@ -1,1 +1,0 @@
-﻿public static string Run(HttpRequestMessage req, ExecutionContext context) => context.InvocationId.ToString();

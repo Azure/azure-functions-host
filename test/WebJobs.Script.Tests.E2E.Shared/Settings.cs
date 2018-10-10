@@ -1,11 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Configuration;
+using System.IO;
 using System.Text.RegularExpressions;
 
-namespace WebJobs.Script.EndToEndTests
+namespace WebJobs.Script.Tests.EndToEnd.Shared
 {
     public class Settings
     {
@@ -27,13 +29,21 @@ namespace WebJobs.Script.EndToEndTests
 
         public static string RuntimeExtensionPackageUrl => GetSettingValue(Constants.RuntimeExtensionPackageUrlSettingName);
 
+        public static string SiteMasterKey => GetSettingValue(Constants.TargetSiteMasterKey);
+
+        public static string SiteFunctionKey => GetSettingValue(Constants.TargetSiteFunctionKey);
+
+        public static string VM => GetSettingValue(Constants.VM);
+
         public static Uri SiteBaseAddress => new Uri($"https://{SiteName}.azurewebsites.net");
+
+        private static IConfiguration Config = null;
 
         public static string RuntimeVersion
         {
             get
             {
-                Match versionMatch = Regex.Match(RuntimeExtensionPackageUrl, "(?<version>\\d*\\.\\d*\\.\\d*)(-.*)?\\.zip$");
+                Match versionMatch = Regex.Match(RuntimeExtensionPackageUrl, "(\\.)(?<version>\\d*\\.\\d*\\.\\d*)(\\..*)?\\.zip$");
 
                 if (!versionMatch.Success)
                 {
@@ -48,14 +58,18 @@ namespace WebJobs.Script.EndToEndTests
 
         private static string GetSettingValue(string settingName)
         {
-            string value = Environment.GetEnvironmentVariable(settingName);
-
-            if (string.IsNullOrEmpty(value))
+            if (Config == null)
             {
-                value = ConfigurationManager.AppSettings.Get(settingName);
+                var builder = new ConfigurationBuilder().AddEnvironmentVariables();
+                if (File.Exists("local.settings.json"))
+                {
+                    builder.AddJsonFile("local.settings.json");
+                }
+                Config = builder.Build();
             }
 
-            return value;
+
+            return ConfigurationBinder.GetValue(Config, settingName, "default");
         }
     }
 }
