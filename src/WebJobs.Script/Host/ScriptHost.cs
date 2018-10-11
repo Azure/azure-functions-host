@@ -711,7 +711,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (!_scriptHostEnvironment.IsDevelopment() && !Utility.IsSingleLanguage(functions, _currentRuntimelanguage))
             {
-                throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
+                if (string.IsNullOrEmpty(_currentRuntimelanguage))
+                {
+                    throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
+                }
+                else
+                {
+                    throw new HostInitializationException($"Did not find functions with language [{_currentRuntimelanguage}].");
+                }
             }
 
             foreach (FunctionMetadata metadata in functions)
