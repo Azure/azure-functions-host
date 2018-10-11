@@ -439,17 +439,18 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        internal static bool IsSingleLanguage(IEnumerable<FunctionMetadata> functions, string language)
+        internal static bool IsSingleLanguage(IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
         {
-            if (string.IsNullOrEmpty(language))
+            var functionsListWithoutProxies = functions?.Where(f => f.IsProxy == false);
+            if (functionsListWithoutProxies == null || functionsListWithoutProxies?.Count() == 0)
             {
-                if (functions != null && functions.Any())
-                {
-                    var functionsListWithoutProxies = functions.Where(f => f.IsProxy == false);
-                    return functionsListWithoutProxies.Select(f => f.Language).Distinct().Count() <= 1;
-                }
+                return true;
             }
-            return true;
+            if (string.IsNullOrEmpty(currentRuntimeLanguage))
+            {
+                return functionsListWithoutProxies.Select(f => f.Language).Distinct().Count() <= 1;
+            }
+            return ContainsFunctionWithCurrentLanguage(functionsListWithoutProxies, currentRuntimeLanguage);
         }
 
         internal static bool ShouldInitiliazeLanguageWorkers(IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
