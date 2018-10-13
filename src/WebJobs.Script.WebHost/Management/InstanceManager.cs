@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
@@ -138,8 +139,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 await DownloadAsync(zipUri, filePath);
 
                 _logger.LogInformation($"Extracting files to '{options.ScriptPath}'");
+
+                var stopwatch = Stopwatch.StartNew();
                 ZipFile.ExtractToDirectory(filePath, options.ScriptPath, overwriteFiles: true);
-                _logger.LogInformation($"Zip extraction complete");
+                stopwatch.Stop();
+
+                _logger.LogInformation($"Zip extraction complete in {stopwatch.Elapsed.TotalMilliseconds}");
             }
         }
 
@@ -147,6 +152,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             var zipPath = $"{zipUri.Authority}{zipUri.AbsolutePath}";
             _logger.LogInformation($"Downloading zip contents from '{zipPath}' to temp file '{filePath}'");
+
+            var stopwatch = Stopwatch.StartNew();
 
             var response = await _client.GetAsync(zipUri);
             if (!response.IsSuccessStatusCode)
@@ -156,13 +163,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 throw new InvalidDataException(error);
             }
 
+            stopwatch.Stop();
+            _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes downloaded in {stopwatch.Elapsed.TotalMilliseconds}");
+
+            stopwatch.Restart();
             using (var content = await response.Content.ReadAsStreamAsync())
             using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
             {
                 await content.CopyToAsync(stream);
             }
 
-            _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes downloaded");
+            stopwatch.Stop();
+            _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes written in {stopwatch.Elapsed.TotalMilliseconds}");
         }
 
         public IDictionary<string, string> GetInstanceInfo()
