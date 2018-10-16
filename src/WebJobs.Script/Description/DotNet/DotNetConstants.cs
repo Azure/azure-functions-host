@@ -19,6 +19,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public const string InvalidEntryPointNameCompilationCode = "AF007";
         public const string AsyncVoidCode = "AF008";
 
+        public const string DefaultWindowsRID = "win10";
+        public const string DefaultOSXRID = "osx.10.12";
+        public const string DefaultLinuxRID = "linux";
+
         public static string[] FrameworkReferences = new[]
         {
             "Microsoft.CSharp",

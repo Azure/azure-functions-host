@@ -11,8 +11,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Extensions.DependencyModel;
-using static Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment;
 using ResolutionPolicyEvaluator = System.Func<System.Reflection.AssemblyName, System.Reflection.Assembly, bool>;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -226,26 +224,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string ridSubFolder = isNativeAsset ? "native" : string.Empty;
             string runtimesPath = Path.Combine(basePath, "runtimes");
 
-            List<string> rids = GetRuntimeFallbacks();
+            List<string> rids = DependencyHelper.GetRuntimeFallbacks();
 
             return rids.Select(r => Path.Combine(runtimesPath, r, ridSubFolder, assetFileName))
                 .Union(_probingPaths)
                 .FirstOrDefault(p => File.Exists(p));
-        }
-
-        private static List<string> GetRuntimeFallbacks()
-        {
-            string currentRuntimeIdentifier = GetRuntimeIdentifier();
-
-            RuntimeFallbacks fallbacks = DependencyContext.Default
-                .RuntimeGraph
-                .FirstOrDefault(f => string.Equals(f.Runtime, currentRuntimeIdentifier, StringComparison.OrdinalIgnoreCase))
-                ?? DependencyHelper.GetDefaultRuntimeFallbacks(currentRuntimeIdentifier)
-                ?? new RuntimeFallbacks("any");
-
-            var rids = new List<string> { fallbacks.Runtime };
-            rids.AddRange(fallbacks.Fallbacks);
-            return rids;
         }
 
         internal string GetUnmanagedLibraryFileName(string unmanagedLibraryName)

@@ -5,8 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyModel;
 using Newtonsoft.Json.Linq;
+using static Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -32,32 +34,34 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return ridGraph;
         }
 
-        public static IEnumerable<string> GetFallbacks(Dictionary<string, string[]> ridGraph, string rid)
+        private static string GetDefaultPlatformRid()
         {
-            var fallbacks = new HashSet<string>();
-            var queue = new Queue<string>(ridGraph[rid]);
+            // This logic follows what the .NET Core host does in: https://github.com/dotnet/core-setup/blob/master/src/corehost/common/pal.h
 
-            while (queue.Count > 0)
+            // When running on a platform that is not supported in RID fallback graph (because it was unknown
+            // at the time the SharedFX in question was built), we need to use a reasonable fallback RID to allow
+            // consuming the native assets.
+            //
+            // For Windows and OSX, we will maintain the last highest RID-Platform we are known to support for them as the
+            // degree of compat across their respective releases is usually high.
+            //
+            // We cannot maintain the same (compat) invariant for linux and thus, we will fallback to using lowest RID-Plaform.
+
+            string rid = null;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                var currentRid = queue.Dequeue();
-
-                if (fallbacks.Contains(currentRid))
-                {
-                    continue;
-                }
-
-                fallbacks.Add(currentRid);
-
-                foreach (var fallbackRid in ridGraph[currentRid])
-                {
-                    if (!fallbacks.Contains(fallbackRid))
-                    {
-                        queue.Enqueue(fallbackRid);
-                    }
-                }
+                rid = DotNetConstants.DefaultWindowsRID;
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                rid = DotNetConstants.DefaultOSXRID;
+            }
+            else
+            {
+                rid = DotNetConstants.DefaultLinuxRID;
             }
 
-            return fallbacks;
+            return rid;
         }
 
         private static string GetRuntimeAssembliesJson()
@@ -100,9 +104,66 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <returns>The runtime fallbacks for the provided identifier.</returns>
         public static RuntimeFallbacks GetDefaultRuntimeFallbacks(string rid)
         {
-            IEnumerable<string> fallbacks = GetFallbacks(_ridGraph.Value, rid);
+            var ridGraph = _ridGraph.Value;
 
-            return new RuntimeFallbacks(rid, fallbacks);
+            var runtimeFallbacks = new RuntimeFallbacks(rid);
+            var fallbacks = new List<string>();
+
+            if (!ridGraph.ContainsKey(rid))
+            {
+                rid = GetDefaultPlatformRid();
+                fallbacks.Add(rid);
+            }
+
+            var queue = new Queue<string>(ridGraph[rid]);
+
+            while (queue.Count > 0)
+            {
+                var currentRid = queue.Dequeue();
+
+                if (fallbacks.Contains(currentRid))
+                {
+                    continue;
+                }
+
+                fallbacks.Add(currentRid);
+
+                foreach (var fallbackRid in ridGraph[currentRid])
+                {
+                    if (!fallbacks.Contains(fallbackRid, StringComparer.OrdinalIgnoreCase))
+                    {
+                        queue.Enqueue(fallbackRid);
+                    }
+                }
+            }
+
+            runtimeFallbacks.Fallbacks = fallbacks.AsReadOnly();
+            return runtimeFallbacks;
+        }
+
+        public static List<string> GetRuntimeFallbacks()
+        {
+            string currentRuntimeIdentifier = GetRuntimeIdentifier();
+
+            return GetRuntimeFallbacks(currentRuntimeIdentifier);
+        }
+
+        public static List<string> GetRuntimeFallbacks(string rid)
+        {
+            if (rid == null)
+            {
+                throw new ArgumentNullException(nameof(rid));
+            }
+
+            RuntimeFallbacks fallbacks = DependencyContext.Default
+                .RuntimeGraph
+                .FirstOrDefault(f => string.Equals(f.Runtime, rid, StringComparison.OrdinalIgnoreCase))
+                ?? GetDefaultRuntimeFallbacks(rid)
+                ?? new RuntimeFallbacks("any");
+
+            var rids = new List<string> { fallbacks.Runtime };
+            rids.AddRange(fallbacks.Fallbacks);
+            return rids;
         }
     }
 }
