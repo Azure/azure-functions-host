@@ -27,5 +27,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description
                 Assert.True(match, $"Mismatched fallbacks for RID '{fallback.Runtime}'");
             }
         }
+
+        [Theory]
+        [InlineData("win11-x86")]
+        public void GetRuntimeFallbacks_WithUnkonwnRid_DefaultsToPlatformRid(string rid)
+        {
+            List<string> rids = DependencyHelper.GetRuntimeFallbacks(rid);
+
+            // Ensure the "unknown" RID is still in the list
+            Assert.Equal(rid, rids.First());
+
+            // Ensure our fallback list matches our default RID fallback
+            var defaultRidFallback = DependencyHelper.GetDefaultRuntimeFallbacks(DotNetConstants.DefaultWindowsRID);
+            var defaultRidGraph = new List<string> { defaultRidFallback.Runtime };
+            defaultRidGraph.AddRange(defaultRidFallback.Fallbacks);
+
+            bool match = defaultRidGraph
+                    .Zip(rids.Skip(1), (s1, s2) => string.Equals(s1, s2, StringComparison.Ordinal))
+                    .All(r => r);
+
+            Assert.True(match, $"Mismatched fallbacks for unknown RID");
+        }
     }
 }
