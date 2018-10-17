@@ -1,6 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-using System.Collections.ObjectModel;
+using System.Collections.Concurrent;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 
@@ -10,25 +10,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         public TestMetricsLogger()
         {
-            LoggedEvents = new Collection<string>();
-            LoggedMetricEvents = new Collection<MetricEvent>();
-            MetricEventsBegan = new Collection<MetricEvent>();
-            EventsBegan = new Collection<string>();
-            MetricEventsEnded = new Collection<MetricEvent>();
-            EventsEnded = new Collection<object>();
+            LoggedEvents = new ConcurrentBag<string>();
+            LoggedMetricEvents = new ConcurrentBag<MetricEvent>();
+            MetricEventsBegan = new ConcurrentBag<MetricEvent>();
+            EventsBegan = new ConcurrentBag<string>();
+            MetricEventsEnded = new ConcurrentBag<MetricEvent>();
+            EventsEnded = new ConcurrentBag<object>();
         }
 
-        public Collection<string> LoggedEvents { get; }
+        public ConcurrentBag<string> LoggedEvents { get; }
 
-        public Collection<MetricEvent> LoggedMetricEvents { get; }
+        public ConcurrentBag<MetricEvent> LoggedMetricEvents { get; }
 
-        public Collection<MetricEvent> MetricEventsBegan { get; }
+        public ConcurrentBag<MetricEvent> MetricEventsBegan { get; }
 
-        public Collection<MetricEvent> MetricEventsEnded { get; }
+        public ConcurrentBag<MetricEvent> MetricEventsEnded { get; }
 
-        public Collection<string> EventsBegan { get; }
+        public ConcurrentBag<string> EventsBegan { get; }
 
-        public Collection<object> EventsEnded { get; }
+        public ConcurrentBag<object> EventsEnded { get; }
+
+        public void ClearCollections()
+        {
+            LoggedEvents.Clear();
+            LoggedMetricEvents.Clear();
+            MetricEventsBegan.Clear();
+            EventsBegan.Clear();
+            MetricEventsEnded.Clear();
+            EventsEnded.Clear();
+        }
 
         public void BeginEvent(MetricEvent metricEvent)
         {
