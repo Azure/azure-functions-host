@@ -99,12 +99,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal($"{MetricEventNames.FunctionInvokeLatency}_testfunction", (string)invokeLatencyEvent);
 
-            Assert.Equal(5, metrics.LoggedEvents.Count);
-            Assert.Equal("function.binding.httptrigger_testfunction", metrics.LoggedEvents[0]);
-            Assert.Equal("function.binding.blob.in_testfunction", metrics.LoggedEvents[1]);
-            Assert.Equal("function.binding.blob.out_testfunction", metrics.LoggedEvents[2]);
-            Assert.Equal("function.binding.table.in_testfunction", metrics.LoggedEvents[3]);
-            Assert.Equal("function.binding.table.in_testfunction", metrics.LoggedEvents[4]);
+            Assert.Equal(5, metrics.LoggedEvents.Count());
+            Assert.Contains("function.binding.httptrigger_testfunction", metrics.LoggedEvents);
+            Assert.Contains("function.binding.blob.in_testfunction", metrics.LoggedEvents);
+            Assert.Contains("function.binding.blob.out_testfunction", metrics.LoggedEvents);
+            Assert.Contains("function.binding.table.in_testfunction", metrics.LoggedEvents);
+            Assert.Contains("function.binding.table.in_testfunction", metrics.LoggedEvents);
         }
 
         [Fact]
@@ -123,17 +123,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, _metricsLogger.EventsEnded.Count);
 
             // verify started event
-            var startedEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsBegan[0];
+            var startedEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsBegan.ElementAt(0);
             Assert.Equal(executionContext.InvocationId, startedEvent.InvocationId);
 
-            var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded[0];
+            var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded.ElementAt(0);
             Assert.Same(startedEvent, completedStartEvent);
             Assert.True(completedStartEvent.Success);
 
             // verify latency event
-            var startLatencyEvent = _metricsLogger.EventsBegan[0];
+            var startLatencyEvent = _metricsLogger.EventsBegan.ElementAt(0);
             Assert.Equal($"{MetricEventNames.FunctionInvokeLatency}_testfunction", startLatencyEvent);
-            var completedLatencyEvent = _metricsLogger.EventsEnded[0];
+            var completedLatencyEvent = _metricsLogger.EventsEnded.ElementAt(0);
             Assert.Equal(startLatencyEvent, completedLatencyEvent);
         }
 
@@ -177,17 +177,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, _metricsLogger.EventsEnded.Count);
 
             // verify started event
-            var startedEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsBegan[0];
+            var startedEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsBegan.ElementAt(0);
             Assert.Equal(executionContext.InvocationId, startedEvent.InvocationId);
 
-            var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded[0];
+            var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded.ElementAt(0);
             Assert.Same(startedEvent, completedStartEvent);
             Assert.False(completedStartEvent.Success);
 
             // verify latency event
-            var startLatencyEvent = _metricsLogger.EventsBegan[0];
+            var startLatencyEvent = _metricsLogger.EventsBegan.ElementAt(0);
             Assert.Equal($"{MetricEventNames.FunctionInvokeLatency}_testfunction", startLatencyEvent);
-            var completedLatencyEvent = _metricsLogger.EventsEnded[0];
+            var completedLatencyEvent = _metricsLogger.EventsEnded.ElementAt(0);
             Assert.Equal(startLatencyEvent, completedLatencyEvent);
         }
 
@@ -202,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 metadataManagerMock.Setup(m => m.Functions)
                     .Returns(new[] { metadata }.ToImmutableArray());
                 var proxyMetadataManagerMock = new Mock<IProxyMetadataManager>();
-                _fastLogger = new FunctionInstanceLogger(metadataManagerMock.Object, proxyMetadataManagerMock.Object,  metrics);
+                _fastLogger = new FunctionInstanceLogger(metadataManagerMock.Object, proxyMetadataManagerMock.Object, metrics);
             }
 
             protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
@@ -211,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     FunctionInstanceId = context.ExecutionContext.InvocationId,
                     StartTime = DateTime.UtcNow,
-                    FunctionName = this.Metadata.Name,
+                    FunctionName = Metadata.Name,
                     Properties = new Dictionary<string, object>()
                 };
                 await _fastLogger.AddAsync(item);

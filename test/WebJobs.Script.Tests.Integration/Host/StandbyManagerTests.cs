@@ -241,6 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     {
                         c.Sources.Remove(source);
                     }
+                    c.AddTestSettings();
                 })
                 .ConfigureLogging(c =>
                 {

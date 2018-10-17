@@ -13,7 +13,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -179,6 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             };
 
             Fixture.Host.ClearLogMessages();
+            Fixture.MetricsLogger.ClearCollections();
 
             await Fixture.Host.BeginFunctionAsync("Scenarios", input);
 
@@ -217,6 +220,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.EndsWith("true", logs[4]);
             Assert.EndsWith("loglevel default", logs[5]);
             Assert.EndsWith("loglevel info", logs[6]);
+
+            // We only expect 9 user log metrics to be counted, since
+            // verbose logs are filtered by default (the TestLogger explicitly
+            // allows all levels for testing purposes)
+            var key = MetricsEventManager.GetAggregateKey(MetricEventNames.FunctionUserLog, "Scenarios");
+            Assert.Equal(9, Fixture.MetricsLogger.LoggedEvents.Where(p => p == key).Count());
         }
 
         [Fact]

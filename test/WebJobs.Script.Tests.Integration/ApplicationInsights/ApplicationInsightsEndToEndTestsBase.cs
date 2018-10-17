@@ -13,7 +13,8 @@ using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -78,6 +79,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                     ValidateMetric(metric, invocationId, functionName);
                 }
             }
+
+            // App Insights logs first, so wait until this metric appears
+            string metricKey = MetricsEventManager.GetAggregateKey(MetricEventNames.FunctionUserLog, functionName);
+            IEnumerable<string> GetMetrics() => _fixture.MetricsLogger.LoggedEvents.Where(p => p == metricKey);
+
+            // TODO: Remove this check when metrics are supported in Node:
+            // https://github.com/Azure/azure-functions-host/issues/2189
+            int expectedCount = this is ApplicationInsightsCSharpEndToEndTests ? 10 : 5;
+            await TestHelpers.Await(() => GetMetrics().Count() == expectedCount,
+                timeout: 15000, userMessageCallback: () => string.Join(Environment.NewLine, GetMetrics().Select(p => p.ToString())));
         }
 
         [Fact(Skip = "HTTP logging not currently supported")]
@@ -246,7 +257,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // Excluding Node buffer deprecation warning for now
             // TODO: Remove this once the issue https://github.com/Azure/azure-functions-nodejs-worker/issues/98 is resolved
             // We may have any number of "Host Status" calls as we wait for startup. Let's ignore them.
-            traces = traces.Where(t => 
+            traces = traces.Where(t =>
                 !t.Message.Contains("[DEP0005]") &&
                 !t.Message.StartsWith("Host Status")
             ).ToArray();

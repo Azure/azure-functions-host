@@ -74,9 +74,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                   })
                   .AddScriptHostBuilder(webJobsBuilder =>
                   {
-                      var loggingBuilder = new LoggingBuilder(webJobsBuilder.Services);
-                      loggingBuilder.AddProvider(_loggerProvider);
-                      loggingBuilder.AddFilter<TestLoggerProvider>(_ => true);
+                      webJobsBuilder.Services.AddLogging(loggingBuilder =>
+                      {
+                          loggingBuilder.AddProvider(_loggerProvider);
+                          loggingBuilder.AddFilter<TestLoggerProvider>(_ => true);
+                      });
 
                       webJobsBuilder.AddAzureStorage();
 
@@ -235,17 +237,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 return base.SendAsync(request, cancellationToken);
             }
-        }
-
-        private class LoggingBuilder : ILoggingBuilder
-        {
-            private readonly IServiceCollection _services;
-
-            public LoggingBuilder(IServiceCollection services)
-            {
-                _services = services;
-            }
-            public IServiceCollection Services => _services;
         }
     }
 }

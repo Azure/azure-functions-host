@@ -153,33 +153,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }, userMessageCallback: Fixture.Host.GetLog);
         }
 
-        public async Task FunctionLogging_SucceedsTest()
-        {
-            Fixture.Host.ClearLogMessages();
-
-            string functionName = "Scenarios";
-            string guid1 = Guid.NewGuid().ToString();
-            string guid2 = Guid.NewGuid().ToString();
-
-            var inputObject = new JObject
-            {
-                { "Scenario", "logging" },
-                { "Container", "scenarios-output" },
-                { "Value", $"{guid1};{guid2}" }
-            };
-            await Fixture.Host.BeginFunctionAsync(functionName, inputObject);
-
-            IList<string> logs = null;
-            await TestHelpers.Await(() =>
-            {
-                logs = Fixture.Host.GetLogMessages().Select(p => p.FormattedMessage).Where(p => p != null).ToArray();
-                return logs.Any(p => p.Contains(guid2));
-            });
-
-            logs.Single(p => p.EndsWith($"From TraceWriter: {guid1}"));
-            logs.Single(p => p.EndsWith($"From ILogger: {guid2}"));
-        }
-
         public async Task QueueTriggerToBlobTest()
         {
             TestHelpers.ClearFunctionLogs("QueueTriggerToBlob");
