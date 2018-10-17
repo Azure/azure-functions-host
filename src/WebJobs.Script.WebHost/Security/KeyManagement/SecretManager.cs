@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ILogger _logger;
         private readonly ISecretsRepository _repository;
         private HostSecretsInfo _hostSecrets;
-        private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
+        private SemaphoreSlim _hostSecretsLock = new SemaphoreSlim(1, 1);
 
         // for testing
         public SecretManager()
@@ -60,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (disposing)
             {
                 (_repository as IDisposable)?.Dispose();
+                _hostSecretsLock.Dispose();
             }
         }
 
@@ -69,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 HostSecrets hostSecrets;
                 // Allow only one thread to modify the secrets
-                await _semaphoreSlim.WaitAsync();
+                await _hostSecretsLock.WaitAsync();
                 try
                 {
                     hostSecrets = await LoadSecretsAsync<HostSecrets>();
@@ -112,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 finally
                 {
-                    _semaphoreSlim.Release();
+                    _hostSecretsLock.Release();
                 }
             }
 
