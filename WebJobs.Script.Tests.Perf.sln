@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Tests.Perf",
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "WebJobs.Script.Tests.E2E.Shared", "test\WebJobs.Script.Tests.E2E.Shared\WebJobs.Script.Tests.E2E.Shared.shproj", "{82D61060-8774-491C-9D73-9798A34C2399}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests.Perf.Dashboard", "test\WebJobs.Script.Tests.Perf.Dashboard\WebJobs.Script.Tests.Perf.Dashboard.csproj", "{C20F06BF-554C-4707-9D09-4D55D20BEE24}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Tests.Perf.Dashboard", "test\WebJobs.Script.Tests.Perf.Dashboard\WebJobs.Script.Tests.Perf.Dashboard.csproj", "{C20F06BF-554C-4707-9D09-4D55D20BEE24}"
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution

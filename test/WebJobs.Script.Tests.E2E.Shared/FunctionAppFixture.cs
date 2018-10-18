@@ -35,12 +35,12 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
 
             FunctionDefaultKey = Settings.SiteFunctionKey ?? Guid.NewGuid().ToString().ToLower();
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 5; i++)
             {
                 try
                 {
                     Initialize().Wait();
-                    break;
+                    return;
                 }
                 catch
                 {
@@ -48,6 +48,8 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
                     System.Threading.Thread.Sleep(5000);
                 }
             }
+
+            throw new InvalidOperationException("Fixture inilialization failure");
         }
 
         public TrackedAssert Assert => _assert;
@@ -55,6 +57,8 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
         public TelemetryClient Telemetry => TelemetryContext.Client;
 
         public KuduClient KuduClient => _kuduClient;
+
+        public ILogger Logger => _logger;
 
         public string FunctionDefaultKey { get; }
 
@@ -98,6 +102,8 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
             await StartSite();
 
             await WaitForSite();
+
+            await CheckVersionsMatch();
         }
 
         private async Task InitializeFunctionKeys()
@@ -168,7 +174,7 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
         {
             using (var client = new HttpClient())
             {
-                HttpResponseMessage response = await client.GetAsync($"/admin/host/status?code={FunctionAppMasterKey}");
+                HttpResponseMessage response = await client.GetAsync($"{Settings.SiteBaseAddress}/admin/host/status?code={FunctionAppMasterKey}");
 
                 var status = await response.Content.ReadAsAsync<dynamic>();
 
