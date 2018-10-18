@@ -8,8 +8,6 @@ param (
     [string]$desc = "Empty",
     [string]$runtime = "Empty"
 )
-Write-Output "Runtime: $runtime"
-Write-Output "jmx: $jmx"
 
 Add-Type -AssemblyName "System.Web"
 
@@ -50,6 +48,11 @@ $jmeter = "C:\Program Files\Java\jre1.8.0_181\bin\java"
 New-Item -ItemType Directory -Path $outputCSVPath
 New-Item -ItemType Directory -Path $outputHTMLPath
 
+Start-Transcript -path $outputCSVPath\test.log -append
+
+Write-Output "Runtime: $runtime"
+Write-Output "jmx: $jmx"
+
 & $jmeter -jar C:\Tools\apache-jmeter-5.0\bin\ApacheJMeter.jar -n -t "C:\Tools\jmx\$jmx" -l "$outputCSVPath\logs.csv"
 & $jmeter -jar C:\Tools\apache-jmeter-5.0\bin\ApacheJMeter.jar -g "$outputCSVPath\logs.csv" -o $outputHTMLPath
 
@@ -62,3 +65,7 @@ $StorageAccountKey = $env:DashboardKey
 $ContainerName = "dashboard"
 
 Upload-FileToAzureStorageContainer -StorageAccountName $StorageAccountName -StorageAccountKey $StorageAccountKey -ContainerName $ContainerName -sourceFileRootDirectory $outputHTMLPath $folderName -Verbose
+Stop-Transcript
+Upload-FileToAzureStorageContainer -StorageAccountName $StorageAccountName -StorageAccountKey $StorageAccountKey -ContainerName $ContainerName -sourceFileRootDirectory $outputCSVPath $folderName -Verbose
+
+

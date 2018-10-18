@@ -17,14 +17,14 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
     public static class Dashboard
     {
         [FunctionName("Dashboard")]
-        public static async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequest req, TraceWriter log)
+        public static async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequest req, ExecutionContext context, TraceWriter log)
         {
             try
             {
                 string month = req.Query["month"];
                 string year = req.Query["year"];
 
-                string blobConectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage", EnvironmentVariableTarget.Process);
+                string blobConectionString = Environment.GetEnvironmentVariable("PerfStorage", EnvironmentVariableTarget.Process);
                 CloudStorageAccount storageAccount = CloudStorageAccount.Parse(blobConectionString);
                 CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
                 CloudBlobContainer container = blobClient.GetContainerReference("dashboard");
@@ -35,16 +35,23 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
                 {
                     string blobUri = item.Uri.ToString().TrimEnd('/');
                     string time = blobUri.Split('/').Last().Replace("-", "/").Replace("_", ":");
-                    CloudBlockBlob blockBlob = container.GetBlockBlobReference(blobUri.Split('/').Last() + "/summary.txt");
-                    string summary = await blockBlob.DownloadTextAsync();
-                    string[] summaryNumbers = summary.Split(',');
-                    int totalRequests = int.Parse(summaryNumbers[2]);
-                    double avgResponseTime = Math.Round(double.Parse(summaryNumbers[5]), 2);
-                    int rps = totalRequests / 120;
-                    tableContent += $"<tr><td>{time}</td><td><a href='{blobUri}/index.html'>{summaryNumbers[0]}</a></td><td>{summaryNumbers[1]}</td><td>{rps}</td><td>{totalRequests}</td><td>{avgResponseTime}</td></tr>";
+                    try
+                    {                        
+                        CloudBlockBlob blockBlob = container.GetBlockBlobReference(blobUri.Split('/').Last() + "/summary.txt");
+                        string summary = await blockBlob.DownloadTextAsync();
+                        string[] summaryNumbers = summary.Split(',');
+                        int totalRequests = int.Parse(summaryNumbers[2]);
+                        double avgResponseTime = Math.Round(double.Parse(summaryNumbers[5]), 2);
+                        int rps = totalRequests / 120;
+                        tableContent += $"<tr><td>{time}</td><td><a href='{blobUri}/index.html'>{summaryNumbers[0]}</a></td><td>{summaryNumbers[1]}</td><td>{rps}</td><td>{totalRequests}</td><td>{avgResponseTime}</td></tr>";
+                    }
+                    catch
+                    {
+                        tableContent += $"<tr><td>{time}</td><td>Failed</td><td></td><td></td><td></td><td></td></tr>";
+                    }
                 }
 
-                string content = File.ReadAllText(@"d:\home\site\wwwroot\template.html");
+                string content = File.ReadAllText($"{context.FunctionAppDirectory}\\template.html");
                 content = content.Replace("[replace]", tableContent);
 
                 return new ContentResult()
