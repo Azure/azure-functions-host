@@ -264,6 +264,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Function (&apos;{0}&apos;) keys are loaded..
+        /// </summary>
+        internal static string TraceFunctionsKeysLoaded {
+            get {
+                return ResourceManager.GetString("TraceFunctionsKeysLoaded", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Host keys are loaded..
+        /// </summary>
+        internal static string TraceHostKeysLoaded {
+            get {
+                return ResourceManager.GetString("TraceHostKeysLoaded", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Host secrets do not exist. Generating secrets..
         /// </summary>
         internal static string TraceHostSecretGeneration {
@@ -314,6 +332,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         internal static string TraceSecretDeleted {
             get {
                 return ResourceManager.GetString("TraceSecretDeleted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Secrets manager initialized, repository type: {0}.
+        /// </summary>
+        internal static string TraceSecretsRepo {
+            get {
+                return ResourceManager.GetString("TraceSecretsRepo", resourceCulture);
             }
         }
         
