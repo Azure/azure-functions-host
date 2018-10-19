@@ -10,6 +10,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -111,6 +112,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // Make sure we get a metric logged from both ILogger and TraceWriter
             var key = MetricsEventManager.GetAggregateKey(MetricEventNames.FunctionUserLog, "Scenarios");
             Assert.Equal(2, Fixture.MetricsLogger.LoggedEvents.Where(p => p == key).Count());
+
+            // Make sure we've gotten a log from the aggregator
+            IEnumerable<LogMessage> getAggregatorLogs() => Fixture.Host.GetLogMessages().Where(p => p.Category == LogCategories.Aggregator);
+
+            await TestHelpers.Await(() => getAggregatorLogs().Any());
+
+            var aggregatorLogs = getAggregatorLogs();
+            Assert.Equal(1, aggregatorLogs.Count());
         }
 
         [Fact]
@@ -404,6 +413,11 @@ namespace SecondaryDependency
                         "QueueTriggerToBlob",
                         "Scenarios"
                     };
+                });
+
+                webJobsBuilder.Services.Configure<FunctionResultAggregatorOptions>(o =>
+                {
+                    o.BatchSize = 1;
                 });
             }
         }

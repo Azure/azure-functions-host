@@ -4,6 +4,7 @@
 using System;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
@@ -72,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     // Logging and diagnostics
                     services.TryAddSingleton<IMetricsLogger, WebHostMetricsLogger>();
-                    services.AddSingleton<IAsyncCollector<Host.Loggers.FunctionInstanceLogEntry>, FunctionInstanceLogger>();
+                    services.AddSingleton<IEventCollectorProvider, FunctionInstanceLogCollectorProvider>();
 
                     // Hosted services
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HttpInitializationService>());
