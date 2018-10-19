@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 Assert.Equal(2, result.Keys.Count);
                 Assert.True(functionSecretsConverted, "Function secrets were not persisted");
-                Assert.True(traceWriter.GetTraces().Any(t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage) > -1));
+                Assert.True(traceWriter.GetTraces().Any(t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage) > -1));
             }
         }
 
@@ -245,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.Equal(1, functionSecrets.Count);
                 Assert.Equal(ScriptConstants.DefaultFunctionKeyName, functionSecrets.Keys.First());
                 Assert.True(traceWriter.GetTraces().Any(
-                    t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
+                    t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
                     "Expected Trace message not found");
             }
         }
@@ -578,7 +578,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.Equal(1, Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length);
 
                 Assert.True(traceWriter.GetTraces().Any(
-                    t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
+                    t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
                     "Expected Trace message not found");
             }
         }
@@ -645,7 +645,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 Assert.True(Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length >= ScriptConstants.MaximumSecretBackupCount);
                 Assert.True(traceWriter.GetTraces().Any(
-                    t => t.Level == TraceLevel.Verbose && t.Message.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
+                    t => t.Level == TraceLevel.Info && t.Message.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
                     "Expected Trace message not found");
             }
         }

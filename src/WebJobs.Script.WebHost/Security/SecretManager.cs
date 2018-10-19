@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _keyValueConverterFactory = keyValueConverterFactory;
             _traceWriter = traceWriter;
             _repository.SecretsChanged += OnSecretsChanged;
-            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryKeys);
 
             if (createHostSecretsIfMissing)
             {
@@ -51,6 +51,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // create a host secret if one is not present.
                 GetHostSecretsAsync().GetAwaiter().GetResult();
             }
+
+            _traceWriter.Info(Resources.TraceSecretsRepo, repository.ToString());
+            _logger?.LogInformation(Resources.TraceSecretsRepo, repository.ToString());
         }
 
         public void Dispose()
@@ -124,6 +127,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
             }
 
+            _traceWriter.Info(Resources.TraceHostKeysLoaded);
+            _logger?.LogInformation(Resources.TraceHostKeysLoaded);
+
             return _hostSecrets;
         }
 
@@ -148,9 +154,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     // no secrets exist for this function so generate them
                     string message = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
-                    _traceWriter.Verbose(message, traceProperties);
+                    _traceWriter.Info(message, traceProperties);
 
-                    _logger?.LogDebug(message);
+                    _logger?.LogInformation(message);
                     secrets = new FunctionSecrets
                     {
                         Keys = new List<Key>
@@ -170,8 +176,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 catch (CryptographicException)
                 {
                     string message = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName);
-                    _traceWriter.Verbose(message, traceProperties);
-                    _logger?.LogDebug(message);
+                    _traceWriter.Info(message, traceProperties);
+                    _logger?.LogInformation(message);
                     await PersistSecretsAsync(secrets, functionName, true);
                     await RefreshSecretsAsync(secrets, functionName);
                 }
@@ -179,8 +185,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (secrets.HasStaleKeys)
                 {
                     string message = string.Format(Resources.TraceStaleFunctionSecretRefresh, functionName);
-                    _traceWriter.Verbose(message);
-                    _logger?.LogDebug(message);
+                    _traceWriter.Info(message);
+                    _logger?.LogInformation(message);
                     await RefreshSecretsAsync(secrets, functionName);
                 }
 
@@ -199,6 +205,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 functionSecrets = functionSecrets.Union(hostFunctionSecrets.Where(s => !functionSecrets.ContainsKey(s.Key)))
                     .ToDictionary(kv => kv.Key, kv => kv.Value);
             }
+
+            _traceWriter.Info(Resources.TraceFunctionsKeysLoaded, functionName);
+            _logger?.LogInformation(Resources.TraceFunctionsKeysLoaded, functionName);
 
             return functionSecrets;
         }
@@ -426,8 +435,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     string message = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, string.IsNullOrEmpty(keyScope) ? "host" : keyScope, await AnalizeSnapshots<T>(secretBackups));
                     TraceEvent traceEvent = new TraceEvent(TraceLevel.Verbose, message);
-                    _traceWriter.Verbose(message);
-                    _logger?.LogDebug(message);
+                    _traceWriter.Info(message);
+                    _logger?.LogInformation(message);
                     throw new InvalidOperationException(message);
                 }
                 await _repository.WriteSnapshotAsync(secretsType, keyScope, secretsContent);

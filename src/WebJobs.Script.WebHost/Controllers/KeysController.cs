@@ -182,8 +182,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             string message = string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", operationResult.Result);
-            _traceWriter.Verbose(message);
-            _logger?.LogDebug(message);
+            _traceWriter.Info(message);
+            _logger?.LogInformation(message);
 
             switch (operationResult.Result)
             {
@@ -248,8 +248,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             string message = string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", "Deleted");
-            _traceWriter.VerboseFormat(message);
-            _logger?.LogDebug(message);
+            _traceWriter.Info(message);
+            _logger?.LogInformation(message);
 
             return StatusCode(HttpStatusCode.NoContent);
         }
