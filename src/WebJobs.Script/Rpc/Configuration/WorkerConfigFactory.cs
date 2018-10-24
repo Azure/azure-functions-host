@@ -134,11 +134,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 descriptionProfiles = GetWorkerDescriptionProfiles(workerConfig);
                 if (ScriptSettingsManager.Instance.IsAppServiceEnvironment)
                 {
-                    //Overwrite default Description with AppServiceEnv profile
+                    // Overwrite default Description with AppServiceEnv profile
+                    // TODO:pgopa delete after ANT78
                     workerDescription = GetWorkerDescriptionFromProfiles(LanguageWorkerConstants.WorkerDescriptionAppServiceEnvProfileName, descriptionProfiles, workerDescription);
                 }
+
                 GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
+
                 if (File.Exists(workerDescription.GetWorkerPath()))
                 {
                     _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
@@ -195,8 +198,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             workerDescription.DefaultExecutablePath = defaultExecutablePath.Value != null ? defaultExecutablePath.Value : workerDescription.DefaultExecutablePath;
         }
 
-        private static void AddArgumentsFromAppSettings(WorkerDescription workerDescription, IConfigurationSection languageSection)
+        internal static void AddArgumentsFromAppSettings(WorkerDescription workerDescription, IConfigurationSection languageSection)
         {
+            if (workerDescription.Language.Equals(LanguageWorkerConstants.JavaLanguageWorkerName))
+            {
+                // For Java either provide arguments via JAVA_OPTS or languageWorkers:java:arguments. Both cannot be supported
+                string javaOpts = ScriptSettingsManager.Instance.GetSetting("JAVA_OPTS");
+                if (!string.IsNullOrEmpty(javaOpts))
+                {
+                    workerDescription.Arguments.Add(javaOpts);
+                    return;
+                }
+            }
             var argumentsSection = languageSection.GetSection($"{LanguageWorkerConstants.WorkerDescriptionArguments}");
             if (argumentsSection.Value != null)
             {
