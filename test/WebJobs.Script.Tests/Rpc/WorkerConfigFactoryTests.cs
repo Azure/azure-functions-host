@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
@@ -144,6 +145,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 var javaPath = configFactory.GetExecutablePathForJava("java");
                 Assert.Equal("java", javaPath);
+            }
+        }
+
+        [Theory]
+        [InlineData("-Djava.net.preferIPv4Stack = true", "-Djava.net.preferIPv4Stack = true")]
+        [InlineData("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005", "")]
+        public void AddArgumentsFromAppSettings_JavaOpts(string expectedArgument, string javaOpts)
+        {
+            WorkerDescription workerDescription = new WorkerDescription()
+            {
+                Arguments = new List<string>() { "-jar" },
+                DefaultExecutablePath = "java",
+                DefaultWorkerPath = "javaworker.jar",
+                Extensions = new List<string>() { ".jar" },
+                Language = "java"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test",
+                      ["languageWorkers:java:arguments"] = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var languageSection = config.GetSection("languageWorkers:java");
+            var testEnvVariables = new Dictionary<string, string>
+            {
+                { "JAVA_OPTS", javaOpts }
+            };
+            using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
+            {
+                WorkerConfigFactory.AddArgumentsFromAppSettings(workerDescription, languageSection);
+                Assert.Equal(2, workerDescription.Arguments.Count);
+                Assert.Equal(expectedArgument, workerDescription.Arguments[1]);
             }
         }
     }
