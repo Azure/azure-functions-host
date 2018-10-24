@@ -80,6 +80,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
+        public void JavaPath_AppServiceEnv_JavaHomeOverrides()
+        {
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var testEnvVariables = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
+                { "JAVA_HOME", @"D:\Program Files\Java\zulu8.31.0.2-jre8.0.181-win_x64" }
+            };
+            using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
+            {
+                var javaPath = configFactory.GetExecutablePathForJava("../../zulu8.23.0.3-jdk8.0.144-win_x64/bin/java");
+                Assert.Equal(@"D:\Program Files\Java\zulu8.31.0.2-jre8.0.181-win_x64\bin\java", javaPath);
+            }
+        }
+
+        [Fact]
         public void JavaPath_JavaHome_Set()
         {
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
