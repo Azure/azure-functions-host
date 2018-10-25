@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Stops the <see cref="IScriptJobHost"/> and shuts down the hosting environment.
         /// </summary>
-        void Shutdown();
+        /// <param name="hard">True if the shutdown should be "hard" - i.e. shut down process.</param>
+        void Shutdown(bool hard = false);
     }
 }

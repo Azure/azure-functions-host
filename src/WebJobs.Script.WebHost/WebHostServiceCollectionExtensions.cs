@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddStandbyServices();
 
             // Core script host services
+            services.TryAddSingleton<IScriptJobHostEnvironment, WebScriptJobHostEnvironment>();
             services.AddSingleton<WebJobsScriptHostService>();
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());

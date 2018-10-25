@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var logFiles = new List<FileInfo>();
             for (int i = 0; i < 5; i++)
             {
-                string fileName = string.Format("{0}-{1}.log", i, FileWriter.GetInstanceId());
+                string fileName = string.Format("{0}-{1}.log", i, Utility.GetInstanceId());
                 string path = Path.Combine(_logFilePath, fileName);
                 File.WriteAllText(path, "Test Logs");
                 logFiles.Add(new FileInfo(path));

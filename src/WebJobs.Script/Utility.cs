@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
@@ -464,6 +465,19 @@ namespace Microsoft.Azure.WebJobs.Script
                 return true;
             }
             return ContainsNonDotNetFunctions(functionsListWithoutProxies);
+        }
+
+        internal static string GetInstanceId()
+        {
+            string instanceId = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId);
+            if (string.IsNullOrEmpty(instanceId))
+            {
+                instanceId = Environment.MachineName;
+            }
+
+            instanceId = instanceId.Length > 10 ? instanceId.Substring(0, 10) : instanceId;
+
+            return instanceId.ToLowerInvariant();
         }
 
         private static bool ContainsNonDotNetFunctions(IEnumerable<FunctionMetadata> functions)

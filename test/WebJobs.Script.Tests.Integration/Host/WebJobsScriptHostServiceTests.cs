@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -26,13 +27,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         private readonly TestFunctionHost _testHost;
         private readonly Collection<string> _exceededCounters = new Collection<string>();
         private readonly HostHealthMonitorOptions _healthMonitorOptions;
+        private readonly string _logPath;
         private bool _underHighLoad;
         private bool _shutdownCalled;
+        private bool _hardShutdownCalled;
 
         public WebJobsScriptHostServiceTests()
         {
             string testScriptPath = @"TestScripts\CSharp";
-            string testLogPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions");
+            _logPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions");
 
             // configure the monitor so it will fail within a couple seconds
             _healthMonitorOptions = new HostHealthMonitorOptions
@@ -44,10 +47,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             var wrappedHealthMonitorOptions = new OptionsWrapper<HostHealthMonitorOptions>(_healthMonitorOptions);
 
             _mockJobHostEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Strict);
-            _mockJobHostEnvironment.Setup(p => p.Shutdown())
+            _mockJobHostEnvironment.Setup(p => p.Shutdown(false))
                 .Callback(() =>
                 {
                     _shutdownCalled = true;
+                });
+            _mockJobHostEnvironment.Setup(p => p.Shutdown(true))
+                .Callback(() =>
+                {
+                    _hardShutdownCalled = true;
                 });
 
             var mockEnvironment = new Mock<IEnvironment>();
@@ -68,18 +76,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 })
                 .Returns(() => _underHighLoad);
 
-            _testHost = new TestFunctionHost(testScriptPath, testLogPath,
+            _testHost = new TestFunctionHost(testScriptPath, _logPath,
                 configureServices: services =>
                 {
                     services.AddSingleton<IOptions<HostHealthMonitorOptions>>(wrappedHealthMonitorOptions);
-                    services.AddSingleton<IScriptJobHostEnvironment>(_mockJobHostEnvironment.Object);
                     services.AddSingleton<IEnvironment>(mockEnvironment.Object);
+                    services.AddSingleton<IScriptJobHostEnvironment>(_mockJobHostEnvironment.Object);
                     services.AddSingleton<HostPerformanceManager>(mockHostPerformanceManager.Object);
 
                     services.AddSingleton<IConfigureBuilder<IWebJobsBuilder>>(new DelegatedConfigureBuilder<IWebJobsBuilder>(b =>
                     {
                         b.UseHostId("1234");
                         b.Services.Configure<ScriptJobHostOptions>(o => o.Functions = new[] { "ManualTrigger", "Scenarios" });
+                        //b.Services.AddSingleton<IScriptJobHostEnvironment>(_mockJobHostEnvironment.Object);
                     }));
                 });
 
@@ -127,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             await TestHelpers.Await(() => _shutdownCalled);
 
             Assert.Equal(ScriptHostState.Error, _scriptHostService.State);
-            _mockJobHostEnvironment.Verify(p => p.Shutdown(), Times.Once);
+            _mockJobHostEnvironment.Verify(p => p.Shutdown(false), Times.Once);
 
             // we expect a few restart iterations
             var logMessages = _testHost.GetLogMessages();
@@ -142,6 +151,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             Assert.Equal(LogLevel.Error, log.Level);
 
             Assert.Contains(logMessages, p => p.FormattedMessage == "Stopping JobHost");
+
+            var shutdownSentinelFilePath = Path.Combine(_logPath, "Host", $"{Utility.GetInstanceId()}-{ScriptConstants.ShutdownSentinelFileName}");
+            Assert.True(File.Exists(shutdownSentinelFilePath));
+        }
+
+        [Fact]
+        public async Task HostHealthMonitor_TriggersHardShutdown_WhenHostUnhealthyAfterShutdown()
+        {
+            Assert.Equal(ScriptHostState.Running, _scriptHostService.State);
+
+            // write the shutdown sentinel file to simulate a previous shutdown
+            var shutdownSentinelFilePath = Path.Combine(_logPath, "Host", $"{Utility.GetInstanceId()}-{ScriptConstants.ShutdownSentinelFileName}");
+            File.WriteAllText(shutdownSentinelFilePath, string.Empty);
+
+            // make host unhealthy
+            _exceededCounters.Add("Connections");
+            _underHighLoad = true;
+
+            await TestHelpers.Await(() => _hardShutdownCalled);
+
+            Assert.Equal(ScriptHostState.Error, _scriptHostService.State);
+            _mockJobHostEnvironment.Verify(p => p.Shutdown(true), Times.Once);
+
+            // we expect a few restart iterations
+            var logMessages = _testHost.GetLogMessages();
+            var thresholdErrors = logMessages.Where(p => p.Exception is InvalidOperationException && p.Exception.Message == "Host thresholds exceeded: [Connections]. For more information, see https://aka.ms/functions-thresholds.");
+            var count = thresholdErrors.Count();
+            Assert.True(count > 0);
+
+            var log = logMessages.First(p => p.FormattedMessage == "Host is unhealthy. Initiating a restart." && p.Level == LogLevel.Error);
+            Assert.Equal(LogLevel.Error, log.Level);
+
+            Assert.Contains(logMessages, p => p.FormattedMessage == "Host still unhealthy after previous shutdown. Initiating hard shutdown."); 
         }
 
         [Fact]
@@ -169,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 return allLogs.Contains("Host initialization: ConsecutiveErrors=3");
             });
             Assert.Equal(ScriptHostState.Error, _scriptHostService.State);
-            _mockJobHostEnvironment.Verify(p => p.Shutdown(), Times.Never);
+            _mockJobHostEnvironment.Verify(p => p.Shutdown(false), Times.Never);
 
             // after a few retries, put the host back to health and verify
             // it starts successfully

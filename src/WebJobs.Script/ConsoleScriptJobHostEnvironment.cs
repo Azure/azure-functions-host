@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Threading;
 using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -9,6 +10,8 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly IHostingEnvironment _hostingEnvironment;
         private IApplicationLifetime _applicationLifetime;
+        private int _shutdownRequested;
+        private int _restartRequested;
 
         public ConsoleScriptJobHostEnvironment(IApplicationLifetime applicationLifetime, IHostingEnvironment hostingEnvironment)
         {
@@ -20,12 +23,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public void RestartHost()
         {
-            _applicationLifetime.StopApplication();
+            if (_shutdownRequested == 0 && Interlocked.Exchange(ref _restartRequested, 1) == 0)
+            {
+                _applicationLifetime.StopApplication();
+            }
         }
 
-        public void Shutdown()
+        public void Shutdown(bool hard = false)
         {
-            _applicationLifetime.StopApplication();
+            if (Interlocked.Exchange(ref _shutdownRequested, 1) == 0)
+            {
+                _applicationLifetime.StopApplication();
+            }
         }
     }
 }

@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IOptions<HostHealthMonitorOptions> _healthMonitorOptions;
         private readonly SlidingWindow<bool> _healthCheckWindow;
         private readonly Timer _hostHealthCheckTimer;
+        private readonly string _shutdownSentinelFilePath;
 
         private IHost _host;
         private CancellationTokenSource _startupLoopTokenSource;
@@ -59,6 +60,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _healthCheckWindow = new SlidingWindow<bool>(_healthMonitorOptions.Value.HealthCheckWindow);
                 _hostHealthCheckTimer = new Timer(OnHostHealthCheckTimer, null, TimeSpan.Zero, _healthMonitorOptions.Value.HealthCheckInterval);
             }
+
+            // shutdown is scoped to a single host instance
+            _shutdownSentinelFilePath = Path.Combine(_applicationHostOptions.CurrentValue.LogPath, "Host", $"{Utility.GetInstanceId()}-{ScriptConstants.ShutdownSentinelFileName}");
         }
 
         [Flags]
@@ -152,6 +156,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         State = ScriptHostState.Running;
                     }
                 }
+
+                if (File.Exists(_shutdownSentinelFilePath))
+                {
+                    // we've recovered successfully after a shutdown, so
+                    // clean up the file
+                    File.Delete(_shutdownSentinelFilePath);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -166,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 ILogger logger = GetHostLogger();
                 logger.LogError(exc, "A host error has occurred");
 
-                if (ShutdownHostIfUnhealthy())
+                if (ShutdownHostIfUnhealthy(logger))
                 {
                     return;
                 }
@@ -201,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 else
                 {
-                    await Utility.DelayWithBackoffAsync(attemptCount, cancellationToken, min: TimeSpan.FromSeconds(1), max: TimeSpan.FromMinutes(2))
+                    await Utility.DelayWithBackoffAsync(attemptCount, cancellationToken, min: TimeSpan.FromSeconds(1), max: TimeSpan.FromSeconds(10))
                         .ContinueWith(t =>
                         {
                             cancellationToken.ThrowIfCancellationRequested();
@@ -341,18 +352,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return true;
         }
 
-        private bool ShutdownHostIfUnhealthy()
+        private bool ShutdownHostIfUnhealthy(ILogger logger)
         {
             if (ShouldMonitorHostHealth && _healthCheckWindow.GetEvents().Where(isHealthy => !isHealthy).Count() > _healthMonitorOptions.Value.HealthCheckThreshold)
             {
-                // if the number of times the host has been unhealthy in
-                // the current time window exceeds the threshold, recover by
-                // initiating shutdown
-                var message = $"Host unhealthy count exceeds the threshold of {_healthMonitorOptions.Value.HealthCheckThreshold} for time window {_healthMonitorOptions.Value.HealthCheckWindow}. Initiating shutdown.";
-                _logger.LogError(0, message);
+                logger = logger ?? _logger;
                 var environment = _rootServiceProvider.GetService<IScriptJobHostEnvironment>();
-                environment.Shutdown();
-                return true;
+                if (File.Exists(_shutdownSentinelFilePath))
+                {
+                    // we've previously shutdown but we're still unhealthy
+                    // initiate a *hard* shutdown in an attempt to recover
+                    logger.LogError(0, $"Host still unhealthy after previous shutdown. Initiating hard shutdown.");
+                    environment.Shutdown(hard: true);
+                    return true;
+                }
+                else
+                {
+                    // write a sentinel file to indicate that we've initiated a shutdown
+                    File.WriteAllText(_shutdownSentinelFilePath, string.Empty);
+
+                    // if the number of times the host has been unhealthy in
+                    // the current time window exceeds the threshold, recover by
+                    // initiating shutdown
+                    logger.LogError(0, $"Host unhealthy count exceeds the threshold of {_healthMonitorOptions.Value.HealthCheckThreshold} for time window {_healthMonitorOptions.Value.HealthCheckWindow}. Initiating shutdown.");
+                    environment.Shutdown();
+                    return true;
+                }
             }
 
             return false;

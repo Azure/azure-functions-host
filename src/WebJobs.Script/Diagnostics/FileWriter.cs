@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public FileWriter(string logFilePath)
         {
             _logFilePath = logFilePath;
-            _instanceId = GetInstanceId();
+            _instanceId = Utility.GetInstanceId();
             _logDirectory = new DirectoryInfo(logFilePath);
 
             // start a timer to flush accumulated logs in batches
@@ -270,19 +270,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     // best effort
                 }
             }
-        }
-
-        internal static string GetInstanceId()
-        {
-            string instanceId = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId);
-            if (string.IsNullOrEmpty(instanceId))
-            {
-                instanceId = Environment.MachineName;
-            }
-
-            instanceId = instanceId.Length > 10 ? instanceId.Substring(0, 10) : instanceId;
-
-            return instanceId.ToLowerInvariant();
         }
     }
 }

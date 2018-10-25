@@ -63,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string DebugSentinelFileName = "debug_sentinel";
         public const string DiagnosticSentinelFileName = "diagnostic_sentinel";
+        public const string ShutdownSentinelFileName = "shutdown_sentinel";
         public const string HostMetadataFileName = "host.json";
         public const string FunctionMetadataFileName = "function.json";
         public const string ProxyMetadataFileName = "proxies.json";
