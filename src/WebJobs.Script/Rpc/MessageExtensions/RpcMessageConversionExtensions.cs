@@ -79,12 +79,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
                 foreach (var pair in request.Query)
                 {
-                    http.Query.Add(pair.Key, pair.Value.ToString());
+                    if (pair.Value != null)
+                    {
+                        http.Query.Add(pair.Key, pair.Value.ToString());
+                    }
                 }
 
                 foreach (var pair in request.Headers)
                 {
-                    http.Headers.Add(pair.Key.ToLowerInvariant(), pair.Value.ToString());
+                    if (pair.Value != null)
+                    {
+                        http.Headers.Add(pair.Key.ToLowerInvariant(), pair.Value.ToString());
+                    }
                 }
 
                 if (request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out object routeData))
