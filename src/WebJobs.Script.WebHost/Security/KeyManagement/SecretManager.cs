@@ -68,23 +68,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (_hostSecrets == null)
             {
                 HostSecrets hostSecrets;
+                // Allow only one thread to modify the secrets
                 await _semaphoreSlim.WaitAsync();
-                try
-                {
-                    hostSecrets = await LoadSecretsAsync<HostSecrets>();
-
-                    if (hostSecrets == null)
-                    {
-                        // host secrets do not yet exist so generate them
-                        _logger.LogDebug(Resources.TraceHostSecretGeneration);
-                        hostSecrets = GenerateHostSecrets();
-                        await PersistSecretsAsync(hostSecrets);
-                    }
-                }
-                finally
-                {
-                    _semaphoreSlim.Release();
-                }
 
                 try
                 {
