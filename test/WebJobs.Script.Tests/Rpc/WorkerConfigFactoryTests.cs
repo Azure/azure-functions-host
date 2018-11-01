@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
-        public void JavaPath_AppServiceEnv_JavaHomeOverrides()
+        public void JavaPath_AppServiceEnv_JavaHomeSet_AppServiceEnvOverrides()
         {
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                   .AddInMemoryCollection(new Dictionary<string, string>
@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
             {
                 var javaPath = configFactory.GetExecutablePathForJava("../../zulu8.23.0.3-jdk8.0.144-win_x64/bin/java");
-                Assert.Equal(@"D:\Program Files\Java\zulu8.31.0.2-jre8.0.181-win_x64\bin\java", javaPath);
+                Assert.Equal(@"D:\Program Files\Java\zulu8.23.0.3-jdk8.0.144-win_x64\bin\java", javaPath);
             }
         }
 
