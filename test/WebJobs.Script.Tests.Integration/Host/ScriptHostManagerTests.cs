@@ -403,7 +403,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var environmentMock = new Mock<IScriptHostEnvironment>(MockBehavior.Strict);
             bool shutdownCalled = false;
-            environmentMock.Setup(p => p.Shutdown()).Callback(() => shutdownCalled = true);
+            environmentMock.Setup(p => p.Shutdown(true)).Callback(() => shutdownCalled = true);
 
             var mockSettings = new Mock<ScriptSettingsManager>();
             mockSettings.Setup(p => p.IsAzureEnvironment).Returns(true);
@@ -431,7 +431,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await TestHelpers.Await(() => hostManager.State == ScriptHostState.Error && shutdownCalled);
 
-            environmentMock.Verify(p => p.Shutdown(), Times.Once);
+            environmentMock.Verify(p => p.Shutdown(true), Times.Once);
 
             var traces = testTraceWriter.GetTraces();
 
@@ -441,7 +441,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var log = traces.Last();
             Assert.True(traces.Count(p => p.Message == "Host is unhealthy. Initiating a restart." && p.Level == TraceLevel.Error) > 0);
-            Assert.Equal("Host unhealthy count exceeds the threshold of 5 for time window 00:00:01. Initiating shutdown.", log.Message);
+            Assert.Equal("Host unhealthy count exceeds the threshold of 5 for time window 00:00:01. Initiating hard shutdown.", log.Message);
+            Assert.Equal(ScriptConstants.ShutdownRecoveryEventName, log.Properties[ScriptConstants.TracePropertyEventNameKey]);
             Assert.Equal(TraceLevel.Error, log.Level);
         }
 

@@ -434,14 +434,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public override void Shutdown()
+        public override void Shutdown(bool hard = false)
         {
             string message = "Environment shutdown has been triggered. Stopping host and signaling shutdown.";
             Instance?.TraceWriter.Info(message);
             Instance?.Logger?.LogInformation(message);
 
             Stop();
-            HostingEnvironment.InitiateShutdown();
+
+            if (hard)
+            {
+                // "hard" shutdown recycles the process
+                Process.GetCurrentProcess().Kill();
+            }
+            else
+            {
+                // "soft" shutdown recycles the AppDomain
+                HostingEnvironment.InitiateShutdown();
+            }
         }
 
         public async Task DelayUntilHostReady()

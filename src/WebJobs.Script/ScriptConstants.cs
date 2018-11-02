@@ -63,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
         public const string ColdStartEventName = "ColdStart";
+        public const string ShutdownRecoveryEventName = "ShutdownRecovery";
 
         public const string AntaresLogIdHeaderName = "X-ARR-LOG-ID";
         public const string AntaresScaleOutHeaderName = "X-FUNCTION-SCALEOUT";

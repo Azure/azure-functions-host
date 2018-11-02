@@ -12,6 +12,7 @@ using System.Reactive.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -266,13 +267,15 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (ShouldMonitorHostHealth && _healthCheckWindow.GetEvents().Where(isHealthy => !isHealthy).Count() > _config.HostHealthMonitor.HealthCheckThreshold)
             {
-                // if the number of times the host has been unhealthy in
+                // If the number of times the host has been unhealthy in
                 // the current time window exceeds the threshold, recover by
-                // initiating shutdown
-                var message = $"Host unhealthy count exceeds the threshold of {_config.HostHealthMonitor.HealthCheckThreshold} for time window {_config.HostHealthMonitor.HealthCheckWindow}. Initiating shutdown.";
-                Instance?.TraceWriter?.Error(message);
+                // initiating a hard shutdown.
+                var message = $"Host unhealthy count exceeds the threshold of {_config.HostHealthMonitor.HealthCheckThreshold} for time window {_config.HostHealthMonitor.HealthCheckWindow}. Initiating hard shutdown.";
+                var shutdownEvent = new TraceEvent(TraceLevel.Error, message);
+                shutdownEvent.Properties.Add(ScriptConstants.TracePropertyEventNameKey, ScriptConstants.ShutdownRecoveryEventName);
+                Instance?.TraceWriter?.Trace(shutdownEvent);
                 Instance?.Logger?.LogError(0, message);
-                _environment.Shutdown();
+                _environment.Shutdown(hard: true);
                 return true;
             }
 
@@ -504,11 +507,11 @@ namespace Microsoft.Azure.WebJobs.Script
             _restartHostEvent.Set();
         }
 
-        public virtual void Shutdown()
+        public virtual void Shutdown(bool hard = false)
         {
             Stop();
 
-            Process.GetCurrentProcess().Close();
+            Process.GetCurrentProcess().Kill();
         }
 
         private void OnHostHealthCheckTimer(object state)

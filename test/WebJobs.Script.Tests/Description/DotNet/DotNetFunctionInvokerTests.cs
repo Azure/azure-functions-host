@@ -346,7 +346,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // and won't be made immediately
                 await Task.Delay(1000);
 
-                environmentMock.Verify(e => e.Shutdown(), Times.Exactly(shutdownExpected ? 1 : 0));
+                environmentMock.Verify(e => e.Shutdown(false), Times.Exactly(shutdownExpected ? 1 : 0));
             }
         }
 

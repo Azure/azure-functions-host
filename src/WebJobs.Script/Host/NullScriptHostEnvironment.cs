@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
         }
 
-        public void Shutdown()
+        public void Shutdown(bool hard = false)
         {
         }
     }
