@@ -224,21 +224,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 return defaultExecutablePath;
             }
-            else if (IsJavaHomeValid())
-            {
-                // TODO: pgopa default to using JAVA_HOME after ANT78 rolls out
-                return Path.GetFullPath(Path.Combine(javaHome, "bin", "java"));
-            }
             else
             {
                 return Path.GetFullPath(Path.Combine(javaHome, "bin", defaultExecutablePath));
             }
-        }
-
-        internal bool IsJavaHomeValid()
-        {
-            string javaHome = ScriptSettingsManager.Instance.GetSetting("JAVA_HOME");
-            return string.IsNullOrEmpty(javaHome) ? false : javaHome.Contains("8.0");
         }
     }
 }
