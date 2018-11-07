@@ -10,10 +10,10 @@
       </site>
     </sites>
   </system.applicationHost>
-  <location path="%XDT_SITENAME%" xdt:Locator="Match(path)" xdt:Transform="InsertIfMissing">
-    <system.webServer xdt:Transform="InsertIfMissing">
-      <modules xdt:Transform="InsertIfMissing">
-        <add name="AspNetCoreModuleV2" xdt:Transform="InsertIfMissing"/>
+  <location path="" xdt:Locator="Match(path)">
+    <system.webServer>
+      <modules>
+        <add name="AspNetCoreModuleV2" xdt:Locator="Match(name)" xdt:Transform="InsertIfMissing" lockItem="true" />
       </modules>
     </system.webServer>
   </location>
