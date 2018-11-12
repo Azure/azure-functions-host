@@ -2,12 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -30,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly Timer _hostHealthCheckTimer;
 
         private IHost _host;
+        private ILoggerFactory _loggerFactory;
         private CancellationTokenSource _startupLoopTokenSource;
         private int _hostStartCount;
         private bool _disposed = false;
@@ -42,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
-
+            _loggerFactory = loggerFactory;
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _scriptWebHostEnvironment = scriptWebHostEnvironment ?? throw new ArgumentNullException(nameof(scriptWebHostEnvironment));
             _rootServiceProvider = rootServiceProvider;
@@ -140,6 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 LogInitialization(isOffline, attemptCount, ++_hostStartCount);
+                IScriptEventManager eventManager = _host.Services.GetService<IScriptEventManager>();
 
                 await _host.StartAsync(cancellationToken);
 
@@ -398,6 +404,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public void Dispose() => Dispose(true);
+        public void Dispose()
+        {
+           Dispose(true);
+        }
     }
 }

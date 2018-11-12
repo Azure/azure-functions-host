@@ -3,11 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -16,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Configuration;
@@ -168,7 +171,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // initially created in placeholder mode and live on through the
             // specialized app.
             services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
-            services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
+            //services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
+            services.TryAddSingleton<ILanguageWorkerService, LanguageWorkerService>();
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);

@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private IScriptEventManager _eventManager;
         private IRpcServer _server;
-        private CreateChannel _channelFactory;
+        private LanguageWorkerState _javaWorkerState;
         private IEnumerable<WorkerConfig> _workerConfigs;
         private ConcurrentDictionary<WorkerConfig, LanguageWorkerState> _channelStates = new ConcurrentDictionary<WorkerConfig, LanguageWorkerState>();
         private IDisposable _workerErrorSubscription;
@@ -32,13 +32,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public FunctionDispatcher(
             IScriptEventManager manager,
             IRpcServer server,
-            CreateChannel channelFactory,
             IEnumerable<WorkerConfig> workerConfigs,
             string language)
         {
             _eventManager = manager;
             _server = server;
-            _channelFactory = channelFactory;
             _language = language;
             _workerConfigs = workerConfigs ?? throw new ArgumentNullException("workerConfigs");
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
@@ -60,18 +58,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return functionMetadata.Language.Equals(_language, StringComparison.OrdinalIgnoreCase);
         }
 
-        internal LanguageWorkerState CreateWorkerState(WorkerConfig config)
+        public LanguageWorkerState CreateWorkerState(WorkerConfig config, ILanguageWorkerChannel languageWorkerChannel)
         {
             var state = new LanguageWorkerState();
-            state.Channel = _channelFactory(config, state.Functions, 0);
+            state.Channel = languageWorkerChannel;
+            state.Channel.WorkerReady(state.Functions);
             _channelsDictionary[state.Channel.Id] = state.Channel;
+            _javaWorkerState = state;
             return state;
         }
 
         public void Register(FunctionRegistrationContext context)
         {
             WorkerConfig workerConfig = _workerConfigs.First(config => config.Extensions.Contains(Path.GetExtension(context.Metadata.ScriptFile)));
-            var state = _channelStates.GetOrAdd(workerConfig, CreateWorkerState);
+            var state = _channelStates.GetOrAdd(workerConfig, _javaWorkerState);
             state.Functions.OnNext(context);
         }
 
@@ -82,14 +82,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 // TODO: move retry logic, possibly into worker channel decorator
                 _channelStates.AddOrUpdate(erroredChannel.Config,
-                    CreateWorkerState,
+                    _javaWorkerState,
                     (config, state) =>
                     {
                         erroredChannel.Dispose();
                         state.Errors.Add(workerError.Exception);
                         if (state.Errors.Count < 3)
                         {
-                            state.Channel = _channelFactory(config, state.Functions, state.Errors.Count);
+                            // TODO: figure out process restarts
+                            state.Channel = null;
                             _channelsDictionary[state.Channel.Id] = state.Channel;
                         }
                         else
@@ -129,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         pair.Value.Channel.Dispose();
                         pair.Value.Functions.Dispose();
                     }
-                    _server.ShutdownAsync().ContinueWith(t => t.Exception.Handle(e => true), TaskContinuationOptions.OnlyOnFaulted);
+                    //_server.ShutdownAsync().ContinueWith(t => t.Exception.Handle(e => true), TaskContinuationOptions.OnlyOnFaulted);
                 }
                 disposedValue = true;
             }

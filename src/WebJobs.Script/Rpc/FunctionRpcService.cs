@@ -18,14 +18,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     // TODO: move to WebJobs.Script.Grpc package and provide event stream abstraction
     internal class FunctionRpcService : FunctionRpc.FunctionRpcBase
     {
-        private readonly IScriptEventManager _eventManager;
         private ILogger _logger;
 
         public FunctionRpcService(IScriptEventManager eventManager, ILogger logger)
         {
-            _eventManager = eventManager;
+            EventManager = eventManager;
             _logger = logger;
         }
+
+        public IScriptEventManager EventManager { get; set; }
 
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
         {
@@ -46,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (await messageAvailable())
                 {
                     string workerId = requestStream.Current.StartStream.WorkerId;
-                    outboundEventSubscription = _eventManager.OfType<OutboundEvent>()
+                    outboundEventSubscription = EventManager.OfType<OutboundEvent>()
                         .Where(evt => evt.WorkerId == workerId)
                         .ObserveOn(NewThreadScheduler.Default)
                         .Subscribe(evt =>
@@ -60,13 +61,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             }
                             catch (Exception subscribeEventEx)
                             {
-                                _eventManager?.Publish(new WorkerErrorEvent(workerId, subscribeEventEx));
+                                EventManager?.Publish(new WorkerErrorEvent(workerId, subscribeEventEx));
                             }
                         });
 
                     do
                     {
-                        _eventManager.Publish(new InboundEvent(workerId, requestStream.Current));
+                        EventManager.Publish(new InboundEvent(workerId, requestStream.Current));
                     }
                     while (await messageAvailable());
                 }

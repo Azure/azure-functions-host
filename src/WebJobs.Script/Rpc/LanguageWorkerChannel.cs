@@ -11,6 +11,7 @@ using System.Reactive.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -26,19 +27,21 @@ using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.Co
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class LanguageWorkerChannel : ILanguageWorkerChannel
+    public class LanguageWorkerChannel : ILanguageWorkerChannel
     {
         private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
-        private readonly ScriptJobHostOptions _scriptConfig;
-        private readonly IScriptEventManager _eventManager;
-        private readonly IWorkerProcessFactory _processFactory;
-        private readonly IProcessRegistry _processRegistry;
-        private readonly IObservable<FunctionRegistrationContext> _functionRegistrations;
-        private readonly WorkerConfig _workerConfig;
-        private readonly Uri _serverUri;
-        private readonly ILogger _workerChannelLogger;
-        private readonly ILogger _userLogsConsoleLogger;
+        private ScriptJobHostOptions _scriptConfig;
+        private IScriptEventManager _eventManager;
+        private IWorkerProcessFactory _processFactory;
+        private IProcessRegistry _processRegistry;
+        private IObservable<FunctionRegistrationContext> _functionRegistrations;
+        private WorkerConfig _workerConfig;
+        private Uri serverUri;
+        private IRpcServer rpcServer;
+        private RpcEvent _initEvent;
+        private ILogger _workerChannelLogger;
+        private ILogger _userLogsConsoleLogger;
         private bool _disposed;
         private string _workerId;
         private Process _process;
@@ -51,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startSubscription;
-        private IDisposable _startLatencyMetric;
+        // private IDisposable _startLatencyMetric;
 
         private JsonSerializerSettings _verboseSerializerSettings = new JsonSerializerSettings()
         {
@@ -69,29 +72,24 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         }
 
         public LanguageWorkerChannel(
-            ScriptJobHostOptions scriptConfig,
             IScriptEventManager eventManager,
+            ILogger logger,
             IWorkerProcessFactory processFactory,
             IProcessRegistry processRegistry,
-            IObservable<FunctionRegistrationContext> functionRegistrations,
             WorkerConfig workerConfig,
-            Uri serverUri,
-            ILoggerFactory loggerFactory,
-            IMetricsLogger metricsLogger,
-            int attemptCount)
+            string workerId,
+            IRpcServer rpcServer)
         {
-            _workerId = Guid.NewGuid().ToString();
-
-            _scriptConfig = scriptConfig;
+            _workerId = workerId;
             _eventManager = eventManager;
             _processFactory = processFactory;
             _processRegistry = processRegistry;
-            _functionRegistrations = functionRegistrations;
             _workerConfig = workerConfig;
-            _serverUri = serverUri;
+            ServerUri = rpcServer.Uri;
+            _workerChannelLogger = logger;
+            _userLogsConsoleLogger = logger;
 
-            _workerChannelLogger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
-            _userLogsConsoleLogger = loggerFactory.CreateLogger(LanguageWorkerConstants.FunctionConsoleLogCategoryName);
+            _workerChannelLogger.LogInformation("Init LanguageWorkerChannel");
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
@@ -113,9 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 
-            _startLatencyMetric = metricsLogger.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
-
-            StartWorker();
+            //InitializeWorker();
         }
 
         public string Id => _workerId;
@@ -124,22 +120,27 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
-        // start worker process and wait for an rpc start stream response
-        internal void StartWorker()
-        {
-            _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
-                .Timeout(processStartTimeout)
-                .Take(1)
-                .Subscribe(InitWorker, HandleWorkerError);
+        internal Uri ServerUri { get => serverUri; set => serverUri = value; }
 
+        public IRpcServer RpcServer { get => rpcServer; set => rpcServer = value; }
+
+        public RpcEvent InitEvent { get => _initEvent; }
+
+        public void SetupLanguageWorkerChannel(ScriptJobHostOptions scriptConfig)
+        {
+            _scriptConfig = scriptConfig;
+        }
+
+        public void StartWorkerProcess(string scriptRootPath)
+        {
             var workerContext = new WorkerCreateContext()
             {
                 RequestId = Guid.NewGuid().ToString(),
-                MaxMessageLength = _scriptConfig.MaxMessageLengthBytes,
+                MaxMessageLength = 32 * 1024,
                 WorkerId = _workerId,
                 Arguments = _workerConfig.Arguments,
-                WorkingDirectory = _scriptConfig.RootScriptPath,
-                ServerUri = _serverUri,
+                WorkingDirectory = scriptRootPath,
+                ServerUri = ServerUri,
             };
 
             _process = _processFactory.CreateWorkerProcess(workerContext);
@@ -283,12 +284,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
-        internal void InitWorker(RpcEvent startEvent)
+        public void InitializeWorker()
         {
-            _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
+            RpcEvent startEvent = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream).FirstOrDefault();
+            _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
-                .Subscribe(WorkerReady, HandleWorkerError);
+                .Subscribe(SetWorkerInitEvent, HandleWorkerError);
 
             Send(new StreamingMessage
             {
@@ -299,12 +301,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             });
         }
 
-        internal void WorkerReady(RpcEvent initEvent)
+        internal void SetWorkerInitEvent(RpcEvent initEvent)
         {
-            _startLatencyMetric.Dispose();
-            _startLatencyMetric = null;
+            _initEvent = initEvent;
+        }
 
-            var initMessage = initEvent.Message.WorkerInitResponse;
+        public void WorkerReady(IObservable<FunctionRegistrationContext> functionRegistrations)
+        {
+            //_startLatencyMetric.Dispose();
+            //_startLatencyMetric = null;
+            _functionRegistrations = functionRegistrations;
+            var initMessage = _initEvent.Message.WorkerInitResponse;
             if (initMessage.Result.IsFailure(out Exception exc))
             {
                 HandleWorkerError(exc);
@@ -494,7 +501,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 if (disposing)
                 {
-                    _startLatencyMetric?.Dispose();
+                    // _startLatencyMetric?.Dispose();
                     _startSubscription?.Dispose();
 
                     // unlink function inputs

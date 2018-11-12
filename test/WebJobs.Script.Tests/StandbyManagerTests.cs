@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
             var mockEnvironment = new TestEnvironment();
 
-            var manager = new StandbyManager(mockHostManager.Object, mockConfiguration.Object, mockWebHostEnvironment.Object, mockEnvironment, mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance);
+            var manager = new StandbyManager(mockHostManager.Object, mockConfiguration.Object, mockWebHostEnvironment.Object, mockEnvironment, mockOptionsMonitor.Object, null, NullLogger<StandbyManager>.Instance);
 
             await manager.SpecializeHostAsync();
 

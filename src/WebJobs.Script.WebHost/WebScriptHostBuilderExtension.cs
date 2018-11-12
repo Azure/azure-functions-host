@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
                     loggingBuilder.Services.AddSingleton<ILoggerProvider, UserLogMetricsLoggerProvider>();
-
+                    loggingBuilder.AddConsole();
                     ConfigureRegisteredBuilders(loggingBuilder, rootServiceProvider);
                 })
                 .ConfigureServices(services =>

@@ -7,7 +7,7 @@ using Microsoft.Azure.WebJobs.Script.Abstractions;
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     // Arguments to start a worker process
-    internal class WorkerCreateContext
+    public class WorkerCreateContext
     {
         public Uri ServerUri { get; set; }
 

@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class FunctionRegistrationContext
+    public class FunctionRegistrationContext
     {
         public FunctionMetadata Metadata { get; set; }
 

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -73,6 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets the root path for log files.
         /// </summary>
         public string RootLogPath { get; set; }
+
+        public ILanguageWorkerChannel JavaWorkerChannel { get; set; }
 
         /// <summary>
         /// Gets or sets the root path for sample test data.

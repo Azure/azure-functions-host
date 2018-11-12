@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 

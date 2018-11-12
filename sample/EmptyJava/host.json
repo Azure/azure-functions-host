@@ -10,7 +10,7 @@
     },
     "functionTimeout": "00:05:00",
     "logging": {
-      "fileLoggingMode": "always"      
+        "fileLoggingMode": "always"        
     },
     "extensions": {
         "http": {

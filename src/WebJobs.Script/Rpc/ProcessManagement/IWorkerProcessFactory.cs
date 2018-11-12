@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal interface IWorkerProcessFactory
+    public interface IWorkerProcessFactory
     {
         // TODO: create an abstraction like Executable in the cli which wraps the process
         Process CreateWorkerProcess(WorkerCreateContext context);

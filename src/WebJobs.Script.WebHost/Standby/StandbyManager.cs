@@ -2,9 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
@@ -26,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IEnvironment _environment;
         private readonly IConfigurationRoot _configuration;
         private readonly ILogger _logger;
+        private readonly IEnumerable<WorkerConfig> _workerConfigs;
 
         private readonly TimeSpan _specializationTimerInterval = TimeSpan.FromMilliseconds(500);
         private Timer _specializationTimer;
@@ -35,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         public StandbyManager(IScriptHostManager scriptHostManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger)
+            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILogger<StandbyManager> logger)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -43,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _specializationTask = new Lazy<Task>(SpecializeHostCoreAsync, LazyThreadSafetyMode.ExecutionAndPublication);
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-
+            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _configuration = configuration as IConfigurationRoot ?? throw new ArgumentNullException(nameof(configuration));
         }
 

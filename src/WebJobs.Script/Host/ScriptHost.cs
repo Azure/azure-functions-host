@@ -72,6 +72,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionDispatcher _functionDispatcher;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
+        private ILanguageWorkerChannel _languageWorkerChannel;
+        private IOptionsMonitor<ScriptApplicationHostOptions> _scriptApplicationHostOptions;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -84,11 +86,13 @@ namespace Microsoft.Azure.WebJobs.Script
             IConfiguration configuration,
             IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
+            ILanguageWorkerService languageWorkerService,
             ILoggerFactory loggerFactory,
             IFunctionMetadataManager functionMetadataManager,
             IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metricsLogger,
             IOptions<ScriptJobHostOptions> scriptHostOptions,
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
             ITypeLocator typeLocator,
             IScriptJobHostEnvironment scriptHostEnvironment,
             IDebugStateProvider debugManager,
@@ -102,9 +106,9 @@ namespace Microsoft.Azure.WebJobs.Script
             _environment = environment;
             _typeLocator = typeLocator as ScriptTypeLocator
                 ?? throw new ArgumentException(nameof(typeLocator), $"A {nameof(ScriptTypeLocator)} instance is required.");
-
             _instanceId = Guid.NewGuid().ToString();
             _hostOptions = options;
+            _scriptApplicationHostOptions = applicationHostOptions;
             _configuration = configuration;
             _storageConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
@@ -114,6 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
 
             ScriptOptions = scriptHostOptions.Value;
+            _languageWorkerChannel = languageWorkerService.JavaWorkerChannel;
             _scriptHostEnvironment = scriptHostEnvironment;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -267,10 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
-                if (Utility.ShouldInitiliazeLanguageWorkers(functions, _currentRuntimelanguage))
-                {
-                    await InitializeWorkersAsync();
-                }
+                InitializeWorkersAsync();
                 var directTypes = GetDirectTypes(functions);
                 await InitializeFunctionDescriptorsAsync(functions);
                 GenerateFunctions(directTypes);
@@ -501,38 +503,14 @@ namespace Microsoft.Azure.WebJobs.Script
             Functions = functions;
         }
 
-        private async Task InitializeWorkersAsync()
+        private void InitializeWorkersAsync()
         {
-            var serverImpl = new FunctionRpcService(EventManager, _logger);
-            await InitializeRpcServiceAsync(new GrpcServer(serverImpl, ScriptOptions.MaxMessageLengthBytes));
-
-            var processFactory = new DefaultWorkerProcessFactory();
-            try
-            {
-                _processRegistry = ProcessRegistryFactory.Create();
-            }
-            catch (Exception e)
-            {
-                _logger.LogWarning(e, "Unable to create process registry");
-            }
-
-            CreateChannel channelFactory = (languageWorkerConfig, registrations, attemptCount) =>
-            {
-                return new LanguageWorkerChannel(
-                    ScriptOptions,
-                    EventManager,
-                    processFactory,
-                    _processRegistry,
-                    registrations,
-                    languageWorkerConfig,
-                    _rpcService.Uri,
-                    _loggerFactory, // TODO: DI (FACAVAL) Pass appropriate logger. Channel facory should likely be a service.
-                    _metricsLogger,
-                    attemptCount);
-            };
-
-            _functionDispatcher = new FunctionDispatcher(EventManager, _rpcService, channelFactory, _workerConfigs, _currentRuntimelanguage);
-
+            _logger.LogInformation("in InitializeWorkersAsync");
+            _logger.LogInformation($"is _languageWorkerChannel null: {_languageWorkerChannel == null}");
+            _logger.LogInformation($"is _workerConfigs null: {_workerConfigs == null}");
+            WorkerConfig javaConfig = _workerConfigs.Where(c => c.Language.Equals("java", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+            _functionDispatcher = new FunctionDispatcher(EventManager, _languageWorkerChannel.RpcServer, _workerConfigs, _currentRuntimelanguage);
+            _functionDispatcher.CreateWorkerState(javaConfig, _languageWorkerChannel);
             _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
                 .Subscribe(evt =>
                 {
