@@ -975,6 +975,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, null));
         }
 
+        [Fact]
+        public async void InitializeWorkers_Fails_AddsFunctionErrors()
+        {
+            string functionName = "HttpTrigger";
+
+            IHost host = new HostBuilder()
+                    .ConfigureDefaultTestWebScriptHost(o =>
+                    {
+                        o.ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
+                    })
+                    .Build();
+
+            var scriptHost = host.GetScriptHost();
+            await scriptHost.InitializeAsync();
+
+            IDictionary<WorkerConfig, LanguageWorkerState> channelState = scriptHost.FunctionDispatcher.LanguageWorkerChannelStates;
+            var nodeWorkerChannel = channelState.Where(w => w.Key.Language.Equals(LanguageWorkerConstants.NodeLanguageWorkerName));
+
+            var nodeWorkerId = nodeWorkerChannel.FirstOrDefault().Value.Channel.Id;
+
+            // Raise workerError events to force language worker process restarts
+            var exc = new LanguageWorkerProcessExitException("TestEx");
+            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
+            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
+            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
+            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
+
+            ICollection<string> actualFunctionErrors = scriptHost.FunctionErrors[functionName];
+            Assert.NotNull(actualFunctionErrors);
+            Assert.True(actualFunctionErrors.Count >= 3);
+            Assert.Contains("TestEx", actualFunctionErrors.First());
+        }
+
         private static IEnumerable<FunctionMetadata> GetDotNetFunctionsMetadata()
         {
             FunctionMetadata funcCS1 = new FunctionMetadata()
