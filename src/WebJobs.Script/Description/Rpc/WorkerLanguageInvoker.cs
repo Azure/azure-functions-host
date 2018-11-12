@@ -33,7 +33,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _invocationBuffer = invocationBuffer;
-
             InitializeFileWatcherIfEnabled();
 
             if (_outputBindings.Any(p => p.Metadata.IsReturn))
@@ -49,7 +48,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
             string invocationId = context.ExecutionContext.InvocationId.ToString();
-
             // TODO: fix extensions and remove
             object triggerValue = TransformInput(parameters[0], context.Binder.BindingData);
             var triggerInput = (_trigger.Name, _trigger.DataType ?? DataType.String, triggerValue);

@@ -469,21 +469,36 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return functionsListWithoutProxies.Select(f => f.Language).Distinct().Count() <= 1;
             }
-            return ContainsFunctionWithCurrentLanguage(functionsListWithoutProxies, currentRuntimeLanguage);
+            return ContainsFunctionWithWorkerRuntime(functionsListWithoutProxies, currentRuntimeLanguage);
         }
 
-        internal static bool ShouldInitiliazeLanguageWorkers(IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
+        internal static bool ShouldInitializeFunctionDispatcher(IEnvironment environment, IEnumerable<FunctionMetadata> functions, string workerRuntime)
         {
-            if (!string.IsNullOrEmpty(currentRuntimeLanguage) && currentRuntimeLanguage.Equals(LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            if (environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1")
+            {
+                return false;
+            }
+            if (!string.IsNullOrEmpty(workerRuntime) && workerRuntime.Equals(LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
             var functionsListWithoutProxies = functions?.Where(f => f.IsProxy == false);
-            if (!string.IsNullOrEmpty(currentRuntimeLanguage) && ContainsFunctionWithCurrentLanguage(functionsListWithoutProxies, currentRuntimeLanguage))
+            if (!string.IsNullOrEmpty(workerRuntime) && ContainsFunctionWithWorkerRuntime(functionsListWithoutProxies, workerRuntime))
             {
                 return true;
             }
             return ContainsNonDotNetFunctions(functionsListWithoutProxies);
+        }
+
+        internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions)
+        {
+            var functionsListWithoutProxies = functions?.Where(f => f.IsProxy == false);
+            string functionLanguage = functionsListWithoutProxies.FirstOrDefault()?.Language;
+            if (IsDotNetLanguageFunction(functionLanguage))
+            {
+                return LanguageWorkerConstants.DotNetLanguageWorkerName;
+            }
+            return functionLanguage;
         }
 
         private static bool ContainsNonDotNetFunctions(IEnumerable<FunctionMetadata> functions)
@@ -495,15 +510,31 @@ namespace Microsoft.Azure.WebJobs.Script
             return false;
         }
 
-        private static bool ContainsFunctionWithCurrentLanguage(IEnumerable<FunctionMetadata> functions, string currentLanguage)
+        public static bool IsDotNetLanguageFunction(string functionLanguage)
         {
-            if (string.Equals(currentLanguage, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            return dotNetLanguages.Any(lang => string.Equals(lang, functionLanguage, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool ContainsFunctionWithWorkerRuntime(IEnumerable<FunctionMetadata> functions, string workerRuntime)
+        {
+            if (string.Equals(workerRuntime, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 return functions.Any(f => dotNetLanguages.Any(l => l.Equals(f.Language, StringComparison.OrdinalIgnoreCase)));
             }
             if (functions != null && functions.Any())
             {
-                return functions.Any(f => f.Language.Equals(currentLanguage, StringComparison.OrdinalIgnoreCase));
+                return functions.Any(f => f.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
+            }
+            return false;
+        }
+
+        public static bool CheckAppOffline(string scriptPath)
+        {
+            // check if we should be in an offline state
+            string offlineFilePath = Path.Combine(scriptPath, ScriptConstants.AppOfflineFileName);
+            if (File.Exists(offlineFilePath))
+            {
+                return true;
             }
             return false;
         }

@@ -52,10 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             // FunctionTimeout
             ConfigureFunctionTimeout(jobHostSection, options);
-
-            // Worker configuration
-            ConfigureLanguageWorkers(jobHostSection, options);
-
             // If we have a read only file system, override any configuration and
             // disable file watching
             if (_environment.FileSystemIsReadOnly())
@@ -106,38 +102,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     throw new ArgumentException(message);
                 }
             }
-        }
-
-        private void ConfigureLanguageWorkers(IConfigurationSection rootConfig, ScriptJobHostOptions scriptOptions)
-        {
-            var languageWorkersSection = rootConfig.GetSection(LanguageWorkersSectionName);
-            int requestedGrpcMaxMessageLength = _environment.IsDynamic() ? DefaultMaxMessageLengthBytesDynamicSku : DefaultMaxMessageLengthBytes;
-            if (languageWorkersSection.Exists())
-            {
-                string value = languageWorkersSection.GetValue<string>("maxMessageLength");
-                if (value != null)
-                {
-                    int valueInBytes = int.Parse(value) * 1024 * 1024;
-                    if (_environment.IsDynamic())
-                    {
-                        string message = $"Cannot set MaxMessageLength on Consumption plan.";
-                        throw new ArgumentException(message);
-                    }
-                    else
-                    {
-                        if (valueInBytes < 0 || valueInBytes > 2000 * 1024 * 1024)
-                        {
-                            string message = $"MaxMessageLength must be between 4MB and 2000MB.";
-                            throw new ArgumentException(message);
-                        }
-                        else
-                        {
-                            requestedGrpcMaxMessageLength = valueInBytes;
-                        }
-                    }
-                }
-            }
-            scriptOptions.MaxMessageLengthBytes = requestedGrpcMaxMessageLength;
         }
     }
 }

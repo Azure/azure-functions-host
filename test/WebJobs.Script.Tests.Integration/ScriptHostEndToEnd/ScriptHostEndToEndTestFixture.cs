@@ -7,13 +7,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
-using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -75,7 +72,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public CloudTable TestTable { get; private set; }
 
-        public ScriptHost Host { get; private set; }
+        public ScriptHost JobHost { get; private set; }
+
+        public IHost Host { get; private set; }
 
         public string FixtureId { get; private set; }
 
@@ -107,21 +106,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("TimerTrigger");
             TestHelpers.ClearFunctionLogs("ListenerStartupException");
 
-            var host = new HostBuilder()
+             Host = new HostBuilder()
                 .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
                 {
                     webjobsBuilder.AddAzureStorage();
-                },
+                },                
                 o =>
                 {
                     o.ScriptPath = _rootPath;
                     o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
-                })
-                .ConfigureServices(s =>
+                },
+                runStartupHostedServices: true)
+                .ConfigureServices(services =>
                 {
-                    s.AddSingleton<IScriptEventManager>(EventManager);
-
-                    s.Configure<ScriptJobHostOptions>(o =>
+                    services.Configure<ScriptJobHostOptions>(o =>
                     {
                         o.FileLoggingMode = FileLoggingMode.Always;
 
@@ -133,10 +131,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                     if (_proxyClient != null)
                     {
-                        s.AddSingleton<ProxyClientExecutor>(_proxyClient);
+                        services.AddSingleton<ProxyClientExecutor>(_proxyClient);
                     }
 
-                    ConfigureServices(s);
+                    ConfigureServices(services);
                 })
                 .ConfigureLogging(b =>
                 {
@@ -144,11 +142,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .Build();
 
-            Host = host.GetScriptHost();
+            JobHost = Host.GetScriptHost();
 
             if (_startHost)
             {
-                Host.HostStarted += (s, e) => _hostStartedEvent.Set();
+                JobHost.HostStarted += (s, e) => _hostStartedEvent.Set();
                 await Host.StartAsync();
                 _hostStartedEvent.Wait(TimeSpan.FromSeconds(30));
             }
@@ -236,10 +234,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public virtual async Task DisposeAsync()
         {
-            if (Host != null)
+            if (JobHost != null)
             {
+                await JobHost.StopAsync();
                 await Host.StopAsync();
-                Host.Dispose();
+                JobHost.Dispose();
             }
             Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
         }

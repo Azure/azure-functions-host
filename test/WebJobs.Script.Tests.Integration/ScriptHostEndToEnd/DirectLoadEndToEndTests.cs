@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             request.Headers.Add("Accept", new StringValues("text/plain"));
 
-            await Fixture.Host.CallAsync("Function1", arguments);
+            await Fixture.JobHost.CallAsync("Function1", arguments);
 
             var response = (OkObjectResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
 
@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = await Assert.ThrowsAsync<FunctionInvocationException>(async () =>
             {
-                await Fixture.Host.CallAsync("Function1", arguments);
+                await Fixture.JobHost.CallAsync("Function1", arguments);
             });
 
             var response = request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];

@@ -65,9 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Standby services
             services.AddStandbyServices();
 
-            // Core script host services
-            services.AddSingleton<WebJobsScriptHostService>();
-            services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
             services.AddSingleton<IStandbyManager, StandbyManager>();
@@ -99,7 +96,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Management services
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
-
             services.AddSingleton(_ => new HttpClient());
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
@@ -109,7 +105,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.TryAddSingleton<ISecretManagerProvider, DefaultSecretManagerProvider>();
 
             // Register common services with the WebHost
+            // Language Worker Hosted Services need to be intialized before WebJobsScriptHostService
             ScriptHostBuilderExtensions.AddCommonServices(services);
+
+            // Core script host services
+            services.AddSingleton<WebJobsScriptHostService>();
+            services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
 
             // Configuration
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsSetup>());

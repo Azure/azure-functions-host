@@ -2,9 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
@@ -20,12 +24,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public class StandbyManager : IStandbyManager
     {
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly IScriptEventManager _eventManager;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
         private readonly Lazy<Task> _specializationTask;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IEnvironment _environment;
+        private readonly ILanguageWorkerChannelManager _languageWorkerChannelManager;
         private readonly IConfigurationRoot _configuration;
         private readonly ILogger _logger;
+        private readonly TimeSpan _workerInitTimeout = TimeSpan.FromSeconds(5);
 
         private readonly TimeSpan _specializationTimerInterval = TimeSpan.FromMilliseconds(500);
         private Timer _specializationTimer;
@@ -34,17 +41,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static IChangeToken _standbyChangeToken = new CancellationChangeToken(_standbyCancellationTokenSource.Token);
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
-        public StandbyManager(IScriptHostManager scriptHostManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
+        public StandbyManager(IScriptHostManager scriptHostManager, ILanguageWorkerChannelManager languageWorkerChannelManager, IScriptEventManager eventManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _eventManager = eventManager;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _specializationTask = new Lazy<Task>(SpecializeHostCoreAsync, LazyThreadSafetyMode.ExecutionAndPublication);
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-
             _configuration = configuration as IConfigurationRoot ?? throw new ArgumentNullException(nameof(configuration));
+            _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
         }
 
         public static IChangeToken ChangeToken => _standbyChangeToken;
@@ -66,8 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Trigger a configuration reload to pick up all current settings
             _configuration?.Reload();
 
+            await _languageWorkerChannelManager.SpecializeAsync();
             NotifyChange();
-
             await _scriptHostManager.RestartHostAsync();
             await _scriptHostManager.DelayUntilHostReady();
         }

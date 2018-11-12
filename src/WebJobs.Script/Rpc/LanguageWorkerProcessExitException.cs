@@ -14,5 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal LanguageWorkerProcessExitException(string message, Exception innerException) : base(message, innerException)
         {
         }
+
+        internal int ExitCode { get; set; }
     }
 }

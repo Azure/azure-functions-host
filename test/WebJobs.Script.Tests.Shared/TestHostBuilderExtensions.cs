@@ -4,6 +4,11 @@
 using System;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
+using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -36,6 +41,7 @@ namespace Microsoft.WebJobs.Script.Tests
 
             // Register root services
             var services = new ServiceCollection();
+            services.AddSingleton<IScriptEventManager, ScriptEventManager>();
             AddMockedSingleton<IDebugStateProvider>(services);
             AddMockedSingleton<IScriptHostManager>(services);
             AddMockedSingleton<IScriptWebHostEnvironment>(services);

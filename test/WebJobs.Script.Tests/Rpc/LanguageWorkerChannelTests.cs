@@ -20,8 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void ErrorMessageQueue_Enqueue_Success()
         {
             LanguageWorkerChannel languageWorkerChannel = new LanguageWorkerChannel();
-            languageWorkerChannel.AddStdErrMessage("Error1");
-            languageWorkerChannel.AddStdErrMessage("Error2");
+            LanguageWorkerChannelUtilities.AddStdErrMessage(languageWorkerChannel.ProcessStdErrDataQueue, "Error1");
+            LanguageWorkerChannelUtilities.AddStdErrMessage(languageWorkerChannel.ProcessStdErrDataQueue, "Error2");
 
             Assert.True(languageWorkerChannel.ProcessStdErrDataQueue.Count == 2);
             string exceptionMessage = string.Join(",", languageWorkerChannel.ProcessStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
@@ -32,10 +32,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void ErrorMessageQueue_Full_Enqueue_Success()
         {
             LanguageWorkerChannel languageWorkerChannel = new LanguageWorkerChannel();
-            languageWorkerChannel.AddStdErrMessage("Error1");
-            languageWorkerChannel.AddStdErrMessage("Error2");
-            languageWorkerChannel.AddStdErrMessage("Error3");
-            languageWorkerChannel.AddStdErrMessage("Error4");
+            LanguageWorkerChannelUtilities.AddStdErrMessage(languageWorkerChannel.ProcessStdErrDataQueue, "Error1");
+            LanguageWorkerChannelUtilities.AddStdErrMessage(languageWorkerChannel.ProcessStdErrDataQueue, "Error2");
+            LanguageWorkerChannelUtilities.AddStdErrMessage(languageWorkerChannel.ProcessStdErrDataQueue, "Error3");
+            LanguageWorkerChannelUtilities.AddStdErrMessage(languageWorkerChannel.ProcessStdErrDataQueue, "Error4");
             Assert.True(languageWorkerChannel.ProcessStdErrDataQueue.Count == 3);
             string exceptionMessage = string.Join(",", languageWorkerChannel.ProcessStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
             Assert.Equal("Error2,Error3,Error4", exceptionMessage);
@@ -48,8 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void IsLanguageWorkerConsoleLog_Returns_True_RemovesLogPrefix(string msg)
         {
             LanguageWorkerChannel languageWorkerChannel = new LanguageWorkerChannel();
-            Assert.True(languageWorkerChannel.IsLanguageWorkerConsoleLog(msg));
-            Assert.Equal(" Connection established", languageWorkerChannel.RemoveLogPrefix(msg));
+            Assert.True(LanguageWorkerChannelUtilities.IsLanguageWorkerConsoleLog(msg));
+            Assert.Equal(" Connection established", LanguageWorkerChannelUtilities.RemoveLogPrefix(msg));
         }
 
         [Theory]
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void IsLanguageWorkerConsoleLog_Returns_False(string msg)
         {
             LanguageWorkerChannel languageWorkerChannel = new LanguageWorkerChannel();
-            Assert.False(languageWorkerChannel.IsLanguageWorkerConsoleLog(msg));
+            Assert.False(LanguageWorkerChannelUtilities.IsLanguageWorkerConsoleLog(msg));
         }
     }
 }

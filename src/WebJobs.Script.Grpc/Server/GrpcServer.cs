@@ -14,11 +14,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
     {
         private Server _server;
         private bool _disposed = false;
+        public const int MaxMessageLengthBytes = 128 * 1024 * 1024;
 
-        public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl, int grpcMaxMessageLength)
+        public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl)
         {
-            ChannelOption maxReceiveMessageLength = new ChannelOption(ChannelOptions.MaxReceiveMessageLength, grpcMaxMessageLength);
-            ChannelOption maxSendMessageLength = new ChannelOption(ChannelOptions.MaxSendMessageLength, grpcMaxMessageLength);
+            ChannelOption maxReceiveMessageLength = new ChannelOption(ChannelOptions.MaxReceiveMessageLength, MaxMessageLengthBytes);
+            ChannelOption maxSendMessageLength = new ChannelOption(ChannelOptions.MaxSendMessageLength, MaxMessageLengthBytes);
             ChannelOption[] grpcChannelOptions = { maxReceiveMessageLength, maxSendMessageLength };
             _server = new Server(grpcChannelOptions)
             {
@@ -36,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         public Task ShutdownAsync() => _server.ShutdownAsync();
+
+        public Task KillAsync() => _server.KillAsync();
 
         protected virtual void Dispose(bool disposing)
         {

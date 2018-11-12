@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "request", request }
             };
-            await Fixture.Host.CallAsync("HttpTrigger", arguments);
+            await Fixture.JobHost.CallAsync("HttpTrigger", arguments);
 
             var result = (IActionResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
 
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "req", request }
             };
-            await Fixture.Host.CallAsync("HttpTriggerByteArray", arguments);
+            await Fixture.JobHost.CallAsync("HttpTriggerByteArray", arguments);
 
             var result = (IActionResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
 
@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "scenario", "promiseResolve" }
             };
 
-            Task t = Fixture.Host.CallAsync("Scenarios",
+            Task t = Fixture.JobHost.CallAsync("Scenarios",
                 new Dictionary<string, object>()
                 {
                     { "input", input.ToString() }
@@ -152,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "scenario", "promiseApiResolves" }
             };
 
-            Task t = Fixture.Host.CallAsync("Scenarios",
+            Task t = Fixture.JobHost.CallAsync("Scenarios",
                 new Dictionary<string, object>()
                 {
                     { "input", input.ToString() }
@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "scenario", "promiseApiRejects" }
             };
 
-            Task t = Fixture.Host.CallAsync("Scenarios",
+            Task t = Fixture.JobHost.CallAsync("Scenarios",
                 new Dictionary<string, object>()
                 {
                     { "input", input.ToString() }
@@ -196,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "scenario", "functionExecutionContext" }
             };
 
-            Task t = Fixture.Host.CallAsync("Scenarios",
+            Task t = Fixture.JobHost.CallAsync("Scenarios",
                 new Dictionary<string, object>()
                 {
                     { "input", input.ToString() }
@@ -208,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Same(t, result);
             Assert.True(logs.Any(l => l.Contains("FunctionName:Scenarios")));
-            Assert.True(logs.Any(l => l.Contains($"FunctionDirectory:{Path.Combine(Fixture.Host.ScriptOptions.RootScriptPath, "Scenarios")}")));
+            Assert.True(logs.Any(l => l.Contains($"FunctionDirectory:{Path.Combine(Fixture.JobHost.ScriptOptions.RootScriptPath, "Scenarios")}")));
         }
 
         public class TestFixture : ScriptHostEndToEndTestFixture

@@ -125,7 +125,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     State = ScriptHostState.Default;
                 }
 
-                bool isOffline = CheckAppOffline();
+                bool isOffline = Utility.CheckAppOffline(_applicationHostOptions.CurrentValue.ScriptPath);
+                State = isOffline ? ScriptHostState.Offline : State;
                 bool hasNonTransientErrors = startupMode.HasFlag(JobHostStartupMode.HandlingNonTransientError);
 
                 // If we're in a non-transient error state or offline, skip host initialization
@@ -288,19 +289,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 logger.LogInformation("Host is in standby mode");
             }
-        }
-
-        private bool CheckAppOffline()
-        {
-            // check if we should be in an offline state
-            string offlineFilePath = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.AppOfflineFileName);
-            if (File.Exists(offlineFilePath))
-            {
-                State = ScriptHostState.Offline;
-                return true;
-            }
-
-            return false;
         }
 
         private void OnHostHealthCheckTimer(object state)

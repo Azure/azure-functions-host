@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
             request.SetConfiguration(_fixture.RequestConfiguration);
 
-            await _fixture.Host.CallAsync(functionName, arguments);
+            await _fixture.JobHost.CallAsync(functionName, arguments);
 
             HttpResponseMessage response = (HttpResponseMessage)request.Properties[ScriptConstants.AzureFunctionsHttpResponseKey];
 

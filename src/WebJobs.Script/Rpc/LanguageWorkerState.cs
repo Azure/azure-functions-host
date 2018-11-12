@@ -8,7 +8,7 @@ using System.Reactive.Subjects;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class LanguageWorkerState
+    public class LanguageWorkerState
     {
         private object _lock = new object();
         private IList<FunctionRegistrationContext> _registrations = new List<FunctionRegistrationContext>();

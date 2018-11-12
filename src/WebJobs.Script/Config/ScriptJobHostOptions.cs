@@ -117,11 +117,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public TimeSpan? FunctionTimeout { get; set; }
 
         /// <summary>
-        /// Gets or sets a value for grpc_max_message_length.
-        /// </summary>
-        public int MaxMessageLengthBytes { get; set; }
-
-        /// <summary>
         /// Gets or sets a value indicating whether the host is running
         /// outside of the normal Azure hosting environment. E.g. when running
         /// locally or via CLI.
