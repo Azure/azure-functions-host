@@ -261,12 +261,16 @@ function cleanExtension([string] $bitness) {
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\linux" -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\osx" -ErrorAction SilentlyContinue
 
-    Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\node\grpc\src\node\extension_binary" | 
+    Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\node\grpc\src\node\extension_binary" -ErrorAction SilentlyContinue | 
     Foreach-Object {
         if (-Not ($_.FullName -Match "win32")) {
             Remove-Item -Recurse -Force $_.FullName
         }
     }
+
+    $keepRuntimes = @('win', 'win-x86', 'win10-x86')
+    Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes" -Exclude $keepRuntimes -ErrorAction SilentlyContinue |
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 }
   
 dotnet --version
