@@ -267,6 +267,17 @@ function cleanExtension([string] $bitness) {
             Remove-Item -Recurse -Force $_.FullName
         }
     }
+
+    $removeRuntimes = @('linux', 'osx', 'win7', 'win8', 'win81')
+    foreach ($runtime in $removeRuntimes) {
+        Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes\$runtime*" -ErrorAction SilentlyContinue
+    }
+    if ($bitness -eq "64bit") {
+        $exclude = "*-x64"
+    } elseif ($bitness -eq "32bit") {
+        $exclude = "*-x86"
+    }
+    Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes\*" -Exclude $exclude
 }
   
 dotnet --version
