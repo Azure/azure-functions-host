@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
 
                     // Logging and diagnostics
-                    services.TryAddSingleton<IMetricsLogger, WebHostMetricsLogger>();
+                    services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
                     services.AddSingleton<IEventCollectorProvider, FunctionInstanceLogCollectorProvider>();
 
                     // Hosted services
