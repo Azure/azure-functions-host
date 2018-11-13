@@ -273,7 +273,8 @@ function cleanExtension([string] $bitness) {
     } elseif ($bitness -eq "32bit") {
         $keepRuntimes = @('win', 'win-x86', 'win10-x86')
     }
-    Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes" -Exclude $keepRuntimes | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes" -Exclude $keepRuntimes -ErrorAction SilentlyContinue |
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 }
   
 dotnet --version
