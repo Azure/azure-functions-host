@@ -261,7 +261,7 @@ function cleanExtension([string] $bitness) {
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\linux" -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\osx" -ErrorAction SilentlyContinue
 
-    Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\node\grpc\src\node\extension_binary" | 
+    Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\node\grpc\src\node\extension_binary" -ErrorAction SilentlyContinue | 
     Foreach-Object {
         if (-Not ($_.FullName -Match "win32")) {
             Remove-Item -Recurse -Force $_.FullName
@@ -272,6 +272,9 @@ function cleanExtension([string] $bitness) {
         $keepRuntimes = @('win', 'win-x64', 'win10-x64')
     } elseif ($bitness -eq "32bit") {
         $keepRuntimes = @('win', 'win-x86', 'win10-x86')
+    } else {
+        # if no bitness is specified, grab all Windows 10 folders
+        $keepRuntimes = @('win', 'win-*', 'win10-*')
     }
     Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes" -Exclude $keepRuntimes -ErrorAction SilentlyContinue |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
