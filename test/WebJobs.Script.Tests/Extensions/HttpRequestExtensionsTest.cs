@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
     public class HttpRequestExtensionsTest
     {
         [Fact]
-        public void IsAntaresInternalRequest_ReturnsExpectedResult()
+        public void IsAppServiceInternalRequest_ReturnsExpectedResult()
         {
             // not running under Azure
             var request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar");

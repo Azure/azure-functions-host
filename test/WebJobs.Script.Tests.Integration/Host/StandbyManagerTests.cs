@@ -133,6 +133,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await InitializeTestHostAsync("Linux", environment);
 
+            // verify only the Warmup function is present
+            // generally when in placeholder mode, the list API won't be called
+            // but we're doing this for regression testing
+            var functions = await ListFunctions();
+            Assert.Equal(1, functions.Length);
+            Assert.Equal("WarmUp", functions[0]);
+
             await VerifyWarmupSucceeds();
             await VerifyWarmupSucceeds(restart: true);
 
@@ -160,6 +167,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.False(environment.IsPlaceholderModeEnabled());
             Assert.True(environment.IsContainerReady());
+
+            // verify that after specialization the correct
+            // app content is returned
+            functions = await ListFunctions();
+            Assert.Equal(1, functions.Length);
+            Assert.Equal("HttpTrigger", functions[0]);
 
             // verify warmup function no longer there
             request = new HttpRequestMessage(HttpMethod.Get, "api/warmup");
@@ -322,6 +335,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string responseBody = await response.Content.ReadAsStringAsync();
             Assert.Equal("WarmUp complete.", responseBody);
+        }
+
+        private async Task<string[]> ListFunctions()
+        {
+            var secretManager = _httpServer.Host.Services.GetService<ISecretManagerProvider>().Current;
+            var keys = await secretManager.GetHostSecretsAsync();
+            string key = keys.MasterKey;
+
+            string uri = $"admin/functions?code={key}";
+            var request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            var response = await _httpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string responseBody = await response.Content.ReadAsStringAsync();
+            var functions = JArray.Parse(responseBody);
+            return functions.Select(p => (string)p.SelectToken("name")).ToArray();
         }
 
         private static async Task CreateContentZip(string contentRoot, string zipPath, params string[] copyDirs)
