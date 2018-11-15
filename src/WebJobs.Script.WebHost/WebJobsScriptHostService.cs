@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 _host = BuildHost(skipJobHostStartup, skipHostJsonConfiguration: startupMode == JobHostStartupMode.HandlingConfigurationParsingError);
 
-                var scriptHost = (ScriptHost)_host.Services.GetService<ScriptHost>();
+                var scriptHost = _host.Services.GetService<ScriptHost>();
                 if (scriptHost != null)
                 {
                     scriptHost.HostInitializing += OnHostInitializing;
@@ -343,14 +343,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private bool ShutdownHostIfUnhealthy()
         {
-            if (ShouldMonitorHostHealth && _healthCheckWindow.GetEvents().Where(isHealthy => !isHealthy).Count() > _healthMonitorOptions.Value.HealthCheckThreshold)
+            if (_host != null && ShouldMonitorHostHealth && _healthCheckWindow.GetEvents().Where(isHealthy => !isHealthy).Count() > _healthMonitorOptions.Value.HealthCheckThreshold)
             {
                 // if the number of times the host has been unhealthy in
                 // the current time window exceeds the threshold, recover by
                 // initiating shutdown
                 var message = $"Host unhealthy count exceeds the threshold of {_healthMonitorOptions.Value.HealthCheckThreshold} for time window {_healthMonitorOptions.Value.HealthCheckWindow}. Initiating shutdown.";
                 _logger.LogError(0, message);
-                var environment = _rootServiceProvider.GetService<IScriptJobHostEnvironment>();
+                var environment = _host.Services.GetRequiredService<IScriptJobHostEnvironment>();
                 environment.Shutdown();
                 return true;
             }
@@ -365,7 +365,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// <param name="instance">The <see cref="IHost"/> instance to remove</param>
         private async Task Orphan(IHost instance, ILogger logger, CancellationToken cancellationToken = default)
         {
-            var scriptHost = (ScriptHost)instance.Services.GetService<ScriptHost>();
+            var scriptHost = instance.Services.GetService<ScriptHost>();
             if (scriptHost != null)
             {
                 scriptHost.HostInitializing -= OnHostInitializing;
