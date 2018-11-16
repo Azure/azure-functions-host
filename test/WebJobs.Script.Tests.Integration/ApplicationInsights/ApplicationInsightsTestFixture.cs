@@ -9,6 +9,7 @@ using Microsoft.ApplicationInsights.Channel;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
@@ -34,7 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 jobHostBuilder =>
                 {
                     jobHostBuilder.Services.AddSingleton<ITelemetryChannel>(_ => Channel);
-                    jobHostBuilder.Services.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
 
                     jobHostBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                     {
@@ -51,6 +51,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                     {
                         [EnvironmentSettingNames.AppInsightsInstrumentationKey] = ApplicationInsightsKey
                     });
+                },
+                configureScriptHostBuilder: hostBuilder =>
+                {
+                    hostBuilder.ConfigureServices(s =>
+                   {
+                       s.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
+                   });
                 });
 
             HttpClient = TestHost.HttpClient;

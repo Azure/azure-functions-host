@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.WindowsAzure.Storage;
@@ -84,7 +85,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
             Host = new TestFunctionHost(_copiedRootPath, logPath, webJobsBuilder =>
             {
-                webJobsBuilder.Services.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
                 ConfigureJobHost(webJobsBuilder);
             },
             configureAppConfiguration: s =>
@@ -92,6 +92,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 s.AddInMemoryCollection(new Dictionary<string, string>()
                 {
                     { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime }
+                });
+            },
+            configureScriptHostBuilder: b =>
+            {
+                b.ConfigureServices(s =>
+                {
+                    s.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
                 });
             });
 

@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -38,7 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public TestFunctionHost(string scriptPath, string logPath,
             Action<IWebJobsBuilder> configureJobHost = null,
             Action<IConfigurationBuilder> configureAppConfiguration = null,
-            Action<IServiceCollection> configureServices = null)
+            Action<IServiceCollection> configureServices = null,
+            Action<IHostBuilder> configureScriptHostBuilder = null)
         {
             _appRoot = scriptPath;
 
@@ -69,6 +71,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                           c.AddTestSettings();
                           configureAppConfiguration?.Invoke(c);
                       }));
+
+                      services.AddSingleton<IScriptHostBuilder>(s =>
+                      {
+                          var appHostOptions = s.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
+                          var serviceProvider = s.GetService<IServiceProvider>();
+                          var scopeFactory = s.GetService<IServiceScopeFactory>();
+                          return new TestScriptHostBuilder(appHostOptions, serviceProvider, scopeFactory, b =>
+                          {
+                              configureScriptHostBuilder?.Invoke(b);
+                          });
+                      });
 
                       configureServices?.Invoke(services);
                   })
