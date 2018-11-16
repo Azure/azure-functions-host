@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly ILogger _logger;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private IEnumerable<WorkerConfig> _workerConfigs;
-        private ILanguageWorkerChannel _languageWorkerChannel;
+        private Dictionary<string, ILanguageWorkerChannel> _languageWorkerChannels = new Dictionary<string, ILanguageWorkerChannel>();
         private GrpcServer _rpcService;
 
         public LanguageWorkerService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, IServiceProvider rootServiceProvider)
@@ -32,15 +32,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
         }
 
-        public ILanguageWorkerChannel JavaWorkerChannel
+        public IDictionary<string, ILanguageWorkerChannel> LanguageWorkerChannels
         {
             get
             {
-                if (_languageWorkerChannel == null)
+                if (_languageWorkerChannels.Count() == 0)
                 {
-                    InitializeLanguageWorkerProcess().Wait();
+                    InitializeLanguageWorkerChannels().Wait();
                 }
-                return _languageWorkerChannel;
+                return _languageWorkerChannels;
             }
         }
 
@@ -49,31 +49,39 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _rpcService?.Dispose();
         }
 
-        public async Task InitializeLanguageWorkerProcess()
+        public async Task InitializeLanguageWorkerChannels()
         {
             _logger?.LogInformation("in InitializeLanguageWorkerProcess...");
             try
             {
                 await InitializeRpcServiceAsync();
                 string scriptRootPath = _applicationHostOptions.CurrentValue.ScriptPath;
-                string workerId = Guid.NewGuid().ToString();
                 var processFactory = new DefaultWorkerProcessFactory();
                 IProcessRegistry processRegistry = ProcessRegistryFactory.Create();
-                WorkerConfig javaConfig = _workerConfigs.Where(c => c.Language.Equals("java", StringComparison.CurrentCultureIgnoreCase)).FirstOrDefault();
-                _logger.LogInformation("Creating languageChannelWorker...");
-                _languageWorkerChannel = new LanguageWorkerChannel(_eventManager, _logger, processFactory, processRegistry, javaConfig, workerId, _rpcService);
-                _logger.LogInformation($"_languageWorkerChannel null...{_languageWorkerChannel == null}");
-                _languageWorkerChannel.StartWorkerProcess(scriptRootPath);
-                _languageWorkerChannel.InitializeWorker();
-                while (_languageWorkerChannel.InitEvent == null)
+                foreach (WorkerConfig workerConfig in _workerConfigs)
                 {
-                    Thread.Sleep(2000);
+                    InitializeLanguageWorkerChannel(processFactory, processRegistry, workerConfig, scriptRootPath);
                 }
             }
             catch (Exception grpcInitEx)
             {
                 throw new HostInitializationException($"Failed to start Grpc Service. Check if your app is hitting connection limits.", grpcInitEx);
             }
+        }
+
+        private void InitializeLanguageWorkerChannel(IWorkerProcessFactory processFactory, IProcessRegistry processRegistry, WorkerConfig workerConfig, string scriptRootPath)
+        {
+            string workerId = Guid.NewGuid().ToString();
+            _logger.LogInformation("Creating languageChannelWorker...");
+            ILanguageWorkerChannel languageWorkerChannel = new LanguageWorkerChannel(_eventManager, _logger, processFactory, processRegistry, workerConfig, workerId, _rpcService);
+            _logger.LogInformation($"_languageWorkerChannel null...{languageWorkerChannel == null}");
+            languageWorkerChannel.StartWorkerProcess(scriptRootPath);
+            languageWorkerChannel.InitializeWorker();
+            while (languageWorkerChannel.InitEvent == null)
+            {
+                Thread.Sleep(2000);
+            }
+            _languageWorkerChannels.Add(workerConfig.Language, languageWorkerChannel);
         }
 
         public async Task InitializeRpcServiceAsync()

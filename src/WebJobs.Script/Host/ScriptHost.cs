@@ -51,7 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
-        private readonly string _currentRuntimelanguage;
         private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly IConfiguration _configuration;
         private readonly ScriptTypeLocator _typeLocator;
@@ -72,8 +71,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionDispatcher _functionDispatcher;
         private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
-        private ILanguageWorkerChannel _languageWorkerChannel;
+        private IDictionary<string, ILanguageWorkerChannel> _languageWorkerChannels;
         private IOptionsMonitor<ScriptApplicationHostOptions> _scriptApplicationHostOptions;
+        private string _currentRuntimelanguage;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -118,7 +118,8 @@ namespace Microsoft.Azure.WebJobs.Script
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
 
             ScriptOptions = scriptHostOptions.Value;
-            _languageWorkerChannel = languageWorkerService.JavaWorkerChannel;
+            _currentRuntimelanguage = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _languageWorkerChannels = languageWorkerService.LanguageWorkerChannels;
             _scriptHostEnvironment = scriptHostEnvironment;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -272,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
-                InitializeWorkersAsync();
+                InitializeWorkersAsync(functions);
                 var directTypes = GetDirectTypes(functions);
                 await InitializeFunctionDescriptorsAsync(functions);
                 GenerateFunctions(directTypes);
@@ -503,14 +504,27 @@ namespace Microsoft.Azure.WebJobs.Script
             Functions = functions;
         }
 
-        private void InitializeWorkersAsync()
+        private void InitializeWorkersAsync(IEnumerable<FunctionMetadata> functions)
         {
+            if (string.IsNullOrEmpty(_currentRuntimelanguage))
+            {
+                if (functions != null && functions.Count() > 0)
+                {
+                    _currentRuntimelanguage = functions.FirstOrDefault().Language;
+                }
+                else
+                {
+                    _currentRuntimelanguage = "java";
+                }
+            }
+            ILanguageWorkerChannel languageWorkerChannel = _languageWorkerChannels[_currentRuntimelanguage];
+
             _logger.LogInformation("in InitializeWorkersAsync");
-            _logger.LogInformation($"is _languageWorkerChannel null: {_languageWorkerChannel == null}");
+            _logger.LogInformation($"is _languageWorkerChannel null: {languageWorkerChannel == null}");
             _logger.LogInformation($"is _workerConfigs null: {_workerConfigs == null}");
             WorkerConfig javaConfig = _workerConfigs.Where(c => c.Language.Equals("java", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
-            _functionDispatcher = new FunctionDispatcher(EventManager, _languageWorkerChannel.RpcServer, _workerConfigs, _currentRuntimelanguage);
-            _functionDispatcher.CreateWorkerState(javaConfig, _languageWorkerChannel);
+            _functionDispatcher = new FunctionDispatcher(EventManager, languageWorkerChannel.RpcServer, _workerConfigs, _currentRuntimelanguage);
+            _functionDispatcher.CreateWorkerState(javaConfig, languageWorkerChannel);
             _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
                 .Subscribe(evt =>
                 {
