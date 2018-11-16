@@ -8,6 +8,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -219,13 +220,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 builder.AddApplicationInsights(o => o.InstrumentationKey = appInsightsKey);
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
 
+                builder.Services.AddSingleton<ISdkVersionProvider, ApplicationInsightsSdkVersionProvider>();
+
                 // Override the default SdkVersion with the functions key
                 builder.Services.AddSingleton<TelemetryClient>(provider =>
                 {
                     TelemetryConfiguration configuration = provider.GetService<TelemetryConfiguration>();
                     TelemetryClient client = new TelemetryClient(configuration);
 
-                    client.Context.GetInternalContext().SdkVersion = $"azurefunctions: {ScriptHost.Version}";
+                    ISdkVersionProvider versionProvider = provider.GetService<ISdkVersionProvider>();
+                    client.Context.GetInternalContext().SdkVersion = versionProvider.GetSdkVersion();
 
                     return client;
                 });
