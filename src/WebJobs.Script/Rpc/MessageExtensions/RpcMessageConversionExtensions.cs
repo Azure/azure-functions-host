@@ -76,10 +76,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 typedData.Http = http;
 
                 http.RawBody = null;
-
                 foreach (var pair in request.Query)
                 {
-                    if (pair.Value != null)
+                    if (!string.IsNullOrEmpty(pair.Value.ToString()))
                     {
                         http.Query.Add(pair.Key, pair.Value.ToString());
                     }
@@ -87,10 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
                 foreach (var pair in request.Headers)
                 {
-                    if (pair.Value != null)
-                    {
-                        http.Headers.Add(pair.Key.ToLowerInvariant(), pair.Value.ToString());
-                    }
+                    http.Headers.Add(pair.Key.ToLowerInvariant(), pair.Value.ToString());
                 }
 
                 if (request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out object routeData))
