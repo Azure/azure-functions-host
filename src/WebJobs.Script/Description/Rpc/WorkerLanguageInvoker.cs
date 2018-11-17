@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly BindingMetadata _trigger;
+        private readonly ILogger _logger;
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
         private readonly BufferBlock<ScriptInvocationContext> _invocationBuffer;
 
@@ -33,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
             _invocationBuffer = invocationBuffer;
-
+            _logger = loggerFactory.CreateLogger("Host.WorkerLanguageInvoker");
             InitializeFileWatcherIfEnabled();
 
             if (_outputBindings.Any(p => p.Metadata.IsReturn))
@@ -48,8 +49,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
+            _logger.LogInformation("In InvokeCore");
             string invocationId = context.ExecutionContext.InvocationId.ToString();
-
+            _logger.LogInformation($"In InvokeCore invocationId: {invocationId}");
             // TODO: fix extensions and remove
             object triggerValue = TransformInput(parameters[0], context.Binder.BindingData);
             var triggerInput = (_trigger.Name, _trigger.DataType ?? DataType.String, triggerValue);
@@ -70,6 +72,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             };
 
             ScriptInvocationResult result;
+            _logger.LogInformation($"In _invocationBuffer is null {_invocationBuffer == null}");
+            _logger.LogInformation($"In InvokeCore posting to _invocationBuffer.count {_invocationBuffer.Count}");
+            _logger.LogInformation($"In InvokeCore posting to _invocationBuffer");
             _invocationBuffer.Post(invocationContext);
             result = await invocationContext.ResultSource.Task;
 

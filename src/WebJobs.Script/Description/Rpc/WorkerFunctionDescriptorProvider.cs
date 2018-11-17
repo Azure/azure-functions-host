@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     internal class WorkerFunctionDescriptorProvider : FunctionDescriptorProvider
     {
         private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger _logger;
         private IFunctionDispatcher _dispatcher;
 
         public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
@@ -28,10 +29,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             _dispatcher = dispatcher;
             _loggerFactory = loggerFactory;
+            _logger = _loggerFactory.CreateLogger("Host.WorkerFunctionDescriptorProvider");
         }
 
         public override async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
         {
+            _logger.LogInformation("TryCreate");
             if (functionMetadata == null)
             {
                 throw new ArgumentNullException(nameof(functionMetadata));
@@ -47,12 +50,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
+            _logger.LogInformation("CreateFunctionInvoker");
             var inputBuffer = new BufferBlock<ScriptInvocationContext>();
             _dispatcher.Register(new FunctionRegistrationContext
             {
                 Metadata = functionMetadata,
                 InputBuffer = inputBuffer
             });
+            _logger.LogInformation("CreateFunctionInvoker before WorkerLanguageInvoker");
             return new WorkerLanguageInvoker(Host, triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, inputBuffer);
         }
 

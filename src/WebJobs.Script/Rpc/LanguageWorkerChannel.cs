@@ -31,7 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
-        private ScriptJobHostOptions _scriptConfig;
         private IScriptEventManager _eventManager;
         private IWorkerProcessFactory _processFactory;
         private IProcessRegistry _processRegistry;
@@ -126,9 +125,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public RpcEvent InitEvent { get => _initEvent; }
 
-        public void SetupLanguageWorkerChannel(ScriptJobHostOptions scriptConfig)
+        public void SetupLanguageWorkerChannel(ILogger logger)
         {
-            _scriptConfig = scriptConfig;
+            _workerChannelLogger = logger;
+            _userLogsConsoleLogger = logger;
         }
 
         public void StartWorkerProcess(string scriptRootPath)

@@ -77,6 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger.LogInformation($"_languageWorkerChannel null...{languageWorkerChannel == null}");
             languageWorkerChannel.StartWorkerProcess(scriptRootPath);
             languageWorkerChannel.InitializeWorker();
+            languageWorkerChannel.RpcServer = _rpcService;
             while (languageWorkerChannel.InitEvent == null)
             {
                 Thread.Sleep(2000);

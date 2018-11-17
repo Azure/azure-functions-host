@@ -273,7 +273,22 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
-                InitializeWorkersAsync(functions);
+
+                if (functions != null && functions.Count() > 0)
+                {
+                    if (string.IsNullOrEmpty(_currentRuntimelanguage))
+                    {
+                        if (functions != null && functions.Count() > 0)
+                        {
+                            _currentRuntimelanguage = functions.FirstOrDefault().Language;
+                            if (_currentRuntimelanguage == "CSharp")
+                            {
+                                _currentRuntimelanguage = LanguageWorkerConstants.DotNetLanguageWorkerName;
+                            }
+                        }
+                    }
+                    InitializeWorkersAsync(functions);
+                }
                 var directTypes = GetDirectTypes(functions);
                 await InitializeFunctionDescriptorsAsync(functions);
                 GenerateFunctions(directTypes);
@@ -506,30 +521,23 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void InitializeWorkersAsync(IEnumerable<FunctionMetadata> functions)
         {
-            if (string.IsNullOrEmpty(_currentRuntimelanguage))
-            {
-                if (functions != null && functions.Count() > 0)
-                {
-                    _currentRuntimelanguage = functions.FirstOrDefault().Language;
-                }
-                else
-                {
-                    _currentRuntimelanguage = "java";
-                }
-            }
-            ILanguageWorkerChannel languageWorkerChannel = _languageWorkerChannels[_currentRuntimelanguage];
-
             _logger.LogInformation("in InitializeWorkersAsync");
-            _logger.LogInformation($"is _languageWorkerChannel null: {languageWorkerChannel == null}");
-            _logger.LogInformation($"is _workerConfigs null: {_workerConfigs == null}");
-            WorkerConfig javaConfig = _workerConfigs.Where(c => c.Language.Equals("java", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
-            _functionDispatcher = new FunctionDispatcher(EventManager, languageWorkerChannel.RpcServer, _workerConfigs, _currentRuntimelanguage);
-            _functionDispatcher.CreateWorkerState(javaConfig, languageWorkerChannel);
-            _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
-                .Subscribe(evt =>
-                {
-                    HandleHostError(evt.Exception);
-                }));
+            if (_currentRuntimelanguage != LanguageWorkerConstants.DotNetLanguageWorkerName)
+            {
+                _logger.LogInformation($"_currentRuntimelanguage: {_currentRuntimelanguage}");
+                ILanguageWorkerChannel languageWorkerChannel = _languageWorkerChannels[_currentRuntimelanguage];
+                _logger.LogInformation($"is _languageWorkerChannel null: {languageWorkerChannel == null}");
+                _logger.LogInformation($"is _workerConfigs null: {_workerConfigs == null}");
+                _logger.LogInformation($"is languageWorkerChannel.RpcServer.Uri : {languageWorkerChannel.RpcServer.Uri}");
+                languageWorkerChannel.SetupLanguageWorkerChannel(_logger);
+                _functionDispatcher = new FunctionDispatcher(EventManager, languageWorkerChannel.RpcServer, _logger, _workerConfigs, _currentRuntimelanguage);
+                _functionDispatcher.CreateWorkerState(languageWorkerChannel.Config, languageWorkerChannel);
+                _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
+                    .Subscribe(evt =>
+                    {
+                        HandleHostError(evt.Exception);
+                    }));
+            }
         }
 
         internal async Task InitializeRpcServiceAsync(IRpcServer rpcService)

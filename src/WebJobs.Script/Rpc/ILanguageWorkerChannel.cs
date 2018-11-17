@@ -26,6 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         void InitializeWorker();
 
-        void SetupLanguageWorkerChannel(ScriptJobHostOptions scriptConfig);
+        void SetupLanguageWorkerChannel(ILogger logger);
     }
 }
