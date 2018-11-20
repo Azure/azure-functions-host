@@ -19,14 +19,30 @@ for:
     only:
       - image: Ubuntu
   install:
-  - sh: >-
+  - bash: >-
       mkdir .dotnet && 
       chmod +x dotnet-install.sh && 
       ./dotnet-install.sh --version 2.1.400 --install-dir .dotnet && 
       PATH=".dotnet:"$PATH && dotnet --info 
   build_script:
-  - sh: dotnet build WebJobs.Script.sln
-  test: off
+  - bash: dotnet build WebJobs.Script.sln
+  test:
+  - bash: >-
+      set -e
+      
+      dotnet test test/WebJobs.Script.Tests -v q
+      dotnet test test/WebJobs.Script.Scaling.Tests -v q
+      dotnet test test/WebJobs.Script.Tests.Integration -v q --filter Category!=E2E
+      dotnet test test/WebJobs.Script.Tests.Integration -v q --filter Group=CSharpEndToEndTests
+      dotnet test test/WebJobs.Script.Tests.Integration -v q --filter Group=NodeEndToEndTests
+      dotnet test test/WebJobs.Script.Tests.Integration -v q --filter Group=DirectLoadEndToEndTests
+      dotnet test test/WebJobs.Script.Tests.Integration -v q --filter Group=FSharpEndToEndTests
+      dotnet test test/WebJobs.Script.Tests.Integration -v q --filter Group=LanguageWorkerSelectionEndToEndTests
+      dotnet test test/WebJobs.Script.Tests.Integration -v q --filter Group=NodeScriptHostTests
+      dotnet test test/WebJobs.Script.Tests.Integration -v q --filter Group=RawAssemblyEndToEndTests
+      dotnet test test/WebJobs.Script.Tests.Integration -v q --filter Group=SamplesEndToEndTests
+      dotnet test test/WebJobs.Script.Tests.Integration -v q --filter Group=StandbyModeEndToEndTests
+      dotnet test test/WebJobs.Script.Tests.Integration -v q --filter Group=ContainerInstanceTests
 
 -
   matrix:
