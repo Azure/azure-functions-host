@@ -72,6 +72,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Description\DotNet\TestFiles\DepsFiles\function.deps.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Description\DotNet\TestFiles\PackageReferences\FunctionWithNoProject\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -87,6 +90,10 @@
     <None Update="xunit.runner.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Description\DotNet\TestFiles\DepsFiles\" />
   </ItemGroup>
 
   <Import Project="..\..\build\GrpcTestFix.targets" />
