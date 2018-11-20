@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public const string CompilationReferenceAssembliesFolderName = "compilationrefs";
         public const string ProjectFileName = "function.proj";
         public const string ProjectLockFileName = "project.assets.json";
+        public const string FunctionsDepsFileName = "function.deps.json";
 
         public const string MissingFunctionEntryPointCompilationCode = "AF001";
         public const string AmbiguousFunctionEntryPointsCompilationCode = "AF002";

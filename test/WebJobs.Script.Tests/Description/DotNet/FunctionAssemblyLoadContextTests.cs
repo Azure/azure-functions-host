@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
@@ -37,31 +39,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Same(AssemblyLoadContext.Default, AssemblyLoadContext.GetLoadContext(assembly));
         }
 
-        // TODO: FACAVAL
-        //[Fact]
-        //public void ResolveAssembly_WithIndirectPrivateDependency_LogsIfResolutionFails()
-        //{
-        //    TestLogger testLogger = new TestLogger("Test");
+        [Fact]
+        public void InitializeDeps_LoadsExpectedDependencies()
+        {
+            string depsPath = Path.Combine(Directory.GetCurrentDirectory(), @"Description\DotNet\TestFiles\DepsFiles");
 
-        //    var resolver = new FunctionAssemblyLoader("c:\\");
+            IDictionary<string, string> assemblies = FunctionAssemblyLoadContext.InitializeDeps(depsPath);
 
-        //    var metadata1Directory = @"c:\testroot\test1";
-        //    var metadata1 = new FunctionMetadata { Name = "Test1", ScriptFile = $@"{metadata1Directory}\test.tst" };
-        //    var metadata2 = new FunctionMetadata { Name = "Test2", ScriptFile = @"c:\testroot\test2\test.tst" };
+            string testRid = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" : "unix";
 
-        //    var mockResolver = new Mock<IFunctionMetadataResolver>();
-        //    mockResolver.Setup(m => m.ResolveAssembly("MyTestAssembly.dll"))
-        //      .Returns<Assembly>(null);
+            // Ensure runtime specific dependencies are resolved, with appropriate RID
+            Assert.Contains($"runtimes/{testRid}/lib/netstandard2.0/System.Private.ServiceModel.dll", assemblies.Values);
+            Assert.Contains($"runtimes/{testRid}/lib/netstandard1.3/System.Text.Encoding.CodePages.dll", assemblies.Values);
 
-        //    resolver.CreateOrUpdateContext(metadata1, this.GetType().Assembly, new FunctionMetadataResolver(metadata1.ScriptFile, new Collection<ScriptBindingProvider>(), testLogger), testLogger);
-        //    resolver.CreateOrUpdateContext(metadata2, this.GetType().Assembly, mockResolver.Object, testLogger);
-
-        //    Assembly result = resolver.ResolveAssembly(AppDomain.CurrentDomain, new System.ResolveEventArgs("MyTestAssembly.dll",
-        //        new TestAssembly(new AssemblyName("MyDirectReference"), @"file:///c:/testroot/test2/bin/MyDirectReference.dll")));
-
-        //    Assert.Null(result);
-        //    Assert.Equal(1, testLogger.GetLogMessages().Count);
-        //    Assert.Contains("MyTestAssembly.dll", testLogger.GetLogMessages()[0].FormattedMessage);
-        //}
+            // Ensure flattened dependency has expected path
+            Assert.Contains($"Microsoft.Azure.WebJobs.Host.Storage.dll", assemblies.Values);
+        }
     }
 }
