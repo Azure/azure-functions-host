@@ -22,11 +22,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var options = new HostHealthMonitorOptions();
             var performanceManager = new HostPerformanceManager(mockEnvironment.Object, new OptionsWrapper<HostHealthMonitorOptions>(options));
 
-            value = "{\"userTime\": 30000000,\"kernelTime\": 16562500,\"pageFaults\": 131522,\"processes\": 1,\"processLimit\": 32,\"threads\": 32,\"threadLimit\": 512,\"connections\": 4,\"connectionLimit\": 300,\"sections\": 3,\"sectionLimit\": 256,\"namedPipes\": 0,\"namedPipeLimit\": 128,\"readIoOperations\": 675,\"writeIoOperations\": 18,\"otherIoOperations\": 9721,\"readIoBytes\": 72585119,\"writeIoBytes\": 5446,\"otherIoBytes\": 393926,\"privateBytes\": 33759232,\"handles\": 987,\"contextSwitches\": 15535,\"remoteOpens\": 250}";
+            value = "{\"userTime\": 30000000,\"kernelTime\": 16562500,\"pageFaults\": 131522,\"processes\": 1,\"processLimit\": 32,\"threads\": 32,\"threadLimit\": 512,\"connections\": 4,\"connectionLimit\": 300,\"activeConnections\": 25,\"activeConnectionLimit\": 600,\"sections\": 3,\"sectionLimit\": 256,\"namedPipes\": 0,\"namedPipeLimit\": 128,\"remoteDirMonitors\": 5,\"remoteDirMonitorLimit\": 500,\"readIoOperations\": 675,\"writeIoOperations\": 18,\"otherIoOperations\": 9721,\"readIoBytes\": 72585119,\"writeIoBytes\": 5446,\"otherIoBytes\": 393926,\"privateBytes\": 33759232,\"handles\": 987,\"contextSwitches\": 15535,\"remoteOpens\": 250}";
             var counters = performanceManager.GetPerformanceCounters(logger);
             Assert.Equal(counters.PageFaults, 131522);
 
-            value = "{\"userTime\": 30000000,\"kernelTime\": 16562500,\"pageFaults\": 131522,\"processes\": 1,\"processLimit\": 32,\"threads\": 32,\"threadLimit\": 512,\"connections\": 4,\"connectionLimit\": 300,\"sections\": 3,\"sectionLimit\": 256,\"namedPipes\": 0,\"namedPipeLimit\": 128,\"readIoOperations\": 675,\"writeIoOperations\": 18,\"otherIoOperations\": 9721,\"readIoBytes\": 72585119,\"writeIoBytes\": 5446,\"otherIoBytes\": 393926,\"privateBytes\": 33759232,\"handles\": 987,\"contextSwitches\": 15535,\"remoteOpens\": 250}猅";
+            // verify garbage characters are trimmed
+            value = value + "猅";
             counters = performanceManager.GetPerformanceCounters(logger);
             Assert.Equal(counters.PageFaults, 131522);
 
@@ -69,7 +70,60 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 Connections = currentValue,
                 ConnectionLimit = 300
             };
-            Assert.Equal(expected, HostPerformanceManager.IsUnderHighLoad(counters));
+            Collection<string> exceededCounters = new Collection<string>();
+            Assert.Equal(expected, HostPerformanceManager.IsUnderHighLoad(counters, exceededCounters: exceededCounters));
+            if (expected)
+            {
+                Assert.Equal(1, exceededCounters.Count);
+                Assert.Equal("Connections", exceededCounters[0]);
+            }
+        }
+
+        [Theory]
+        [InlineData(0, false)]
+        [InlineData(10, false)]
+        [InlineData(480, false)]
+        [InlineData(481, true)]
+        [InlineData(500, true)]
+        [InlineData(600, true)]
+        [InlineData(610, true)]
+        public void IsUnderHighLoad_ActiveConnections_ReturnsExpectedResults(int currentValue, bool expected)
+        {
+            var counters = new ApplicationPerformanceCounters
+            {
+                ActiveConnections = currentValue,
+                ActiveConnectionLimit = 600
+            };
+            Collection<string> exceededCounters = new Collection<string>();
+            Assert.Equal(expected, HostPerformanceManager.IsUnderHighLoad(counters, exceededCounters: exceededCounters));
+            if (expected)
+            {
+                Assert.Equal(1, exceededCounters.Count);
+                Assert.Equal("ActiveConnections", exceededCounters[0]);
+            }
+        }
+
+        [Theory]
+        [InlineData(0, false)]
+        [InlineData(10, false)]
+        [InlineData(400, false)]
+        [InlineData(401, true)]
+        [InlineData(500, true)]
+        [InlineData(600, true)]
+        public void IsUnderHighLoad_RemoteDirMonitors_ReturnsExpectedResults(int currentValue, bool expected)
+        {
+            var counters = new ApplicationPerformanceCounters
+            {
+                RemoteDirMonitors = currentValue,
+                RemoteDirMonitorLimit = 500
+            };
+            Collection<string> exceededCounters = new Collection<string>();
+            Assert.Equal(expected, HostPerformanceManager.IsUnderHighLoad(counters, exceededCounters: exceededCounters));
+            if (expected)
+            {
+                Assert.Equal(1, exceededCounters.Count);
+                Assert.Equal("RemoteDirMonitors", exceededCounters[0]);
+            }
         }
 
         [Theory]
@@ -87,7 +141,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 Threads = currentValue,
                 ThreadLimit = 512
             };
-            Assert.Equal(expected, HostPerformanceManager.IsUnderHighLoad(counters));
+            Collection<string> exceededCounters = new Collection<string>();
+            Assert.Equal(expected, HostPerformanceManager.IsUnderHighLoad(counters, exceededCounters: exceededCounters));
+            if (expected)
+            {
+                Assert.Equal(1, exceededCounters.Count);
+                Assert.Equal("Threads", exceededCounters[0]);
+            }
         }
 
         [Theory]
@@ -105,7 +165,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 Processes = currentValue,
                 ProcessLimit = 32
             };
-            Assert.Equal(expected, HostPerformanceManager.IsUnderHighLoad(counters));
+            Collection<string> exceededCounters = new Collection<string>();
+            Assert.Equal(expected, HostPerformanceManager.IsUnderHighLoad(counters, exceededCounters: exceededCounters));
+            if (expected)
+            {
+                Assert.Equal(1, exceededCounters.Count);
+                Assert.Equal("Processes", exceededCounters[0]);
+            }
         }
 
         [Theory]
@@ -123,7 +189,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 NamedPipes = currentValue,
                 NamedPipeLimit = 128
             };
-            Assert.Equal(expected, HostPerformanceManager.IsUnderHighLoad(counters));
+            Collection<string> exceededCounters = new Collection<string>();
+            Assert.Equal(expected, HostPerformanceManager.IsUnderHighLoad(counters, exceededCounters: exceededCounters));
+            if (expected)
+            {
+                Assert.Equal(1, exceededCounters.Count);
+                Assert.Equal("NamedPipes", exceededCounters[0]);
+            }
         }
 
         [Fact]
