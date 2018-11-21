@@ -51,7 +51,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.App" Version="2.1.6" />
     <PackageReference Include="Microsoft.AspNetCore.Buffering" Version="0.4.0-preview2-28189" />
-    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.0.6740001-e47e0369" />
+    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.0.6830001-df202c6c" />
     <PackageReference Include="Microsoft.AspNetCore.Server.IIS" Version="2.1.0-a-oob-2-1-oob-17297" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="3.0.3" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.3" />

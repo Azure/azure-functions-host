@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var response = await _fixture.HttpClient.SendAsync(request);
             var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
 
-            Assert.Equal(20, metadata.Length);
+            Assert.Equal(22, metadata.Length);
             var function = metadata.Single(p => p.Name == "PingRoute");
             Assert.Equal("https://localhost/myroute/mysubroute", function.InvokeUrlTemplate.AbsoluteUri);
 
@@ -307,6 +307,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("test", response.ReasonPhrase);
             Assert.Equal("{\"test\":\"123\"}", content);
         }
+
+        [Fact]
+        //"HEAD" request to proxy. backend returns 304 with no body but content-type shouldn't be null
+        public async Task EmptyHeadReturnsContentType()
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Head, $"contentTypePresenceTest");
+            request.Headers.Add("return_empty_body", "1");
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.True(string.IsNullOrEmpty(body));
+            Assert.Equal(response.StatusCode, HttpStatusCode.NotModified);
+            Assert.Equal(response.Content.Headers.GetValues("Content-Type").ToArray()[0], "fake/custom");
+            Assert.True(response.Headers.Contains("Test"));
+        }
+
+        [Fact]
+        //"GET" request to proxy. backend returns 304 with no body so content-type should be null
+        public async Task EmptyGetDoesntReturnsContentType()
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"contentTypePresenceTest");
+            request.Headers.Add("return_empty_body", "1");
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.True(string.IsNullOrEmpty(body));
+            Assert.Equal(response.StatusCode, HttpStatusCode.NotModified);
+            Assert.False(response.Content.Headers.Contains("Content-Type"));
+            Assert.True(response.Headers.Contains("Test"));
+        }
+
 
         public class TestFixture : IDisposable
         {
