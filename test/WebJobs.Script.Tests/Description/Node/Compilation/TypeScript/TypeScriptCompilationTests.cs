@@ -18,16 +18,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Node.TypeScript
             var options = new TypeScriptCompilationOptions
             {
                 OutDir = "outdir",
-                RootDir = @"c:\root\directory",
+                RootDir = @"/root/directory",
                 Target = "test.ts"
             };
 
-            string inputFile = @"c:\root\directory\functionname\inputfile.ts";
+            string inputFile = @"/root/directory/functionname/inputfile.ts";
             var compilation = await TypeScriptCompilation.CompileAsync(inputFile, options, new TestCompiler());
 
             string result = await compilation.EmitAsync(CancellationToken.None);
 
-            Assert.Equal(@"c:\root\directory\functionname\outdir\functionname\inputfile.js", result);
+            Assert.Equal(@"/root/directory/functionname/outdir/functionname/inputfile.js", result);
         }
 
         private class TestCompiler : ITypeScriptCompiler
