@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public static void ReadFunctionsMetadataSucceeds()
         {
-            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample");
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample".ToPlatformPath());
             // Setup
             var options = CreateApplicationHostOptions();
             var fileSystem = CreateFileSystem(options.ScriptPath);
@@ -143,11 +143,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             return new ScriptApplicationHostOptions
             {
-                ScriptPath = @"x:\root",
+                ScriptPath = @"x:\root".ToPlatformPath(),
                 IsSelfHost = false,
-                LogPath = @"x:\tmp\log",
-                SecretsPath = @"x:\secrets",
-                TestDataPath = @"x:\test"
+                LogPath = @"x:\tmp\log".ToPlatformPath(),
+                SecretsPath = @"x:\secrets".ToPlatformPath(),
+                TestDataPath = @"x:\test".ToPlatformPath()
             };
         }
 
@@ -179,9 +179,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             dirBase.Setup(d => d.EnumerateDirectories(rootPath))
                 .Returns(new[]
                 {
-                    @"x:\root\function1",
-                    @"x:\root\function2",
-                    @"x:\root\function3"
+                    @"x:\root\function1".ToPlatformPath(),
+                    @"x:\root\function2".ToPlatformPath(),
+                    @"x:\root\function3".ToPlatformPath()
                 });
 
             var function1 = @"{
@@ -234,20 +234,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             function2Stream.Position = 0;
             var function3Stream = new MemoryStream(Encoding.UTF8.GetBytes(function3));
             function3Stream.Position = 0;
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\function.json"))).Returns(true);
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\main.py"))).Returns(true);
-            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function1\function.json"))).Returns(function1);
-            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function1\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(function1Stream);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "function1", "function.json"))).Returns(true);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "function1", "main.py"))).Returns(true);
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, "function1", "function.json"))).Returns(function1);
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, "function1", "function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(function1Stream);
 
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2\function.json"))).Returns(true);
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2\main.js"))).Returns(true);
-            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function2\function.json"))).Returns(function2);
-            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function2\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(function2Stream);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "function2", "function.json"))).Returns(true);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "function2", "main.js"))).Returns(true);
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, "function2", "function.json"))).Returns(function2);
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, "function2", "function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(function2Stream);
 
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3\function.json"))).Returns(true);
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3\main.js"))).Returns(true);
-            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function3\function.json"))).Returns(function3);
-            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function3\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(function3Stream);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "function3", "function.json"))).Returns(true);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "function3", "main.js"))).Returns(true);
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, "function3", "function.json"))).Returns(function3);
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, "function3", "function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(function3Stream);
 
             return fileSystem.Object;
         }

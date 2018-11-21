@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class HostJsonFileConfigurationSourceTests
     {
-        private readonly string _defaultHostJson = "{\r\n  \"version\": \"2.0\"\r\n}";
+        private readonly string _defaultHostJson = $"{{{Environment.NewLine}  \"version\": \"2.0\"{Environment.NewLine}}}";
         private readonly ScriptApplicationHostOptions _options;
         private readonly string _hostJsonFile;
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
