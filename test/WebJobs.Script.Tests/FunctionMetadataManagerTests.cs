@@ -27,15 +27,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var files = new Dictionary<string, MockFileData>
             {
-                { "/functions/queueTrigger.py", new MockFileData(string.Empty) },
-                { "/functions/helper.py", new MockFileData(string.Empty) },
-                { "/functions/test.txt", new MockFileData(string.Empty) }
+                { @"c:\functions\queueTrigger.py".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\helper.py".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\test.txt".ToPlatformPath(), new MockFileData(string.Empty) }
             };
 
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, "/functions", fileSystem);
-            Assert.Equal("/functions/queueTrigger.py", scriptFile, StringComparer.OrdinalIgnoreCase);
+            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions".ToPlatformPath(), fileSystem);
+            Assert.Equal(@"c:\functions\queueTrigger.py".ToPlatformPath(), scriptFile, StringComparer.OrdinalIgnoreCase);
         }
 
         [Theory]
@@ -61,21 +61,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             JObject functionConfig = new JObject()
             {
-                { "scriptFile", "../shared/queuetrigger.py" }
+                { "scriptFile", @"..\shared\queuetrigger.py".ToPlatformPath() }
             };
 
             var files = new Dictionary<string, MockFileData>
             {
-                { "/shared/queueTrigger.py", new MockFileData(string.Empty) },
-                { "/functions/queueTrigger.py", new MockFileData(string.Empty) },
-                { "/functions/helper.py", new MockFileData(string.Empty) },
-                { "/functions/test.txt", new MockFileData(string.Empty) }
+                { @"c:\shared\queueTrigger.py".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\queueTrigger.py".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\helper.py".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\test.txt".ToPlatformPath(), new MockFileData(string.Empty) }
             };
 
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, "/functions", fileSystem);
-            Assert.Equal("/shared/queueTrigger.py", scriptFile, StringComparer.OrdinalIgnoreCase);
+            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions".ToPlatformPath(), fileSystem);
+            Assert.Equal(@"c:\shared\queueTrigger.py".ToPlatformPath(), scriptFile, StringComparer.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -84,13 +84,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionConfig = new JObject();
             var files = new Dictionary<string, MockFileData>
             {
-                { "/functions/foo.py", new MockFileData(string.Empty) },
-                { "/functions/queueTrigger.py", new MockFileData(string.Empty) },
-                { "/functions/helper.py", new MockFileData(string.Empty) },
-                { "/functions/test.txt", new MockFileData(string.Empty) }
+                { @"c:\functions\foo.py".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\queueTrigger.py".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\helper.py".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\test.txt".ToPlatformPath(), new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
-            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, "/functions", fileSystem));
+            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions".ToPlatformPath(), fileSystem));
         }
 
         [Fact]
@@ -99,9 +99,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionConfig = new JObject();
             string[] functionFiles = new string[0];
             var fileSystem = new MockFileSystem();
-            fileSystem.AddDirectory("/functions");
+            fileSystem.AddDirectory(@"c:\functions".ToPlatformPath());
 
-            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, "/functions", fileSystem));
+            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions".ToPlatformPath(), fileSystem));
         }
 
         [Fact]
@@ -110,14 +110,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionConfig = new JObject();
             var files = new Dictionary<string, MockFileData>
             {
-                { "/functions/Run.csx", new MockFileData(string.Empty) },
-                { "/functions/Helper.csx", new MockFileData(string.Empty) },
-                { "/functions/test.txt", new MockFileData(string.Empty) }
+                { @"c:\functions\Run.csx".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\Helper.csx".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\test.txt".ToPlatformPath(), new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, "/functions", fileSystem);
-            Assert.Equal("/functions/Run.csx", scriptFile);
+            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions".ToPlatformPath(), fileSystem);
+            Assert.Equal(@"c:\functions\Run.csx".ToPlatformPath(), scriptFile);
         }
 
         [Fact]
@@ -126,12 +126,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionConfig = new JObject();
             var files = new Dictionary<string, MockFileData>
             {
-                { "/functions/Run.csx", new MockFileData(string.Empty) }
+                { @"c:\functions\Run.csx".ToPlatformPath(), new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, "/functions", fileSystem);
-            Assert.Equal("/functions/Run.csx", scriptFile);
+            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions".ToPlatformPath(), fileSystem);
+            Assert.Equal(@"c:\functions\Run.csx".ToPlatformPath(), scriptFile);
         }
 
         [Fact]
@@ -140,14 +140,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionConfig = new JObject();
             var files = new Dictionary<string, MockFileData>
             {
-                { "/functions/run.js", new MockFileData(string.Empty) },
-                { "/functions/index.js", new MockFileData(string.Empty) },
-                { "/functions/test.txt", new MockFileData(string.Empty) }
+                { @"c:\functions\run.js".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\index.js".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\test.txt".ToPlatformPath(), new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, "/functions", fileSystem);
-            Assert.Equal("/functions/run.js", scriptFile);
+            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions".ToPlatformPath(), fileSystem);
+            Assert.Equal(@"c:\functions\run.js".ToPlatformPath(), scriptFile);
         }
 
         [Fact]
@@ -156,13 +156,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionConfig = new JObject();
             var files = new Dictionary<string, MockFileData>
             {
-                { "/functions/index.js", new MockFileData(string.Empty) },
-                { "/functions/test.txt", new MockFileData(string.Empty) }
+                { @"c:\functions\index.js".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\test.txt".ToPlatformPath(), new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, "/functions", fileSystem);
-            Assert.Equal("/functions/index.js", scriptFile);
+            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions".ToPlatformPath(), fileSystem);
+            Assert.Equal(@"c:\functions\index.js".ToPlatformPath(), scriptFile);
         }
 
         [Fact]
@@ -174,15 +174,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var files = new Dictionary<string, MockFileData>
             {
-                { "/functions/run.py", new MockFileData(string.Empty) },
-                { "/functions/queueTrigger.py", new MockFileData(string.Empty) },
-                { "/functions/helper.py", new MockFileData(string.Empty) },
-                { "/functions/test.txt", new MockFileData(string.Empty) }
+                { @"c:\functions\run.py".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\queueTrigger.py".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\helper.py".ToPlatformPath(), new MockFileData(string.Empty) },
+                { @"c:\functions\test.txt".ToPlatformPath(), new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, "/functions", fileSystem);
-            Assert.Equal("/functions/queueTrigger.py", scriptFile);
+            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions".ToPlatformPath(), fileSystem);
+            Assert.Equal(@"c:\functions\queueTrigger.py".ToPlatformPath(), scriptFile);
         }
 
         [Theory]
@@ -225,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ReadFunctionMetadata_Succeeds()
         {
-            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"../../../../../sample/node");
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node".ToPlatformPath());
             var functionErrors = new Dictionary<string, ICollection<string>>();
             var functionDirectories = Directory.EnumerateDirectories(functionsPath);
             var metadata = FunctionMetadataManager.ReadFunctionsMetadata(functionDirectories, null, TestHelpers.GetTestWorkerConfigs(), NullLogger.Instance, functionErrors);

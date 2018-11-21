@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _runPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             _lockFilePath = Path.Combine(_runPath, DotNetConstants.ProjectLockFileName);
             _oldHomeEnv = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
-            _targetAssemblyPath = Path.Combine(_runPath, "data\\Functions\\packages\\nuget\\Test.Package\\1.0.0\\lib\\net45");
+            _targetAssemblyPath = Path.Combine(_runPath, "data\\Functions\\packages\\nuget\\Test.Package\\1.0.0\\lib\\net45".ToPlatformPath());
             _targetAssemblyFilePath = Path.Combine(_targetAssemblyPath, Path.GetFileName(this.GetType().Assembly.Location));
             Directory.CreateDirectory(_targetAssemblyPath);
 

@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(@"ProjectWithoutLock", true)]
         public void RequirePackageRestore_ReturnsExpectedResult(string projectPath, bool shouldRequireRestore)
         {
-            projectPath = Path.Combine(Directory.GetCurrentDirectory(), @"Description\DotNet\TestFiles\PackageReferences", projectPath);
+            projectPath = Path.Combine(Directory.GetCurrentDirectory(), @"Description\DotNet\TestFiles\PackageReferences", projectPath).ToPlatformPath();
             bool result = PackageManager.RequiresPackageRestore(projectPath);
 
             Assert.True(Directory.Exists(projectPath));

@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [InlineData("Host.General", null)]
         public void CreateLogger_GetsCorrectPath(string category, string expectedPath)
         {
+            expectedPath = expectedPath.ToPlatformPath();
             Assert.Equal(expectedPath, FunctionFileLoggerProvider.GetFilePath(category));
         }
 

@@ -19,9 +19,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
         [InlineData(@"c:\test\path\", @"c:\test\path\to\some\directory", @"to\some\directory\")]
         public void GetRelativePath_ReturnsExpectedPath(string path1, string path2, string expectedPath)
         {
-            string result = FileUtility.GetRelativePath(path1, path2);
+            string result = FileUtility.GetRelativePath(path1.ToPlatformPath(), path2.ToPlatformPath());
 
-            Assert.Equal(expectedPath, result);
+            Assert.Equal(expectedPath.ToPlatformPath(), result);
         }
     }
 }

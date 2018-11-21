@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -64,6 +65,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             try
             {
+                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && key.IndexOf(":") != -1)
+                {
+                    // : is not a valid character for Unix env var names
+                    return;
+                }
+
                 string value = Guid.NewGuid().ToString();
                 Environment.SetEnvironmentVariable(key, value);
 

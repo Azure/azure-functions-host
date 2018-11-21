@@ -685,7 +685,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void TryGetFunctionFromException_FunctionMatch()
         {
             string stack = "TypeError: Cannot read property 'is' of undefined\n" +
-                           "at Timeout._onTimeout(D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js:7:35)\n" +
+                           $"at Timeout._onTimeout({"D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js".ToPlatformPath()}:7:35)\n" +
                            "at tryOnTimeout (timers.js:224:11)\n" +
                            "at Timer.listOnTimeout(timers.js:198:5)";
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
@@ -700,7 +700,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FunctionMetadata metadata = new FunctionMetadata
             {
                 Name = "SomeFunction",
-                ScriptFile = "D:\\home\\site\\wwwroot\\SomeFunction\\index.js"
+                ScriptFile = "D:\\home\\site\\wwwroot\\SomeFunction\\index.js".ToPlatformPath()
             };
             FunctionDescriptor function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>(), null, null, null);
             functions.Add(function);
@@ -712,7 +712,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             metadata = new FunctionMetadata
             {
                 Name = "HttpTriggerNode",
-                ScriptFile = "D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js"
+                ScriptFile = "D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js".ToPlatformPath()
             };
             function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>(), null, null, null);
             functions.Add(function);
@@ -722,7 +722,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // match - different file from the same function
             stack = "TypeError: Cannot read property 'is' of undefined\n" +
-                           "at Timeout._onTimeout(D:\\home\\site\\wwwroot\\HttpTriggerNode\\npm\\lib\\foo.js:7:35)\n" +
+                           $"at Timeout._onTimeout({"D:\\home\\site\\wwwroot\\HttpTriggerNode\\npm\\lib\\foo.js".ToPlatformPath()}:7:35)\n" +
                            "at tryOnTimeout (timers.js:224:11)\n" +
                            "at Timer.listOnTimeout(timers.js:198:5)";
             exception = new InvalidOperationException(stack);

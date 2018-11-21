@@ -94,12 +94,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var testEnvVariables = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
-                { "JAVA_HOME", @"D:\Program Files\Java\zulu8.31.0.2-jre8.0.181-win_x64" }
+                { "JAVA_HOME", @"D:\Program Files\Java\zulu8.31.0.2-jre8.0.181-win_x64".ToPlatformPath() }
             };
             using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
             {
                 var javaPath = configFactory.GetExecutablePathForJava("../../zulu8.23.0.3-jdk8.0.144-win_x64/bin/java");
-                Assert.Equal(@"D:\Program Files\Java\zulu8.23.0.3-jdk8.0.144-win_x64\bin\java", javaPath);
+                Assert.Equal(@"D:\Program Files\Java\zulu8.23.0.3-jdk8.0.144-win_x64\bin\java".ToPlatformPath(), javaPath);
             }
         }
 
@@ -140,12 +140,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var configFactory = new WorkerConfigFactory(config, testLogger);
             var testEnvVariables = new Dictionary<string, string>
             {
-                { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51" }
+                { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51".ToPlatformPath() }
             };
             using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
             {
-                var javaPath = configFactory.GetExecutablePathForJava(@"D:\MyCustomPath\Java");
-                Assert.Equal(@"D:\MyCustomPath\Java", javaPath);
+                var javaPath = configFactory.GetExecutablePathForJava(@"D:\MyCustomPath\Java".ToPlatformPath());
+                Assert.Equal(@"D:\MyCustomPath\Java".ToPlatformPath(), javaPath);
             }
         }
 

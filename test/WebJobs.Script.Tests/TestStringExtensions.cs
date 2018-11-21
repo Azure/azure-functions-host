@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             else
             {
-                if (path.IndexOf(":") != -1)
+                if (path.IndexOf(":") == 1)
                 {
                     path = path.Substring(2);
                 }
