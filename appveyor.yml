@@ -26,7 +26,7 @@ for:
       PATH=".dotnet:"$PATH && dotnet --info 
   build_script:
   - sh: dotnet build WebJobs.Script.sln
-  test:
+  test_script:
   - sh: >-   
       dotnet test test/WebJobs.Script.Tests -v q &&
       dotnet test test/WebJobs.Script.Scaling.Tests -v q &&
