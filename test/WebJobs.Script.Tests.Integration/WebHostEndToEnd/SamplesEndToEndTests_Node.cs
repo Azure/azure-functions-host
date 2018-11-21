@@ -449,31 +449,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("Hello World!", body);
         }
 
-        [Fact]
-        public async Task HttpTrigger_Identities_Succeeds()
-        {
-            var vars = new Dictionary<string, string>
-            {
-                { "WEBSITE_AUTH_ENABLED", "TRUE"}
-            };
-            using (var env = new TestScopedEnvironmentVariable(vars))
-            {
-                string id = Guid.NewGuid().ToString();
-                string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Identities");
-                string uri = $"api/httptrigger-identities?code={functionKey}";
-
-                var request = new HttpRequestMessage(HttpMethod.Get, uri);
-                SamplesEndToEndTests_CSharp.MockEasyAuth(request, "facebook", "Connor McMahon", "10241897674253170");
-
-                HttpResponseMessage response = await this._fixture.Host.HttpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-                string responseContent = await response.Content.ReadAsStringAsync();
-                string[] identityStrings = SamplesEndToEndTests_CSharp.StripBookendQuotations(responseContent).Split(';');
-                Assert.Equal("Identity: (facebook, Connor McMahon, 10241897674253170)", identityStrings[0]);
-                Assert.Equal("Identity: (WebJobsAuthLevel, Function, Key1)", identityStrings[1]);
-            }
-        }
-
         public class TestFixture : EndToEndTestFixture
         {
             static TestFixture()
