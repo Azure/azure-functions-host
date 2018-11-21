@@ -268,14 +268,7 @@ function cleanExtension([string] $bitness) {
         }
     }
 
-    if ($bitness -eq "64bit") {
-        $keepRuntimes = @('win', 'win-x64', 'win10-x64')
-    } elseif ($bitness -eq "32bit") {
-        $keepRuntimes = @('win', 'win-x86', 'win10-x86')
-    } else {
-        # if no bitness is specified, grab all Windows 10 folders
-        $keepRuntimes = @('win', 'win-*', 'win10-*')
-    }
+    $keepRuntimes = @('win', 'win-x86', 'win10-x86')
     Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes" -Exclude $keepRuntimes -ErrorAction SilentlyContinue |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 }
