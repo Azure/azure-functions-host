@@ -281,12 +281,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Identities", "H
 		sample\CSharp\HttpTrigger-Identities\run.csx = sample\CSharp\HttpTrigger-Identities\run.csx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Identities", "HttpTrigger-Identities", "{909C3F6B-1B36-498F-8707-C6CC54CD2242}"
-	ProjectSection(SolutionItems) = preProject
-		sample\Node\HttpTrigger-Identities\function.json = sample\Node\HttpTrigger-Identities\function.json
-		sample\Node\HttpTrigger-Identities\index.js = sample\Node\HttpTrigger-Identities\index.js
-	EndProjectSection
-EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
@@ -387,7 +381,6 @@ Global
 		{A0AAA922-2AFA-4418-BB85-CE7602394273} = {9D87C796-7914-4A43-B843-579562393E10}
 		{B773D1BC-495A-45CD-82CF-393A698FD958} = {9D87C796-7914-4A43-B843-579562393E10}
 		{DCBE49B4-CE2C-4D44-8DD9-2B771343E1C6} = {34506711-9D66-41EF-BBA1-9A9DC1140209}
-		{909C3F6B-1B36-498F-8707-C6CC54CD2242} = {9D87C796-7914-4A43-B843-579562393E10}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}
