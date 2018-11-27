@@ -496,9 +496,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 }
 
                 Assert.NotNull(hostSecrets);
-                Assert.Equal(hostSecrets.MasterKey, "cryptoError");
+                Assert.NotEqual(hostSecrets.MasterKey, "cryptoError");
                 var result = JsonConvert.DeserializeObject<HostSecrets>(File.ReadAllText(Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName)));
-                Assert.Equal(result.MasterKey.Value, "!cryptoError");
+                Assert.Equal(result.MasterKey.Value, "!" + hostSecrets.MasterKey);
                 Assert.Equal(1, Directory.GetFiles(directory.Path, $"host.{ScriptConstants.Snapshot}*").Length);
             }
         }
@@ -536,9 +536,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 }
 
                 Assert.NotNull(functionSecrets);
-                Assert.Equal(functionSecrets["Key1"], "cryptoError");
+                Assert.NotEqual(functionSecrets["Key1"], "cryptoError");
                 var result = JsonConvert.DeserializeObject<FunctionSecrets>(File.ReadAllText(Path.Combine(directory.Path, functionName + ".json")));
-                Assert.Equal(result.GetFunctionKey("Key1", functionName).Value, "!cryptoError");
+                Assert.Equal(result.GetFunctionKey("Key1", functionName).Value, "!" + functionSecrets["Key1"]);
                 Assert.Equal(1, Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length);
             }
         }
@@ -755,7 +755,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             var mockValueWriter = new Mock<IKeyValueWriter>();
             mockValueWriter.Setup(r => r.WriteValue(It.IsAny<Key>()))
-                .Returns<Key>(k => new Key(k.Name, simulateWriteConversion ? "!" + k.Value : k.Value) { IsEncrypted = simulateWriteConversion });
+                .Returns<Key>(k =>
+                {
+                    return new Key(k.Name, simulateWriteConversion ? "!" + k.Value : k.Value) { IsEncrypted = simulateWriteConversion };
+                });
 
             var mockValueConverterFactory = new Mock<IKeyValueConverterFactory>();
             mockValueConverterFactory.Setup(f => f.GetValueReader(It.IsAny<Key>()))
