@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             StandbyManager.ResetChangeToken();
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3816")]
         public async Task StandbyMode_EndToEnd()
         {
             var vars = new Dictionary<string, string>
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3816")]
         public async Task StandbyMode_EndToEnd_LinuxContainer()
         {
             byte[] bytes = TestHelpers.GenerateKeyBytes();
