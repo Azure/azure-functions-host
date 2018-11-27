@@ -1,7 +1,7 @@
 ﻿param (
   [string]$buildNumber = "0",
   [string]$extensionVersion = "2.0.$buildNumber",
-  [bool]$includeVersion = $true
+  [bool]$includeSuffixVersion = $true
 )
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -276,9 +276,12 @@ foreach ($project in $projects)
 {
   $cmd = "pack", "src\$project\$project.csproj", "-o", "..\..\buildoutput", "--no-build"
   
-  if ($includeVersion)
+  if ($includeSuffixVersion)
   {
     $cmd += "--version-suffix", "-$buildNumber"
+  }
+  else {
+    $cmd += "-p:PackageVersion=$extensionVersion"
   }
   
   & dotnet $cmd  
