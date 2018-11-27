@@ -178,7 +178,31 @@
       "requestOverrides": {
         "backend.request.headers.accept": "text/plain"
       }
+    },
+    "contentTypePresenceTest": {
+      "matchCondition": {
+        "route": "/contentTypePresenceTest",
+        "methods": [ "HEAD", "GET" ]
+      },
+      "backendUri": "http://localhost/proxyAsBackend"
+    },
+    "proxyAsBackend": {
+      "matchCondition": {
+        "route": "/proxyAsBackend",
+        "methods": [ "HEAD", "GET" ]
+      },
+      "backendUri": "http://localhost/api/myroute/mysubroute?a=1",
+      "responseOverrides": {
+        "response.statusCode": "304",
+        "response.statusReason": "test",
+        "response.headers.Content-Type": "fake/custom",
+        "response.headers.Content-Length": "888",
+        "response.headers.Test": "test"
+      }
+
     }
+
+
 
   }
 }
