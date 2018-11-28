@@ -31,7 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 yield return new object[] { new WorkerDescription() { Extensions = new List<string>() } };
                 yield return new object[] { new WorkerDescription() { Language = testLanguage } };
                 yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>() } };
-                yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe" } };
             }
         }
 
@@ -39,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             get
             {
+                yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe" } };
                 yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = testWorkerPathInWorkerConfig } };
                 yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = testWorkerPathInWorkerConfig, Arguments = new List<string>() } };
             }
