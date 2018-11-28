@@ -384,7 +384,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             if (emptyWorkerPath)
             {
-                config[LanguageWorkerConstants.WorkerDescriptionDefaultWorkerPath] = null;
+                config[LanguageWorkerConstants.WorkerDescription][LanguageWorkerConstants.WorkerDescriptionDefaultWorkerPath] = null;
             }
 
             return config;
