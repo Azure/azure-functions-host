@@ -1,8 +1,13 @@
 ﻿param (
   [string]$buildNumber = "0",
   [string]$extensionVersion = "2.0.$buildNumber",
-  [bool]$includeSuffixVersion = $true
+  [bool]$includeSuffix = $true
 )
+
+if ($includeSuffix)
+{
+    $extensionVersion += "-beta"
+}
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $buildOutput = Join-Path $currentDir "buildoutput"
@@ -263,7 +268,7 @@ function cleanExtension([string] $bitness) {
         }
     }
 }
-
+  
 dotnet --version
 dotnet build .\WebJobs.Script.sln -v q /p:BuildNumber="$buildNumber"
 
@@ -274,15 +279,8 @@ $projects =
   
 foreach ($project in $projects)
 {
-  $cmd = "pack", "src\$project\$project.csproj", "-o", "..\..\buildoutput", "--no-build"
-  
-  if ($includeSuffixVersion)
-  {
-    $cmd += "--version-suffix", "-$buildNumber"
-  }
-  else {
-    $cmd += "-p:PackageVersion=$extensionVersion"
-  }
+
+  $cmd = "pack", "src\$project\$project.csproj", "-o", "..\..\buildoutput", "--no-build" , "-p:PackageVersion=$extensionVersion"
   
   & dotnet $cmd  
 }
