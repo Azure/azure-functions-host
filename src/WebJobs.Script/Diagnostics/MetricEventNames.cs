@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         // language worker level events
         public const string WorkerInitializeLatency = "host.startup.outofproc.{0}worker.initialize.attempt{1}.latency";
+        public const string WorkerRuntimeLanguage = "host.startup.language.{0}";
 
         // function level events
         public const string FunctionInvokeLatency = "function.invoke.latency";

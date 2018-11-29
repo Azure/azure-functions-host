@@ -260,6 +260,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public async Task InitializeAsync()
         {
             _stopwatch.Start();
+            if (!_environment.IsPlaceholderModeEnabled())
+            {
+                string runtimeLanguage = string.IsNullOrEmpty(_currentRuntimelanguage) ? "none" : _currentRuntimelanguage;
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerRuntimeLanguage, runtimeLanguage));
+            }
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
                 PreInitialize();
