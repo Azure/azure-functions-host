@@ -441,8 +441,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static bool IsSingleLanguage(IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
         {
-            var functionsListWithoutProxies = functions?.Where(f => f.IsProxy == false);
-            if (functionsListWithoutProxies == null || functionsListWithoutProxies?.Count() == 0)
+            var functionsListWithoutProxies = functions.Where(f => f.IsProxy == false).ToArray();
+            if (!functionsListWithoutProxies.Any())
             {
                 return true;
             }
