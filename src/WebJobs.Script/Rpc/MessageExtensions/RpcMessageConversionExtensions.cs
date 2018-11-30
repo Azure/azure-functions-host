@@ -76,10 +76,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 typedData.Http = http;
 
                 http.RawBody = null;
-
                 foreach (var pair in request.Query)
                 {
-                    http.Query.Add(pair.Key, pair.Value.ToString());
+                    if (!string.IsNullOrEmpty(pair.Value.ToString()))
+                    {
+                        http.Query.Add(pair.Key, pair.Value.ToString());
+                    }
                 }
 
                 foreach (var pair in request.Headers)
