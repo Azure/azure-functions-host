@@ -42,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             _settingsManager = ScriptSettingsManager.Instance;
         }
 
+
         [Fact]
         public async Task ExtensionWebHook_Succeeds()
         {
@@ -84,13 +85,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
-        [Fact]
-        public async Task HostPing_Succeeds()
+        [Theory]
+        [InlineData("GET")]
+        [InlineData("POST")]
+        public async Task HostPing_Succeeds(string method)
         {
             string uri = "admin/host/ping";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            HttpRequestMessage request = new HttpRequestMessage(new HttpMethod(method), uri);
             HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var cacheHeader = response.Headers.GetValues("Cache-Control").Single();
+            Assert.Equal("no-store, no-cache", cacheHeader);
         }
 
         [Fact]

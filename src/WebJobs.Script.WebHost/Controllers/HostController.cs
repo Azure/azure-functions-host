@@ -86,8 +86,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Ok(status);
         }
 
+        [HttpGet]
         [HttpPost]
         [Route("admin/host/ping")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public IActionResult Ping()
         {
             return Ok();
