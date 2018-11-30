@@ -10,17 +10,19 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -38,6 +40,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
+        }
+
+        [Fact]
+        public async Task ExtensionWebHook_Succeeds()
+        {
+            // configure a mock webhook handler for the "test" extension
+            Mock<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>> mockHandler = new Mock<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>>(MockBehavior.Strict);
+            mockHandler.Setup(p => p.ConvertAsync(It.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
+            var handler = mockHandler.Object;
+            _fixture.MockWebHookProvider.Setup(p => p.TryGetHandler("test", out handler)).Returns(true);
+            _fixture.MockWebHookProvider.Setup(p => p.TryGetHandler("invalid", out handler)).Returns(false);
+
+            // successful request
+            string uri = "runtime/webhooks/test?code=SystemValue3";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // invalid system key value - no key match
+            uri = "runtime/webhooks/test?code=invalid";
+            request = new HttpRequestMessage(HttpMethod.Post, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // invalid system key value - wrong key match (must match key name for extension)
+            uri = "runtime/webhooks/test?code=SystemValue2";
+            request = new HttpRequestMessage(HttpMethod.Post, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // verify admin requests are allowed through
+            uri = "runtime/webhooks/test?code=1234";
+            request = new HttpRequestMessage(HttpMethod.Post, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // non-existent extension
+            uri = "runtime/webhooks/invalid?code=SystemValue2";
+            request = new HttpRequestMessage(HttpMethod.Post, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
         [Fact]
@@ -742,18 +786,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         public class TestFixture : EndToEndTestFixture
         {
-            static TestFixture()
-            {
-            }
-
             public TestFixture()
                 : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\csharp"), "samples", LanguageWorkerConstants.DotNetLanguageWorkerName)
             {
+                MockWebHookProvider = new Mock<IScriptWebHookProvider>(MockBehavior.Strict);
             }
+
+            public Mock<IScriptWebHookProvider> MockWebHookProvider { get; }
 
             public override void ConfigureJobHost(IWebJobsBuilder webJobsBuilder)
             {
                 base.ConfigureJobHost(webJobsBuilder);
+
+                webJobsBuilder.Services.AddSingleton<IScriptWebHookProvider>(MockWebHookProvider.Object);
 
                 webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                 {

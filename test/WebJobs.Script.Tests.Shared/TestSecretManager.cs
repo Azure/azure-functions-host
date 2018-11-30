@@ -43,8 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 },
                 SystemKeys = new Dictionary<string, string>
                 {
-                    { "SystemKey1", "HostValue1" },
-                    { "SystemKey2", "HostValue2" },
+                    { "SystemKey1", "SystemValue1" },
+                    { "SystemKey2", "SystemValue2" },
+                    { "Test_Extension", "SystemValue3" },
                 }
             });
         }
