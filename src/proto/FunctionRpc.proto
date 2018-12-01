@@ -66,9 +66,9 @@ message StreamingMessage {
     // Worker logs a message back to the host
     RpcLog rpc_log = 2;
 
-    FunctionEnvironmentReLoadRequest function_environment_reload_request = 25;
+    FunctionEnvironmentReloadRequest function_environment_reload_request = 25;
 
-    FunctionEnvironmentReLoadResponse function_environment_reload_response = 26;
+    FunctionEnvironmentReloadResponse function_environment_reload_response = 26;
   }
 }
 
@@ -184,12 +184,12 @@ message WorkerStatusRequest{
 message WorkerStatusResponse {
 }
 
-message FunctionEnvironmentReLoadRequest {
+message FunctionEnvironmentReloadRequest {
   // Environment variables from the current process
   map<string, string> environment_variables = 1;
 }
 
-message FunctionEnvironmentReLoadResponse {
+message FunctionEnvironmentReloadResponse {
   // Status of the response
   StatusResult result = 3;
 }
