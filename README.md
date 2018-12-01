@@ -24,7 +24,7 @@ From within the Azure Functions language worker repo:
 
 From within the Azure Functions language worker repo:
 1.	Define remote branch for cleaner git commands
-    -	`git remote add proto-file https://github.com/mhoeger/azure-functions-language-worker-protobuf.git`
+    -	`git remote add proto-file https://github.com/azure/azure-functions-language-worker-protobuf.git`
     -	`git fetch proto-file`
 2.	Merge updates
     -   `git merge -s subtree proto-file/<version branch> --squash --allow-unrelated-histories` 
