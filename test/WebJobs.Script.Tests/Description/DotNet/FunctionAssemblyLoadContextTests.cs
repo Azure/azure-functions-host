@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void InitializeDeps_LoadsExpectedDependencies()
         {
-            string depsPath = Path.Combine(Directory.GetCurrentDirectory(), @"Description\DotNet\TestFiles\DepsFiles");
+            string depsPath = Path.Combine(Directory.GetCurrentDirectory(), "Description", "DotNet", "TestFiles", "DepsFiles");
 
             IDictionary<string, string> assemblies = FunctionAssemblyLoadContext.InitializeDeps(depsPath);
 
