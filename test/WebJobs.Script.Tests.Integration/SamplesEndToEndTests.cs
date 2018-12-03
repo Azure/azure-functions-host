@@ -994,13 +994,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(value, result.Trim());
         }
 
-        [Fact]
-        public async Task HostPing_Succeeds()
+        [Theory]
+        [InlineData("GET")]
+        [InlineData("POST")]
+        public async Task HostPing_Succeeds(string method)
         {
             string uri = "admin/host/ping";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            HttpRequestMessage request = new HttpRequestMessage(new HttpMethod(method), uri);
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var cacheHeader = response.Headers.GetValues("Cache-Control").Single();
+            Assert.Equal("no-store, no-cache", cacheHeader);
         }
 
         [Fact]

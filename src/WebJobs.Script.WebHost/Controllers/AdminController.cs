@@ -133,12 +133,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
         }
 
+        [HttpGet]
         [HttpPost]
         [Route("admin/host/ping")]
         [AllowAnonymous]
-        public IHttpActionResult Ping()
+        public HttpResponseMessage Ping()
         {
-            return Ok();
+            var response = new HttpResponseMessage(HttpStatusCode.OK);
+            response.Headers.Add("Cache-Control", "no-store, no-cache");
+
+            return response;
         }
 
         [HttpPost]
