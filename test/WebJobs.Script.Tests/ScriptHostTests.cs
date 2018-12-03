@@ -888,13 +888,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void IsSingleLanguage_FunctionsList_Null_FunctionsWorkerRuntime_Set_Returns_True()
         {
-            Assert.True(Utility.IsSingleLanguage(null, "dotnet"));
+            Assert.Throws<ArgumentNullException>(() => Utility.IsSingleLanguage(null, "dotnet"));
         }
 
         [Fact]
         public void IsSingleLanguage_FunctionsList_Null_Returns_True()
         {
-            Assert.True(Utility.IsSingleLanguage(null, null));
+            Assert.Throws<ArgumentNullException>(() => Utility.IsSingleLanguage(null, null));
         }
 
         [Fact]
