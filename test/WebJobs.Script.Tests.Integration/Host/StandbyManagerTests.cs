@@ -33,27 +33,11 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-    [Trait(TestTraits.Group, TestTraits.StandbyModeTests)]
-    public class StandbyManagerTests : IDisposable
+    [Trait(TestTraits.Group, TestTraits.StandbyModeTestsWindows)]
+    public class StandbyManagerE2ETests_Windows : StandbyManagerE2ETestBase
     {
-        private readonly string _testRootPath;
-        private string _expectedHostId;
-        private TestLoggerProvider _loggerProvider;
-        private string _expectedScriptPath;
-        private HttpClient _httpClient;
-        private TestServer _httpServer;
-        private readonly object _originalTimeZoneInfoCache = GetCachedTimeZoneInfo();
-
-        public StandbyManagerTests()
-        {
-            _testRootPath = Path.Combine(Path.GetTempPath(), "StandbyManagerTests");
-            CleanupTestDirectory();
-
-            StandbyManager.ResetChangeToken();
-        }
-
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3816")]
-        public async Task StandbyMode_EndToEnd()
+        [Fact]
+        public async Task StandbyModeE2E()
         {
             var vars = new Dictionary<string, string>
             {
@@ -104,15 +88,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logLines.Count(p => p.Contains($"0 functions loaded")));
             Assert.Equal(1, logLines.Count(p => p.Contains($"Loading proxies metadata")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
-            Assert.Equal(1, logLines.Count(p => p.Contains($"0 proxies loaded")));       
+            Assert.Equal(1, logLines.Count(p => p.Contains($"0 proxies loaded")));
             Assert.Contains("Generating 0 job function(s)", logLines);
 
             // Verify that the internal cache has reset
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
         }
+    }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3816")]
-        public async Task StandbyMode_EndToEnd_LinuxContainer()
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, TestTraits.StandbyModeTestsLinux)]
+    public class StandbyManagerE2ETests_Linux : StandbyManagerE2ETestBase
+    {
+        [Fact]
+        public async Task StandbyModeE2E_LinuxContainer()
         {
             byte[] bytes = TestHelpers.GenerateKeyBytes();
             var encryptionKey = Convert.ToBase64String(bytes);
@@ -182,11 +171,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _httpServer.Dispose();
             _httpClient.Dispose();
 
-            // make sure there are no errors
-            var logs = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null);
-            var error = logs.Where(p => p.Level == Microsoft.Extensions.Logging.LogLevel.Error).FirstOrDefault();
-            Assert.True(error == null, $"Unexpected error: {error?.FormattedMessage} - {error?.Exception.ToFormattedString()}");
-
             string sanitizedMachineName = Environment.MachineName
                     .Where(char.IsLetterOrDigit)
                     .Aggregate(new StringBuilder(), (b, c) => b.Append(c))
@@ -223,7 +207,100 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
         }
 
-        private async Task InitializeTestHostAsync(string testDirName, IEnvironment environment)
+        private async Task Assign(string encryptionKey)
+        {
+            // create a zip package
+            var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
+            var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), @"TestScripts\Node\HttpTrigger");
+            var zipFilePath = Path.Combine(contentRoot, "content.zip");
+            await CreateContentZip(contentRoot, zipFilePath, @"TestScripts\Node\HttpTrigger");
+
+            // upload the blob and get a SAS uri
+            var sasUri = await CreateBlobSas(zipFilePath, "azure-functions-test", "appcontents.zip");
+
+            // Now specialize the host by invoking assign
+            var secretManager = _httpServer.Host.Services.GetService<ISecretManagerProvider>().Current;
+            var masterKey = (await secretManager.GetHostSecretsAsync()).MasterKey;
+            string uri = "admin/instance/assign";
+            var request = new HttpRequestMessage(HttpMethod.Post, uri);
+            var environment = new Dictionary<string, string>()
+                {
+                    { EnvironmentSettingNames.AzureWebsiteZipDeployment, sasUri.ToString() }
+                };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestApp",
+                Environment = environment
+            };
+            var encryptedAssignmentContext = EncryptedHostAssignmentContext.Create(assignmentContext, encryptionKey);
+            string json = JsonConvert.SerializeObject(encryptedAssignmentContext);
+            request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
+            var response = await _httpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        }
+
+        private static async Task CreateContentZip(string contentRoot, string zipPath, params string[] copyDirs)
+        {
+            var contentTemp = Path.Combine(contentRoot, @"ZipContent");
+            await FileUtility.DeleteDirectoryAsync(contentTemp, true);
+
+            foreach (var sourceDir in copyDirs)
+            {
+                var directoryName = Path.GetFileName(sourceDir);
+                var targetPath = Path.Combine(contentTemp, directoryName);
+                FileUtility.EnsureDirectoryExists(targetPath);
+                var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), sourceDir);
+                FileUtility.CopyDirectory(sourcePath, targetPath);
+            }
+
+            FileUtility.DeleteFileSafe(zipPath);
+            ZipFile.CreateFromDirectory(contentTemp, zipPath);
+        }
+
+        private async Task<Uri> CreateBlobSas(string filePath, string blobContainer, string blobName)
+        {
+            var configuration = _httpServer.Host.Services.GetService<IConfiguration>();
+            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+            var blobClient = storageAccount.CreateCloudBlobClient();
+            var container = blobClient.GetContainerReference(blobContainer);
+            await container.CreateIfNotExistsAsync();
+            var blob = container.GetBlockBlobReference(blobName);
+            await blob.UploadFromFileAsync(filePath);
+            var policy = new SharedAccessBlobPolicy
+            {
+                SharedAccessStartTime = DateTime.UtcNow,
+                SharedAccessExpiryTime = DateTime.UtcNow.AddHours(1),
+                Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.List
+            };
+            var sas = blob.GetSharedAccessSignature(policy);
+            var sasUri = new Uri(blob.Uri, sas);
+
+            return sasUri;
+        }
+    }
+
+    public class StandbyManagerE2ETestBase : IDisposable
+    {
+        protected readonly string _testRootPath;
+        protected string _expectedHostId;
+        protected TestLoggerProvider _loggerProvider;
+        protected string _expectedScriptPath;
+        protected HttpClient _httpClient;
+        protected TestServer _httpServer;
+        protected readonly object _originalTimeZoneInfoCache = GetCachedTimeZoneInfo();
+
+        public StandbyManagerE2ETestBase()
+        {
+            _testRootPath = Path.Combine(Path.GetTempPath(), "StandbyManagerTests");
+            CleanupTestDirectory();
+
+            StandbyManager.ResetChangeToken();
+        }
+
+        protected async Task InitializeTestHostAsync(string testDirName, IEnvironment environment)
         {
             var httpConfig = new HttpConfiguration();
             var uniqueTestRootPath = Path.Combine(_testRootPath, testDirName, Guid.NewGuid().ToString());
@@ -287,41 +364,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _expectedHostId = await _httpServer.Host.Services.GetService<IHostIdProvider>().GetHostIdAsync(CancellationToken.None);
         }
 
-        private async Task Assign(string encryptionKey)
-        {
-            // create a zip package
-            var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
-            var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), @"TestScripts\Node\HttpTrigger");
-            var zipFilePath = Path.Combine(contentRoot, "content.zip");
-            await CreateContentZip(contentRoot, zipFilePath, @"TestScripts\Node\HttpTrigger");
 
-            // upload the blob and get a SAS uri
-            var sasUri = await CreateBlobSas(zipFilePath, "azure-functions-test", "appcontents.zip");
-
-            // Now specialize the host by invoking assign
-            var secretManager = _httpServer.Host.Services.GetService<ISecretManagerProvider>().Current;
-            var masterKey = (await secretManager.GetHostSecretsAsync()).MasterKey;
-            string uri = "admin/instance/assign";
-            var request = new HttpRequestMessage(HttpMethod.Post, uri);
-            var environment = new Dictionary<string, string>()
-                {
-                    { EnvironmentSettingNames.AzureWebsiteZipDeployment, sasUri.ToString() }
-                };
-            var assignmentContext = new HostAssignmentContext
-            {
-                SiteId = 1234,
-                SiteName = "TestApp",
-                Environment = environment
-            };
-            var encryptedAssignmentContext = EncryptedHostAssignmentContext.Create(assignmentContext, encryptionKey);
-            string json = JsonConvert.SerializeObject(encryptedAssignmentContext);
-            request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
-            var response = await _httpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-        }
-
-        private async Task VerifyWarmupSucceeds(bool restart = false)
+        protected async Task VerifyWarmupSucceeds(bool restart = false)
         {
             string uri = "api/warmup";
             if (restart)
@@ -337,7 +381,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("WarmUp complete.", responseBody);
         }
 
-        private async Task<string[]> ListFunctions()
+        protected async Task<string[]> ListFunctions()
         {
             var secretManager = _httpServer.Host.Services.GetService<ISecretManagerProvider>().Current;
             var keys = await secretManager.GetHostSecretsAsync();
@@ -353,57 +397,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return functions.Select(p => (string)p.SelectToken("name")).ToArray();
         }
 
-        private static async Task CreateContentZip(string contentRoot, string zipPath, params string[] copyDirs)
-        {
-            var contentTemp = Path.Combine(contentRoot, @"ZipContent");
-            await FileUtility.DeleteDirectoryAsync(contentTemp, true);
-
-            foreach (var sourceDir in copyDirs)
-            {
-                var directoryName = Path.GetFileName(sourceDir);
-                var targetPath = Path.Combine(contentTemp, directoryName);
-                FileUtility.EnsureDirectoryExists(targetPath);
-                var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), sourceDir);
-                FileUtility.CopyDirectory(sourcePath, targetPath);
-            }
-
-            FileUtility.DeleteFileSafe(zipPath);
-            ZipFile.CreateFromDirectory(contentTemp, zipPath);
-        }
-
-        private async Task<Uri> CreateBlobSas(string filePath, string blobContainer, string blobName)
-        {
-            var configuration = _httpServer.Host.Services.GetService<IConfiguration>();
-            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-            var blobClient = storageAccount.CreateCloudBlobClient();
-            var container = blobClient.GetContainerReference(blobContainer);
-            await container.CreateIfNotExistsAsync();
-            var blob = container.GetBlockBlobReference(blobName);
-            await blob.UploadFromFileAsync(filePath);
-            var policy = new SharedAccessBlobPolicy
-            {
-                SharedAccessStartTime = DateTime.UtcNow,
-                SharedAccessExpiryTime = DateTime.UtcNow.AddHours(1),
-                Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.List
-            };
-            var sas = blob.GetSharedAccessSignature(policy);
-            var sasUri = new Uri(blob.Uri, sas);
-
-            return sasUri;
-        }
-
-        public void Dispose()
-        {
-            CleanupTestDirectory();
-        }
-
         private void CleanupTestDirectory()
         {
-            var testRootPath = Path.Combine(Path.GetTempPath(), "StandbyManagerTests");
             try
             {
-                FileUtility.DeleteDirectoryAsync(testRootPath, true).GetAwaiter().GetResult();
+                FileUtility.DeleteDirectoryAsync(_testRootPath, true).GetAwaiter().GetResult();
             }
             catch
             {
@@ -411,10 +409,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private static object GetCachedTimeZoneInfo()
+        protected static object GetCachedTimeZoneInfo()
         {
             var cachedDataField = typeof(TimeZoneInfo).GetField("s_cachedData", BindingFlags.NonPublic | BindingFlags.Static);
             return cachedDataField.GetValue(null);
+        }
+
+        public virtual void Dispose()
+        {
+            CleanupTestDirectory();
         }
     }
 }

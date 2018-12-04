@@ -23,7 +23,13 @@ namespace Microsoft.WebJobs.Script.Tests
         /// Standby mode tests are special in that they set uni-directional
         /// static state, and benefit from test isolation.
         /// </summary>
-        public const string StandbyModeTests = "StandbyModeEndToEndTests";
+        public const string StandbyModeTestsLinux = "StandbyModeEndToEndTests_Linux";
+
+        /// <summary>
+        /// Standby mode tests are special in that they set uni-directional
+        /// static state, and benefit from test isolation.
+        /// </summary>
+        public const string StandbyModeTestsWindows = "StandbyModeEndToEndTests_Windows";
 
         /// <summary>
         /// These are Linux container environment specific tests.

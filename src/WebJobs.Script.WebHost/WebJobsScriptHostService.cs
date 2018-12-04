@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private CancellationTokenSource _startupLoopTokenSource;
         private int _hostStartCount;
         private bool _disposed = false;
+        private int _restarting = 0;
 
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory, IServiceProvider rootServiceProvider,
             IServiceScopeFactory rootScopeFactory, IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
@@ -237,22 +238,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task RestartHostAsync(CancellationToken cancellationToken)
         {
-            if (State == ScriptHostState.Stopping || State == ScriptHostState.Stopped)
+            if (Interlocked.CompareExchange(ref _restarting, 1, 0) != 0)
             {
+                // only one restart operation at a time
                 return;
             }
 
-            _startupLoopTokenSource?.Cancel();
-            State = ScriptHostState.Default;
-            _logger.LogInformation("Restarting host.");
+            try
+            {
+                if (State == ScriptHostState.Stopping || State == ScriptHostState.Stopped)
+                {
+                    return;
+                }
 
-            var previousHost = _host;
-            Task startTask = StartAsync(cancellationToken);
-            Task stopTask = Orphan(previousHost, _logger, cancellationToken);
+                _startupLoopTokenSource?.Cancel();
+                State = ScriptHostState.Default;
+                _logger.LogInformation("Restarting host.");
 
-            await startTask;
+                var previousHost = _host;
+                _host = null;
+                Task startTask = StartAsync(cancellationToken);
+                Task stopTask = Orphan(previousHost, _logger, cancellationToken);
 
-            _logger.LogInformation("Host restarted.");
+                await startTask;
+
+                _logger.LogInformation("Host restarted.");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _restarting, 0);
+            }
         }
 
         private void OnHostInitializing(object sender, EventArgs e)

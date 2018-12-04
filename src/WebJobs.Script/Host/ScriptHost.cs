@@ -571,7 +571,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Purge is best effort
                 string errorMsg = "An error occurred while purging log files";
-                _logger.LogError(0, ex, errorMsg);
+                _logger.LogWarning(0, ex, errorMsg);
             }
         }
 

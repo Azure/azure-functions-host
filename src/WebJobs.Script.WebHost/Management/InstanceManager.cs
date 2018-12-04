@@ -54,8 +54,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     _assignmentContext = context;
                 }
 
-                // start the specialization process in the background
                 _logger.LogInformation("Starting Assignment");
+
+                // set a flag which will cause any incoming http requests to buffer
+                // until specialization is complete
+                // the host is guaranteed not to receive any requests until AFTER assign
+                // has been initiated, so setting this flag here is sufficient to ensure
+                // that any subsequent incoming requests while the assign is in progress
+                // will be delayed until complete
+                _webHostEnvironment.DelayRequests();
+
+                // start the specialization process in the background
                 Task.Run(async () => await Assign(context));
 
                 return true;
@@ -92,14 +101,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             try
             {
-                // set a flag which will cause any incoming http requests to buffer
-                // until specialization is complete
-                // the host is guaranteed not to receive any requests until AFTER assign
-                // has been initiated, so setting this flag here is sufficient to ensure
-                // that any subsequent incoming requests while the assign is in progress
-                // will be delayed until complete
-                _webHostEnvironment.DelayRequests();
-
                 // first make all environment and file system changes required for
                 // the host to be specialized
                 await ApplyContext(assignmentContext);
