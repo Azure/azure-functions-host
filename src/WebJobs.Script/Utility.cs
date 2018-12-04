@@ -443,7 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (functions == null)
             {
-                throw new ArgumentNullException("Functions metadata needs to be supplied as a non-null IEnumerable type");
+                throw new ArgumentNullException("functions");
             }
             var functionsListWithoutProxies = functions.Where(f => f.IsProxy == false).ToArray();
             if (functionsListWithoutProxies.Length == 0)
