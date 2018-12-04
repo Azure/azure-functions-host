@@ -1,8 +1,13 @@
 ﻿param (
   [string]$buildNumber = "0",
   [string]$extensionVersion = "2.0.$buildNumber",
-  [bool]$includeVersion = $true
+  [bool]$includeSuffix = $true
 )
+
+if ($includeSuffix)
+{
+    $extensionVersion += "-beta"
+}
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $buildOutput = Join-Path $currentDir "buildoutput"
@@ -34,9 +39,9 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
     DownloadNupkg "https://www.nuget.org/api/v2/package/Microsoft.Build.Tasks.Core/15.1.1012" @("lib\netstandard1.3\Microsoft.Build.Tasks.Core.dll")  @("$selfContained")
     DownloadNupkg "https://www.nuget.org/api/v2/package/Microsoft.Build.Utilities.Core/15.1.1012" @("lib\netstandard1.3\Microsoft.Build.Utilities.Core.dll")  @("$selfContained")
     if ($runtime -eq "win-x86") {
-        DownloadNupkg "https://dotnet.myget.org/F/aspnetcore-dev/api/v2/package/Microsoft.AspNetCore.AspNetCoreModuleV2/2.1.0-a-oob-2-1-oob-17035" @("contentFiles\any\any\x86\aspnetcorev2.dll", "contentFiles\any\any\x86\aspnetcorev2_inprocess.dll") @("$privateSiteExtensionPath\ancm", "$privateSiteExtensionPath\ancm")
+        DownloadNupkg "https://dotnet.myget.org/F/aspnetcore-dev/api/v2/package/Microsoft.AspNetCore.AspNetCoreModuleV2/2.1.0-a-oob-2-1-oob-17297" @("contentFiles\any\any\x86\aspnetcorev2.dll", "contentFiles\any\any\x86\aspnetcorev2_inprocess.dll") @("$privateSiteExtensionPath\ancm", "$privateSiteExtensionPath\ancm")
     } else {
-        DownloadNupkg "https://dotnet.myget.org/F/aspnetcore-dev/api/v2/package/Microsoft.AspNetCore.AspNetCoreModuleV2/2.1.0-a-oob-2-1-oob-17035" @("contentFiles\any\any\x64\aspnetcorev2.dll", "contentFiles\any\any\x64\aspnetcorev2_inprocess.dll") @("$privateSiteExtensionPath\ancm", "$privateSiteExtensionPath\ancm")
+        DownloadNupkg "https://dotnet.myget.org/F/aspnetcore-dev/api/v2/package/Microsoft.AspNetCore.AspNetCoreModuleV2/2.1.0-a-oob-2-1-oob-17297" @("contentFiles\any\any\x64\aspnetcorev2.dll", "contentFiles\any\any\x64\aspnetcorev2_inprocess.dll") @("$privateSiteExtensionPath\ancm", "$privateSiteExtensionPath\ancm")
     }
 
     # Publish self-contained app with all required dlls for crossgen
@@ -263,7 +268,7 @@ function cleanExtension([string] $bitness) {
         }
     }
 }
-
+  
 dotnet --version
 dotnet build .\WebJobs.Script.sln -v q /p:BuildNumber="$buildNumber"
 
@@ -274,12 +279,8 @@ $projects =
   
 foreach ($project in $projects)
 {
-  $cmd = "pack", "src\$project\$project.csproj", "-o", "..\..\buildoutput", "--no-build"
-  
-  if ($includeVersion)
-  {
-    $cmd += "--version-suffix", "-$buildNumber"
-  }
+
+  $cmd = "pack", "src\$project\$project.csproj", "-o", "..\..\buildoutput", "--no-build" , "-p:PackageVersion=$extensionVersion"
   
   & dotnet $cmd  
 }

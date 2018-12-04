@@ -47,7 +47,9 @@ for:
   build_script:
   - ps: |
       $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
-      .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeVersion (!$hasTag)
+      $isbuildFromMasterBranch = $env:APPVEYOR_REPO_BRANCH -eq "master"
+      $includeSuffix = (-Not ($hasTag -OR $isBuildFromMasterBranch))
+      .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeSuffix $includeSuffix
   after_build:
   - ps: >
       $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")

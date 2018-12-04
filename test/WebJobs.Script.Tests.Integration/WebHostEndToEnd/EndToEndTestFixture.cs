@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
@@ -55,6 +56,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public string FixtureId { get; private set; }
 
+        public TestMetricsLogger MetricsLogger { get; private set; } = new TestMetricsLogger();
+
         protected virtual ExtensionPackageReference[] GetExtensionsToInstall()
         {
             return null;
@@ -79,7 +82,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
-            Host = new TestFunctionHost(_copiedRootPath, logPath, ConfigureJobHost, configureAppConfiguration: s =>
+            Host = new TestFunctionHost(_copiedRootPath, logPath, webJobsBuilder =>
+            {
+                webJobsBuilder.Services.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
+                ConfigureJobHost(webJobsBuilder);
+            },
+            configureAppConfiguration: s =>
             {
                 s.AddInMemoryCollection(new Dictionary<string, string>()
                 {

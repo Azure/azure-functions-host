@@ -4,6 +4,7 @@
 using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using Microsoft.Rest;
 using System;
@@ -58,6 +59,7 @@ namespace WebJobs.Script.Tests.Perf
 
         private async Task ExecutePS(string scriptName, string description)
         {
+            _fixture.Logger.LogInformation($"Execute: {scriptName}, {description}");
             var authenticationContext = new AuthenticationContext($"https://login.windows.net/{Settings.SiteTenantId}");
             var credential = new ClientCredential(Settings.SiteApplicationId, Settings.SiteClientSecret);
             var result = authenticationContext.AcquireTokenAsync("https://management.core.windows.net/", credential);
@@ -78,6 +80,7 @@ namespace WebJobs.Script.Tests.Perf
 
         private async Task ChangeLanguage(string language)
         {
+            _fixture.Logger.LogInformation($"Changing language: {language}");
             await _fixture.AddAppSetting("FUNCTIONS_WORKER_RUNTIME", language);
 
             // Wait until the app fully restaeted and ready

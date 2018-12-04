@@ -31,6 +31,14 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
 
         public long NamedPipeLimit { get; set; }
 
+        public long RemoteDirMonitors { get; set; }
+
+        public long RemoteDirMonitorLimit { get; set; }
+
+        public long ActiveConnections { get; set; }
+
+        public long ActiveConnectionLimit { get; set; }
+
         public long ReadIoOperations { get; set; }
 
         public long WriteIoOperations { get; set; }

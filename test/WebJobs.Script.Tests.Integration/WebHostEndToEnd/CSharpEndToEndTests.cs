@@ -2,13 +2,18 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
@@ -80,7 +85,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task FunctionLogging_Succeeds()
         {
-            await FunctionLogging_SucceedsTest();
+            Fixture.Host.ClearLogMessages();
+
+            string functionName = "Scenarios";
+            string guid1 = Guid.NewGuid().ToString();
+            string guid2 = Guid.NewGuid().ToString();
+
+            var inputObject = new JObject
+            {
+                { "Scenario", "logging" },
+                { "Container", "scenarios-output" },
+                { "Value", $"{guid1};{guid2}" }
+            };
+            await Fixture.Host.BeginFunctionAsync(functionName, inputObject);
+
+            IList<string> logs = null;
+            await TestHelpers.Await(() =>
+            {
+                logs = Fixture.Host.GetLogMessages().Select(p => p.FormattedMessage).Where(p => p != null).ToArray();
+                return logs.Any(p => p.Contains(guid2));
+            });
+
+            logs.Single(p => p.EndsWith($"From TraceWriter: {guid1}"));
+            logs.Single(p => p.EndsWith($"From ILogger: {guid2}"));
+
+            // TODO: Re-enable once we can override the IMetricsLogger
+            // Make sure we get a metric logged from both ILogger and TraceWriter
+            var key = MetricsEventManager.GetAggregateKey(MetricEventNames.FunctionUserLog, "Scenarios");            
+            // Assert.Equal(2, Fixture.MetricsLogger.LoggedEvents.Where(p => p == key).Count());
+
+            // Make sure we've gotten a log from the aggregator
+            IEnumerable<LogMessage> getAggregatorLogs() => Fixture.Host.GetLogMessages().Where(p => p.Category == LogCategories.Aggregator);
+
+            await TestHelpers.Await(() => getAggregatorLogs().Any());
+
+            var aggregatorLogs = getAggregatorLogs();
+            Assert.Equal(1, aggregatorLogs.Count());
         }
 
         [Fact]
@@ -374,6 +414,11 @@ namespace SecondaryDependency
                         "QueueTriggerToBlob",
                         "Scenarios"
                     };
+                });
+
+                webJobsBuilder.Services.Configure<FunctionResultAggregatorOptions>(o =>
+                {
+                    o.BatchSize = 1;
                 });
             }
         }

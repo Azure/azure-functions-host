@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 Assert.NotSame(proxyMetadata1, proxyMetadata3);
 
-                Assert.Equal(17, proxyMetadata3.Functions.Length);
+                Assert.Equal(19, proxyMetadata3.Functions.Length);
             }
         }
     }

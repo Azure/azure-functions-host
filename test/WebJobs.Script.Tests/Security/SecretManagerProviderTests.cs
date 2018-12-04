@@ -4,7 +4,6 @@
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -31,9 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var changeTokens = new[] { _tokenSource };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
 
-            var config = new ConfigurationBuilder()
-                .AddEnvironmentVariables()
-                .Build();
+            var config = TestHelpers.GetTestConfiguration();
 
             mockIdProvider.Setup(p => p.GetHostIdAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("testhostid");

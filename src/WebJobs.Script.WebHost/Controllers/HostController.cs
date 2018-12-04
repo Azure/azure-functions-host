@@ -12,12 +12,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -84,8 +86,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Ok(status);
         }
 
+        [HttpGet]
         [HttpPost]
         [Route("admin/host/ping")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public IActionResult Ping()
         {
             return Ok();
@@ -217,13 +221,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Authorize(AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
         [Route("runtime/webhooks/{name}/{*extra}")]
+        [RequiresRunningHost]
         public async Task<IActionResult> ExtensionWebHookHandler(string name, CancellationToken token, [FromServices] IScriptWebHookProvider provider)
         {
             if (provider.TryGetHandler(name, out HttpHandler handler))
             {
+                // must either be authorized at the admin level, or system level with
+                // a matching key name
                 string keyName = DefaultScriptWebHookProvider.GetKeyName(name);
-                var authResult = await _authorizationService.AuthorizeAsync(User, keyName, PolicyNames.SystemAuthLevel);
-                if (!authResult.Succeeded)
+                if (!AuthUtility.PrincipalHasAuthLevelClaim(User, AuthorizationLevel.System, keyName))
                 {
                     return Unauthorized();
                 }

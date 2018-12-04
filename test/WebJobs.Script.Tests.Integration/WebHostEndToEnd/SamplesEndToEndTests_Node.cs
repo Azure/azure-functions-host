@@ -486,6 +486,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                         "HttpTrigger",
                         "HttpTrigger-CustomRoute-Get",
                         "HttpTrigger-Disabled",
+                        "HttpTrigger-Identities",
                         "ManualTrigger"
                     };
                 });

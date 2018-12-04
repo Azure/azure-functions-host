@@ -47,12 +47,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 const string expectedSyncTriggersPayload = "[{\"authLevel\":\"anonymous\",\"type\":\"httpTrigger\",\"direction\":\"in\",\"name\":\"req\",\"functionName\":\"function1\"}," +
                 "{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"DurableStorage\",\"functionName\":\"function2\",\"taskHubName\":\"TestHubValue\"}," +
                 "{\"name\":\"myQueueItem\",\"type\":\"activityTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"DurableStorage\",\"functionName\":\"function3\",\"taskHubName\":\"TestHubValue\"}]";
-                var settings = CreateWebSettings();
-                var fileSystem = CreateFileSystem(settings.ScriptPath);
+                var options = CreateApplicationHostOptions();
+                var fileSystem = CreateFileSystem(options.ScriptPath);
                 var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
                 var contentBuilder = new StringBuilder();
                 var httpClient = CreateHttpClient(contentBuilder);
-                var webManager = new WebFunctionsManager(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient);
+                var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
+                var tokenSource = new TestChangeTokenSource();
+                var changeTokens = new[] { tokenSource };
+                var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
+                var webManager = new WebFunctionsManager(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient);
 
                 FileUtility.Instance = fileSystem;
 
@@ -91,12 +95,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample");
             // Setup
-            var settings = CreateWebSettings();
-            var fileSystem = CreateFileSystem(settings.ScriptPath);
+            var options = CreateApplicationHostOptions();
+            var fileSystem = CreateFileSystem(options.ScriptPath);
             var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
             var contentBuilder = new StringBuilder();
             var httpClient = CreateHttpClient(contentBuilder);
-            var webManager = new WebFunctionsManager(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient);
+            var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
+            var tokenSource = new TestChangeTokenSource();
+            var changeTokens = new[] { tokenSource };
+            var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
+            var webManager = new WebFunctionsManager(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient);
 
             FileUtility.Instance = fileSystem;
             IEnumerable<FunctionMetadata> metadata = webManager.GetFunctionsMetadata();
@@ -131,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             return new HttpClient(new MockHttpHandler(writeContent));
         }
 
-        private static ScriptApplicationHostOptions CreateWebSettings()
+        private static ScriptApplicationHostOptions CreateApplicationHostOptions()
         {
             return new ScriptApplicationHostOptions
             {

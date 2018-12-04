@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             var project = await GetOrCreateProjectAsync(ProjectPath);
 
             // Ensure the metadata generator version we're using is what we expect
-            project.AddPackageReference(ExtensionsPackageId, "1.0.1");
+            project.AddPackageReference(MetadataGeneratorPackageId, MetadataGeneratorPackageVersion);
 
             foreach (var extensionReference in references)
             {
@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             var project = await GetOrCreateProjectAsync(ProjectPath);
 
             return project.Items
-                .Where(i => PackageReferenceElementName.Equals(i.ItemType, StringComparison.Ordinal) && !ExtensionsPackageId.Equals(i.Include, StringComparison.Ordinal))
+                .Where(i => PackageReferenceElementName.Equals(i.ItemType, StringComparison.Ordinal) && !MetadataGeneratorPackageId.Equals(i.Include, StringComparison.Ordinal))
                 .Select(i => new ExtensionPackageReference
                 {
                     Id = i.Include,
@@ -271,8 +271,8 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             propGroup.AddProperty("WarningsAsErrors", string.Empty);
 
             root.AddItemGroup()
-                .AddItem(PackageReferenceElementName, ExtensionsPackageId)
-                .AddMetadata(PackageReferenceVersionElementName, "1.0.1", true);
+                .AddItem(PackageReferenceElementName, MetadataGeneratorPackageId)
+                .AddMetadata(PackageReferenceVersionElementName, MetadataGeneratorPackageVersion, true);
 
             return root;
         }

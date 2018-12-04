@@ -10,17 +10,19 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -40,13 +42,60 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             _settingsManager = ScriptSettingsManager.Instance;
         }
 
+
         [Fact]
-        public async Task HostPing_Succeeds()
+        public async Task ExtensionWebHook_Succeeds()
         {
-            string uri = "admin/host/ping";
+            // configure a mock webhook handler for the "test" extension
+            Mock<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>> mockHandler = new Mock<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>>(MockBehavior.Strict);
+            mockHandler.Setup(p => p.ConvertAsync(It.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
+            var handler = mockHandler.Object;
+            _fixture.MockWebHookProvider.Setup(p => p.TryGetHandler("test", out handler)).Returns(true);
+            _fixture.MockWebHookProvider.Setup(p => p.TryGetHandler("invalid", out handler)).Returns(false);
+
+            // successful request
+            string uri = "runtime/webhooks/test?code=SystemValue3";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
             HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // invalid system key value - no key match
+            uri = "runtime/webhooks/test?code=invalid";
+            request = new HttpRequestMessage(HttpMethod.Post, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // invalid system key value - wrong key match (must match key name for extension)
+            uri = "runtime/webhooks/test?code=SystemValue2";
+            request = new HttpRequestMessage(HttpMethod.Post, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // verify admin requests are allowed through
+            uri = "runtime/webhooks/test?code=1234";
+            request = new HttpRequestMessage(HttpMethod.Post, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // non-existent extension
+            uri = "runtime/webhooks/invalid?code=SystemValue2";
+            request = new HttpRequestMessage(HttpMethod.Post, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Theory]
+        [InlineData("GET")]
+        [InlineData("POST")]
+        public async Task HostPing_Succeeds(string method)
+        {
+            string uri = "admin/host/ping";
+            HttpRequestMessage request = new HttpRequestMessage(new HttpMethod(method), uri);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var cacheHeader = response.Headers.GetValues("Cache-Control").Single();
+            Assert.Equal("no-store, no-cache", cacheHeader);
         }
 
         [Fact]
@@ -293,7 +342,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
 
-            Assert.Equal(15, metadata.Length);
+            Assert.Equal(16, metadata.Length);
             var function = metadata.Single(p => p.Name == "HttpTrigger-CustomRoute");
             Assert.Equal("https://localhost/csharp/products/{category:alpha?}/{id:int?}/{extra?}", function.InvokeUrlTemplate.ToString());
 
@@ -610,6 +659,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Fact]
+        public async Task HttpTrigger_Identities_Succeeds()
+        {
+            var vars = new Dictionary<string, string>
+            {
+                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName},
+                { "WEBSITE_AUTH_ENABLED", "TRUE"}
+            };
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Identities");
+                string uri = $"api/httptrigger-identities?code={functionKey}";
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+                MockEasyAuth(request, "facebook", "Connor McMahon", "10241897674253170");
+
+                HttpResponseMessage response = await this._fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                string responseContent = await response.Content.ReadAsStringAsync();
+                string[] identityStrings = StripBookendQuotations(responseContent).Split(';');
+                Assert.Equal("Identity: (facebook, Connor McMahon, 10241897674253170)", identityStrings[0]);
+                Assert.Equal("Identity: (WebJobsAuthLevel, Function, Key1)", identityStrings[1]);
+            }
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Identities_BlocksSpoofedEasyAuthIdentity()
+        {
+            var vars = new Dictionary<string, string>
+            {
+                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName},
+                { "WEBSITE_AUTH_ENABLED", "FALSE"}
+            };
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Identities");
+                string uri = $"api/httptrigger-identities?code={functionKey}";
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+                MockEasyAuth(request, "facebook", "Connor McMahon", "10241897674253170");
+
+                HttpResponseMessage response = await this._fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                string responseContent = await response.Content.ReadAsStringAsync();
+                string identityString = StripBookendQuotations(responseContent);
+                Assert.Equal("Identity: (WebJobsAuthLevel, Function, Key1)", identityString);
+            }
+        }
+
         private async Task<HttpResponseMessage> GetHostStatusAsync()
         {
             string uri = "admin/host/status";
@@ -657,20 +755,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             return await _fixture.Host.HttpClient.SendAsync(request);
         }
 
+        internal static string StripBookendQuotations(string response)
+        {
+            if (response.StartsWith("\"") && response.EndsWith("\""))
+            {
+                return response.Substring(1, response.Length - 2);
+            }
+            return response;
+        }
+
+        internal static void MockEasyAuth(HttpRequestMessage request, string provider, string name, string id)
+        {
+            string userIdentityJson = @"{
+  ""auth_typ"": """ + provider + @""",
+  ""claims"": [
+    {
+      ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"",
+      ""val"": """ + name + @"""
+    },
+    {
+      ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn"",
+      ""val"": """ + name + @"""
+    },
+    {
+      ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"",
+      ""val"": """ + id + @"""
+    }
+  ],
+  ""name_typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"",
+  ""role_typ"": ""http://schemas.microsoft.com/ws/2008/06/identity/claims/role""
+}";
+            string easyAuthHeaderValue = Convert.ToBase64String(Encoding.UTF8.GetBytes(userIdentityJson));
+            request.Headers.Add("x-ms-client-principal", easyAuthHeaderValue);
+        }
+
         public class TestFixture : EndToEndTestFixture
         {
-            static TestFixture()
-            {
-            }
-
             public TestFixture()
                 : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\csharp"), "samples", LanguageWorkerConstants.DotNetLanguageWorkerName)
             {
+                MockWebHookProvider = new Mock<IScriptWebHookProvider>(MockBehavior.Strict);
             }
+
+            public Mock<IScriptWebHookProvider> MockWebHookProvider { get; }
 
             public override void ConfigureJobHost(IWebJobsBuilder webJobsBuilder)
             {
                 base.ConfigureJobHost(webJobsBuilder);
+
+                webJobsBuilder.Services.AddSingleton<IScriptWebHookProvider>(MockWebHookProvider.Object);
 
                 webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                 {
@@ -680,6 +813,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                         "HttpTrigger-Compat",
                         "HttpTrigger-CustomRoute",
                         "HttpTrigger-POCO",
+                        "HttpTrigger-Identities",
                         "HttpTriggerWithObject",
                         "ManualTrigger"
                     };
