@@ -441,8 +441,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static bool IsSingleLanguage(IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
         {
+            if (functions == null)
+            {
+                throw new ArgumentNullException("Functions metadata needs to be supplied as a non-null IEnumerable type");
+            }
             var functionsListWithoutProxies = functions.Where(f => f.IsProxy == false).ToArray();
-            if (!functionsListWithoutProxies.Any())
+            if (functionsListWithoutProxies.Length == 0)
             {
                 return true;
             }
