@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -27,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _bindingProviders = bindingProviders ?? throw new ArgumentNullException(nameof(bindingProviders));
         }
 
-        public bool TryResolveAssembly(string assemblyName, AssemblyLoadContext targetContext, out Assembly assembly)
+        public bool TryResolveAssembly(string assemblyName, AssemblyLoadContext targetContext, ILogger logger, out Assembly assembly)
         {
             assembly = null;
 

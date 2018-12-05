@@ -5,6 +5,7 @@ using System;
 using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -17,10 +18,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _assembly = assembly;
         }
 
-        public bool TryResolveAssembly(string assemblyName, AssemblyLoadContext targetContext, out Assembly assembly)
+        public bool TryResolveAssembly(string assemblyName, AssemblyLoadContext targetContext, ILogger logger, out Assembly assembly)
         {
             if (string.Compare(AssemblyNameCache.GetName(_assembly).Name, assemblyName, StringComparison.OrdinalIgnoreCase) == 0)
             {
+                logger.LogInformation($"{nameof(DirectSharedAssemblyProvider)} resolved shared assembly '{assemblyName}'");
+
                 assembly = _assembly;
                 return true;
             }

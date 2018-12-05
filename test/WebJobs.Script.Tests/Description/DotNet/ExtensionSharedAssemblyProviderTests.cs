@@ -7,6 +7,7 @@ using System.Runtime.Loader;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var provider = new ExtensionSharedAssemblyProvider(bindingProviders);
 
             Assembly assembly;
-            bool result = provider.TryResolveAssembly(typeof(TestBindingProvider).Assembly.GetName().Name, AssemblyLoadContext.Default, out assembly);
+            bool result = provider.TryResolveAssembly(typeof(TestBindingProvider).Assembly.GetName().Name, AssemblyLoadContext.Default, NullLogger.Instance, out assembly);
 
             Assert.True(result);
             Assert.NotNull(assembly);
