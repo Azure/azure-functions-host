@@ -1089,6 +1089,83 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void VerifyFunctionsMatchSpecifiedLanguage_Throws_For_UnmatchedLanguage_With_RuntimeLanguage_Specified()
+        {
+            FunctionMetadata funcJS1 = new FunctionMetadata()
+            {
+                Name = "funcJS1",
+                Language = "node"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJS1
+            };
+
+            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, LanguageWorkerConstants.DotNetLanguageWorkerName));
+            Assert.Equal($"Did not find functions with language [{LanguageWorkerConstants.DotNetLanguageWorkerName}].", ex.Message);
+        }
+
+        [Fact]
+        public void VerifyFunctionsMatchSpecifiedLanguage_NoThrow_For_MixedLanguageMatching_With_RuntimeLanguage_Specified()
+        {
+            FunctionMetadata funcJS1 = new FunctionMetadata()
+            {
+                Name = "funcJS1",
+                Language = "node"
+            };
+            // CSharp matches dotnet so we should be able to initialize the host
+            FunctionMetadata funcCS1 = new FunctionMetadata()
+            {
+                Name = "funcJS1",
+                Language = "csharp"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJS1, funcCS1
+            };
+
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, LanguageWorkerConstants.DotNetLanguageWorkerName);
+        }
+
+        [Fact]
+        public void VerifyFunctionsMatchSpecifiedLanguage_NoThrow_For_SingleLanguage_Without_RuntimeLanguage_Specified()
+        {
+            FunctionMetadata funcJS1 = new FunctionMetadata()
+            {
+                Name = "funcJS1",
+                Language = "node"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJS1
+            };
+
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty);
+        }
+
+        [Fact]
+        public void VerifyFunctionsMatchSpecifiedLanguage_Throws_For_NotSingleLanguage_Without_RuntimeLanguage_Specified()
+        {
+            FunctionMetadata funcJS1 = new FunctionMetadata()
+            {
+                Name = "funcJS1",
+                Language = "node"
+            };
+            FunctionMetadata funcCS1 = new FunctionMetadata()
+            {
+                Name = "funcCS1",
+                Language = "csharp"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJS1, funcCS1
+            };
+
+            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty));
+            Assert.Equal($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting", ex.Message);
+        }
+
+        [Fact]
         public async Task InitializeRpcService_Throws()
         {
             var ex = await Assert.ThrowsAsync<HostInitializationException>(async () =>
