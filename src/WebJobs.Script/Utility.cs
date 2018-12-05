@@ -443,7 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (functions == null)
             {
-                throw new ArgumentNullException("functions");
+                throw new ArgumentNullException(nameof(functions));
             }
             var functionsListWithoutProxies = functions.Where(f => f.IsProxy == false).ToArray();
             if (functionsListWithoutProxies.Length == 0)
