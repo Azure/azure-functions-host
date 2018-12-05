@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return result;
         }
 
-        public void SetEnvironmentVariable(string name, string value)
+        public virtual void SetEnvironmentVariable(string name, string value)
         {
             if (value == null && _variables.ContainsKey(name))
             {

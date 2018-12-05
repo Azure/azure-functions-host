@@ -103,11 +103,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // first make all environment and file system changes required for
                 // the host to be specialized
                 await ApplyContext(assignmentContext);
-
-                // all assignment settings/files have been applied so we can flip
-                // the switch now on specialization
-                _logger.LogInformation("Triggering specialization");
-                _webHostEnvironment.FlagAsSpecializedAndReady();
             }
             catch (Exception ex)
             {
@@ -116,6 +111,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             finally
             {
+                // all assignment settings/files have been applied so we can flip
+                // the switch now on specialization
+                // even if there are failures applying context above, we want to
+                // leave placeholder mode
+                _logger.LogInformation("Triggering specialization");
+                _webHostEnvironment.FlagAsSpecializedAndReady();
+
                 _webHostEnvironment.ResumeRequests();
             }
         }
@@ -172,6 +174,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 { "FUNCTIONS_EXTENSION_VERSION", ScriptHost.Version },
                 { "WEBSITE_NODE_DEFAULT_VERSION", "8.5.0" }
             };
+        }
+
+        // for testing
+        internal static void Reset()
+        {
+            _assignmentContext = null;
         }
     }
 }
