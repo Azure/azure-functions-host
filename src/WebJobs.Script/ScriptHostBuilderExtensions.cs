@@ -176,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
 
             // Add Language Worker Service
-            // Need to maintain the order: Add RpcInitializationService before core JobHost
+            // Need to maintain the order: Add RpcInitializationService before core script host services
             services.AddSingleton<IHostedService, RpcInitializationService>();
             services.AddSingleton<FunctionRpc.FunctionRpcBase, FunctionRpcService>();
             services.AddSingleton<IRpcServer, GrpcServer>();
