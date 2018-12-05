@@ -3,11 +3,12 @@
 
 using System.Reflection;
 using System.Runtime.Loader;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal interface ISharedAssemblyProvider
     {
-        bool TryResolveAssembly(string assemblyName, AssemblyLoadContext targetContext, out Assembly assembly);
+        bool TryResolveAssembly(string assemblyName, AssemblyLoadContext targetContext, ILogger logger, out Assembly assembly);
     }
 }

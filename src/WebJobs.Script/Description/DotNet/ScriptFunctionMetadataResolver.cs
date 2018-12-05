@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -80,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var scriptResolver = ScriptMetadataResolver.Default.WithSearchPaths(_privateAssembliesPath);
             _scriptResolver = new CacheMetadataResolver(scriptResolver);
             _extensionSharedAssemblyProvider = new ExtensionSharedAssemblyProvider(bindingProviders);
-            _logger = logger;
+            _logger = logger ?? NullLogger.Instance;
         }
 
         public ScriptOptions CreateScriptOptions()
@@ -165,8 +166,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     Assembly assembly = null;
 
-                    if (SharedAssemblyProviders.Any(p => p.TryResolveAssembly(reference, AssemblyLoadContext.Default, out assembly)) ||
-                        _extensionSharedAssemblyProvider.TryResolveAssembly(reference, AssemblyLoadContext.Default, out assembly))
+                    if (SharedAssemblyProviders.Any(p => p.TryResolveAssembly(reference, AssemblyLoadContext.Default, _logger, out assembly)) ||
+                        _extensionSharedAssemblyProvider.TryResolveAssembly(reference, AssemblyLoadContext.Default, _logger, out assembly))
                     {
                         result = ImmutableArray.Create(MetadataReference.CreateFromFile(assembly.Location));
                     }
@@ -231,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             else
             {
-                _extensionSharedAssemblyProvider.TryResolveAssembly(assemblyName.FullName, FunctionAssemblyLoadContext.Shared, out assembly);
+                _extensionSharedAssemblyProvider.TryResolveAssembly(assemblyName.FullName, FunctionAssemblyLoadContext.Shared, _logger, out assembly);
             }
 
             return assembly;
