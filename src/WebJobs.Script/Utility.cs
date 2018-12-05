@@ -439,17 +439,22 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        internal static bool IsSingleLanguage(IEnumerable<FunctionMetadata> functions, string language)
+        internal static bool IsSingleLanguage(IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
         {
-            if (string.IsNullOrEmpty(language))
+            if (functions == null)
             {
-                if (functions != null && functions.Any())
-                {
-                    var functionsListWithoutProxies = functions.Where(f => f.IsProxy == false);
-                    return functionsListWithoutProxies.Select(f => f.Language).Distinct().Count() <= 1;
-                }
+                throw new ArgumentNullException(nameof(functions));
             }
-            return true;
+            var functionsListWithoutProxies = functions.Where(f => f.IsProxy == false).ToArray();
+            if (functionsListWithoutProxies.Length == 0)
+            {
+                return true;
+            }
+            if (string.IsNullOrEmpty(currentRuntimeLanguage))
+            {
+                return functionsListWithoutProxies.Select(f => f.Language).Distinct().Count() <= 1;
+            }
+            return ContainsFunctionWithCurrentLanguage(functionsListWithoutProxies, currentRuntimeLanguage);
         }
 
         internal static bool ShouldInitiliazeLanguageWorkers(IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
@@ -477,6 +482,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static bool ContainsFunctionWithCurrentLanguage(IEnumerable<FunctionMetadata> functions, string currentLanguage)
         {
+            if (string.Equals(currentLanguage, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                return functions.Any(f => dotNetLanguages.Any(l => l.Equals(f.Language, StringComparison.OrdinalIgnoreCase)));
+            }
             if (functions != null && functions.Any())
             {
                 return functions.Any(f => f.Language.Equals(currentLanguage, StringComparison.OrdinalIgnoreCase));

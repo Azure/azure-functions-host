@@ -781,7 +781,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void IsSingleLanguage_FunctionsWorkerRuntime_Set_Returns_True_()
+        public void IsSingleLanguage_Returns_True_OnlyProxies()
+        {
+            FunctionMetadata proxy1 = new FunctionMetadata()
+            {
+                Name = "proxy",
+                IsProxy = true
+            };
+            FunctionMetadata proxy2 = new FunctionMetadata()
+            {
+                Name = "proxy",
+                IsProxy = true
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                proxy1, proxy2
+            };
+            Assert.True(Utility.IsSingleLanguage(functionsList, null));
+        }
+
+        [Fact]
+        public void IsSingleLanguage_FunctionsWorkerRuntime_Set_Returns_True_OnlyProxies()
+        {
+            FunctionMetadata proxy1 = new FunctionMetadata()
+            {
+                Name = "proxy",
+                IsProxy = true
+            };
+            FunctionMetadata proxy2 = new FunctionMetadata()
+            {
+                Name = "proxy",
+                IsProxy = true
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                proxy1, proxy2
+            };
+            Assert.True(Utility.IsSingleLanguage(functionsList, "python"));
+        }
+
+        [Fact]
+        public void IsSingleLanguage_FunctionsWorkerRuntime_Set_Returns_True()
         {
             FunctionMetadata funcPython1 = new FunctionMetadata()
             {
@@ -806,6 +846,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void IsSingleLanguage_FunctionsWorkerRuntime_Set_Returns_False()
+        {
+            FunctionMetadata funcPython1 = new FunctionMetadata()
+            {
+                Name = "funcPython1",
+                Language = "python",
+            };
+            FunctionMetadata funcCSharp1 = new FunctionMetadata()
+            {
+                Name = "funcCSharp1",
+                Language = "CSharp",
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcPython1, funcCSharp1
+            };
+            Assert.False(Utility.IsSingleLanguage(functionsList, "node"));
+        }
+
+        [Fact]
         public void IsSingleLanguage_Returns_False()
         {
             FunctionMetadata funcJs1 = new FunctionMetadata()
@@ -826,9 +886,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void IsSingleLanguage_FunctionsList_Null_Returns_False()
+        public void IsSingleLanguage_FunctionsList_Null_FunctionsWorkerRuntime_Throws_ArgumentNullException()
         {
-            Assert.True(Utility.IsSingleLanguage(null, null));
+            Assert.Throws<ArgumentNullException>(() => Utility.IsSingleLanguage(null, "dotnet"));
+        }
+
+        [Fact]
+        public void IsSingleLanguage_FunctionsList_Null_Throws_ArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => Utility.IsSingleLanguage(null, null));
         }
 
         [Fact]
