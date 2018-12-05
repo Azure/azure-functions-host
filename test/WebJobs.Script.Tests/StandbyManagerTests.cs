@@ -21,7 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private Mock<IConfigurationRoot> _mockConfiguration;
         private Mock<IOptionsMonitor<ScriptApplicationHostOptions>> _mockOptionsMonitor;
         private Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
-        private Mock<IScriptEventManager> _mockEventManager;
         private Mock<ILanguageWorkerChannelManager> _mockLanguageWorkerChannelManager;
         private TestEnvironment _testEnvironment;
         private string _testSettingName = "TestSetting";
@@ -34,7 +33,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockConfiguration = new Mock<IConfigurationRoot>();
             _mockOptionsMonitor = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
             _mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
-            _mockEventManager = new Mock<IScriptEventManager>();
             _mockLanguageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
             _testEnvironment = new TestEnvironment();
         }
@@ -42,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialize_ResetsConfiguration()
         {
-            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockEventManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance);
+            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance);
 
             await manager.SpecializeHostAsync();
 
@@ -59,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await Task.Yield();
             });
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
-            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockEventManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance);
+            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance);
             await manager.SpecializeHostAsync();
             Assert.Equal(_testSettingValue, _testEnvironment.GetEnvironmentVariable(_testSettingName));
         }
