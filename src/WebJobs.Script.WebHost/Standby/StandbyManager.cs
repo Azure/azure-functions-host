@@ -24,7 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public class StandbyManager : IStandbyManager
     {
         private readonly IScriptHostManager _scriptHostManager;
-        private readonly IScriptEventManager _eventManager;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
         private readonly Lazy<Task> _specializationTask;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
@@ -32,21 +31,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ILanguageWorkerChannelManager _languageWorkerChannelManager;
         private readonly IConfigurationRoot _configuration;
         private readonly ILogger _logger;
-        private readonly TimeSpan _workerInitTimeout = TimeSpan.FromSeconds(5);
-
         private readonly TimeSpan _specializationTimerInterval = TimeSpan.FromMilliseconds(500);
-        private Timer _specializationTimer;
 
+        private Timer _specializationTimer;
         private static CancellationTokenSource _standbyCancellationTokenSource = new CancellationTokenSource();
         private static IChangeToken _standbyChangeToken = new CancellationChangeToken(_standbyCancellationTokenSource.Token);
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
-        public StandbyManager(IScriptHostManager scriptHostManager, ILanguageWorkerChannelManager languageWorkerChannelManager, IScriptEventManager eventManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
+        public StandbyManager(IScriptHostManager scriptHostManager, ILanguageWorkerChannelManager languageWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
-            _eventManager = eventManager;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _specializationTask = new Lazy<Task>(SpecializeHostCoreAsync, LazyThreadSafetyMode.ExecutionAndPublication);
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
