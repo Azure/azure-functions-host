@@ -659,7 +659,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-            if (!_scriptHostEnvironment.IsDevelopment() && !Utility.IsSingleLanguage(functions, _workerRuntime))
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _workerRuntime);
 
             foreach (FunctionMetadata metadata in functions)
             {
