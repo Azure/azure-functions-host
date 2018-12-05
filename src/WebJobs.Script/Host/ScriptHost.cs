@@ -722,7 +722,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 else
                 {
-                    _logger.LogWarning($"Did not find functions with language [{_currentRuntimelanguage}].");
+                    _logger.LogWarning($"Did not find functions with language [{_currentRuntimeLanguage}].");
                 }
             }
 
