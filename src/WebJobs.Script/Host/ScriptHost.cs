@@ -714,17 +714,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-            if (!Utility.IsSingleLanguage(functions, _currentRuntimeLanguage))
-            {
-                if (string.IsNullOrEmpty(_currentRuntimeLanguage))
-                {
-                    _logger.LogWarning($"Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
-                }
-                else
-                {
-                    _logger.LogWarning($"Did not find functions with language [{_currentRuntimeLanguage}].");
-                }
-            }
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _currentRuntimeLanguage);
 
             foreach (FunctionMetadata metadata in functions)
             {

@@ -439,6 +439,21 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
+        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
+        {
+            if (!IsSingleLanguage(functions, currentRuntimeLanguage))
+            {
+                if (string.IsNullOrEmpty(currentRuntimeLanguage))
+                {
+                    throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
+                }
+                else
+                {
+                    throw new HostInitializationException($"Did not find functions with language [{currentRuntimeLanguage}].");
+                }
+            }
+        }
+
         internal static bool IsSingleLanguage(IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
         {
             if (functions == null)
