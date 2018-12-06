@@ -24,7 +24,7 @@ using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.Co
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public class LanguageWorkerChannel : ILanguageWorkerChannel
+    internal class LanguageWorkerChannel : ILanguageWorkerChannel
     {
         private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);

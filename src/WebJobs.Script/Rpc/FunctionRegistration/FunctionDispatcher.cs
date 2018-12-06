@@ -16,7 +16,7 @@ using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMeta
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public class FunctionDispatcher : IFunctionDispatcher
+    internal class FunctionDispatcher : IFunctionDispatcher
     {
         private IScriptEventManager _eventManager;
         private IMetricsLogger _metricsLogger;
