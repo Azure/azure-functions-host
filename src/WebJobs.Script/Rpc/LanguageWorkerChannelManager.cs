@@ -78,10 +78,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                          attemptCount);
         }
 
-        public async Task InitializeChannelAsync(string language)
+        public async Task InitializeChannelAsync(string runtime)
         {
-            _logger?.LogDebug("Initializing language worker channel for runtime:{runtime}", language);
-            await InitializeLanguageWorkerChannel(language, _applicationHostOptions.CurrentValue.ScriptPath);
+            _logger?.LogDebug("Initializing language worker channel for runtime:{runtime}", runtime);
+            await InitializeLanguageWorkerChannel(runtime, _applicationHostOptions.CurrentValue.ScriptPath);
         }
 
         private async Task InitializeLanguageWorkerChannel(string language, string scriptRootPath)
