@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public TestFixture Fixture { get; set; }
 
         [Fact]
-        public void InitializeWorkers_Fails_AddsFunctionErrors()
+        public void InitializeAsync_DoNotInitialize_JavaWorker()
         {
             var javaChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(javaChannel);
