@@ -387,8 +387,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 secrets.MasterKey.Value = GenerateSecret();
             }
-            secrets.SystemKeys = RegenerateList(secrets.SystemKeys);
-            secrets.FunctionKeys = RegenerateList(secrets.FunctionKeys);
+            secrets.SystemKeys = RegenerateKeys(secrets.SystemKeys);
+            secrets.FunctionKeys = RegenerateKeys(secrets.FunctionKeys);
             return secrets;
         }
 
@@ -405,11 +405,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private FunctionSecrets GenerateFunctionSecrets(FunctionSecrets secrets)
         {
-            secrets.Keys = RegenerateList(secrets.Keys);
+            secrets.Keys = RegenerateKeys(secrets.Keys);
             return secrets;
         }
 
-        private IList<Key> RegenerateList(IList<Key> list)
+        private IList<Key> RegenerateKeys(IList<Key> list)
         {
             return list.Select(k =>
             {
