@@ -85,6 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public Task InitializeAsync()
         {
+            _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
             if (SystemEnvironment.Instance.IsLinuxAppServiceEnvironment())
             {
                 return Task.CompletedTask;
