@@ -9,16 +9,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
     public class TestRpcServer : IRpcServer
     {
-        public Uri Uri => throw new NotImplementedException();
+        private Uri _testUri = null;
+
+        public Uri Uri => _testUri != null ? _testUri : new Uri($"http://127.0.0.1:8797");
+
+        public Task KillAsync()
+        {
+            return Task.CompletedTask;
+        }
 
         public Task ShutdownAsync()
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
 
         public Task StartAsync()
         {
-            throw new NotImplementedException();
+            _testUri = new Uri($"http://testServer:8797");
+            return Task.CompletedTask;
         }
     }
 }

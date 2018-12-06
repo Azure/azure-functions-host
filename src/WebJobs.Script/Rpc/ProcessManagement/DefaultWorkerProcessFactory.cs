@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class DefaultWorkerProcessFactory : IWorkerProcessFactory
     {
-        public virtual Process CreateWorkerProcess(WorkerCreateContext context)
+        public virtual Process CreateWorkerProcess(WorkerContext context)
         {
             var startInfo = new ProcessStartInfo(context.Arguments.ExecutablePath)
             {
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private StringBuilder MergeArguments(StringBuilder builder, string arg) => builder.AppendFormat(" {0}", arg);
 
-        public string GetArguments(WorkerCreateContext context)
+        public string GetArguments(WorkerContext context)
         {
             var argumentsBuilder = context.Arguments.ExecutableArguments.Aggregate(new StringBuilder(), MergeArguments);
             if (!string.IsNullOrEmpty(context.Arguments.WorkerPath))

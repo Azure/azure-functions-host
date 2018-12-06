@@ -21,13 +21,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private readonly ILoggerFactory _loggerFactory;
         private IFunctionDispatcher _dispatcher;
+        private string _workerRuntime;
 
-        public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
+        public WorkerFunctionDescriptorProvider(ScriptHost host, string workerRuntime, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
             IFunctionDispatcher dispatcher, ILoggerFactory loggerFactory)
             : base(host, config, bindingProviders)
         {
             _dispatcher = dispatcher;
             _loggerFactory = loggerFactory;
+            _workerRuntime = workerRuntime;
         }
 
         public override async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
@@ -37,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException(nameof(functionMetadata));
             }
 
-            if (!_dispatcher.IsSupported(functionMetadata))
+            if (!_dispatcher.IsSupported(functionMetadata, _workerRuntime))
             {
                 return (false, null);
             }

@@ -5,6 +5,7 @@ option java_multiple_files = true;
 option java_package = "com.microsoft.azure.functions.rpc.messages";
 option java_outer_classname = "FunctionProto";
 option csharp_namespace = "Microsoft.Azure.WebJobs.Script.Grpc.Messages";
+option go_package ="github.com/Azure/azure-functions-go-worker/internal/rpc";
 
 package AzureFunctionsRpcMessages;
 
@@ -64,6 +65,10 @@ message StreamingMessage {
 
     // Worker logs a message back to the host
     RpcLog rpc_log = 2;
+
+    FunctionEnvironmentReloadRequest function_environment_reload_request = 25;
+
+    FunctionEnvironmentReloadResponse function_environment_reload_response = 26;
   }
 }
 
@@ -177,6 +182,16 @@ message WorkerStatusRequest{
 
 // NOT USED
 message WorkerStatusResponse {
+}
+
+message FunctionEnvironmentReloadRequest {
+  // Environment variables from the current process
+  map<string, string> environment_variables = 1;
+}
+
+message FunctionEnvironmentReloadResponse {
+  // Status of the response
+  StatusResult result = 3;
 }
 
 // Host tells the worker to load a Function

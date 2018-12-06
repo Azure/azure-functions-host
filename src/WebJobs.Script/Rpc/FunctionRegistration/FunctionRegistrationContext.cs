@@ -6,11 +6,11 @@ using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class FunctionRegistrationContext
+    public class FunctionRegistrationContext
     {
         public FunctionMetadata Metadata { get; set; }
 
         // A buffer block containing function invocations
-        public BufferBlock<ScriptInvocationContext> InputBuffer { get; set; }
+        internal BufferBlock<ScriptInvocationContext> InputBuffer { get; set; }
     }
 }

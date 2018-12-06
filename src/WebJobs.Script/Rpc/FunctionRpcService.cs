@@ -19,12 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     internal class FunctionRpcService : FunctionRpc.FunctionRpcBase
     {
         private readonly IScriptEventManager _eventManager;
-        private ILogger _logger;
+        private readonly ILogger _logger;
 
-        public FunctionRpcService(IScriptEventManager eventManager, ILogger logger)
+        public FunctionRpcService(IScriptEventManager eventManager, ILoggerFactory loggerFactory)
         {
             _eventManager = eventManager;
-            _logger = logger;
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionRpcService);
         }
 
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             }
                             catch (Exception subscribeEventEx)
                             {
-                                _eventManager?.Publish(new WorkerErrorEvent(workerId, subscribeEventEx));
+                                _logger.LogError(subscribeEventEx, "Error reading message from Rpc channel");
                             }
                         });
 

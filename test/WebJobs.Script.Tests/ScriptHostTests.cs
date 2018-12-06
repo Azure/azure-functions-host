@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private const string ID = "5a709861cab44e68bfed5d2c2fe7fc0c";
         private readonly TestFixture _fixture;
         private readonly ScriptSettingsManager _settingsManager;
+        private readonly TestEnvironment _testEnvironment = new TestEnvironment();
 
         private readonly ILoggerFactory _loggerFactory = new LoggerFactory();
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
@@ -900,25 +901,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ShouldInitializeLanguageWorkers_Language_NotSet_Returns_False()
         {
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), null));
+            Assert.False(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, GetDotNetFunctionsMetadata(), null));
         }
 
         [Fact]
         public void ShouldInitializeLanguageWorkers_Language_Set_Returns_False()
         {
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), LanguageWorkerConstants.DotNetLanguageWorkerName));
+            Assert.False(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, GetDotNetFunctionsMetadata(), LanguageWorkerConstants.DotNetLanguageWorkerName));
         }
 
         [Fact]
         public void ShouldInitializeLanguageWorkers_Language_Set_DotNetFunctions_Returns_False()
         {
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.False(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, GetDotNetFunctionsMetadata(), LanguageWorkerConstants.NodeLanguageWorkerName));
         }
 
         [Fact]
         public void ShouldInitializeLanguageWorkers_Language_Set_EmptyFunctions_Returns_False()
         {
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(null, LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.False(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, null, LanguageWorkerConstants.NodeLanguageWorkerName));
         }
 
         [Fact]
@@ -938,7 +939,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 funcJs1, funcCS1
             };
-            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.True(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
         }
 
         [Fact]
@@ -953,7 +954,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 funcJs1
             };
-            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, null));
+            Assert.True(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, functionsList, null));
         }
 
         [Fact]
@@ -978,7 +979,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 funcCS1, proxy1, funcJS1
             };
-            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.True(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
         }
 
         [Fact]
@@ -998,7 +999,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 funcCS1, proxy1
             };
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.False(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
         }
 
         [Fact]
@@ -1018,7 +1019,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 proxy2, proxy1
             };
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.False(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
         }
 
         [Fact]
@@ -1038,40 +1039,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 funcJs1, proxy1
             };
-            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, null));
+            Assert.True(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, functionsList, null));
         }
 
-        [Fact]
-        public async void InitializeWorkers_Fails_AddsFunctionErrors()
+        [Theory]
+        [InlineData("CSharp")]
+        [InlineData("DotNetAssembly")]
+        public void IsDotNetLanguageFunction_Returns_True(string functionLanguage)
         {
-            string functionName = "HttpTrigger";
+            Assert.True(Utility.IsDotNetLanguageFunction(functionLanguage));
+        }
 
-            IHost host = new HostBuilder()
-                    .ConfigureDefaultTestWebScriptHost(o =>
-                    {
-                        o.ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
-                    })
-                    .Build();
-
-            var scriptHost = host.GetScriptHost();
-            await scriptHost.InitializeAsync();
-
-            IDictionary<WorkerConfig, LanguageWorkerState> channelState = scriptHost.FunctionDispatcher.LanguageWorkerChannelStates;
-            var nodeWorkerChannel = channelState.Where(w => w.Key.Language.Equals(LanguageWorkerConstants.NodeLanguageWorkerName));
-
-            var nodeWorkerId = nodeWorkerChannel.FirstOrDefault().Value.Channel.Id;
-
-            // Raise workerError events to force language worker process restarts
-            var exc = new LanguageWorkerProcessExitException("TestEx");
-            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
-            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
-            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
-            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
-
-            ICollection<string> actualFunctionErrors = scriptHost.FunctionErrors[functionName];
-            Assert.NotNull(actualFunctionErrors);
-            Assert.True(actualFunctionErrors.Count >= 3);
-            Assert.Contains("TestEx", actualFunctionErrors.First());
+        [Theory]
+        [InlineData("")]
+        [InlineData(null)]
+        [InlineData("someLang")]
+        public void IsDotNetLanguageFunction_Returns_False(string functionLanguage)
+        {
+            Assert.False(Utility.IsDotNetLanguageFunction(functionLanguage));
         }
 
         private static IEnumerable<FunctionMetadata> GetDotNetFunctionsMetadata()
@@ -1163,16 +1148,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty));
             Assert.Equal($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting", ex.Message);
-        }
-
-        [Fact]
-        public async Task InitializeRpcService_Throws()
-        {
-            var ex = await Assert.ThrowsAsync<HostInitializationException>(async () =>
-            {
-                await _fixture.ScriptHost.InitializeRpcServiceAsync(new TestRpcServer());
-            });
-            Assert.Equal("Failed to start Grpc Service. Check if your app is hitting connection limits.", ex.Message);
         }
 
         [Fact]
