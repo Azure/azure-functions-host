@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 return;
             }
-            _logger.LogInformation("Initializing Rpc Channels Manager");
+            _logger.LogInformation("Starting Rpc Initialization Service.");
             await InitializeRpcServerAsync();
             await InitializeChannelsAsync();
         }
