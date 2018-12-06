@@ -9,7 +9,7 @@ using Newtonsoft.Json.Converters;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public static class LanguageWorkerChannelUtilities
+    internal static class LanguageWorkerChannelUtilities
     {
         private static int maxNumberOfErrorMessages = 3;
 

@@ -16,11 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public class LanguageWorkerChannelManager : ILanguageWorkerChannelManager
     {
-        private readonly IEnumerable<string> _languages = new List<string>()
-        {
-            LanguageWorkerConstants.JavaLanguageWorkerName
-        };
-
         private readonly IEnumerable<WorkerConfig> _workerConfigs = null;
         private readonly ILogger _logger = null;
         private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
@@ -83,32 +78,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                          attemptCount);
         }
 
-        public Task InitializeAsync()
+        public async Task InitializeChannelAsync(string runtime)
         {
-            _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-            if (SystemEnvironment.Instance.IsLinuxAppServiceEnvironment())
-            {
-                return Task.CompletedTask;
-            }
-            if (SystemEnvironment.Instance.IsLinuxContainerEnvironment())
-            {
-                return Task.CompletedTask;
-            }
-            if (string.IsNullOrEmpty(_workerRuntime))
-            {
-                return Task.WhenAll(_languages.Select(language => InitializeChannelAsync(language)));
-            }
-            if (_languages.Contains(_workerRuntime))
-            {
-                return InitializeChannelAsync(_workerRuntime);
-            }
-            return Task.CompletedTask;
-        }
-
-        internal async Task InitializeChannelAsync(string language)
-        {
-            _logger?.LogDebug("Initializing language worker channel for {runtime}:", language);
-            await InitializeLanguageWorkerChannel(language, _applicationHostOptions.CurrentValue.ScriptPath);
+            _logger?.LogDebug("Initializing language worker channel for runtime:{runtime}", runtime);
+            await InitializeLanguageWorkerChannel(runtime, _applicationHostOptions.CurrentValue.ScriptPath);
         }
 
         private async Task InitializeLanguageWorkerChannel(string language, string scriptRootPath)
@@ -116,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             try
             {
                 string workerId = Guid.NewGuid().ToString();
-                _logger.LogInformation($"Creating language worker channel for runtime", language);
+                _logger.LogInformation("Creating language worker channel for runtime:{runtime}", language);
                 ILanguageWorkerChannel languageWorkerChannel = CreateLanguageWorkerChannel(workerId, scriptRootPath, language, null, null, 0);
                 languageWorkerChannel.StartWorkerProcess();
                 IObservable<RpcChannelReadyEvent> rpcChannelReadyEvent = _eventManager.OfType<RpcChannelReadyEvent>()

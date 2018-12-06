@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public class ScriptInvocationResult
+    internal class ScriptInvocationResult
     {
         public object Return { get; set; }
 

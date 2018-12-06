@@ -16,16 +16,22 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     public class RpcInitializationService : IHostedService
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
-
+        private readonly IEnvironment _environment;
         private readonly ILanguageWorkerChannelManager _languageWorkerChannelManager;
         private readonly IRpcServer _rpcServer;
         private readonly ILogger _logger;
 
-        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcServer rpcServer, ILanguageWorkerChannelManager languageWorkerChannelManager, ILoggerFactory loggerFactory)
+        private List<string> _languages = new List<string>()
+        {
+            LanguageWorkerConstants.JavaLanguageWorkerName
+        };
+
+        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, ILanguageWorkerChannelManager languageWorkerChannelManager, ILoggerFactory loggerFactory)
         {
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryRpcInitializationService);
             _rpcServer = rpcServer;
+            _environment = environment;
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
         }
 
@@ -35,19 +41,19 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 return;
             }
-            _logger.LogInformation("Initializing Rpc Channels Manager");
+            _logger.LogInformation("Starting Rpc Initialization Service.");
             await InitializeRpcServerAsync();
-            await _languageWorkerChannelManager.InitializeAsync();
+            await InitializeChannelsAsync();
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Shuttingdown Rpc Channels Manager");
-            await _rpcServer.KillAsync();
             await _languageWorkerChannelManager.ShutdownChannelsAsync();
+            await _rpcServer.KillAsync();
         }
 
-        private async Task InitializeRpcServerAsync()
+        internal async Task InitializeRpcServerAsync()
         {
             try
             {
@@ -59,5 +65,31 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var hostInitEx = new HostInitializationException($"Failed to start Rpc Server. Check if your app is hitting connection limits.", grpcInitEx);
             }
         }
+
+        internal Task InitializeChannelsAsync()
+        {
+            string workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
+            if (_environment.IsLinuxAppServiceEnvironment())
+            {
+                return Task.CompletedTask;
+            }
+            if (_environment.IsLinuxContainerEnvironment())
+            {
+                return Task.CompletedTask;
+            }
+            if (string.IsNullOrEmpty(workerRuntime) && _environment.IsPlaceholderModeEnabled())
+            {
+                // Only warm up language workers in placeholder mode in worker runtime is not set
+                return Task.WhenAll(_languages.Select(runtime => _languageWorkerChannelManager.InitializeChannelAsync(runtime)));
+            }
+            if (_languages.Contains(workerRuntime))
+            {
+                return _languageWorkerChannelManager.InitializeChannelAsync(workerRuntime);
+            }
+            return Task.CompletedTask;
+        }
+
+        // To help with unit tests
+        internal void AddSupportedRuntime(string language) => _languages.Add(language);
     }
 }
