@@ -77,9 +77,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 return Task.CompletedTask;
             }
-            if (string.IsNullOrEmpty(workerRuntime))
+            if (string.IsNullOrEmpty(workerRuntime) && _environment.IsPlaceholderModeEnabled())
             {
-                return Task.WhenAll(_languages.Select(language => _languageWorkerChannelManager.InitializeChannelAsync(language)));
+                // Only warm up language workers in placeholder mode in worker runtime is not set
+                return Task.WhenAll(_languages.Select(runtime => _languageWorkerChannelManager.InitializeChannelAsync(runtime)));
             }
             if (_languages.Contains(workerRuntime))
             {
