@@ -18,7 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private RpcInitializationService _rpcInitializationService;
         private IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
         private Mock<ILanguageWorkerChannelManager> _mockLanguageWorkerChannelManager;
-        private TestEnvironment _testEnvironment;
         private IRpcServer _testRpcServer;
         private LoggerFactory _loggerFactory;
         private string _rootPath;
@@ -28,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _rootPath = Path.GetTempPath();
             _mockLanguageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
             _loggerFactory = new LoggerFactory();
-            _testEnvironment = new TestEnvironment();
             _testRpcServer = new TestRpcServer();
             var applicationHostOptions = new ScriptApplicationHostOptions
             {
@@ -43,61 +41,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task RpcInitializationService_Initializes_RpcServerAndChannels()
         {
-            try
-            {
-                _rpcInitializationService = new RpcInitializationService(_optionsMonitor, _testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
-                await _rpcInitializationService.StartAsync(CancellationToken.None);
-                _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Once);
-                Assert.Contains("testserver", _testRpcServer.Uri.ToString());
-            }
-            finally
-            {
-                _testEnvironment.Clear();
-            }
+            var testEnvironment = new TestEnvironment();
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
+            await _rpcInitializationService.StartAsync(CancellationToken.None);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Once);
+            Assert.Contains("testserver", _testRpcServer.Uri.ToString());
         }
 
         [Fact]
         public async Task RpcInitializationService_LinuxConsumption_Initializes_RpcServer()
         {
-            try
-            {
-                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "testContainer");
-                _rpcInitializationService = new RpcInitializationService(_optionsMonitor, _testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
-                await _rpcInitializationService.StartAsync(CancellationToken.None);
-                _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
-                Assert.Contains("testserver", _testRpcServer.Uri.ToString());
-            }
-            finally
-            {
-                _testEnvironment.Clear();
-            }
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "testContainer");
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
+            await _rpcInitializationService.StartAsync(CancellationToken.None);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
+            Assert.Contains("testserver", _testRpcServer.Uri.ToString());
         }
 
         [Fact]
         public async Task RpcInitializationService_LinuxAppService_Initializes_RpcServer()
         {
-            try
-            {
-                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsLogsMountPath, "d:\\test\\mount");
-                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, "1234");
-                _rpcInitializationService = new RpcInitializationService(_optionsMonitor, _testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
-                await _rpcInitializationService.StartAsync(CancellationToken.None);
-                _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
-                Assert.Contains("testserver", _testRpcServer.Uri.ToString());
-            }
-            finally
-            {
-                _testEnvironment.Clear();
-            }
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsLogsMountPath, "d:\\test\\mount");
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, "1234");
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
+            await _rpcInitializationService.StartAsync(CancellationToken.None);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
+            Assert.Contains("testserver", _testRpcServer.Uri.ToString());
         }
 
         [Fact]
         public async Task RpcInitializationService_AppOffline()
         {
+            var testEnvironment = new TestEnvironment();
             var offlineFilePath = TestHelpers.CreateOfflineFile(_rootPath);
             try
             {
-                _rpcInitializationService = new RpcInitializationService(_optionsMonitor, _testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
+                _rpcInitializationService = new RpcInitializationService(_optionsMonitor, testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
                 await _rpcInitializationService.StartAsync(CancellationToken.None);
                 _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
                 Assert.DoesNotContain("testserver", _testRpcServer.Uri.ToString());
@@ -105,62 +86,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             finally
             {
                 DeleteTestFile(offlineFilePath);
-                _testEnvironment.Clear();
             }
         }
 
         [Fact]
         public async Task RpcInitializationService_Initializes_WorkerRuntime_Set()
         {
-            try
-            {
-                _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
-                _rpcInitializationService = new RpcInitializationService(_optionsMonitor, _testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
-                _rpcInitializationService.AddSupportedRuntime(LanguageWorkerConstants.NodeLanguageWorkerName);
-                await _rpcInitializationService.StartAsync(CancellationToken.None);
-                _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName), Times.Once);
-                Assert.Contains("testserver", _testRpcServer.Uri.ToString());
-            }
-            finally
-            {
-                _testEnvironment.Clear();
-            }
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
+            _rpcInitializationService.AddSupportedRuntime(LanguageWorkerConstants.NodeLanguageWorkerName);
+            await _rpcInitializationService.StartAsync(CancellationToken.None);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName), Times.Once);
+            Assert.Contains("testserver", _testRpcServer.Uri.ToString());
         }
 
         [Fact]
         public async Task RpcInitializationService_Initializes_WorkerRuntime_Set_RuntimeNotSupported()
         {
-            try
-            {
-                _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
-                _rpcInitializationService = new RpcInitializationService(_optionsMonitor, _testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
-                await _rpcInitializationService.StartAsync(CancellationToken.None);
-                _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName), Times.Never);
-                _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
-                Assert.Contains("testserver", _testRpcServer.Uri.ToString());
-            }
-            finally
-            {
-                _testEnvironment.Clear();
-            }
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
+            await _rpcInitializationService.StartAsync(CancellationToken.None);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName), Times.Never);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
+            Assert.Contains("testserver", _testRpcServer.Uri.ToString());
         }
 
         [Fact]
         public async Task RpcInitializationService_Initializes_WorkerRuntime_NotSet()
         {
-            try
-            {
-                _rpcInitializationService = new RpcInitializationService(_optionsMonitor, _testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
-                _rpcInitializationService.AddSupportedRuntime(LanguageWorkerConstants.NodeLanguageWorkerName);
-                await _rpcInitializationService.StartAsync(CancellationToken.None);
-                _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Once);
-                _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName), Times.Once);
-                Assert.Contains("testserver", _testRpcServer.Uri.ToString());
-            }
-            finally
-            {
-                _testEnvironment.Clear();
-            }
+            var testEnvironment = new TestEnvironment();
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, testEnvironment, _testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
+            _rpcInitializationService.AddSupportedRuntime(LanguageWorkerConstants.NodeLanguageWorkerName);
+            await _rpcInitializationService.StartAsync(CancellationToken.None);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Once);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName), Times.Once);
+            Assert.Contains("testserver", _testRpcServer.Uri.ToString());
         }
 
         private static void DeleteTestFile(string testFile)
