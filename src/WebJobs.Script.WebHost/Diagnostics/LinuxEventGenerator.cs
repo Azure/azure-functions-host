@@ -74,5 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public abstract void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency,
             string functionName,
             string invocationId, string executionStage, long executionTimeSpan, bool success);
+
+        public abstract void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName,
+            string category, string regionName, string properties);
     }
 }
