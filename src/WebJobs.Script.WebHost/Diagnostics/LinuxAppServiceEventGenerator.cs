@@ -62,5 +62,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             logger.Log(evt);
         }
+
+        public override void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
+        {
+        }
     }
 }

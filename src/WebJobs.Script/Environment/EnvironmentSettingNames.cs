@@ -45,5 +45,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteZipDeployment = "WEBSITE_USE_ZIP";
         public const string AzureWebsiteAltZipDeployment = "WEBSITE_RUN_FROM_ZIP";
         public const string AzureWebsiteRunFromPackage = "WEBSITE_RUN_FROM_PACKAGE";
+        public const string RegionName = "REGION_NAME";
     }
 }
