@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
         }
 
-        [Fact]
+        [Fact(Skip = "Investigate")]
         public async Task RpcInitializationService_AppOffline()
         {
             IRpcServer testRpcServer = new TestRpcServer();
