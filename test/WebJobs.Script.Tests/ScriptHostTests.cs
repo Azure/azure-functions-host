@@ -17,7 +17,6 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
-using Microsoft.Azure.WebJobs.Script.Tests.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -899,147 +898,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void ShouldInitializeLanguageWorkers_Language_NotSet_Returns_False()
+        public void IsSupportedRuntime_Returns_False()
         {
-            Assert.False(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, GetDotNetFunctionsMetadata(), null));
+            Assert.False(Utility.IsSupportedRuntime(LanguageWorkerConstants.DotNetLanguageWorkerName, TestHelpers.GetTestWorkerConfigs()));
         }
 
         [Fact]
-        public void ShouldInitializeLanguageWorkers_Language_Set_Returns_False()
+        public void IsSupportedRuntime_Returns_True()
         {
-            Assert.False(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, GetDotNetFunctionsMetadata(), LanguageWorkerConstants.DotNetLanguageWorkerName));
-        }
-
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_Language_Set_DotNetFunctions_Returns_False()
-        {
-            Assert.False(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, GetDotNetFunctionsMetadata(), LanguageWorkerConstants.NodeLanguageWorkerName));
-        }
-
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_Language_Set_EmptyFunctions_Returns_False()
-        {
-            Assert.False(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, null, LanguageWorkerConstants.NodeLanguageWorkerName));
-        }
-
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_Language_Set_NodeFunctions_Returns_True()
-        {
-            FunctionMetadata funcJs1 = new FunctionMetadata()
-            {
-                Name = "funcJs1",
-                Language = "node"
-            };
-            FunctionMetadata funcCS1 = new FunctionMetadata()
-            {
-                Name = "funcCS1",
-                Language = "csharp"
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                funcJs1, funcCS1
-            };
-            Assert.True(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
-        }
-
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_Language_Not_Set_Returns_True()
-        {
-            FunctionMetadata funcJs1 = new FunctionMetadata()
-            {
-                Name = "funcJs1",
-                Language = "node"
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                funcJs1
-            };
-            Assert.True(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, functionsList, null));
-        }
-
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_WithProxy_Language_Set_NodeFunctions_Returns_True()
-        {
-            FunctionMetadata funcCS1 = new FunctionMetadata()
-            {
-                Name = "funcCS1",
-                Language = "csharp"
-            };
-            FunctionMetadata funcJS1 = new FunctionMetadata()
-            {
-                Name = "funcJS1",
-                Language = "node"
-            };
-            FunctionMetadata proxy1 = new FunctionMetadata()
-            {
-                Name = "funcproxy1",
-                IsProxy = true
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                funcCS1, proxy1, funcJS1
-            };
-            Assert.True(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
-        }
-
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_WithProxy_Language_Set_NodeFunctions_Returns_False()
-        {
-            FunctionMetadata funcCS1 = new FunctionMetadata()
-            {
-                Name = "funcCS1",
-                Language = "csharp"
-            };
-            FunctionMetadata proxy1 = new FunctionMetadata()
-            {
-                Name = "funcproxy1",
-                IsProxy = true
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                funcCS1, proxy1
-            };
-            Assert.False(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
-        }
-
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_OnlyProxies_Returns_False()
-        {
-            FunctionMetadata proxy1 = new FunctionMetadata()
-            {
-                Name = "funcproxy1",
-                IsProxy = true
-            };
-            FunctionMetadata proxy2 = new FunctionMetadata()
-            {
-                Name = "funcproxy2",
-                IsProxy = true
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                proxy2, proxy1
-            };
-            Assert.False(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
-        }
-
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_WithProxy_Language_Not_Set_Returns_True()
-        {
-            FunctionMetadata funcJs1 = new FunctionMetadata()
-            {
-                Name = "funcJs1",
-                Language = "node"
-            };
-            FunctionMetadata proxy1 = new FunctionMetadata()
-            {
-                Name = "funcproxy1",
-                IsProxy = true
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                funcJs1, proxy1
-            };
-            Assert.True(Utility.ShouldInitializeFunctionDispatcher(_testEnvironment, functionsList, null));
+            Assert.True(Utility.IsSupportedRuntime(LanguageWorkerConstants.NodeLanguageWorkerName, TestHelpers.GetTestWorkerConfigs()));
         }
 
         [Theory]

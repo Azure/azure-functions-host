@@ -1,0 +1,11 @@
+﻿{
+  "$schema": "http://json.schemastore.org/proxies",
+  "proxies": {
+    "testproxy2": {
+      "matchCondition": {
+        "route": "/mthttp2"
+      },
+      "backendUri": "https://testapp.azurewebsites.net/api/HttpTriggerCSharp1?name=test"
+    }
+  }
+}

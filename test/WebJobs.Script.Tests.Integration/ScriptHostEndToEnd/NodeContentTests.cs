@@ -17,9 +17,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class NodeContentTests : IClassFixture<NodeContentTests.TestFixture>
     {
+        private ILanguageWorkerChannelManager _languageWorkerChannelManager;
+
         public NodeContentTests(TestFixture fixture)
         {
             Fixture = fixture;
+            _languageWorkerChannelManager = (ILanguageWorkerChannelManager)fixture.Host.Services.GetService(typeof(ILanguageWorkerChannelManager));
         }
 
         public TestFixture Fixture { get; set; }
@@ -127,6 +130,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var content = await Response(obj, "application/xml; charset=utf-8");
             content = Regex.Replace(content, @"\s+", string.Empty);
             Assert.Equal(str, content);
+        }
+
+        [Fact]
+        public void InitializeAsync_WorkerRuntime_Node_DoNotInitialize_JavaWorker()
+        {
+            var javaChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
+            Assert.Null(javaChannel);
         }
 
         // Get response with default ObjectResult content negotiation enabled 

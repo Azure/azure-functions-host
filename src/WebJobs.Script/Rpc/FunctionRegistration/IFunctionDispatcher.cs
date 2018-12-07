@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
@@ -17,6 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         // Registers a supported function with the dispatcher
         void Register(FunctionRegistrationContext context);
 
-        LanguageWorkerState CreateWorkerState(string language);
+        void Initialize(string runtime, IEnumerable<FunctionMetadata> functions);
     }
 }
