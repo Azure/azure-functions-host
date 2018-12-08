@@ -273,11 +273,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
-                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions);
-                if (Utility.ShouldInitializeFunctionDispatcher(_environment, functions, _workerRuntime))
-                {
-                    _functionDispatcher.CreateWorkerState(_workerRuntime);
-                }
+
+                // Initialize language worker function dispatcher
+                _functionDispatcher.Initialize(_workerRuntime, functions);
+
                 var directTypes = GetDirectTypes(functions);
                 await InitializeFunctionDescriptorsAsync(functions);
                 GenerateFunctions(directTypes);

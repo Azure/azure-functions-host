@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
@@ -90,27 +91,38 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return state;
         }
 
-        public LanguageWorkerState CreateWorkerState(string language)
+        public void Initialize(string workerRuntime, IEnumerable<FunctionMetadata> functions)
         {
-            ILanguageWorkerChannel initializedChannel = _languageWorkerChannelManager.GetChannel(language);
-            if (initializedChannel != null)
+            _languageWorkerChannelManager.ShutdownStandbyChannels(functions);
+
+            workerRuntime = workerRuntime ?? Utility.GetWorkerRuntime(functions);
+
+            if (Utility.IsSupportedRuntime(workerRuntime, _workerConfigs))
             {
-                return CreateWorkerStateWithExistingChannel(language, initializedChannel);
+                ILanguageWorkerChannel initializedChannel = _languageWorkerChannelManager.GetChannel(workerRuntime);
+                if (initializedChannel != null)
+                {
+                    CreateWorkerStateWithExistingChannel(workerRuntime, initializedChannel);
+                }
+                else
+                {
+                    CreateWorkerState(workerRuntime);
+                }
             }
-            else
-            {
-                var state = new LanguageWorkerState();
-                WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-                state.Channel = ChannelFactory(language, state.Functions, 0);
-                _workerStates[language] = state;
-                return state;
-            }
+        }
+
+        private LanguageWorkerState CreateWorkerState(string runtime)
+        {
+            var state = new LanguageWorkerState();
+            WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            state.Channel = ChannelFactory(runtime, state.Functions, 0);
+            _workerStates[runtime] = state;
+            return state;
         }
 
         public void Register(FunctionRegistrationContext context)
         {
-            var state = _workerStates.GetOrAdd(context.Metadata.Language, CreateWorkerState);
-            state.Functions.OnNext(context);
+            _workerStates[context.Metadata.Language].Functions.OnNext(context);
         }
 
         public void WorkerError(WorkerErrorEvent workerError)

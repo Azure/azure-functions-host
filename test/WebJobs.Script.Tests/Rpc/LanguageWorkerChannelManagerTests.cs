@@ -3,14 +3,16 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
-using Moq;
 using Xunit;
+
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
@@ -104,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
-        public async void ShutdownChannels_Succeeds()
+        public void ShutdownChannels_Succeeds()
         {
             _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor);
 
@@ -115,12 +117,126 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(nodeWorkerId, LanguageWorkerConstants.NodeLanguageWorkerName);
 
             // Shutdown
-            await _languageWorkerChannelManager.ShutdownChannelsAsync();
+            _languageWorkerChannelManager.ShutdownChannels();
 
             //Verify disposed
             var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
             Assert.Null(initializedChannel);
             initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
+            Assert.Null(initializedChannel);
+        }
+
+        [Fact]
+        public void ShutdownStandyChannels_WorkerRuntime_Node_Set()
+        {
+            _testEnvironment = new TestEnvironment();
+            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
+
+            _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor);
+            string javaWorkerId = Guid.NewGuid().ToString();
+            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(javaWorkerId, LanguageWorkerConstants.JavaLanguageWorkerName);
+
+            FunctionMetadata funcJs1 = new FunctionMetadata()
+            {
+                Name = "funcJs1",
+                Language = "node"
+            };
+            FunctionMetadata funcCS1 = new FunctionMetadata()
+            {
+                Name = "funcCS1",
+                Language = "csharp"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJs1, funcCS1
+            };
+
+            _languageWorkerChannelManager.ShutdownStandbyChannels(functionsList);
+
+            var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
+            Assert.Null(initializedChannel);
+        }
+
+        [Fact]
+        public void ShutdownStandbyChannels_WorkerRuntime_Not_Set()
+        {
+            _testEnvironment = new TestEnvironment();
+
+            _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor);
+            string javaWorkerId = Guid.NewGuid().ToString();
+            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(javaWorkerId, LanguageWorkerConstants.JavaLanguageWorkerName);
+
+            FunctionMetadata funcJs1 = new FunctionMetadata()
+            {
+                Name = "funcJs1",
+                Language = "node"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJs1
+            };
+
+            _languageWorkerChannelManager.ShutdownStandbyChannels(functionsList);
+
+            var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
+            Assert.Null(initializedChannel);
+        }
+
+        [Fact]
+        public void ShutdownStandbyChannels_WithProxy_WorkerRuntime_Set()
+        {
+            _testEnvironment = new TestEnvironment();
+            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
+            _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor);
+            string javaWorkerId = Guid.NewGuid().ToString();
+            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(javaWorkerId, LanguageWorkerConstants.JavaLanguageWorkerName);
+
+            FunctionMetadata funcJS1 = new FunctionMetadata()
+            {
+                Name = "funcJS1",
+                Language = "node"
+            };
+            FunctionMetadata proxy1 = new FunctionMetadata()
+            {
+                Name = "funcproxy1",
+                IsProxy = true
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                proxy1, funcJS1
+            };
+
+            _languageWorkerChannelManager.ShutdownStandbyChannels(functionsList);
+
+            var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
+            Assert.Null(initializedChannel);
+        }
+
+        [Fact]
+        public void ShutdownStandbyChannels_OnlyProxies()
+        {
+            _testEnvironment = new TestEnvironment();
+            _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor);
+            string javaWorkerId = Guid.NewGuid().ToString();
+            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(javaWorkerId, LanguageWorkerConstants.JavaLanguageWorkerName);
+
+            FunctionMetadata proxy1 = new FunctionMetadata()
+            {
+                Name = "funcproxy1",
+                IsProxy = true
+            };
+            FunctionMetadata proxy2 = new FunctionMetadata()
+            {
+                Name = "funcproxy2",
+                IsProxy = true
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                proxy2, proxy1
+            };
+            _languageWorkerChannelManager.ShutdownStandbyChannels(functionsList);
+
+            var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
         }
 

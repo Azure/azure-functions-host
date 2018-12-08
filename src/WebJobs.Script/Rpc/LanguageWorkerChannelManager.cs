@@ -12,6 +12,8 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
+
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public class LanguageWorkerChannelManager : ILanguageWorkerChannelManager
@@ -150,8 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void ScheduleShutdownStandbyChannels()
         {
-            _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-            _logger.LogInformation("{FunctionWorkerRuntimeSettingName} is set to: {workerRuntime}. Will shutdown other standby channels", LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _workerRuntime);
+            _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
             if (!string.IsNullOrEmpty(_workerRuntime))
             {
                 var standbyChannels = _workerChannels.Where(ch => ch.Key.ToLower() != _workerRuntime.ToLower()).ToList();
@@ -164,15 +165,33 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public Task ShutdownChannelsAsync()
+        public void ShutdownStandbyChannels(IEnumerable<FunctionMetadata> functions)
         {
-            foreach (string lang in _workerChannels.Keys)
+            if (_environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1")
             {
-                _logger.LogDebug("Language worker channel for runtime:{language} disposed", lang);
-                _workerChannels[lang]?.Dispose();
+                return;
+            }
+            _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName) ?? Utility.GetWorkerRuntime(functions);
+            _logger.LogInformation("WorkerRuntime: {workerRuntime}. Will shutdown other standby channels", _workerRuntime);
+            if (string.IsNullOrEmpty(_workerRuntime))
+            {
+                ShutdownChannels();
+                return;
+            }
+            else
+            {
+                ScheduleShutdownStandbyChannels();
+            }
+        }
+
+        public void ShutdownChannels()
+        {
+            foreach (string runtime in _workerChannels.Keys)
+            {
+                _logger.LogInformation("Shutting down language worker channel for runtime:{runtime}", runtime);
+                _workerChannels[runtime]?.Dispose();
             }
             _workerChannels.Clear();
-            return Task.CompletedTask;
         }
 
         private void AddOrUpdateWorkerChannels(RpcChannelReadyEvent rpcChannelReadyEvent)

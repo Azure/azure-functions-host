@@ -4,7 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
@@ -18,7 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         bool ShutdownChannelIfExists(string language);
 
-        Task ShutdownChannelsAsync();
+        void ShutdownStandbyChannels(IEnumerable<FunctionMetadata> functions);
+
+        void ShutdownChannels();
 
         ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IObservable<FunctionRegistrationContext> functionRegistrations, IMetricsLogger metricsLogger, int attemptCount);
     }

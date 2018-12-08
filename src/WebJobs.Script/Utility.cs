@@ -439,22 +439,22 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
+        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime)
         {
-            if (!IsSingleLanguage(functions, currentRuntimeLanguage))
+            if (!IsSingleLanguage(functions, workerRuntime))
             {
-                if (string.IsNullOrEmpty(currentRuntimeLanguage))
+                if (string.IsNullOrEmpty(workerRuntime))
                 {
                     throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
                 }
                 else
                 {
-                    throw new HostInitializationException($"Did not find functions with language [{currentRuntimeLanguage}].");
+                    throw new HostInitializationException($"Did not find functions with language [{workerRuntime}].");
                 }
             }
         }
 
-        internal static bool IsSingleLanguage(IEnumerable<FunctionMetadata> functions, string currentRuntimeLanguage)
+        internal static bool IsSingleLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime)
         {
             if (functions == null)
             {
@@ -465,54 +465,36 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return true;
             }
-            if (string.IsNullOrEmpty(currentRuntimeLanguage))
+            if (string.IsNullOrEmpty(workerRuntime))
             {
                 return functionsListWithoutProxies.Select(f => f.Language).Distinct().Count() <= 1;
             }
-            return ContainsFunctionWithWorkerRuntime(functionsListWithoutProxies, currentRuntimeLanguage);
-        }
-
-        internal static bool ShouldInitializeFunctionDispatcher(IEnvironment environment, IEnumerable<FunctionMetadata> functions, string workerRuntime)
-        {
-            if (environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1")
-            {
-                return false;
-            }
-            if (!string.IsNullOrEmpty(workerRuntime) && workerRuntime.Equals(LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-            var functionsListWithoutProxies = functions?.Where(f => f.IsProxy == false);
-            if (!string.IsNullOrEmpty(workerRuntime) && ContainsFunctionWithWorkerRuntime(functionsListWithoutProxies, workerRuntime))
-            {
-                return true;
-            }
-            return ContainsNonDotNetFunctions(functionsListWithoutProxies);
+            return ContainsFunctionWithWorkerRuntime(functionsListWithoutProxies, workerRuntime);
         }
 
         internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions)
         {
-            var functionsListWithoutProxies = functions?.Where(f => f.IsProxy == false);
-            string functionLanguage = functionsListWithoutProxies.FirstOrDefault()?.Language;
-            if (IsDotNetLanguageFunction(functionLanguage))
+            if (IsSingleLanguage(functions, null))
             {
-                return LanguageWorkerConstants.DotNetLanguageWorkerName;
+                var functionsListWithoutProxies = functions?.Where(f => f.IsProxy == false);
+                string functionLanguage = functionsListWithoutProxies.FirstOrDefault()?.Language;
+                if (IsDotNetLanguageFunction(functionLanguage))
+                {
+                    return LanguageWorkerConstants.DotNetLanguageWorkerName;
+                }
+                return functionLanguage;
             }
-            return functionLanguage;
-        }
-
-        private static bool ContainsNonDotNetFunctions(IEnumerable<FunctionMetadata> functions)
-        {
-            if (functions != null && functions.Any())
-            {
-                return functions.Any(f => !dotNetLanguages.Contains(f.Language, StringComparer.OrdinalIgnoreCase));
-            }
-            return false;
+            return null;
         }
 
         public static bool IsDotNetLanguageFunction(string functionLanguage)
         {
             return dotNetLanguages.Any(lang => string.Equals(lang, functionLanguage, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public static bool IsSupportedRuntime(string workerRuntime, IEnumerable<WorkerConfig> workerConfigs)
+        {
+            return workerConfigs.Any(config => string.Equals(config.Language, workerRuntime, StringComparison.OrdinalIgnoreCase));
         }
 
         private static bool ContainsFunctionWithWorkerRuntime(IEnumerable<FunctionMetadata> functions, string workerRuntime)
