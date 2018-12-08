@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                                              .Returns(Task.CompletedTask);
         }
 
-        [Fact(Skip = "Investigate")]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
         public async Task RpcInitializationService_Initializes_RpcServerAndChannels_PlaceHolderMode()
         {
             IRpcServer testRpcServer = new TestRpcServer();
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
         }
 
-        [Fact(Skip = "Investigate")]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
         public async Task RpcInitializationService_LinuxConsumption_Initializes_RpcServer()
         {
             IRpcServer testRpcServer = new TestRpcServer();
@@ -65,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
         }
 
-        [Fact(Skip = "Investigate")]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
         public async Task RpcInitializationService_LinuxAppService_Initializes_RpcServer()
         {
             IRpcServer testRpcServer = new TestRpcServer();
@@ -79,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
         }
 
-        [Fact(Skip = "Investigate")]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
         public async Task RpcInitializationService_AppOffline()
         {
             IRpcServer testRpcServer = new TestRpcServer();
@@ -98,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             }
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
         public async Task RpcInitializationService_Initializes_WorkerRuntime_Set()
         {
             IRpcServer testRpcServer = new TestRpcServer();
@@ -112,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
         public async Task RpcInitializationService_Initializes_WorkerRuntime_Set_RuntimeNotSupported()
         {
             IRpcServer testRpcServer = new TestRpcServer();
@@ -126,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
         public async Task RpcInitializationService_Initializes_WorkerRuntime_NotSet_NoPlaceholder()
         {
             IRpcServer testRpcServer = new TestRpcServer();
@@ -140,13 +141,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
         }
 
-        private static void DeleteTestFile(string testFile)
+        private static void DeleteTestFile(string testDir)
         {
-            if (File.Exists(testFile))
+            if (Directory.Exists(testDir))
             {
                 try
                 {
-                    File.Delete(testFile);
+                    Directory.Delete(testDir);
                 }
                 catch
                 {
