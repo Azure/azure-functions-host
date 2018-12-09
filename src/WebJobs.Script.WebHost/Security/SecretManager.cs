@@ -52,8 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 GetHostSecretsAsync().GetAwaiter().GetResult();
             }
 
-            _traceWriter.Info(Resources.TraceSecretsRepo, repository.ToString());
-            _logger?.LogInformation(Resources.TraceSecretsRepo, repository.ToString());
+            string message = string.Format(Resources.TraceSecretsRepo, repository.ToString());
+            _traceWriter.Info(message);
+            _logger?.LogInformation(message);
         }
 
         public void Dispose()
@@ -153,10 +154,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (secrets == null)
                 {
                     // no secrets exist for this function so generate them
-                    string message = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
-                    _traceWriter.Info(message, traceProperties);
-
-                    _logger?.LogInformation(message);
+                    string messageGeneratoin = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
+                    _traceWriter.Info(messageGeneratoin, traceProperties);
+                    _logger?.LogInformation(messageGeneratoin);
                     secrets = new FunctionSecrets
                     {
                         Keys = new List<Key>
@@ -175,18 +175,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 catch (CryptographicException)
                 {
-                    string message = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName);
-                    _traceWriter.Info(message, traceProperties);
-                    _logger?.LogInformation(message);
+                    string messageNonDecrypted = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName);
+                    _traceWriter.Info(messageNonDecrypted, traceProperties);
+                    _logger?.LogInformation(messageNonDecrypted);
                     await PersistSecretsAsync(secrets, functionName, true);
                     await RefreshSecretsAsync(secrets, functionName);
                 }
 
                 if (secrets.HasStaleKeys)
                 {
-                    string message = string.Format(Resources.TraceStaleFunctionSecretRefresh, functionName);
-                    _traceWriter.Info(message);
-                    _logger?.LogInformation(message);
+                    string messageStaleFunction = string.Format(Resources.TraceStaleFunctionSecretRefresh, functionName);
+                    _traceWriter.Info(messageStaleFunction);
+                    _logger?.LogInformation(messageStaleFunction);
                     await RefreshSecretsAsync(secrets, functionName);
                 }
 
@@ -206,8 +206,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     .ToDictionary(kv => kv.Key, kv => kv.Value);
             }
 
-            _traceWriter.Info(Resources.TraceFunctionsKeysLoaded, functionName);
-            _logger?.LogInformation(Resources.TraceFunctionsKeysLoaded, functionName);
+            string messageLoaded = string.Format(Resources.TraceFunctionsKeysLoaded, functionName);
+            _traceWriter.Info(messageLoaded);
+            _logger?.LogInformation(messageLoaded);
 
             return functionSecrets;
         }
