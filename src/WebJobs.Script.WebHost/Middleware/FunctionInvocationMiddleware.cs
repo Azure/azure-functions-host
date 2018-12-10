@@ -84,9 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             if (functionExecution != null && !functionExecution.Descriptor.Metadata.IsProxy && nestedProxiesCount == null)
             {
                 // HttpBufferingService is disabled for non-proxy functions.
-                var bufferingFeature = context.Features.Get<IHttpBufferingFeature>();
-                bufferingFeature?.DisableRequestBuffering();
-                bufferingFeature?.DisableResponseBuffering();
+                var bufferingFeature = context.Features.Get<IScriptHttpBufferedStream>();
+                bufferingFeature?.DisableBufferingAsync(CancellationToken.None);
             }
 
             if (nestedProxiesCount != null)
