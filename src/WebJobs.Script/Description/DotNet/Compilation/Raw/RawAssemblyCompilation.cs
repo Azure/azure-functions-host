@@ -51,7 +51,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new InvalidOperationException($"The function type name '{typeName}' is invalid.");
             }
 
-            MethodInfo method = functionType.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public);
+            // To preserve legacy behavior, we attempt to bind to public static methods first, then fallback to instance
+            // methods if a match is not found.
+            MethodInfo method = functionType.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public)
+                ?? functionType.GetMethod(methodName, BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.Public);
             if (method == null)
             {
                 throw new InvalidOperationException($"The method '{methodName}' cannot be found.");
