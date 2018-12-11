@@ -43,7 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             _logger.LogInformation("Starting Rpc Initialization Service.");
             await InitializeRpcServerAsync();
-            await InitializeChannelsAsync();
+            // TODO: pgopa Uncomment following after addressing issue https://github.com/Azure/azure-functions-host/issues/3872
+            // await InitializeChannelsAsync();
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)

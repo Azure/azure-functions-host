@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestFixture Fixture { get; set; }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3872")]
         public void InitializeAsync_DoNotInitialize_JavaWorker_ProxiesOnly()
         {
             var javaChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
