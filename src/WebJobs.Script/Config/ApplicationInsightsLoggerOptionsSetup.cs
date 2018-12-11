@@ -12,10 +12,12 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
     internal class ApplicationInsightsLoggerOptionsSetup : IConfigureOptions<ApplicationInsightsLoggerOptions>
     {
         private readonly IConfiguration _configuration;
+        private readonly IEnvironment _environment;
 
-        public ApplicationInsightsLoggerOptionsSetup(ILoggerProviderConfiguration<ApplicationInsightsLoggerProvider> configuration)
+        public ApplicationInsightsLoggerOptionsSetup(ILoggerProviderConfiguration<ApplicationInsightsLoggerProvider> configuration, IEnvironment environment)
         {
             _configuration = configuration.Configuration;
+            _environment = environment;
         }
 
         public void Configure(ApplicationInsightsLoggerOptions options)
@@ -25,6 +27,12 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             _configuration.Bind(options);
 
             ConfigureSampling(options);
+
+            string quickPulseKey = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsQuickPulseAuthApiKey);
+            if (!string.IsNullOrEmpty(quickPulseKey))
+            {
+                options.QuickPulseAuthenticationApiKey = quickPulseKey;
+            }
         }
 
         private void ConfigureSampling(ApplicationInsightsLoggerOptions options)

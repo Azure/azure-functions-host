@@ -15,6 +15,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         private const string SamplingSettings = nameof(ApplicationInsightsLoggerOptions.SamplingSettings);
         private const string SnapshotConfiguration = nameof(ApplicationInsightsLoggerOptions.SnapshotConfiguration);
 
+        private readonly TestEnvironment _environment = new TestEnvironment();
+
         [Fact]
         public void Configure_SamplingDisabled_CreatesNullSettings()
         {
@@ -25,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 })
                 .Build();
 
-            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config));
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
 
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
@@ -44,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                })
                .Build();
 
-            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config));
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
 
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
@@ -62,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
               })
               .Build();
 
-            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config));
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
 
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
@@ -75,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             IConfiguration config = new ConfigurationBuilder().Build();
 
-            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config));
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
 
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
@@ -93,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 })
                 .Build();
 
-            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config));
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
 
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
@@ -111,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 })
                 .Build();
 
-            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config));
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
 
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
@@ -129,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
               })
               .Build();
 
-            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config));
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
 
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
@@ -142,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             IConfiguration config = new ConfigurationBuilder().Build();
 
-            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config));
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
 
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
@@ -160,12 +162,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 })
                 .Build();
 
-            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config));
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
 
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
 
             Assert.Equal(25, options.SamplingSettings.MaxTelemetryItemsPerSecond);
+        }
+
+        [Fact]
+        public void Configure_QuickPulse()
+        {
+            IConfiguration config = new ConfigurationBuilder().Build();
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AppInsightsQuickPulseAuthApiKey, "SOME_API_KEY");
+
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
+
+            ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
+            setup.Configure(options);
+
+            Assert.Equal("SOME_API_KEY", options.QuickPulseAuthenticationApiKey);
+        }
+
+        [Fact]
+        public void Configure_QuickPulse_NullByDefault()
+        {
+            IConfiguration config = new ConfigurationBuilder().Build();
+
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
+
+            ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
+            setup.Configure(options);
+
+            Assert.Null(options.QuickPulseAuthenticationApiKey);
         }
 
         private class MockLoggerConfiguration : ILoggerProviderConfiguration<ApplicationInsightsLoggerProvider>
