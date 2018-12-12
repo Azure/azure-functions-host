@@ -13,7 +13,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "json", "json", "{3A4AF861-6
 	ProjectSection(SolutionItems) = preProject
 		schemas\json\extensions.json = schemas\json\extensions.json
 		schemas\json\function.json = schemas\json\function.json
-		schemas\json\host.json = schemas\json\host.json
 		schemas\json\README.md = schemas\json\README.md
 	EndProjectSection
 EndProject
