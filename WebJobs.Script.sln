@@ -427,7 +427,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "json", "json", "{3A4AF861-66F2-4C34-BB9E-69F0D392BB1A}"
 	ProjectSection(SolutionItems) = preProject
 		schemas\json\function.json = schemas\json\function.json
-		schemas\json\host.json = schemas\json\host.json
 		schemas\json\README.md = schemas\json\README.md
 	EndProjectSection
 EndProject
@@ -588,7 +587,7 @@ Global
 		{B845A7FC-BB23-4094-A589-F65984A07876} = {FD93A1ED-5AC4-4F9B-9087-E1C24320F36E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}
 		EnterpriseLibraryConfigurationToolBinariesPathV6 = packages\EnterpriseLibrary.TransientFaultHandling.6.0.1304.0\lib\portable-net45+win+wp8
+		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}
 	EndGlobalSection
 EndGlobal
