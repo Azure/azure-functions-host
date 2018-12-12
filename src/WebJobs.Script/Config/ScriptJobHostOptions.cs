@@ -6,10 +6,12 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
+using Microsoft.Azure.WebJobs.Hosting;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class ScriptJobHostOptions
+    public class ScriptJobHostOptions : IOptionsFormatter
     {
         private string _rootScriptPath;
         private ImmutableArray<string> _directorySnapshot;
@@ -122,5 +124,35 @@ namespace Microsoft.Azure.WebJobs.Script
         /// locally or via CLI.
         /// </summary>
         public bool IsSelfHost { get; set; }
+
+        public string Format()
+        {
+            StringWriter sw = new StringWriter();
+            using (JsonTextWriter writer = new JsonTextWriter(sw) { Formatting = Formatting.Indented })
+            {
+                writer.WriteStartObject();
+
+                writer.WritePropertyName(nameof(FileLoggingMode));
+                writer.WriteValue(FileLoggingMode.ToString());
+
+                writer.WritePropertyName(nameof(FileWatchingEnabled));
+                writer.WriteValue(FileWatchingEnabled);
+
+                writer.WritePropertyName(nameof(FunctionTimeout));
+                writer.WriteValue(FunctionTimeout);
+
+                writer.WritePropertyName(nameof(WatchDirectories));
+                writer.WriteStartArray();
+                foreach (string dir in WatchDirectories)
+                {
+                    writer.WriteValue(dir);
+                }
+                writer.WriteEndArray();
+
+                writer.WriteEndObject();
+            }
+
+            return sw.ToString();
+        }
     }
 }

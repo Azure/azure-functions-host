@@ -5,6 +5,7 @@ using System.IO.Abstractions;
 using System.Net.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Rpc;
@@ -73,6 +74,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Linux container services
             services.AddLinuxContainerServices();
+
+            // Options logging
+            services.AddTransient(typeof(IOptionsFactory<>), typeof(WebJobsOptionsFactory<>));
+            services.AddSingleton<IOptionsLoggingSource, OptionsLoggingSource>();
+            services.AddSingleton<IHostedService, OptionsLoggingService>();
 
             // ScriptSettingsManager should be replaced. We're setting this here as a temporary step until
             // broader configuaration changes are made:
