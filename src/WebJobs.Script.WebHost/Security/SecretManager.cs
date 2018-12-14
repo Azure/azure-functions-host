@@ -103,6 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _traceWriter.Verbose(Resources.TraceNonDecryptedHostSecretRefresh);
                         _logger?.LogDebug(Resources.TraceNonDecryptedHostSecretRefresh);
                         await PersistSecretsAsync(hostSecrets, null, true);
+                        hostSecrets = GenerateHostSecrets(hostSecrets);
                         await RefreshSecretsAsync(hostSecrets);
                     }
 
@@ -157,13 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     string messageGeneratoin = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
                     _traceWriter.Info(messageGeneratoin, traceProperties);
                     _logger?.LogInformation(messageGeneratoin);
-                    secrets = new FunctionSecrets
-                    {
-                        Keys = new List<Key>
-                        {
-                            GenerateKey(ScriptConstants.DefaultFunctionKeyName)
-                        }
-                    };
+                    secrets = GenerateFunctionSecrets();
 
                     await PersistSecretsAsync(secrets, functionName);
                 }
@@ -179,6 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _traceWriter.Info(messageNonDecrypted, traceProperties);
                     _logger?.LogInformation(messageNonDecrypted);
                     await PersistSecretsAsync(secrets, functionName, true);
+                    secrets = GenerateFunctionSecrets(secrets);
                     await RefreshSecretsAsync(secrets, functionName);
                 }
 
@@ -415,6 +411,45 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 },
                 SystemKeys = new List<Key>()
             };
+        }
+
+        private static HostSecrets GenerateHostSecrets(HostSecrets secrets)
+        {
+            if (secrets.MasterKey.IsEncrypted)
+            {
+                secrets.MasterKey.Value = GenerateSecret();
+            }
+            secrets.SystemKeys = RegenerateKeys(secrets.SystemKeys);
+            secrets.FunctionKeys = RegenerateKeys(secrets.FunctionKeys);
+            return secrets;
+        }
+
+        private FunctionSecrets GenerateFunctionSecrets()
+        {
+            return new FunctionSecrets
+            {
+                Keys = new List<Key>
+                {
+                    GenerateKey(ScriptConstants.DefaultFunctionKeyName)
+                }
+            };
+        }
+
+        private static FunctionSecrets GenerateFunctionSecrets(FunctionSecrets secrets)
+        {
+            secrets.Keys = RegenerateKeys(secrets.Keys);
+            return secrets;
+        }
+        private static IList<Key> RegenerateKeys(IList<Key> list)
+        {
+            return list.Select(k =>
+            {
+                if (k.IsEncrypted)
+                {
+                    k.Value = GenerateSecret();
+                }
+                return k;
+            }).ToList();
         }
 
         private Task RefreshSecretsAsync<T>(T secrets, string keyScope = null) where T : ScriptSecrets
