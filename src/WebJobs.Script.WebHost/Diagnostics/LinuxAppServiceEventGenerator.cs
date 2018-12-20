@@ -56,6 +56,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName,
             string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
+            var logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory);
+            WriteEvent(logger, $"{executionStage}");
         }
 
         private static void WriteEvent(LinuxAppServiceFileLogger logger, string evt)
