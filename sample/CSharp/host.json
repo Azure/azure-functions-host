@@ -10,7 +10,7 @@
     },
     "functionTimeout": "00:05:00",
     "logging": {
-        "fileLoggingMode": "always"        
+        "fileLoggingMode": "always"
     },
     "extensions": {
         "sendGrid": {
@@ -25,5 +25,9 @@
             "visibilityTimeout": "00:00:10",
             "maxDequeueCount": 3
         }
+    },
+    "extensionBundle": {
+        "id": "Microsoft.Azure.Functions.ExtensionBundle",
+        "version": "1.0.0"
     }
 }

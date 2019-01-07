@@ -11,6 +11,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NuGet.Packaging;
+using NuGet.Versioning;
 using static System.Environment;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
@@ -45,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             private static readonly string[] WellKnownHostJsonProperties = new[]
             {
                 "version", "functionTimeout", "functions", "http", "watchDirectories", "queues", "serviceBus",
-                "eventHub", "singleton", "logging", "aggregator", "healthMonitor"
+                "eventHub", "singleton", "logging", "aggregator", "healthMonitor", "extensionBundle"
             };
 
             private readonly HostJsonFileConfigurationSource _configurationSource;
@@ -163,6 +165,29 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 {
                     throw new HostConfigurationException($"The {ScriptConstants.HostMetadataFileName} file is missing the required 'version' property. See https://aka.ms/functions-hostjson for steps to migrate the configuration file.");
                 }
+
+                if (hostConfigObject["extensionBundle"] != null && !IsBundleConfigValid(hostConfigObject["extensionBundle"]))
+                {
+                    throw new HostConfigurationException($"The value of extensionBundle property in {ScriptConstants.HostMetadataFileName} is invalid. See https://aka.ms/functions-hostjson for more information");
+                }
+            }
+
+            private bool IsBundleConfigValid(JToken extensionConfig)
+            {
+                if (!extensionConfig.HasValues)
+                {
+                    return false;
+                }
+
+                var bundleVersion = extensionConfig?["version"]?.Value<string>();
+                var bundleName = extensionConfig?["id"].Value<string>();
+
+                var isValidVersion = bundleVersion != null &&
+                                    !(bundleVersion.StartsWith("(") && bundleVersion.EndsWith(")") && !bundleVersion.Contains(","))
+                                     && VersionRange.TryParse(bundleVersion.ToString(), out VersionRange version);
+                var isValidName = bundleName != null && PackageIdValidator.IsValidPackageId(bundleName);
+
+                return isValidName && isValidVersion;
             }
 
             internal JObject LoadHostConfig(string configFilePath)

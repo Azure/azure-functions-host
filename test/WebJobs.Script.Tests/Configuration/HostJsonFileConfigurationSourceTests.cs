@@ -71,6 +71,87 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(LogLevel.Information, log.Level);
         }
 
+        [Theory]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'extensionBundle': {
+                        'id': null,
+                        'version': '1.0.0'
+                        }
+                    }")]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'extensionBundle': {
+                        'id': 'Microsoft.Azure.Functions.ExtensionBundle',
+                        'version': null
+                        }
+                    }")]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'extensionBundle': {
+                        'id': 'Microsoft,,',
+                        'version': '1.0.0'
+                        }
+                    }")]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'extensionBundle': {
+                        'id': 'Microsoft.Azure.Functions.ExtensionBundle',
+                        'version': '(1.0.0)'
+                        }
+                    }")]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'extensionBundle': {
+                        'id': 'Microsoft.Azure.Functions.ExtensionBundle',
+                        'version': '(1.0.0'
+                        }
+                    }")]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'extensionBundle': {
+                        'id': 'Microsoft.Azure.Functions.ExtensionBundle',
+                        'version': 'random'
+                        }
+                    }")]
+        public void InvalidExtensionConfiguration_ThrowsException(string hostJsonContent)
+        {
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            Assert.True(File.Exists(_hostJsonFile));
+
+            var ex = Assert.Throws<HostConfigurationException>(() => BuildHostJsonConfiguration());
+            Assert.StartsWith("The value of extensionBundle property in host.json is invalid.", ex.Message);
+        }
+
+        [Theory]
+        [InlineData(@"{
+                    'version': '2.0',
+                    }")]
+        public void MissingExtenstionConfig_DoesNotThrowException(string hostJsonContent)
+        {
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            Assert.True(File.Exists(_hostJsonFile));
+            var ex = Record.Exception(() => BuildHostJsonConfiguration());
+            Assert.Null(ex);
+        }
+
+        [Theory]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'extensionBundle': {
+                        'id': 'Microsoft.Azure.Functions.ExtensionBundle',
+                        'version': '1.0.0'
+                        }
+                    }")]
+        public void DefaultExtenstionConfig_LoadsConfig(string hostJsonContent)
+        {
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            Assert.True(File.Exists(_hostJsonFile));
+            IConfiguration config = BuildHostJsonConfiguration();
+            Assert.Equal(config["AzureFunctionsJobHost:extensionBundle:id"], "Microsoft.Azure.Functions.ExtensionBundle");
+            Assert.Equal(config["AzureFunctionsJobHost:extensionBundle:version"], "1.0.0");
+        }
+
         [Fact]
         public void MissingVersion_ThrowsException()
         {
