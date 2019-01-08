@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public static IWebHostBuilder CreateWebHostBuilder(string[] args = null)
         {
             return AspNetCore.WebHost.CreateDefaultBuilder(args)
-                .UseKestrel(o =>
+                .ConfigureKestrel(o =>
                 {
                     o.Limits.MaxRequestBodySize = 104857600;
                 })
