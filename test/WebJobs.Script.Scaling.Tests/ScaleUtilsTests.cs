@@ -115,15 +115,18 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
         }
 
         [Theory]
-        [MemberData(nameof(GetAndValidateTokenData))]
-        public void GetAndValidateTokenTests(DateTime expiredUtc, bool expected)
+        [InlineData(0, true)]
+        [InlineData(-4, true)]
+        [InlineData(-6, false)]
+        public void GetAndValidateTokenTests(int nowOffsetMinutes, bool expectValid)
         {
+            var expiredUtc = DateTime.UtcNow.AddMinutes(nowOffsetMinutes);
             var encryptionKey = GenerateEncryptionKey();
             using (new TestScopedEnvironmentVariable("WEBSITE_AUTH_ENCRYPTION_KEY", Convert.ToBase64String(encryptionKey)))
             {
                 var token = ScaleUtils.GetToken(expiredUtc);
 
-                if (expected)
+                if (expectValid)
                 {
                     // test
                     ScaleUtils.ValidateToken(token);
@@ -136,16 +139,6 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
                     // Assert
                     Assert.Contains("expired", exception.Message);
                 }
-            }
-        }
-
-        public static IEnumerable<object[]> GetAndValidateTokenData
-        {
-            get
-            {
-                yield return new object[] { DateTime.UtcNow, true };
-                yield return new object[] { DateTime.UtcNow.AddMinutes(-4), true };
-                yield return new object[] { DateTime.UtcNow.AddMinutes(-6), false };
             }
         }
 
