@@ -22,7 +22,7 @@ for:
   - sh: >-
       mkdir .dotnet && 
       chmod +x dotnet-install.sh && 
-      ./dotnet-install.sh --version 2.1.400 --install-dir .dotnet && 
+      ./dotnet-install.sh --version 2.2.102 --install-dir .dotnet && 
       PATH=".dotnet:"$PATH && dotnet --info 
   build_script:
   - sh: dotnet build WebJobs.Script.sln
