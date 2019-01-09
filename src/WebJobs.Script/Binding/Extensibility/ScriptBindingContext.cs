@@ -112,10 +112,9 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         /// <returns>The metadata value.</returns>
         public TValue GetMetadataValue<TValue>(string name, TValue defaultValue = default(TValue))
         {
-            JToken value = null;
             try
             {
-                if (Metadata.TryGetValue(name, StringComparison.OrdinalIgnoreCase, out value))
+                if (Metadata.TryGetValue(name, StringComparison.OrdinalIgnoreCase, out JToken value))
                 {
                     return value.Value<TValue>();
                 }

@@ -222,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             var currentHost = _host;
             Task stopTask = Orphan(currentHost, _logger, cancellationToken);
-            Task result = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(10)));
+            Task result = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(10), cancellationToken));
 
             if (result != stopTask)
             {
@@ -346,7 +346,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private bool ShutdownHostIfUnhealthy()
         {
-            if (ShouldMonitorHostHealth && _healthCheckWindow.GetEvents().Where(isHealthy => !isHealthy).Count() > _healthMonitorOptions.Value.HealthCheckThreshold)
+            if (ShouldMonitorHostHealth && _healthCheckWindow.GetEvents().Count(isHealthy => !isHealthy) > _healthMonitorOptions.Value.HealthCheckThreshold)
             {
                 // if the number of times the host has been unhealthy in
                 // the current time window exceeds the threshold, recover by

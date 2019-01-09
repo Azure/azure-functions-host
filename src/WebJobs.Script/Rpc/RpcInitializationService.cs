@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             try
             {
-                _logger.LogInformation("Initializaing RpcServer");
+                _logger.LogInformation("Initializing RpcServer");
                 await _rpcServer.StartAsync();
             }
             catch (Exception grpcInitEx)

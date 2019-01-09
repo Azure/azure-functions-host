@@ -19,15 +19,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class FunctionDispatcher : IFunctionDispatcher
     {
+        private readonly IMetricsLogger _metricsLogger;
+        private readonly ILoggerFactory _loggerFactory;
         private IScriptEventManager _eventManager;
-        private IMetricsLogger _metricsLogger;
         private IEnumerable<WorkerConfig> _workerConfigs;
         private CreateChannel _channelFactory;
         private ILanguageWorkerChannelManager _languageWorkerChannelManager;
         private ConcurrentDictionary<string, LanguageWorkerState> _workerStates = new ConcurrentDictionary<string, LanguageWorkerState>();
         private IDisposable _workerErrorSubscription;
         private IList<IDisposable> _workerStateSubscriptions = new List<IDisposable>();
-        private ILoggerFactory _loggerFactory;
         private ScriptJobHostOptions _scriptOptions;
         private bool disposedValue = false;
 
@@ -127,8 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void WorkerError(WorkerErrorEvent workerError)
         {
-            LanguageWorkerState erroredWorkerState;
-            if (_workerStates.TryGetValue(workerError.Language, out erroredWorkerState))
+            if (_workerStates.TryGetValue(workerError.Language, out LanguageWorkerState erroredWorkerState))
             {
                 erroredWorkerState.Errors.Add(workerError.Exception);
                 bool isPreInitializedChannel = _languageWorkerChannelManager.ShutdownChannelIfExists(workerError.Language);
