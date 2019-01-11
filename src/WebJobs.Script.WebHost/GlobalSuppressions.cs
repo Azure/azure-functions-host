@@ -114,4 +114,6 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.WebHost.WebHostResolver.#CreateDefaultLoggerFactory(Microsoft.Azure.WebJobs.Script.WebHost.WebHostSettings)")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.FunctionsSystemLogsEventSource.#SetActivityId(System.String)")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.WebHost.Controllers.AdminController.#Ping()")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.WebHost.Security.SimpleWebTokenHelper.#Decrypt(System.Byte[],System.String)")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.WebHost.Security.SimpleWebTokenHelper.#Decrypt(System.Byte[],System.String)")]
 

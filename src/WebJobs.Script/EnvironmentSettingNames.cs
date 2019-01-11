@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
         public const string ProxySiteExtensionEnabledKey = "ROUTING_EXTENSION_VERSION";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
+        public const string WebsiteAuthEncryptionKey = "WEBSITE_AUTH_ENCRYPTION_KEY";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to

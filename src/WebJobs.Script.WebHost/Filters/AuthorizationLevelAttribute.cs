@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
     public class AuthorizationLevelAttribute : AuthorizationFilterAttribute
     {
         public const string FunctionsKeyHeaderName = "x-functions-key";
+        public const string ArmTokenHeaderName = "x-ms-site-restricted-token";
 
         public AuthorizationLevelAttribute(AuthorizationLevel level)
         {
@@ -48,20 +49,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 throw new ArgumentNullException("actionContext");
             }
 
+            var request = actionContext.Request;
+
             AuthorizationLevel requestAuthorizationLevel = actionContext.Request.GetAuthorizationLevel();
 
             // If the request has not yet been authenticated, authenticate it
-            var request = actionContext.Request;
             if (requestAuthorizationLevel == AuthorizationLevel.Anonymous)
             {
-                // determine the authorization level for the function and set it
-                // as a request property
-                var secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
+                string armToken = GetArmTokenHeader(actionContext);
 
-                var result = await GetAuthorizationResultAsync(request, secretManager, EvaluateKeyMatch, KeyName);
-                requestAuthorizationLevel = result.AuthorizationLevel;
-                request.SetAuthorizationLevel(result.AuthorizationLevel);
-                request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestKeyNameKey, result.KeyName);
+                if (armToken != null)
+                {
+                    if (SimpleWebTokenHelper.TryValidateToken(armToken, DateTime.UtcNow))
+                    {
+                        request.SetAuthorizationLevel(AuthorizationLevel.Admin);
+                    }
+                }
+                else
+                {
+                    // determine the authorization level for the function and set it
+                    // as a request property
+                    var secretManager = actionContext.ControllerContext.Configuration.DependencyResolver.GetService<ISecretManager>();
+
+                    var result = await GetAuthorizationResultAsync(request, secretManager, EvaluateKeyMatch, KeyName);
+                    requestAuthorizationLevel = result.AuthorizationLevel;
+                    request.SetAuthorizationLevel(result.AuthorizationLevel);
+                    request.SetProperty(ScriptConstants.AzureFunctionsHttpRequestKeyNameKey, result.KeyName);
+                }
             }
 
             if (request.IsAuthDisabled() ||
@@ -76,6 +90,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             {
                 actionContext.Response = new HttpResponseMessage(HttpStatusCode.Unauthorized);
             }
+        }
+
+        internal static string GetArmTokenHeader(HttpActionContext actionContext)
+        {
+            if (actionContext.Request.Headers.TryGetValues(ArmTokenHeaderName, out IEnumerable<string> values))
+            {
+                return values.First();
+            }
+
+            return null;
         }
 
         protected virtual string EvaluateKeyMatch(IDictionary<string, string> secrets, string keyName, string keyValue) => GetKeyMatchOrNull(secrets, keyName, keyValue);
