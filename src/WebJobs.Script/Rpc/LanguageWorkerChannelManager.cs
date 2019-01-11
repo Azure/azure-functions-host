@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void ShutdownChannels()
         {
-            foreach (string runtime in _workerChannels.Keys)
+            foreach (string runtime in _workerChannels.Keys.ToList())
             {
                 _logger.LogInformation("Shutting down language worker channel for runtime:{runtime}", runtime);
                 _workerChannels[runtime]?.Dispose();
