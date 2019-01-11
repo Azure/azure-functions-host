@@ -28,9 +28,9 @@ public class Function {
         if (name == null) {
             return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body("Please pass a name on the query string or in the request body").build();
         }
-        if (readEnv == null) {
+		if (readEnv == null ) {
             return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body("AzureWebJobsStorage is empty").build();
-        } 
+        }
         return request.createResponseBuilder(HttpStatus.OK).body("Hello, " + name).build();
     }
 }

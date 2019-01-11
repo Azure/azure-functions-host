@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -117,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public async Task SpecializeAsync()
         {
-            _logger.LogInformation($"Starting language worker channels specialization");
+            _logger.LogInformation(Resources.LanguageWorkerChannelSpecializationTrace);
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
             ILanguageWorkerChannel languageWorkerChannel = GetChannel(_workerRuntime);
             if (_workerRuntime != null && languageWorkerChannel != null)
