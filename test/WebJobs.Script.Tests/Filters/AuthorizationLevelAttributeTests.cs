@@ -3,9 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
@@ -14,6 +17,7 @@ using System.Web.Http.Dependencies;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -391,6 +395,76 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Null(actionContext.Response);
         }
 
+        [Fact]
+        public async Task OnAuthorization_Arm_Success_SetsAdminAuthLevel()
+        {
+            byte[] key = GenerateKeyBytes();
+            string keyString = GenerateKeyHexString(key);
+            string token = CreateSimpleWebToken(DateTime.UtcNow.AddMinutes(5), key);
+
+            var attribute = new AuthorizationLevelAttribute(AuthorizationLevel.Admin);
+
+            HttpRequestMessage request = new HttpRequestMessage();
+            request.Headers.Add(AuthorizationLevelAttribute.ArmTokenHeaderName, token);
+            var actionContext = CreateActionContext(typeof(TestController).GetMethod(nameof(TestController.Get)), HttpConfig);
+            actionContext.ControllerContext.Request = request;
+
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebsiteAuthEncryptionKey, keyString))
+            {
+                await attribute.OnAuthorizationAsync(actionContext, CancellationToken.None);
+            }
+
+            Assert.Null(actionContext.Response);
+            Assert.Equal(AuthorizationLevel.Admin, actionContext.Request.GetAuthorizationLevel());
+        }
+
+        [Fact]
+        public async Task OnAuthorization_Arm_Expired_ReturnsUnauthorized()
+        {
+            byte[] key = GenerateKeyBytes();
+            string keyString = GenerateKeyHexString(key);
+            string token = CreateSimpleWebToken(DateTime.UtcNow.AddMinutes(-5), key);
+
+            var attribute = new AuthorizationLevelAttribute(AuthorizationLevel.Admin);
+
+            HttpRequestMessage request = new HttpRequestMessage();
+            request.Headers.Add(AuthorizationLevelAttribute.ArmTokenHeaderName, token);
+            var actionContext = CreateActionContext(typeof(TestController).GetMethod(nameof(TestController.Get)), HttpConfig);
+            actionContext.ControllerContext.Request = request;
+
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebsiteAuthEncryptionKey, keyString))
+            {
+                await attribute.OnAuthorizationAsync(actionContext, CancellationToken.None);
+            }
+
+            Assert.Equal(HttpStatusCode.Unauthorized, actionContext.Response.StatusCode);
+            Assert.Equal(AuthorizationLevel.Anonymous, actionContext.Request.GetAuthorizationLevel());
+        }
+
+        [Fact]
+        public async Task OnAuthorization_Arm_Invalid_ReturnsUnauthorized()
+        {
+            byte[] key = GenerateKeyBytes();
+            string keyString = GenerateKeyHexString(key);
+            string token = CreateSimpleWebToken(DateTime.UtcNow.AddMinutes(5), key);
+            token = token.Substring(0, token.Length - 5);
+
+            var attribute = new AuthorizationLevelAttribute(AuthorizationLevel.Admin);
+
+            HttpRequestMessage request = new HttpRequestMessage();
+            request.Headers.Add(AuthorizationLevelAttribute.ArmTokenHeaderName, token);
+            var actionContext = CreateActionContext(typeof(TestController).GetMethod(nameof(TestController.Get)), HttpConfig);
+            actionContext.ControllerContext.Request = request;
+
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebsiteAuthEncryptionKey, keyString))
+            {
+                await attribute.OnAuthorizationAsync(actionContext, CancellationToken.None);
+            }
+
+            Assert.Equal(HttpStatusCode.Unauthorized, actionContext.Response.StatusCode);
+            Assert.Equal(AuthorizationLevel.Anonymous, actionContext.Request.GetAuthorizationLevel());
+        }
+
         protected static HttpActionContext CreateActionContext(MethodInfo action, System.Web.Http.HttpConfiguration config = null)
         {
             config = config ?? new System.Web.Http.HttpConfiguration();
@@ -404,6 +478,60 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             controllerContext.Configuration = config;
 
             return actionContext;
+        }
+
+        public static byte[] GenerateKeyBytes()
+        {
+            using (var aes = new AesManaged())
+            {
+                aes.GenerateKey();
+                return aes.Key;
+            }
+        }
+
+        public static string GenerateKeyHexString(byte[] key = null)
+        {
+            return BitConverter.ToString(key ?? GenerateKeyBytes()).Replace("-", string.Empty);
+        }
+
+        private static string CreateSimpleWebToken(DateTime validUntil, byte[] key = null) => EncryptSimpleWebToken($"exp={validUntil.Ticks}", key);
+
+        private static string EncryptSimpleWebToken(string value, byte[] key = null)
+        {
+            if (key == null)
+            {
+                key = SimpleWebTokenHelper.GetEncryptionKey(EnvironmentSettingNames.WebsiteAuthEncryptionKey);
+            }
+
+            using (var aes = new AesManaged { Key = key })
+            {
+                // IV is always generated for the key every time
+                aes.GenerateIV();
+                var input = Encoding.UTF8.GetBytes(value);
+                var iv = Convert.ToBase64String(aes.IV);
+
+                using (var encrypter = aes.CreateEncryptor(aes.Key, aes.IV))
+                using (var cipherStream = new MemoryStream())
+                {
+                    using (var cryptoStream = new CryptoStream(cipherStream, encrypter, CryptoStreamMode.Write))
+                    using (var binaryWriter = new BinaryWriter(cryptoStream))
+                    {
+                        binaryWriter.Write(input);
+                        cryptoStream.FlushFinalBlock();
+                    }
+
+                    // return {iv}.{swt}.{sha236(key)}
+                    return string.Format("{0}.{1}.{2}", iv, Convert.ToBase64String(cipherStream.ToArray()), GetSHA256Base64String(aes.Key));
+                }
+            }
+        }
+
+        private static string GetSHA256Base64String(byte[] key)
+        {
+            using (var sha256 = new SHA256Managed())
+            {
+                return Convert.ToBase64String(sha256.ComputeHash(key));
+            }
         }
 
         public class TestController : ApiController
