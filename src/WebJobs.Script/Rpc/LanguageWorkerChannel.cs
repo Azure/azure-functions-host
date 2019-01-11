@@ -278,13 +278,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 HandleWorkerError(exc);
                 return;
             }
-            if (_functionRegistrations == null)
+
+            RpcChannelReadyEvent readyEvent = new RpcChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
+            _eventManager.Publish(readyEvent);
+
+            if (_functionRegistrations != null)
             {
-                RpcChannelReadyEvent readyEvent = new RpcChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
-                _eventManager.Publish(readyEvent);
-                return;
+                RegisterFunctions(_functionRegistrations);
             }
-            RegisterFunctions(_functionRegistrations);
         }
 
         public void RegisterFunctions(IObservable<FunctionRegistrationContext> functionRegistrations)
