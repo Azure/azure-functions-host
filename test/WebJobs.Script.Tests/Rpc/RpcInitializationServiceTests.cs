@@ -85,9 +85,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             IRpcServer testRpcServer = new TestRpcServer();
             var mockEnvironment = new Mock<IEnvironment>();
+            string offlineFilePath = null;
             try
             {
-                var offlineFilePath = TestHelpers.CreateOfflineFile();
+                offlineFilePath = TestHelpers.CreateOfflineFile();
                 _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
                 await _rpcInitializationService.StartAsync(CancellationToken.None);
                 _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
