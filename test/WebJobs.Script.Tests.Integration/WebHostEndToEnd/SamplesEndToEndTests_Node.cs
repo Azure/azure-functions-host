@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -424,6 +425,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             response = await _fixture.Host.HttpClient.SendAsync(request);
             timestamp = response.Headers.GetValues("Shared-Module").First();
             Assert.Equal(initialTimestamp, timestamp);
+        }
+
+        [Fact]
+        public async Task NodeProcessCount_SameAfterFileChange()
+        {
+            // Count number of node processes before restart
+            int initialProcessCount = GetProcessCountByName("node");
+            await SharedDirectory_ReloadsOnFileChange();
+            // Count number of node processes after restart
+            int proccessCountAfterReload = GetProcessCountByName("node");
+            Assert.Equal(proccessCountAfterReload, initialProcessCount);
+        }
+        private static int GetProcessCountByName(string processName)
+        {
+            return Process.GetProcessesByName(processName).Length;
         }
 
         [Fact]
