@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3872")]
+        [Fact]
         public void InitializeAsync_WorkerRuntime_Node_DoNotInitialize_JavaWorker()
         {
             var javaChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
