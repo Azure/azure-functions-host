@@ -149,6 +149,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                     // a custom route is specified
                     template = (string)value;
                 }
+                else if (string.IsNullOrEmpty(routePrefix))
+                {
+                    template = functionMetadata.Name;
+                }
                 else
                 {
                     // form the default function route
