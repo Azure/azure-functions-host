@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Your function must contain a single public method, a public method named &apos;Run&apos;, or a public method atching the name specified in the &apos;entryPoint&apos; metadata property..
+        ///   Looks up a localized string similar to Your function must contain a single public method, a public method named &apos;Run&apos;, or a public method matching the name specified in the &apos;entryPoint&apos; metadata property..
         /// </summary>
         internal static string DotNetFunctionEntryPointRulesMessage {
             get {
