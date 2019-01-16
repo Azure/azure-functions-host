@@ -368,7 +368,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// <param name="instance">The <see cref="IHost"/> instance to remove</param>
         private async Task Orphan(IHost instance, ILogger logger, CancellationToken cancellationToken = default)
         {
-            var scriptHost = (ScriptHost)instance.Services.GetService<ScriptHost>();
+            var scriptHost = (ScriptHost)instance?.Services.GetService<ScriptHost>();
             if (scriptHost != null)
             {
                 scriptHost.HostInitializing -= OnHostInitializing;
