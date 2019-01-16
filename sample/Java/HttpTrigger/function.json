@@ -1,16 +1,14 @@
 {
   "scriptFile" : "HttpTrigger-1.0-SNAPSHOT.jar",
-  "entryPoint" : "Microsoft.Azure.WebJobs.Script.Tests.EndToEnd.Function.HttpTrigger",
+  "entryPoint" : "Microsoft.Azure.WebJobs.Script.Tests.EndToEnd.Function.run",
   "bindings" : [ {
     "type" : "httpTrigger",
-    "name" : "req",
     "direction" : "in",
-    "webHookType" : "NONE",
-    "authLevel" : "anonymous",
-    "methods" : [ "GET", "POST" ]
+    "methods" : [ "GET", "POST" ],
+    "name" : "req"
   }, {
     "type" : "http",
-    "name" : "$return",
-    "direction" : "out"
+    "direction" : "out",
+    "name" : "$return"
   } ]
 }

@@ -120,4 +120,7 @@
   <data name="DotNetFunctionEntryPointRulesMessage" xml:space="preserve">
     <value>Your function must contain a single public method, a public method named 'Run', or a public method matching the name specified in the 'entryPoint' metadata property.</value>
   </data>
+  <data name="LanguageWorkerChannelSpecializationTrace" xml:space="preserve">
+    <value>Starting language worker channel specialization</value>
+  </data>
 </root>

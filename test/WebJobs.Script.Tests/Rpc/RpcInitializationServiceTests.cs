@@ -19,25 +19,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
         private Mock<ILanguageWorkerChannelManager> _mockLanguageWorkerChannelManager;
         private LoggerFactory _loggerFactory;
-        private string _rootPath;
 
         public RpcInitializationServiceTests()
         {
-            _rootPath = Path.GetTempPath();
             _mockLanguageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
             _loggerFactory = new LoggerFactory();
 
             var applicationHostOptions = new ScriptApplicationHostOptions
             {
                 IsSelfHost = true,
-                ScriptPath = _rootPath
+                ScriptPath = Path.GetTempPath()
             };
             _optionsMonitor = TestHelpers.CreateOptionsMonitor(applicationHostOptions);
             _mockLanguageWorkerChannelManager.Setup(m => m.InitializeChannelAsync(It.IsAny<string>()))
                                              .Returns(Task.CompletedTask);
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
+        [Fact]
         public async Task RpcInitializationService_Initializes_RpcServerAndChannels_PlaceHolderMode()
         {
             IRpcServer testRpcServer = new TestRpcServer();
@@ -49,9 +47,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             await _rpcInitializationService.StartAsync(CancellationToken.None);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Once);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
+            await testRpcServer.ShutdownAsync();
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
+        [Fact]
         public async Task RpcInitializationService_LinuxConsumption_Initializes_RpcServer()
         {
             IRpcServer testRpcServer = new TestRpcServer();
@@ -63,9 +62,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             await _rpcInitializationService.StartAsync(CancellationToken.None);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
+            await testRpcServer.ShutdownAsync();
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
+        [Fact]
         public async Task RpcInitializationService_LinuxAppService_Initializes_RpcServer()
         {
             IRpcServer testRpcServer = new TestRpcServer();
@@ -77,28 +77,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             await _rpcInitializationService.StartAsync(CancellationToken.None);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
+            await testRpcServer.ShutdownAsync();
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
+        [Fact]
         public async Task RpcInitializationService_AppOffline()
         {
             IRpcServer testRpcServer = new TestRpcServer();
             var mockEnvironment = new Mock<IEnvironment>();
-            var offlineFilePath = TestHelpers.CreateOfflineFile(_rootPath);
+            string offlineFilePath = null;
             try
             {
+                offlineFilePath = TestHelpers.CreateOfflineFile();
                 _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer, _mockLanguageWorkerChannelManager.Object, _loggerFactory);
                 await _rpcInitializationService.StartAsync(CancellationToken.None);
                 _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
                 Assert.DoesNotContain("testserver", testRpcServer.Uri.ToString());
+                await testRpcServer.ShutdownAsync();
             }
             finally
             {
-                DeleteTestFile(offlineFilePath);
+                TestHelpers.DeleteTestFile(offlineFilePath);
             }
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
+        [Fact]
         public async Task RpcInitializationService_Initializes_WorkerRuntime_Set()
         {
             IRpcServer testRpcServer = new TestRpcServer();
@@ -110,9 +113,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             await _rpcInitializationService.StartAsync(CancellationToken.None);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName), Times.Once);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
+            await testRpcServer.ShutdownAsync();
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
+        [Fact]
         public async Task RpcInitializationService_Initializes_WorkerRuntime_Set_RuntimeNotSupported()
         {
             IRpcServer testRpcServer = new TestRpcServer();
@@ -124,9 +128,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName), Times.Never);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
+            await testRpcServer.ShutdownAsync();
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/3868")]
+        [Fact]
         public async Task RpcInitializationService_Initializes_WorkerRuntime_NotSet_NoPlaceholder()
         {
             IRpcServer testRpcServer = new TestRpcServer();
@@ -138,21 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
-        }
-
-        private static void DeleteTestFile(string testDir)
-        {
-            if (Directory.Exists(testDir))
-            {
-                try
-                {
-                    Directory.Delete(testDir);
-                }
-                catch
-                {
-                    // best effort cleanup
-                }
-            }
+            await testRpcServer.ShutdownAsync();
         }
     }
 }

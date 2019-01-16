@@ -15,11 +15,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         public Task KillAsync()
         {
+            _testUri = null;
             return Task.CompletedTask;
         }
 
         public Task ShutdownAsync()
         {
+            _testUri = null;
             return Task.CompletedTask;
         }
 

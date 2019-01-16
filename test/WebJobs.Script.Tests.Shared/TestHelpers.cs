@@ -261,13 +261,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
         }
 
-        public static string CreateOfflineFile(string rootPath)
+        public static string CreateOfflineFile()
         {
             // create a test offline file
             var offlineFilePath = Path.Combine(Path.GetTempPath(), ScriptConstants.AppOfflineFileName);
             string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.{ScriptConstants.AppOfflineFileName}", typeof(HttpException).Assembly);
             File.WriteAllText(offlineFilePath, content);
             return offlineFilePath;
+        }
+
+        public static void DeleteTestFile(string testFile)
+        {
+            if (File.Exists(testFile))
+            {
+                try
+                {
+                    File.Delete(testFile);
+                }
+                catch
+                {
+                    // best effort cleanup
+                }
+            }
         }
 
         public static WorkerDescription GetTestWorkerDescription(string language, string extension)

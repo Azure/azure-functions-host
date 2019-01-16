@@ -82,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
             Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("Starting language worker channel specialization")));
             Assert.Equal(3, logLines.Count(p => p.Contains($"Starting Host (HostId={_expectedHostId}")));
             Assert.Equal(3, logLines.Count(p => p.Contains($"Loading functions metadata")));
             Assert.Equal(2, logLines.Count(p => p.Contains($"1 functions loaded")));

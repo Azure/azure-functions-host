@@ -68,5 +68,14 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("DotNetFunctionEntryPointRulesMessage", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Starting language worker channel specialization.
+        /// </summary>
+        internal static string LanguageWorkerChannelSpecializationTrace {
+            get {
+                return ResourceManager.GetString("LanguageWorkerChannelSpecializationTrace", resourceCulture);
+            }
+        }
     }
 }
