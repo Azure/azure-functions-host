@@ -14,8 +14,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -52,21 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
                     loggingBuilder.Services.AddSingleton<ILoggerProvider, UserLogMetricsLoggerProvider>();
-                    loggingBuilder.Services.AddSingleton<ILoggerProvider>(services =>
-                    {
-                        IEnvironment environment = services.GetService<IEnvironment>();
-                        IScriptWebHostEnvironment hostEnvironment = services.GetService<IScriptWebHostEnvironment>();
-
-                        if (!hostEnvironment.InStandbyMode &&
-                            !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)))
-                        {
-                            IEventGenerator eventGenerator = services.GetService<IEventGenerator>();
-                            IOptions<ScriptJobHostOptions> options = services.GetService<IOptions<ScriptJobHostOptions>>();
-                            return new AzureMonitorDiagnosticLoggerProvider(options, eventGenerator, environment);
-                        }
-
-                        return NullLoggerProvider.Instance;
-                    });
 
                     ConfigureRegisteredBuilders(loggingBuilder, rootServiceProvider);
                 })
