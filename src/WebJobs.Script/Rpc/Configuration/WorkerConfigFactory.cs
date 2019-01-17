@@ -131,8 +131,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var languageSection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
                 workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
 
-                descriptionProfiles = GetWorkerDescriptionProfiles(workerConfig);
-
                 GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
 
@@ -171,8 +169,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return descriptionProfiles;
         }
 
-        private static WorkerDescription GetWorkerDescriptionFromProfiles(string key, Dictionary<string, WorkerDescription> descriptionProfiles, WorkerDescription defaultWorkerDescription)
+        public static WorkerDescription GetWorkerDescriptionFromProfiles(string key, JObject workerConfig, WorkerDescription defaultWorkerDescription)
         {
+            Dictionary<string, WorkerDescription> descriptionProfiles = GetWorkerDescriptionProfiles(workerConfig);
             WorkerDescription profileDescription = null;
             if (descriptionProfiles.TryGetValue(key, out profileDescription))
             {

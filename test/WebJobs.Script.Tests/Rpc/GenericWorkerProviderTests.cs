@@ -194,35 +194,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
-        public void ReadWorkerProviderFromConfig_AddAppSvcProfile_ReturnsAppServiceEnvDescription()
-        {
-            var expectedArguments = new string[] { "-v", "verbose" };
-            var configs = new List<TestLanguageWorkerConfig>() { MakeTestConfig(testLanguage, expectedArguments, false, LanguageWorkerConstants.WorkerDescriptionAppServiceEnvProfileName) };
-            var testLogger = new TestLogger(testLanguage);
-
-            WorkerDescription testWorkerDescription = GetTestDefaultWorkerDescription(testLanguage, expectedArguments);
-            // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
-            IEnumerable<IWorkerProvider> providers = TestReadWorkerProviderFromConfig(configs, testLogger, null, null, true);
-            Assert.Single(providers);
-
-            IWorkerProvider worker = providers.FirstOrDefault();
-            var actualWorkerDescription = worker.GetDescription();
-
-            Assert.Equal("myFooPath", worker.GetDescription().DefaultExecutablePath);
-            Assert.Equal(testWorkerDescription.DefaultWorkerPath, actualWorkerDescription.DefaultWorkerPath);
-            Assert.False(testWorkerDescription.Extensions.Except(actualWorkerDescription.Extensions).Any());
-            Assert.Equal($"{testLanguage}", worker.GetDescription().Language);
-            if (testWorkerDescription.Arguments == null)
-            {
-                Assert.Null(actualWorkerDescription.Arguments);
-            }
-            else
-            {
-                Assert.False(testWorkerDescription.Arguments.Except(actualWorkerDescription.Arguments).Any());
-            }
-        }
-
-        [Fact]
         public void ReadWorkerProviderFromConfig_AddProfile_ReturnsDefaultDescription()
         {
             var expectedArguments = new string[] { "-v", "verbose" };
@@ -360,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         private static JObject GetTestWorkerConfig(string language, string[] arguments, bool invalid, string profileName, bool emptyWorkerPath = false)
         {
-            WorkerDescription description = GetTestDefaultWorkerDescription(language, arguments);
+            WorkerDescription description = RpcTestUtils.GetTestDefaultWorkerDescription(language, arguments, testWorkerPathInWorkerConfig);
 
             JObject config = new JObject();
             config[LanguageWorkerConstants.WorkerDescription] = JObject.FromObject(description);
@@ -388,18 +359,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             }
 
             return config;
-        }
-
-        private static WorkerDescription GetTestDefaultWorkerDescription(string language, string[] arguments)
-        {
-            return new WorkerDescription()
-            {
-                DefaultExecutablePath = "foopath",
-                DefaultWorkerPath = $"{testWorkerPathInWorkerConfig}.{language}",
-                Language = language,
-                Extensions = new List<string> { $".{language}" },
-                Arguments = arguments.ToList()
-            };
         }
 
         private class TestLanguageWorkerConfig

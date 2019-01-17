@@ -4,10 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
@@ -206,6 +208,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 Assert.Equal(2, workerDescription.Arguments.Count);
                 Assert.Equal(expectedArgument, workerDescription.Arguments[1]);
             }
+        }
+
+        [Fact]
+        public void ReadWorkerDescriptionFromProfiles_Succeeds()
+        {
+            var expectedArguments = new string[] { "-v", "verbose" };
+            WorkerDescription defaultWorkerDescription = RpcTestUtils.GetTestDefaultWorkerDescription("testLanguage", expectedArguments, "./src/index");
+            JObject workerConfigWithProfiles = RpcTestUtils.GetTestWorkerConfigWithProfiles("testLanguage", expectedArguments, "./src/index");
+            WorkerDescription testWorkerDescription = WorkerConfigFactory.GetWorkerDescriptionFromProfiles("testProfile", workerConfigWithProfiles, defaultWorkerDescription);
+
+            Assert.Equal("myFooPath", testWorkerDescription.DefaultExecutablePath);
+            Assert.Equal(testWorkerDescription.DefaultWorkerPath, defaultWorkerDescription.DefaultWorkerPath);
+            Assert.False(testWorkerDescription.Extensions.Except(defaultWorkerDescription.Extensions).Any());
+            Assert.Equal("testLanguage", testWorkerDescription.Language);
+            Assert.False(testWorkerDescription.Arguments.Except(defaultWorkerDescription.Arguments).Any());
         }
     }
 }
