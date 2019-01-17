@@ -132,12 +132,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
 
                 descriptionProfiles = GetWorkerDescriptionProfiles(workerConfig);
-                if (ScriptSettingsManager.Instance.IsAppServiceEnvironment)
-                {
-                    // Overwrite default Description with AppServiceEnv profile
-                    // TODO:pgopa delete after ANT78
-                    workerDescription = GetWorkerDescriptionFromProfiles(LanguageWorkerConstants.WorkerDescriptionAppServiceEnvProfileName, descriptionProfiles, workerDescription);
-                }
 
                 GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
