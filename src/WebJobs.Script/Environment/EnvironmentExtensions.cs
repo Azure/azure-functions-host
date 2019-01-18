@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -59,6 +60,39 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment)) ||
                 !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteAltZipDeployment)) ||
                 !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage));
+        }
+
+        public static bool IsAppServiceWindowsEnvironment(this IEnvironment environment)
+        {
+            return environment.IsAppServiceEnvironment() && RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        }
+
+        public static bool IsCoreToolsEnvironment(this IEnvironment environment)
+        {
+            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));
+        }
+
+        public static bool IsPersistentFileSystemAvailable(this IEnvironment environment)
+        {
+            return environment.IsAppServiceWindowsEnvironment()
+                || environment.IsLinuxAppServiceEnvWithPersistentFileSystem()
+                || environment.IsCoreToolsEnvironment();
+        }
+
+        public static bool IsLinuxAppServiceEnvWithPersistentFileSystem(this IEnvironment environment)
+        {
+            if (environment.IsLinuxAppServiceEnvironment())
+            {
+                string storageConfig = environment.GetEnvironmentVariable(LinuxAzureAppServiceStorage);
+
+                // AzureAppServiceStorage is enabled by default, So return if true it is not set
+                if (string.IsNullOrEmpty(storageConfig))
+                {
+                    return true;
+                }
+                return bool.TryParse(storageConfig, out bool storageConfigValue) && storageConfigValue;
+            }
+            return false;
         }
 
         public static bool FileSystemIsReadOnly(this IEnvironment environment)
