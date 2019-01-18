@@ -43,7 +43,7 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
     dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -r $runtime -o "$selfContained" -v q /p:BuildNumber=$buildNumber    
 
     # Modify web.config for inproc
-    dotnet tool install -g dotnet-xdt --version 2.2.0 2> $null
+    dotnet tool install -g dotnet-xdt --version 2.1.0 2> $null
     dotnet-xdt -s "$privateSiteExtensionPath\web.config" -t "$privateSiteExtensionPath\web.InProcess.$runtime.xdt" -o "$privateSiteExtensionPath\web.config"
 
     $successfullDlls =@()
