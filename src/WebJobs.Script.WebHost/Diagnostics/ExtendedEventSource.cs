@@ -4,7 +4,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Tracing;
-using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
@@ -113,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
         protected void WriteEvent(int eventNum, string a, string b, string c, string d, string e, string f, string g, string h, string i, string j, string k)
         {
-            int count = MethodBase.GetCurrentMethod().GetParameters().Length;
+            int count = 11;
             fixed (char* aPtr = a,
                 bPtr = b,
                 cPtr = c,
@@ -158,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
         protected void WriteEvent(int eventNum, string a, string b, string c, string d, string e, string f, string g, string h, string i, string j, string k, string l, string m)
         {
-            int count = MethodBase.GetCurrentMethod().GetParameters().Length;
+            int count = 13;
             fixed (char* aPtr = a,
                 bPtr = b,
                 cPtr = c,
@@ -209,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
         protected void WriteEvent(int eventNum, string a, string b, string c, string d, long e, long f, long g, long h, string i, string j)
         {
-            int count = MethodBase.GetCurrentMethod().GetParameters().Length;
+            int count = 10;
             fixed (char* aPtr = a,
                 bPtr = b,
                 cPtr = c,
@@ -248,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
         protected void WriteEvent(int eventNum, string a, string b, string c, string d, string e, string f)
         {
-            int count = MethodBase.GetCurrentMethod().GetParameters().Length;
+            int count = 6;
             fixed (char* aPtr = a,
                 bPtr = b,
                 cPtr = c,
