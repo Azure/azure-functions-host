@@ -70,6 +70,33 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The value of id property in extensionBundle section of {0} file is invalid or missing. See https://aka.ms/functions-hostjson for more information.
+        /// </summary>
+        internal static string ExtensionBundleConfigMissingId {
+            get {
+                return ResourceManager.GetString("ExtensionBundleConfigMissingId", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The id and version property are missing in extensionBundle section of {0} file. See https://aka.ms/functions-hostjson for more information&quot;.
+        /// </summary>
+        internal static string ExtensionBundleConfigMissingMessage {
+            get {
+                return ResourceManager.GetString("ExtensionBundleConfigMissingMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The value of version property in extensionBundle section of {0} file is invalid or missing. See https://aka.ms/functions-hostjson for more information.
+        /// </summary>
+        internal static string ExtensionBundleConfigMissingVersion {
+            get {
+                return ResourceManager.GetString("ExtensionBundleConfigMissingVersion", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Starting language worker channel specialization.
         /// </summary>
         internal static string LanguageWorkerChannelSpecializationTrace {

@@ -11,5 +11,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public const string Aggregator = "aggregator";
         public const string HealthMonitor = "healthMonitor";
         public const string HostIdPath = WebHost + ":hostid";
+        public const string ExtensionBundle = "extensionBundle";
     }
 }

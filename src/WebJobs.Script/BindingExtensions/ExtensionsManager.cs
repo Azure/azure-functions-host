@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                     }
                     else
                     {
-                        ProcessReults(projectFolder)
+                        ProcessResults(projectFolder)
                             .ContinueWith(t =>
                             {
                                 if (t.IsFaulted)
@@ -234,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             logBuilder.Append(data);
         }
 
-        private async Task ProcessReults(string tempFolder)
+        private async Task ProcessResults(string tempFolder)
         {
             string sourceBin = Path.Combine(tempFolder, "bin");
             string target = Path.Combine(_scriptRootPath, "bin");

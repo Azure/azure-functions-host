@@ -123,4 +123,13 @@
   <data name="LanguageWorkerChannelSpecializationTrace" xml:space="preserve">
     <value>Starting language worker channel specialization</value>
   </data>
+  <data name="ExtensionBundleConfigMissingId" xml:space="preserve">
+    <value>The value of id property in extensionBundle section of {0} file is invalid or missing. See https://aka.ms/functions-hostjson for more information</value>
+  </data>
+  <data name="ExtensionBundleConfigMissingMessage" xml:space="preserve">
+    <value>The id and version property are missing in extensionBundle section of {0} file. See https://aka.ms/functions-hostjson for more information"</value>
+  </data>
+  <data name="ExtensionBundleConfigMissingVersion" xml:space="preserve">
+    <value>The value of version property in extensionBundle section of {0} file is invalid or missing. See https://aka.ms/functions-hostjson for more information</value>
+  </data>
 </root>
