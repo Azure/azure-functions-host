@@ -57,7 +57,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         IEnvironment environment = services.GetService<IEnvironment>();
                         IScriptWebHostEnvironment hostEnvironment = services.GetService<IScriptWebHostEnvironment>();
 
-                        if (!hostEnvironment.InStandbyMode &&
+                        // Temporarily hide Azure Monitor support behind an app setting.
+                        string monitorSetting = environment.GetEnvironmentVariable("AZURE_MONITOR_ENABLED");
+                        bool.TryParse(monitorSetting, out bool monitorenabled);
+
+                        if (monitorenabled &&
+                            !hostEnvironment.InStandbyMode &&
                             !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)))
                         {
                             IEventGenerator eventGenerator = services.GetService<IEventGenerator>();
