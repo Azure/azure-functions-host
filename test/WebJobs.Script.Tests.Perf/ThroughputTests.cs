@@ -57,6 +57,15 @@ namespace WebJobs.Script.Tests.Perf
             await ExecutePS("win-java-ping.jmx", "Java Ping");
         }
 
+        [Fact]
+        [TestTrace]
+        public async Task TestPowerShell()
+        {
+            await ChangeLanguage("powershell");
+
+            await ExecutePS("win-powershell-ping.jmx", "PS Ping");
+        }
+
         private async Task ExecutePS(string scriptName, string description)
         {
             _fixture.Logger.LogInformation($"Execute: {scriptName}, {description}");
