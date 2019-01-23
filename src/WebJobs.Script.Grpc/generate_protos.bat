@@ -35,7 +35,7 @@ setlocal
 cd /d %~dp0
 
 set NUGET_PATH=%UserProfile%\.nuget\packages
-set GRPC_TOOLS_PATH=%NUGET_PATH%\grpc.tools\1.16.0\tools\windows_x86
+set GRPC_TOOLS_PATH=%NUGET_PATH%\grpc.tools\1.18.0\tools\windows_x86
 set PROTO_PATH=.\azure-functions-language-worker-protobuf\src\proto
 set PROTO=.\azure-functions-language-worker-protobuf\src\proto\FunctionRpc.proto
 set PROTOBUF_TOOLS=%NUGET_PATH%\google.protobuf.tools\3.6.1\tools
