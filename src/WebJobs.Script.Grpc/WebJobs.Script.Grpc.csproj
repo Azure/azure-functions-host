@@ -22,8 +22,8 @@
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.6.1" />
     <PackageReference Include="Google.Protobuf.Tools" Version="3.6.1" />
-    <PackageReference Include="Grpc.Core" Version="1.16.0" />
-    <PackageReference Include="Grpc.Tools" Version="1.16.0">
+    <PackageReference Include="Grpc.Core" Version="1.18.0" />
+    <PackageReference Include="Grpc.Tools" Version="1.18.0">
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Logging" Version="2.1.1" />
