@@ -301,13 +301,20 @@ message BindingInfo {
       inout = 2;
     }
 
+    // Indicates the type of the data for the binding
+    enum DataType {
+      string = 0;
+      binary = 1;
+      stream = 2;
+    }
+
   // Type of binding (e.g. HttpTrigger)
   string type = 2;
 
   // Direction of the given binding
   Direction direction = 3;
 
-  string dataType = 4;
+  DataType dataType = 4;
 }
 
 // Used to send logs back to the Host 
