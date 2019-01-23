@@ -36,7 +36,7 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
                     string blobUri = item.Uri.ToString().TrimEnd('/');
                     string time = blobUri.Split('/').Last().Replace("-", "/").Replace("_", ":");
                     try
-                    {                        
+                    {
                         CloudBlockBlob blockBlob = container.GetBlockBlobReference(blobUri.Split('/').Last() + "/summary.txt");
                         string summary = await blockBlob.DownloadTextAsync();
                         string[] summaryNumbers = summary.Split(',');
