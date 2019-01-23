@@ -35,17 +35,20 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
 
             FunctionDefaultKey = Settings.SiteFunctionKey ?? Guid.NewGuid().ToString().ToLower();
 
-            for (int i = 0; i < 5; i++)
+            int attemptsCount = 5;
+            for (int i = 0; i < attemptsCount; i++)
             {
                 try
                 {
                     Initialize().Wait();
                     return;
                 }
-                catch
+                catch(Exception ex)
                 {
                     // Best effort.
                     System.Threading.Thread.Sleep(5000);
+                    _logger.LogInformation($"Initialize error: {ex}");
+                    _logger.LogInformation($"Attempts {i+1} of {attemptsCount}");
                 }
             }
 

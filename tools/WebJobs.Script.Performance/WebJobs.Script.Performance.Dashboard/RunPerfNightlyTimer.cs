@@ -13,7 +13,7 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
         {
             log.LogInformation($"Performance tests were started by timer trigger at: {DateTime.Now}");
 
-            await AppVeyorClient.StartPerf(log);
+            await PerformanceManager.Execute(string.Empty, log);
         }
     }
 }

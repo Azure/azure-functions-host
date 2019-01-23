@@ -19,11 +19,14 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
         {
             log.LogInformation($"Performance tests were started by http trigger at: {DateTime.Now}");
 
-            await AppVeyorClient.StartPerf(log);
+            string testIds = string.Empty;
+            req.GetQueryParameterDictionary().TryGetValue("testIds", out testIds);
+
+            await PerformanceManager.Execute(testIds, log);
 
             return new ContentResult()
             {
-                Content = "Build started",
+                Content = "Done",
                 ContentType = "text/html",
             };
         }

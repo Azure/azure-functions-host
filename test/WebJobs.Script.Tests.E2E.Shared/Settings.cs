@@ -11,6 +11,10 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
 {
     public class Settings
     {
+        private static string _runtimeExtensionPackageUrl;
+
+        private static IConfiguration Config = null;
+
         public static string SiteTenantId => GetSettingValue(Constants.TargetSiteTenantIdSettingName);
 
         public static string SiteClientSecret => GetSettingValue(Constants.TargetSiteClientSecretSettingName);
@@ -27,7 +31,19 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
 
         public static string SitePublishingPassword => GetSettingValue(Constants.TargetSitePublishingPasswordSettingName);
 
-        public static string RuntimeExtensionPackageUrl => GetSettingValue(Constants.RuntimeExtensionPackageUrlSettingName);
+
+        public static string RuntimeExtensionPackageUrl
+        {
+            get
+            {
+                return _runtimeExtensionPackageUrl ?? GetSettingValue(Constants.RuntimeExtensionPackageUrlSettingName);
+            }
+            set
+            {
+                _runtimeExtensionPackageUrl = value;
+            }
+        }
+
 
         public static string SiteMasterKey => GetSettingValue(Constants.TargetSiteMasterKey);
 
@@ -36,8 +52,6 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
         public static string VM => GetSettingValue(Constants.VM);
 
         public static Uri SiteBaseAddress => new Uri($"https://{SiteName}.azurewebsites.net");
-
-        private static IConfiguration Config = null;
 
         public static string RuntimeVersion
         {

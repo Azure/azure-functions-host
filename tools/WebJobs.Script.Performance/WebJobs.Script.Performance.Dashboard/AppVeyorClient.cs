@@ -10,12 +10,12 @@ using Newtonsoft.Json;
 
 namespace WebJobs.Script.Tests.Perf.Dashboard
 {
-    public class AppVeyorClient
+    public class AppVeyorClient : IDisposable
     {
         private HttpClient _client;
         private ILogger _logger;
-        private readonly string _functionsHostProjectSlug;
         private readonly string _accountName;
+        private bool _disposed = false;
 
         public AppVeyorClient(ILogger logger)
         {
@@ -24,53 +24,32 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
                 BaseAddress = new Uri("https://ci.appveyor.com/api/")
             };
             _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Environment.GetEnvironmentVariable("AppVeyorToken"));
-            _logger = logger;
-            _functionsHostProjectSlug = Environment.GetEnvironmentVariable("FunctionHostProjectSlug", EnvironmentVariableTarget.Process);
+            _logger = logger;            
             _accountName = Environment.GetEnvironmentVariable("AccountName", EnvironmentVariableTarget.Process);
         }
 
-        public static async Task StartPerf(ILogger logger)
+        public void Dispose()
         {
-            AppVeyorClient client = new AppVeyorClient(logger);
-            await client.StartBuild(new Build()
-            {
-                Branch = Environment.GetEnvironmentVariable("PerformanceBranch", EnvironmentVariableTarget.Process),
-                ProjectSlug = Environment.GetEnvironmentVariable("PerformanceProjectSlug", EnvironmentVariableTarget.Process),
-                Artifact = "inproc",
-                JobName = "Image: Visual Studio 2017"
-            });
+            Dispose(true);
         }
 
-        public async Task StartBuild(Build build)
+        protected virtual void Dispose(bool disposing)
         {
-            string lastSuccessfulBuild = await GetLastSuccessfulBuildVersionAsync(build.Branch);
-
-            if (lastSuccessfulBuild == null)
+            if (!_disposed)
             {
-                _logger.LogInformation("No sucessful builds found.");
-                return;
+                _client.Dispose();
+                _disposed = true;
             }
-
-            string extensionUrl = await GetPrivateSiteExtensionUrlAsync(lastSuccessfulBuild, build);
-
-            if (extensionUrl == null)
-            {
-                _logger.LogInformation("Could not find private site extension.");
-                return;
-            }
-
-            await UpdateEnvironmentVariableAsync(build.ProjectSlug, extensionUrl);
-            await StartEndToEndBuildAsync(build.ProjectSlug, build.Branch);
         }
 
-        private async Task<string> GetLastSuccessfulBuildVersionAsync(string branch)
+        public async Task<string> GetLastSuccessfulBuildVersionAsync(string branch, string projectSlug)
         {
             string startBuildId = null;
             string buildVersion = null;
 
             while (true)
             {
-                var url = $"projects/{_accountName}/{_functionsHostProjectSlug}/history?recordsNumber=50&branch={branch}";
+                var url = $"projects/{_accountName}/{projectSlug}/history?recordsNumber=50&branch={branch}";
                 if (startBuildId != null)
                 {
                     url += "&startbuildId=" + startBuildId;
@@ -104,17 +83,17 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
             return buildVersion;
         }
 
-        private async Task<string> GetPrivateSiteExtensionUrlAsync(string buildVersion, Build build)
+        public async Task<string> GetArtifactUrlAsync(string buildVersion, string projectSlug, string jobName, string artifactSubString)
         {
             string jobId = null;
-            string siteExtensionUrl = null;
+            string artifactUrl = null;
 
             if (buildVersion != null)
             {
-                var response = await _client.GetAsync($"projects/{_accountName}/{_functionsHostProjectSlug}/build/{buildVersion}");
+                var response = await _client.GetAsync($"projects/{_accountName}/{projectSlug}/build/{buildVersion}");
                 response.EnsureSuccessStatusCode();
                 var buildDetails = await response.Content.ReadAsAsync<AppVeyorBuildDetails>();
-                jobId = buildDetails.Build.Jobs.First(x => x.Name == build.JobName).JobId;
+                jobId = buildDetails.Build.Jobs.First(x => x.Name == jobName).JobId;
             }
 
             if (jobId != null)
@@ -123,16 +102,16 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
                 response.EnsureSuccessStatusCode();
                 var artifacts = await response.Content.ReadAsAsync<AppVeyorArtifact[]>();
 
-                string siteExtensionFileName = artifacts.Select(p => p.FileName).Single(p => p.Contains(build.Artifact));
+                var artifact = artifacts.FirstOrDefault(p => p.FileName.Contains(artifactSubString));
+                artifactUrl = artifact == null ? string.Empty : $"https://ci.appveyor.com/api/buildjobs/{jobId}/artifacts/{artifact.FileName}";
 
-                siteExtensionUrl = $"https://ci.appveyor.com/api/buildjobs/{jobId}/artifacts/{siteExtensionFileName}";
-                _logger.LogInformation($"Found private site extension: '{siteExtensionFileName}'");
+                _logger.LogInformation($"Found artifact: '{artifactUrl}'");
             }
 
-            return siteExtensionUrl;
+            return artifactUrl;
         }
 
-        private async Task UpdateEnvironmentVariableAsync(string projectSlug, string siteExtensionUrl)
+        public async Task UpdateEnvironmentVariableAsync(string projectSlug, string siteExtensionUrl)
         {
             var response = await _client.GetAsync($"/api/projects/{_accountName}/{projectSlug}/settings/environment-variables");
             response.EnsureSuccessStatusCode();
@@ -159,7 +138,7 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
             _logger.LogInformation("Done.");
         }
 
-        private async Task StartEndToEndBuildAsync(string projectSlug, string branch)
+        public async Task StartBuildAsync(string branch, string projectSlug)
         {
             _logger.LogInformation($"Starting new build on {projectSlug} {branch}...");
 

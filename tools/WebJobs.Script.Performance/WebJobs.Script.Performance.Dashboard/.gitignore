@@ -263,5 +263,5 @@ paket-files/
 __pycache__/
 *.pyc
 
-# App service publishing profiles
+# Publishing profiles
 *.pubxml
