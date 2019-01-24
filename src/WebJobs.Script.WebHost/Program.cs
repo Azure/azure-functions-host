@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -61,6 +62,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppServiceEnvironment(),
                         IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsLinuxContainerEnvironment(),
                         IsLinuxAppServiceEnvironment = SystemEnvironment.Instance.IsLinuxAppServiceEnvironment()
+                    });
+
+                    config.Add(new ExtensionBundleConfigurationSource
+                    {
+                        IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppServiceEnvironment(),
                     });
                 })
                 .ConfigureLogging((context, loggingBuilder) =>

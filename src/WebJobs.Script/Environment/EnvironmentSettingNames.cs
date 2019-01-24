@@ -50,5 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string LinuxAzureAppServiceStorage = "WEBSITES_ENABLE_APP_SERVICE_STORAGE";
         public const string CoreToolsEnvironment = "FUNCTIONS_CORETOOLS_ENVIRONMENT";
+
+        public const string AlternateCdnUri = "FUNCTIONS_ALTERNATE_CDN_URI";
     }
 }

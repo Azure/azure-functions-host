@@ -4,7 +4,8 @@
 using System;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
-using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -44,6 +45,7 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<AspNetCore.Hosting.IApplicationLifetime>(services);
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
+            services.AddScriptStartupTypeLocator();
 
             configureRootServices?.Invoke(services);
 
@@ -68,6 +70,16 @@ namespace Microsoft.WebJobs.Script.Tests
         {
             var mock = new Mock<T>();
             return services.AddSingleton<T>(mock.Object);
+        }
+
+        private static IServiceCollection AddScriptStartupTypeLocator(this IServiceCollection services)
+        {
+            var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+            mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
+            var scriptStartupTypeLocator = new ScriptStartupTypeLocator(string.Empty, null, mockExtensionBundleManager.Object);
+            var factory = new Mock<IScriptStartupTypeLocatorFactory>();
+            factory.Setup(o => o.Create()).Returns(scriptStartupTypeLocator);
+            return services.AddSingleton(factory.Object);
         }
     }
 }

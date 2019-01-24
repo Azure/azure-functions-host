@@ -16,6 +16,7 @@ using System.Web.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
@@ -328,9 +329,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     // This source reads from AzureWebJobsScriptRoot, which does not work
                     // with the custom paths that these tests are using.
                     var source = c.Sources.OfType<WebScriptHostConfigurationSource>().SingleOrDefault();
+                    
                     if (source != null)
                     {
                         c.Sources.Remove(source);
+                    }
+
+                    var bundleSource = c.Sources.OfType<ExtensionBundleConfigurationSource>().SingleOrDefault();
+                    if (bundleSource != null)
+                    {
+                        c.Sources.Remove(bundleSource);
                     }
                     c.AddTestSettings();
                 })
