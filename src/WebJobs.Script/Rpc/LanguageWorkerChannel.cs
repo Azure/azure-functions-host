@@ -461,10 +461,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 }, null);
             }
-            else
-            {
-                _workerChannelLogger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
-            }
         }
 
         internal void HandleWorkerError(Exception exc)
