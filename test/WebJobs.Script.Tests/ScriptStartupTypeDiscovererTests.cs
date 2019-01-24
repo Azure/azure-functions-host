@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class ScriptStartupTypeDiscovererTests
     {
         [Fact]
-        public void GetExtensionsStartupTypes_FiltersBuiltinExtensions()
+        public async System.Threading.Tasks.Task GetExtensionsStartupTypes_FiltersBuiltinExtensionsAsync()
         {
             var references = new[]
             {
@@ -51,10 +51,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
 
                 var testLogger = new TestLogger("test");
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, null);
 
                 // Act
-                var types = discoverer.GetExtensionsStartupTypes();
+                var types = await discoverer.GetExtensionsStartupTypesAsync();
                 var traces = testLogger.GetLogMessages();
 
                 // Assert

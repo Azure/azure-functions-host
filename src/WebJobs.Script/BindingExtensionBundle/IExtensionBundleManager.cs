@@ -1,15 +1,16 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using NuGet.Versioning;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.BindingExtensionBundle
 {
-    public class ExtensionBundleOptions
+    public interface IExtensionBundleManager
     {
-        public string Id { get; set; }
+        Task<string> GetExtensionBundle();
 
-        public VersionRange Version { get; set; }
+        bool IsExtensionBundleConfigured();
+
+        bool TryLocateExtensionBundle(out string bundlePath);
     }
 }

@@ -5,7 +5,11 @@ using System.IO.Abstractions;
 using System.Net.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Hosting;
+using Microsoft.Azure.WebJobs.Script.BindingExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
@@ -116,6 +120,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Configuration
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsSetup>());
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
+            services.ConfigureOptions<ExtensionBundleOptionsSetup>();
+            services.AddSingleton<IExtensionBundleManager, ExtensionBundleManager>();
+            services.AddSingleton<IScriptStartupTypeLocatorFactory, ScriptStartupTypeLocatorFactory>();
         }
 
         private static void AddStandbyServices(this IServiceCollection services)

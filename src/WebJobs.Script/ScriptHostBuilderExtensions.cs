@@ -3,10 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
@@ -89,7 +91,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public static IHostBuilder AddScriptHostCore(this IHostBuilder builder, ScriptApplicationHostOptions applicationHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
         {
             var skipHostInitialization = builder.Properties.ContainsKey(ScriptConstants.SkipHostInitializationKey);
-
             builder.ConfigureWebJobs(webJobsBuilder =>
             {
                 // Built in binding registrations
@@ -106,9 +107,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (!skipHostInitialization)
                 {
-                    // Only set our external startup if we're not suppressing host initialization
-                    // as we don't want to load user assemblies otherwise.
-                    webJobsBuilder.UseScriptExternalStartup(applicationHostOptions.ScriptPath);
+                    var scriptStartupTypeLocatorFactory = builder.Properties[nameof(IScriptStartupTypeLocatorFactory)] as IScriptStartupTypeLocatorFactory;
+                    webJobsBuilder.UseScriptExternalStartup(scriptStartupTypeLocatorFactory);
                 }
 
                 configureWebJobs?.Invoke(webJobsBuilder);
@@ -143,7 +143,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 // TODO: pgopa only add this to WebHostServiceCollection
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
-                services.ConfigureOptions<ExtensionBundleOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
                     .Configure<IConfiguration>((o, c) =>
                     {
@@ -193,9 +192,9 @@ namespace Microsoft.Azure.WebJobs.Script
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
         }
 
-        public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, string rootScriptPath)
+        public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, IScriptStartupTypeLocatorFactory startupTypeLocator)
         {
-            return builder.UseExternalStartup(new ScriptStartupTypeLocator(rootScriptPath));
+            return builder.UseExternalStartup(startupTypeLocator.CreateStartupTypeLocator());
         }
 
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)
