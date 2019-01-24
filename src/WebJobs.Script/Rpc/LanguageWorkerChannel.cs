@@ -345,7 +345,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 request.Metadata.Bindings.Add(binding.Name, new BindingInfo
                 {
                     Direction = (BindingInfo.Types.Direction)binding.Direction,
-                    Type = binding.Type
+                    Type = binding.Type,
+                    DataType = (BindingInfo.Types.DataType)binding.DataType
                 });
             }
 
