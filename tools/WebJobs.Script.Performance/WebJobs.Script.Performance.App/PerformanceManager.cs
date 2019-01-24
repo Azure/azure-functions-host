@@ -59,6 +59,12 @@ namespace WebJobs.Script.PerformanceMeter
                     FileName = "win-java-ping.jmx",
                     Desciption = "Java Ping",
                     Runtime = "java"
+                },
+                new TestDefinition()
+                {
+                    FileName = "win-powershell-ping.jmx",
+                    Desciption = "PowerShell Ping",
+                    Runtime = "powershell"
                 }
             };
         }
