@@ -88,14 +88,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Where(msg => msg.MessageType == MsgType.RpcLog)
                 .Subscribe(Log));
 
-            _eventSubscriptions.Add(_eventManager.OfType<RpcEvent>()
-                .Where(msg => msg.WorkerId == _workerId)
-                    .Subscribe(msg =>
-                    {
-                        var jsonMsg = JsonConvert.SerializeObject(msg, LanguageWorkerChannelUtilities.VerboseSerializerSettings);
-                        _userLogsConsoleLogger.LogDebug(jsonMsg);
-                    }));
-
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
                 .Where(msg => Config.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
