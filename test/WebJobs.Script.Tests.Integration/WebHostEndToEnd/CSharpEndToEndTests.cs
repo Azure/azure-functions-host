@@ -151,6 +151,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task VerifyResultRedirect()
+        {
+            const string path = "api/httptrigger-redirect";
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format($"http://localhost/{path}")),
+                Method = HttpMethod.Get
+            };
+
+            var response = await Fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(response.StatusCode, HttpStatusCode.Redirect);
+        }
+
+        [Fact]
         public async Task MultipleOutputs()
         {
             string id1 = Guid.NewGuid().ToString();
@@ -406,6 +420,7 @@ namespace SecondaryDependency
                         "AssembliesFromSharedLocation",
                         "HttpTrigger-Dynamic",
                         "HttpTrigger-Scenarios",
+                        "HttpTrigger-Redirect",
                         "HttpTriggerToBlob",
                         "FunctionExecutionContext",
                         "LoadScriptReference",
