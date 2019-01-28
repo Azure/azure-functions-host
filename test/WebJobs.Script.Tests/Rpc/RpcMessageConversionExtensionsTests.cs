@@ -51,13 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         [Theory]
         [InlineData(BindingDirection.In, "blob", DataType.String)]
-        [InlineData(BindingDirection.In, "blob", DataType.Binary)]
-        [InlineData(BindingDirection.In, "blob", DataType.Stream)]
-        [InlineData(BindingDirection.Out, "blob", DataType.String)]
         [InlineData(BindingDirection.Out, "blob", DataType.Binary)]
-        [InlineData(BindingDirection.Out, "blob", DataType.Stream)]
-        [InlineData(BindingDirection.InOut, "blob", DataType.String)]
-        [InlineData(BindingDirection.InOut, "blob", DataType.Binary)]
         [InlineData(BindingDirection.InOut, "blob", DataType.Stream)]
         public void ToBindingInfo_Converts_Correctly(BindingDirection bindingDirection, string type, DataType dataType)
         {
