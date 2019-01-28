@@ -3,6 +3,8 @@
 
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
@@ -45,6 +47,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 Assert.True(rpcRequestObject.Http.Query.ContainsKey(expectedKeys[i]));
                 Assert.Equal(rpcRequestObject.Http.Query.GetValueOrDefault(expectedKeys[i]), expectedValues[i]);
             }
+        }
+
+        [Theory]
+        [InlineData(BindingDirection.In, "blob", DataType.String)]
+        [InlineData(BindingDirection.In, "blob", DataType.Binary)]
+        [InlineData(BindingDirection.In, "blob", DataType.Stream)]
+        [InlineData(BindingDirection.Out, "blob", DataType.String)]
+        [InlineData(BindingDirection.Out, "blob", DataType.Binary)]
+        [InlineData(BindingDirection.Out, "blob", DataType.Stream)]
+        [InlineData(BindingDirection.InOut, "blob", DataType.String)]
+        [InlineData(BindingDirection.InOut, "blob", DataType.Binary)]
+        [InlineData(BindingDirection.InOut, "blob", DataType.Stream)]
+        public void ToBindingInfo_Converts_Correctly(BindingDirection bindingDirection, string type, DataType dataType)
+        {
+            BindingMetadata bindingMetadata = new BindingMetadata
+            {
+                Direction = bindingDirection,
+                Type = type,
+                DataType = dataType
+            };
+
+            BindingInfo bindingInfo = bindingMetadata.ToBindingInfo();
+
+            Assert.Equal(bindingInfo.Direction, (BindingInfo.Types.Direction)bindingMetadata.Direction);
+            Assert.Equal(bindingInfo.Type, bindingMetadata.Type);
+            Assert.Equal(bindingInfo.DataType, (BindingInfo.Types.DataType)bindingMetadata.DataType);
         }
     }
 }
