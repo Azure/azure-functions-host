@@ -303,9 +303,10 @@ message BindingInfo {
 
     // Indicates the type of the data for the binding
     enum DataType {
-      string = 0;
-      binary = 1;
-      stream = 2;
+      undefined = 0;
+      string = 1;
+      binary = 2;
+      stream = 3;
     }
 
   // Type of binding (e.g. HttpTrigger)

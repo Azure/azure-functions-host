@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData(BindingDirection.In, "blob", DataType.String)]
         [InlineData(BindingDirection.Out, "blob", DataType.Binary)]
         [InlineData(BindingDirection.InOut, "blob", DataType.Stream)]
+        [InlineData(BindingDirection.InOut, "blob", DataType.Undefined)]
         public void ToBindingInfo_Converts_Correctly(BindingDirection bindingDirection, string type, DataType dataType)
         {
             BindingMetadata bindingMetadata = new BindingMetadata
