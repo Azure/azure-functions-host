@@ -68,5 +68,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Equal(bindingInfo.Type, bindingMetadata.Type);
             Assert.Equal(bindingInfo.DataType, (BindingInfo.Types.DataType)bindingMetadata.DataType);
         }
+
+        [Fact]
+        public void ToBindingInfo_Defaults_EmptyDataType()
+        {
+            BindingMetadata bindingMetadata = new BindingMetadata
+            {
+                Direction = BindingDirection.In,
+                Type = "blob"
+            };
+
+            BindingInfo bindingInfo = bindingMetadata.ToBindingInfo();
+
+            Assert.Equal(bindingInfo.Direction, (BindingInfo.Types.Direction)bindingMetadata.Direction);
+            Assert.Equal(bindingInfo.Type, bindingMetadata.Type);
+            Assert.Equal(bindingInfo.DataType, default);
+        }
     }
 }
