@@ -314,7 +314,7 @@ message BindingInfo {
   // Direction of the given binding
   Direction direction = 3;
 
-  DataType dataType = 4;
+  DataType data_type = 4;
 }
 
 // Used to send logs back to the Host 
