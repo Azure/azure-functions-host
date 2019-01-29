@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             Assert.Equal(bindingInfo.Direction, (BindingInfo.Types.Direction)bindingMetadata.Direction);
             Assert.Equal(bindingInfo.Type, bindingMetadata.Type);
-            Assert.Equal(bindingInfo.DataType, default);
+            Assert.Equal(bindingInfo.DataType, BindingInfo.Types.DataType.Undefined);
         }
     }
 }
