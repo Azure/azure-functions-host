@@ -334,11 +334,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             foreach (var binding in metadata.Bindings)
             {
-                request.Metadata.Bindings.Add(binding.Name, new BindingInfo
-                {
-                    Direction = (BindingInfo.Types.Direction)binding.Direction,
-                    Type = binding.Type
-                });
+                BindingInfo bindingInfo = binding.ToBindingInfo();
+
+                request.Metadata.Bindings.Add(binding.Name, bindingInfo);
             }
 
             SendStreamingMessage(new StreamingMessage
