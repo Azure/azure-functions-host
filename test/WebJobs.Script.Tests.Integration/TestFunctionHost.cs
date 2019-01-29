@@ -32,7 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptApplicationHostOptions _hostOptions;
         private readonly TestServer _testServer;
         private readonly string _appRoot;
-        private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
+        private readonly TestLoggerProvider _webHostLoggerProvider = new TestLoggerProvider();
+        private readonly TestLoggerProvider _scriptHostLoggerProvider = new TestLoggerProvider();
         private readonly WebJobsScriptHostService _hostService;
 
         public TestFunctionHost(string scriptPath, string logPath,
@@ -55,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var builder = new WebHostBuilder()
                 .ConfigureLogging(b =>
                 {
-                    b.AddProvider(_loggerProvider);
+                    b.AddProvider(_webHostLoggerProvider);
                 })
                 .ConfigureServices(services =>
                   {
@@ -76,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                   {
                       webJobsBuilder.Services.AddLogging(loggingBuilder =>
                       {
-                          loggingBuilder.AddProvider(_loggerProvider);
+                          loggingBuilder.AddProvider(_scriptHostLoggerProvider);
                           loggingBuilder.AddFilter<TestLoggerProvider>(_ => true);
                       });
 
@@ -161,13 +162,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public IList<LogMessage> GetLogMessages() => _loggerProvider.GetAllLogMessages();
+        /// <summary>
+        /// The functions host has two logger providers -- one at the WebHost level and one at the ScriptHost level. 
+        /// These providers use different LoggerProviders, so it's important to know which one is receiving the logs.
+        /// </summary>
+        /// <returns>The messages from the ScriptHost LoggerProvider</returns>
+        public IList<LogMessage> GetScriptHostLogMessages() => _scriptHostLoggerProvider.GetAllLogMessages();
+        public IEnumerable<LogMessage> GetScriptHostLogMessages(string category) => GetScriptHostLogMessages().Where(p => p.Category == category);
 
-        public IEnumerable<LogMessage> GetLogMessages(string category) => GetLogMessages().Where(p => p.Category == category);
+        /// <summary>
+        /// The functions host has two logger providers -- one at the WebHost level and one at the ScriptHost level. 
+        /// These providers use different LoggerProviders, so it's important to know which one is receiving the logs.
+        /// </summary>
+        /// <returns>The messages from the WebHost LoggerProvider</returns>
+        public IList<LogMessage> GetWebHostLogMessages() => _webHostLoggerProvider.GetAllLogMessages();
 
-        public string GetLog() => string.Join(Environment.NewLine, GetLogMessages());
+        public string GetLog() => string.Join(Environment.NewLine, GetScriptHostLogMessages());
 
-        public void ClearLogMessages() => _loggerProvider.ClearAllLogMessages();
+        public void ClearLogMessages() => _scriptHostLoggerProvider.ClearAllLogMessages();
 
         public async Task BeginFunctionAsync(string functionName, JToken payload)
         {

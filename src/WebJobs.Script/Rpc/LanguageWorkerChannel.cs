@@ -17,7 +17,6 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
@@ -34,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IProcessRegistry _processRegistry;
         private readonly WorkerConfig _workerConfig;
         private readonly ILogger _workerChannelLogger;
-        private readonly ILogger _userLogsConsoleLogger;
+        private readonly ILanguageWorkerConsoleLogSource _consoleLogSource;
 
         private bool _disposed;
         private IObservable<FunctionRegistrationContext> _functionRegistrations;
@@ -68,7 +67,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            Uri serverUri,
            ILoggerFactory loggerFactory,
            IMetricsLogger metricsLogger,
-           int attemptCount)
+           int attemptCount,
+           ILanguageWorkerConsoleLogSource consoleLogSource)
         {
             _workerId = workerId;
             _functionRegistrations = functionRegistrations;
@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerConfig = workerConfig;
             _serverUri = serverUri;
             _workerChannelLogger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
-            _userLogsConsoleLogger = loggerFactory.CreateLogger(LanguageWorkerConstants.FunctionConsoleLogCategoryName);
+            _consoleLogSource = consoleLogSource;
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
                 else
                 {
-                    _userLogsConsoleLogger?.LogInformation(msg);
+                    _consoleLogSource?.Log(msg);
                 }
             }
         }
@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                     else
                     {
-                        _userLogsConsoleLogger?.LogInformation(msg);
+                        _consoleLogSource?.Log(msg);
                     }
                 }
                 else if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
@@ -195,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                     else
                     {
-                        _userLogsConsoleLogger?.LogInformation(msg);
+                        _consoleLogSource?.Log(msg);
                     }
                     _processStdErrDataQueue = LanguageWorkerChannelUtilities.AddStdErrMessage(_processStdErrDataQueue, Sanitizer.Sanitize(msg));
                 }
@@ -208,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                     else
                     {
-                        _userLogsConsoleLogger?.LogInformation(msg);
+                        _consoleLogSource?.Log(msg);
                     }
                 }
             }

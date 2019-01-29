@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
+        private readonly ILanguageWorkerConsoleLogSource _consoleLogSource;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
@@ -35,7 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Action _shutdownStandbyWorkerChannels;
         private IDictionary<string, ILanguageWorkerChannel> _workerChannels = new Dictionary<string, ILanguageWorkerChannel>();
 
-        public LanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
+        public LanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerConsoleLogSource consoleLogSource)
         {
             _rpcServer = rpcServer;
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -44,6 +46,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger = loggerFactory.CreateLogger(ScriptConstants.LanguageWorkerChannelManager);
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _applicationHostOptions = applicationHostOptions;
+            _consoleLogSource = consoleLogSource;
+
             _processFactory = new DefaultWorkerProcessFactory();
             try
             {
@@ -78,7 +82,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                          _rpcServer.Uri,
                          _loggerFactory,
                          metricsLogger,
-                         attemptCount);
+                         attemptCount,
+                         _consoleLogSource);
         }
 
         public async Task InitializeChannelAsync(string runtime)

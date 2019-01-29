@@ -59,16 +59,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task AddEvent_RemovesExpiredItems()
         {
             var window = new SlidingWindow<MyItem>(TimeSpan.FromSeconds(1));
-
+            StringBuilder log = new StringBuilder();
             for (int i = 0; i < 5; i++)
             {
                 window.AddEvent(new MyItem { Data = i });
+                log.AppendLine($"{DateTime.UtcNow}: Added item: {i}");
                 await Task.Delay(100);
             }
 
             var eventsField = window.GetType().GetField("_events", BindingFlags.Instance | BindingFlags.NonPublic);
             var events = (List<SlidingWindow<MyItem>.Event>)eventsField.GetValue(window);
-            Assert.Equal(5, events.Count);
+            int count = events.Count;
+            Assert.True(count == 5, $"{DateTime.UtcNow} | Expected 5. Actual {count}.{Environment.NewLine}{log.ToString()}");
 
             // now let the items expire
             await Task.Delay(1000);
