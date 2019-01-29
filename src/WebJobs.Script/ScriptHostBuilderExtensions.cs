@@ -161,6 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 // Hosted services
+                services.AddSingleton<IHostedService, LanguageWorkerConsoleLogService>();
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
             });
 
@@ -182,6 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.AddSingleton<IHostedService, RpcInitializationService>();
             services.AddSingleton<FunctionRpc.FunctionRpcBase, FunctionRpcService>();
             services.AddSingleton<IRpcServer, GrpcServer>();
+            services.TryAddSingleton<ILanguageWorkerConsoleLogSource, LanguageWorkerConsoleLogSource>();
             services.TryAddSingleton<ILanguageWorkerChannelManager, LanguageWorkerChannelManager>();
 
             services.TryAddSingleton<IDebugManager, DebugManager>();

@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             await Task.Delay(1000);
 
-            var hostLogs = _fixture.Host.GetLogMessages();
+            var hostLogs = _fixture.Host.GetScriptHostLogMessages();
             foreach (var expectedLog in logs.Select(p => p.Message))
             {
                 Assert.Equal(1, hostLogs.Count(p => p.FormattedMessage != null && p.FormattedMessage.Contains(expectedLog)));
@@ -589,7 +589,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 var product = JObject.Parse(json);
                 Assert.Equal("electronics", (string)product["category"]);
                 Assert.Equal(123, (int?)product["id"]);
-                var logs = _fixture.Host.GetLogMessages("Function.HttpTrigger-CustomRoute.User");
+                var logs = _fixture.Host.GetScriptHostLogMessages("Function.HttpTrigger-CustomRoute.User");
                 Assert.Contains(logs, l => string.Equals(l.FormattedMessage, "Parameters: category=electronics id=123 extra=extra"));
                 Assert.True(logs.Any(p => p.FormattedMessage.Contains("ProductInfo: Category=electronics Id=123")));
 
@@ -604,7 +604,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 product = JObject.Parse(json);
                 Assert.Equal("electronics", (string)product["category"]);
                 Assert.Null((int?)product["id"]);
-                logs = _fixture.Host.GetLogMessages("Function.HttpTrigger-CustomRoute.User");
+                logs = _fixture.Host.GetScriptHostLogMessages("Function.HttpTrigger-CustomRoute.User");
                 Assert.Contains(logs, l => string.Equals(l.FormattedMessage, "Parameters: category=electronics id= extra="));
 
                 // test optional category parameter
@@ -617,7 +617,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 product = JObject.Parse(json);
                 Assert.Null((string)product["category"]);
                 Assert.Null((int?)product["id"]);
-                logs = _fixture.Host.GetLogMessages("Function.HttpTrigger-CustomRoute.User");
+                logs = _fixture.Host.GetScriptHostLogMessages("Function.HttpTrigger-CustomRoute.User");
                 Assert.Contains(logs, l => string.Equals(l.FormattedMessage, "Parameters: category= id= extra="));
 
                 // test a constraint violation (invalid id)

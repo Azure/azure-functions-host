@@ -327,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             json = await response.Content.ReadAsStringAsync();
             products = JArray.Parse(json);
             Assert.Equal(2, products.Count);
-            var logs = _fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory("HttpTrigger-CustomRoute-Get"));
+            var logs = _fixture.Host.GetScriptHostLogMessages(LogCategories.CreateFunctionUserCategory("HttpTrigger-CustomRoute-Get"));
             var log = logs.Single(p => p.FormattedMessage.Contains($"category: electronics id: <empty>"));
             _fixture.Host.ClearLogMessages();
 
@@ -340,7 +340,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             json = await response.Content.ReadAsStringAsync();
             products = JArray.Parse(json);
             Assert.Equal(3, products.Count);
-            logs = _fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory("HttpTrigger-CustomRoute-Get"));
+            logs = _fixture.Host.GetScriptHostLogMessages(LogCategories.CreateFunctionUserCategory("HttpTrigger-CustomRoute-Get"));
             log = logs.Single(p => p.FormattedMessage.Contains($"category: <empty> id: <empty>"));
 
             // test a constraint violation (invalid id)
