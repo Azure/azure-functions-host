@@ -109,23 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 try
                 {
-                    string scriptPath = _options.CurrentValue.ScriptPath;
-                    _logger.LogInformation($"Creating StandbyMode placeholder function directory ({scriptPath})");
-
-                    await FileUtility.DeleteDirectoryAsync(scriptPath, true);
-                    FileUtility.EnsureDirectoryExists(scriptPath);
-
-                    string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.host.json");
-                    File.WriteAllText(Path.Combine(scriptPath, "host.json"), content);
-
-                    string functionPath = Path.Combine(scriptPath, WarmUpConstants.FunctionName);
-                    Directory.CreateDirectory(functionPath);
-                    content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.function.json");
-                    File.WriteAllText(Path.Combine(functionPath, "function.json"), content);
-                    content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.run.csx");
-                    File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
-
-                    _logger.LogInformation($"StandbyMode placeholder function directory created");
+                    await CreateStandbyWarmupFunctions();
 
                     // start a background timer to identify when specialization happens
                     // specialization usually happens via an http request (e.g. scale controller
@@ -138,6 +122,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _semaphore.Release();
                 }
             }
+        }
+
+        private async Task CreateStandbyWarmupFunctions()
+        {
+            string scriptPath = _options.CurrentValue.ScriptPath;
+            _logger.LogInformation($"Creating StandbyMode placeholder function directory ({scriptPath})");
+
+            await FileUtility.DeleteDirectoryAsync(scriptPath, true);
+            FileUtility.EnsureDirectoryExists(scriptPath);
+
+            string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.host.json");
+            File.WriteAllText(Path.Combine(scriptPath, "host.json"), content);
+
+            string functionPath = Path.Combine(scriptPath, WarmUpConstants.FunctionName);
+            Directory.CreateDirectory(functionPath);
+            content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.function.json");
+            File.WriteAllText(Path.Combine(functionPath, "function.json"), content);
+            content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.run.csx");
+            File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
+
+            _logger.LogInformation($"StandbyMode placeholder function directory created");
         }
 
         private void OnSpecializationTimerTick(object state)

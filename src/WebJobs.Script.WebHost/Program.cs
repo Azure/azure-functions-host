@@ -19,14 +19,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         public static void Main(string[] args)
         {
-            var host = BuildWebHost(args);
+            InitializeProcess();
 
-            var environment = host.Services.GetService<IEnvironment>();
-            if (environment.IsLinuxContainerEnvironment())
-            {
-                // Linux containers always start out in placeholder mode
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            }
+            var host = BuildWebHost(args);
 
             host.RunAsync()
                 .Wait();
@@ -75,6 +70,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
                 })
                 .UseStartup<Startup>();
+        }
+
+        /// <summary>
+        /// Perform any process level initialization that needs to happen BEFORE
+        /// the WebHost is initialized.
+        /// </summary>
+        private static void InitializeProcess()
+        {
+            if (SystemEnvironment.Instance.IsLinuxContainerEnvironment())
+            {
+                // Linux containers always start out in placeholder mode
+                SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            }
         }
     }
 }
