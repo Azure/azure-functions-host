@@ -93,6 +93,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
+                .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));
+
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
+                .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
+
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
         }
 
@@ -283,14 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public void RegisterFunctions(IObservable<FunctionRegistrationContext> functionRegistrations)
         {
             _functionRegistrations = functionRegistrations ?? throw new ArgumentNullException(nameof(functionRegistrations));
-            _functionRegistrations = functionRegistrations;
             _eventSubscriptions.Add(_functionRegistrations.Subscribe(SendFunctionLoadRequest));
-
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
-                .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));
-
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
-                .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
         }
 
         public void SendFunctionEnvironmentReloadRequest()
