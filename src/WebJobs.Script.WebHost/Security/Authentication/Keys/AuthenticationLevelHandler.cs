@@ -44,6 +44,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             // Get the authorization level for the current request
             (string name, AuthorizationLevel requestAuthorizationLevel) = await GetAuthorizationKeyInfoAsync(Context.Request, _secretManagerProvider);
 
+            List<ClaimsIdentity> claimsIdentities = new List<ClaimsIdentity>();
+
+            if (_isEasyAuthEnabled)
+            {
+                ClaimsIdentity easyAuthIdentity = Context.Request.GetAppServiceIdentity();
+                if (easyAuthIdentity != null)
+                {
+                    claimsIdentities.Add(easyAuthIdentity);
+                }
+            }
+
             if (requestAuthorizationLevel != AuthorizationLevel.Anonymous)
             {
                 var claims = new List<Claim>
@@ -56,18 +67,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
                     claims.Add(new Claim(SecurityConstants.AuthLevelKeyNameClaimType, name));
                 }
 
-                List<ClaimsIdentity> claimsIdentities = new List<ClaimsIdentity>();
                 var keyIdentity = new ClaimsIdentity(claims, AuthLevelAuthenticationDefaults.AuthenticationScheme);
-                if (_isEasyAuthEnabled)
-                {
-                    ClaimsIdentity easyAuthIdentity = Context.Request.GetAppServiceIdentity();
-                    if (easyAuthIdentity != null)
-                    {
-                        claimsIdentities.Add(easyAuthIdentity);
-                    }
-                }
                 claimsIdentities.Add(keyIdentity);
+            }
 
+            if (claimsIdentities.Count > 0)
+            {
                 return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(claimsIdentities), Scheme.Name));
             }
             else
