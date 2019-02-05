@@ -6,9 +6,6 @@
     <_FunctionsExtensionsTasksDir Condition=" '$(_FunctionsExtensionsTasksDir)'=='' ">$(MSBuildThisFileDirectory)..\tools\$(_FunctionsExtensionsTaskFramework)</_FunctionsExtensionsTasksDir>
     <_FunctionsExtensionsTaskAssemblyFullPath Condition=" '$(_FunctionsExtensionsTaskAssemblyFullPath)'=='' ">$(_FunctionsExtensionsTasksDir)\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll</_FunctionsExtensionsTaskAssemblyFullPath>
     <IsPackable>false</IsPackable>
-    <_IsFunctionsSdkBuild Condition="$(_FunctionsTaskFramework) != ''">true</_IsFunctionsSdkBuild>
-    <_FunctionsExtensionsDir>$(TargetDir)</_FunctionsExtensionsDir>
-    <_FunctionsExtensionsDir Condition="$(_IsFunctionsSdkBuild) == 'true'">$(_FunctionsExtensionsDir)bin</_FunctionsExtensionsDir>
   </PropertyGroup>
 
   <UsingTask TaskName="GenerateFunctionsExtensionsMetadata"
@@ -16,7 +13,13 @@
 
   <Target Name="_GenerateFunctionsExtensionsMetadataPostBuild"
           AfterTargets="Build">
-    
+
+    <PropertyGroup>
+      <_IsFunctionsSdkBuild Condition="$(_FunctionsTaskFramework) != ''">true</_IsFunctionsSdkBuild>
+      <_FunctionsExtensionsDir>$(TargetDir)</_FunctionsExtensionsDir>
+      <_FunctionsExtensionsDir Condition="$(_IsFunctionsSdkBuild) == 'true'">$(_FunctionsExtensionsDir)bin</_FunctionsExtensionsDir>
+    </PropertyGroup>
+
     <GenerateFunctionsExtensionsMetadata
       SourcePath="$(_FunctionsExtensionsDir)"
       OutputPath="$(_FunctionsExtensionsDir)"/>
@@ -27,7 +30,7 @@
           OverwriteReadOnlyFiles="true" 
           ContinueOnError="true"/>
   </Target>
-
+  
   <Target Name="_GenerateFunctionsExtensionsMetadataPostPublish"
           AfterTargets="Publish">
     <GenerateFunctionsExtensionsMetadata
@@ -39,6 +42,12 @@
           AfterTargets="ResolveReferences"
           Condition="$(_IsFunctionsSdkBuild) != 'true'"
           DependsOnTargets="RunResolvePublishAssemblies">
+
+    <PropertyGroup>
+      <_IsFunctionsSdkBuild Condition="$(_FunctionsTaskFramework) != ''">true</_IsFunctionsSdkBuild>
+      <_FunctionsExtensionsDir>$(TargetDir)</_FunctionsExtensionsDir>
+      <_FunctionsExtensionsDir Condition="$(_IsFunctionsSdkBuild) == 'true'">$(_FunctionsExtensionsDir)bin</_FunctionsExtensionsDir>
+    </PropertyGroup>
 
     <!--
       Copy publish assemblies that not already included in ReferenceCopyLocalPaths
