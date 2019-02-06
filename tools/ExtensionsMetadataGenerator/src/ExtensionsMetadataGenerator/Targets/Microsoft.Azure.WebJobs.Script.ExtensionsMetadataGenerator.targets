@@ -30,7 +30,7 @@
           OverwriteReadOnlyFiles="true" 
           ContinueOnError="true"/>
   </Target>
-  
+
   <Target Name="_GenerateFunctionsExtensionsMetadataPostPublish"
           AfterTargets="Publish">
     <GenerateFunctionsExtensionsMetadata
