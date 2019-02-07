@@ -237,9 +237,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task RestartHostAsync(CancellationToken cancellationToken)
         {
-            await _hostRestartSemaphore.WaitAsync();
             try
             {
+                await _hostRestartSemaphore.WaitAsync();
                 if (State == ScriptHostState.Stopping || State == ScriptHostState.Stopped)
                 {
                     return;
