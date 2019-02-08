@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using DataProtectionCostants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -82,6 +83,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 // Linux containers always start out in placeholder mode
                 SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            }
+
+            // Some environments only set the auth key. Ensure that is used as the encryption key if that is not set
+            string authEncryptionKey = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey);
+            if (authEncryptionKey != null &&
+                SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey) == null)
+            {
+                SystemEnvironment.Instance.SetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey, authEncryptionKey);
             }
         }
     }
