@@ -102,6 +102,29 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 }
 
+                // parse ClaimsPrincipal if exists
+                if (request.HttpContext?.User?.Identities != null)
+                {
+                    foreach (var id in request.HttpContext.User.Identities)
+                    {
+                        // asdf
+                        var rpcId = new RpcClaimsIdentity();
+                        if (id.AuthenticationType != null)
+                        {
+                            rpcId.AuthenticationType = id.AuthenticationType;
+                        }
+                        rpcId.NameClaimType = id.NameClaimType;
+                        rpcId.RoleClaimType = id.RoleClaimType;
+
+                        foreach (var claim in id.Claims)
+                        {
+                            rpcId.Claims.Add(new RpcClaim { Value = claim.Value, Type = claim.Type });
+                        }
+
+                        http.Identities.Add(rpcId);
+                    }
+                }
+
                 // parse request body as content-type
                 if (request.Body != null && request.ContentLength > 0)
                 {
