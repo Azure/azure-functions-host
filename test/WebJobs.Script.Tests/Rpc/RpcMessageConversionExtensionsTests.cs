@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -84,6 +86,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Equal(bindingInfo.Direction, (BindingInfo.Types.Direction)bindingMetadata.Direction);
             Assert.Equal(bindingInfo.Type, bindingMetadata.Type);
             Assert.Equal(bindingInfo.DataType, BindingInfo.Types.DataType.Undefined);
+        }
+
+        [Fact]
+        public void HttpObjects_ClaimsPrincipal()
+        {
+            HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", $"http://localhost/apihttptrigger-scenarios");
+
+            MockEasyAuth(request, "facebook", "Connor McMahon", "10241897674253170");
+
+            var rpcRequestObject = request.ToRpc();
+            var identity = request.HttpContext.User.Identities.ToList().ElementAtOrDefault(0);
+            var rpcIdentity = rpcRequestObject.Http.Identities.ElementAtOrDefault(0);
+            Assert.NotNull(identity);
+            Assert.NotNull(rpcIdentity);
+
+            Assert.Equal(rpcIdentity.AuthenticationType, "facebook");
+            Assert.Equal(rpcIdentity.NameClaimType, "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
+            Assert.Equal(rpcIdentity.RoleClaimType, "http://schemas.microsoft.com/ws/2008/06/identity/claims/role");
+
+            var claims = identity.Claims.ToList();
+            for (int j = 0; j < claims.Count; j++)
+            {
+                Assert.True(rpcIdentity.Claims.ElementAtOrDefault(j) != null);
+                Assert.Equal(rpcIdentity.Claims[j].Type, claims[j].Type);
+                Assert.Equal(rpcIdentity.Claims[j].Value, claims[j].Value);
+            }
+        }
+
+        internal static void MockEasyAuth(HttpRequest request, string provider, string name, string id)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", name),
+                new Claim("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn", name),
+                new Claim("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier", id)
+            };
+
+            var identity = new ClaimsIdentity(
+                claims,
+                provider,
+                "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
+                "http://schemas.microsoft.com/ws/2008/06/identity/claims/role");
+
+            request.HttpContext.User = new ClaimsPrincipal(new List<ClaimsIdentity> { identity });
         }
     }
 }

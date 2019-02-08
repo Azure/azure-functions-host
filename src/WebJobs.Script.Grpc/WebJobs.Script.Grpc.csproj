@@ -36,13 +36,13 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Folder Include="Messages\DotNet\" />
-  </ItemGroup>
-  
-  <ItemGroup>
     <Reference Include="Newtonsoft.Json">
       <HintPath>C:\Program Files\dotnet\sdk\NuGetFallbackFolder\newtonsoft.json\11.0.2\lib\netstandard2.0\Newtonsoft.Json.dll</HintPath>
     </Reference>
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Folder Include="Messages\" />
   </ItemGroup>
   
   <Target Name="GenerateProtoFiles" BeforeTargets="BeforeBuild" Inputs="azure-functions-language-worker-protobuf/src/proto/FunctionRpc.proto" Outputs="Messages/DotNet/FunctionRpc.cs;Messages/DotNet/FunctionRpcGrpc.cs">
