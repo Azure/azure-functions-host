@@ -1,4 +1,5 @@
 <Project>
+  <Import Project=".\package.props" />
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.2</LangVersion>
@@ -9,17 +10,7 @@
     <AssemblyVersion>$(MajorMinorProductVersion).0.0</AssemblyVersion>
     <FileVersion>$(MajorMinorProductVersion).$(BuildNumber).0</FileVersion>
     <CommitHash Condition="$(CommitHash) == ''">N/A</CommitHash>
-    <InformationalVersion>$(FileVersion)$(RuntimeReleaseSuffix) Commit hash: $(CommitHash)</InformationalVersion>
-    <Authors>Microsoft</Authors>
-    <Company>Microsoft</Company>
-    <Product>Azure WebJobs SDK Script Runtime</Product>
-    <PackageProjectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Azure/azure-functions-host</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
-    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-    <PackageLicenseUrl>https://go.microsoft.com/fwlink/?linkid=2028464</PackageLicenseUrl>
-    <PackageIconUrl>https://raw.githubusercontent.com/Azure/azure-webjobs-sdk/dev/webjobs.png</PackageIconUrl>
+    <InformationalVersion>$(FileVersion)$(RuntimeReleaseSuffix) Commit hash: $(CommitHash)</InformationalVersion>  
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
     <NoWarn>$(NoWarn);NU1701</NoWarn>
     <DebugType>embedded</DebugType>

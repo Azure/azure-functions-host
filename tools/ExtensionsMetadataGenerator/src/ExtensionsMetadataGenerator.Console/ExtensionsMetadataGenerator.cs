@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 #if !NET46
 using System.Runtime.Loader;
 #endif
@@ -42,7 +41,7 @@ namespace ExtensionsMetadataGenerator
                 }
                 catch (Exception exc)
                 {
-                    logger(exc.Message ?? $"Error processing {path}");
+                    logger($"Error processing {path} for extension metadata: {exc.GetType().Name} {exc.Message}");
                 }
             }
 
