@@ -1,6 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="..\..\..\..\build\common.props" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\..\..\build\package.props" />
   <PropertyGroup>
+    <Version>1.0.2</Version>
     <OutputType>Library</OutputType>
     <TargetFrameworks>netstandard2.0;net46</TargetFrameworks>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator</AssemblyName>
@@ -10,8 +11,17 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <Description>Azure Functions extensions metadata generator</Description>
+    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\..\..\..\src.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ConsoleProject Include="..\ExtensionsMetadataGenerator.Console\ExtensionsMetadataGenerator.Console.csproj" />
+  </ItemGroup>
+
+  <Target Name="BuildGeneratorConsole" Condition="'$(TargetFramework)' == 'netstandard2.0'" AfterTargets="Build">
+    <MSBuild Projects="@(ConsoleProject)" Properties="Configuration=$(Configuration);Platform=$(Platform);TargetFramework=netcoreapp2.0;OutputPath=$(MSBuildProjectDirectory)\$(OutputPath)\generator" />
+  </Target>    
+  
   <ItemGroup>
     <Content Include="Targets\**\*">
       <Pack>true</Pack>
@@ -21,9 +31,13 @@
 
   <Target Name="PackReferenceAssemblies" AfterTargets="Build">
     <ItemGroup>
-      <None Include="$(OutputPath)\*.dll">
+      <Content Include="$(OutputPath)\*.dll">
         <Pack>true</Pack>
         <PackagePath>tools\netstandard2.0\</PackagePath>
+      </Content>
+      <None Include="$(OutputPath)\generator\*">
+        <Pack>true</Pack>
+        <PackagePath>tools\netstandard2.0\generator</PackagePath>
       </None>
     </ItemGroup>
   </Target>
@@ -31,7 +45,10 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Build.Framework" Version="15.3.409" />
     <PackageReference Include="Microsoft.Build.Utilities.Core" Version="15.3.409" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.0.2" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.0.2" >
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)..\stylecop.json" Link="stylecop.json" />
   </ItemGroup>
   
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
