@@ -7,7 +7,7 @@ using Moq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public static class MockNullLogerFactory
+    public static class MockNullLoggerFactory
     {
         public static ILoggerFactory CreateLoggerFactory()
         {

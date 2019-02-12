@@ -77,6 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 })
                 .ConfigureServices(services =>
                 {
+                    services.AddSingleton<IHostedService, FunctionsSyncService>();
                     services.AddSingleton<HttpRequestQueue>();
                     services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
                     services.TryAddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();

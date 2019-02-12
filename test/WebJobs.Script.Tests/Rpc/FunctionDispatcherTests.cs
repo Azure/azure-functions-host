@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var eventManager = new Mock<IScriptEventManager>();
             var metricsLogger = new Mock<IMetricsLogger>();
             var languageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
-            var loggerFactory = MockNullLogerFactory.CreateLoggerFactory();
+            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
             var options = new ScriptJobHostOptions
             {
                 RootLogPath = Path.GetTempPath()

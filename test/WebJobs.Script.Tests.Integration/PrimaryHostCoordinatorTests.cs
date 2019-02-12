@@ -315,7 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             CloudStorageAccount account = CloudStorageAccount.Parse(accountConnectionString);
             CloudBlobClient client = account.CreateCloudBlobClient();
 
-            var container = client.GetContainerReference("azure-webjobs-hosts");
+            var container = client.GetContainerReference(ScriptConstants.AzureWebJobsHostsContainerName);
 
             await container.CreateIfNotExistsAsync();
 

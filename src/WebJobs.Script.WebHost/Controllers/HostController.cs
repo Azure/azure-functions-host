@@ -41,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IWebFunctionsManager _functionsManager;
         private readonly IEnvironment _environment;
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly IFunctionsSyncManager _functionsSyncManager;
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
             IOptions<JobHostOptions> hostOptions,
@@ -48,7 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             IAuthorizationService authorizationService,
             IWebFunctionsManager functionsManager,
             IEnvironment environment,
-            IScriptHostManager scriptHostManager)
+            IScriptHostManager scriptHostManager,
+            IFunctionsSyncManager functionsSyncManager)
         {
             _applicationHostOptions = applicationHostOptions;
             _hostOptions = hostOptions;
@@ -57,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _functionsManager = functionsManager;
             _environment = environment;
             _scriptHostManager = scriptHostManager;
+            _functionsSyncManager = functionsSyncManager;
         }
 
         [HttpGet]
@@ -151,12 +154,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> SyncTriggers()
         {
-            (var success, var error) = await _functionsManager.TrySyncTriggers();
+            var result = await _functionsSyncManager.TrySyncTriggersAsync();
 
             // Return a dummy body to make it valid in ARM template action evaluation
-            return success
+            return result.Success
                 ? Ok(new { status = "success" })
-                : StatusCode(StatusCodes.Status500InternalServerError, new { status = error });
+                : StatusCode(StatusCodes.Status500InternalServerError, new { status = result.Error });
         }
 
         [HttpPost]
