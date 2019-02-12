@@ -31,7 +31,7 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
 
     $selfContained = Join-Path $publishTarget "self-contained"
     $crossGen = "$publishTarget\download\crossgen\crossgen.exe"
-	$symbolsPath = Join-Path $publishTarget "Symbols"
+    $symbolsPath = Join-Path $publishTarget "Symbols"
     new-item -itemtype directory -path $symbolsPath
 
     #https://dotnet.myget.org/feed/dotnet-core/package/nuget/runtime.win-x86.Microsoft.NETCore.Jit
@@ -262,6 +262,9 @@ foreach ($project in $projects)
 $cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\WebJobs.Script.Performance.App.csproj", "-o", "..\..\..\buildoutput"
 & dotnet $cmd
 
+$cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "..\..\..\..\buildoutput", "-c", "Release"
+& dotnet $cmd
+
 $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
 
 if ($bypassPackaging){
@@ -274,4 +277,9 @@ if ($bypassPackaging){
 
     #build win-x86 and win-x64 extension
     BuildPackages 0
+}
+
+if (-not $bypassPackaging -and -not $isLocal) {
+  & ".\tools\RunSigningJob.ps1" 
+  if (-not $?) { exit 1 }
 }
