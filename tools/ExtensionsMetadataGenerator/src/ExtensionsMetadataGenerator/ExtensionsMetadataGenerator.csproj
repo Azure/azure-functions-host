@@ -1,5 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="..\..\..\..\build\package.props" />
+  <Import Project="..\..\build\metadatagenerator.props" />
   <PropertyGroup>
     <Version>1.0.2</Version>
     <OutputType>Library</OutputType>
@@ -10,8 +10,8 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
-    <Description>Azure Functions extensions metadata generator</Description>
-    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\..\..\..\src.ruleset</CodeAnalysisRuleSet>
+    <IsPackable>true</IsPackable>
+    <BeforePack>Build;PackReferenceAssemblies</BeforePack>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <Target Name="BuildGeneratorConsole" Condition="'$(TargetFramework)' == 'netstandard2.0'" AfterTargets="Build">
-    <MSBuild Projects="@(ConsoleProject)" Properties="Configuration=$(Configuration);Platform=$(Platform);TargetFramework=netcoreapp2.0;OutputPath=$(MSBuildProjectDirectory)\$(OutputPath)\generator" />
+    <MSBuild Projects="@(ConsoleProject)" Targets="Restore;Build" Properties="Configuration=$(Configuration);Platform=$(Platform);TargetFramework=netcoreapp2.0;OutputPath=$(MSBuildProjectDirectory)\$(OutputPath)\generator" />
   </Target>    
   
   <ItemGroup>
@@ -29,26 +29,25 @@
     </Content>
   </ItemGroup>
 
-  <Target Name="PackReferenceAssemblies" AfterTargets="Build">
+  <Target Name="PackReferenceAssemblies">
     <ItemGroup>
-      <Content Include="$(OutputPath)\*.dll">
+      <Content Include="$(OutputPath)\netstandard2.0\generator\*">
+        <Pack>true</Pack>
+        <PackagePath>tools\netstandard2.0\generator</PackagePath>
+      </Content>
+      <Content Include="$(OutputPath)\netstandard2.0\*.dll" Exclude="**\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll">
         <Pack>true</Pack>
         <PackagePath>tools\netstandard2.0\</PackagePath>
       </Content>
-      <None Include="$(OutputPath)\generator\*">
-        <Pack>true</Pack>
-        <PackagePath>tools\netstandard2.0\generator</PackagePath>
-      </None>
     </ItemGroup>
   </Target>
   
   <ItemGroup>
     <PackageReference Include="Microsoft.Build.Framework" Version="15.3.409" />
     <PackageReference Include="Microsoft.Build.Utilities.Core" Version="15.3.409" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.0.2" >
+    <PackageReference Include="StyleCop.Analyzers" Version="1.0.2">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <AdditionalFiles Include="$(MSBuildThisFileDirectory)..\stylecop.json" Link="stylecop.json" />
   </ItemGroup>
   
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
@@ -56,5 +55,5 @@
       <Version>4.3.0</Version>
     </PackageReference>
   </ItemGroup>
-
+  
 </Project>

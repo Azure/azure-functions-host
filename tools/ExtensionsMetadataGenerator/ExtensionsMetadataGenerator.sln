@@ -11,7 +11,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExtensionsMetadataGenerator
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestProject_Core22", "test\TestProject_Core22\TestProject_Core22.csproj", "{421FB0EE-56B9-4E7D-816F-AB81D53425F2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestProject_Core21", "test\TestProject_Core21\TestProject_Core21.csproj", "{A93B2389-BC00-4DC2-A37B-C8A9EA4C83DB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestProject_Core21", "test\TestProject_Core21\TestProject_Core21.csproj", "{A93B2389-BC00-4DC2-A37B-C8A9EA4C83DB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{A829A3BC-40A2-4415-9494-8126AE4FE561}"
+	ProjectSection(SolutionItems) = preProject
+		build\metadatagenerator.props = build\metadatagenerator.props
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

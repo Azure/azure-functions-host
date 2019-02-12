@@ -55,12 +55,21 @@ for:
       $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
 
       if ($bypassPackaging) {
-        Write-Host "Bypassing artifact publishing for pull request." -ForegroundColor Yellow
+        Write-Host "Bypassing artifact publishing and signing for pull request." -ForegroundColor Yellow
       } else {
         Get-ChildItem buildoutput\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
 
         Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
       }
   test_script:
-  - ps: >
+  - ps: > 
       .\run-tests.ps1
+  on_finish:
+  - ps: >
+      $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
+      
+      if (-not $bypassPackaging) {
+        & .\tools\PollSigningResults.ps1
+        if (-not $?) { exit 1 }
+        Get-ChildItem buildoutput\signed\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
+      }
