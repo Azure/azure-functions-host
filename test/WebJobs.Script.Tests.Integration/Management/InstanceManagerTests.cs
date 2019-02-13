@@ -112,6 +112,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
+        public async Task StartAssignment_Succeeds_With_No_RunFromPackage_AppSetting()
+        {
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                Environment = new Dictionary<string, string>()
+            };
+            bool result = _instanceManager.StartAssignment(context);
+            Assert.True(result);
+            Assert.True(_scriptWebEnvironment.InStandbyMode);
+
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("Starting Assignment", p),
+                p => Assert.StartsWith("Applying 0 app setting(s)", p),
+                p => Assert.StartsWith("Triggering specialization", p));
+        }
+
+        [Fact]
         public void StartAssignment_ReturnsFalse_WhenNotInStandbyMode()
         {
             Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
@@ -142,6 +163,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Collection(logs,
                 p => Assert.StartsWith("Validating host assignment context (SiteId: 1234, SiteName: 'TestSite')", p),
                 p => Assert.StartsWith("Invalid zip url specified (StatusCode: NotFound)", p));
+        }
+
+        [Fact]
+        public async Task ValidateContext_EmptyZipUrl_ReturnsSuccess()
+        {
+            var environment = new Dictionary<string, string>();
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment
+            };
+
+            string error = await _instanceManager.ValidateContext(assignmentContext);
+            Assert.Null(error);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("Validating host assignment context (SiteId: 1234, SiteName: 'TestSite')", p));
         }
 
         [Fact]
