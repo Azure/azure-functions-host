@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             Assert.NotNull(_scriptHostService.Services.GetService<IScriptWebHookProvider>());
         }
 
-        [Fact (Skip = "Investigate test failure")]
+        [Fact]
         public async Task HostHealthMonitor_TriggersShutdown_WhenHostUnhealthy()
         {
             Assert.Equal(ScriptHostState.Running, _scriptHostService.State);
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             Assert.Contains(scriptHostLogMessages, p => p.FormattedMessage == "Stopping JobHost");
         }
 
-        [Fact(Skip = "Investigate test failure")]
+        [Fact]
         public async Task HostHealthMonitor_RestartsSuccessfully_WhenHostRecovers()
         {
             Assert.Equal(ScriptHostState.Running, _scriptHostService.State);
