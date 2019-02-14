@@ -27,12 +27,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IOptions<HostHealthMonitorOptions> _healthMonitorOptions;
         private readonly SlidingWindow<bool> _healthCheckWindow;
         private readonly Timer _hostHealthCheckTimer;
+        private readonly SemaphoreSlim _hostRestartSemaphore = new SemaphoreSlim(1, 1);
 
         private IHost _host;
         private CancellationTokenSource _startupLoopTokenSource;
         private int _hostStartCount;
         private bool _disposed = false;
-        private static SemaphoreSlim _hostRestartSemaphore = new SemaphoreSlim(1, 1);
 
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory, IServiceProvider rootServiceProvider,
             IServiceScopeFactory rootScopeFactory, IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
