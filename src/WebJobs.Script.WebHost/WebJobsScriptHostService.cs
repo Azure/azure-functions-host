@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,12 +27,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IOptions<HostHealthMonitorOptions> _healthMonitorOptions;
         private readonly SlidingWindow<bool> _healthCheckWindow;
         private readonly Timer _hostHealthCheckTimer;
+        private readonly SemaphoreSlim _hostRestartSemaphore = new SemaphoreSlim(1, 1);
 
         private IHost _host;
         private CancellationTokenSource _startupLoopTokenSource;
         private int _hostStartCount;
         private bool _disposed = false;
-        private int _restarting = 0;
 
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory, IServiceProvider rootServiceProvider,
             IServiceScopeFactory rootScopeFactory, IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
@@ -238,14 +237,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task RestartHostAsync(CancellationToken cancellationToken)
         {
-            if (Interlocked.CompareExchange(ref _restarting, 1, 0) != 0)
-            {
-                // only one restart operation at a time
-                return;
-            }
-
             try
             {
+                await _hostRestartSemaphore.WaitAsync();
                 if (State == ScriptHostState.Stopping || State == ScriptHostState.Stopped)
                 {
                     return;
@@ -266,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             finally
             {
-                Interlocked.Exchange(ref _restarting, 0);
+                _hostRestartSemaphore.Release();
             }
         }
 
@@ -396,6 +390,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (disposing)
                 {
                     _startupLoopTokenSource?.Dispose();
+                    _hostRestartSemaphore.Dispose();
                 }
                 _disposed = true;
             }
