@@ -322,5 +322,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             Assert.Equal(expected, Utility.IsNullable(type));
         }
+
+        [Theory]
+        [InlineData("", "")]
+        [InlineData(null, "")]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D",
+            "http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=f%2BG...")]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip",
+            "http://storage.blob.core.windows.net/functions/func.zip")]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy",
+            "http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy")]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig",
+            "http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig")]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=",
+            "http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=...")]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=f",
+            "http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=f...")]
+        public void CleanUrlTests(string url, string cleanUrl)
+        {
+            Assert.Equal(cleanUrl, Utility.CleanUrl(url));
+        }
     }
 }

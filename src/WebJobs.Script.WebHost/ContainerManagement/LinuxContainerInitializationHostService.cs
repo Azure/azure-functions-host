@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.RetryPolicies;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
@@ -104,9 +105,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             // When the blob doesn't exist it just means the container is waiting for specialization.
             // Don't treat this as a failure.
             var cloudBlockBlob = new CloudBlockBlob(new Uri(uri));
-            if (await cloudBlockBlob.ExistsAsync(null, null, _cancellationToken))
+
+            var blobRequestOptions = new BlobRequestOptions
             {
-                return await cloudBlockBlob.DownloadTextAsync(null, null, null, null, _cancellationToken);
+                RetryPolicy = new LinearRetry(TimeSpan.FromMilliseconds(500), 3)
+            };
+            if (await cloudBlockBlob.ExistsAsync(blobRequestOptions, null, _cancellationToken))
+            {
+                return await cloudBlockBlob.DownloadTextAsync(null, null, blobRequestOptions, null, _cancellationToken);
             }
 
             return string.Empty;
