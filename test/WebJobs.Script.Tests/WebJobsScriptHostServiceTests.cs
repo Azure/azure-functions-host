@@ -25,7 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private WebJobsScriptHostService _hostService;
         private ScriptApplicationHostOptionsMonitor _monitor;
-        private TestLoggerProvider _testLoggerProvider;
+        private TestLoggerProvider _webHostLoggerProvider = new TestLoggerProvider();
+        private TestLoggerProvider _jobHostLoggerProvider = new TestLoggerProvider();
         private ILoggerFactory _loggerFactory;
         private Mock<IServiceProvider> _mockRootServiceProvider;
         private Mock<IServiceScopeFactory> _mockRootScopeFactory;
@@ -43,12 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 LogPath = @"c:\tests\logs",
             };
             _monitor = new ScriptApplicationHostOptionsMonitor(options);
-            var services = new ServiceCollection()
-                .AddLogging()
-                .BuildServiceProvider();
-            _host = new Mock<IHost>();
-            _host.Setup(h => h.Services)
-                .Returns(services);
+            _loggerFactory = new LoggerFactory();
+            _loggerFactory.AddProvider(_webHostLoggerProvider);
+
+            _host = CreateMockHost();
 
             _mockRootServiceProvider = new Mock<IServiceProvider>();
             _mockRootScopeFactory = new Mock<IServiceScopeFactory>();
@@ -58,16 +57,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _hostPerformanceManager = new HostPerformanceManager(_mockEnvironment.Object, _healthMonitorOptions);
         }
 
+        private Mock<IHost> CreateMockHost()
+        {
+            // The tests can pull the logger from a specific host if they need to.
+            var services = new ServiceCollection()
+               .AddLogging(l => l.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>())
+               .BuildServiceProvider();
+
+            var host = new Mock<IHost>();
+
+            host.Setup(h => h.Services)
+                .Returns(services);
+
+            host.Setup(h => h.Dispose())
+                .Callback(() => services.Dispose());
+
+            return host;
+        }
+
         [Fact]
         public async Task HostInitialization_OnInitializationException_MaintainsErrorInformation()
         {
-            _host.SetupSequence(h => h.StartAsync(It.IsAny<CancellationToken>()))
-                .Throws(new HostInitializationException("boom"))
+            // When an exception is thrown, we'll create a new host. Make sure
+            // we don't return the same one (with disposed services) the second time.
+            var hostA = CreateMockHost();
+            hostA.Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Throws(new HostInitializationException("boom"));
+
+            var hostB = CreateMockHost();
+            hostB.Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var hostBuilder = new Mock<IScriptHostBuilder>();
-            hostBuilder.Setup(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
-                .Returns(_host.Object);
+            hostBuilder.SetupSequence(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
+                .Returns(hostA.Object)
+                .Returns(hostB.Object);
+
             _hostService = new WebJobsScriptHostService(
                 _monitor, hostBuilder.Object, NullLoggerFactory.Instance, _mockRootServiceProvider.Object, _mockRootScopeFactory.Object,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions);
@@ -88,9 +113,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             hostBuilder.Setup(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
                 .Returns(_host.Object);
 
-            _testLoggerProvider = new TestLoggerProvider();
+            _webHostLoggerProvider = new TestLoggerProvider();
             _loggerFactory = new LoggerFactory();
-            _loggerFactory.AddProvider(_testLoggerProvider);
+            _loggerFactory.AddProvider(_webHostLoggerProvider);
 
             _hostService = new WebJobsScriptHostService(
                 _monitor, hostBuilder.Object, _loggerFactory, _mockRootServiceProvider.Object, _mockRootScopeFactory.Object,
@@ -105,8 +130,78 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             restartHostThread.Join();
             specializeHostThread.Join();
 
-            var logMessages = _testLoggerProvider.GetAllLogMessages().Where(m => m.FormattedMessage.Contains("Restarting host."));
+            var logMessages = _webHostLoggerProvider.GetAllLogMessages().Where(m => m.FormattedMessage.Contains("Restarting host."));
             Assert.Equal(2, logMessages.Count());
+        }
+
+        [Fact]
+        public async Task HostRestart_DuringInitialization_Recovers()
+        {
+            SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+            await semaphore.WaitAsync();
+
+            // Have the first host start, but pause. We'll issue a restart, wait for the
+            // second host to be running, then let this first host throw an exception.
+            var hostA = CreateMockHost();
+            hostA
+                .Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns(async () =>
+                 {
+                     await semaphore.WaitAsync();
+                     throw new InvalidOperationException("Something happened at startup!");
+                 });
+
+            var hostB = CreateMockHost();
+            hostB
+                .Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns(() => Task.CompletedTask);
+
+            var hostBuilder = new Mock<IScriptHostBuilder>();
+            hostBuilder.SetupSequence(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
+                .Returns(hostA.Object)
+                .Returns(hostB.Object);
+
+            _webHostLoggerProvider = new TestLoggerProvider();
+            _loggerFactory = new LoggerFactory();
+            _loggerFactory.AddProvider(_webHostLoggerProvider);
+
+            _hostService = new WebJobsScriptHostService(
+                _monitor, hostBuilder.Object, _loggerFactory, _mockRootServiceProvider.Object, _mockRootScopeFactory.Object,
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions);
+
+            Task initialStart = _hostService.StartAsync(CancellationToken.None);
+
+            Thread restartHostThread = new Thread(new ThreadStart(RestartHost));
+            restartHostThread.Start();
+            restartHostThread.Join();
+
+            await TestHelpers.Await(() => _hostService.State == ScriptHostState.Running);
+
+            // Now let the first host throw its startup exception.
+            semaphore.Release();
+
+            await initialStart;
+
+            // Note that HostA is disposed so its services cannot be accessed. Logging will fall
+            // back to using the WebHost's logger.
+            Assert.Throws<ObjectDisposedException>(() => hostA.Object.GetTestLoggerProvider());
+            TestLoggerProvider hostBLogger = hostB.Object.GetTestLoggerProvider();
+
+            // Make sure the error was logged to the correct logger
+            Assert.Contains(_webHostLoggerProvider.GetAllLogMessages(), m => m.FormattedMessage != null && m.FormattedMessage.Contains("A host error has occurred on an inactive host"));
+            Assert.DoesNotContain(hostBLogger.GetAllLogMessages(), m => m.FormattedMessage != null && m.FormattedMessage.Contains("A host error has occurred"));
+
+            // Make sure we orphaned the correct host when the exception was thrown. This will happen
+            // twice: once during Restart and once during the Orphan call when handling the exception.
+            hostA.Verify(m => m.StopAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+            hostA.Verify(m => m.Dispose(), Times.Exactly(2));
+
+            // We should not be calling Orphan on the good host
+            hostB.Verify(m => m.StopAsync(It.IsAny<CancellationToken>()), Times.Never);
+            hostB.Verify(m => m.Dispose(), Times.Never);
+
+            // The "late" exception from the first host shouldn't bring things down
+            Assert.Equal(ScriptHostState.Running, _hostService.State);
         }
 
         public void RestartHost()
