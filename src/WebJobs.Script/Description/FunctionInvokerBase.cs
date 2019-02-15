@@ -247,6 +247,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public void End(bool success)
         {
             startedEvent.Success = success;
+            string eventName = success ? MetricEventNames.FunctionInvokeSucceeded : MetricEventNames.FunctionInvokeFailed;
+            _metrics.LogEvent(eventName, startedEvent.FunctionName);
+
             _metrics.EndEvent(startedEvent);
 
             if (invokeLatencyEvent != null)
