@@ -115,6 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private async Task StartHostAsync(CancellationToken cancellationToken, int attemptCount = 0, JobHostStartupMode startupMode = JobHostStartupMode.Normal)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            IHost localHost = null;
 
             try
             {
@@ -132,7 +133,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // If we're in a non-transient error state or offline, skip host initialization
                 bool skipJobHostStartup = isOffline || hasNonTransientErrors;
 
-                _host = BuildHost(skipJobHostStartup, skipHostJsonConfiguration: startupMode == JobHostStartupMode.HandlingConfigurationParsingError);
+                localHost = BuildHost(skipJobHostStartup, skipHostJsonConfiguration: startupMode == JobHostStartupMode.HandlingConfigurationParsingError);
+                _host = localHost;
 
                 var scriptHost = (ScriptHost)_host.Services.GetService<ScriptHost>();
                 if (scriptHost != null)
@@ -140,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     scriptHost.HostInitializing += OnHostInitializing;
                 }
 
-                LogInitialization(isOffline, attemptCount, ++_hostStartCount);
+                LogInitialization(localHost, isOffline, attemptCount, ++_hostStartCount);
 
                 await _host.StartAsync(cancellationToken);
 
@@ -156,32 +158,49 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (OperationCanceledException)
             {
+                GetHostLogger(localHost).LogDebug("Host startup was canceled.");
                 throw;
             }
             catch (Exception exc)
             {
-                LastError = exc;
-                State = ScriptHostState.Error;
-                attemptCount++;
+                bool isActiveHost = ReferenceEquals(localHost, _host);
+                ILogger logger = GetHostLogger(localHost);
 
-                ILogger logger = GetHostLogger();
-                logger.LogError(exc, "A host error has occurred");
+                if (isActiveHost)
+                {
+                    LastError = exc;
+                    State = ScriptHostState.Error;
+                    logger.LogError(exc, "A host error has occurred");
+                }
+                else
+                {
+                    // Another host has been created before this host
+                    // threw its startup exception. We want to make sure it
+                    // doesn't control the state of the service.
+                    logger.LogWarning(exc, "A host error has occurred on an inactive host");
+                }
+
+                attemptCount++;
 
                 if (ShutdownHostIfUnhealthy())
                 {
                     return;
                 }
 
-                var orphanTask = Orphan(_host, logger)
+                var orphanTask = Orphan(localHost, logger)
                     .ContinueWith(t =>
+                    {
+                        if (t.IsFaulted)
                         {
-                            if (t.IsFaulted)
-                            {
-                                t.Exception.Handle(e => true);
-                            }
-                        }, TaskContinuationOptions.ExecuteSynchronously);
+                            t.Exception.Handle(e => true);
+                        }
+                    }, TaskContinuationOptions.ExecuteSynchronously);
 
-                cancellationToken.ThrowIfCancellationRequested();
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    logger.LogDebug($"Cancellation requested. A new host will not be started.");
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
 
                 var nextStartupAttemptMode = JobHostStartupMode.Normal;
 
@@ -242,6 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 await _hostRestartSemaphore.WaitAsync();
                 if (State == ScriptHostState.Stopping || State == ScriptHostState.Stopped)
                 {
+                    _logger.LogDebug($"Host restart was requested, but current host state is '{State}'. Skipping restart.");
                     return;
                 }
 
@@ -277,18 +297,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return _scriptHostBuilder.BuildHost(skipHostStartup, skipHostJsonConfiguration);
         }
 
-        private ILogger GetHostLogger()
+        private ILogger GetHostLogger(IHost host)
         {
-            var hostLoggerFactory = _host?.Services.GetService<ILoggerFactory>();
+            ILoggerFactory hostLoggerFactory = null;
+            try
+            {
+                hostLoggerFactory = host?.Services.GetService<ILoggerFactory>();
+            }
+            catch (ObjectDisposedException)
+            {
+                // If the host is disposed, we cannot access services.
+            }
 
             // Attempt to get the host logger with JobHost configuration applied
             // using the default logger as a fallback
             return hostLoggerFactory?.CreateLogger(LogCategories.Startup) ?? _logger;
         }
 
-        private void LogInitialization(bool isOffline, int attemptCount, int startCount)
+        private void LogInitialization(IHost host, bool isOffline, int attemptCount, int startCount)
         {
-            var logger = GetHostLogger();
+            var logger = GetHostLogger(host);
 
             var log = isOffline ? "Host is offline." : "Initializing Host.";
             logger.LogInformation(log);
@@ -362,10 +390,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// <param name="instance">The <see cref="IHost"/> instance to remove</param>
         private async Task Orphan(IHost instance, ILogger logger, CancellationToken cancellationToken = default)
         {
-            var scriptHost = (ScriptHost)instance?.Services.GetService<ScriptHost>();
-            if (scriptHost != null)
+            try
             {
-                scriptHost.HostInitializing -= OnHostInitializing;
+                var scriptHost = (ScriptHost)instance?.Services.GetService<ScriptHost>();
+                if (scriptHost != null)
+                {
+                    scriptHost.HostInitializing -= OnHostInitializing;
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // If the instance is already disposed, we cannot access its services.
             }
 
             try

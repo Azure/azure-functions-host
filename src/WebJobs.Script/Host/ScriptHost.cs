@@ -249,6 +249,10 @@ namespace Microsoft.Azure.WebJobs.Script
             var ignore = LogInitializationAsync();
 
             await InitializeAsync();
+
+            // Throw if cancellation occurred during initialization.
+            cancellationToken.ThrowIfCancellationRequested();
+
             await base.StartAsyncCore(cancellationToken);
 
             LogHostFunctionErrors();
