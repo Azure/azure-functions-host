@@ -2,73 +2,71 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Json;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using static System.Environment;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
-    public class ExtensionBundleConfigurationSource : IConfigurationSource
+    public class ExtensionBundleConfigurationSource : FileConfigurationSource
     {
-        private readonly string _scriptRoot;
+        private const string IdProperty = "id";
+        private const string VersionProperty = "version";
 
-        public ExtensionBundleConfigurationSource(string scriptRoot)
-        {
-            _scriptRoot = scriptRoot;
-        }
+        public bool IsAppServiceEnvironment { get; set; }
 
-        public IConfigurationProvider Build(IConfigurationBuilder builder)
+        public override IConfigurationProvider Build(IConfigurationBuilder builder)
         {
+            if (IsAppServiceEnvironment)
+            {
+                string home = GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+                Path = System.IO.Path.Combine(home, "site", "wwwroot", ScriptConstants.HostMetadataFileName);
+            }
+            else
+            {
+                string root = GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot);
+                Path = System.IO.Path.Combine(root, ScriptConstants.HostMetadataFileName);
+            }
+
+            ReloadOnChange = true;
+            ResolveFileProvider();
             return new ExtensionBundleConfigurationProvider(this);
         }
 
-        private class ExtensionBundleConfigurationProvider : ConfigurationProvider
+        public class ExtensionBundleConfigurationProvider : FileConfigurationProvider
         {
-            private readonly ExtensionBundleConfigurationSource _configurationSource;
+            public ExtensionBundleConfigurationProvider(ExtensionBundleConfigurationSource configurationSource) : base(configurationSource) { }
 
-            public ExtensionBundleConfigurationProvider(ExtensionBundleConfigurationSource configurationSource)
+            public override void Load(Stream stream)
             {
-                _configurationSource = configurationSource;
-            }
+                using (var reader = new StreamReader(stream))
+                {
+                    string json = reader.ReadToEnd();
+                    JObject configObject = JObject.Parse(json);
 
-            public override void Load()
-            {
-                string hostFilePath = Path.Combine(_configurationSource._scriptRoot, ScriptConstants.HostMetadataFileName);
-                JObject configObject = LoadConfig(hostFilePath);
-                var bundleConfig = configObject?[ConfigurationSectionNames.ExtensionBundle];
-                if (bundleConfig == null)
-                {
-                    return;
-                }
+                    var bundleConfig = configObject?[ConfigurationSectionNames.ExtensionBundle];
+                    if (bundleConfig == null)
+                    {
+                        return;
+                    }
 
-                if (bundleConfig.Type == JTokenType.Object)
-                {
-                    Data[ConfigurationSectionNames.ExtensionBundleId] = bundleConfig?["id"]?.Value<string>();
-                    Data[ConfigurationSectionNames.ExtensionBundleVersion] = bundleConfig?["version"]?.Value<string>();
-                }
-                else
-                {
-                    Data[ConfigurationSectionNames.JobHostExtensionBundle] = string.Empty;
-                }
-            }
+                    var bundleSection = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.ExtensionBundle);
+                    var idProperty = ConfigurationPath.Combine(bundleSection, IdProperty);
+                    var versionProperty = ConfigurationPath.Combine(bundleSection, VersionProperty);
 
-            internal JObject LoadConfig(string configFilePath)
-            {
-                JObject configObject;
-                try
-                {
-                    string json = File.ReadAllText(configFilePath);
-                    configObject = JObject.Parse(json);
+                    if (bundleConfig.Type != JTokenType.Object)
+                    {
+                        Data[bundleSection] = string.Empty;
+                    }
+                    else
+                    {
+                        Data[idProperty] = bundleConfig?[IdProperty]?.Value<string>();
+                        Data[versionProperty] = bundleConfig?[VersionProperty]?.Value<string>();
+                    }
                 }
-                catch (JsonException ex)
-                {
-                    throw new FormatException($"Unable to parse Extension Bundle configuration '{configFilePath}'.", ex);
-                }
-
-                return configObject;
             }
         }
     }

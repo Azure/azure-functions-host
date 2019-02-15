@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public ExtensionBundleOptionsSetupTest()
         {
             _rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests");
+            Environment.SetEnvironmentVariable(AzureWebJobsScriptRoot, _rootPath);
 
             if (!Directory.Exists(_rootPath))
             {
@@ -63,7 +64,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void MissingOrValidExtenstionConfig_DoesNotThrowException(string hostJsonContent)
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
-            Assert.True(File.Exists(_hostJsonFile));
             var configuration = BuildBundleConfigurationSource();
 
             ExtensionBundleOptionsSetup setup = new ExtensionBundleOptionsSetup(configuration, _environment, _hostingEnvironment);
@@ -83,7 +83,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                         }
                     }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
-            Assert.True(File.Exists(_hostJsonFile));
             var hostingEnvironment = new Mock<IHostingEnvironment>();
 
             var configuration = BuildBundleConfigurationSource();
@@ -109,7 +108,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                         }
                     }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
-            Assert.True(File.Exists(_hostJsonFile));
 
             var configuration = BuildBundleConfigurationSource();
             ExtensionBundleOptionsSetup setup = new ExtensionBundleOptionsSetup(configuration, GetAppServiceEnvironment(), _hostingEnvironment);
@@ -141,7 +139,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                         }
                     }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
-            Assert.True(File.Exists(_hostJsonFile));
 
             var configuration = BuildBundleConfigurationSource();
             ExtensionBundleOptionsSetup setup = new ExtensionBundleOptionsSetup(configuration, _environment, _hostingEnvironment);
@@ -167,7 +164,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
 
-            Assert.True(File.Exists(_hostJsonFile));
             var configuration = BuildBundleConfigurationSource();
 
             ExtensionBundleOptionsSetup setup = new ExtensionBundleOptionsSetup(configuration, _environment, _hostingEnvironment);
@@ -200,7 +196,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void ValidateBundleId_InvalidId_Throws(string hostJsonContent)
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
-            Assert.True(File.Exists(_hostJsonFile));
             var configuration = BuildBundleConfigurationSource();
 
             ExtensionBundleOptionsSetup setup = new ExtensionBundleOptionsSetup(configuration, _environment, _hostingEnvironment);
@@ -240,7 +235,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void ExtensionBundleConfigure_InvalidVersion_ThrowsException(string hostJsonContent)
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
-            Assert.True(File.Exists(_hostJsonFile));
             var configuration = BuildBundleConfigurationSource();
 
             ExtensionBundleOptionsSetup setup = new ExtensionBundleOptionsSetup(configuration, _environment, _hostingEnvironment);
@@ -271,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
 
-            var configSource = new ExtensionBundleConfigurationSource(_rootPath);
+            var configSource = new ExtensionBundleConfigurationSource() { IsAppServiceEnvironment = false };
 
             var configurationBuilder = new ConfigurationBuilder()
                 .Add(configSource);
@@ -283,6 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
+
             string downloadPath = string.Empty;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {

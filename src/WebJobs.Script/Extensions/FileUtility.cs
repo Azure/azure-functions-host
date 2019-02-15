@@ -22,8 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script
             set { _instance = value; }
         }
 
-        public static PathBase Path => Instance.Path;
-
         public static string ReadResourceString(string resourcePath, Assembly assembly = null)
         {
             assembly = assembly ?? Assembly.GetCallingAssembly();

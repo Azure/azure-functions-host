@@ -16,5 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public ICollection<string> ProbingPaths { get; set; }
 
         public string DownloadPath { get; set; }
+
+        public bool EnsureLatest { get; set; }
     }
 }

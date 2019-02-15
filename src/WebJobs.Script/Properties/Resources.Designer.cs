@@ -106,6 +106,15 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Unable to find or download extension bundle.
+        /// </summary>
+        internal static string ErrorLoadingExtensionBundle {
+            get {
+                return ResourceManager.GetString("ErrorLoadingExtensionBundle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The value of id property in extensionBundle section of {0} file is invalid or missing. See https://aka.ms/functions-hostjson for more information.
         /// </summary>
         internal static string ExtensionBundleConfigMissingId {
@@ -165,6 +174,15 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         internal static string LanguageWorkerChannelSpecializationTrace {
             get {
                 return ResourceManager.GetString("LanguageWorkerChannelSpecializationTrace", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Loading Extension bundle from {0}.
+        /// </summary>
+        internal static string LoadingExtensionBundle {
+            get {
+                return ResourceManager.GetString("LoadingExtensionBundle", resourceCulture);
             }
         }
         

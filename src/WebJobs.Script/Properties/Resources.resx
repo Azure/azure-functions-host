@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -161,5 +161,11 @@
   </data>
   <data name="ZipExtractionComplete" xml:space="preserve">
     <value>Zip extraction complete</value>
+  </data>
+  <data name="ErrorLoadingExtensionBundle" xml:space="preserve">
+    <value>Unable to find or download extension bundle</value>
+  </data>
+  <data name="LoadingExtensionBundle" xml:space="preserve">
+    <value>Loading Extension bundle from {0}</value>
   </data>
 </root>

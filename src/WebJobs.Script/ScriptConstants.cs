@@ -124,8 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string DefaultExtensionBundleDirectory = "FuncExtensionBundles";
         public const string ExtensionBundleDirectory = "ExtensionBundles";
-        //public const string ExtensionBundleCdnUri = "https://functionscdn.azureedge.net/public/extensionBundles";
-        public const string ExtensionBundleCdnUri = "https://nasonifunce2estorage.blob.core.windows.net/download";
+        public const string ExtensionBundleCdnUri = "https://functionscdn.azureedge.net/public/extensionBundles";
         public const string ExtensionBundleMetadatFile = "bundle.json";
         public const string VersionIndexFile = "index.json";
 

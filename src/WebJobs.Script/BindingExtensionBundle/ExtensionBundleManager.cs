@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensionBundle
         private readonly IEnvironment _environment;
         private readonly IOptions<ExtensionBundleOptions> _options;
         private readonly ILogger _logger;
+        private readonly string _cdnUri;
 
         public ExtensionBundleManager(IEnvironment environment,
                                       IOptions<ExtensionBundleOptions> extensionBundleOptions,
@@ -30,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensionBundle
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _options = extensionBundleOptions ?? throw new ArgumentNullException(nameof(extensionBundleOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AlternateCdnUri) ?? ScriptConstants.ExtensionBundleCdnUri;
         }
 
         public bool IsExtensionBundleConfigured()
@@ -37,23 +39,30 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensionBundle
             return !string.IsNullOrEmpty(_options.Value.Id) && !string.IsNullOrEmpty(_options.Value.Version?.OriginalString);
         }
 
-        public async Task<string> GetExtensionBundle()
+        public async Task<string> GetExtensionBundle(HttpClient httpClient = null)
         {
-            using (var httpClient = new HttpClient())
+            httpClient = httpClient ?? new HttpClient();
+            using (httpClient)
             {
-                if (!TryLocateExtensionBundle(out string bundlePath))
+                string latestBundleVersion = await GetLatestMatchingBundleVersion(httpClient);
+                if (string.IsNullOrEmpty(latestBundleVersion))
                 {
-                    string bundleVersion = await GetLatestMatchingBundleVersion(httpClient);
-                    if (bundleVersion != null && _environment.IsPersistentFileSystemAvailable())
-                    {
-                        bundlePath = await DownloadExtensionBundleAsync(bundleVersion, httpClient);
-                    }
+                    return null;
                 }
+
+                bool bundleFound = TryLocateExtensionBundle(out string bundlePath);
+                string bundleVersion = Path.GetFileName(bundlePath);
+
+                if (!bundleFound || (bundleVersion != latestBundleVersion && _options.Value.EnsureLatest))
+                {
+                    bundlePath = await DownloadExtensionBundleAsync(latestBundleVersion, httpClient);
+                }
+
                 return bundlePath;
             }
         }
 
-        public bool TryLocateExtensionBundle(out string bundlePath)
+        internal bool TryLocateExtensionBundle(out string bundlePath)
         {
             bundlePath = null;
             string bundleMetatdataFile = null;
@@ -84,13 +93,13 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensionBundle
             return !string.IsNullOrEmpty(bundleMetatdataFile) && FileUtility.FileExists(bundleMetatdataFile);
         }
 
-        internal async Task<string> DownloadExtensionBundleAsync(string version, HttpClient httpClient)
+        private async Task<string> DownloadExtensionBundleAsync(string version, HttpClient httpClient)
         {
             string zipDirectoryPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             FileUtility.EnsureDirectoryExists(zipDirectoryPath);
 
             string zipFilePath = Path.Combine(zipDirectoryPath, $"{version}.zip");
-            var zipUri = new Uri($"{ScriptConstants.ExtensionBundleCdnUri}/{_options.Value.Id}/{version}/{version}.zip");
+            var zipUri = new Uri($"{_cdnUri}/{_options.Value.Id}/{version}/{version}.zip");
 
             string bundleMetatdataFile = null;
             string bundlePath = null;
@@ -130,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensionBundle
 
         private async Task<string> GetLatestMatchingBundleVersion(HttpClient httpClient)
         {
-            var uri = new Uri($"{ScriptConstants.ExtensionBundleCdnUri}/{_options.Value.Id}/{ScriptConstants.VersionIndexFile}");
+            var uri = new Uri($"{_cdnUri}/{_options.Value.Id}/{ScriptConstants.VersionIndexFile}");
             _logger.LogInformation(Resources.FetchingVersionInfo, _options.Value.Id, uri.Authority, uri.AbsolutePath);
 
             var response = await httpClient.GetAsync(uri);

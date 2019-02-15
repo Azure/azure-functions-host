@@ -64,8 +64,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         IsLinuxAppServiceEnvironment = SystemEnvironment.Instance.IsLinuxAppServiceEnvironment()
                     });
 
-                    var webJobsScriptRoot = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot);
-                    config.Add(new ExtensionBundleConfigurationSource(webJobsScriptRoot));
+                    config.Add(new ExtensionBundleConfigurationSource
+                    {
+                        IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppServiceEnvironment(),
+                    });
                 })
                 .ConfigureLogging((context, loggingBuilder) =>
                 {

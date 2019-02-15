@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.BindingExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
         public Type[] GetStartupTypes()
         {
-            IEnumerable<Type> startupTypes = GetExtensionsStartupTypesAsync().Result;
+            IEnumerable<Type> startupTypes = GetExtensionsStartupTypesAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 
             return startupTypes
                 .Distinct(new TypeNameEqualityComparer())
@@ -60,11 +61,17 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
         public async System.Threading.Tasks.Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()
         {
-            //string binPath = Path.Combine(_rootScriptPath, "bin");
             string binPath;
             if (_extensionBundleManager.IsExtensionBundleConfigured())
             {
-                binPath = Path.Combine(await _extensionBundleManager.GetExtensionBundle(), "bin");
+                string extensionBundlePath = await _extensionBundleManager.GetExtensionBundle();
+                if (string.IsNullOrEmpty(extensionBundlePath))
+                {
+                    _logger.LogError(Resources.ErrorLoadingExtensionBundle);
+                    return null;
+                }
+                _logger.LogInformation(Resources.LoadingExtensionBundle, extensionBundlePath);
+                binPath = Path.Combine(extensionBundlePath, "bin");
             }
             else
             {

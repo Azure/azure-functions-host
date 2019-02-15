@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             }
         }
 
-        private static void ConfigureBundleVersion(IConfigurationSection configurationSection, ExtensionBundleOptions options)
+        private void ConfigureBundleVersion(IConfigurationSection configurationSection, ExtensionBundleOptions options)
         {
             string bundleVersion = configurationSection.GetValue<string>("version");
             if (string.IsNullOrWhiteSpace(bundleVersion) || !VersionRange.TryParse(bundleVersion.ToString(), allowFloating: true, out VersionRange version))
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.Version = version;
         }
 
-        private static void ValidateBundleId(string id)
+        private void ValidateBundleId(string id)
         {
             if (string.IsNullOrWhiteSpace(id) || !PackageIdValidator.IsValidPackageId(id))
             {
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             }
         }
 
-        public void ConfigureProbingPaths(ExtensionBundleOptions options)
+        private void ConfigureProbingPaths(ExtensionBundleOptions options)
         {
             options.ProbingPaths = new List<string>();
 
