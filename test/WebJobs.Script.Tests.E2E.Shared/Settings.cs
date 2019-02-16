@@ -53,6 +53,8 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
 
         public static Uri SiteBaseAddress => new Uri($"https://{SiteName}.azurewebsites.net");
 
+        public static IConfigurationSection Tests => GetSection("Tests");
+
         public static string RuntimeVersion
         {
             get
@@ -72,6 +74,20 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
 
         private static string GetSettingValue(string settingName)
         {
+            EnsureConfigInitialized();
+
+            return ConfigurationBinder.GetValue(Config, settingName, "default");
+        }
+
+        private static IConfigurationSection GetSection(string key)
+        {
+            EnsureConfigInitialized();
+
+            return Config.GetSection(key);
+        }
+
+        private static void EnsureConfigInitialized()
+        {
             if (Config == null)
             {
                 var builder = new ConfigurationBuilder().AddEnvironmentVariables();
@@ -81,9 +97,6 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
                 }
                 Config = builder.Build();
             }
-
-
-            return ConfigurationBinder.GetValue(Config, settingName, "default");
         }
     }
 }

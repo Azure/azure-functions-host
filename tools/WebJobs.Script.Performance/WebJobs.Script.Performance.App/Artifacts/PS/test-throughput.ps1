@@ -53,7 +53,14 @@ Start-Transcript -path $outputCSVPath\test.log -append
 Write-Output "Runtime: $runtime"
 Write-Output "jmx: $jmx"
 
-& $jmeter -jar C:\Tools\apache-jmeter-5.0\bin\ApacheJMeter.jar -n -t "C:\Tools\jmx\$jmx" -l "$outputCSVPath\logs.csv"
+$tempFolderName = [System.IO.Path]::GetFileNameWithoutExtension([System.IO.Path]::GetTempFileName())
+$tempJmxPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath() ,$tempFolderName)
+[System.IO.Directory]::CreateDirectory($tempJmxPath)
+$tempJmxPath = "$tempJmxPath\test.jmx"
+Write-Host "Downloading '$jmx' to '$tempJmxPath'"
+Invoke-WebRequest -Uri $jmx -OutFile $tempJmxPath
+
+& $jmeter -jar C:\Tools\apache-jmeter-5.0\bin\ApacheJMeter.jar -n -t $tempJmxPath -l "$outputCSVPath\logs.csv"
 & $jmeter -jar C:\Tools\apache-jmeter-5.0\bin\ApacheJMeter.jar -g "$outputCSVPath\logs.csv" -o $outputHTMLPath
 
 $matches = Select-String -Pattern "#statisticsTable" -Path "$outputHTMLPath\content\js\dashboard.js"
