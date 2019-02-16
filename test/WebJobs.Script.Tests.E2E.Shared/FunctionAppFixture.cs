@@ -135,12 +135,12 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
             }
         }
         
-        private async Task WaitForSite()
+        public async Task WaitForSite()
         {
             _logger.LogInformation("Waiting for site...");
 
-            TimeSpan delay = TimeSpan.FromSeconds(3);
-            int attemptsCount = 5;
+            TimeSpan delay = TimeSpan.FromSeconds(5);
+            int attemptsCount = 8;
 
             using (var client = new HttpClient())
             {
@@ -170,7 +170,6 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
             }
 
             throw new InvalidOperationException($"Wait for site timeout: {delay.TotalSeconds * 5} seconds.");
-            
         }
 
         private async Task CheckVersionsMatch()
@@ -205,11 +204,19 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
 
             await _kuduClient.DeleteDirectory("site/wwwroot", true);
             string filePath = Path.ChangeExtension(Path.GetTempFileName(), "zip");
-            ZipFile.CreateFromDirectory(Path.Combine(Environment.CurrentDirectory, "Functions"), filePath);
+            string sourceDirectory = Path.Combine(Environment.CurrentDirectory, "Functions");
+            if (Directory.Exists(sourceDirectory))
+            {
+                ZipFile.CreateFromDirectory(sourceDirectory, filePath);
 
-            await _kuduClient.DeployZip(filePath);
+                await _kuduClient.DeployZip(filePath);
 
-            _logger.LogInformation("Site contents updated");
+                _logger.LogInformation("Site contents updated");
+            }
+            else
+            {
+                _logger.LogInformation("Content directory is empty");
+            }
         }
 
         private async Task UpdateRuntime()

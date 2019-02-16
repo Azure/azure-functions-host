@@ -35,7 +35,7 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
         public async Task DeleteDirectory(string path, bool recursive)
         {
             HttpResponseMessage response = await _client.DeleteAsync($"api/vfs/{path}/?recursive={recursive}");
-            response.EnsureSuccessStatusCode();
+            // response.EnsureSuccessStatusCode();
         }
 
         public async Task DeployZip(string zipPath)

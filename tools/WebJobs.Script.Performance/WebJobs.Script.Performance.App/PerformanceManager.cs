@@ -1,6 +1,5 @@
 ﻿using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
-using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using Microsoft.Rest;
@@ -11,6 +10,7 @@ using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
 using WebJobs.Script.Tests.EndToEnd.Shared;
+using Microsoft.Extensions.Configuration;
 
 namespace WebJobs.Script.PerformanceMeter
 {
@@ -20,7 +20,6 @@ namespace WebJobs.Script.PerformanceMeter
         private readonly ComputeManagementClient _client;
         private readonly List<TestDefinition> _tests;
         private bool _disposed = false;
-        private string _currentExecutionRuntime;
 
         public PerformanceManager()
         {
@@ -40,48 +39,29 @@ namespace WebJobs.Script.PerformanceMeter
             _client = new ComputeManagementClient(credentials);
             _client.SubscriptionId = Settings.SiteSubscriptionId;
 
-            _tests = new List<TestDefinition>()
-            {
-                new TestDefinition()
-                {
-                    FileName = "win-csharp-ping.jmx",
-                    Desciption = "C# Ping",
-                    Runtime = "dotnet"
-                },
-                new TestDefinition()
-                {
-                    FileName = "win-js-ping.jmx",
-                    Desciption = "JS Ping",
-                    Runtime = "node"
-                },
-                new TestDefinition()
-                {
-                    FileName = "win-java-ping.jmx",
-                    Desciption = "Java Ping",
-                    Runtime = "java"
-                }
-            };
+            _tests = new List<TestDefinition>();
+            Settings.Tests.Bind(_tests);
         }
 
         public async Task ExecuteAsync(string testId)
         {
             // We assume first word in testId is platform
-            var test = _tests.FirstOrDefault(x => x.FileName.ToLower() == testId.ToLower());
+            var test = _tests.FirstOrDefault(x => x.Jmx.Contains(testId));
             if (test == null)
             {
                 Console.WriteLine($"Test '{testId}' is not found");
             }
             else
             {
-                await ChangeExecutionRuntime(test.Runtime);
-                _fixture.Logger.LogInformation($"Executing: {test.FileName}, {test.Desciption}");
+                await SetAppSettings(test);
+                _fixture.Logger.LogInformation($"Executing: {test.Jmx}, {test.Desciption}");
                 if (Environment.MachineName == "func-perf-vm")
                 {
                     System.Diagnostics.Process process = new System.Diagnostics.Process();
                     System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
                     startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
                     startInfo.FileName = "powershell.exe";
-                    startInfo.Arguments = $"\"& 'C:\\Tools\\ps\\test-throughput.ps1'\" '{test.FileName}' '{test.Desciption}' '{Settings.RuntimeVersion}'";
+                    startInfo.Arguments = $"\"& 'C:\\Tools\\ps\\test-throughput.ps1'\" '{test.Jmx}' '{test.Desciption}' '{Settings.RuntimeVersion}'";
                     Console.WriteLine($"Exectuing PS directly on VM: {startInfo.FileName}{startInfo.Arguments}");
                     process.StartInfo = startInfo;
                     process.Start();
@@ -92,7 +72,7 @@ namespace WebJobs.Script.PerformanceMeter
                     Console.WriteLine("Exectuing PS using VM operation API");
                     var commandResult = await VirtualMachinesOperationsExtensions.RunCommandAsync(_client.VirtualMachines, Settings.SiteResourceGroup, Settings.VM,
                         new RunCommandInput("RunPowerShellScript",
-                        new List<string>() { $"& 'C:\\Tools\\ps\\test-throughput.ps1' '{test.FileName}' '{test.Desciption}' '{Settings.RuntimeVersion}'" }));
+                        new List<string>() { $"& 'C:\\Tools\\ps\\test-throughput.ps1' '{test.Jmx}' '{test.Desciption}' '{Settings.RuntimeVersion}'" }));
                 }
             }
         }
@@ -115,37 +95,35 @@ namespace WebJobs.Script.PerformanceMeter
         {
             foreach(var test in _tests)
             {
-                await ExecuteAsync(test.FileName);
+                await ExecuteAsync(test.Jmx);
             }
         }
 
-        private async Task ChangeExecutionRuntime(string runtime)
+        private async Task SetAppSettings(TestDefinition test)
         {
-            if (_currentExecutionRuntime != runtime)
-            {
-                _fixture.Logger.LogInformation($"Changing execution runtime: {runtime}");
-                await _fixture.AddAppSetting("FUNCTIONS_WORKER_RUNTIME", runtime);
+            // Setting FUNCTIONS_WORKER_RUNTIME
+            _fixture.Logger.LogInformation($"Changing FUNCTIONS_WORKER_RUNTIME: {test.Runtime}");
+            await _fixture.AddAppSetting("FUNCTIONS_WORKER_RUNTIME", test.Runtime);
 
-                // Wait until the app fully restaeted and ready
-                Thread.Sleep(30000);
-                await _fixture.KuduClient.GetFunctions();
-                _fixture.Logger.LogInformation($"Execution runtime is successfully changed: {runtime}");
+            // Setting
+            _fixture.Logger.LogInformation($"Changing WEBSITE_RUN_FROM_PACKAGE: {test.RunFromZipUri}");
+            await _fixture.AddAppSetting("WEBSITE_RUN_FROM_PACKAGE", test.RunFromZipUri);
 
-                _currentExecutionRuntime = runtime;
-            }
-            else
-            {
-                _fixture.Logger.LogInformation($"Execution runtime: {runtime}");
-            }
+            // Wait until the app fully restaeted and ready to run
+            await _fixture.StopSite();
+            await _fixture.StartSite();
+            await _fixture.WaitForSite();
         }
 
         private class TestDefinition
         {
-            public string FileName { get; set; }
+            public string Jmx { get; set; }
 
             public string Runtime { get; set; }
 
             public string Desciption { get; set; }
+
+            public string RunFromZipUri { get; set; }
         }
     }
 }
