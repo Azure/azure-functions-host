@@ -411,11 +411,14 @@ namespace Microsoft.Azure.WebJobs.Script
             functionName = isFunctionShortName ? functionName : Utility.GetFunctionShortName(functionName);
 
             ICollection<string> functionErrorCollection = new Collection<string>();
-            if (!functionErrors.TryGetValue(functionName, out functionErrorCollection))
+            if (!string.IsNullOrEmpty(functionName))
             {
-                functionErrors[functionName] = functionErrorCollection = new Collection<string>();
+                if (!functionErrors.TryGetValue(functionName, out functionErrorCollection))
+                {
+                    functionErrors[functionName] = functionErrorCollection = new Collection<string>();
+                }
+                functionErrorCollection.Add(error);
             }
-            functionErrorCollection.Add(error);
         }
 
         internal static bool TryReadFunctionConfig(string scriptDir, out string json, IFileSystem fileSystem = null)

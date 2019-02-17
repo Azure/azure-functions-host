@@ -7,6 +7,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class EmptyProcessRegistry : IProcessRegistry
     {
+        public void Dispose()
+        {
+        }
+
         public bool Register(Process process) => true;
     }
 }

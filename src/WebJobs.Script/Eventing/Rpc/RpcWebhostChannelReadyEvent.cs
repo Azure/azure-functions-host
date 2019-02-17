@@ -6,9 +6,9 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
-    internal class RpcChannelReadyEvent : RpcChannelEvent
+    internal class RpcWebhostChannelReadyEvent : RpcChannelEvent
     {
-        internal RpcChannelReadyEvent(string id, string language, ILanguageWorkerChannel languageWorkerChannel,
+        internal RpcWebhostChannelReadyEvent(string id, string language, ILanguageWorkerChannel languageWorkerChannel,
             string version, IDictionary<string, string> capabilities)
             : base(id)
         {
