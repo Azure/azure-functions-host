@@ -157,27 +157,29 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private void OnProcessExited(object sender, EventArgs e)
         {
-            if (!_disposing)
+            if (_disposing)
             {
-                string exceptionMessage = string.Join(",", _processStdErrDataQueue.ToList().Where(s => !string.IsNullOrEmpty(s)));
-                try
+                // No action needed
+                return;
+            }
+            string exceptionMessage = string.Join(",", _processStdErrDataQueue.ToList().Where(s => !string.IsNullOrEmpty(s)));
+            try
+            {
+                if (_process.ExitCode != 0)
                 {
-                    if (_process.ExitCode != 0)
-                    {
-                        var processExitEx = new LanguageWorkerProcessExitException($"{_process.StartInfo.FileName} exited with code {_process.ExitCode}\n {exceptionMessage}");
-                        processExitEx.ExitCode = _process.ExitCode;
-                        HandleWorkerError(processExitEx);
-                    }
-                    else
-                    {
-                        _process.WaitForExit();
-                        _process.Close();
-                    }
+                    var processExitEx = new LanguageWorkerProcessExitException($"{_process.StartInfo.FileName} exited with code {_process.ExitCode}\n {exceptionMessage}");
+                    processExitEx.ExitCode = _process.ExitCode;
+                    HandleWorkerError(processExitEx);
                 }
-                catch (Exception)
+                else
                 {
-                    // ignore process is already disposed
+                    _process.WaitForExit();
+                    _process.Close();
                 }
+            }
+            catch (Exception)
+            {
+                // ignore process is already disposed
             }
         }
 
