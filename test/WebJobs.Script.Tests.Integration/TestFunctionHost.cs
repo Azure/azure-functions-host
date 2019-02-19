@@ -94,7 +94,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var manager = _testServer.Host.Services.GetService<IScriptHostManager>();
             _hostService = manager as WebJobsScriptHostService;
-
             StartAsync().GetAwaiter().GetResult();
         }
 
@@ -120,6 +119,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var secrets = await SecretManager.GetFunctionSecretsAsync(functionName);
             return secrets.First().Value;
+        }
+
+        public async Task RestartAsync(CancellationToken cancellationToken)
+        {
+            await _hostService.RestartHostAsync(cancellationToken);
         }
 
         private async Task StartAsync()

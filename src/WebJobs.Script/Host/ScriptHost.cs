@@ -68,7 +68,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionDispatcher _functionDispatcher;
-        private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -899,7 +898,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 _functionDispatcher?.Dispose();
-                (_processRegistry as IDisposable)?.Dispose();
 
                 foreach (var function in Functions)
                 {

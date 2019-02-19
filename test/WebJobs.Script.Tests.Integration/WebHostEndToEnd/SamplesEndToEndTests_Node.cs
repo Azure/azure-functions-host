@@ -10,6 +10,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.EventHubs;
 using Microsoft.Azure.WebJobs.Logging;
@@ -428,18 +429,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task NodeProcessCount_SameAfterFileChange()
+        public async Task NodeProcess_Different_AfterHostRestart()
         {
-            // Count number of node processes before restart
-            int initialProcessCount = GetProcessCountByName("node");
-            await SharedDirectory_ReloadsOnFileChange();
-            // Count number of node processes after restart
-            int proccessCountAfterReload = GetProcessCountByName("node");
-            Assert.Equal(proccessCountAfterReload, initialProcessCount);
-        }
-        private static int GetProcessCountByName(string processName)
-        {
-            return Process.GetProcessesByName(processName).Length;
+            IEnumerable<int> nodeProcessesBefore = Process.GetProcessesByName("node").Select(p => p.Id);
+            // Trigger a restart
+            await _fixture.Host.RestartAsync(CancellationToken.None);
+            await HttpTrigger_Get_Succeeds();
+            IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
+            // Verify number of node processes before and after restart are the same.
+            Assert.Equal(nodeProcessesBefore.Count(), nodeProcessesAfter.Count());
+            // Verify node process is different after host restart
+            var result = nodeProcessesBefore.Where(pId1 => !nodeProcessesAfter.Any(pId2 => pId2 == pId1));
+            Assert.Equal(1, result.Count());
         }
 
         [Fact]

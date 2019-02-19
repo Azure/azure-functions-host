@@ -36,6 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly ILanguageWorkerConsoleLogSource _consoleLogSource;
 
         private bool _disposed;
+        private bool _disposing;
+        private bool _isWebHostChannel;
         private IObservable<FunctionRegistrationContext> _functionRegistrations;
         private WorkerInitResponse _initMessage;
         private string _workerId;
@@ -68,7 +70,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            ILoggerFactory loggerFactory,
            IMetricsLogger metricsLogger,
            int attemptCount,
-           ILanguageWorkerConsoleLogSource consoleLogSource)
+           ILanguageWorkerConsoleLogSource consoleLogSource,
+           bool isWebHostChannel = false)
         {
             _workerId = workerId;
             _functionRegistrations = functionRegistrations;
@@ -78,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _processRegistry = processRegistry;
             _workerConfig = workerConfig;
             _serverUri = serverUri;
+            _isWebHostChannel = isWebHostChannel;
             _workerChannelLogger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
             _consoleLogSource = consoleLogSource;
 
@@ -109,6 +113,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
         internal Process WorkerProcess => _process;
+
+        public bool IsWebhostChannel => _isWebHostChannel;
 
         internal void StartProcess()
         {
@@ -151,6 +157,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private void OnProcessExited(object sender, EventArgs e)
         {
+            if (_disposing)
+            {
+                // No action needed
+                return;
+            }
             string exceptionMessage = string.Join(",", _processStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
             try
             {
@@ -248,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
-                .Subscribe(PublishRpcChannelReadyEvent, HandleWorkerError);
+                .Subscribe(PublishWebhostRpcChannelReadyEvent, HandleWorkerError);
 
             SendStreamingMessage(new StreamingMessage
             {
@@ -265,7 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _eventManager.Publish(wpEvent);
         }
 
-        internal void PublishRpcChannelReadyEvent(RpcEvent initEvent)
+        internal void PublishWebhostRpcChannelReadyEvent(RpcEvent initEvent)
         {
             _startLatencyMetric?.Dispose();
             _startLatencyMetric = null;
@@ -276,11 +287,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 HandleWorkerError(exc);
                 return;
             }
-
-            RpcChannelReadyEvent readyEvent = new RpcChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
-            _eventManager.Publish(readyEvent);
-
-            if (_functionRegistrations != null)
+            if (_functionRegistrations == null)
+            {
+                RpcWebHostChannelReadyEvent readyEvent = new RpcWebHostChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
+                _eventManager.Publish(readyEvent);
+            }
+            else
             {
                 RegisterFunctions(_functionRegistrations);
             }
@@ -516,6 +528,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void Dispose()
         {
+            _disposing = true;
             Dispose(true);
         }
     }

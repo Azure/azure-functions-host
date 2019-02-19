@@ -11,6 +11,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         string Id { get; }
 
+        bool IsWebhostChannel { get; }
+
         WorkerConfig Config { get; }
 
         void RegisterFunctions(IObservable<FunctionRegistrationContext> functionRegistrations);

@@ -82,17 +82,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
+            if (!string.IsNullOrEmpty(_functionsWorkerRuntime))
+            {
+                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime);
+            }
+
             Host = new TestFunctionHost(_copiedRootPath, logPath, webJobsBuilder =>
             {
                 webJobsBuilder.Services.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
                 ConfigureJobHost(webJobsBuilder);
-            },
-            configureAppConfiguration: s =>
-            {
-                s.AddInMemoryCollection(new Dictionary<string, string>()
-                {
-                    { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime }
-                });
             });
 
             string connectionString = Host.JobHostServices.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);

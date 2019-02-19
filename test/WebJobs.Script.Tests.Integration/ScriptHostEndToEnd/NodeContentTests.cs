@@ -137,6 +137,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var javaChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(javaChannel);
+            var nodeChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
+            Assert.Null(nodeChannel);
         }
 
         // Get response with default ObjectResult content negotiation enabled 

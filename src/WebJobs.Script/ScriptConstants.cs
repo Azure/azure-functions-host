@@ -48,8 +48,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategoryFunction = "Function";
         public const string LogCategoryWorker = "Worker";
         public const string LogCategoryRpcInitializationService = "Host.RpcInitializationService";
-        public const string LanguageWorkerChannelManager = "Host.LanguageWorkerChannelManager";
+        public const string LogCategoryLanguageWorkerChannelManager = "Host.LanguageWorkerChannelManager";
         public const string LogCategoryFunctionRpcService = "Host.FunctionRpcService";
+        public const string LogCategoryFunctionDispatcher = "Host.FunctionDispatcher";
 
         public const string SkipHostJsonConfigurationKey = "MS_SkipHostJsonConfiguration";
         public const string SkipHostInitializationKey = "MS_SkipHostInitialization";
