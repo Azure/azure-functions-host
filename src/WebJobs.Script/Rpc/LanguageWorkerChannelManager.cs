@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(5000);
-            _rpcChannelReadySubscriptions = _eventManager.OfType<RpcWebhostChannelReadyEvent>()
+            _rpcChannelReadySubscriptions = _eventManager.OfType<RpcWebHostChannelReadyEvent>()
                .Subscribe(AddOrUpdateWorkerChannels);
         }
 
@@ -101,10 +101,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _logger.LogInformation("Creating language worker channel for runtime:{runtime}", language);
                 ILanguageWorkerChannel languageWorkerChannel = CreateLanguageWorkerChannel(workerId, scriptRootPath, language, null, null, 0, true);
                 languageWorkerChannel.StartWorkerProcess();
-                IObservable<RpcWebhostChannelReadyEvent> rpcChannelReadyEvent = _eventManager.OfType<RpcWebhostChannelReadyEvent>()
+                IObservable<RpcWebHostChannelReadyEvent> rpcChannelReadyEvent = _eventManager.OfType<RpcWebHostChannelReadyEvent>()
                                                                         .Where(msg => msg.Language == language).Timeout(workerInitTimeout);
                 // Wait for response from language worker process
-                RpcWebhostChannelReadyEvent readyEvent = await rpcChannelReadyEvent.FirstAsync();
+                RpcWebHostChannelReadyEvent readyEvent = await rpcChannelReadyEvent.FirstAsync();
             }
             catch (Exception ex)
             {
@@ -199,10 +199,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _workerChannels[runtime]?.Dispose();
             }
             _workerChannels.Clear();
-            _processRegistry.Dispose();
+            (_processRegistry as IDisposable)?.Dispose();
         }
 
-        private void AddOrUpdateWorkerChannels(RpcWebhostChannelReadyEvent rpcChannelReadyEvent)
+        private void AddOrUpdateWorkerChannels(RpcWebHostChannelReadyEvent rpcChannelReadyEvent)
         {
             _logger.LogInformation("Adding language worker channel for runtime: {language}.", rpcChannelReadyEvent.Language);
             _workerChannels.Add(rpcChannelReadyEvent.Language, rpcChannelReadyEvent.LanguageWorkerChannel);

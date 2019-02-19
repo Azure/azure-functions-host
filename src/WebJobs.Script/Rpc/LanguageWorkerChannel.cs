@@ -162,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 // No action needed
                 return;
             }
-            string exceptionMessage = string.Join(",", _processStdErrDataQueue.ToList().Where(s => !string.IsNullOrEmpty(s)));
+            string exceptionMessage = string.Join(",", _processStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
             try
             {
                 if (_process.ExitCode != 0)
@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             if (_functionRegistrations == null)
             {
-                RpcWebhostChannelReadyEvent readyEvent = new RpcWebhostChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
+                RpcWebHostChannelReadyEvent readyEvent = new RpcWebHostChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
                 _eventManager.Publish(readyEvent);
             }
             else
