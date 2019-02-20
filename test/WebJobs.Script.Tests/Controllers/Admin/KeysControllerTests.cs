@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "TestFunction2", ScriptConstants.FunctionMetadataFileName))).Returns("{}");
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "DNE", ScriptConstants.FunctionMetadataFileName))).Throws(new DirectoryNotFoundException());
 
-            _testController = new KeysController(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new TestSecretManagerProvider(_secretsManagerMock.Object), new LoggerFactory(), fileSystem.Object);
+            _testController = new KeysController(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new TestSecretManagerProvider(_secretsManagerMock.Object), new LoggerFactory(), fileSystem.Object, new TestMetricsLogger());
 
             var keys = new Dictionary<string, string>
             {

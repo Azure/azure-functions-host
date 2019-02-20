@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
@@ -19,7 +20,7 @@ using Microsoft.Extensions.Options;
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
     [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-    public class KeysController : Controller
+    public class KeysController : Controller, IMetricsController
     {
         private const string MasterKeyName = "_master";
 
@@ -28,17 +29,38 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly ILogger _logger;
         private readonly IOptions<ScriptApplicationHostOptions> _applicationOptions;
         private readonly IFileSystem _fileSystem;
+        private readonly IMetricsLogger _metrics;
+        private readonly string _metricsDescription;
 
-        public KeysController(IOptions<ScriptApplicationHostOptions> applicationOptions, ISecretManagerProvider secretManagerProvider, ILoggerFactory loggerFactory, IFileSystem fileSystem)
+        public KeysController(IOptions<ScriptApplicationHostOptions> applicationOptions, ISecretManagerProvider secretManagerProvider, ILoggerFactory loggerFactory, IFileSystem fileSystem, IMetricsLogger metrics)
         {
             _applicationOptions = applicationOptions;
             _secretManagerProvider = secretManagerProvider;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryKeysController);
             _fileSystem = fileSystem;
+            _metrics = metrics;
+            _metricsDescription = _secretManagerProvider.Current.RepositoryType.Name;
+        }
+
+        public IMetricsLogger MetricsLogger
+        {
+            get
+            {
+                return _metrics;
+            }
+        }
+
+        public string MetricsDescription
+        {
+            get
+            {
+                return _metricsDescription;
+            }
         }
 
         [HttpGet]
         [Route("admin/functions/{name}/keys")]
+        [MertricsAction]
         public async Task<IActionResult> Get(string name)
         {
             IDictionary<string, string> functionKeys = await GetFunctionKeys(name);
@@ -53,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}")]
+        [MertricsAction]
         public async Task<IActionResult> Get()
         {
             string hostKeyScope = GetHostKeyScopeForRequest();
@@ -63,6 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("admin/functions/{functionName}/keys/{name}")]
+        [MertricsAction]
         public async Task<IActionResult> Get(string functionName, string name)
         {
             IDictionary<string, string> functionKeys = await GetFunctionKeys(functionName);
@@ -77,6 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{name}")]
+        [MertricsAction]
         public async Task<IActionResult> GetHostKey(string name)
         {
             string hostKeyScope = GetHostKeyScopeForRequest();
@@ -105,26 +130,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/functions/{name}/keys/{keyName}")]
+        [MertricsAction]
         public Task<IActionResult> Post(string name, string keyName) => AddOrUpdateSecretAsync(keyName, null, name, ScriptSecretsType.Function);
 
         [HttpPost]
         [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{keyName}")]
+        [MertricsAction]
         public Task<IActionResult> Post(string keyName) => AddOrUpdateSecretAsync(keyName, null, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
 
         [HttpPut]
         [Route("admin/functions/{name}/keys/{keyName}")]
+        [MertricsAction]
         public Task<IActionResult> Put(string name, string keyName, [FromBody] Key key) => PutKeyAsync(keyName, key, name, ScriptSecretsType.Function);
 
         [HttpPut]
         [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{keyName}")]
+        [MertricsAction]
         public Task<IActionResult> Put(string keyName, [FromBody] Key key) => PutKeyAsync(keyName, key, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
 
         [HttpDelete]
         [Route("admin/functions/{name}/keys/{keyName}")]
+        [MertricsAction]
         public Task<IActionResult> Delete(string name, string keyName) => DeleteFunctionSecretAsync(keyName, name, ScriptSecretsType.Function);
 
         [HttpDelete]
         [Route("admin/host/{keys:regex(^(keys|functionkeys|systemkeys)$)}/{keyName}")]
+
         public Task<IActionResult> Delete(string keyName) => DeleteFunctionSecretAsync(keyName, GetHostKeyScopeForRequest(), ScriptSecretsType.Host);
 
         private string GetHostKeyScopeForRequest()

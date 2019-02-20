@@ -12,6 +12,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class TestSecretManager : ISecretManager
     {
+        public Type RepositoryType
+        {
+            get
+            {
+                return this.GetType();
+            }
+        }
+
         public virtual Task PurgeOldSecretsAsync(string rootScriptPath, ILogger logger)
         {
             throw new NotImplementedException();

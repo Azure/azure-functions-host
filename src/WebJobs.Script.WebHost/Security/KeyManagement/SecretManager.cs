@@ -49,6 +49,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        public Type RepositoryType
+        {
+            get
+            {
+                return _repository.GetType();
+            }
+        }
+
         public void Dispose()
         {
             Dispose(true);
