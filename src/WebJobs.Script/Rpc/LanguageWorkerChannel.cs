@@ -399,7 +399,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     {
                         if (pair.Value != null)
                         {
-                            invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc());
+                            invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc(_workerChannelLogger));
                         }
                     }
                     foreach (var input in context.Inputs)
@@ -407,7 +407,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         invocationRequest.InputData.Add(new ParameterBinding()
                         {
                             Name = input.name,
-                            Data = input.val.ToRpc()
+                            Data = input.val.ToRpc(_workerChannelLogger)
                         });
                     }
 
