@@ -19,11 +19,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData("application/x-www-form-urlencoded’", "say=Hi&to=Mom")]
         public void HttpObjects_StringBody(string expectedContentType, object body)
         {
+            var logger = MockNullLoggerFactory.CreateLogger();
+
             var headers = new HeaderDictionary();
             headers.Add("content-type", expectedContentType);
             HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", "http://localhost/api/httptrigger-scenarios", headers, body);
 
-            var rpcRequestObject = request.ToRpc();
+            var rpcRequestObject = request.ToRpc(logger);
             Assert.Equal(body.ToString(), rpcRequestObject.Http.Body.String);
 
             string contentType;
@@ -37,9 +39,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData("say=Hi&to=", new string[] { "say" }, new string[] { "Hi" })] // Removes empty value query params
         public void HttpObjects_Query(string queryString, string[] expectedKeys, string[] expectedValues)
         {
+            var logger = MockNullLoggerFactory.CreateLogger();
+
             HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", $"http://localhost/api/httptrigger-scenarios?{queryString}");
 
-            var rpcRequestObject = request.ToRpc();
+            var rpcRequestObject = request.ToRpc(logger);
             // Same number of expected key value pairs
             Assert.Equal(rpcRequestObject.Http.Query.Count, expectedKeys.Length);
             Assert.Equal(rpcRequestObject.Http.Query.Count, expectedValues.Length);
@@ -91,30 +95,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void HttpObjects_ClaimsPrincipal()
         {
+            var logger = MockNullLoggerFactory.CreateLogger();
+
             HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", $"http://localhost/apihttptrigger-scenarios");
 
-            MockEasyAuth(request, "facebook", "Connor McMahon", "10241897674253170");
-
-            var rpcRequestObject = request.ToRpc();
-            var identity = request.HttpContext.User.Identities.ToList().ElementAtOrDefault(0);
-            var rpcIdentity = rpcRequestObject.Http.Identities.ElementAtOrDefault(0);
-            Assert.NotNull(identity);
-            Assert.NotNull(rpcIdentity);
-
-            Assert.Equal(rpcIdentity.AuthenticationType, "facebook");
-            Assert.Equal(rpcIdentity.NameClaimType, "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
-            Assert.Equal(rpcIdentity.RoleClaimType, "http://schemas.microsoft.com/ws/2008/06/identity/claims/role");
-
-            var claims = identity.Claims.ToList();
-            for (int j = 0; j < claims.Count; j++)
+            var claimsIdentity1 = MockEasyAuth("facebook", "Connor McMahon", "10241897674253170");
+            var claimsIdentity2 = new ClaimsIdentity(new List<Claim>
             {
-                Assert.True(rpcIdentity.Claims.ElementAtOrDefault(j) != null);
-                Assert.Equal(rpcIdentity.Claims[j].Type, claims[j].Type);
-                Assert.Equal(rpcIdentity.Claims[j].Value, claims[j].Value);
+                new Claim("http://schemas.microsoft.com/2017/07/functions/claims/authlevel", "Function")
+            }, "WebJobsAuthLevel");
+            var claimsIdentities = new List<ClaimsIdentity> { claimsIdentity1, claimsIdentity2 };
+
+            request.HttpContext.User = new ClaimsPrincipal(claimsIdentities);
+
+            var rpcRequestObject = request.ToRpc(logger);
+
+            var identities = request.HttpContext.User.Identities.ToList();
+            var rpcIdentities = rpcRequestObject.Http.Identities.ToList();
+
+            Assert.Equal(2, rpcIdentities.Count);
+
+            for (int i = 0; i < identities.Count; i++)
+            {
+                var identity = identities[i];
+                var rpcIdentity = rpcIdentities.ElementAtOrDefault(i);
+
+                Assert.NotNull(identity);
+                Assert.NotNull(rpcIdentity);
+
+                Assert.Equal(rpcIdentity.AuthenticationType, identity.AuthenticationType);
+                Assert.Equal(rpcIdentity.NameClaimType, identity.NameClaimType);
+                Assert.Equal(rpcIdentity.RoleClaimType, identity.RoleClaimType);
+
+                var claims = identity.Claims.ToList();
+                for (int j = 0; j < claims.Count; j++)
+                {
+                    Assert.True(rpcIdentity.Claims.ElementAtOrDefault(j) != null);
+                    Assert.Equal(rpcIdentity.Claims[j].Type, claims[j].Type);
+                    Assert.Equal(rpcIdentity.Claims[j].Value, claims[j].Value);
+                }
             }
         }
 
-        internal static void MockEasyAuth(HttpRequest request, string provider, string name, string id)
+        internal static ClaimsIdentity MockEasyAuth(string provider, string name, string id)
         {
             var claims = new List<Claim>
             {
@@ -129,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
                 "http://schemas.microsoft.com/ws/2008/06/identity/claims/role");
 
-            request.HttpContext.User = new ClaimsPrincipal(new List<ClaimsIdentity> { identity });
+            return identity;
         }
     }
 }

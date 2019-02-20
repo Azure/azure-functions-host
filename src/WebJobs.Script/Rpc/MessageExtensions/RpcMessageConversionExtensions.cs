@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RpcDataType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedData.DataOneofCase;
@@ -46,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public static TypedData ToRpc(this object value)
+        public static TypedData ToRpc(this object value, ILogger logger)
         {
             TypedData typedData = new TypedData();
 
@@ -105,23 +106,34 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 // parse ClaimsPrincipal if exists
                 if (request.HttpContext?.User?.Identities != null)
                 {
+                    logger.LogDebug("HttpContext has ClaimsPrincipal; parsing to gRPC.");
                     foreach (var id in request.HttpContext.User.Identities)
                     {
-                        // asdf
-                        var rpcId = new RpcClaimsIdentity();
+                        var rpcClaimsIdentity = new RpcClaimsIdentity();
                         if (id.AuthenticationType != null)
                         {
-                            rpcId.AuthenticationType = id.AuthenticationType;
+                            rpcClaimsIdentity.AuthenticationType = id.AuthenticationType;
                         }
-                        rpcId.NameClaimType = id.NameClaimType;
-                        rpcId.RoleClaimType = id.RoleClaimType;
+
+                        if (id.NameClaimType != null)
+                        {
+                            rpcClaimsIdentity.NameClaimType = id.NameClaimType;
+                        }
+
+                        if (id.RoleClaimType != null)
+                        {
+                            rpcClaimsIdentity.RoleClaimType = id.RoleClaimType;
+                        }
 
                         foreach (var claim in id.Claims)
                         {
-                            rpcId.Claims.Add(new RpcClaim { Value = claim.Value, Type = claim.Type });
+                            if (claim.Type != null && claim.Value != null)
+                            {
+                                rpcClaimsIdentity.Claims.Add(new RpcClaim { Value = claim.Value, Type = claim.Type });
+                            }
                         }
 
-                        http.Identities.Add(rpcId);
+                        http.Identities.Add(rpcClaimsIdentity);
                     }
                 }
 
@@ -165,8 +177,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
 
                     request.Body.Position = 0;
-                    http.Body = body.ToRpc();
-                    http.RawBody = rawBody.ToRpc();
+                    http.Body = body.ToRpc(logger);
+                    http.RawBody = rawBody.ToRpc(logger);
                 }
             }
             else
