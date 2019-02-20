@@ -184,6 +184,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".azurefunctions", "extensions");
             }
+
+            FileUtility.EnsureDirectoryExists(basePath);
             return basePath;
         }
 
