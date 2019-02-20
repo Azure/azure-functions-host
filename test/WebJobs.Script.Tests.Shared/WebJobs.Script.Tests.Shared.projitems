@@ -12,10 +12,12 @@
     <Compile Include="$(MSBuildThisFileDirectory)DelegatedConfigureBuilder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HttpTestHelpers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)NullScriptHostEnvironment.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)FunctionTraceEvent.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TempDirectory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestChangeTokenSource.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestConfigurationBuilderExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestEnvironment.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestEventGenerator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHostBuilderExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHostExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestMetricsLogger.cs" />

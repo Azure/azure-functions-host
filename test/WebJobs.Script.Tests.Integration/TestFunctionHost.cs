@@ -38,8 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestFunctionHost(string scriptPath, string logPath,
             Action<IWebJobsBuilder> configureJobHost = null,
+            Action<IServiceCollection> configureJobHostServices = null,
             Action<IConfigurationBuilder> configureAppConfiguration = null,
-            Action<IServiceCollection> configureServices = null)
+            Action<IServiceCollection> configureWebHostServices = null)
         {
             _appRoot = scriptPath;
 
@@ -71,7 +72,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                           configureAppConfiguration?.Invoke(c);
                       }));
 
-                      configureServices?.Invoke(services);
+                      services.AddSingleton<IConfigureBuilder<IServiceCollection>>(_ => new DelegatedConfigureBuilder<IServiceCollection>(c =>
+                      {
+                          configureJobHostServices?.Invoke(c);
+                      }));
+
+                      // Allows us to configure services as the last step, thereby overriding anything
+                      services.AddSingleton(new PostConfigureServices(configureWebHostServices));
                   })
                   .AddScriptHostBuilder(webJobsBuilder =>
                   {
@@ -85,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                       configureJobHost?.Invoke(webJobsBuilder);
                   })
-                  .UseStartup<Startup>();
+                  .UseStartup<TestStartup>();
 
             _testServer = new TestServer(builder);
 
@@ -252,6 +259,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
 
                 return base.SendAsync(request, cancellationToken);
+            }
+        }
+
+        private class TestStartup
+        {
+            private Startup _startup;
+            private readonly PostConfigureServices _postConfigure;
+
+            public TestStartup(IConfiguration configuration, PostConfigureServices postConfigure)
+            {
+                _startup = new Startup(configuration);
+                _postConfigure = postConfigure;
+            }
+
+            public void ConfigureServices(IServiceCollection services)
+            {
+                _startup.ConfigureServices(services);
+                _postConfigure?.ConfigureServices(services);
+            }
+
+            public void Configure(AspNetCore.Builder.IApplicationBuilder app, AspNetCore.Hosting.IApplicationLifetime applicationLifetime, AspNetCore.Hosting.IHostingEnvironment env, ILoggerFactory loggerFactory)
+            {
+                _startup.Configure(app, applicationLifetime, env, loggerFactory);
+            }
+        }
+
+        private class PostConfigureServices
+        {
+            private readonly Action<IServiceCollection> _postConfigure;
+
+            public PostConfigureServices(Action<IServiceCollection> postConfigure)
+            {
+                _postConfigure = postConfigure;
+            }
+
+            public void ConfigureServices(IServiceCollection services)
+            {
+                _postConfigure?.Invoke(services);
             }
         }
     }

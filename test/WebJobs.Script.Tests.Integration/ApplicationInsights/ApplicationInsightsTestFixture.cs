@@ -31,11 +31,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             };
 
             TestHost = new TestFunctionHost(scriptPath, logPath,
-                jobHostBuilder =>
+                configureJobHost: jobHostBuilder =>
                 {
                     jobHostBuilder.Services.AddSingleton<ITelemetryChannel>(_ => Channel);
-                    jobHostBuilder.Services.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
-
                     jobHostBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                     {
                         o.Functions = new[]
@@ -45,7 +43,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                         };
                     });
                 },
-                configurationBuilder =>
+                configureJobHostServices: s =>
+                {
+                    s.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
+                },
+                configureAppConfiguration: configurationBuilder =>
                 {
                     configurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
                     {

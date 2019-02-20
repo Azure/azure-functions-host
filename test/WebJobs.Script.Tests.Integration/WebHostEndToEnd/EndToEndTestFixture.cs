@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -58,6 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestMetricsLogger MetricsLogger { get; private set; } = new TestMetricsLogger();
 
+        public TestEventGenerator EventGenerator { get; private set; } = new TestEventGenerator();
+
         protected virtual ExtensionPackageReference[] GetExtensionsToInstall()
         {
             return null;
@@ -89,8 +91,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Host = new TestFunctionHost(_copiedRootPath, logPath, webJobsBuilder =>
             {
-                webJobsBuilder.Services.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
                 ConfigureJobHost(webJobsBuilder);
+            },
+            configureJobHostServices: s =>
+            {
+                s.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
+            },
+            configureWebHostServices: s =>
+            {
+                s.AddSingleton<IEventGenerator>(_ => EventGenerator);
             });
 
             string connectionString = Host.JobHostServices.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);

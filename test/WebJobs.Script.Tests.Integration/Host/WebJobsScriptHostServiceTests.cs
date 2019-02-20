@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 .Returns(() => _underHighLoad);
 
             _testHost = new TestFunctionHost(testScriptPath, testLogPath,
-                configureServices: services =>
+                configureWebHostServices: services =>
                 {
                     services.AddSingleton<IOptions<HostHealthMonitorOptions>>(wrappedHealthMonitorOptions);
                     services.AddSingleton<IScriptJobHostEnvironment>(_mockJobHostEnvironment.Object);
