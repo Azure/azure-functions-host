@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public static readonly string FunctionsLogsCategory = "functionslogs";
         public static readonly string FunctionsMetricsCategory = "functionsmetrics";
         public static readonly string FunctionsDetailsCategory = "functionsdetails";
+        public static readonly string FunctionsExecutionEventsCategory = "functionexecutionevents";
 
         internal static string NormalizeString(string value)
         {
