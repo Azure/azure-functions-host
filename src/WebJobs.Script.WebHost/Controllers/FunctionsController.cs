@@ -78,11 +78,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             if (success)
             {
-                if (configChanged)
-                {
-                    // TODO: sync triggers
-                }
-
                 return Created(Request.GetDisplayUrl(), functionMetadataResponse);
             }
             else

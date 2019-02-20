@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.Await(() =>
             {
                 // make sure the input string made it all the way through
-                var logs = Fixture.Host.GetLogMessages();
+                var logs = Fixture.Host.GetScriptHostLogMessages();
                 return logs.Any(p => p.FormattedMessage != null && p.FormattedMessage.Contains(testData));
             }, userMessageCallback: Fixture.Host.GetLog);
         }
@@ -352,7 +352,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             userMessageCallback: () =>
             {
                 // AppVeyor only shows 4096 chars
-                var s = string.Join(Environment.NewLine, Fixture.Host.GetLogMessages());
+                var s = string.Join(Environment.NewLine, Fixture.Host.GetScriptHostLogMessages());
                 return s.Length < 4096 ? s : s.Substring(s.Length - 4096);
             });
 
@@ -376,7 +376,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await TestHelpers.Await(() =>
             {
-                logMessage = Fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory(functionName)).SingleOrDefault(filter);
+                logMessage = Fixture.Host.GetScriptHostLogMessages(LogCategories.CreateFunctionUserCategory(functionName)).SingleOrDefault(filter);
                 return logMessage != null;
             });
 
@@ -389,7 +389,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await TestHelpers.Await(() =>
             {
-                logMessage = Fixture.Host.GetLogMessages().SingleOrDefault(filter);
+                logMessage = Fixture.Host.GetScriptHostLogMessages().SingleOrDefault(filter);
                 return logMessage != null;
             });
 
@@ -403,7 +403,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.Await(() =>
            {
                // search the logs for token "TestResult:" and parse the following JSON
-               var logs = Fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory(functionName));
+               var logs = Fixture.Host.GetScriptHostLogMessages(LogCategories.CreateFunctionUserCategory(functionName));
                if (logs != null)
                {
                    logEntry = logs.Select(p => p.FormattedMessage).SingleOrDefault(p => p != null && p.Contains("TestResult:"));

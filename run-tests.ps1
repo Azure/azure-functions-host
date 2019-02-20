@@ -30,6 +30,7 @@ function RunTest([string] $project, [string] $description,[bool] $skipBuild = $f
 
 
 $tests = @(
+  @{project = "..\tools\ExtensionsMetadataGenerator\test\ExtensionsMetadataGeneratorTests"; description="ExtensionsMetadataGenerator Tests"},
   @{project ="WebJobs.Script.Tests"; description="Unit Tests"},
   @{project ="WebJobs.Script.Scaling.Tests"; description="Scaling Tests"},
   @{project ="WebJobs.Script.Tests.Integration"; description="Non-E2E integration tests"; filter ="Category!=E2E"},
@@ -41,7 +42,8 @@ $tests = @(
   @{project ="WebJobs.Script.Tests.Integration"; description="Node script host end to end tests"; filter ="Group=NodeScriptHostTests"},
   @{project ="WebJobs.Script.Tests.Integration"; description="Raw assembly end to end tests"; filter ="Group=RawAssemblyEndToEndTests"},
   @{project ="WebJobs.Script.Tests.Integration"; description="Samples end to end tests"; filter ="Group=SamplesEndToEndTests"}
-  @{project ="WebJobs.Script.Tests.Integration"; description="Standby mode end to end tests"; filter ="Group=StandbyModeEndToEndTests"}
+  @{project ="WebJobs.Script.Tests.Integration"; description="Standby mode end to end tests Windows"; filter ="Group=StandbyModeEndToEndTests_Windows"}
+  @{project ="WebJobs.Script.Tests.Integration"; description="Standby mode end to end tests Linux"; filter ="Group=StandbyModeEndToEndTests_Linux"}
   @{project ="WebJobs.Script.Tests.Integration"; description="Linux Container end to end tests"; filter ="Group=ContainerInstanceTests"}
 )
 

@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             request.Headers.Add("Accept", new StringValues("text/plain"));
 
-            await Fixture.Host.CallAsync("Function1", arguments);
+            await Fixture.JobHost.CallAsync("Function1", arguments);
 
             var response = (OkObjectResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
 
@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = await Assert.ThrowsAsync<FunctionInvocationException>(async () =>
             {
-                await Fixture.Host.CallAsync("Function1", arguments);
+                await Fixture.JobHost.CallAsync("Function1", arguments);
             });
 
             var response = request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
@@ -87,9 +87,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, errorLogs.Length);
 
             // first log is the result
-            Assert.Equal(LogCategories.Results, errorLogs[0].Category);
+            Assert.Equal(LogCategories.Results, errorLogs[1].Category);
 
-            var error = errorLogs[1];
+            var error = errorLogs[0];
             var invocationException = (FunctionInvocationException)error.Exception;
             Assert.Equal("Exception while executing function: Function1", invocationException.Message);
             Assert.Equal("TestFunctions.Function1.Run", invocationException.MethodName);

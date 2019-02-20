@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -258,6 +259,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 new WorkerConfig() { Description = nodeWorkerDesc },
                 new WorkerConfig() { Description = javaWorkerDesc },
             };
+        }
+
+        public static string CreateOfflineFile()
+        {
+            // create a test offline file
+            var offlineFilePath = Path.Combine(Path.GetTempPath(), ScriptConstants.AppOfflineFileName);
+            string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.{ScriptConstants.AppOfflineFileName}", typeof(HttpException).Assembly);
+            File.WriteAllText(offlineFilePath, content);
+            return offlineFilePath;
+        }
+
+        public static void DeleteTestFile(string testFile)
+        {
+            if (File.Exists(testFile))
+            {
+                try
+                {
+                    File.Delete(testFile);
+                }
+                catch
+                {
+                    // best effort cleanup
+                }
+            }
         }
 
         public static WorkerDescription GetTestWorkerDescription(string language, string extension)

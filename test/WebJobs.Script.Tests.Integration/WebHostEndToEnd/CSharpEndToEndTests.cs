@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             IList<string> logs = null;
             await TestHelpers.Await(() =>
             {
-                logs = Fixture.Host.GetLogMessages().Select(p => p.FormattedMessage).Where(p => p != null).ToArray();
+                logs = Fixture.Host.GetScriptHostLogMessages().Select(p => p.FormattedMessage).Where(p => p != null).ToArray();
                 return logs.Any(p => p.Contains(guid2));
             });
 
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // Assert.Equal(2, Fixture.MetricsLogger.LoggedEvents.Where(p => p == key).Count());
 
             // Make sure we've gotten a log from the aggregator
-            IEnumerable<LogMessage> getAggregatorLogs() => Fixture.Host.GetLogMessages().Where(p => p.Category == LogCategories.Aggregator);
+            IEnumerable<LogMessage> getAggregatorLogs() => Fixture.Host.GetScriptHostLogMessages().Where(p => p.Category == LogCategories.Aggregator);
 
             await TestHelpers.Await(() => getAggregatorLogs().Any());
 
@@ -148,6 +148,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             var url = await response.Content.ReadAsStringAsync();
             Assert.Equal($"{actualProtocol}://{actualHost}/{path}", url);
+        }
+
+        [Fact]
+        public async Task VerifyResultRedirect()
+        {
+            const string path = "api/httptrigger-redirect";
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format($"http://localhost/{path}")),
+                Method = HttpMethod.Get
+            };
+
+            var response = await Fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(response.StatusCode, HttpStatusCode.Redirect);
         }
 
         [Fact]
@@ -406,6 +420,7 @@ namespace SecondaryDependency
                         "AssembliesFromSharedLocation",
                         "HttpTrigger-Dynamic",
                         "HttpTrigger-Scenarios",
+                        "HttpTrigger-Redirect",
                         "HttpTriggerToBlob",
                         "FunctionExecutionContext",
                         "LoadScriptReference",

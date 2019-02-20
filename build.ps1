@@ -1,8 +1,13 @@
 ﻿param (
   [string]$buildNumber = "0",
   [string]$extensionVersion = "2.0.$buildNumber",
-  [bool]$includeVersion = $true
+  [bool]$includeSuffix = $true
 )
+
+if ($includeSuffix)
+{
+    $extensionVersion += "-prerelease"
+}
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $buildOutput = Join-Path $currentDir "buildoutput"
@@ -26,18 +31,13 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
 
     $selfContained = Join-Path $publishTarget "self-contained"
     $crossGen = "$publishTarget\download\crossgen\crossgen.exe"
-	$symbolsPath = Join-Path $publishTarget "Symbols"
+    $symbolsPath = Join-Path $publishTarget "Symbols"
     new-item -itemtype directory -path $symbolsPath
 
-    DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.Microsoft.NETCore.Jit/2.1.0-rtm-26528-02" @("runtimes\$runtime\native\clrjit.dll")  @("$publishTarget\download\clrjit")
-    DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.Microsoft.NETCore.Runtime.CoreCLR/2.1.0-rtm-26528-02"  @("tools\crossgen.exe")  @("$publishTarget\download\crossgen")
-    DownloadNupkg "https://www.nuget.org/api/v2/package/Microsoft.Build.Tasks.Core/15.1.1012" @("lib\netstandard1.3\Microsoft.Build.Tasks.Core.dll")  @("$selfContained")
-    DownloadNupkg "https://www.nuget.org/api/v2/package/Microsoft.Build.Utilities.Core/15.1.1012" @("lib\netstandard1.3\Microsoft.Build.Utilities.Core.dll")  @("$selfContained")
-    if ($runtime -eq "win-x86") {
-        DownloadNupkg "https://dotnet.myget.org/F/aspnetcore-dev/api/v2/package/Microsoft.AspNetCore.AspNetCoreModuleV2/2.1.0-a-oob-2-1-oob-17297" @("contentFiles\any\any\x86\aspnetcorev2.dll", "contentFiles\any\any\x86\aspnetcorev2_inprocess.dll") @("$privateSiteExtensionPath\ancm", "$privateSiteExtensionPath\ancm")
-    } else {
-        DownloadNupkg "https://dotnet.myget.org/F/aspnetcore-dev/api/v2/package/Microsoft.AspNetCore.AspNetCoreModuleV2/2.1.0-a-oob-2-1-oob-17297" @("contentFiles\any\any\x64\aspnetcorev2.dll", "contentFiles\any\any\x64\aspnetcorev2_inprocess.dll") @("$privateSiteExtensionPath\ancm", "$privateSiteExtensionPath\ancm")
-    }
+    #https://dotnet.myget.org/feed/dotnet-core/package/nuget/runtime.win-x86.Microsoft.NETCore.Jit
+    DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.Microsoft.NETCore.Jit/2.2.0-servicing-26820-03" @("runtimes\$runtime\native\clrjit.dll")  @("$publishTarget\download\clrjit")
+    #https://dotnet.myget.org/feed/dotnet-core/package/nuget/runtime.win-x86.Microsoft.NETCore.Runtime.CoreCLR
+    DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.Microsoft.NETCore.Runtime.CoreCLR/2.2.0-servicing-26820-03"  @("tools\crossgen.exe")  @("$publishTarget\download\crossgen")
 
     # Publish self-contained app with all required dlls for crossgen
     dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -r $runtime -o "$selfContained" -v q /p:BuildNumber=$buildNumber    
@@ -48,6 +48,7 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
 
     $successfullDlls =@()
     $failedDlls = @()
+    
     Get-ChildItem $privateSiteExtensionPath -Filter *.dll | 
     Foreach-Object {       
         $prm = "/JITPath", "$publishTarget\download\clrjit\clrjit.dll", "/Platform_Assemblies_Paths", "$selfContained", "/nologo", "/in", $_.FullName
@@ -55,11 +56,6 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
         if ($_.FullName -like "*Microsoft.Azure.WebJobs.Script.WebHost.dll") {
             $prm += "/out"        
             $prm += Join-Path $privateSiteExtensionPath "Microsoft.Azure.WebJobs.Script.WebHost.ni.dll"
-        }
-        # Fix output for System.Private.CoreLib.dll
-        if ($_.FullName -like "*System.Private.CoreLib.dll") {
-            $prm += "/out"        
-            $prm += Join-Path $privateSiteExtensionPath "System.Private.CoreLib.ni.dll"
         }
 
         & $crossGen $prm >> $buildOutput\crossgenout.$runtime.txt  2>&1
@@ -76,7 +72,7 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
             $failedDlls+=[io.path]::GetFileName($_.FullName)
         }                
     }
-
+    
     # print results of crossgen process
     $successfullDllsCount = $successfullDlls.length
     $failedDllsCount = $failedDlls.length
@@ -163,12 +159,7 @@ function BuildOutput([string] $runtime) {
     $siteExtensionPath = "$publishTarget\SiteExtensions"
     $privateSiteExtensionPath = "$siteExtensionPath\Functions"
     
-    if ($runtime -eq "win-x86" -or $runtime -eq "") {
-        dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false -c Release
-    } else {
-        # There are no preinstalled 'x64 .NET Core'/'x64 ASP.NET Core' on the stamp so we we need to build self-contained package for x64.
-        dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -r $runtime -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false -c Release
-    }
+    dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false -c Release
 
     # replace IL dlls with crossgen dlls
     if (![string]::IsNullOrEmpty($runtime)) {
@@ -193,27 +184,11 @@ function CreateZips([string] $runtimeSuffix) {
         # Project cleanup (trim some project files - this should be revisited)
         cleanExtension ""
 
-        # Prepare private "no-runtime" with custom xdt
-        $currentXdtPath = "$privateSiteExtensionPath\applicationHost.xdt"
-        $tempXdtDir = "$buildOutput\xdt-temp"
-        $tempPublicXdtPath = "$tempXdtDir\applicationHost-public.xdt"
 
-        # Make a temp location
-        New-Item -Itemtype directory -path $tempXdtDir -ErrorAction SilentlyContinue
-
-        # Move the current (public) xdt to the temp location
-        Move-Item $currentXdtPath $tempPublicXdtPath
-
-        # Drop in the private XDT
-        Copy-Item .\src\WebJobs.Script.WebHost\applicationHost-private.xdt $currentXdtPath
 
         # Make the zip
         ZipContent $publishTarget "$buildOutput\Functions.Private.$extensionVersion$runtimeSuffix.zip"
 
-        # Restore the public XDT
-        Move-Item $tempPublicXdtPath $currentXdtPath -Force
-
-        Remove-Item $tempXdtDir -Recurse
     } else {
         # Project cleanup (trim some project files - this should be revisited)
         cleanExtension "32bit"
@@ -256,14 +231,18 @@ function cleanExtension([string] $bitness) {
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\linux" -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\osx" -ErrorAction SilentlyContinue
 
-    Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\node\grpc\src\node\extension_binary" | 
+    Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\node\grpc\src\node\extension_binary" -ErrorAction SilentlyContinue | 
     Foreach-Object {
         if (-Not ($_.FullName -Match "win32")) {
             Remove-Item -Recurse -Force $_.FullName
         }
     }
-}
 
+    $keepRuntimes = @('win', 'win-x86', 'win10-x86')
+    Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes" -Exclude $keepRuntimes -ErrorAction SilentlyContinue |
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+}
+  
 dotnet --version
 dotnet build .\WebJobs.Script.sln -v q /p:BuildNumber="$buildNumber"
 
@@ -274,15 +253,17 @@ $projects =
   
 foreach ($project in $projects)
 {
-  $cmd = "pack", "src\$project\$project.csproj", "-o", "..\..\buildoutput", "--no-build"
-  
-  if ($includeVersion)
-  {
-    $cmd += "--version-suffix", "-$buildNumber"
-  }
+
+  $cmd = "pack", "src\$project\$project.csproj", "-o", "..\..\buildoutput", "--no-build" , "-p:PackageVersion=$extensionVersion"
   
   & dotnet $cmd  
 }
+
+$cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\WebJobs.Script.Performance.App.csproj", "-o", "..\..\..\buildoutput"
+& dotnet $cmd
+
+$cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "..\..\..\..\buildoutput", "-c", "Release"
+& dotnet $cmd
 
 $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
 
@@ -296,4 +277,9 @@ if ($bypassPackaging){
 
     #build win-x86 and win-x64 extension
     BuildPackages 0
+}
+
+if (-not $bypassPackaging -and -not $isLocal) {
+  & ".\tools\RunSigningJob.ps1" 
+  if (-not $?) { exit 1 }
 }

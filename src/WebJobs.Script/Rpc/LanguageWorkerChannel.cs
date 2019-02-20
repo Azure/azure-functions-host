@@ -2,13 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -17,11 +17,8 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
-
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
@@ -30,20 +27,22 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
-        private readonly ScriptJobHostOptions _scriptConfig;
+        private readonly string _rootScriptPath;
         private readonly IScriptEventManager _eventManager;
         private readonly IWorkerProcessFactory _processFactory;
         private readonly IProcessRegistry _processRegistry;
-        private readonly IObservable<FunctionRegistrationContext> _functionRegistrations;
         private readonly WorkerConfig _workerConfig;
-        private readonly Uri _serverUri;
         private readonly ILogger _workerChannelLogger;
-        private readonly ILogger _userLogsConsoleLogger;
+        private readonly ILanguageWorkerConsoleLogSource _consoleLogSource;
+
         private bool _disposed;
+        private bool _disposing;
+        private bool _isWebHostChannel;
+        private IObservable<FunctionRegistrationContext> _functionRegistrations;
+        private WorkerInitResponse _initMessage;
         private string _workerId;
         private Process _process;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
-        private int _maxNumberOfErrorMessages = 3;
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new Dictionary<string, BufferBlock<ScriptInvocationContext>>();
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
@@ -52,46 +51,39 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startSubscription;
         private IDisposable _startLatencyMetric;
-
-        private JsonSerializerSettings _verboseSerializerSettings = new JsonSerializerSettings()
-        {
-            Formatting = Formatting.Indented,
-            NullValueHandling = NullValueHandling.Ignore,
-            Converters = new List<JsonConverter>()
-                    {
-                        new StringEnumConverter()
-                    }
-        };
+        private Uri _serverUri;
 
         internal LanguageWorkerChannel()
         {
             // To help with unit tests
         }
 
-        public LanguageWorkerChannel(
-            ScriptJobHostOptions scriptConfig,
-            IScriptEventManager eventManager,
-            IWorkerProcessFactory processFactory,
-            IProcessRegistry processRegistry,
-            IObservable<FunctionRegistrationContext> functionRegistrations,
-            WorkerConfig workerConfig,
-            Uri serverUri,
-            ILoggerFactory loggerFactory,
-            IMetricsLogger metricsLogger,
-            int attemptCount)
+        internal LanguageWorkerChannel(
+           string workerId,
+           string rootScriptPath,
+           IScriptEventManager eventManager,
+           IObservable<FunctionRegistrationContext> functionRegistrations,
+           IWorkerProcessFactory processFactory,
+           IProcessRegistry processRegistry,
+           WorkerConfig workerConfig,
+           Uri serverUri,
+           ILoggerFactory loggerFactory,
+           IMetricsLogger metricsLogger,
+           int attemptCount,
+           ILanguageWorkerConsoleLogSource consoleLogSource,
+           bool isWebHostChannel = false)
         {
-            _workerId = Guid.NewGuid().ToString();
-
-            _scriptConfig = scriptConfig;
+            _workerId = workerId;
+            _functionRegistrations = functionRegistrations;
+            _rootScriptPath = rootScriptPath;
             _eventManager = eventManager;
             _processFactory = processFactory;
             _processRegistry = processRegistry;
-            _functionRegistrations = functionRegistrations;
             _workerConfig = workerConfig;
             _serverUri = serverUri;
-
+            _isWebHostChannel = isWebHostChannel;
             _workerChannelLogger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
-            _userLogsConsoleLogger = loggerFactory.CreateLogger(LanguageWorkerConstants.FunctionConsoleLogCategoryName);
+            _consoleLogSource = consoleLogSource;
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
@@ -100,22 +92,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Where(msg => msg.MessageType == MsgType.RpcLog)
                 .Subscribe(Log));
 
-            _eventSubscriptions.Add(_eventManager.OfType<RpcEvent>()
-                .Where(msg => msg.WorkerId == _workerId)
-                    .Subscribe(msg =>
-                    {
-                        var jsonMsg = JsonConvert.SerializeObject(msg, _verboseSerializerSettings);
-                        _userLogsConsoleLogger.LogDebug(jsonMsg);
-                    }));
-
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
                 .Where(msg => Config.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 
-            _startLatencyMetric = metricsLogger.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
+                .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));
 
-            StartWorker();
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
+                .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
+
+            _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
         }
 
         public string Id => _workerId;
@@ -124,42 +112,30 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
-        // start worker process and wait for an rpc start stream response
-        internal void StartWorker()
-        {
-            _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
-                .Timeout(processStartTimeout)
-                .Take(1)
-                .Subscribe(InitWorker, HandleWorkerError);
+        internal Process WorkerProcess => _process;
 
-            var workerContext = new WorkerCreateContext()
-            {
-                RequestId = Guid.NewGuid().ToString(),
-                MaxMessageLength = _scriptConfig.MaxMessageLengthBytes,
-                WorkerId = _workerId,
-                Arguments = _workerConfig.Arguments,
-                WorkingDirectory = _scriptConfig.RootScriptPath,
-                ServerUri = _serverUri,
-            };
-
-            _process = _processFactory.CreateWorkerProcess(workerContext);
-            StartProcess();
-            _processRegistry?.Register(_process);
-        }
+        public bool IsWebhostChannel => _isWebHostChannel;
 
         internal void StartProcess()
         {
-            _process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
-            _process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
-            _process.Exited += (sender, e) => OnProcessExited(sender, e);
-            _process.EnableRaisingEvents = true;
+            try
+            {
+                _process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
+                _process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
+                _process.Exited += (sender, e) => OnProcessExited(sender, e);
+                _process.EnableRaisingEvents = true;
 
-            _workerChannelLogger?.LogInformation($"Starting language worker process:{_process.StartInfo.FileName} {_process.StartInfo.Arguments}");
-            _process.Start();
-            _workerChannelLogger?.LogInformation($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
+                _workerChannelLogger?.LogInformation($"Starting language worker process:{_process.StartInfo.FileName} {_process.StartInfo.Arguments}");
+                _process.Start();
+                _workerChannelLogger?.LogInformation($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
 
-            _process.BeginErrorReadLine();
-            _process.BeginOutputReadLine();
+                _process.BeginErrorReadLine();
+                _process.BeginOutputReadLine();
+            }
+            catch (Exception ex)
+            {
+                throw new HostInitializationException($"Failed to start Language Worker Channel for language :{_workerConfig.Language}", ex);
+            }
         }
 
         private void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
@@ -167,29 +143,33 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (e.Data != null)
             {
                 string msg = e.Data;
-                if (IsLanguageWorkerConsoleLog(msg))
+                if (LanguageWorkerChannelUtilities.IsLanguageWorkerConsoleLog(msg))
                 {
-                    msg = RemoveLogPrefix(msg);
+                    msg = LanguageWorkerChannelUtilities.RemoveLogPrefix(msg);
                     _workerChannelLogger?.LogInformation(msg);
                 }
                 else
                 {
-                    _userLogsConsoleLogger?.LogInformation(msg);
+                    _consoleLogSource?.Log(msg);
                 }
             }
         }
 
         private void OnProcessExited(object sender, EventArgs e)
         {
+            if (_disposing)
+            {
+                // No action needed
+                return;
+            }
             string exceptionMessage = string.Join(",", _processStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
-            bool workerErrorHandled = false;
             try
             {
                 if (_process.ExitCode != 0)
                 {
                     var processExitEx = new LanguageWorkerProcessExitException($"{_process.StartInfo.FileName} exited with code {_process.ExitCode}\n {exceptionMessage}");
+                    processExitEx.ExitCode = _process.ExitCode;
                     HandleWorkerError(processExitEx);
-                    workerErrorHandled = true;
                 }
                 else
                 {
@@ -197,13 +177,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     _process.Close();
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                if (!workerErrorHandled)
-                {
-                    var processExitEx = new LanguageWorkerProcessExitException($"Worker process is not attached. {exceptionMessage}", ex);
-                    HandleWorkerError(processExitEx);
-                }
+                // ignore process is already disposed
             }
         }
 
@@ -215,82 +191,77 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 string msg = e.Data;
                 if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
                 {
-                    if (IsLanguageWorkerConsoleLog(msg))
+                    if (LanguageWorkerChannelUtilities.IsLanguageWorkerConsoleLog(msg))
                     {
-                        msg = RemoveLogPrefix(msg);
+                        msg = LanguageWorkerChannelUtilities.RemoveLogPrefix(msg);
                         _workerChannelLogger?.LogWarning(msg);
                     }
                     else
                     {
-                        _userLogsConsoleLogger?.LogInformation(msg);
+                        _consoleLogSource?.Log(msg);
                     }
                 }
                 else if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
                           (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
                           (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1))
                 {
-                    if (IsLanguageWorkerConsoleLog(msg))
+                    if (LanguageWorkerChannelUtilities.IsLanguageWorkerConsoleLog(msg))
                     {
-                        msg = RemoveLogPrefix(msg);
+                        msg = LanguageWorkerChannelUtilities.RemoveLogPrefix(msg);
                         _workerChannelLogger?.LogError(msg);
                     }
                     else
                     {
-                        _userLogsConsoleLogger?.LogInformation(msg);
+                        _consoleLogSource?.Log(msg);
                     }
-                    AddStdErrMessage(Sanitizer.Sanitize(msg));
+                    _processStdErrDataQueue = LanguageWorkerChannelUtilities.AddStdErrMessage(_processStdErrDataQueue, Sanitizer.Sanitize(msg));
                 }
                 else
                 {
-                    if (IsLanguageWorkerConsoleLog(msg))
+                    if (LanguageWorkerChannelUtilities.IsLanguageWorkerConsoleLog(msg))
                     {
-                        msg = RemoveLogPrefix(msg);
+                        msg = LanguageWorkerChannelUtilities.RemoveLogPrefix(msg);
                         _workerChannelLogger?.LogInformation(msg);
                     }
                     else
                     {
-                        _userLogsConsoleLogger?.LogInformation(msg);
+                        _consoleLogSource?.Log(msg);
                     }
                 }
             }
         }
 
-        internal void AddStdErrMessage(string msg)
+        public void StartWorkerProcess()
         {
-            if (_processStdErrDataQueue.Count >= _maxNumberOfErrorMessages)
-            {
-                _processStdErrDataQueue.Dequeue();
-                _processStdErrDataQueue.Enqueue(msg);
-            }
-            else
-            {
-                _processStdErrDataQueue.Enqueue(msg);
-            }
-        }
+            _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
+                .Timeout(processStartTimeout)
+                .Take(1)
+                .Subscribe(SendWorkerInitRequest, HandleWorkerError);
 
-        internal bool IsLanguageWorkerConsoleLog(string msg)
-        {
-            if (msg.StartsWith(LanguageWorkerConstants.LanguageWorkerConsoleLogPrefix, StringComparison.OrdinalIgnoreCase))
+            var workerContext = new WorkerContext()
             {
-                return true;
-            }
-            return false;
-        }
+                RequestId = Guid.NewGuid().ToString(),
+                MaxMessageLength = LanguageWorkerConstants.DefaultMaxMessageLengthBytes,
+                WorkerId = _workerId,
+                Arguments = _workerConfig.Arguments,
+                WorkingDirectory = _rootScriptPath,
+                ServerUri = _serverUri,
+            };
 
-        internal string RemoveLogPrefix(string msg)
-        {
-            return Regex.Replace(msg, LanguageWorkerConstants.LanguageWorkerConsoleLogPrefix, string.Empty, RegexOptions.IgnoreCase);
+            _process = _processFactory.CreateWorkerProcess(workerContext);
+            StartProcess();
+            _processRegistry?.Register(_process);
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
-        internal void InitWorker(RpcEvent startEvent)
+        internal void SendWorkerInitRequest(RpcEvent startEvent)
         {
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
-                .Subscribe(WorkerReady, HandleWorkerError);
+                .Subscribe(PublishWebhostRpcChannelReadyEvent, HandleWorkerError);
 
-            Send(new StreamingMessage
+            SendStreamingMessage(new StreamingMessage
             {
                 WorkerInitRequest = new WorkerInitRequest()
                 {
@@ -299,37 +270,60 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             });
         }
 
-        internal void WorkerReady(RpcEvent initEvent)
+        internal void PublishWorkerProcessReadyEvent(FunctionEnvironmentReloadResponse res)
         {
-            _startLatencyMetric.Dispose();
+            WorkerProcessReadyEvent wpEvent = new WorkerProcessReadyEvent(_workerId, _workerConfig.Language);
+            _eventManager.Publish(wpEvent);
+        }
+
+        internal void PublishWebhostRpcChannelReadyEvent(RpcEvent initEvent)
+        {
+            _startLatencyMetric?.Dispose();
             _startLatencyMetric = null;
 
-            var initMessage = initEvent.Message.WorkerInitResponse;
-            if (initMessage.Result.IsFailure(out Exception exc))
+            _initMessage = initEvent.Message.WorkerInitResponse;
+            if (_initMessage.Result.IsFailure(out Exception exc))
             {
                 HandleWorkerError(exc);
                 return;
             }
-
-            // subscript to all function registrations in order to load functions
-            _eventSubscriptions.Add(_functionRegistrations.Subscribe(Register));
-
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
-                .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));
-
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
-                .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
-
-            _eventManager.Publish(new WorkerReadyEvent
+            if (_functionRegistrations == null)
             {
-                Id = _workerId,
-                Version = initMessage.WorkerVersion,
-                Capabilities = initMessage.Capabilities,
-                Config = _workerConfig,
+                RpcWebHostChannelReadyEvent readyEvent = new RpcWebHostChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
+                _eventManager.Publish(readyEvent);
+            }
+            else
+            {
+                RegisterFunctions(_functionRegistrations);
+            }
+        }
+
+        public void RegisterFunctions(IObservable<FunctionRegistrationContext> functionRegistrations)
+        {
+            _functionRegistrations = functionRegistrations ?? throw new ArgumentNullException(nameof(functionRegistrations));
+            _eventSubscriptions.Add(_functionRegistrations.Subscribe(SendFunctionLoadRequest));
+        }
+
+        public void SendFunctionEnvironmentReloadRequest()
+        {
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
+      .Subscribe((msg) => PublishWorkerProcessReadyEvent(msg.Message.FunctionEnvironmentReloadResponse)));
+
+            IDictionary processEnv = Environment.GetEnvironmentVariables();
+
+            FunctionEnvironmentReloadRequest request = new FunctionEnvironmentReloadRequest();
+            foreach (DictionaryEntry entry in processEnv)
+            {
+                request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
+            }
+
+            SendStreamingMessage(new StreamingMessage
+            {
+                FunctionEnvironmentReloadRequest = request
             });
         }
 
-        public void Register(FunctionRegistrationContext context)
+        internal void SendFunctionLoadRequest(FunctionRegistrationContext context)
         {
             FunctionMetadata metadata = context.Metadata;
 
@@ -343,7 +337,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 Metadata = new RpcFunctionMetadata()
                 {
                     Name = metadata.Name,
-                    Directory = metadata.FunctionDirectory,
+                    Directory = metadata.FunctionDirectory ?? string.Empty,
                     EntryPoint = metadata.EntryPoint ?? string.Empty,
                     ScriptFile = metadata.ScriptFile ?? string.Empty
                 }
@@ -351,14 +345,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             foreach (var binding in metadata.Bindings)
             {
-                request.Metadata.Bindings.Add(binding.Name, new BindingInfo
-                {
-                    Direction = (BindingInfo.Types.Direction)binding.Direction,
-                    Type = binding.Type
-                });
+                BindingInfo bindingInfo = binding.ToBindingInfo();
+
+                request.Metadata.Bindings.Add(binding.Name, bindingInfo);
             }
 
-            Send(new StreamingMessage
+            SendStreamingMessage(new StreamingMessage
             {
                 FunctionLoadRequest = request
             });
@@ -373,12 +365,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             var inputBuffer = _functionInputBuffers[loadResponse.FunctionId];
             // link the invocation inputs to the invoke call
-            var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => Invoke(ctx));
+            var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequest(ctx));
             var disposableLink = inputBuffer.LinkTo(invokeBlock);
             _inputLinks.Add(disposableLink);
         }
 
-        public void Invoke(ScriptInvocationContext context)
+        internal void SendInvocationRequest(ScriptInvocationContext context)
         {
             try
             {
@@ -421,7 +413,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
-                    Send(new StreamingMessage
+                    SendStreamingMessage(new StreamingMessage
                     {
                         InvocationRequest = invocationRequest
                     });
@@ -470,20 +462,24 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 }, null);
             }
-            else
-            {
-                _workerChannelLogger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
-            }
         }
 
         internal void HandleWorkerError(Exception exc)
         {
+            LanguageWorkerProcessExitException langExc = exc as LanguageWorkerProcessExitException;
             // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
-            _workerChannelLogger.LogError(exc, $"Language Worker Process exited.", _process.StartInfo.FileName);
-            _eventManager.Publish(new WorkerErrorEvent(Id, exc));
+            if (langExc != null && langExc.ExitCode == -1)
+            {
+                _workerChannelLogger.LogDebug(exc, $"Language Worker Process exited.", _process.StartInfo.FileName);
+            }
+            else
+            {
+                _workerChannelLogger.LogError(exc, $"Language Worker Process exited.", _process.StartInfo.FileName);
+            }
+            _eventManager.Publish(new WorkerErrorEvent(_workerConfig.Language, Id, exc));
         }
 
-        private void Send(StreamingMessage msg)
+        private void SendStreamingMessage(StreamingMessage msg)
         {
             _eventManager.Publish(new OutboundEvent(_workerId, msg));
         }
@@ -532,6 +528,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public void Dispose()
         {
+            _disposing = true;
             Dispose(true);
         }
     }

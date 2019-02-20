@@ -12,12 +12,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -39,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IWebFunctionsManager _functionsManager;
         private readonly IEnvironment _environment;
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly IFunctionsSyncManager _functionsSyncManager;
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
             IOptions<JobHostOptions> hostOptions,
@@ -46,7 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             IAuthorizationService authorizationService,
             IWebFunctionsManager functionsManager,
             IEnvironment environment,
-            IScriptHostManager scriptHostManager)
+            IScriptHostManager scriptHostManager,
+            IFunctionsSyncManager functionsSyncManager)
         {
             _applicationHostOptions = applicationHostOptions;
             _hostOptions = hostOptions;
@@ -55,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _functionsManager = functionsManager;
             _environment = environment;
             _scriptHostManager = scriptHostManager;
+            _functionsSyncManager = functionsSyncManager;
         }
 
         [HttpGet]
@@ -84,8 +89,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Ok(status);
         }
 
+        [HttpGet]
         [HttpPost]
         [Route("admin/host/ping")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public IActionResult Ping()
         {
             return Ok();
@@ -147,12 +154,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> SyncTriggers()
         {
-            (var success, var error) = await _functionsManager.TrySyncTriggers();
+            var result = await _functionsSyncManager.TrySyncTriggersAsync();
 
             // Return a dummy body to make it valid in ARM template action evaluation
-            return success
+            return result.Success
                 ? Ok(new { status = "success" })
-                : StatusCode(StatusCodes.Status500InternalServerError, new { status = error });
+                : StatusCode(StatusCodes.Status500InternalServerError, new { status = result.Error });
         }
 
         [HttpPost]
@@ -217,13 +224,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Authorize(AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
         [Route("runtime/webhooks/{name}/{*extra}")]
+        [RequiresRunningHost]
         public async Task<IActionResult> ExtensionWebHookHandler(string name, CancellationToken token, [FromServices] IScriptWebHookProvider provider)
         {
             if (provider.TryGetHandler(name, out HttpHandler handler))
             {
+                // must either be authorized at the admin level, or system level with
+                // a matching key name
                 string keyName = DefaultScriptWebHookProvider.GetKeyName(name);
-                var authResult = await _authorizationService.AuthorizeAsync(User, keyName, PolicyNames.SystemAuthLevel);
-                if (!authResult.Succeeded)
+                if (!AuthUtility.PrincipalHasAuthLevelClaim(User, AuthorizationLevel.System, keyName))
                 {
                     return Unauthorized();
                 }

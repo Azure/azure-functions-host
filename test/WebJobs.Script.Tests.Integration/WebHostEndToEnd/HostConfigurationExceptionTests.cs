@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     public class HostConfigurationExceptionTests : IDisposable
     {
         private readonly string _hostPath;
+        private TestFunctionHost _host;
 
         public HostConfigurationExceptionTests()
         {
@@ -35,10 +36,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             await File.WriteAllTextAsync(hostJsonPath, hostConfig.ToString());
 
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
-            var host = new TestFunctionHost(_hostPath, logPath, _ => { });
+            _host = new TestFunctionHost(_hostPath, logPath, _ => { });
 
             // Ping the status endpoint to ensure we see the exception
-            HostStatus status = await host.GetHostStatusAsync();
+            HostStatus status = await _host.GetHostStatusAsync();
             Assert.Equal("Error", status.State);
             Assert.Equal("Microsoft.Azure.WebJobs.Script: The host.json file is missing the required 'version' property. See https://aka.ms/functions-hostjson for steps to migrate the configuration file.", status.Errors.Single());
 
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
             await TestHelpers.Await(async () =>
             {
-                status = await host.GetHostStatusAsync();
+                status = await _host.GetHostStatusAsync();
                 return status.State == $"{ScriptHostState.Running}";
             });
 
@@ -57,7 +58,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
         public void Dispose()
         {
-            Directory.Delete(_hostPath, true);
+            try
+            {
+                _host.Dispose();
+                Directory.Delete(_hostPath, true);
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
     }
 }

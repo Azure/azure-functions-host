@@ -10,17 +10,19 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -40,13 +42,60 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             _settingsManager = ScriptSettingsManager.Instance;
         }
 
+
         [Fact]
-        public async Task HostPing_Succeeds()
+        public async Task ExtensionWebHook_Succeeds()
         {
-            string uri = "admin/host/ping";
+            // configure a mock webhook handler for the "test" extension
+            Mock<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>> mockHandler = new Mock<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>>(MockBehavior.Strict);
+            mockHandler.Setup(p => p.ConvertAsync(It.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
+            var handler = mockHandler.Object;
+            _fixture.MockWebHookProvider.Setup(p => p.TryGetHandler("test", out handler)).Returns(true);
+            _fixture.MockWebHookProvider.Setup(p => p.TryGetHandler("invalid", out handler)).Returns(false);
+
+            // successful request
+            string uri = "runtime/webhooks/test?code=SystemValue3";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
             HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // invalid system key value - no key match
+            uri = "runtime/webhooks/test?code=invalid";
+            request = new HttpRequestMessage(HttpMethod.Post, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // invalid system key value - wrong key match (must match key name for extension)
+            uri = "runtime/webhooks/test?code=SystemValue2";
+            request = new HttpRequestMessage(HttpMethod.Post, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // verify admin requests are allowed through
+            uri = "runtime/webhooks/test?code=1234";
+            request = new HttpRequestMessage(HttpMethod.Post, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // non-existent extension
+            uri = "runtime/webhooks/invalid?code=SystemValue2";
+            request = new HttpRequestMessage(HttpMethod.Post, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Theory]
+        [InlineData("GET")]
+        [InlineData("POST")]
+        public async Task HostPing_Succeeds(string method)
+        {
+            string uri = "admin/host/ping";
+            HttpRequestMessage request = new HttpRequestMessage(new HttpMethod(method), uri);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var cacheHeader = response.Headers.GetValues("Cache-Control").Single();
+            Assert.Equal("no-store, no-cache", cacheHeader);
         }
 
         [Fact]
@@ -111,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             await Task.Delay(1000);
 
-            var hostLogs = _fixture.Host.GetLogMessages();
+            var hostLogs = _fixture.Host.GetScriptHostLogMessages();
             foreach (var expectedLog in logs.Select(p => p.Message))
             {
                 Assert.Equal(1, hostLogs.Count(p => p.FormattedMessage != null && p.FormattedMessage.Contains(expectedLog)));
@@ -540,7 +589,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 var product = JObject.Parse(json);
                 Assert.Equal("electronics", (string)product["category"]);
                 Assert.Equal(123, (int?)product["id"]);
-                var logs = _fixture.Host.GetLogMessages("Function.HttpTrigger-CustomRoute.User");
+                var logs = _fixture.Host.GetScriptHostLogMessages("Function.HttpTrigger-CustomRoute.User");
                 Assert.Contains(logs, l => string.Equals(l.FormattedMessage, "Parameters: category=electronics id=123 extra=extra"));
                 Assert.True(logs.Any(p => p.FormattedMessage.Contains("ProductInfo: Category=electronics Id=123")));
 
@@ -555,7 +604,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 product = JObject.Parse(json);
                 Assert.Equal("electronics", (string)product["category"]);
                 Assert.Null((int?)product["id"]);
-                logs = _fixture.Host.GetLogMessages("Function.HttpTrigger-CustomRoute.User");
+                logs = _fixture.Host.GetScriptHostLogMessages("Function.HttpTrigger-CustomRoute.User");
                 Assert.Contains(logs, l => string.Equals(l.FormattedMessage, "Parameters: category=electronics id= extra="));
 
                 // test optional category parameter
@@ -568,7 +617,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 product = JObject.Parse(json);
                 Assert.Null((string)product["category"]);
                 Assert.Null((int?)product["id"]);
-                logs = _fixture.Host.GetLogMessages("Function.HttpTrigger-CustomRoute.User");
+                logs = _fixture.Host.GetScriptHostLogMessages("Function.HttpTrigger-CustomRoute.User");
                 Assert.Contains(logs, l => string.Equals(l.FormattedMessage, "Parameters: category= id= extra="));
 
                 // test a constraint violation (invalid id)
@@ -632,6 +681,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 string[] identityStrings = StripBookendQuotations(responseContent).Split(';');
                 Assert.Equal("Identity: (facebook, Connor McMahon, 10241897674253170)", identityStrings[0]);
                 Assert.Equal("Identity: (WebJobsAuthLevel, Function, Key1)", identityStrings[1]);
+            }
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Identities_AnonymousAccessSucceeds()
+        {
+            var vars = new Dictionary<string, string>
+            {
+                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName},
+                { "WEBSITE_AUTH_ENABLED", "TRUE"}
+            };
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                string uri = $"api/httptrigger-identities";
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+                MockEasyAuth(request, "facebook", "Connor McMahon", "10241897674253170");
+
+                HttpResponseMessage response = await this._fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                string responseContent = await response.Content.ReadAsStringAsync();
+                string[] identityStrings = StripBookendQuotations(responseContent).Split(';');
+                Assert.Equal("Identity: (facebook, Connor McMahon, 10241897674253170)", identityStrings[0]);
             }
         }
 
@@ -742,18 +814,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         public class TestFixture : EndToEndTestFixture
         {
-            static TestFixture()
-            {
-            }
-
             public TestFixture()
                 : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\csharp"), "samples", LanguageWorkerConstants.DotNetLanguageWorkerName)
             {
+                MockWebHookProvider = new Mock<IScriptWebHookProvider>(MockBehavior.Strict);
             }
+
+            public Mock<IScriptWebHookProvider> MockWebHookProvider { get; }
 
             public override void ConfigureJobHost(IWebJobsBuilder webJobsBuilder)
             {
                 base.ConfigureJobHost(webJobsBuilder);
+
+                webJobsBuilder.Services.AddSingleton<IScriptWebHookProvider>(MockWebHookProvider.Object);
 
                 webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                 {

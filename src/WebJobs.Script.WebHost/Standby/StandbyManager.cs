@@ -3,8 +3,10 @@
 
 using System;
 using System.IO;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
@@ -24,17 +26,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly Lazy<Task> _specializationTask;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IEnvironment _environment;
+        private readonly ILanguageWorkerChannelManager _languageWorkerChannelManager;
         private readonly IConfigurationRoot _configuration;
         private readonly ILogger _logger;
-
         private readonly TimeSpan _specializationTimerInterval = TimeSpan.FromMilliseconds(500);
-        private Timer _specializationTimer;
 
+        private Timer _specializationTimer;
         private static CancellationTokenSource _standbyCancellationTokenSource = new CancellationTokenSource();
         private static IChangeToken _standbyChangeToken = new CancellationChangeToken(_standbyCancellationTokenSource.Token);
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
-        public StandbyManager(IScriptHostManager scriptHostManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
+        public StandbyManager(IScriptHostManager scriptHostManager, ILanguageWorkerChannelManager languageWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
@@ -43,8 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _specializationTask = new Lazy<Task>(SpecializeHostCoreAsync, LazyThreadSafetyMode.ExecutionAndPublication);
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-
             _configuration = configuration as IConfigurationRoot ?? throw new ArgumentNullException(nameof(configuration));
+            _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
         }
 
         public static IChangeToken ChangeToken => _standbyChangeToken;
@@ -66,8 +68,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Trigger a configuration reload to pick up all current settings
             _configuration?.Reload();
 
+            await _languageWorkerChannelManager.SpecializeAsync();
             NotifyChange();
-
             await _scriptHostManager.RestartHostAsync();
             await _scriptHostManager.DelayUntilHostReady();
         }
@@ -107,23 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 try
                 {
-                    string scriptPath = _options.CurrentValue.ScriptPath;
-                    _logger.LogInformation($"Creating StandbyMode placeholder function directory ({scriptPath})");
-
-                    await FileUtility.DeleteDirectoryAsync(scriptPath, true);
-                    FileUtility.EnsureDirectoryExists(scriptPath);
-
-                    string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.host.json");
-                    File.WriteAllText(Path.Combine(scriptPath, "host.json"), content);
-
-                    string functionPath = Path.Combine(scriptPath, WarmUpConstants.FunctionName);
-                    Directory.CreateDirectory(functionPath);
-                    content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.function.json");
-                    File.WriteAllText(Path.Combine(functionPath, "function.json"), content);
-                    content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.run.csx");
-                    File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
-
-                    _logger.LogInformation($"StandbyMode placeholder function directory created");
+                    await CreateStandbyWarmupFunctions();
 
                     // start a background timer to identify when specialization happens
                     // specialization usually happens via an http request (e.g. scale controller
@@ -136,6 +122,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _semaphore.Release();
                 }
             }
+        }
+
+        private async Task CreateStandbyWarmupFunctions()
+        {
+            string scriptPath = _options.CurrentValue.ScriptPath;
+            _logger.LogInformation($"Creating StandbyMode placeholder function directory ({scriptPath})");
+
+            await FileUtility.DeleteDirectoryAsync(scriptPath, true);
+            FileUtility.EnsureDirectoryExists(scriptPath);
+
+            string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.host.json");
+            File.WriteAllText(Path.Combine(scriptPath, "host.json"), content);
+
+            string functionPath = Path.Combine(scriptPath, WarmUpConstants.FunctionName);
+            Directory.CreateDirectory(functionPath);
+            content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.function.json");
+            File.WriteAllText(Path.Combine(functionPath, "function.json"), content);
+            content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.run.csx");
+            File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
+
+            _logger.LogInformation($"StandbyMode placeholder function directory created");
         }
 
         private void OnSpecializationTimerTick(object state)

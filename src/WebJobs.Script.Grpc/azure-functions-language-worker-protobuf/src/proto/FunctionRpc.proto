@@ -5,6 +5,7 @@ option java_multiple_files = true;
 option java_package = "com.microsoft.azure.functions.rpc.messages";
 option java_outer_classname = "FunctionProto";
 option csharp_namespace = "Microsoft.Azure.WebJobs.Script.Grpc.Messages";
+option go_package ="github.com/Azure/azure-functions-go-worker/internal/rpc";
 
 package AzureFunctionsRpcMessages;
 
@@ -64,6 +65,10 @@ message StreamingMessage {
 
     // Worker logs a message back to the host
     RpcLog rpc_log = 2;
+
+    FunctionEnvironmentReloadRequest function_environment_reload_request = 25;
+
+    FunctionEnvironmentReloadResponse function_environment_reload_response = 26;
   }
 }
 
@@ -179,6 +184,16 @@ message WorkerStatusRequest{
 message WorkerStatusResponse {
 }
 
+message FunctionEnvironmentReloadRequest {
+  // Environment variables from the current process
+  map<string, string> environment_variables = 1;
+}
+
+message FunctionEnvironmentReloadResponse {
+  // Status of the response
+  StatusResult result = 3;
+}
+
 // Host tells the worker to load a Function
 message FunctionLoadRequest {
   // unique function identifier (avoid name collisions, facilitate reload case)
@@ -286,11 +301,21 @@ message BindingInfo {
       inout = 2;
     }
 
+    // Indicates the type of the data for the binding
+    enum DataType {
+      undefined = 0;
+      string = 1;
+      binary = 2;
+      stream = 3;
+    }
+
   // Type of binding (e.g. HttpTrigger)
   string type = 2;
 
   // Direction of the given binding
   Direction direction = 3;
+
+  DataType data_type = 4;
 }
 
 // Used to send logs back to the Host 

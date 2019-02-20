@@ -168,12 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
             public int GetHashCode(Type obj)
             {
-                if (obj == null)
-                {
-                    return 0;
-                }
-
-                return obj.FullName.GetHashCode();
+                return obj?.FullName?.GetHashCode() ?? 0;
             }
         }
     }

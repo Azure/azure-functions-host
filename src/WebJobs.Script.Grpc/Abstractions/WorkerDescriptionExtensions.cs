@@ -21,10 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
             {
                 throw new ValidationException($"WorkerDescription {nameof(workerDescription.DefaultExecutablePath)} cannot be empty");
             }
-            if (string.IsNullOrEmpty(workerDescription.DefaultWorkerPath))
-            {
-                throw new ValidationException($"WorkerDescription {nameof(workerDescription.DefaultWorkerPath)} cannot be empty");
-            }
         }
     }
 }

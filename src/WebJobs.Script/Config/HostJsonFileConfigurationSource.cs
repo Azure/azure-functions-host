@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             private static readonly string[] WellKnownHostJsonProperties = new[]
             {
                 "version", "functionTimeout", "functions", "http", "watchDirectories", "queues", "serviceBus",
-                "eventHub", "singleton", "logging", "aggregator", "healthMonitor"
+                "eventHub", "singleton", "logging", "aggregator", "healthMonitor", "extensionBundle"
             };
 
             private readonly HostJsonFileConfigurationSource _configurationSource;

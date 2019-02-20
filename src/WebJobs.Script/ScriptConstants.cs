@@ -47,6 +47,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategoryHost = "Host";
         public const string LogCategoryFunction = "Function";
         public const string LogCategoryWorker = "Worker";
+        public const string LogCategoryRpcInitializationService = "Host.RpcInitializationService";
+        public const string LogCategoryLanguageWorkerChannelManager = "Host.LanguageWorkerChannelManager";
+        public const string LogCategoryFunctionRpcService = "Host.FunctionRpcService";
+        public const string LogCategoryFunctionDispatcher = "Host.FunctionDispatcher";
 
         public const string SkipHostJsonConfigurationKey = "MS_SkipHostJsonConfiguration";
         public const string SkipHostInitializationKey = "MS_SkipHostInitialization";
@@ -115,6 +119,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string DurableTaskPropertyName = "durableTask";
         public const string DurableTaskHubName = "HubName";
+
+        public const string AzureWebJobsHostsContainerName = "azure-webjobs-hosts";
 
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");

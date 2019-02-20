@@ -22,7 +22,7 @@ for:
   - sh: >-
       mkdir .dotnet && 
       chmod +x dotnet-install.sh && 
-      ./dotnet-install.sh --version 2.1.400 --install-dir .dotnet && 
+      ./dotnet-install.sh --version 2.2.102 --install-dir .dotnet && 
       PATH=".dotnet:"$PATH && dotnet --info 
   build_script:
   - sh: dotnet build WebJobs.Script.sln
@@ -47,18 +47,29 @@ for:
   build_script:
   - ps: |
       $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
-      .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeVersion (!$hasTag)
+      $isbuildFromMasterBranch = $env:APPVEYOR_REPO_BRANCH -eq "master"
+      $includeSuffix = (-Not ($hasTag -OR $isBuildFromMasterBranch))
+      .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeSuffix $includeSuffix
   after_build:
   - ps: >
       $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
 
       if ($bypassPackaging) {
-        Write-Host "Bypassing artifact publishing for pull request." -ForegroundColor Yellow
+        Write-Host "Bypassing artifact publishing and signing for pull request." -ForegroundColor Yellow
       } else {
         Get-ChildItem buildoutput\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
 
         Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
       }
   test_script:
-  - ps: >
+  - ps: > 
       .\run-tests.ps1
+  on_finish:
+  - ps: >
+      $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
+      
+      if (-not $bypassPackaging) {
+        & .\tools\PollSigningResults.ps1
+        if (-not $?) { exit 1 }
+        Get-ChildItem buildoutput\signed\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
+      }

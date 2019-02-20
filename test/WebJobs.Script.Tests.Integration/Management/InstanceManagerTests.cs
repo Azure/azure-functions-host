@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
     public class InstanceManagerTests : IDisposable
     {
         private readonly TestLoggerProvider _loggerProvider;
-        private readonly TestEnvironment _environment;
+        private readonly TestEnvironmentEx _environment;
         private readonly ScriptWebHostEnvironment _scriptWebEnvironment;
         private readonly InstanceManager _instanceManager;
         private readonly HttpClient _httpClient;
@@ -34,11 +34,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
 
-            _environment = new TestEnvironment();
+            _environment = new TestEnvironmentEx();
             _scriptWebEnvironment = new ScriptWebHostEnvironment(_environment);
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions());
             _instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment, loggerFactory.CreateLogger<InstanceManager>());
+
+            InstanceManager.Reset();
         }
 
         [Fact]
@@ -87,6 +89,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
+        public async Task StartAssignment_Failure_ExitsPlaceholderMode()
+        {
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                Environment = new Dictionary<string, string>
+                {
+                    // force the assignment to fail
+                    { "throw", "test" }
+                }
+            };
+            bool result = _instanceManager.StartAssignment(context);
+            Assert.True(result);
+            Assert.True(_scriptWebEnvironment.InStandbyMode);
+
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
+
+            var error = _loggerProvider.GetAllLogMessages().Where(p => p.Level == LogLevel.Error).First();
+            Assert.Equal("Assign failed", error.FormattedMessage);
+            Assert.Equal("Kaboom!", error.Exception.Message);
+        }
+
+        [Fact]
+        public async Task StartAssignment_Succeeds_With_No_RunFromPackage_AppSetting()
+        {
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                Environment = new Dictionary<string, string>()
+            };
+            bool result = _instanceManager.StartAssignment(context);
+            Assert.True(result);
+            Assert.True(_scriptWebEnvironment.InStandbyMode);
+
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("Starting Assignment", p),
+                p => Assert.StartsWith("Applying 0 app setting(s)", p),
+                p => Assert.StartsWith("Triggering specialization", p));
+        }
+
+        [Fact]
         public void StartAssignment_ReturnsFalse_WhenNotInStandbyMode()
         {
             Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
@@ -120,6 +166,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
+        public async Task ValidateContext_EmptyZipUrl_ReturnsSuccess()
+        {
+            var environment = new Dictionary<string, string>();
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment
+            };
+
+            string error = await _instanceManager.ValidateContext(assignmentContext);
+            Assert.Null(error);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("Validating host assignment context (SiteId: 1234, SiteName: 'TestSite')", p));
+        }
+
+        [Fact]
         public async Task ValidateContext_Succeeds()
         {
             var environment = new Dictionary<string, string>()
@@ -144,6 +209,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public void Dispose()
         {
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, null);
+        }
+
+        private class TestEnvironmentEx : TestEnvironment
+        {
+            public override void SetEnvironmentVariable(string name, string value)
+            {
+                if (name == "throw")
+                {
+                    throw new InvalidOperationException("Kaboom!");
+                }
+                base.SetEnvironmentVariable(name, value);
+            }
         }
     }
 }

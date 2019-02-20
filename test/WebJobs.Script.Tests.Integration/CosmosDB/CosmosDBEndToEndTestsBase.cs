@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
             // now wait for function to be invoked
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob,
-                () => string.Join(Environment.NewLine, Fixture.Host.GetLogMessages()));
+                () => string.Join(Environment.NewLine, Fixture.Host.GetScriptHostLogMessages()));
 
             if (collectionsCreated)
             {

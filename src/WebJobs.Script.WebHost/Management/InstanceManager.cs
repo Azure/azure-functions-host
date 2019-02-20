@@ -54,8 +54,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     _assignmentContext = context;
                 }
 
-                // start the specialization process in the background
                 _logger.LogInformation("Starting Assignment");
+
+                // set a flag which will cause any incoming http requests to buffer
+                // until specialization is complete
+                // the host is guaranteed not to receive any requests until AFTER assign
+                // has been initiated, so setting this flag here is sufficient to ensure
+                // that any subsequent incoming requests while the assign is in progress
+                // will be delayed until complete
+                _webHostEnvironment.DelayRequests();
+
+                // start the specialization process in the background
                 Task.Run(async () => await Assign(context));
 
                 return true;
@@ -92,22 +101,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             try
             {
-                // set a flag which will cause any incoming http requests to buffer
-                // until specialization is complete
-                // the host is guaranteed not to receive any requests until AFTER assign
-                // has been initiated, so setting this flag here is sufficient to ensure
-                // that any subsequent incoming requests while the assign is in progress
-                // will be delayed until complete
-                _webHostEnvironment.DelayRequests();
-
                 // first make all environment and file system changes required for
                 // the host to be specialized
                 await ApplyContext(assignmentContext);
-
-                // all assignment settings/files have been applied so we can flip
-                // the switch now on specialization
-                _logger.LogInformation("Triggering specialization");
-                _webHostEnvironment.FlagAsSpecializedAndReady();
             }
             catch (Exception ex)
             {
@@ -116,6 +112,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             finally
             {
+                // all assignment settings/files have been applied so we can flip
+                // the switch now on specialization
+                // even if there are failures applying context above, we want to
+                // leave placeholder mode
+                _logger.LogInformation("Triggering specialization");
+                _webHostEnvironment.FlagAsSpecializedAndReady();
+
                 _webHostEnvironment.ResumeRequests();
             }
         }
@@ -172,6 +175,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 { "FUNCTIONS_EXTENSION_VERSION", ScriptHost.Version },
                 { "WEBSITE_NODE_DEFAULT_VERSION", "8.5.0" }
             };
+        }
+
+        // for testing
+        internal static void Reset()
+        {
+            _assignmentContext = null;
         }
     }
 }

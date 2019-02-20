@@ -20,16 +20,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// Maps FunctionMetadata to FunctionMetadataResponse.
         /// </summary>
         /// <param name="functionMetadata">FunctionMetadata to be mapped.</param>
-        /// <param name="request">Current HttpRequest</param>
         /// <param name="hostOptions">The host options</param>
         /// <returns>Promise of a FunctionMetadataResponse</returns>
-        public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, HttpRequest request, ScriptJobHostOptions hostOptions, string routePrefix)
+        public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions, string routePrefix, string baseUrl)
         {
             var functionPath = Path.Combine(hostOptions.RootScriptPath, functionMetadata.Name);
             var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
-            var baseUrl = request != null
-                ? $"{request.Scheme}://{request.Host}"
-                : "https://localhost/";
+            if (string.IsNullOrEmpty(baseUrl))
+            {
+                baseUrl = "https://localhost/";
+            }
 
             var response = new FunctionMetadataResponse
             {

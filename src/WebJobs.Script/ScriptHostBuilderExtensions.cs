@@ -8,7 +8,10 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.BindingExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -16,6 +19,8 @@ using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Configuration;
@@ -115,6 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
+                services.AddSingleton<IFunctionDispatcher, FunctionDispatcher>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
@@ -137,6 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 // TODO: pgopa only add this to WebHostServiceCollection
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
+                services.ConfigureOptions<ExtensionBundleOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
                     .Configure<IConfiguration>((o, c) =>
                     {
@@ -154,6 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 // Hosted services
+                services.AddSingleton<IHostedService, LanguageWorkerConsoleLogService>();
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
             });
 
@@ -169,6 +177,15 @@ namespace Microsoft.Azure.WebJobs.Script
             // specialized app.
             services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
+
+            // Add Language Worker Service
+            // Need to maintain the order: Add RpcInitializationService before core script host services
+            services.AddSingleton<IHostedService, RpcInitializationService>();
+            services.AddSingleton<FunctionRpc.FunctionRpcBase, FunctionRpcService>();
+            services.AddSingleton<IRpcServer, GrpcServer>();
+            services.TryAddSingleton<ILanguageWorkerConsoleLogSource, LanguageWorkerConsoleLogSource>();
+            services.TryAddSingleton<ILanguageWorkerChannelManager, LanguageWorkerChannelManager>();
+
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
@@ -219,13 +236,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 builder.AddApplicationInsights(o => o.InstrumentationKey = appInsightsKey);
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
 
+                builder.Services.AddSingleton<ISdkVersionProvider, ApplicationInsightsSdkVersionProvider>();
+
                 // Override the default SdkVersion with the functions key
                 builder.Services.AddSingleton<TelemetryClient>(provider =>
                 {
                     TelemetryConfiguration configuration = provider.GetService<TelemetryConfiguration>();
                     TelemetryClient client = new TelemetryClient(configuration);
 
-                    client.Context.GetInternalContext().SdkVersion = $"azurefunctions: {ScriptHost.Version}";
+                    ISdkVersionProvider versionProvider = provider.GetService<ISdkVersionProvider>();
+                    client.Context.GetInternalContext().SdkVersion = versionProvider.GetSdkVersion();
 
                     return client;
                 });

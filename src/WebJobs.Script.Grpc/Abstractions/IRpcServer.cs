@@ -22,6 +22,12 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
         Task StartAsync();
 
         /// <summary>
+        /// Forces a server shutdown
+        /// </summary>
+        /// <returns>A task that completes when the server is killed</returns>
+        Task KillAsync();
+
+        /// <summary>
         /// Gracefully shuts down the rpc server, allowing existing calls to finish
         /// </summary>
         /// <returns>A task that completes when the server has shutdown</returns>

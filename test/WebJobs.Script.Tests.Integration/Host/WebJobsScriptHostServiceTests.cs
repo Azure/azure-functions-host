@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                         foreach (var counter in _exceededCounters)
                         {
                             c.Add(counter);
-                        }  
+                        }
                     }
                 })
                 .Returns(() => _underHighLoad);
@@ -90,10 +90,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         public void InitializationLogs_AreEmitted()
         {
             // verify startup trace logs
-            string[] expectedPatterns = new string[]
+            string[] expectedPatternsWebHost = new string[]
             {
                 "Information Reading host configuration file",
                 "Information Host configuration file read",
+            };
+
+            string[] expectedPatternsScriptHost = new string[]
+            {
                 @"Information Generating 2 job function\(s\)",
                 "Host initialization: ConsecutiveErrors=0, StartupCount=1",
                 @"Information Starting Host \(HostId=(.*), InstanceId=(.*), Version=(.+), ProcessId=[0-9]+, AppDomainId=[0-9]+, InDebugMode=False, InDiagnosticMode=False, FunctionsExtensionVersion=\)",
@@ -101,8 +105,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 "Information Job host started",
             };
 
-            IList<LogMessage> logs = _testHost.GetLogMessages();
-            foreach (string pattern in expectedPatterns)
+            IList<LogMessage> logs = _testHost.GetWebHostLogMessages();
+            foreach (string pattern in expectedPatternsWebHost)
+            {
+                Assert.True(logs.Any(p => Regex.IsMatch($"{p.Level} {p.FormattedMessage}", pattern)), $"Expected trace event {pattern} not found.");
+            }
+
+            logs = _testHost.GetScriptHostLogMessages();
+            foreach (string pattern in expectedPatternsScriptHost)
             {
                 Assert.True(logs.Any(p => Regex.IsMatch($"{p.Level} {p.FormattedMessage}", pattern)), $"Expected trace event {pattern} not found.");
             }
@@ -130,18 +140,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             _mockJobHostEnvironment.Verify(p => p.Shutdown(), Times.Once);
 
             // we expect a few restart iterations
-            var logMessages = _testHost.GetLogMessages();
-            var thresholdErrors = logMessages.Where(p => p.Exception is InvalidOperationException && p.Exception.Message == "Host thresholds exceeded: [Connections]. For more information, see https://aka.ms/functions-thresholds.");
+            var scriptHostLogMessages = _testHost.GetScriptHostLogMessages();
+            var webHostLogMessages = _testHost.GetWebHostLogMessages();
+
+            var thresholdErrors = scriptHostLogMessages.Where(p => p.Exception is InvalidOperationException && p.Exception.Message == "Host thresholds exceeded: [Connections]. For more information, see https://aka.ms/functions-thresholds.");
             var count = thresholdErrors.Count();
             Assert.True(count > 0);
 
-            var log = logMessages.First(p => p.FormattedMessage == "Host is unhealthy. Initiating a restart." && p.Level == LogLevel.Error);
+            var log = webHostLogMessages.First(p => p.FormattedMessage == "Host is unhealthy. Initiating a restart." && p.Level == LogLevel.Error);
             Assert.Equal(LogLevel.Error, log.Level);
 
-            log = logMessages.First(p => p.FormattedMessage == "Host unhealthy count exceeds the threshold of 5 for time window 00:00:01. Initiating shutdown.");
+            log = webHostLogMessages.First(p => p.FormattedMessage == "Host unhealthy count exceeds the threshold of 5 for time window 00:00:01. Initiating shutdown.");
             Assert.Equal(LogLevel.Error, log.Level);
 
-            Assert.Contains(logMessages, p => p.FormattedMessage == "Stopping JobHost");
+            Assert.Contains(scriptHostLogMessages, p => p.FormattedMessage == "Stopping JobHost");
         }
 
         [Fact]
@@ -179,7 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             await TestHelpers.Await(() => _scriptHostService.State == ScriptHostState.Running);
             Assert.Null(_scriptHostService.LastError);
 
-            var logMessages = _testHost.GetLogMessages();
+            var logMessages = _testHost.GetScriptHostLogMessages();
             Assert.Contains(logMessages, p => p.FormattedMessage == "Job host started");
         }
 

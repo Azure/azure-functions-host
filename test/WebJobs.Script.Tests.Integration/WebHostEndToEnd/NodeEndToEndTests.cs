@@ -186,22 +186,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await Fixture.Host.BeginFunctionAsync("Scenarios", input);
 
             string userCategory = LogCategories.CreateFunctionUserCategory("Scenarios");
-            IList<string> logs = null;
+            IList<string> userLogs = null;
+            string consoleLog = null;
             await TestHelpers.Await(() =>
             {
-                logs = Fixture.Host.GetLogMessages(userCategory).Select(p => p.FormattedMessage).ToList();
-                return logs.Count == 10;
+                userLogs = Fixture.Host.GetScriptHostLogMessages(userCategory).Select(p => p.FormattedMessage).ToList();
+                consoleLog = Fixture.Host.GetScriptHostLogMessages(LanguageWorkerConstants.FunctionConsoleLogCategoryName).Select(p => p.FormattedMessage).SingleOrDefault();
+                return userLogs.Count == 10 && consoleLog != null;
             }, userMessageCallback: Fixture.Host.GetLog);
 
             // verify use of context.log to log complex objects
-            LogMessage scriptTrace = Fixture.Host.GetLogMessages(userCategory).Single(p => p.FormattedMessage != null && p.FormattedMessage.Contains(testData));
+            LogMessage scriptTrace = Fixture.Host.GetScriptHostLogMessages(userCategory).Single(p => p.FormattedMessage != null && p.FormattedMessage.Contains(testData));
             Assert.Equal(LogLevel.Information, scriptTrace.Level);
             JObject logEntry = JObject.Parse(scriptTrace.FormattedMessage);
             Assert.Equal("This is a test", logEntry["message"]);
             Assert.Equal(testData, logEntry["input"]);
 
             // verify log levels in traces
-            LogMessage[] traces = Fixture.Host.GetLogMessages(userCategory).Where(t => t.FormattedMessage != null && t.FormattedMessage.Contains("loglevel")).ToArray();
+            LogMessage[] traces = Fixture.Host.GetScriptHostLogMessages(userCategory).Where(t => t.FormattedMessage != null && t.FormattedMessage.Contains("loglevel")).ToArray();
             Assert.Equal(LogLevel.Information, traces[0].Level);
             Assert.Equal("loglevel default", traces[0].FormattedMessage);
             Assert.Equal(LogLevel.Information, traces[1].Level);
@@ -214,12 +216,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("loglevel error", traces[4].FormattedMessage);
 
             // verify most of the logs look correct
-            Assert.EndsWith("Mathew Charles", logs[1]);
-            Assert.EndsWith("null", logs[2]);
-            Assert.EndsWith("1234", logs[3]);
-            Assert.EndsWith("true", logs[4]);
-            Assert.EndsWith("loglevel default", logs[5]);
-            Assert.EndsWith("loglevel info", logs[6]);
+            Assert.EndsWith("Mathew Charles", userLogs[1]);
+            Assert.EndsWith("null", userLogs[2]);
+            Assert.EndsWith("1234", userLogs[3]);
+            Assert.EndsWith("true", userLogs[4]);
+            Assert.EndsWith("loglevel default", userLogs[5]);
+            Assert.EndsWith("loglevel info", userLogs[6]);
+
+            // verify the console log
+            Assert.Equal("console log", consoleLog);
 
             // TODO: Re-enable once we can override IMetricsLogger
             // We only expect 9 user log metrics to be counted, since
@@ -769,7 +774,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public void TimerTrigger()
         {
-            var logs = Fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory("TimerTrigger"));
+            var logs = Fixture.Host.GetScriptHostLogMessages(LogCategories.CreateFunctionUserCategory("TimerTrigger"));
             Assert.Contains(logs, log => log.FormattedMessage.Contains("Timer function ran!"));
         }
 

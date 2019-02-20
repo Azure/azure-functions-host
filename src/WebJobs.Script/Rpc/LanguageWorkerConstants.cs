@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string DotNetLanguageWorkerName = "dotnet";
         public const string NodeLanguageWorkerName = "node";
         public const string JavaLanguageWorkerName = "java";
+        public const string PowerShellLanguageWorkerName = "powershell";
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultWorkersDirectoryName = "workers";
 
@@ -28,7 +29,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string WorkerDescriptionProfiles = "profiles";
         public const string WorkerDescriptionAppServiceEnvProfileName = "appServiceEnvironment";
 
-        public const int DefaultMaxMessageLengthBytesDynamicSku = 32 * 1024 * 1024;
         public const int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
 
         //Logs

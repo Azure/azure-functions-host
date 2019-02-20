@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using DataProtectionCostants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -19,14 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         public static void Main(string[] args)
         {
-            var host = BuildWebHost(args);
+            InitializeProcess();
 
-            var environment = host.Services.GetService<IEnvironment>();
-            if (environment.IsLinuxContainerEnvironment())
-            {
-                // Linux containers always start out in placeholder mode
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            }
+            var host = BuildWebHost(args);
 
             host.RunAsync()
                 .Wait();
@@ -40,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public static IWebHostBuilder CreateWebHostBuilder(string[] args = null)
         {
             return AspNetCore.WebHost.CreateDefaultBuilder(args)
-                .UseKestrel(o =>
+                .ConfigureKestrel(o =>
                 {
                     o.Limits.MaxRequestBodySize = 104857600;
                 })
@@ -75,6 +71,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
                 })
                 .UseStartup<Startup>();
+        }
+
+        /// <summary>
+        /// Perform any process level initialization that needs to happen BEFORE
+        /// the WebHost is initialized.
+        /// </summary>
+        private static void InitializeProcess()
+        {
+            if (SystemEnvironment.Instance.IsLinuxContainerEnvironment())
+            {
+                // Linux containers always start out in placeholder mode
+                SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            }
+
+            // Some environments only set the auth key. Ensure that is used as the encryption key if that is not set
+            string authEncryptionKey = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey);
+            if (authEncryptionKey != null &&
+                SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey) == null)
+            {
+                SystemEnvironment.Instance.SetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey, authEncryptionKey);
+            }
         }
     }
 }

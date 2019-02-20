@@ -93,39 +93,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string details = string.Empty;
             if (exception != null)
             {
-                details = Sanitizer.Sanitize(exception.ToFormattedString());
                 if (string.IsNullOrEmpty(functionName) && exception is FunctionInvocationException fex)
                 {
                     functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName.Replace("Host.Functions.", string.Empty);
                 }
 
-                Exception innerException = exception.InnerException;
-                while (innerException != null && innerException.InnerException != null)
-                {
-                    innerException = innerException.InnerException;
-                }
-
-                if (innerException != null)
-                {
-                    GetExceptionDetails(innerException, out innerExceptionType, out innerExceptionMessage);
-                }
-                else
-                {
-                    GetExceptionDetails(exception, out innerExceptionType, out innerExceptionMessage);
-                }
+                (innerExceptionType, innerExceptionMessage, details) = exception.GetExceptionDetails();
+                innerExceptionMessage = innerExceptionMessage ?? string.Empty;
             }
 
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, functionInvocationId, hostInstanceId, activityId);
-        }
-
-        private void GetExceptionDetails(Exception exception, out string exceptionType, out string exceptionMessage)
-        {
-            if (exception == null)
-            {
-                throw new ArgumentNullException(nameof(exception));
-            }
-            exceptionType = exception.GetType().ToString();
-            exceptionMessage = Sanitizer.Sanitize(exception.Message) ?? string.Empty;
         }
     }
 }

@@ -41,6 +41,8 @@ module.exports = function (context, input) {
         context.log.warn('loglevel warn');
         context.log.error('loglevel error');
 
+        console.log('console log');
+
         context.done();
     }
     else if (scenario === 'bindingData') {

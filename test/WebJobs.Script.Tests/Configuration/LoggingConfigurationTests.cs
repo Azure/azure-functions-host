@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -177,11 +178,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-            Assert.Equal(4, loggerProviders.Count());
+            Assert.Equal(5, loggerProviders.Count());
             loggerProviders.OfType<SystemLoggerProvider>().Single();
             loggerProviders.OfType<HostFileLoggerProvider>().Single();
             loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
             loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
+            loggerProviders.OfType<NullLoggerProvider>().Single();
         }
 
         [Fact]
@@ -194,12 +196,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-            Assert.Equal(5, loggerProviders.Count());
+            Assert.Equal(6, loggerProviders.Count());
             loggerProviders.OfType<SystemLoggerProvider>().Single();
             loggerProviders.OfType<HostFileLoggerProvider>().Single();
             loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
             loggerProviders.OfType<ConsoleLoggerProvider>().Single();
             loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
+            loggerProviders.OfType<NullLoggerProvider>().Single();
         }
 
         [Fact]
@@ -218,12 +221,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-            Assert.Equal(5, loggerProviders.Count());
+            Assert.Equal(6, loggerProviders.Count());
             loggerProviders.OfType<SystemLoggerProvider>().Single();
             loggerProviders.OfType<HostFileLoggerProvider>().Single();
             loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
             loggerProviders.OfType<ConsoleLoggerProvider>().Single();
             loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
+            loggerProviders.OfType<NullLoggerProvider>().Single();
         }
 
         [Fact]
@@ -242,12 +246,72 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-            Assert.Equal(5, loggerProviders.Count());
+            Assert.Equal(6, loggerProviders.Count());
             loggerProviders.OfType<SystemLoggerProvider>().Single();
             loggerProviders.OfType<HostFileLoggerProvider>().Single();
             loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
             loggerProviders.OfType<ApplicationInsightsLoggerProvider>().Single();
             loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
+            loggerProviders.OfType<NullLoggerProvider>().Single();
+        }
+
+        [Fact]
+        public void LoggerProviders_AzureMonitor_NoAppSetting()
+        {
+            IHost host = new HostBuilder()
+              .ConfigureDefaultTestWebScriptHost()
+              .ConfigureServices(s =>
+              {
+                  TestEnvironment environment = new TestEnvironment();
+                  environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "something.azurewebsites.net");
+                  s.AddSingleton<IEnvironment>(environment);
+              })
+              .Build();
+
+            IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
+
+            Assert.Equal(5, loggerProviders.Count());
+            loggerProviders.OfType<SystemLoggerProvider>().Single();
+            loggerProviders.OfType<HostFileLoggerProvider>().Single();
+            loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
+            loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
+            loggerProviders.OfType<NullLoggerProvider>().Single();
+        }
+
+        [Theory]
+        [InlineData("1", false)] // only true/false are parsed
+        [InlineData("true", true)]
+        [InlineData("false", false)]
+        [InlineData("nonsense", false)]
+        public void LoggerProviders_AzureMonitor_AppSetting(string appSettingValue, bool expected)
+        {
+            IHost host = new HostBuilder()
+              .ConfigureDefaultTestWebScriptHost()
+              .ConfigureServices(s =>
+              {
+                  TestEnvironment environment = new TestEnvironment();
+                  environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "something.azurewebsites.net");
+                  environment.SetEnvironmentVariable("AZURE_MONITOR_ENABLED", appSettingValue);
+                  s.AddSingleton<IEnvironment>(environment);
+              })
+              .Build();
+
+            IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
+
+            Assert.Equal(5, loggerProviders.Count());
+            loggerProviders.OfType<SystemLoggerProvider>().Single();
+            loggerProviders.OfType<HostFileLoggerProvider>().Single();
+            loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
+            loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
+
+            if (expected)
+            {
+                loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
+            }
+            else
+            {
+                loggerProviders.OfType<NullLoggerProvider>().Single();
+            }
         }
     }
 }

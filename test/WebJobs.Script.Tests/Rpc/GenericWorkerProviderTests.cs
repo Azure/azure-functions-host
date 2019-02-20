@@ -31,7 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 yield return new object[] { new WorkerDescription() { Extensions = new List<string>() } };
                 yield return new object[] { new WorkerDescription() { Language = testLanguage } };
                 yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>() } };
-                yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe" } };
             }
         }
 
@@ -39,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             get
             {
+                yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe" } };
                 yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = testWorkerPathInWorkerConfig } };
                 yield return new object[] { new WorkerDescription() { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "test.exe", DefaultWorkerPath = testWorkerPathInWorkerConfig, Arguments = new List<string>() } };
             }
@@ -110,6 +110,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.True(worker.GetDescription().Arguments.Count == 2);
             Assert.True(worker.GetDescription().Arguments.Contains("--inspect=5689"));
             Assert.True(worker.GetDescription().Arguments.Contains("--no-deprecation"));
+        }
+
+        [Fact]
+        public void ReadWorkerProviderFromConfig_EmptyWorkerPath()
+        {
+            var configs = new List<TestLanguageWorkerConfig>() { MakeTestConfig(testLanguage, new string[0], false, string.Empty, true) };
+            // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
+            Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
+            {
+                [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{LanguageWorkerConstants.WorkerDescriptionArguments}"] = "--inspect=5689  --no-deprecation"
+            };
+            var providers = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage));
+            Assert.Single(providers);
+            Assert.True(providers.Single().GetDescription().GetWorkerPath() == null);
         }
 
         [Fact]
@@ -334,9 +348,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             return config;
         }
 
-        private static TestLanguageWorkerConfig MakeTestConfig(string language, string[] arguments, bool invalid = false, string addAppSvcProfile = "")
+        private static TestLanguageWorkerConfig MakeTestConfig(string language, string[] arguments, bool invalid = false, string addAppSvcProfile = "", bool emptyWorkerPath = false)
         {
-            string json = GetTestWorkerConfig(language, arguments, invalid, addAppSvcProfile).ToString();
+            string json = GetTestWorkerConfig(language, arguments, invalid, addAppSvcProfile, emptyWorkerPath).ToString();
             return new TestLanguageWorkerConfig()
             {
                 Json = json,
@@ -344,7 +358,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
         }
 
-        private static JObject GetTestWorkerConfig(string language, string[] arguments, bool invalid, string profileName)
+        private static JObject GetTestWorkerConfig(string language, string[] arguments, bool invalid, string profileName, bool emptyWorkerPath = false)
         {
             WorkerDescription description = GetTestDefaultWorkerDescription(language, arguments);
 
@@ -366,6 +380,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             if (invalid)
             {
                 config[LanguageWorkerConstants.WorkerDescription] = "invalidWorkerConfig";
+            }
+
+            if (emptyWorkerPath)
+            {
+                config[LanguageWorkerConstants.WorkerDescription][LanguageWorkerConstants.WorkerDescriptionDefaultWorkerPath] = null;
             }
 
             return config;

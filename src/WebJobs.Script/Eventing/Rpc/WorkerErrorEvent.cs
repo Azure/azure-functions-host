@@ -5,16 +5,16 @@ using System;
 
 namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
-    public class WorkerErrorEvent : ScriptEvent
+    public class WorkerErrorEvent : RpcChannelEvent
     {
-        internal WorkerErrorEvent(string workerId, Exception exception)
-            : base(nameof(WorkerErrorEvent), EventSources.Worker)
+        internal WorkerErrorEvent(string language, string workerId, Exception exception)
+            : base(workerId)
         {
-            WorkerId = workerId ?? throw new ArgumentNullException(nameof(workerId));
             Exception = exception;
+            Language = language;
         }
 
-        internal string WorkerId { get; private set; }
+        internal string Language { get; private set; }
 
         public Exception Exception { get; private set; }
     }

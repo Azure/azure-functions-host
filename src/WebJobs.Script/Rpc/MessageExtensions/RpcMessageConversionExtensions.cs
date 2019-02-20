@@ -9,6 +9,7 @@ using System.Text;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -76,10 +77,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 typedData.Http = http;
 
                 http.RawBody = null;
-
                 foreach (var pair in request.Query)
                 {
-                    http.Query.Add(pair.Key, pair.Value.ToString());
+                    if (!string.IsNullOrEmpty(pair.Value.ToString()))
+                    {
+                        http.Query.Add(pair.Key, pair.Value.ToString());
+                    }
                 }
 
                 foreach (var pair in request.Headers)
@@ -156,6 +159,22 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
             }
             return typedData;
+        }
+
+        public static BindingInfo ToBindingInfo(this BindingMetadata bindingMetadata)
+        {
+            BindingInfo bindingInfo = new BindingInfo
+            {
+                Direction = (BindingInfo.Types.Direction)bindingMetadata.Direction,
+                Type = bindingMetadata.Type
+            };
+
+            if (bindingMetadata.DataType != null)
+            {
+                bindingInfo.DataType = (BindingInfo.Types.DataType)bindingMetadata.DataType;
+            }
+
+            return bindingInfo;
         }
     }
 }

@@ -3,12 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.EventHubs;
 using Microsoft.Azure.WebJobs.Logging;
@@ -326,7 +328,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             json = await response.Content.ReadAsStringAsync();
             products = JArray.Parse(json);
             Assert.Equal(2, products.Count);
-            var logs = _fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory("HttpTrigger-CustomRoute-Get"));
+            var logs = _fixture.Host.GetScriptHostLogMessages(LogCategories.CreateFunctionUserCategory("HttpTrigger-CustomRoute-Get"));
             var log = logs.Single(p => p.FormattedMessage.Contains($"category: electronics id: <empty>"));
             _fixture.Host.ClearLogMessages();
 
@@ -339,7 +341,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             json = await response.Content.ReadAsStringAsync();
             products = JArray.Parse(json);
             Assert.Equal(3, products.Count);
-            logs = _fixture.Host.GetLogMessages(LogCategories.CreateFunctionUserCategory("HttpTrigger-CustomRoute-Get"));
+            logs = _fixture.Host.GetScriptHostLogMessages(LogCategories.CreateFunctionUserCategory("HttpTrigger-CustomRoute-Get"));
             log = logs.Single(p => p.FormattedMessage.Contains($"category: <empty> id: <empty>"));
 
             // test a constraint violation (invalid id)
@@ -427,6 +429,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task NodeProcess_Different_AfterHostRestart()
+        {
+            IEnumerable<int> nodeProcessesBefore = Process.GetProcessesByName("node").Select(p => p.Id);
+            // Trigger a restart
+            await _fixture.Host.RestartAsync(CancellationToken.None);
+            await HttpTrigger_Get_Succeeds();
+            IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
+            // Verify number of node processes before and after restart are the same.
+            Assert.Equal(nodeProcessesBefore.Count(), nodeProcessesAfter.Count());
+            // Verify node process is different after host restart
+            var result = nodeProcessesBefore.Where(pId1 => !nodeProcessesAfter.Any(pId2 => pId2 == pId1));
+            Assert.Equal(1, result.Count());
+        }
+
+        [Fact]
         public async Task HttpTrigger_Disabled_SucceedsWithAdminKey()
         {
 
@@ -447,31 +464,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("Hello World!", body);
-        }
-
-        [Fact]
-        public async Task HttpTrigger_Identities_Succeeds()
-        {
-            var vars = new Dictionary<string, string>
-            {
-                { "WEBSITE_AUTH_ENABLED", "TRUE"}
-            };
-            using (var env = new TestScopedEnvironmentVariable(vars))
-            {
-                string id = Guid.NewGuid().ToString();
-                string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Identities");
-                string uri = $"api/httptrigger-identities?code={functionKey}";
-
-                var request = new HttpRequestMessage(HttpMethod.Get, uri);
-                SamplesEndToEndTests_CSharp.MockEasyAuth(request, "facebook", "Connor McMahon", "10241897674253170");
-
-                HttpResponseMessage response = await this._fixture.Host.HttpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-                string responseContent = await response.Content.ReadAsStringAsync();
-                string[] identityStrings = SamplesEndToEndTests_CSharp.StripBookendQuotations(responseContent).Split(';');
-                Assert.Equal("Identity: (facebook, Connor McMahon, 10241897674253170)", identityStrings[0]);
-                Assert.Equal("Identity: (WebJobsAuthLevel, Function, Key1)", identityStrings[1]);
-            }
         }
 
         public class TestFixture : EndToEndTestFixture

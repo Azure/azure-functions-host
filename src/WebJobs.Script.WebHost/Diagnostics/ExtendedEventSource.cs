@@ -4,7 +4,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Tracing;
-using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
@@ -113,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
         protected void WriteEvent(int eventNum, string a, string b, string c, string d, string e, string f, string g, string h, string i, string j, string k)
         {
-            int count = MethodBase.GetCurrentMethod().GetParameters().Length;
+            int count = 11;
             fixed (char* aPtr = a,
                 bPtr = b,
                 cPtr = c,
@@ -158,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
         protected void WriteEvent(int eventNum, string a, string b, string c, string d, string e, string f, string g, string h, string i, string j, string k, string l, string m)
         {
-            int count = MethodBase.GetCurrentMethod().GetParameters().Length;
+            int count = 13;
             fixed (char* aPtr = a,
                 bPtr = b,
                 cPtr = c,
@@ -209,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
         protected void WriteEvent(int eventNum, string a, string b, string c, string d, long e, long f, long g, long h, string i, string j)
         {
-            int count = MethodBase.GetCurrentMethod().GetParameters().Length;
+            int count = 10;
             fixed (char* aPtr = a,
                 bPtr = b,
                 cPtr = c,
@@ -239,6 +238,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 data[9].DataPointer = (IntPtr)jPtr;
                 data[9].Size = (j.Length + 1) * sizeof(char);
 
+                WriteEventCore(eventNum, count, data);
+            }
+        }
+
+        // RaiseFunctionsDiagnostic
+        [NonEvent]
+        [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
+        protected void WriteEvent(int eventNum, string a, string b, string c, string d, string e, string f)
+        {
+            int count = 6;
+            fixed (char* aPtr = a,
+                bPtr = b,
+                cPtr = c,
+                dPtr = d,
+                ePtr = e,
+                fPtr = f)
+            {
+                EventData* data = stackalloc EventData[count];
+                data[0].DataPointer = (IntPtr)aPtr;
+                data[0].Size = (a.Length + 1) * sizeof(char);
+                data[1].DataPointer = (IntPtr)bPtr;
+                data[1].Size = (b.Length + 1) * sizeof(char);
+                data[2].DataPointer = (IntPtr)cPtr;
+                data[2].Size = (c.Length + 1) * sizeof(char);
+                data[3].DataPointer = (IntPtr)dPtr;
+                data[3].Size = (d.Length + 1) * sizeof(char);
+                data[4].DataPointer = (IntPtr)ePtr;
+                data[4].Size = (e.Length + 1) * sizeof(char);
+                data[5].DataPointer = (IntPtr)fPtr;
+                data[5].Size = (f.Length + 1) * sizeof(char);
                 WriteEventCore(eventNum, count, data);
             }
         }

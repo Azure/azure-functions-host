@@ -11,6 +11,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.DependencyModel;
 using ResolutionPolicyEvaluator = System.Func<System.Reflection.AssemblyName, System.Reflection.Assembly, bool>;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly Lazy<FunctionAssemblyLoadContext> _defaultContext = new Lazy<FunctionAssemblyLoadContext>(CreateSharedContext, true);
 
         private readonly List<string> _probingPaths = new List<string>();
+        private readonly IDictionary<string, string> _depsAssemblies;
 
         public FunctionAssemblyLoadContext(string basePath)
         {
@@ -34,10 +36,54 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException(nameof(basePath));
             }
 
+            _depsAssemblies = InitializeDeps(basePath);
+
             _probingPaths.Add(basePath);
         }
 
         public static FunctionAssemblyLoadContext Shared => _defaultContext.Value;
+
+        internal static IDictionary<string, string> InitializeDeps(string basePath)
+        {
+            string depsFilePath = Path.Combine(basePath, DotNetConstants.FunctionsDepsFileName);
+
+            if (File.Exists(depsFilePath))
+            {
+                try
+                {
+                    List<string> rids = DependencyHelper.GetRuntimeFallbacks();
+
+                    var reader = new DependencyContextJsonReader();
+                    using (Stream file = File.OpenRead(depsFilePath))
+                    {
+                        var depsContext = reader.Read(file);
+                        return depsContext.RuntimeLibraries.SelectMany(l => SelectRuntimeAssemblyGroup(rids, l.RuntimeAssemblyGroups))
+                            .ToDictionary(path => Path.GetFileNameWithoutExtension(path));
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            return null;
+        }
+
+        private static IEnumerable<string> SelectRuntimeAssemblyGroup(List<string> rids, IReadOnlyList<RuntimeAssetGroup> runtimeAssemblyGroups)
+        {
+            // Attempt to load group for the current RID graph
+            foreach (var rid in rids)
+            {
+                var assemblyGroup = runtimeAssemblyGroups.FirstOrDefault(g => string.Equals(g.Runtime, rid, StringComparison.OrdinalIgnoreCase));
+                if (assemblyGroup != null)
+                {
+                    return assemblyGroup.AssetPaths;
+                }
+            }
+
+            // If unsuccessful, load default assets, making sure the path is flattened to reflect deployed files
+            return runtimeAssemblyGroups.GetDefaultAssets().Select(a => Path.GetFileName(a));
+        }
 
         private static FunctionAssemblyLoadContext CreateSharedContext()
         {
@@ -125,9 +171,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override Assembly Load(AssemblyName assemblyName)
         {
+            // Try to load from deps references, if available
+            if (TryLoadDepsDependency(assemblyName, out Assembly assembly))
+            {
+                return assembly;
+            }
+
             // If the assembly being requested matches a runtime assembly,
             // we'll use the runtime assembly instead of loading it in this context:
-            if (TryLoadRuntimeAssembly(assemblyName, out Assembly assembly))
+            if (TryLoadRuntimeAssembly(assemblyName, out assembly))
             {
                 return assembly;
             }
@@ -150,6 +202,28 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return LoadCore(assemblyName);
+        }
+
+        private bool TryLoadDepsDependency(AssemblyName assemblyName, out Assembly assembly)
+        {
+            assembly = null;
+
+            if (_depsAssemblies != null &&
+                !IsRuntimeAssembly(assemblyName) &&
+                _depsAssemblies.TryGetValue(assemblyName.Name, out string assemblyPath))
+            {
+                foreach (var probingPath in _probingPaths)
+                {
+                    string filePath = Path.Combine(probingPath, assemblyPath);
+                    if (File.Exists(filePath))
+                    {
+                        assembly = LoadFromAssemblyPath(filePath);
+                        break;
+                    }
+                }
+            }
+
+            return assembly != null;
         }
 
         private bool TryLoadRuntimeAssembly(AssemblyName assemblyName, out Assembly assembly)
@@ -208,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
         {
             string fileName = GetUnmanagedLibraryFileName(unmanagedDllName);
-            string filePath = GetRuntimeAssetPath(fileName, true);
+            string filePath = GetRuntimeNativeAssetPath(fileName, true);
 
             if (filePath != null)
             {
@@ -218,7 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return base.LoadUnmanagedDll(unmanagedDllName);
         }
 
-        private string GetRuntimeAssetPath(string assetFileName, bool isNativeAsset)
+        private string GetRuntimeNativeAssetPath(string assetFileName, bool isNativeAsset)
         {
             string basePath = _probingPaths[0];
             string ridSubFolder = isNativeAsset ? "native" : string.Empty;

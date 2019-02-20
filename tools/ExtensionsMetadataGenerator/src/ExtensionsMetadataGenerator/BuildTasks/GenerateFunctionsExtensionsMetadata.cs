@@ -1,21 +1,17 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
 using Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
 
 namespace ExtensionsMetadataGenerator.BuildTasks
 {
 #if NET46
-    public class GenerateFunctionsExtensionsMetadata : AppDomainIsolatedTask    
+    public class GenerateFunctionsExtensionsMetadata : AppDomainIsolatedTask
 #else
     public class GenerateFunctionsExtensionsMetadata : Task
 #endif
@@ -50,8 +46,14 @@ namespace ExtensionsMetadataGenerator.BuildTasks
 
             var process = new Process { StartInfo = info };
             process.EnableRaisingEvents = true;
-            process.ErrorDataReceived += (s, e) => { if (e.Data != null) Log.LogWarning(e.Data); };
-            
+            process.ErrorDataReceived += (s, e) =>
+            {
+                if (e.Data != null)
+                {
+                    Log.LogWarning(e.Data);
+                }
+            };
+
             process.Start();
             process.BeginErrorReadLine();
             process.BeginOutputReadLine();

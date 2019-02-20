@@ -11,6 +11,10 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
 {
     public class Settings
     {
+        private static string _runtimeExtensionPackageUrl;
+
+        private static IConfiguration Config = null;
+
         public static string SiteTenantId => GetSettingValue(Constants.TargetSiteTenantIdSettingName);
 
         public static string SiteClientSecret => GetSettingValue(Constants.TargetSiteClientSecretSettingName);
@@ -27,7 +31,19 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
 
         public static string SitePublishingPassword => GetSettingValue(Constants.TargetSitePublishingPasswordSettingName);
 
-        public static string RuntimeExtensionPackageUrl => GetSettingValue(Constants.RuntimeExtensionPackageUrlSettingName);
+
+        public static string RuntimeExtensionPackageUrl
+        {
+            get
+            {
+                return _runtimeExtensionPackageUrl ?? GetSettingValue(Constants.RuntimeExtensionPackageUrlSettingName);
+            }
+            set
+            {
+                _runtimeExtensionPackageUrl = value;
+            }
+        }
+
 
         public static string SiteMasterKey => GetSettingValue(Constants.TargetSiteMasterKey);
 
@@ -37,13 +53,13 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
 
         public static Uri SiteBaseAddress => new Uri($"https://{SiteName}.azurewebsites.net");
 
-        private static IConfiguration Config = null;
+        public static IConfigurationSection Tests => GetSection("Tests");
 
         public static string RuntimeVersion
         {
             get
             {
-                Match versionMatch = Regex.Match(RuntimeExtensionPackageUrl, "(\\.)(?<version>\\d*\\.\\d*\\.\\d*)(\\..*)?\\.zip$");
+                Match versionMatch = Regex.Match(RuntimeExtensionPackageUrl, "(\\.)(?<version>\\d*\\.\\d*\\.\\d*)(\\-prerelease.*|\\..*)?\\.zip$");
 
                 if (!versionMatch.Success)
                 {
@@ -58,6 +74,20 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
 
         private static string GetSettingValue(string settingName)
         {
+            EnsureConfigInitialized();
+
+            return ConfigurationBinder.GetValue(Config, settingName, "default");
+        }
+
+        private static IConfigurationSection GetSection(string key)
+        {
+            EnsureConfigInitialized();
+
+            return Config.GetSection(key);
+        }
+
+        private static void EnsureConfigInitialized()
+        {
             if (Config == null)
             {
                 var builder = new ConfigurationBuilder().AddEnvironmentVariables();
@@ -67,9 +97,6 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
                 }
                 Config = builder.Build();
             }
-
-
-            return ConfigurationBinder.GetValue(Config, settingName, "default");
         }
     }
 }

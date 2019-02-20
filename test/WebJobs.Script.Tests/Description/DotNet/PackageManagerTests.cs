@@ -17,12 +17,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(@"ProjectWithLockMatch", false)]
         [InlineData(@"FunctionWithNoProject", false)]
-        [InlineData(@"ProjectWithMismatchedLock\MismatchedPackageVersions", true)]
-        [InlineData(@"ProjectWithMismatchedLock\MismatchedProjectDependencies", true)]
+        [InlineData(@"ProjectWithMismatchedLock/MismatchedPackageVersions", true)]
+        [InlineData(@"ProjectWithMismatchedLock/MismatchedProjectDependencies", true)]
         [InlineData(@"ProjectWithoutLock", true)]
         public void RequirePackageRestore_ReturnsExpectedResult(string projectPath, bool shouldRequireRestore)
         {
-            projectPath = Path.Combine(Directory.GetCurrentDirectory(), @"Description\DotNet\TestFiles\PackageReferences", projectPath);
+            projectPath = Path.Combine(Directory.GetCurrentDirectory(), "Description", "DotNet", "TestFiles", "PackageReferences", projectPath);
             bool result = PackageManager.RequiresPackageRestore(projectPath);
 
             Assert.True(Directory.Exists(projectPath));

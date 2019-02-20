@@ -8,6 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// </summary>
     public enum DataType
     {
+        Undefined,
         String,
         Binary,
         Stream

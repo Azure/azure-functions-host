@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Logging;
@@ -62,11 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     return;
                 }
 
-                var actionContext = new ActionContext
-                {
-                    HttpContext = context
-                };
-
+                ActionContext actionContext = new ActionContext(context, new RouteData(), new ActionDescriptor());
                 await result.ExecuteResultAsync(actionContext);
             }
         }
@@ -84,9 +81,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             if (functionExecution != null && !functionExecution.Descriptor.Metadata.IsProxy && nestedProxiesCount == null)
             {
                 // HttpBufferingService is disabled for non-proxy functions.
-                var bufferingFeature = context.Features.Get<IHttpBufferingFeature>();
-                bufferingFeature?.DisableRequestBuffering();
-                bufferingFeature?.DisableResponseBuffering();
+                var bufferingFeature = context.Features.Get<IScriptHttpBufferedStream>();
+                bufferingFeature?.DisableBufferingAsync(CancellationToken.None);
             }
 
             if (nestedProxiesCount != null)

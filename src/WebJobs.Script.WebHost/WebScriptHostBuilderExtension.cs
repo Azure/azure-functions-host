@@ -14,6 +14,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -50,11 +52,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
                     loggingBuilder.Services.AddSingleton<ILoggerProvider, UserLogMetricsLoggerProvider>();
+                    loggingBuilder.Services.AddSingleton<ILoggerProvider>(services =>
+                    {
+                        IEnvironment environment = services.GetService<IEnvironment>();
+                        IScriptWebHostEnvironment hostEnvironment = services.GetService<IScriptWebHostEnvironment>();
+
+                        // Temporarily hide Azure Monitor support behind an app setting.
+                        string monitorSetting = environment.GetEnvironmentVariable("AZURE_MONITOR_ENABLED");
+                        bool.TryParse(monitorSetting, out bool monitorenabled);
+
+                        if (monitorenabled &&
+                            !hostEnvironment.InStandbyMode &&
+                            !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)))
+                        {
+                            IEventGenerator eventGenerator = services.GetService<IEventGenerator>();
+                            IOptions<ScriptJobHostOptions> options = services.GetService<IOptions<ScriptJobHostOptions>>();
+                            return new AzureMonitorDiagnosticLoggerProvider(options, eventGenerator, environment);
+                        }
+
+                        return NullLoggerProvider.Instance;
+                    });
 
                     ConfigureRegisteredBuilders(loggingBuilder, rootServiceProvider);
                 })
                 .ConfigureServices(services =>
                 {
+                    services.AddSingleton<IHostedService, FunctionsSyncService>();
                     services.AddSingleton<HttpRequestQueue>();
                     services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
                     services.TryAddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();

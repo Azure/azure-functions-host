@@ -17,7 +17,6 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
-using Microsoft.Azure.WebJobs.Script.Tests.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -35,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private const string ID = "5a709861cab44e68bfed5d2c2fe7fc0c";
         private readonly TestFixture _fixture;
         private readonly ScriptSettingsManager _settingsManager;
+        private readonly TestEnvironment _testEnvironment = new TestEnvironment();
 
         private readonly ILoggerFactory _loggerFactory = new LoggerFactory();
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
@@ -781,7 +781,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void IsSingleLanguage_FunctionsWorkerRuntime_Set_Returns_True_()
+        public void IsSingleLanguage_Returns_True_OnlyProxies()
+        {
+            FunctionMetadata proxy1 = new FunctionMetadata()
+            {
+                Name = "proxy",
+                IsProxy = true
+            };
+            FunctionMetadata proxy2 = new FunctionMetadata()
+            {
+                Name = "proxy",
+                IsProxy = true
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                proxy1, proxy2
+            };
+            Assert.True(Utility.IsSingleLanguage(functionsList, null));
+        }
+
+        [Fact]
+        public void IsSingleLanguage_FunctionsWorkerRuntime_Set_Returns_True_OnlyProxies()
+        {
+            FunctionMetadata proxy1 = new FunctionMetadata()
+            {
+                Name = "proxy",
+                IsProxy = true
+            };
+            FunctionMetadata proxy2 = new FunctionMetadata()
+            {
+                Name = "proxy",
+                IsProxy = true
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                proxy1, proxy2
+            };
+            Assert.True(Utility.IsSingleLanguage(functionsList, "python"));
+        }
+
+        [Fact]
+        public void IsSingleLanguage_FunctionsWorkerRuntime_Set_Returns_True()
         {
             FunctionMetadata funcPython1 = new FunctionMetadata()
             {
@@ -806,6 +846,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void IsSingleLanguage_FunctionsWorkerRuntime_Set_Returns_False()
+        {
+            FunctionMetadata funcPython1 = new FunctionMetadata()
+            {
+                Name = "funcPython1",
+                Language = "python",
+            };
+            FunctionMetadata funcCSharp1 = new FunctionMetadata()
+            {
+                Name = "funcCSharp1",
+                Language = "CSharp",
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcPython1, funcCSharp1
+            };
+            Assert.False(Utility.IsSingleLanguage(functionsList, "node"));
+        }
+
+        [Fact]
         public void IsSingleLanguage_Returns_False()
         {
             FunctionMetadata funcJs1 = new FunctionMetadata()
@@ -826,186 +886,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void IsSingleLanguage_FunctionsList_Null_Returns_False()
+        public void IsSingleLanguage_FunctionsList_Null_FunctionsWorkerRuntime_Throws_ArgumentNullException()
         {
-            Assert.True(Utility.IsSingleLanguage(null, null));
+            Assert.Throws<ArgumentNullException>(() => Utility.IsSingleLanguage(null, "dotnet"));
         }
 
         [Fact]
-        public void ShouldInitializeLanguageWorkers_Language_NotSet_Returns_False()
+        public void IsSingleLanguage_FunctionsList_Null_Throws_ArgumentNullException()
         {
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), null));
+            Assert.Throws<ArgumentNullException>(() => Utility.IsSingleLanguage(null, null));
         }
 
         [Fact]
-        public void ShouldInitializeLanguageWorkers_Language_Set_Returns_False()
+        public void IsSupportedRuntime_Returns_False()
         {
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), LanguageWorkerConstants.DotNetLanguageWorkerName));
+            Assert.False(Utility.IsSupportedRuntime(LanguageWorkerConstants.DotNetLanguageWorkerName, TestHelpers.GetTestWorkerConfigs()));
         }
 
         [Fact]
-        public void ShouldInitializeLanguageWorkers_Language_Set_DotNetFunctions_Returns_False()
+        public void IsSupportedRuntime_Returns_True()
         {
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(GetDotNetFunctionsMetadata(), LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.True(Utility.IsSupportedRuntime(LanguageWorkerConstants.NodeLanguageWorkerName, TestHelpers.GetTestWorkerConfigs()));
         }
 
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_Language_Set_EmptyFunctions_Returns_False()
+        [Theory]
+        [InlineData("CSharp")]
+        [InlineData("DotNetAssembly")]
+        public void IsDotNetLanguageFunction_Returns_True(string functionLanguage)
         {
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(null, LanguageWorkerConstants.NodeLanguageWorkerName));
+            Assert.True(Utility.IsDotNetLanguageFunction(functionLanguage));
         }
 
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_Language_Set_NodeFunctions_Returns_True()
+        [Theory]
+        [InlineData("")]
+        [InlineData(null)]
+        [InlineData("someLang")]
+        public void IsDotNetLanguageFunction_Returns_False(string functionLanguage)
         {
-            FunctionMetadata funcJs1 = new FunctionMetadata()
-            {
-                Name = "funcJs1",
-                Language = "node"
-            };
-            FunctionMetadata funcCS1 = new FunctionMetadata()
-            {
-                Name = "funcCS1",
-                Language = "csharp"
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                funcJs1, funcCS1
-            };
-            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
-        }
-
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_Language_Not_Set_Returns_True()
-        {
-            FunctionMetadata funcJs1 = new FunctionMetadata()
-            {
-                Name = "funcJs1",
-                Language = "node"
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                funcJs1
-            };
-            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, null));
-        }
-
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_WithProxy_Language_Set_NodeFunctions_Returns_True()
-        {
-            FunctionMetadata funcCS1 = new FunctionMetadata()
-            {
-                Name = "funcCS1",
-                Language = "csharp"
-            };
-            FunctionMetadata funcJS1 = new FunctionMetadata()
-            {
-                Name = "funcJS1",
-                Language = "node"
-            };
-            FunctionMetadata proxy1 = new FunctionMetadata()
-            {
-                Name = "funcproxy1",
-                IsProxy = true
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                funcCS1, proxy1, funcJS1
-            };
-            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
-        }
-
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_WithProxy_Language_Set_NodeFunctions_Returns_False()
-        {
-            FunctionMetadata funcCS1 = new FunctionMetadata()
-            {
-                Name = "funcCS1",
-                Language = "csharp"
-            };
-            FunctionMetadata proxy1 = new FunctionMetadata()
-            {
-                Name = "funcproxy1",
-                IsProxy = true
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                funcCS1, proxy1
-            };
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
-        }
-
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_OnlyProxies_Returns_False()
-        {
-            FunctionMetadata proxy1 = new FunctionMetadata()
-            {
-                Name = "funcproxy1",
-                IsProxy = true
-            };
-            FunctionMetadata proxy2 = new FunctionMetadata()
-            {
-                Name = "funcproxy2",
-                IsProxy = true
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                proxy2, proxy1
-            };
-            Assert.False(Utility.ShouldInitiliazeLanguageWorkers(functionsList, LanguageWorkerConstants.NodeLanguageWorkerName));
-        }
-
-        [Fact]
-        public void ShouldInitializeLanguageWorkers_WithProxy_Language_Not_Set_Returns_True()
-        {
-            FunctionMetadata funcJs1 = new FunctionMetadata()
-            {
-                Name = "funcJs1",
-                Language = "node"
-            };
-            FunctionMetadata proxy1 = new FunctionMetadata()
-            {
-                Name = "funcproxy1",
-                IsProxy = true
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                funcJs1, proxy1
-            };
-            Assert.True(Utility.ShouldInitiliazeLanguageWorkers(functionsList, null));
-        }
-
-        [Fact]
-        public async void InitializeWorkers_Fails_AddsFunctionErrors()
-        {
-            string functionName = "HttpTrigger";
-
-            IHost host = new HostBuilder()
-                    .ConfigureDefaultTestWebScriptHost(o =>
-                    {
-                        o.ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
-                    })
-                    .Build();
-
-            var scriptHost = host.GetScriptHost();
-            await scriptHost.InitializeAsync();
-
-            IDictionary<WorkerConfig, LanguageWorkerState> channelState = scriptHost.FunctionDispatcher.LanguageWorkerChannelStates;
-            var nodeWorkerChannel = channelState.Where(w => w.Key.Language.Equals(LanguageWorkerConstants.NodeLanguageWorkerName));
-
-            var nodeWorkerId = nodeWorkerChannel.FirstOrDefault().Value.Channel.Id;
-
-            // Raise workerError events to force language worker process restarts
-            var exc = new LanguageWorkerProcessExitException("TestEx");
-            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
-            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
-            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
-            scriptHost.EventManager.Publish(new WorkerErrorEvent(nodeWorkerId, exc));
-
-            ICollection<string> actualFunctionErrors = scriptHost.FunctionErrors[functionName];
-            Assert.NotNull(actualFunctionErrors);
-            Assert.True(actualFunctionErrors.Count >= 3);
-            Assert.Contains("TestEx", actualFunctionErrors.First());
+            Assert.False(Utility.IsDotNetLanguageFunction(functionLanguage));
         }
 
         private static IEnumerable<FunctionMetadata> GetDotNetFunctionsMetadata()
@@ -1023,13 +941,80 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task InitializeRpcService_Throws()
+        public void VerifyFunctionsMatchSpecifiedLanguage_Throws_For_UnmatchedLanguage_With_RuntimeLanguage_Specified()
         {
-            var ex = await Assert.ThrowsAsync<HostInitializationException>(async () =>
+            FunctionMetadata funcJS1 = new FunctionMetadata()
             {
-                await _fixture.ScriptHost.InitializeRpcServiceAsync(new TestRpcServer());
-            });
-            Assert.Equal("Failed to start Grpc Service. Check if your app is hitting connection limits.", ex.Message);
+                Name = "funcJS1",
+                Language = "node"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJS1
+            };
+
+            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, LanguageWorkerConstants.DotNetLanguageWorkerName));
+            Assert.Equal($"Did not find functions with language [{LanguageWorkerConstants.DotNetLanguageWorkerName}].", ex.Message);
+        }
+
+        [Fact]
+        public void VerifyFunctionsMatchSpecifiedLanguage_NoThrow_For_MixedLanguageMatching_With_RuntimeLanguage_Specified()
+        {
+            FunctionMetadata funcJS1 = new FunctionMetadata()
+            {
+                Name = "funcJS1",
+                Language = "node"
+            };
+            // CSharp matches dotnet so we should be able to initialize the host
+            FunctionMetadata funcCS1 = new FunctionMetadata()
+            {
+                Name = "funcJS1",
+                Language = "csharp"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJS1, funcCS1
+            };
+
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, LanguageWorkerConstants.DotNetLanguageWorkerName);
+        }
+
+        [Fact]
+        public void VerifyFunctionsMatchSpecifiedLanguage_NoThrow_For_SingleLanguage_Without_RuntimeLanguage_Specified()
+        {
+            FunctionMetadata funcJS1 = new FunctionMetadata()
+            {
+                Name = "funcJS1",
+                Language = "node"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJS1
+            };
+
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty);
+        }
+
+        [Fact]
+        public void VerifyFunctionsMatchSpecifiedLanguage_Throws_For_NotSingleLanguage_Without_RuntimeLanguage_Specified()
+        {
+            FunctionMetadata funcJS1 = new FunctionMetadata()
+            {
+                Name = "funcJS1",
+                Language = "node"
+            };
+            FunctionMetadata funcCS1 = new FunctionMetadata()
+            {
+                Name = "funcCS1",
+                Language = "csharp"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJS1, funcCS1
+            };
+
+            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty));
+            Assert.Equal($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting", ex.Message);
         }
 
         [Fact]

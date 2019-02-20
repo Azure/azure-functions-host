@@ -10,17 +10,4 @@
       </site>
     </sites>
   </system.applicationHost>
-  <system.webServer>
-    <globalModules>
-      <add name="AspNetCoreModuleV2" xdt:Locator="Match(name)" xdt:Transform="Remove" />
-      <add name="AspNetCoreModuleV2" image="%XDT_EXTENSIONPATH%\%XDT_BITNESS%\ancm\aspnetcoreV2.dll" xdt:Transform="Insert" />
-    </globalModules>
-  </system.webServer>
-  <location path="" xdt:Locator="Match(path)">
-    <system.webServer>
-      <modules>
-        <add name="AspNetCoreModuleV2" xdt:Locator="Match(name)" xdt:Transform="InsertIfMissing" lockItem="true" />
-      </modules>
-    </system.webServer>
-  </location>
 </configuration>

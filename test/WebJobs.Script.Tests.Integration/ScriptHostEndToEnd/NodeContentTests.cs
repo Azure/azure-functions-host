@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Rpc;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
@@ -18,9 +17,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class NodeContentTests : IClassFixture<NodeContentTests.TestFixture>
     {
+        private ILanguageWorkerChannelManager _languageWorkerChannelManager;
+
         public NodeContentTests(TestFixture fixture)
         {
             Fixture = fixture;
+            _languageWorkerChannelManager = (ILanguageWorkerChannelManager)fixture.Host.Services.GetService(typeof(ILanguageWorkerChannelManager));
         }
 
         public TestFixture Fixture { get; set; }
@@ -130,6 +132,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
+        [Fact]
+        public void InitializeAsync_WorkerRuntime_Node_DoNotInitialize_JavaWorker()
+        {
+            var javaChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
+            Assert.Null(javaChannel);
+            var nodeChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
+            Assert.Null(nodeChannel);
+        }
+
         // Get response with default ObjectResult content negotiation enabled 
         protected Task<string> ResponseWithConneg<Req>(Req content, string contentType, string expectedContentType = null)
         {
@@ -161,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "req", request }
             };
-            await Fixture.Host.CallAsync("HttpTrigger-Scenarios", arguments);
+            await Fixture.JobHost.CallAsync("HttpTrigger-Scenarios", arguments);
 
             var result = (IActionResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
 
