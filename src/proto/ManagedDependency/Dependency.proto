@@ -1,0 +1,30 @@
+syntax = "proto3";
+// protobuf vscode extension: https://marketplace.visualstudio.com/items?itemName=zxh404.vscode-proto3
+
+option java_multiple_files = true;
+option java_package = "com.microsoft.azure.functions.rpc.messages";
+option java_outer_classname = "DependencyProto";
+option csharp_namespace = "Microsoft.Azure.WebJobs.Script.Grpc.Messages";
+option go_package ="github.com/Azure/azure-functions-go-worker/internal/rpc";
+
+package AzureFunctionsRpcMessages;
+
+
+//Used to send the managed dependency module for the language worker to download the client module
+message Dependency {
+  //Name of the managed dependency modules e.g 'Az'
+  string name = 1;
+
+  //The major version requested by the client e.g '1'
+  string major_version = 2;
+
+  //The path where managed dependency modules will be installed e.g. '/home/manageddependencies'
+  string path = 3;
+}
+
+//Used to send the dependency download request to the language worker
+message DownloadDependencyRequest {
+  //The repeated list of dependencies
+  repeated Dependency dependencies = 1;
+}
+
