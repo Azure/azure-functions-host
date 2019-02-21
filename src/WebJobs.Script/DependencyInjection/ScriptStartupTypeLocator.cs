@@ -5,9 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
-using Microsoft.Azure.WebJobs.Script.BindingExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
@@ -59,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 .ToArray();
         }
 
-        public async System.Threading.Tasks.Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()
+        public async Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()
         {
             string binPath;
             if (_extensionBundleManager.IsExtensionBundleConfigured())

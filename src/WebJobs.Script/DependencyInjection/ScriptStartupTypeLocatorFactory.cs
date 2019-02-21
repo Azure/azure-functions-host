@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Azure.WebJobs.Hosting;
-using Microsoft.Azure.WebJobs.Script.BindingExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.DependencyInjection

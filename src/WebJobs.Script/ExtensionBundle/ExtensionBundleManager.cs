@@ -15,7 +15,7 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using NuGet.Versioning;
 
-namespace Microsoft.Azure.WebJobs.Script.BindingExtensionBundle
+namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 {
     public class ExtensionBundleManager : IExtensionBundleManager
     {
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensionBundle
                 bool bundleFound = TryLocateExtensionBundle(out string bundlePath);
                 string bundleVersion = Path.GetFileName(bundlePath);
 
-                if (!bundleFound || (bundleVersion != latestBundleVersion && _options.Value.EnsureLatest))
+                if (!bundleFound || (Version.Parse(bundleVersion) < Version.Parse(latestBundleVersion) && _options.Value.EnsureLatest))
                 {
                     bundlePath = await DownloadExtensionBundleAsync(latestBundleVersion, httpClient);
                 }
@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensionBundle
 
         private async Task<string> GetLatestMatchingBundleVersion(HttpClient httpClient)
         {
-            var uri = new Uri($"{_cdnUri}/{_options.Value.Id}/{ScriptConstants.VersionIndexFile}");
+            var uri = new Uri($"{_cdnUri}/{_options.Value.Id}/{ScriptConstants.ExtensionBundleVersionIndexFile}");
             _logger.LogInformation(Resources.FetchingVersionInfo, _options.Value.Id, uri.Authority, uri.AbsolutePath);
 
             var response = await httpClient.GetAsync(uri);

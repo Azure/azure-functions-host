@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description.DotNet;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Build.Construction;
 using Microsoft.Build.Evaluation;

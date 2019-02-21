@@ -13,8 +13,8 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.BindingExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetExtensionBundle_EnsureLatest_SetToTrue_DownloadsLatest_ReturnsTrueAsync()
+        public async Task GetExtensionBundle_DownloadsLatest_WhenEnsureLatestTrue()
         {
             var options = GetTestExtensionBundleOptions(BundleId, "[1.0.0, 1.0.1)");
             var manager = GetExtensionBundleManager(options, GetAppServiceEnvironment());

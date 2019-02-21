@@ -6,11 +6,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.Storage;
-using Microsoft.Azure.WebJobs.Script.BindingExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -36,8 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "extensions", JArray.FromObject(references) }
             };
 
-            var extensionBundleManager = new Mock<IExtensionBundleManager>();
-            extensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
+            var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+            mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
 
             using (var directory = new TempDirectory())
             {
@@ -56,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
 
                 var testLogger = new TestLogger("test");
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, extensionBundleManager.Object);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -71,16 +72,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async System.Threading.Tasks.Task GetExtensionsStartupTypes_ExtensionBundleReturnsNullPath_ReturnsNull()
+        public async Task GetExtensionsStartupTypes_ExtensionBundleReturnsNullPath_ReturnsNull()
         {
-            var extensionBundleManager = new Mock<IExtensionBundleManager>();
-            extensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
-            extensionBundleManager.Setup(e => e.GetExtensionBundle(null)).ReturnsAsync(string.Empty);
+            var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+            mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+            mockExtensionBundleManager.Setup(e => e.GetExtensionBundle(null)).ReturnsAsync(string.Empty);
 
             using (var directory = new TempDirectory())
             {
                 var testLogger = new TestLogger("test");
-                var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, extensionBundleManager.Object);
+                var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -93,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async System.Threading.Tasks.Task GetExtensionsStartupTypes_ValidExtensionBundle_FiltersBuiltinExtensionsAsync()
+        public async Task GetExtensionsStartupTypes_ValidExtensionBundle_FiltersBuiltinExtensionsAsync()
         {
             var references = new[]
             {
@@ -107,13 +108,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "extensions", JArray.FromObject(references) }
             };
 
-            var extensionBundleManager = new Mock<IExtensionBundleManager>();
-            extensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
+            var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+            mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
 
             using (var directory = new TempDirectory())
             {
                 var binPath = Path.Combine(directory.Path, "bin");
-                extensionBundleManager.Setup(e => e.GetExtensionBundle(null)).ReturnsAsync(directory.Path);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundle(null)).ReturnsAsync(directory.Path);
                 Directory.CreateDirectory(binPath);
 
                 void CopyToBin(string path)
@@ -128,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
 
                 var testLogger = new TestLogger("test");
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, extensionBundleManager.Object);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();

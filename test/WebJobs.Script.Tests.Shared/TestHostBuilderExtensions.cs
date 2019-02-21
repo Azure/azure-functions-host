@@ -4,10 +4,8 @@
 using System;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
-using Microsoft.Azure.WebJobs.Script.BindingExtensionBundle;
-using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
-using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -76,9 +74,9 @@ namespace Microsoft.WebJobs.Script.Tests
 
         private static IServiceCollection AddScriptStartupTypeLocator(this IServiceCollection services)
         {
-            var extensionBundleManager = new Mock<IExtensionBundleManager>();
-            extensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
-            var scriptStartupTypeLocator = new ScriptStartupTypeLocator(string.Empty, null, extensionBundleManager.Object);
+            var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+            mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
+            var scriptStartupTypeLocator = new ScriptStartupTypeLocator(string.Empty, null, mockExtensionBundleManager.Object);
             var factory = new Mock<IScriptStartupTypeLocatorFactory>();
             factory.Setup(o => o.CreateStartupTypeLocator()).Returns(scriptStartupTypeLocator);
             return services.AddSingleton(factory.Object);

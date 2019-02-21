@@ -133,7 +133,7 @@
     <value>The value of version property in extensionBundle section of {0} file is invalid or missing. See https://aka.ms/functions-hostjson for more information</value>
   </data>
   <data name="DownloadComplete" xml:space="preserve">
-    <value>Completed downloading {0} to {1}</value>
+    <value>Completed downloading extension bundle from {0} to {1}</value>
   </data>
   <data name="DownloadingZip" xml:space="preserve">
     <value>Downloading extension bundle from {0} to {1}</value>

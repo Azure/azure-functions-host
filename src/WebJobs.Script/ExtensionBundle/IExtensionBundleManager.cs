@@ -4,7 +4,7 @@
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.WebJobs.Script.BindingExtensionBundle
+namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 {
     public interface IExtensionBundleManager
     {
