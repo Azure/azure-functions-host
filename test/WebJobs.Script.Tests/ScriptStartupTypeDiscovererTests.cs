@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
-            mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
+            mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
 
             using (var directory = new TempDirectory())
             {
@@ -141,6 +141,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"The extension startup type '{references[0].TypeName}' belongs to a builtin extension")));
                 Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"The extension startup type '{references[1].TypeName}' belongs to a builtin extension")));
             }
+        }
+
+        [Fact]
+        public async Task GetExtensionsStartupTypes_UnableToDownloadExtensionBundle_ReturnsNull()
+        {
+            var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+            mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+            mockExtensionBundleManager.Setup(e => e.GetExtensionBundle(null)).ReturnsAsync(string.Empty);
+            var testLogger = new TestLogger("test");
+            var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object);
+
+            // Act
+            var types = await discoverer.GetExtensionsStartupTypesAsync();
+            var traces = testLogger.GetLogMessages();
+
+            // Assert
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Unable to find or download extension bundle")));
+            Assert.Null(types);
         }
     }
 }

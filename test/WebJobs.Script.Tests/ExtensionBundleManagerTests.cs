@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -158,6 +159,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             bundleDirectory = Path.Combine(_downloadPath, "1.0.1");
             Assert.True(Directory.Exists(bundleDirectory));
             Assert.Equal(bundleDirectory, path);
+        }
+
+        [Fact]
+        public async Task GetExtensionBundle_DoesNotDownload_WhenPersistentFileSystemNotAvailable()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[1.0.0, 1.0.1)");
+            var manager = GetExtensionBundleManager(options, new TestEnvironment());
+
+            var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK));
+            var path = await manager.GetExtensionBundle(httpclient);
+            Assert.Null(path);
         }
 
         [Fact]
