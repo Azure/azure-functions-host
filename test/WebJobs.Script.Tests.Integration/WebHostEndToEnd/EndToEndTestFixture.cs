@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
@@ -78,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     RootScriptPath = _copiedRootPath
                 });
 
-                var manager = new ExtensionsManager(options, NullLogger<ExtensionsManager>.Instance);
+                var manager = new ExtensionsManager(options, NullLogger<ExtensionsManager>.Instance, new TestExtensionBundleManager());
                 await manager.AddExtensions(extensionsToInstall);
             }
 
@@ -206,6 +207,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
             return Task.CompletedTask;
+        }
+
+        private class TestExtensionBundleManager : IExtensionBundleManager
+        {
+            public Task<string> GetExtensionBundle(HttpClient httpClient = null) => null;
+
+            public bool IsExtensionBundleConfigured() => false;
+
         }
 
         private class TestEntity : TableEntity
