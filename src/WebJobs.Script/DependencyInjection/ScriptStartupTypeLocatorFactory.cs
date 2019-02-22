@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
         }
 
-        public IWebJobsStartupTypeLocator CreateStartupTypeLocator()
+        public IWebJobsStartupTypeLocator Create()
         {
             return new ScriptStartupTypeLocator(_applicationHostOptions.Value.ScriptPath, _extensionBundleManager);
         }

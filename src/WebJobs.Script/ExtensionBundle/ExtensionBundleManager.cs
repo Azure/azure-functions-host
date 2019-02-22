@@ -41,26 +41,36 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         public async Task<string> GetExtensionBundle(HttpClient httpClient = null)
         {
-            httpClient = httpClient ?? new HttpClient();
-            using (httpClient)
+            if (httpClient == null)
             {
-                string latestBundleVersion = await GetLatestMatchingBundleVersion(httpClient);
-                if (string.IsNullOrEmpty(latestBundleVersion))
+                using (httpClient = new HttpClient())
                 {
-                    return null;
+                    return await GetBundle(httpClient);
                 }
-
-                bool bundleFound = TryLocateExtensionBundle(out string bundlePath);
-                string bundleVersion = Path.GetFileName(bundlePath);
-
-                if (_environment.IsPersistentFileSystemAvailable()
-                    && (!bundleFound || (Version.Parse(bundleVersion) < Version.Parse(latestBundleVersion) && _options.Value.EnsureLatest)))
-                {
-                    bundlePath = await DownloadExtensionBundleAsync(latestBundleVersion, httpClient);
-                }
-
-                return bundlePath;
             }
+            else
+            {
+                return await GetBundle(httpClient);
+            }
+        }
+
+        private async Task<string> GetBundle(HttpClient httpClient)
+        {
+            string latestBundleVersion = await GetLatestMatchingBundleVersion(httpClient);
+            if (string.IsNullOrEmpty(latestBundleVersion))
+            {
+                return null;
+            }
+
+            bool bundleFound = TryLocateExtensionBundle(out string bundlePath);
+            string bundleVersion = Path.GetFileName(bundlePath);
+
+            if (_environment.IsPersistentFileSystemAvailable()
+                && (!bundleFound || (Version.Parse(bundleVersion) < Version.Parse(latestBundleVersion) && _options.Value.EnsureLatest)))
+            {
+                bundlePath = await DownloadExtensionBundleAsync(latestBundleVersion, httpClient);
+            }
+            return bundlePath;
         }
 
         internal bool TryLocateExtensionBundle(out string bundlePath)
@@ -85,13 +95,15 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                     {
                         bundlePath = Path.Combine(path, version);
                         bundleMetatdataFile = Path.Combine(bundlePath, ScriptConstants.ExtensionBundleMetadatFile);
-                        _logger.LogInformation(Resources.ExtensionBundleFound, bundlePath);
-                        break;
+                        if (!string.IsNullOrEmpty(bundleMetatdataFile) && FileUtility.FileExists(bundleMetatdataFile))
+                        {
+                            _logger.LogInformation(Resources.ExtensionBundleFound, bundlePath);
+                            break;
+                        }
                     }
                 }
             }
-
-            return !string.IsNullOrEmpty(bundleMetatdataFile) && FileUtility.FileExists(bundleMetatdataFile);
+            return bundlePath != null;
         }
 
         private async Task<string> DownloadExtensionBundleAsync(string version, HttpClient httpClient)

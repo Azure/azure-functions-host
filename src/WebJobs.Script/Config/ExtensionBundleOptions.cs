@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         public VersionRange Version { get; set; }
 
-        public ICollection<string> ProbingPaths { get; set; }
+        public ICollection<string> ProbingPaths { get; private set; } = new List<string>();
 
         public string DownloadPath { get; set; }
 

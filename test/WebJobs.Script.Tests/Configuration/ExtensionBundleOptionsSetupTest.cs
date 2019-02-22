@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(options.Id, "Microsoft.Azure.Functions.ExtensionBundle");
             Assert.Equal(options.Version.OriginalString, "[1.*, 2.0.0)");
             Assert.True(string.IsNullOrEmpty(options.DownloadPath));
-            Assert.Null(options.ProbingPaths);
+            Assert.Equal(options.ProbingPaths.Count, 0);
         }
 
         [Theory]

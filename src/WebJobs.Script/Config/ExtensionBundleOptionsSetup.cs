@@ -68,8 +68,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private void ConfigureProbingPaths(ExtensionBundleOptions options)
         {
-            options.ProbingPaths = new List<string>();
-
             if (_environment.IsAppServiceWindowsEnvironment() || _hostingEnvironment.IsDevelopment())
             {
                 string windowsDefaultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),

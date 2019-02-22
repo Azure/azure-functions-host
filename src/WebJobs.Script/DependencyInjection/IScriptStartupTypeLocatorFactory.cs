@@ -7,6 +7,6 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 {
     public interface IScriptStartupTypeLocatorFactory
     {
-        IWebJobsStartupTypeLocator CreateStartupTypeLocator();
+        IWebJobsStartupTypeLocator Create();
     }
 }
