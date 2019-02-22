@@ -78,7 +78,7 @@ namespace Microsoft.WebJobs.Script.Tests
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
             var scriptStartupTypeLocator = new ScriptStartupTypeLocator(string.Empty, null, mockExtensionBundleManager.Object);
             var factory = new Mock<IScriptStartupTypeLocatorFactory>();
-            factory.Setup(o => o.CreateStartupTypeLocator()).Returns(scriptStartupTypeLocator);
+            factory.Setup(o => o.Create()).Returns(scriptStartupTypeLocator);
             return services.AddSingleton(factory.Object);
         }
     }

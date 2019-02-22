@@ -215,24 +215,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private ExtensionBundleOptions GetTestExtensionBundleOptions(string id, string version)
         {
-            List<string> probingPaths = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                                    ? new List<string>
-                                    {
-                                        @"C:\Program Files (x86)\FuncExtensionBundles\Microsoft.Azure.Functions.ExtensionBundle"
-                                    }
-                                    : new List<string>
-                                    {
-                                        "/FuncExtensionBundles/Microsoft.Azure.Functions.ExtensionBundle",
-                                        "/home/site/wwwroot/.azureFunctions/ExtensionBundles/Microsoft.Azure.Functions.ExtensionBundle"
-                                    };
-
-            return new ExtensionBundleOptions
+            var options = new ExtensionBundleOptions
             {
                 Id = id,
                 Version = VersionRange.Parse(version, true),
-                ProbingPaths = probingPaths,
                 DownloadPath = _downloadPath
             };
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                options.ProbingPaths.Add(@"C:\Program Files (x86)\FuncExtensionBundles\Microsoft.Azure.Functions.ExtensionBundle");
+            }
+            else
+            {
+                options.ProbingPaths.Add("/FuncExtensionBundles/Microsoft.Azure.Functions.ExtensionBundle");
+                options.ProbingPaths.Add("/home/site/wwwroot/.azureFunctions/ExtensionBundles/Microsoft.Azure.Functions.ExtensionBundle");
+            }
+
+            return options;
         }
 
         private Tuple<Mock<IFileSystem>, Mock<DirectoryBase>, Mock<FileBase>> CreateFileSystem()

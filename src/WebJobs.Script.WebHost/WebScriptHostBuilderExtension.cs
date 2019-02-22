@@ -26,7 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
            IServiceScopeFactory rootScopeFactory, ScriptApplicationHostOptions webHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
         {
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();
-            builder.Properties.Add(nameof(IScriptStartupTypeLocatorFactory), rootServiceProvider.GetRequiredService<IScriptStartupTypeLocatorFactory>());
+            var startupTypeLocatorFactory = rootServiceProvider.GetService<IScriptStartupTypeLocatorFactory>();
+            if (startupTypeLocatorFactory != null)
+            {
+                builder.Properties.Add(nameof(IScriptStartupTypeLocatorFactory), startupTypeLocatorFactory);
+            }
 
             builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory))
                 .ConfigureServices(services =>

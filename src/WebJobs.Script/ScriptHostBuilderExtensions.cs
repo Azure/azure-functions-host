@@ -108,7 +108,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (!skipHostInitialization)
                 {
                     var scriptStartupTypeLocatorFactory = builder.Properties[nameof(IScriptStartupTypeLocatorFactory)] as IScriptStartupTypeLocatorFactory;
-                    webJobsBuilder.UseScriptExternalStartup(scriptStartupTypeLocatorFactory);
+                    if (scriptStartupTypeLocatorFactory != null)
+                    {
+                        webJobsBuilder.UseScriptExternalStartup(scriptStartupTypeLocatorFactory);
+                    }
                 }
 
                 configureWebJobs?.Invoke(webJobsBuilder);
@@ -194,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, IScriptStartupTypeLocatorFactory startupTypeLocator)
         {
-            return builder.UseExternalStartup(startupTypeLocator.CreateStartupTypeLocator());
+            return builder.UseExternalStartup(startupTypeLocator.Create());
         }
 
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)

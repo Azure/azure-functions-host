@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using NuGet.Versioning;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
@@ -13,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         public VersionRange Version { get; set; }
 
-        public ICollection<string> ProbingPaths { get; set; }
+        public ICollection<string> ProbingPaths { get; private set; } = new Collection<string>();
 
         public string DownloadPath { get; set; }
 
