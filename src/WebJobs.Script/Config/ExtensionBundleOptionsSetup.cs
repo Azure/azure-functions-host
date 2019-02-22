@@ -13,7 +13,7 @@ using NuGet.Versioning;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
-    internal class ExtensionBundleOptionsSetup : IConfigureOptions<ExtensionBundleOptions>
+    public class ExtensionBundleOptionsSetup : IConfigureOptions<ExtensionBundleOptions>
     {
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
