@@ -214,6 +214,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Theory]
+        [InlineData(EnvironmentSettingNames.AzureWebsiteName, "sitename", "https://sitename.azurewebsites.net/operations/settriggers")]
+        [InlineData(EnvironmentSettingNames.AzureWebsiteHostName, "sitename", "https://sitename/operations/settriggers")]
+        public void Use_Website_Name_If_Website_Hostname_Is_Not_Available(string envKey, string envValue, string expectedSyncTriggersUri)
+        {
+            var vars = new Dictionary<string, string>
+            {
+                { envKey, envValue },
+            };
+
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                var httpRequest = FunctionsSyncManager.BuildSetTriggersRequest();
+                Assert.Equal(expectedSyncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
+                Assert.Equal(HttpMethod.Post, httpRequest.Method);
+            }
+        }
+
         private static HttpClient CreateHttpClient(MockHttpHandler httpHandler)
         {
             return new HttpClient(httpHandler);
