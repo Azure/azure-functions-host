@@ -264,11 +264,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public async Task InitializeAsync()
         {
             _stopwatch.Start();
-            if (!_environment.IsPlaceholderModeEnabled())
-            {
-                string runtimeLanguage = string.IsNullOrEmpty(_workerRuntime) ? "none" : _workerRuntime;
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, runtimeLanguage));
-            }
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
                 PreInitialize();
@@ -276,6 +271,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
+
+                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions);
+
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, _workerRuntime));
 
                 // Initialize language worker function dispatcher
                 _functionDispatcher.Initialize(_workerRuntime, functions);

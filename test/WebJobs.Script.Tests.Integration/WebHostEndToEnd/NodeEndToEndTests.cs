@@ -231,7 +231,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // verbose logs are filtered by default (the TestLogger explicitly
             // allows all levels for testing purposes)
             var key = MetricsEventManager.GetAggregateKey(MetricEventNames.FunctionUserLog, "Scenarios");
-            // Assert.Equal(9, Fixture.MetricsLogger.LoggedEvents.Where(p => p == key).Count());
+            //Assert.Equal(9, Fixture.MetricsLogger.LoggedEvents.Where(p => p == key).Count());
+            //Assert.Contains($"{MetricEventNames.HostStartupRuntimeLanguage}.node", Fixture.MetricsLogger.LoggedEvents);
         }
 
         [Fact]
