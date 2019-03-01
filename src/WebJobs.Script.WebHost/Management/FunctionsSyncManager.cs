@@ -284,7 +284,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 protocol = "http";
             }
 
-            var url = $"{protocol}://{Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)}/operations/settriggers";
+            var hostname = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName);
+            // Linux Dedicated on AppService doesn't have WEBSITE_HOSTNAME
+            hostname = string.IsNullOrWhiteSpace(hostname)
+                ? $"{Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)}.azurewebsites.net"
+                : hostname;
+
+            var url = $"{protocol}://{hostname}/operations/settriggers";
 
             return new HttpRequestMessage(HttpMethod.Post, url);
         }
