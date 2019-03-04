@@ -39,6 +39,7 @@ namespace Microsoft.WebJobs.Script.Tests
             var services = new ServiceCollection();
             AddMockedSingleton<IDebugStateProvider>(services);
             AddMockedSingleton<IScriptHostManager>(services);
+            AddMockedSingleton<IEnvironment>(services);
             AddMockedSingleton<IScriptWebHostEnvironment>(services);
             AddMockedSingleton<IEventGenerator>(services);
             AddMockedSingleton<AspNetCore.Hosting.IApplicationLifetime>(services);

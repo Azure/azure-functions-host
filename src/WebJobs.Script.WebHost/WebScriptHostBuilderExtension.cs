@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -77,7 +78,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 })
                 .ConfigureServices(services =>
                 {
-                    services.AddSingleton<IHostedService, FunctionsSyncService>();
+                    var webHostEnvironment = rootServiceProvider.GetService<IScriptWebHostEnvironment>();
+                    var environment = rootServiceProvider.GetService<IEnvironment>();
+                    if (FunctionsSyncManager.IsSyncTriggersEnvironment(webHostEnvironment, environment))
+                    {
+                        services.AddSingleton<IHostedService, FunctionsSyncService>();
+                    }
+
                     services.AddSingleton<HttpRequestQueue>();
                     services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
                     services.TryAddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
