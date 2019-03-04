@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task StandbyModeE2E_WorkerRuntime_Not_Set()
+        public async Task StandbyModeE2E_Dotnet()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
             var environment = new TestEnvironment(_settings);
@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // now specialize the host
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet");
 
             Assert.False(environment.IsPlaceholderModeEnabled());
             Assert.True(environment.IsContainerReady());
