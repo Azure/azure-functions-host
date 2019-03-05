@@ -104,7 +104,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 new Claim("http://schemas.microsoft.com/2017/07/functions/claims/authlevel", "Function")
             }, "WebJobsAuthLevel");
-            var claimsIdentities = new List<ClaimsIdentity> { claimsIdentity1, claimsIdentity2 };
+            var claimsIdentity3 = new ClaimsIdentity();
+            var claimsIdentities = new List<ClaimsIdentity> { claimsIdentity1, claimsIdentity2, claimsIdentity3 };
 
             request.HttpContext.User = new ClaimsPrincipal(claimsIdentities);
 
@@ -113,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var identities = request.HttpContext.User.Identities.ToList();
             var rpcIdentities = rpcRequestObject.Http.Identities.ToList();
 
-            Assert.Equal(2, rpcIdentities.Count);
+            Assert.Equal(claimsIdentities.Count, rpcIdentities.Count);
 
             for (int i = 0; i < identities.Count; i++)
             {
@@ -123,9 +124,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 Assert.NotNull(identity);
                 Assert.NotNull(rpcIdentity);
 
-                Assert.Equal(rpcIdentity.AuthenticationType, identity.AuthenticationType);
-                Assert.Equal(rpcIdentity.NameClaimType, identity.NameClaimType);
-                Assert.Equal(rpcIdentity.RoleClaimType, identity.RoleClaimType);
+                Assert.Equal(rpcIdentity.AuthenticationType?.Value, identity.AuthenticationType);
+                Assert.Equal(rpcIdentity.NameClaimType?.Value, identity.NameClaimType);
+                Assert.Equal(rpcIdentity.RoleClaimType?.Value, identity.RoleClaimType);
 
                 var claims = identity.Claims.ToList();
                 for (int j = 0; j < claims.Count; j++)

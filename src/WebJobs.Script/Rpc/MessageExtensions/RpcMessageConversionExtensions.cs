@@ -112,17 +112,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         var rpcClaimsIdentity = new RpcClaimsIdentity();
                         if (id.AuthenticationType != null)
                         {
-                            rpcClaimsIdentity.AuthenticationType = id.AuthenticationType;
+                            rpcClaimsIdentity.AuthenticationType = new NullableString { Value = id.AuthenticationType };
                         }
 
                         if (id.NameClaimType != null)
                         {
-                            rpcClaimsIdentity.NameClaimType = id.NameClaimType;
+                            rpcClaimsIdentity.NameClaimType = new NullableString { Value = id.NameClaimType };
                         }
 
                         if (id.RoleClaimType != null)
                         {
-                            rpcClaimsIdentity.RoleClaimType = id.RoleClaimType;
+                            rpcClaimsIdentity.RoleClaimType = new NullableString { Value = id.RoleClaimType };
                         }
 
                         foreach (var claim in id.Claims)

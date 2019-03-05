@@ -41,10 +41,6 @@
     </Reference>
   </ItemGroup>
   
-  <ItemGroup>
-    <Folder Include="Messages\" />
-  </ItemGroup>
-  
   <Target Name="GenerateProtoFiles" BeforeTargets="BeforeBuild" Inputs="azure-functions-language-worker-protobuf/src/proto/FunctionRpc.proto" Outputs="Messages/DotNet/FunctionRpc.cs;Messages/DotNet/FunctionRpcGrpc.cs">
     <Exec Command="./generate_protos.$(Ext)" />
     <ItemGroup>
