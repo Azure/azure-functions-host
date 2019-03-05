@@ -202,6 +202,9 @@ message FunctionLoadRequest {
 
   // Metadata for the request
   RpcFunctionMetadata metadata = 2;
+
+  // A flag indicating if managed dependency is enabled or not
+  bool managed_dependency_enabled = 3;
 }
 
 // Worker tells host result of reload
@@ -212,6 +215,9 @@ message FunctionLoadResponse {
   // Result of load operation
   StatusResult result = 2;
   // TODO: return type expected?
+
+  // Result of load operation
+  bool is_dependency_downloaded = 3;
 }
 
 // Information on how a Function should be loaded and its bindings
