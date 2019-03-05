@@ -37,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly string _expectedSyncTriggersPayload;
         private readonly MockHttpHandler _mockHttpHandler;
         private readonly TestLoggerProvider _loggerProvider;
+        private readonly Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
+        private readonly Mock<IEnvironment> _mockEnvironment;
 
         public FunctionsSyncManagerTests()
         {
@@ -78,7 +80,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var configuration = ScriptSettingsManager.BuildDefaultConfiguration();
             var hostIdProviderMock = new Mock<IHostIdProvider>(MockBehavior.Strict);
             hostIdProviderMock.Setup(p => p.GetHostIdAsync(CancellationToken.None)).ReturnsAsync("testhostid123");
-            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object);
+            _mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>(MockBehavior.Strict);
+            _mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(false);
+            _mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady)).Returns("1");
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.CoreToolsEnvironment)).Returns((string)null);
+            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object);
 
             _expectedSyncTriggersPayload = "[{\"authLevel\":\"anonymous\",\"type\":\"httpTrigger\",\"direction\":\"in\",\"name\":\"req\",\"functionName\":\"function1\"}," +
                 "{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"DurableStorage\",\"functionName\":\"function2\",\"taskHubName\":\"TestHubValue\"}," +
@@ -89,6 +96,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             var fileSystem = CreateFileSystem(_hostOptions.ScriptPath, hostJsonContent);
             FileUtility.Instance = fileSystem;
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_StandbyMode_ReturnsFalse()
+        {
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                _mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(true);
+                var result = await _functionsSyncManager.TrySyncTriggersAsync();
+                Assert.False(result.Success);
+                var expectedMessage = "Invalid environment for SyncTriggers operation.";
+                Assert.Equal(expectedMessage, result.Error);
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_LocalEnvironment_ReturnsFalse()
+        {
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.CoreToolsEnvironment)).Returns("1");
+                var result = await _functionsSyncManager.TrySyncTriggersAsync();
+                Assert.False(result.Success);
+                var expectedMessage = "Invalid environment for SyncTriggers operation.";
+                Assert.Equal(expectedMessage, result.Error);
+            }
         }
 
         [Fact]

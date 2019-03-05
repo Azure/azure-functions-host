@@ -40,11 +40,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly IConfiguration _configuration;
         private readonly IHostIdProvider _hostIdProvider;
+        private readonly IScriptWebHostEnvironment _webHostEnvironment;
+        private readonly IEnvironment _environment;
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
 
         private CloudBlockBlob _hashBlob;
 
-        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient httpClient, ISecretManagerProvider secretManagerProvider)
+        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
@@ -53,17 +55,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _secretManagerProvider = secretManagerProvider;
             _configuration = configuration;
             _hostIdProvider = hostIdProvider;
+            _webHostEnvironment = webHostEnvironment;
+            _environment = environment;
         }
 
         public async Task<SyncTriggersResult> TrySyncTriggersAsync(bool checkHash = false)
         {
+            var result = new SyncTriggersResult
+            {
+                Success = true
+            };
+
+            if (!IsSyncTriggersEnvironment(_webHostEnvironment, _environment))
+            {
+                result.Success = false;
+                result.Error = "Invalid environment for SyncTriggers operation.";
+                _logger.LogWarning(result.Error);
+                return result;
+            }
+
             try
             {
-                var result = new SyncTriggersResult
-                {
-                    Success = true
-                };
-
                 await _syncSemaphore.WaitAsync();
 
                 var hashBlob = await GetHashBlobAsync();
@@ -96,13 +108,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     result.Success = success;
                     result.Error = error;
                 }
-
-                return result;
+            }
+            catch (Exception ex)
+            {
+                // best effort - log error and continue
+                result.Success = false;
+                result.Error = "SyncTriggers operation failed.";
+                _logger.LogError(ex, result.Error);
             }
             finally
             {
                 _syncSemaphore.Release();
             }
+
+            return result;
+        }
+
+        internal static bool IsSyncTriggersEnvironment(IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)
+        {
+            // only want to do background sync triggers when NOT
+            // in standby mode and not running locally
+            return !environment.IsCoreToolsEnvironment() &&
+                !webHostEnvironment.InStandbyMode && environment.IsContainerReady();
         }
 
         internal async Task<string> CheckHashAsync(CloudBlockBlob hashBlob, string content)

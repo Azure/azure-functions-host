@@ -59,8 +59,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            // cancel the timer
-            _syncTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            // cancel the timer if it has been started
+            _syncTimer?.Change(Timeout.Infinite, Timeout.Infinite);
 
             return Task.CompletedTask;
         }

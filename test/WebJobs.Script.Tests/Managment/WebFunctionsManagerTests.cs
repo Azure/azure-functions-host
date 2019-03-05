@@ -67,7 +67,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var configurationMock = new Mock<IConfiguration>(MockBehavior.Strict);
             var hostIdProviderMock = new Mock<IHostIdProvider>(MockBehavior.Strict);
-            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object);
+            var mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>(MockBehavior.Strict);
+            mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(false);
+            var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady)).Returns("1");
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.CoreToolsEnvironment)).Returns((string)null);
+            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, mockEnvironment.Object);
             var webManager = new WebFunctionsManager(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object, functionsSyncManager);
 
             FileUtility.Instance = fileSystem;
