@@ -38,13 +38,11 @@ Invoke-WebRequest -Uri $toolNupkgUrl -OutFile $nupkgPath
 
 Copy-Item -Path "C:\Tools\ps\local.settings.json" -Destination $binPath -Force
 
-Push-Location "$binPath\Artifacts\PS"
-Invoke-Expression "$binPath\Artifacts\PS\build-jar.ps1"
-Pop-Location
 
 Push-Location $binPath
 Write-Output "Running tool: dotnet $binPath\WebJobs.Script.Performance.App.dll $toolArgs"
-Invoke-Expression "dotnet $binPath\WebJobs.Script.Performance.App.dll $toolArgs"
+$output = Invoke-Expression "dotnet $binPath\WebJobs.Script.Performance.App.dll $toolArgs"
+Write-Output $output
 Pop-Location
 
 Remove-Item -Recurse -Force $tempFolder -ErrorAction SilentlyContinue

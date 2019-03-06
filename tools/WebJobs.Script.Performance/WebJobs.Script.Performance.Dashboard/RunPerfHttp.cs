@@ -17,18 +17,30 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
         [FunctionName("RunPerfHttp")]
         public static async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequest req, ILogger log)
         {
-            log.LogInformation($"Performance tests were started by http trigger at: {DateTime.Now}");
-
-            string testIds = string.Empty;
-            req.GetQueryParameterDictionary().TryGetValue("testIds", out testIds);
-
-            await PerformanceManager.Execute(testIds, log);
-
-            return new ContentResult()
+            try
             {
-                Content = "Done",
-                ContentType = "text/html",
-            };
+                log.LogInformation($"Performance tests were started by http trigger at: {DateTime.Now}");
+
+                string testIds = string.Empty;
+                req.GetQueryParameterDictionary().TryGetValue("testIds", out testIds);
+
+                await PerformanceManager.Execute(testIds, log);
+
+                return new ContentResult()
+                {
+                    Content = string.IsNullOrEmpty(testIds) ? "All tests started" : $"Tests started: {testIds}",
+                    ContentType = "text/html"
+                };
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex.ToString());
+                return new ContentResult()
+                {
+                    Content = "Exception:" + ex,
+                    ContentType = "text/html"
+                };
+            }
         }
     }
 }
