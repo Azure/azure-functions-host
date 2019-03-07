@@ -24,7 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
            IServiceScopeFactory rootScopeFactory, ScriptApplicationHostOptions webHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
         {
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();
-            builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory))
+            IDependencyValidator validator = rootServiceProvider.GetService<IDependencyValidator>();
+
+            builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory, validator))
                 .ConfigureServices(services =>
                 {
                     // register default configuration

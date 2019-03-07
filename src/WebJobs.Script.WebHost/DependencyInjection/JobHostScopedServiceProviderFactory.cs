@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
@@ -14,12 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
     {
         private readonly IServiceProvider _rootProvider;
         private readonly IServiceScopeFactory _rootScopeFactory;
+        private readonly IDependencyValidator _validator;
         private JobHostServiceProvider _provider;
 
-        public JobHostScopedServiceProviderFactory(IServiceProvider rootProvider, IServiceScopeFactory rootScopeFactory)
+        public JobHostScopedServiceProviderFactory(IServiceProvider rootProvider, IServiceScopeFactory rootScopeFactory, IDependencyValidator validator)
         {
             _rootProvider = rootProvider ?? throw new ArgumentNullException(nameof(rootProvider));
             _rootScopeFactory = rootScopeFactory ?? throw new ArgumentNullException(nameof(rootScopeFactory));
+            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
         public IServiceCollection CreateBuilder(IServiceCollection services)
@@ -29,6 +32,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public IServiceProvider CreateServiceProvider(IServiceCollection containerBuilder)
         {
+            try
+            {
+                _validator.Validate(containerBuilder);
+            }
+            catch (InvalidHostServicesException ex)
+            {
+                // Log this to the WebHost's logger so we can track
+                ILogger logger = _rootProvider.GetService<ILogger<DependencyValidator>>();
+                logger.LogError(ex, "Invalid host services detected.");
+            }
+
             if (_provider == null)
             {
                 _provider = new JobHostServiceProvider(containerBuilder, _rootProvider, _rootScopeFactory);
