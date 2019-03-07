@@ -13,6 +13,7 @@ using System.Web.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,8 +33,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         protected HttpClient _httpClient;
         protected TestServer _httpServer;
         protected readonly object _originalTimeZoneInfoCache = GetCachedTimeZoneInfo();
+        protected TestMetricsLogger _metricsLogger;
 
-        public StandbyManagerE2ETestBase()
+    public StandbyManagerE2ETestBase()
         {
             _testRootPath = Path.Combine(Path.GetTempPath(), "StandbyManagerTests");
             CleanupTestDirectory();
@@ -53,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.Await(() => File.Exists(proxyConfigPath));
 
             _loggerProvider = new TestLoggerProvider();
+            _metricsLogger = new TestMetricsLogger();
 
             if (environment.IsAppServiceEnvironment())
             {
@@ -90,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                     c.AddSingleton<IEnvironment>(_ => environment);
                     c.AddSingleton<IConfigureBuilder<ILoggingBuilder>>(new DelegatedConfigureBuilder<ILoggingBuilder>(b => b.AddProvider(_loggerProvider)));
+                    c.AddSingleton<IMetricsLogger>(_ => _metricsLogger);
                 });
 
             _httpServer = new TestServer(webHostBuilder);
