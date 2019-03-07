@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -15,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private const string FileStorage = "Files";
         private readonly ILogger _logger;
+        private readonly IMetricsLogger _metricsLogger;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IConfiguration _configuration;
@@ -22,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private Lazy<ISecretManager> _secretManagerLazy;
 
         public DefaultSecretManagerProvider(IOptionsMonitor<ScriptApplicationHostOptions> options, IHostIdProvider hostIdProvider,
-            IConfiguration configuration, IEnvironment environment, ILoggerFactory loggerFactory)
+            IConfiguration configuration, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
         {
             if (loggerFactory == null)
             {
@@ -35,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
 
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+            _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _secretManagerLazy = new Lazy<ISecretManager>(Create);
 
             // When these options change (due to specialization), we need to reset the secret manager.
@@ -45,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void ResetSecretManager() => Interlocked.Exchange(ref _secretManagerLazy, new Lazy<ISecretManager>(Create));
 
-        private ISecretManager Create() => new SecretManager(CreateSecretsRepository(), _logger);
+        private ISecretManager Create() => new SecretManager(CreateSecretsRepository(), _logger, _metricsLogger);
 
         internal ISecretsRepository CreateSecretsRepository()
         {

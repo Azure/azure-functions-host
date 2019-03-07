@@ -29,5 +29,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string FunctionUserLog = "function.userlog";
         public const string FunctionInvokeSucceeded = "function.invoke.succeeded";
         public const string FunctionInvokeFailed = "function.invoke.failed";
+
+        // secret managment events
+        public const string SecretManagerDeleteSecret = "secretmanager.deletesecret.{0}";
+        public const string SecretManagerGetFunctionSecrets = "secretmanager.getfunctionsecrets.{0}";
+        public const string SecretManagerGetHostSecrets = "secretmanager.gethostsecrets.{0}";
+        public const string SecretManagerAddOrUpdateFunctionSecret = "secretmanager.addorupdatefunctionsecret.{0}";
+        public const string SecretManagerSetMasterKey = "secretmanager.setmasterkey.{0}";
+        public const string SecretManagerPurgeOldSecrets = "secretmanager.purgeoldsecrets.{0}";
     }
 }

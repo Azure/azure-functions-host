@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 .ReturnsAsync("testhostid");
 
             _provider = new DefaultSecretManagerProvider(optionsMonitor, mockIdProvider.Object, config,
-                new TestEnvironment(), NullLoggerFactory.Instance);
+                new TestEnvironment(), NullLoggerFactory.Instance, new TestMetricsLogger());
         }
 
         [Fact]

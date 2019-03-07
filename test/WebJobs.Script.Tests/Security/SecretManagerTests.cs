@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
@@ -68,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 IDictionary<string, string> result;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, NullLogger.Instance))
+                using (var secretManager = new SecretManager(repository, NullLogger.Instance, new TestMetricsLogger()))
                 {
                     result = await secretManager.GetFunctionSecretsAsync("testfunction", true);
                 }
@@ -110,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 IDictionary<string, string> functionSecrets;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance, new TestMetricsLogger()))
                 {
                     functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                 }
@@ -168,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 HostSecretsInfo hostSecrets;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance, new TestMetricsLogger()))
                 {
                     hostSecrets = await secretManager.GetHostSecretsAsync();
                 }
@@ -196,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 HostSecretsInfo hostSecrets;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance, new TestMetricsLogger()))
                 {
                     hostSecrets = await secretManager.GetHostSecretsAsync();
                 }
@@ -227,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 IDictionary<string, string> functionSecrets;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance, new TestMetricsLogger()))
                 {
                     functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                 }
@@ -254,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 KeyOperationResult result;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance, new TestMetricsLogger()))
                 {
                     result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, null, functionName, ScriptSecretsType.Function);
                 }
@@ -283,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 KeyOperationResult result;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance, new TestMetricsLogger()))
                 {
                     result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, null, functionName, ScriptSecretsType.Function);
                 }
@@ -313,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 KeyOperationResult result;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance, new TestMetricsLogger()))
                 {
                     result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, "TestSecretValue", functionName, ScriptSecretsType.Function);
                 }
@@ -373,7 +374,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             KeyOperationResult result;
             ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-            using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance))
+            using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance, new TestMetricsLogger()))
             {
                 result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, "TestSecretValue", scope, ScriptSecretsType.Host);
             }
@@ -401,7 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 KeyOperationResult result;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance, new TestMetricsLogger()))
                 {
                     result = await secretManager.SetMasterKeyAsync(testSecret);
                 }
@@ -427,7 +428,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 KeyOperationResult result;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance, new TestMetricsLogger()))
                 {
                     result = await secretManager.SetMasterKeyAsync();
                 }
@@ -457,7 +458,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false, false);
 
                 ISecretsRepository repository = new FileSystemSecretsRepository(secretsPath);
-                var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance, true);
+                var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, NullLogger.Instance, new TestMetricsLogger(), true);
                 bool fileCreated = File.Exists(hostSecretPath);
 
                 Assert.False(preExistingFile);
@@ -490,7 +491,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 HostSecretsInfo hostSecrets;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
 
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, null))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, null, new TestMetricsLogger()))
                 {
                     hostSecrets = await secretManager.GetHostSecretsAsync();
                 }
@@ -530,7 +531,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 IDictionary<string, string> functionSecrets;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
 
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, null))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, null, new TestMetricsLogger()))
                 {
                     functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                 }
@@ -573,7 +574,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 IDictionary<string, string> functionSecrets;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
 
-                using (var secretManager = new SecretManager(repository, logger))
+                using (var secretManager = new SecretManager(repository, logger, new TestMetricsLogger()))
                 {
                     InvalidOperationException ioe = null;
                     try
@@ -628,7 +629,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 HostSecretsInfo hostSecrets = null;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
 
-                using (var secretManager = new SecretManager(repository, null))
+                using (var secretManager = new SecretManager(repository, null, new TestMetricsLogger()))
                 {
                     await Task.WhenAll(
                         Task.Run(async () =>
@@ -648,7 +649,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     Assert.Equal(hostSecrets.MasterKey, "1234");
                 }
 
-                using (var secretManager = new SecretManager(repository, null))
+                using (var secretManager = new SecretManager(repository, null, new TestMetricsLogger()))
                 {
                     await Assert.ThrowsAsync<IOException>(async () =>
                     {
@@ -697,7 +698,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 IDictionary<string, string> functionSecrets = null;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, null))
+                using (var secretManager = new SecretManager(repository, null, new TestMetricsLogger()))
                 {
                     await Task.WhenAll(
                         Task.Run(async () =>
@@ -717,7 +718,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     Assert.Equal(functionSecrets["Key1"], "FunctionValue1");
                 }
 
-                using (var secretManager = new SecretManager(repository, null))
+                using (var secretManager = new SecretManager(repository, null, new TestMetricsLogger()))
                 {
                     await Assert.ThrowsAsync<IOException>(async () =>
                     {
@@ -737,6 +738,80 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                             }));
                     });
                 }
+            }
+        }
+
+        [Fact]
+        public async Task GetHostSecrets_AddMetrics()
+        {
+            using (var directory = new TempDirectory())
+            {
+                string expectedTraceMessage = Resources.TraceNonDecryptedHostSecretRefresh;
+                string hostSecretsJson =
+                    @"{
+    'masterKey': {
+        'name': 'master',
+        'value': 'cryptoError',
+        'encrypted': true
+    },
+    'functionKeys': [],
+    'systemKeys': []
+}";
+                File.WriteAllText(Path.Combine(directory.Path, ScriptConstants.HostMetadataFileName), hostSecretsJson);
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(true, false);
+                HostSecretsInfo hostSecrets;
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                TestMetricsLogger metricsLogger = new TestMetricsLogger();
+
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, null, metricsLogger))
+                {
+                    hostSecrets = await secretManager.GetHostSecretsAsync();
+                }
+
+                string eventName = string.Format(MetricEventNames.SecretManagerGetHostSecrets, repository.GetType().Name.ToLower());
+                metricsLogger.EventsBegan.Single(e => string.Equals(e, eventName));
+                metricsLogger.EventsEnded.Single(e => string.Equals(e.ToString(), eventName));
+            }
+        }
+
+        [Fact]
+        public async Task GetFunctiontSecrets_AddsMetrics()
+        {
+            using (var directory = new TempDirectory())
+            {
+                string functionName = "testfunction";
+                string expectedTraceMessage = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName);
+                string functionSecretsJson =
+                     @"{
+    'keys': [
+        {
+            'name': 'Key1',
+            'value': 'cryptoError',
+            'encrypted': true
+        },
+        {
+            'name': 'Key2',
+            'value': '1234',
+            'encrypted': false
+        }
+    ]
+}";
+                File.WriteAllText(Path.Combine(directory.Path, functionName + ".json"), functionSecretsJson);
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(true, false);
+                IDictionary<string, string> functionSecrets;
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                TestMetricsLogger metricsLogger = new TestMetricsLogger();
+
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, null, metricsLogger))
+                {
+                    functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
+                }
+
+                string eventName = string.Format(MetricEventNames.SecretManagerGetFunctionSecrets, repository.GetType().Name.ToLower());
+                metricsLogger.EventsBegan.Single(e => e.StartsWith(eventName));
+                metricsLogger.EventsBegan.Single(e => e.Contains("testfunction"));
+                metricsLogger.EventsEnded.Single(e => e.ToString().StartsWith(eventName));
+                metricsLogger.EventsEnded.Single(e => e.ToString().Contains("testfunction"));
             }
         }
 
