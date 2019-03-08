@@ -46,13 +46,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(22, metadata.Length);
             var function = metadata.Single(p => p.Name == "PingRoute");
-            Assert.Equal("https://localhost/myroute/mysubroute", function.InvokeUrlTemplate.AbsoluteUri);
+            Assert.Equal("https://localhost/api/myroute/mysubroute", function.InvokeUrlTemplate.AbsoluteUri);
 
             function = metadata.Single(p => p.Name == "Ping");
             Assert.Equal("https://localhost/api/ping", function.InvokeUrlTemplate.AbsoluteUri);
 
             function = metadata.Single(p => p.Name == "LocalFunctionCall");
-            Assert.Equal("https://localhost/myhttptrigger", function.InvokeUrlTemplate.AbsoluteUri);
+            Assert.Equal("https://localhost/api/myhttptrigger", function.InvokeUrlTemplate.AbsoluteUri);
 
             // get functions omitting proxies
             uri = "admin/functions";

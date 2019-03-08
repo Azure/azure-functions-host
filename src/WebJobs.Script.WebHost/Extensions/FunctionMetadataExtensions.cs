@@ -138,24 +138,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         private static Uri GetFunctionHref(string functionName, string baseUrl) =>
             new Uri($"{baseUrl}/admin/functions/{functionName}");
 
-        private static Uri GetFunctionInvokeUrlTemplate(string baseUrl, FunctionMetadata functionMetadata, string routePrefix)
+        internal static Uri GetFunctionInvokeUrlTemplate(string baseUrl, FunctionMetadata functionMetadata, string routePrefix)
         {
             var httpBinding = functionMetadata.InputBindings.FirstOrDefault(p => string.Compare(p.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase) == 0);
-            string template = null;
+
             if (httpBinding != null)
             {
+                string customRoute = null;
                 if (httpBinding.Raw != null && httpBinding.Raw.TryGetValue("route", StringComparison.OrdinalIgnoreCase, out JToken value))
                 {
                     // a custom route is specified
-                    template = (string)value;
+                    customRoute = (string)value;
+                }
+
+                string uriString = baseUrl.TrimEnd('/');
+                if (!string.IsNullOrEmpty(routePrefix))
+                {
+                    uriString += $"/{routePrefix.TrimEnd('/')}";
+                }
+
+                if (!string.IsNullOrEmpty(customRoute))
+                {
+                    uriString += $"/{customRoute}";
                 }
                 else
                 {
-                    // form the default function route
-                    template = $"{routePrefix}/{functionMetadata.Name}";
+                    uriString += $"/{functionMetadata.Name}";
                 }
 
-                string uriString = $"{baseUrl}/{template}";
                 return new Uri(uriString.ToLowerInvariant());
             }
 

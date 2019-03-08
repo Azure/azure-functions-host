@@ -344,7 +344,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             Assert.Equal(16, metadata.Length);
             var function = metadata.Single(p => p.Name == "HttpTrigger-CustomRoute");
-            Assert.Equal("https://localhost/csharp/products/{category:alpha?}/{id:int?}/{extra?}", function.InvokeUrlTemplate.ToString());
+            Assert.Equal("https://localhost/api/csharp/products/{category:alpha?}/{id:int?}/{extra?}", function.InvokeUrlTemplate.ToString());
 
             function = metadata.Single(p => p.Name == "HttpTrigger");
             Assert.Equal("https://localhost/api/httptrigger", function.InvokeUrlTemplate.ToString());
