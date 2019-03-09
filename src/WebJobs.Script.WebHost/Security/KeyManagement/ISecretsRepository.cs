@@ -12,11 +12,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         event EventHandler<SecretsChangedEventArgs> SecretsChanged;
 
-        Task<string> ReadAsync(ScriptSecretsType type, string functionName);
+        bool IsEncryptionSupported { get; }
 
-        Task WriteAsync(ScriptSecretsType type, string functionName, string secretsContent);
+        Task<ScriptSecrets> ReadAsync(ScriptSecretsType type, string functionName);
 
-        Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, string secretsContent);
+        Task WriteAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets);
+
+        Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets);
 
         Task PurgeOldSecretsAsync(IList<string> currentFunctions, ILogger logger);
 

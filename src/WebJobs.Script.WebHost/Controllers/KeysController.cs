@@ -197,6 +197,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     return NotFound();
                 case OperationResult.Conflict:
                     return StatusCode(StatusCodes.Status409Conflict);
+                case OperationResult.Forbidden:
+                    return StatusCode(StatusCodes.Status403Forbidden);
                 default:
                     return StatusCode(StatusCodes.Status500InternalServerError);
             }

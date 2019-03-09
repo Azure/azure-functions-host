@@ -15,16 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     /// <summary>
     /// An <see cref="ISecretsRepository"/> implementation that uses the file system as the backing store.
     /// </summary>
-    public sealed class FileSystemSecretsRepository : ISecretsRepository, IDisposable
+    public sealed class FileSystemSecretsRepository : BaseSecretsRepository
     {
         private readonly string _secretsPath;
         private readonly string _hostSecretsPath;
         private readonly int _retryCount = 5;
         private readonly int _retryDelay = 100;
-        private readonly AutoRecoveringFileSystemWatcher _fileWatcher;
-        private bool _disposed = false;
 
-        public FileSystemSecretsRepository(string secretsPath)
+        public FileSystemSecretsRepository(string secretsPath) : base(secretsPath)
         {
             if (secretsPath == null)
             {
@@ -33,53 +31,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _secretsPath = secretsPath;
             _hostSecretsPath = Path.Combine(_secretsPath, ScriptConstants.HostMetadataFileName);
-
-            Directory.CreateDirectory(_secretsPath);
-
-            _fileWatcher = new AutoRecoveringFileSystemWatcher(_secretsPath, "*.json");
-            _fileWatcher.Changed += OnChanged;
         }
 
-        public event EventHandler<SecretsChangedEventArgs> SecretsChanged;
-
-        private string GetSecretsFilePath(ScriptSecretsType secretsType, string functionName = null, bool isSnapshot = false)
+        public override bool IsEncryptionSupported
         {
-            string result = secretsType == ScriptSecretsType.Host
-                ? _hostSecretsPath
-                : GetFunctionSecretsFilePath(functionName);
-
-            if (isSnapshot)
+            get
             {
-                result = SecretsUtility.GetNonDecryptableName(result);
-            }
-
-            return result;
-        }
-
-        private string GetFunctionSecretsFilePath(string functionName)
-        {
-            string secretFileName = string.Format(CultureInfo.InvariantCulture, "{0}.json", functionName);
-            return Path.Combine(_secretsPath, secretFileName);
-        }
-
-        private void OnChanged(object sender, FileSystemEventArgs e)
-        {
-            var changeHandler = SecretsChanged;
-            if (changeHandler != null)
-            {
-                var args = new SecretsChangedEventArgs { SecretsType = ScriptSecretsType.Host };
-
-                if (string.Compare(Path.GetFileName(e.FullPath), ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) != 0)
-                {
-                    args.SecretsType = ScriptSecretsType.Function;
-                    args.Name = Path.GetFileNameWithoutExtension(e.FullPath).ToLowerInvariant();
-                }
-
-                changeHandler(this, args);
+                return false;
             }
         }
 
-        public async Task<string> ReadAsync(ScriptSecretsType type, string functionName)
+        public override async Task<ScriptSecrets> ReadAsync(ScriptSecretsType type, string functionName)
         {
             string filePath = GetSecretsFilePath(type, functionName);
             string secretsContent = null;
@@ -103,17 +65,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     await Task.Delay(_retryDelay);
                 }
             }
-            return secretsContent;
+            return string.IsNullOrEmpty(secretsContent) ? null : ScriptSecretSerializer.DeserializeSecrets(type, secretsContent);
         }
 
-        public async Task WriteAsync(ScriptSecretsType type, string functionName, string secretsContent)
+        public override async Task WriteAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
         {
             string filePath = GetSecretsFilePath(type, functionName);
             for (int currentRetry = 0; ; currentRetry++)
             {
                 try
                 {
-                    await FileUtility.WriteAsync(filePath, secretsContent);
+                    await FileUtility.WriteAsync(filePath, ScriptSecretSerializer.SerializeSecrets(secrets));
                     break;
                 }
                 catch (IOException)
@@ -127,13 +89,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public async Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, string secretsContent)
+        public override async Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
         {
             string filePath = GetSecretsFilePath(type, functionName, true);
-            await FileUtility.WriteAsync(filePath, secretsContent);
+            await FileUtility.WriteAsync(filePath, ScriptSecretSerializer.SerializeSecrets(secrets));
         }
 
-        public async Task PurgeOldSecretsAsync(IList<string> currentFunctions, ILogger logger)
+        public override async Task PurgeOldSecretsAsync(IList<string> currentFunctions, ILogger logger)
         {
             try
             {
@@ -178,29 +140,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public async Task<string[]> GetSecretSnapshots(ScriptSecretsType type, string functionName)
+        public override async Task<string[]> GetSecretSnapshots(ScriptSecretsType type, string functionName)
         {
             string prefix = Path.GetFileNameWithoutExtension(GetSecretsFilePath(type, functionName)) + $".{ScriptConstants.Snapshot}*";
 
             return await FileUtility.GetFilesAsync(Path.GetDirectoryName(_hostSecretsPath), prefix);
         }
 
-        private void Dispose(bool disposing)
+        private string GetSecretsFilePath(ScriptSecretsType secretsType, string functionName = null, bool isSnapshot = false)
         {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-                    _fileWatcher.Dispose();
-                }
+            string result = secretsType == ScriptSecretsType.Host
+                ? _hostSecretsPath
+                : GetFunctionSecretsFilePath(functionName);
 
-                _disposed = true;
+            if (isSnapshot)
+            {
+                result = SecretsUtility.GetNonDecryptableName(result);
             }
+
+            return result;
         }
 
-        public void Dispose()
+        private string GetFunctionSecretsFilePath(string functionName)
         {
-            Dispose(true);
+            string secretFileName = string.Format(CultureInfo.InvariantCulture, "{0}.json", functionName);
+            return Path.Combine(_secretsPath, secretFileName);
         }
     }
 }
