@@ -16,9 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly bool _encryptionSupported;
         private static readonly PlaintextKeyValueConverter PlaintextValueConverter = new PlaintextKeyValueConverter(FileAccess.ReadWrite);
 
-        public DefaultKeyValueConverterFactory()
+        public DefaultKeyValueConverterFactory(bool allowEncryption)
         {
-            _encryptionSupported = IsEncryptionSupported();
+            _encryptionSupported = !allowEncryption && IsEncryptionSupported();
         }
 
         private static bool IsEncryptionSupported()
