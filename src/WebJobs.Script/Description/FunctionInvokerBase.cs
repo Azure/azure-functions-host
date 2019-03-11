@@ -185,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                         {
                             code = d.Id,
                             message = d.GetMessage(),
-                            source = Path.GetDirectoryName(d.Location.SourceTree?.FilePath ?? span.Path ?? string.Empty),
+                            source = Path.GetFileName(d.Location.SourceTree?.FilePath ?? span.Path ?? string.Empty),
                             severity = d.Severity,
                             startLineNumber = span.StartLinePosition.Line + 1,
                             startColumn = span.StartLinePosition.Character + 1,
