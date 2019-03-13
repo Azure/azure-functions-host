@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class LanguageWorkerProcess
+    internal class LanguageWorkerProcess : ILanguageWorkerProcess
     {
         private readonly IWorkerProcessFactory _processFactory;
         private readonly IProcessRegistry _processRegistry;
@@ -49,11 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _process = _processFactory.CreateWorkerProcess(workerContext);
         }
 
-        internal Process WorkerProcess => _process;
+        public Process WorkerProcess => _process;
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
-        internal void StartProcess()
+        public void StartProcess()
         {
             try
             {
@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        internal void ShutdownProcess()
+        public void ShutdownProcess()
         {
             _disposing = true;
             // best effort process disposal

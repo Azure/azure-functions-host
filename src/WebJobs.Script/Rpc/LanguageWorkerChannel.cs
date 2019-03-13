@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IObservable<FunctionRegistrationContext> _functionRegistrations;
         private WorkerInitResponse _initMessage;
         private string _workerId;
-        private LanguageWorkerProcess _languageWorkerProcess;
+        private ILanguageWorkerProcess _languageWorkerProcess;
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new Dictionary<string, BufferBlock<ScriptInvocationContext>>();
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
