@@ -277,9 +277,7 @@ if ($bypassPackaging){
 
     #build win-x86 and win-x64 extension
     BuildPackages 0
-}
 
-if (-not $bypassPackaging -and -not $isLocal) {
-  & ".\tools\RunSigningJob.ps1" 
-  if (-not $?) { exit 1 }
+    & ".\tools\RunSigningJob.ps1" 
+    if (-not $?) { exit 1 }
 }
