@@ -23,6 +23,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
@@ -438,15 +439,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
             // Verify number of node processes before and after restart are the same.
             Assert.Equal(nodeProcessesBefore.Count(), nodeProcessesAfter.Count());
+
             // Verify node process is different after host restart
-            var result = nodeProcessesBefore.Where(pId1 => !nodeProcessesAfter.Any(pId2 => pId2 == pId1));
+            var result = nodeProcessesAfter.Where(pId1 => !nodeProcessesBefore.Any(pId2 => pId2 == pId1));
             Assert.Equal(1, result.Count());
         }
 
         [Fact]
         public async Task HttpTrigger_Disabled_SucceedsWithAdminKey()
         {
-
             // first try with function key only - expect 404
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Disabled");
             string uri = $"api/httptrigger-disabled?code={functionKey}";

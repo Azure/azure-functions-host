@@ -12,14 +12,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void ErrorMessageQueue_Empty()
         {
-            LanguageWorkerChannel languageWorkerChannel = new LanguageWorkerChannel();
+            LanguageWorkerProcess languageWorkerChannel = new LanguageWorkerProcess();
             Assert.Empty(languageWorkerChannel.ProcessStdErrDataQueue);
         }
 
         [Fact]
         public void ErrorMessageQueue_Enqueue_Success()
         {
-            LanguageWorkerChannel languageWorkerChannel = new LanguageWorkerChannel();
+            LanguageWorkerProcess languageWorkerChannel = new LanguageWorkerProcess();
             LanguageWorkerChannelUtilities.AddStdErrMessage(languageWorkerChannel.ProcessStdErrDataQueue, "Error1");
             LanguageWorkerChannelUtilities.AddStdErrMessage(languageWorkerChannel.ProcessStdErrDataQueue, "Error2");
 
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void ErrorMessageQueue_Full_Enqueue_Success()
         {
-            LanguageWorkerChannel languageWorkerChannel = new LanguageWorkerChannel();
+            LanguageWorkerProcess languageWorkerChannel = new LanguageWorkerProcess();
             LanguageWorkerChannelUtilities.AddStdErrMessage(languageWorkerChannel.ProcessStdErrDataQueue, "Error1");
             LanguageWorkerChannelUtilities.AddStdErrMessage(languageWorkerChannel.ProcessStdErrDataQueue, "Error2");
             LanguageWorkerChannelUtilities.AddStdErrMessage(languageWorkerChannel.ProcessStdErrDataQueue, "Error3");
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData("LanguageWorkerConsoleLog Connection established")]
         public void IsLanguageWorkerConsoleLog_Returns_True_RemovesLogPrefix(string msg)
         {
-            LanguageWorkerChannel languageWorkerChannel = new LanguageWorkerChannel();
+            LanguageWorkerProcess languageWorkerChannel = new LanguageWorkerProcess();
             Assert.True(LanguageWorkerChannelUtilities.IsLanguageWorkerConsoleLog(msg));
             Assert.Equal(" Connection established", LanguageWorkerChannelUtilities.RemoveLogPrefix(msg));
         }
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData("Connection established")]
         public void IsLanguageWorkerConsoleLog_Returns_False(string msg)
         {
-            LanguageWorkerChannel languageWorkerChannel = new LanguageWorkerChannel();
+            LanguageWorkerProcess languageWorkerChannel = new LanguageWorkerProcess();
             Assert.False(LanguageWorkerChannelUtilities.IsLanguageWorkerConsoleLog(msg));
         }
     }

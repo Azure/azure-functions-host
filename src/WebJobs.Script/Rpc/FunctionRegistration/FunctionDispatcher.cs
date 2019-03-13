@@ -193,12 +193,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                     foreach (var pair in _workerStates)
                     {
-                        // TODO #3296 - send WorkerTerminate message to shut down language worker process gracefully (instead of just a killing)
                         // WebhostLanguageWorkerChannels life time is managed by LanguageWorkerChannelManager
                         if (!pair.Value.Channel.IsWebhostChannel)
                         {
-                            pair.Value.Channel.Dispose();
+                            pair.Value.Channel.ShutdownWorkerProcess();
                         }
+                        // TODO #3296 - send WorkerTerminate message to shut down language worker process gracefully (instead of just a killing)
+                        pair.Value.Channel.Dispose();
                         pair.Value.Functions.Dispose();
                     }
                 }
