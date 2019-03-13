@@ -166,6 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 for (int i = 0; i < standbyChannels.Count(); i++)
                 {
                     _logger.LogInformation("Disposing standby channel for runtime:{language}", standbyChannels.ElementAt(i).Key);
+                    standbyChannels.ElementAt(i).Value.ShutdownWorkerProcess();
                     standbyChannels.ElementAt(i).Value.Dispose();
                     _workerChannels.Remove(standbyChannels.ElementAt(i).Key);
                 }
@@ -196,7 +197,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             foreach (string runtime in _workerChannels.Keys.ToList())
             {
                 _logger.LogInformation("Shutting down language worker channel for runtime:{runtime}", runtime);
-                _workerChannels[runtime]?.Dispose();
+                if (_workerChannels[runtime] != null)
+                {
+                    _workerChannels[runtime].ShutdownWorkerProcess();
+                    _workerChannels[runtime].Dispose();
+                }
             }
             _workerChannels.Clear();
             (_processRegistry as IDisposable)?.Dispose();
