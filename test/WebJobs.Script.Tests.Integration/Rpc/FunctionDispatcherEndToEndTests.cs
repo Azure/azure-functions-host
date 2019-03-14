@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -47,9 +48,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.Await(() =>
             {
                 return GetCurrentWorkerChannel().WorkerId != _nodeWorkerChannel.WorkerId
-                       || FunctionErrorsAdded();
+                         || FunctionErrorsAdded();
+
             }, pollingInterval: 4 * 1000, timeout: 60 * 1000);
             _nodeWorkerChannel = GetCurrentWorkerChannel();
+            _nodeWorkerProcess = GetCurrentWorkerProcess();
         }
 
         private static void KillProcess(int oldProcId)
