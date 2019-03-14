@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(workerId, language);
             var initializedChannel = _languageWorkerChannelManager.GetChannel(language);
             Assert.NotNull(initializedChannel);
-            Assert.Equal(workerId, initializedChannel.Id);
+            Assert.Equal(workerId, initializedChannel.WorkerId);
         }
 
         [Fact]
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Null(initializedChannel);
             initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.NotNull(initializedChannel);
-            Assert.Equal(javaWorkerId, initializedChannel.Id);
+            Assert.Equal(javaWorkerId, initializedChannel.WorkerId);
         }
 
         [Fact]

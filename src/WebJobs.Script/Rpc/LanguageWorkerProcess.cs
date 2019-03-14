@@ -36,14 +36,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                                        IScriptEventManager eventManager,
                                        IWorkerProcessFactory processFactory,
                                        IProcessRegistry processRegistry,
-                                       ILogger workerChannelLogger,
+                                       ILoggerFactory loggerFactory,
                                        ILanguageWorkerConsoleLogSource consoleLogSource)
         {
             _runtime = runtime;
             _workerId = workerId;
             _processFactory = processFactory;
             _processRegistry = processRegistry;
-            _workerChannelLogger = workerChannelLogger;
+            _workerChannelLogger = loggerFactory.CreateLogger($"LanguageWorkerProcess.{runtime}.{workerId}");
             _consoleLogSource = consoleLogSource;
             _eventManager = eventManager;
             _process = _processFactory.CreateWorkerProcess(workerContext);
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
-        public void StartProcess()
+        public Process StartProcess()
         {
             try
             {
@@ -76,6 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 throw new HostInitializationException($"Failed to start Language Worker Channel for language :{_runtime}", ex);
             }
+
+            return _process;
         }
 
         private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
@@ -181,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public void ShutdownProcess()
+        public void Dispose()
         {
             _disposing = true;
             // best effort process disposal

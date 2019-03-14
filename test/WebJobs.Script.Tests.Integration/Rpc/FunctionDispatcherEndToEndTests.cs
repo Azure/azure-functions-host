@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private LanguageWorkerState _channelState;
         private LanguageWorkerChannel _nodeWorkerChannel;
+        private ILanguageWorkerProcess _nodeWorkerProcess;
         private string _functionName = "HttpTrigger";
 
         public FunctionDispatcherEndToEndTests(TestFixture fixture)
@@ -21,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Fixture = fixture;
             _channelState = Fixture.JobHost.FunctionDispatcher.LanguageWorkerChannelState;
             _nodeWorkerChannel = GetCurrentWorkerChannel();
+            _nodeWorkerProcess = GetCurrentWorkerProcess();
         }
 
         public TestFixture Fixture { get; set; }
@@ -31,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             for (int i = 0; i < 3; i++)
             {
-                KillProcess(_nodeWorkerChannel.WorkerProcess.Id);
+                KillProcess(_nodeWorkerProcess.WorkerProcess.Id);
                 await WaitForWorkerProcessRestart(i);
             }
 
@@ -44,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             await TestHelpers.Await(() =>
             {
-                return GetCurrentWorkerChannel().Id != _nodeWorkerChannel.Id
+                return GetCurrentWorkerChannel().WorkerId != _nodeWorkerChannel.WorkerId
                        || FunctionErrorsAdded();
             }, pollingInterval: 4 * 1000, timeout: 60 * 1000);
             _nodeWorkerChannel = GetCurrentWorkerChannel();
@@ -64,6 +66,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private LanguageWorkerChannel GetCurrentWorkerChannel()
         {
             return (LanguageWorkerChannel)_channelState.Channel;
+        }
+
+        private ILanguageWorkerProcess GetCurrentWorkerProcess()
+        {
+            var nodeChannelStates = _channelStates.Where(w => w.Key.Equals(LanguageWorkerConstants.NodeLanguageWorkerName));
+            return (ILanguageWorkerProcess)nodeChannelStates.FirstOrDefault().Value.WorkerProcess;
         }
 
         private bool FunctionErrorsAdded()

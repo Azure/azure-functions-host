@@ -5,22 +5,16 @@ using System;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public delegate ILanguageWorkerChannel CreateChannel(string language, IObservable<FunctionRegistrationContext> registrations, int attemptCount);
+    public delegate Tuple<ILanguageWorkerChannel, ILanguageWorkerProcess> CreateChannel(string language, IObservable<FunctionRegistrationContext> registrations, int attemptCount);
 
     public interface ILanguageWorkerChannel : IDisposable
     {
-        string Id { get; }
+        string WorkerId { get; }
 
-        bool IsWebhostChannel { get; }
-
-        WorkerConfig Config { get; }
+        string Runtime { get; }
 
         void RegisterFunctions(IObservable<FunctionRegistrationContext> functionRegistrations);
 
         void SendFunctionEnvironmentReloadRequest();
-
-        void StartWorkerProcess();
-
-        void ShutdownWorkerProcess();
     }
 }

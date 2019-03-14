@@ -19,6 +19,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         Task SpecializeAsync();
 
+        ILanguageWorkerProcess StartWorkerProcess(string workerId, string runtime, string rootScriptPath);
+
         bool ShutdownChannelIfExists(string language);
 
         void ShutdownStandbyChannels(IEnumerable<FunctionMetadata> functions);
