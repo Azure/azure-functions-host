@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(processStartTimeout)
                 .Take(1)
-                .Subscribe(SendWorkerInitRequest, HandleWorkerError);
+                .Subscribe(SendWorkerInitRequest, HandleWorkerChannelError);
 
             _eventSubscriptions.Add(_inboundWorkerEvents
                 .Where(msg => msg.MessageType == MsgType.RpcLog)
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
-                .Subscribe(PublishWebhostRpcChannelReadyEvent, HandleWorkerError);
+                .Subscribe(PublishWebhostRpcChannelReadyEvent, HandleWorkerChannelError);
 
             SendStreamingMessage(new StreamingMessage
             {
@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _initMessage = initEvent.Message.WorkerInitResponse;
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
-                HandleWorkerError(exc);
+                HandleWorkerChannelError(exc);
                 return;
             }
             if (_functionRegistrations == null)
@@ -311,7 +311,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        internal void HandleWorkerError(Exception exc)
+        internal void HandleWorkerChannelError(Exception exc)
         {
             _eventManager.Publish(new WorkerErrorEvent(_runtime, WorkerId, exc));
         }

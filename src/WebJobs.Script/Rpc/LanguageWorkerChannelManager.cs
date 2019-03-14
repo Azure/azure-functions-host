@@ -237,20 +237,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             foreach (string runtime in _workerChannels.Keys.ToList())
             {
                 _logger.LogInformation("Shutting down language worker channel for runtime:{runtime}", runtime);
-                if (_workerChannels[runtime] != null)
-                {
-                    _workerChannels[runtime].Dispose();
-                }
+                _workerChannels[runtime]?.Dispose();
             }
             _workerChannels.Clear();
 
             foreach (string runtime in _workerProcesses.Keys.ToList())
             {
                 _logger.LogInformation("Shutting down language worker process for runtime:{runtime}", runtime);
-                if (_workerProcesses[runtime] != null)
-                {
-                    _workerProcesses[runtime].Dispose();
-                }
+                _workerProcesses[runtime]?.Dispose();
             }
             _workerProcesses.Clear();
             (_processRegistry as IDisposable)?.Dispose();
