@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                .Subscribe(AddOrUpdateWorkerChannels);
         }
 
-        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IObservable<FunctionRegistrationContext> functionRegistrations, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false)
+        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IObservable<FunctionRegistrationContext> functionRegistrations, IMetricsLogger metricsLogger, int attemptCount)
         {
             WorkerConfig languageWorkerConfig = GetWorkerConfig(language);
             return new LanguageWorkerChannel(
@@ -78,8 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                          _rpcServer.Uri,
                          _loggerFactory,
                          metricsLogger,
-                         attemptCount,
-                         isWebhostChannel);
+                         attemptCount);
         }
 
         private WorkerConfig GetWorkerConfig(string language)
@@ -105,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 string workerId = Guid.NewGuid().ToString();
                 _logger.LogInformation("Creating language worker channel for runtime:{runtime}", language);
-                ILanguageWorkerChannel languageWorkerChannel = CreateLanguageWorkerChannel(workerId, scriptRootPath, language, null, null, 0, true);
+                ILanguageWorkerChannel languageWorkerChannel = CreateLanguageWorkerChannel(workerId, scriptRootPath, language, null, null, 0);
 
                 var languageWorkerProcess = StartWorkerProcess(workerId, language, scriptRootPath);
                 _workerProcesses.Add(language, languageWorkerProcess);

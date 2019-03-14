@@ -59,8 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            Uri serverUri,
            ILoggerFactory loggerFactory,
            IMetricsLogger metricsLogger,
-           int attemptCount,
-           bool isWebHostChannel = false)
+           int attemptCount)
         {
             _workerId = workerId;
             _functionRegistrations = functionRegistrations;
