@@ -28,8 +28,7 @@ if (-not $bypassPackaging -and $env:SkipAssemblySigning -ne "true") {
 
   Expand-Archive "$directoryPath/../buildoutput/signed.zip" "$directoryPath/../buildoutput/signed"
 
-  Get-ChildItem "$directoryPath/../buildoutput/signed" | % {
-    Push-AppveyorArtifact $_.FullName
-  }
+  Get-ChildItem buildoutput\signed\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
+
   if (-not $?) { exit 1 }
 }

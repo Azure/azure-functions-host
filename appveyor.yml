@@ -70,6 +70,5 @@ for:
       
       if (-not $bypassPackaging) {
         & .\tools\PollSigningResults.ps1
-        if (-not $?) { exit 1 }
-        Get-ChildItem buildoutput\signed\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
+        if (-not $?) { exit 1 }        
       }
