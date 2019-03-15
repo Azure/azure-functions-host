@@ -53,8 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal List<Exception> Errors { get; set; } = new List<Exception>();
 
-        internal ReplaySubject<FunctionRegistrationContext> Functions { get; set; } = new ReplaySubject<FunctionRegistrationContext>();
-
         internal CreateChannel ChannelFactory
         {
             get
@@ -119,9 +117,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return _workerState;
         }
 
-        public void Register(FunctionRegistrationContext context)
+        public void Register(FunctionMetadata context)
         {
             _workerState.Functions.OnNext(context);
+        }
+
+        public void Invoke(ScriptInvocationContext invocationContext)
+        {
+            _workerState.Channel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
         }
 
         public void WorkerError(WorkerErrorEvent workerError)
@@ -159,10 +162,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 ctx.ResultSource.TrySetException(languageWorkerChannelException);
             });
-            _workerStateSubscriptions.Add(_workerState.Functions.Subscribe(reg =>
+            _workerStateSubscriptions.Add(_workerState.Functions.Subscribe(fm =>
             {
-                _workerState.AddRegistration(reg);
-                reg.InputBuffer.LinkTo(errorBlock);
+                _workerState.Channel.FunctionInputBuffers[fm.FunctionId].LinkTo(errorBlock);
             }));
             _eventManager.Publish(new WorkerProcessErrorEvent(_workerState.Channel.Id, runtime, languageWorkerChannelException));
         }

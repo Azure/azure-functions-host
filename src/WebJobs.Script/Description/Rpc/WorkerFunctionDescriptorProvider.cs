@@ -49,13 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            var inputBuffer = new BufferBlock<ScriptInvocationContext>();
-            _dispatcher.Register(new FunctionRegistrationContext
-            {
-                Metadata = functionMetadata,
-                InputBuffer = inputBuffer
-            });
-            return new WorkerLanguageInvoker(Host, triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, inputBuffer);
+            _dispatcher.Register(functionMetadata);
+            return new WorkerLanguageInvoker(Host, triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, _dispatcher);
         }
 
         protected override async Task<Collection<ParameterDescriptor>> GetFunctionParametersAsync(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,

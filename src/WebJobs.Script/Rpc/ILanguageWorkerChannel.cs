@@ -2,10 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public delegate ILanguageWorkerChannel CreateChannel(string language, IObservable<FunctionRegistrationContext> registrations, int attemptCount);
+    public delegate ILanguageWorkerChannel CreateChannel(string language, IObservable<FunctionMetadata> registrations, int attemptCount);
 
     public interface ILanguageWorkerChannel : IDisposable
     {
@@ -13,9 +16,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         bool IsWebhostChannel { get; }
 
+        IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
+
         WorkerConfig Config { get; }
 
-        void RegisterFunctions(IObservable<FunctionRegistrationContext> functionRegistrations);
+        void RegisterFunctions(IObservable<FunctionMetadata> functionRegistrations);
 
         void SendFunctionEnvironmentReloadRequest();
 

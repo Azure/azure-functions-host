@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                .Subscribe(AddOrUpdateWorkerChannels);
         }
 
-        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IObservable<FunctionRegistrationContext> functionRegistrations, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false)
+        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IObservable<FunctionMetadata> functionRegistrations, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false)
         {
             var languageWorkerConfig = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             if (languageWorkerConfig == null)

@@ -228,14 +228,14 @@ namespace Microsoft.Azure.WebJobs.Script
             await base.CallAsync(method, arguments, cancellationToken);
         }
 
-        internal static void AddLanguageWorkerChannelErrors(IFunctionDispatcher functionDispatcher, IDictionary<string, ICollection<string>> functionErrors, string workerRuntime)
+        internal void AddLanguageWorkerChannelErrors(IFunctionDispatcher functionDispatcher, IDictionary<string, ICollection<string>> functionErrors, string workerRuntime)
         {
                 LanguageWorkerState workerState = functionDispatcher.LanguageWorkerChannelState;
-                foreach (var functionRegistrationContext in workerState.GetRegistrations())
+                foreach (var function in Functions)
                 {
                     var exMessage = $"Failed to start language worker process for: {workerRuntime}";
                     var languageWorkerChannelException = workerState.Errors != null && workerState.Errors.Count > 0 ? new LanguageWorkerChannelException(exMessage, workerState.Errors[workerState.Errors.Count - 1]) : new LanguageWorkerChannelException(exMessage);
-                    Utility.AddFunctionError(functionErrors, functionRegistrationContext.Metadata.Name, Utility.FlattenException(languageWorkerChannelException, includeSource: false));
+                    Utility.AddFunctionError(functionErrors, function.Name, Utility.FlattenException(languageWorkerChannelException, includeSource: false));
                 }
         }
 

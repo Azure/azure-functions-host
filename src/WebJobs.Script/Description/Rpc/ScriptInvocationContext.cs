@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    internal class ScriptInvocationContext
+    public class ScriptInvocationContext
     {
         public FunctionMetadata FunctionMetadata { get; set; }
 

@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private bool _disposed;
         private bool _disposing;
         private bool _isWebHostChannel;
-        private IObservable<FunctionRegistrationContext> _functionRegistrations;
+        private IObservable<FunctionMetadata> _functionRegistrations;
         private WorkerInitResponse _initMessage;
         private string _workerId;
         private Process _process;
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            string workerId,
            string rootScriptPath,
            IScriptEventManager eventManager,
-           IObservable<FunctionRegistrationContext> functionRegistrations,
+           IObservable<FunctionMetadata> functionRegistrations,
            IWorkerProcessFactory processFactory,
            IProcessRegistry processRegistry,
            WorkerConfig workerConfig,
@@ -115,6 +115,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal Process WorkerProcess => _process;
 
         public bool IsWebhostChannel => _isWebHostChannel;
+
+        public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => _functionInputBuffers;
 
         internal void StartProcess()
         {
@@ -298,7 +300,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public void RegisterFunctions(IObservable<FunctionRegistrationContext> functionRegistrations)
+        public void RegisterFunctions(IObservable<FunctionMetadata> functionRegistrations)
         {
             _functionRegistrations = functionRegistrations ?? throw new ArgumentNullException(nameof(functionRegistrations));
             _eventSubscriptions.Add(_functionRegistrations.Subscribe(SendFunctionLoadRequest));
@@ -323,12 +325,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             });
         }
 
-        internal void SendFunctionLoadRequest(FunctionRegistrationContext context)
+        internal void SendFunctionLoadRequest(FunctionMetadata metadata)
         {
-            FunctionMetadata metadata = context.Metadata;
-
             // associate the invocation input buffer with the function
-            _functionInputBuffers[context.Metadata.FunctionId] = context.InputBuffer;
+            _functionInputBuffers[metadata.FunctionId] = new BufferBlock<ScriptInvocationContext>();
 
             // send a load request for the registered function
             FunctionLoadRequest request = new FunctionLoadRequest()
