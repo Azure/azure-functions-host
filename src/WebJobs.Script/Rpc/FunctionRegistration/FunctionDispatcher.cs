@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IEnumerable<WorkerConfig> _workerConfigs;
         private CreateChannel _channelFactory;
         private ILanguageWorkerChannelManager _languageWorkerChannelManager;
-        private LanguageWorkerState _workerState;
+        private LanguageWorkerState _workerState = new LanguageWorkerState();
         private IDisposable _workerErrorSubscription;
         private IList<IDisposable> _workerStateSubscriptions = new List<IDisposable>();
         private ScriptJobHostOptions _scriptOptions;
@@ -90,9 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public void CreateWorkerStateWithExistingChannel(string language, ILanguageWorkerChannel languageWorkerChannel)
         {
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            _workerState = new LanguageWorkerState();
-            _workerState.Channel = languageWorkerChannel;
-            _workerState.Channel.RegisterFunctions(_workerState.Functions);
+            languageWorkerChannel.RegisterFunctions(_workerState.Functions);
         }
 
         public void Initialize(string workerRuntime, IEnumerable<FunctionMetadata> functions)
@@ -115,13 +113,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        private LanguageWorkerState CreateWorkerState(string runtime)
+        private void CreateWorkerState(string runtime)
         {
-            _workerState = new LanguageWorkerState();
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            Tuple<ILanguageWorkerChannel, ILanguageWorkerProcess> workerChannelAndProcess = ChannelFactory(runtime, state.Functions, 0);
-            state.Channel = workerChannelAndProcess.Item1;
-            state.WorkerProcess = workerChannelAndProcess.Item2;
+            Tuple<ILanguageWorkerChannel, ILanguageWorkerProcess> workerChannelAndProcess = ChannelFactory(runtime, _workerState.Functions, 0);
+            _workerState.Channel = workerChannelAndProcess.Item1;
+            _workerState.WorkerProcess = workerChannelAndProcess.Item2;
         }
 
         public void Register(FunctionRegistrationContext context)
@@ -136,9 +133,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             bool isPreInitializedChannel = _languageWorkerChannelManager.ShutdownChannelIfExists(workerError.Language);
             if (!isPreInitializedChannel)
             {
-                    _logger.LogDebug("Disposing errored channel for workerId: {channelId}, for runtime:{language}", erroredWorkerState.Channel.WorkerId, workerError.Language);
-                _workerState.Channel.Dispose();
-                    erroredWorkerState.WorkerProcess.Dispose();
+              _logger.LogDebug("Disposing errored channel for workerId: {channelId}, for runtime:{language}", _workerState.Channel.WorkerId, workerError.Language);
+              _workerState.Channel.Dispose();
+              _workerState.WorkerProcess.Dispose();
             }
             _logger.LogDebug("Restarting worker channel for runtime:{runtime}", workerError.Language);
             RestartWorkerChannel(workerError.Language);
@@ -148,9 +145,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (_workerState.Errors.Count < 3)
             {
-                var newWorkerChannelAndProcess = CreateNewChannelWithExistingWorkerState(runtime, erroredWorkerState);
-                erroredWorkerState.Channel = newWorkerChannelAndProcess.Item1;
-                erroredWorkerState.WorkerProcess = newWorkerChannelAndProcess.Item2;
+                var newWorkerChannelAndProcess = CreateNewChannelWithExistingWorkerState(runtime);
+                _workerState.Channel = newWorkerChannelAndProcess.Item1;
+                _workerState.WorkerProcess = newWorkerChannelAndProcess.Item2;
             }
             else
             {
@@ -172,13 +169,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _workerState.AddRegistration(reg);
                 reg.InputBuffer.LinkTo(errorBlock);
             }));
-            _eventManager.Publish(new WorkerProcessErrorEvent(erroredWorkerState.Channel.WorkerId, runtime, languageWorkerChannelException));
+            _eventManager.Publish(new WorkerProcessErrorEvent(_workerState.Channel.WorkerId, runtime, languageWorkerChannelException));
         }
 
-        private Tuple<ILanguageWorkerChannel, ILanguageWorkerProcess> CreateNewChannelWithExistingWorkerState(string language, LanguageWorkerState erroredWorkerState)
+        private Tuple<ILanguageWorkerChannel, ILanguageWorkerProcess> CreateNewChannelWithExistingWorkerState(string language)
         {
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            return ChannelFactory(language, erroredWorkerState.Functions, erroredWorkerState.Errors.Count);
+            return ChannelFactory(language, _workerState.Functions, _workerState.Errors.Count);
         }
 
         protected virtual void Dispose(bool disposing)
@@ -192,9 +189,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     {
                         subscription.Dispose();
                     }
-                        // TODO #3296 - send WorkerTerminate message to shut down language worker process gracefully (instead of just a killing)
-                        pair.Value.Channel.Dispose();
-                        pair.Value.WorkerProcess.Dispose();
+                    _workerState.Channel?.Dispose();
+                    _workerState.WorkerProcess?.Dispose();
                 }
                 disposedValue = true;
             }
