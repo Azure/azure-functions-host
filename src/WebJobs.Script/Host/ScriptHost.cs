@@ -79,6 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IJobHostContextFactory jobHostContextFactory,
             IConfiguration configuration,
             IDistributedLockManager distributedLockManager,
+            IScriptHostManager scriptHostManager,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IFunctionDispatcher functionDispatcher,
@@ -130,11 +131,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _primaryHostStateProvider = primaryHostStateProvider;
             _bindingProviders = new List<IScriptBindingProvider>(bindingProviders);
             _metadataProvider = metadataProvider;
-            _eventSubscriptions.Add(EventManager.OfType<WorkerProcessErrorEvent>()
-                .Subscribe(evt =>
-                {
-                    HandleHostError(evt.Exception);
-                }));
             _eventSubscriptions.Add(EventManager.OfType<FunctionIndexingEvent>()
                 .Subscribe(evt =>
                 {
@@ -233,21 +229,6 @@ namespace Microsoft.Azure.WebJobs.Script
             await base.CallAsync(method, arguments, cancellationToken);
         }
 
-        internal static void AddLanguageWorkerChannelErrors(IFunctionDispatcher functionDispatcher, IDictionary<string, ICollection<string>> functionErrors)
-        {
-            foreach (KeyValuePair<string, LanguageWorkerState> kvp in functionDispatcher.LanguageWorkerChannelStates)
-            {
-                string language = kvp.Key;
-                LanguageWorkerState workerState = kvp.Value;
-                foreach (var functionRegistrationContext in workerState.GetRegistrations())
-                {
-                    var exMessage = $"Failed to start language worker process for: {language}";
-                    var languageWorkerChannelException = workerState.Errors != null && workerState.Errors.Count > 0 ? new LanguageWorkerChannelException(exMessage, workerState.Errors[workerState.Errors.Count - 1]) : new LanguageWorkerChannelException(exMessage);
-                    Utility.AddFunctionError(functionErrors, functionRegistrationContext.Metadata.Name, Utility.FlattenException(languageWorkerChannelException, includeSource: false));
-                }
-            }
-        }
-
         protected override async Task StartAsyncCore(CancellationToken cancellationToken)
         {
             var ignore = LogInitializationAsync();
@@ -279,10 +260,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions);
 
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, _workerRuntime));
+                if (!_environment.IsPlaceholderModeEnabled())
+                {
+                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, _workerRuntime));
+                }
 
                 // Initialize language worker function dispatcher
-                _functionDispatcher.Initialize(_workerRuntime, functions);
+                await _functionDispatcher.InitializeAsync(functions);
 
                 var directTypes = GetDirectTypes(functions);
                 await InitializeFunctionDescriptorsAsync(functions);
@@ -484,23 +468,14 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            if (string.IsNullOrEmpty(_workerRuntime))
+            _logger.LogDebug($"Adding Function descriptor provider for language {_workerRuntime}.");
+            if (string.Equals(_workerRuntime, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogDebug("Adding Function descriptor providers for all languages.");
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
-                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
             }
             else
             {
-                _logger.LogDebug($"Adding Function descriptor provider for language {_workerRuntime}.");
-                if (string.Equals(_workerRuntime, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-                {
-                    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
-                }
-                else
-                {
-                    _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
-                }
+                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
             }
 
             Collection<FunctionDescriptor> functions;
@@ -795,10 +770,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Also notify the invoker so the error can also be written to the function
                 // log file
                 NotifyInvoker(functionException.MethodName, functionException);
-            }
-            else if (exception is LanguageWorkerChannelException)
-            {
-                AddLanguageWorkerChannelErrors(_functionDispatcher, FunctionErrors);
             }
             else
             {

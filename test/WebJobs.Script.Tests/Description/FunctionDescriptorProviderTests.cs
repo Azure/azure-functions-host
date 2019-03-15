@@ -22,13 +22,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class FunctionDescriptorProviderTests : IDisposable
     {
         private readonly FunctionDescriptorProvider _provider;
-        private readonly ScriptHost _host;
+        private readonly ScriptHost _scriptHost;
+        private readonly IHost _host;
 
         public FunctionDescriptorProviderTests()
         {
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node");
 
-            var host = new HostBuilder()
+            _host = new HostBuilder()
                 .ConfigureDefaultTestWebScriptHost(webJobsBuilder =>
                 {
                     webJobsBuilder.AddAzureStorage();
@@ -39,9 +40,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
                 })
                 .Build();
-            _host = host.GetScriptHost();
-            _host.InitializeAsync().GetAwaiter().GetResult();
-            _provider = new TestDescriptorProvider(_host, host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value, host.Services.GetService<ICollection<IScriptBindingProvider>>());
+            _scriptHost = _host.GetScriptHost();
+            _scriptHost.InitializeAsync().GetAwaiter().GetResult();
+            _provider = new TestDescriptorProvider(_scriptHost, _host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value, _host.Services.GetService<ICollection<IScriptBindingProvider>>());
         }
 
         [Fact]

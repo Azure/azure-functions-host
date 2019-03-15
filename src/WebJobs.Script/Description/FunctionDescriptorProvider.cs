@@ -217,8 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected static void ApplyMethodLevelAttributes(FunctionMetadata functionMetadata, BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes)
         {
-            if (string.Compare("httptrigger", triggerMetadata.Type, StringComparison.OrdinalIgnoreCase) == 0 ||
-                string.Compare("manualtrigger", triggerMetadata.Type, StringComparison.OrdinalIgnoreCase) == 0)
+            if (Utility.IsHttporManualTrigger(triggerMetadata.Type))
             {
                 // the function can be run manually, but there will be no automatic
                 // triggering

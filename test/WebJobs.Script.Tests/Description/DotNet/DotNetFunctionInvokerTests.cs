@@ -31,8 +31,11 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class DotNetFunctionInvokerTests
+    public class DotNetFunctionInvokerTests : IDisposable
     {
+        private IHost _host;
+        private ScriptHost _scriptHost;
+
         public static IEnumerable<object[]> CompilationEnvironment
         {
             get
@@ -445,13 +448,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 hostBuilder.ConfigureServices(configureServices);
             }
 
-            var host = hostBuilder.Build();
+            _host = hostBuilder.Build();
 
-            var scriptHost = host.GetScriptHost();
+            _scriptHost = _host.GetScriptHost();
 
             return new RunDependencies
             {
-                Host = scriptHost,
+                Host = _scriptHost,
                 EntrypointResolver = entrypointResolver,
                 Compilation = compilation,
                 CompilationService = compilationService,
@@ -460,6 +463,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 LoggerFactory = loggerFactory,
                 MetricsLogger = metricsLogger
             };
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _scriptHost?.Dispose();
+                _host?.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
         }
 
         private class RunDependencies

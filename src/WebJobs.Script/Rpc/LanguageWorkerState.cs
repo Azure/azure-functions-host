@@ -2,38 +2,49 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reactive.Subjects;
+using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public class LanguageWorkerState
     {
         private object _lock = new object();
-        private IList<FunctionRegistrationContext> _registrations = new List<FunctionRegistrationContext>();
 
-        internal ILanguageWorkerChannel Channel { get; set; }
+        private ConcurrentDictionary<string, ILanguageWorkerChannel> _channels = new ConcurrentDictionary<string, ILanguageWorkerChannel>();
 
-        internal List<Exception> Errors { get; set; } = new List<Exception>();
+        internal ConcurrentBag<Exception> Errors { get; set; } = new ConcurrentBag<Exception>();
 
         // Registered list of functions which can be replayed if the worker fails to start / errors
-        internal ReplaySubject<FunctionRegistrationContext> Functions { get; set; } = new ReplaySubject<FunctionRegistrationContext>();
+        internal ReplaySubject<FunctionMetadata> Functions { get; set; } = new ReplaySubject<FunctionMetadata>();
 
-        internal void AddRegistration(FunctionRegistrationContext registration)
+        internal void AddChannel(ILanguageWorkerChannel channel)
         {
-            lock (_lock)
+            _channels.TryAdd(channel.Id, channel);
+        }
+
+        internal void DisposeAndRemoveChannel(ILanguageWorkerChannel channel)
+        {
+            if (_channels.TryRemove(channel.Id, out ILanguageWorkerChannel removedChannel))
             {
-                _registrations.Add(registration);
+                channel?.Dispose();
             }
         }
 
-        internal IEnumerable<FunctionRegistrationContext> GetRegistrations()
+        internal void DisposeAndRemoveChannels()
         {
-            lock (_lock)
+            foreach (string channelId in _channels.Keys)
             {
-                return _registrations.ToList();
+                _channels[channelId].Dispose();
             }
+            _channels.Clear();
+        }
+
+        internal IEnumerable<ILanguageWorkerChannel> GetChannels()
+        {
+            return _channels.Values;
         }
     }
 }

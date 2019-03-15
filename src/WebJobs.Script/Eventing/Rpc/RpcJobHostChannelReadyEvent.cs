@@ -6,13 +6,9 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
-    /// <summary>
-    /// RpcWebHostChannelReadyEvent is published when a language worker channel is started at the
-    /// Webhost/Application level. LanguageWorkerChannelManager keeps track that channel created
-    /// </summary>
-    internal class RpcWebHostChannelReadyEvent : RpcChannelReadyEvent
+    internal class RpcJobHostChannelReadyEvent : RpcChannelReadyEvent
     {
-        internal RpcWebHostChannelReadyEvent(string id, string language, ILanguageWorkerChannel languageWorkerChannel,
+        internal RpcJobHostChannelReadyEvent(string id, string language, ILanguageWorkerChannel languageWorkerChannel,
             string version, IDictionary<string, string> capabilities)
             : base(id, language, languageWorkerChannel, version, capabilities)
         {

@@ -13,8 +13,10 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class DotNetFunctionDescriptorProviderTests
+    public class DotNetFunctionDescriptorProviderTests : IDisposable
     {
+        private IHost _host;
+
         [Fact]
         public void TryCreateReturnValueParameterDescriptor_ReturnBindingPresent_ReturnsExpectedValue()
         {
@@ -25,11 +27,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "direction", "out" },
                 { "path", "foo/bar" }
             };
-            var host = new HostBuilder().ConfigureDefaultTestWebScriptHost(b =>
+
+            _host = new HostBuilder().ConfigureDefaultTestWebScriptHost(b =>
             {
                 b.AddAzureStorage();
             }).Build();
-            FunctionBinding functionBinding = TestHelpers.CreateBindingFromHost(host, json);
+
+            FunctionBinding functionBinding = TestHelpers.CreateBindingFromHost(_host, json);
             FunctionBinding[] bindings = new FunctionBinding[] { functionBinding };
 
             ParameterDescriptor descriptor = null;
@@ -67,6 +71,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ParameterDescriptor descriptor = null;
             var result = DotNetFunctionDescriptorProvider.TryCreateReturnValueParameterDescriptor(typeof(void), bindings, out descriptor);
             Assert.False(result);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _host?.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
         }
     }
 }

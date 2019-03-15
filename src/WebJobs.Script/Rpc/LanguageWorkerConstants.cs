@@ -6,6 +6,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     public static class LanguageWorkerConstants
     {
         public const string FunctionWorkerRuntimeSettingName = "FUNCTIONS_WORKER_RUNTIME";
+        public const string FunctionsWorkerProcessCountSettingName = "FUNCTIONS_WORKER_PROCESS_COUNT";
         public const string DotNetLanguageWorkerName = "dotnet";
         public const string NodeLanguageWorkerName = "node";
         public const string JavaLanguageWorkerName = "java";

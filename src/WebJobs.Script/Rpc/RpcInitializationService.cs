@@ -26,10 +26,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             LanguageWorkerConstants.JavaLanguageWorkerName
         };
 
-        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, ILanguageWorkerChannelManager languageWorkerChannelManager, ILoggerFactory loggerFactory)
+        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, ILanguageWorkerChannelManager languageWorkerChannelManager, ILogger<RpcInitializationService> logger)
         {
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryRpcInitializationService);
+            _logger = logger;
             _rpcServer = rpcServer;
             _environment = environment;
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
@@ -50,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _logger.LogInformation("Shuttingdown Rpc Channels Manager");
             _languageWorkerChannelManager.ShutdownChannels();
+            _languageWorkerChannelManager.ShutdownProcessRegistry();
             await _rpcServer.KillAsync();
         }
 

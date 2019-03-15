@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
@@ -11,8 +12,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
-
-using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
@@ -54,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
-        public void CreateChannel_Succeeds()
+        public void CreateChannels_Succeeds()
         {
             _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor, null);
             string workerId = Guid.NewGuid().ToString();
@@ -62,8 +61,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(workerId, language);
             var initializedChannel = _languageWorkerChannelManager.GetChannel(language);
+            string javaWorkerId2 = Guid.NewGuid().ToString();
+            ILanguageWorkerChannel javaWorkerChannel2 = CreateTestChannel(javaWorkerId2, LanguageWorkerConstants.JavaLanguageWorkerName);
+
             Assert.NotNull(initializedChannel);
             Assert.Equal(workerId, initializedChannel.Id);
+            Assert.Equal(_languageWorkerChannelManager.GetChannels(LanguageWorkerConstants.JavaLanguageWorkerName).Count(), 2);
         }
 
         [Fact]
@@ -81,6 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _languageWorkerChannelManager.ScheduleShutdownStandbyChannels();
             var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
             Assert.Null(initializedChannel);
+            Assert.Null(_languageWorkerChannelManager.GetChannels(LanguageWorkerConstants.NodeLanguageWorkerName));
             initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.NotNull(initializedChannel);
             Assert.Equal(javaWorkerId, initializedChannel.Id);
@@ -118,8 +122,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             // Shutdown
             _languageWorkerChannelManager.ShutdownChannels();
+            Assert.Null(_languageWorkerChannelManager.GetChannels(LanguageWorkerConstants.JavaLanguageWorkerName));
+            Assert.Null(_languageWorkerChannelManager.GetChannels(LanguageWorkerConstants.NodeLanguageWorkerName));
 
-            //Verify disposed
+            // Verify disposed
             var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
             Assert.Null(initializedChannel);
             initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
@@ -136,22 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             string javaWorkerId = Guid.NewGuid().ToString();
             ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(javaWorkerId, LanguageWorkerConstants.JavaLanguageWorkerName);
 
-            FunctionMetadata funcJs1 = new FunctionMetadata()
-            {
-                Name = "funcJs1",
-                Language = "node"
-            };
-            FunctionMetadata funcCS1 = new FunctionMetadata()
-            {
-                Name = "funcCS1",
-                Language = "csharp"
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                funcJs1, funcCS1
-            };
-
-            _languageWorkerChannelManager.ShutdownStandbyChannels(functionsList);
+            _languageWorkerChannelManager.ScheduleShutdownStandbyChannels();
 
             var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
@@ -166,75 +157,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             string javaWorkerId = Guid.NewGuid().ToString();
             ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(javaWorkerId, LanguageWorkerConstants.JavaLanguageWorkerName);
 
-            FunctionMetadata funcJs1 = new FunctionMetadata()
-            {
-                Name = "funcJs1",
-                Language = "node"
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                funcJs1
-            };
-
-            _languageWorkerChannelManager.ShutdownStandbyChannels(functionsList);
+            _languageWorkerChannelManager.ShutdownChannels();
 
             var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
         }
 
         [Fact]
-        public void ShutdownStandbyChannels_WithProxy_WorkerRuntime_Set()
-        {
-            _testEnvironment = new TestEnvironment();
-            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
-            _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor, null);
-            string javaWorkerId = Guid.NewGuid().ToString();
-            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(javaWorkerId, LanguageWorkerConstants.JavaLanguageWorkerName);
-
-            FunctionMetadata funcJS1 = new FunctionMetadata()
-            {
-                Name = "funcJS1",
-                Language = "node"
-            };
-            FunctionMetadata proxy1 = new FunctionMetadata()
-            {
-                Name = "funcproxy1",
-                IsProxy = true
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                proxy1, funcJS1
-            };
-
-            _languageWorkerChannelManager.ShutdownStandbyChannels(functionsList);
-
-            var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
-            Assert.Null(initializedChannel);
-        }
-
-        [Fact]
-        public void ShutdownStandbyChannels_OnlyProxies()
+        public void ShutdownChannelsIfExist_Succeeds()
         {
             _testEnvironment = new TestEnvironment();
             _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor, null);
-            string javaWorkerId = Guid.NewGuid().ToString();
-            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(javaWorkerId, LanguageWorkerConstants.JavaLanguageWorkerName);
+            string javaWorkerId1 = Guid.NewGuid().ToString();
+            ILanguageWorkerChannel javaWorkerChannel1 = CreateTestChannel(javaWorkerId1, LanguageWorkerConstants.JavaLanguageWorkerName);
 
-            FunctionMetadata proxy1 = new FunctionMetadata()
-            {
-                Name = "funcproxy1",
-                IsProxy = true
-            };
-            FunctionMetadata proxy2 = new FunctionMetadata()
-            {
-                Name = "funcproxy2",
-                IsProxy = true
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                proxy2, proxy1
-            };
-            _languageWorkerChannelManager.ShutdownStandbyChannels(functionsList);
+            string javaWorkerId2 = Guid.NewGuid().ToString();
+            ILanguageWorkerChannel javaWorkerChannel2 = CreateTestChannel(javaWorkerId2, LanguageWorkerConstants.JavaLanguageWorkerName);
+
+            _languageWorkerChannelManager.ShutdownChannelIfExists(LanguageWorkerConstants.JavaLanguageWorkerName, javaWorkerId1);
+            _languageWorkerChannelManager.ShutdownChannelIfExists(LanguageWorkerConstants.JavaLanguageWorkerName, javaWorkerId2);
+
+            Assert.Empty(_languageWorkerChannelManager.GetChannels(LanguageWorkerConstants.JavaLanguageWorkerName));
 
             var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
@@ -242,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         private ILanguageWorkerChannel CreateTestChannel(string workerId, string language)
         {
-            var testChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(workerId, _scriptRootPath, language, null, null, 0, false, null);
+            var testChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(workerId, _scriptRootPath, language, null, 0, false, null);
             // Generate event to mock language worker response
             RpcWebHostChannelReadyEvent javaReadyEvent = new RpcWebHostChannelReadyEvent(workerId, language, testChannel, "testVersion", _capabilities);
             _eventManager.Publish(javaReadyEvent);

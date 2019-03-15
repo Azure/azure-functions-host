@@ -542,6 +542,16 @@ namespace Microsoft.Azure.WebJobs.Script
             return false;
         }
 
+        public static bool IsHttporManualTrigger(string triggerType)
+        {
+            if (string.Compare("httptrigger", triggerType, StringComparison.OrdinalIgnoreCase) == 0 ||
+                string.Compare("manualtrigger", triggerType, StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                return true;
+            }
+            return false;
+        }
+
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
         {
             public override bool CanWrite => true;
