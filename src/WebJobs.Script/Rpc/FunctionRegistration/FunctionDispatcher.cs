@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
@@ -26,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IEnumerable<WorkerConfig> _workerConfigs;
         private CreateChannel _channelFactory;
         private ILanguageWorkerChannelManager _languageWorkerChannelManager;
-        private LanguageWorkerState _workerState;
+        private LanguageWorkerState _workerState = new LanguageWorkerState();
         private IDisposable _workerErrorSubscription;
         private IList<IDisposable> _workerStateSubscriptions = new List<IDisposable>();
         private ScriptJobHostOptions _scriptOptions;
@@ -89,7 +88,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public void CreateWorkerStateWithExistingChannel(string language, ILanguageWorkerChannel languageWorkerChannel)
         {
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            _workerState = new LanguageWorkerState();
             _workerState.Channel = languageWorkerChannel;
             _workerState.Channel.RegisterFunctions(_workerState.Functions);
         }
@@ -116,7 +114,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private LanguageWorkerState CreateWorkerState(string runtime)
         {
-            _workerState = new LanguageWorkerState();
             WorkerConfig config = _workerConfigs.Where(c => c.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             _workerState.Channel = ChannelFactory(runtime, _workerState.Functions, 0);
             return _workerState;
