@@ -12,14 +12,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class FunctionDispatcherEndToEndTests : IClassFixture<FunctionDispatcherEndToEndTests.TestFixture>
     {
-        private IDictionary<string, LanguageWorkerState> _channelStates;
+        private LanguageWorkerState _channelState;
         private LanguageWorkerChannel _nodeWorkerChannel;
         private string _functionName = "HttpTrigger";
 
         public FunctionDispatcherEndToEndTests(TestFixture fixture)
         {
             Fixture = fixture;
-            _channelStates = Fixture.JobHost.FunctionDispatcher.LanguageWorkerChannelStates;
+            _channelState = Fixture.JobHost.FunctionDispatcher.LanguageWorkerChannelState;
             _nodeWorkerChannel = GetCurrentWorkerChannel();
         }
 
@@ -63,8 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private LanguageWorkerChannel GetCurrentWorkerChannel()
         {
-            var nodeWorkerChannels = _channelStates.Where(w => w.Key.Equals(LanguageWorkerConstants.NodeLanguageWorkerName));
-            return (LanguageWorkerChannel)nodeWorkerChannels.FirstOrDefault().Value.Channel;
+            return (LanguageWorkerChannel)_channelState.Channel;
         }
 
         private bool FunctionErrorsAdded()
