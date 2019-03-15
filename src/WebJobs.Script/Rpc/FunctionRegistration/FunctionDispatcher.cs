@@ -191,7 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                     // TODO #3296 - send WorkerTerminate message to shut down language worker process gracefully (instead of just a killing)
                     // WebhostLanguageWorkerChannels life time is managed by LanguageWorkerChannelManager
-                    if (!_workerState.Channel.IsWebhostChannel)
+                    if (_workerState.Channel != null && !_workerState.Channel.IsWebhostChannel)
                     {
                         _workerState.Channel.Dispose();
                     }
