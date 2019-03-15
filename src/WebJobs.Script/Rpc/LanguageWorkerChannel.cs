@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private string _workerId;
         private Process _process;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
-        private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new Dictionary<string, BufferBlock<ScriptInvocationContext>>();
+        private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IObservable<InboundEvent> _inboundWorkerEvents;
@@ -52,6 +52,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDisposable _startSubscription;
         private IDisposable _startLatencyMetric;
         private Uri _serverUri;
+
+        private static object _functionLoadResponseLock = new object();
 
         internal LanguageWorkerChannel()
         {
@@ -355,17 +357,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void LoadResponse(FunctionLoadResponse loadResponse)
         {
-            if (loadResponse.Result.IsFailure(out Exception ex))
+            lock (_functionLoadResponseLock)
             {
-                //Cache function load errors to replay error messages on invoking failed functions
-                _functionLoadErrors[loadResponse.FunctionId] = ex;
+                if (loadResponse.Result.IsFailure(out Exception ex))
+                {
+                    //Cache function load errors to replay error messages on invoking failed functions
+                    _functionLoadErrors[loadResponse.FunctionId] = ex;
+                }
+                // associate the invocation input buffer with the function
+                _functionInputBuffers[loadResponse.FunctionId] = new BufferBlock<ScriptInvocationContext>();
+                // link the invocation inputs to the invoke call
+                var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequest(ctx));
+                var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
+                _inputLinks.Add(disposableLink);
             }
-            // associate the invocation input buffer with the function
-            _functionInputBuffers[loadResponse.FunctionId] = new BufferBlock<ScriptInvocationContext>();
-            // link the invocation inputs to the invoke call
-            var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequest(ctx));
-            var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
-            _inputLinks.Add(disposableLink);
         }
 
         internal void SendInvocationRequest(ScriptInvocationContext context)
