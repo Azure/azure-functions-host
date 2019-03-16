@@ -163,7 +163,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     AddCommonServices(services);
                 }
 
+                services.AddSingleton<IFuncAppFileAugmentorFactory, FuncAppFileAugmentorFactory>();
                 // Hosted services
+                services.AddSingleton<IHostedService, AppFileAugmentationService>();
                 services.AddSingleton<IHostedService, LanguageWorkerConsoleLogService>();
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
             });
