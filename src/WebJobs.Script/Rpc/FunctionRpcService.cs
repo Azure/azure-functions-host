@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IScriptEventManager _eventManager;
         private readonly ILogger _logger;
+        private readonly SemaphoreSlim _writeSemaphore = new SemaphoreSlim(1, 1);
 
         public FunctionRpcService(IScriptEventManager eventManager, ILoggerFactory loggerFactory)
         {
@@ -27,10 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionRpcService);
         }
 
-        public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
+        public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IAsyncStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
         {
             var cancelSource = new TaskCompletionSource<bool>();
             IDisposable outboundEventSubscription = null;
+
             try
             {
                 context.CancellationToken.Register(() => cancelSource.TrySetResult(false));
@@ -53,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         {
                             try
                             {
+                                await _writeSemaphore.WaitAsync();
                                 // WriteAsync only allows one pending write at a time
                                 // For each responseStream subscription, observe as a blocking write, in series, on a new thread
                                 // Alternatives - could wrap responseStream.WriteAsync with a SemaphoreSlim to control concurrent access
@@ -61,6 +64,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             catch (Exception subscribeEventEx)
                             {
                                 _logger.LogError(subscribeEventEx, "Error reading message from Rpc channel");
+                            }
+                            finally
+                            {
+                                _writeSemaphore.Release();
                             }
                         });
 
