@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFunctionRpcService);
         }
 
-        public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IAsyncStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
+        public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
         {
             var cancelSource = new TaskCompletionSource<bool>();
             IDisposable outboundEventSubscription = null;
