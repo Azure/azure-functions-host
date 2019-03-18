@@ -330,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void SendFunctionLoadRequest(FunctionMetadata metadata)
         {
             // associate the invocation input buffer with the function
-            _functionInputBuffers[loadResponse.FunctionId] = new BufferBlock<ScriptInvocationContext>();
+            _functionInputBuffers[metadata.FunctionId] = new BufferBlock<ScriptInvocationContext>();
 
             // send a load request for the registered function
             FunctionLoadRequest request = new FunctionLoadRequest()
