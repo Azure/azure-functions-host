@@ -16,8 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
         public static IEnumerable<object[]> GetMetricEvents()
         {
-            yield return new object[] { "C37E3412-86D1-4B93-BC5A-A2AE09D26C2D", "TestApp", "TestFunction", "TestEvent", 15, 2, 18, 5 };
-            yield return new object[] { string.Empty, string.Empty, string.Empty, string.Empty, 0, 0, 0, 0 };
+            yield return new object[] { "C37E3412-86D1-4B93-BC5A-A2AE09D26C2D", "TestApp", "TestFunction", "TestEvent", 15, 2, 18, 5, "TestData" };
+            yield return new object[] { string.Empty, string.Empty, string.Empty, string.Empty, 0, 0, 0, 0, string.Empty };
         }
 
         public static IEnumerable<object[]> GetLogEvents()

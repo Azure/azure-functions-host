@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         /// <param name="eventName">The event name.</param>
         /// <param name="functionName">Optional function name for function specific events.</param>
         /// <returns>A handle to the event that was started.</returns>
-        object BeginEvent(string eventName, string functionName = null);
+        object BeginEvent(string eventName, string functionName = null, string data = null);
 
         /// <summary>
         /// Begins an event.
@@ -46,6 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         /// </summary>
         /// <param name="eventName">The event name.</param>
         /// <param name="functionName">Optional function name for function specific events.</param>
-        void LogEvent(string eventName, string functionName = null);
+        void LogEvent(string eventName, string functionName = null, string data = null);
     }
 }

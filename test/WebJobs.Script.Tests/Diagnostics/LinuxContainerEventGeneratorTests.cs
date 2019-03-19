@@ -93,9 +93,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
         [Theory]
         [MemberData(nameof(LinuxEventGeneratorTestData.GetMetricEvents), MemberType = typeof(LinuxEventGeneratorTestData))]
-        public void ParseMetricEvents(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count)
+        public void ParseMetricEvents(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, string data)
         {
-            _generator.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, DateTime.Now);
+            _generator.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, DateTime.Now, data);
 
             string evt = _events.Single();
             evt = JsonSerializeEvent(evt);
@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
-            Assert.Equal(11, match.Groups.Count);
+            Assert.Equal(12, match.Groups.Count);
 
             DateTime dt;
             var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
@@ -118,7 +118,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(maximum, long.Parse(p)),
                 p => Assert.Equal(count, long.Parse(p)),
                 p => Assert.Equal(ScriptHost.Version, p),
-                p => Assert.True(DateTime.TryParse(p, out dt)));
+                p => Assert.True(DateTime.TryParse(p, out dt)),
+                p => Assert.Equal(data, p));
         }
 
         [Theory]

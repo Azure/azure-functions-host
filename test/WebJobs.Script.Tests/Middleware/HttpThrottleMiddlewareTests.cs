@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _functionDescriptor = new FunctionDescriptor("Test", null, null, new Collection<ParameterDescriptor>(), null, null, null);
             _scriptHost = new Mock<IScriptJobHost>(MockBehavior.Strict);
             _metricsLogger = new Mock<IMetricsLogger>(MockBehavior.Strict);
-            _metricsLogger.Setup(p => p.LogEvent(MetricEventNames.FunctionInvokeThrottled, null)).Callback(() =>
+            _metricsLogger.Setup(p => p.LogEvent(MetricEventNames.FunctionInvokeThrottled, null, null)).Callback(() =>
             {
                 Interlocked.Increment(ref _throttleMetricCount);
             });

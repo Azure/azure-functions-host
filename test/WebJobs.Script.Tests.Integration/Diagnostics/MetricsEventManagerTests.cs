@@ -56,8 +56,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     It.IsAny<long>(),
                     It.IsAny<long>(),
                     It.IsAny<long>(),
-                    It.IsAny<DateTime>()))
-                .Callback((string subscriptionId, string appName, string functionName, string eventName, long average, long min, long max, long count, DateTime eventTimestamp) =>
+                    It.IsAny<DateTime>(),
+                    It.IsAny<string>()))
+                .Callback((string subscriptionId, string appName, string functionName, string eventName, long average, long min, long max, long count, DateTime eventTimestamp, string data) =>
                 {
                     var evt = new SystemMetricEvent
                     {
@@ -66,7 +67,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         Average = average,
                         Minimum = min,
                         Maximum = max,
-                        Count = count
+                        Count = count,
+                        Data = data
                     };
                     _events.Add(evt);
                 });
@@ -311,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _metricsLogger.LogEvent("Event4", "Function2");
             _metricsLogger.LogEvent("Event5", "Function1");
             _metricsLogger.LogEvent("Event5", "Function1");
-            _metricsLogger.LogEvent("Event5", "Function2");
+            _metricsLogger.LogEvent("Event5", "Function2", "TestData1");
             await Task.Delay(25);
             _metricsLogger.EndEvent(eventHandle);
 
@@ -321,7 +323,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             latencyEvent = _metricsLogger.BeginEvent("Event6", "Function1");
             await Task.Delay(25);
             _metricsLogger.EndEvent(latencyEvent);
-            latencyEvent = _metricsLogger.BeginEvent("Event6", "Function2");
+            latencyEvent = _metricsLogger.BeginEvent("Event6", "Function2", "TestData2");
             await Task.Delay(25);
             _metricsLogger.EndEvent(latencyEvent);
 
@@ -352,9 +354,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             evt = _events.Single(p => p.EventName == "event5" && p.FunctionName == "Function1");
             Assert.Equal(2, evt.Count);
+            Assert.Equal(evt.Data, string.Empty);
 
             evt = _events.Single(p => p.EventName == "event5" && p.FunctionName == "Function2");
             Assert.Equal(1, evt.Count);
+            Assert.Equal(evt.Data, "TestData1");
 
             evt = _events.Single(p => p.EventName == "event6" && p.FunctionName == "Function1");
             Assert.True(evt.Average > 0);
@@ -366,6 +370,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(evt.Average > 0);
             Assert.True(evt.Minimum > 0);
             Assert.True(evt.Maximum > 0);
+            Assert.Equal(evt.Data, "TestData2");
             Assert.Equal(1, evt.Count);
 
             Assert.Equal(0, _metricsEventManager.QueuedEvents.Count);

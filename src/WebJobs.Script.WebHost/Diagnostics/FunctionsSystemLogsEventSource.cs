@@ -57,14 +57,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        [Event(65524, Level = EventLevel.Informational, Channel = EventChannel.Operational, Version = 4)]
+        [Event(65524, Level = EventLevel.Informational, Channel = EventChannel.Operational, Version = 5)]
         [SuppressMessage("Microsoft.Naming", "CA1709:IdentifiersShouldBeCasedCorrectly")]
         [SuppressMessage("Microsoft.Design", "CA1030:UseEventsWhereAppropriate")]
-        public void LogFunctionMetricEvent(string SubscriptionId, string AppName, string FunctionName, string EventName, long Average, long Minimum, long Maximum, long Count, string HostVersion, string EventTimestamp)
+        public void LogFunctionMetricEvent(string SubscriptionId, string AppName, string FunctionName, string EventName, long Average, long Minimum, long Maximum, long Count, string HostVersion, string EventTimestamp, string Data)
         {
             if (IsEnabled())
             {
-                WriteEvent(65524, SubscriptionId, AppName, FunctionName, EventName, Average, Minimum, Maximum, Count, HostVersion, EventTimestamp);
+                WriteEvent(65524, SubscriptionId, AppName, FunctionName, EventName, Average, Minimum, Maximum, Count, HostVersion, EventTimestamp, Data);
             }
         }
 

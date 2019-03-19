@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         /// </summary>
         public ConcurrentDictionary<string, SystemMetricEvent> QueuedEvents { get; }
 
-        public object BeginEvent(string eventName, string functionName = null)
+        public object BeginEvent(string eventName, string functionName = null, string data = null)
         {
             if (string.IsNullOrEmpty(eventName))
             {
@@ -57,7 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 FunctionName = functionName,
                 EventName = eventName.ToLowerInvariant(),
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow,
+                Data = data
             };
         }
 
@@ -91,7 +92,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                             Minimum = latencyMS,
                             Maximum = latencyMS,
                             Average = latencyMS,
-                            Count = 1
+                            Count = 1,
+                            Data = evt.Data
                         };
                     },
                     (name, evtToUpdate) =>
@@ -109,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        public void LogEvent(string eventName, string functionName = null)
+        public void LogEvent(string eventName, string functionName = null, string data = null)
         {
             if (string.IsNullOrEmpty(eventName))
             {
@@ -126,7 +128,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     {
                         FunctionName = functionName,
                         EventName = eventName.ToLowerInvariant(),
-                        Count = 1
+                        Count = 1,
+                        Data = data
                     };
                 },
                 (name, evtToUpdate) =>
@@ -269,7 +272,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     metricEvent.Minimum,
                     metricEvent.Maximum,
                     metricEvent.Count,
-                    metricEvent.Timestamp);
+                    metricEvent.Timestamp,
+                    metricEvent.Data ?? string.Empty);
             }
         }
 
