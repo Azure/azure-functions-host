@@ -2,14 +2,22 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using NuGet.Versioning;
 
-namespace Microsoft.Azure.WebJobs.Script.BindingExtensionBundle
+namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
     public class ExtensionBundleOptions
     {
         public string Id { get; set; }
 
         public VersionRange Version { get; set; }
+
+        public ICollection<string> ProbingPaths { get; private set; } = new Collection<string>();
+
+        public string DownloadPath { get; set; }
+
+        public bool EnsureLatest { get; set; }
     }
 }

@@ -3,7 +3,6 @@
 
 using System;
 using System.IO;
-using Microsoft.Azure.WebJobs.Script.BindingExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
