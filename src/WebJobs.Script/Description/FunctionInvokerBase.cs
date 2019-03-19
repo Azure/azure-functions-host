@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -248,12 +249,23 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             startedEvent.Success = success;
             string eventName = success ? MetricEventNames.FunctionInvokeSucceeded : MetricEventNames.FunctionInvokeFailed;
-            _metrics.LogEvent(eventName, startedEvent.FunctionName);
+            dynamic data = new JObject();
+            data.Language = startedEvent.FunctionMetadata.Language;
+            data.FunctionName = _metadata != null ? _metadata.Name : string.Empty;
+            data.Success = success;
+            string jsonData = data.ToString();
+            startedEvent.Data = jsonData;
+            _metrics.LogEvent(eventName, startedEvent.FunctionName, jsonData);
 
             _metrics.EndEvent(startedEvent);
 
             if (invokeLatencyEvent != null)
             {
+                MetricEvent metricEvent = invokeLatencyEvent as MetricEvent;
+                if (metricEvent != null)
+                {
+                    metricEvent.Data = jsonData;
+                }
                 _metrics.EndEvent(invokeLatencyEvent);
             }
         }

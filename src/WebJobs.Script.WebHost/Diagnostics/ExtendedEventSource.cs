@@ -206,15 +206,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         // LogFunctionMetricEvent
         [NonEvent]
         [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
-        protected void WriteEvent(int eventNum, string a, string b, string c, string d, long e, long f, long g, long h, string i, string j)
+        protected void WriteEvent(int eventNum, string a, string b, string c, string d, long e, long f, long g, long h, string i, string j, string k)
         {
-            int count = 10;
+            int count = 11;
             fixed (char* aPtr = a,
                 bPtr = b,
                 cPtr = c,
                 dPtr = d,
                 iPtr = i,
-                jPtr = j)
+                jPtr = j,
+                kPtr = k)
             {
                 EventData* data = stackalloc EventData[count];
                 data[0].DataPointer = (IntPtr)aPtr;
@@ -237,6 +238,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 data[8].Size = (i.Length + 1) * sizeof(char);
                 data[9].DataPointer = (IntPtr)jPtr;
                 data[9].Size = (j.Length + 1) * sizeof(char);
+                data[10].DataPointer = (IntPtr)kPtr;
+                data[10].Size = (k.Length + 1) * sizeof(char);
 
                 WriteEventCore(eventNum, count, data);
             }

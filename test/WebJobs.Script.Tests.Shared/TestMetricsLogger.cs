@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             MetricEventsBegan.Add(metricEvent);
         }
 
-        public object BeginEvent(string eventName, string functionName = null)
+        public object BeginEvent(string eventName, string functionName = null, string data = null)
         {
             string key = MetricsEventManager.GetAggregateKey(eventName, functionName);
             EventsBegan.Add(key);
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             MetricEventsEnded.Add(metricEvent);
         }
 
-        public void LogEvent(string eventName, string functionName = null)
+        public void LogEvent(string eventName, string functionName = null, string data = null)
         {
             LoggedEvents.Add(MetricsEventManager.GetAggregateKey(eventName, functionName));
         }

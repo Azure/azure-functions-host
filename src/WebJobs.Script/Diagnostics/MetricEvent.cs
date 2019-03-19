@@ -12,5 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public DateTime Timestamp { get; set; }
 
         public TimeSpan Duration { get; set; }
+
+        public string Data { get; set; }
     }
 }

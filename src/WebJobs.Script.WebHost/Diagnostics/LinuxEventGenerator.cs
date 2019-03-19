@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public abstract void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName,
             string eventName, long average,
-            long minimum, long maximum, long count, DateTime eventTimestamp);
+            long minimum, long maximum, long count, DateTime eventTimestamp, string data);
 
         public abstract void LogFunctionExecutionAggregateEvent(string siteName, string functionName,
             long executionTimeInMs,
