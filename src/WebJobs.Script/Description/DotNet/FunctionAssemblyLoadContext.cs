@@ -171,6 +171,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override Assembly Load(AssemblyName assemblyName)
         {
+            if (_sharedContextAssembliesInFallbackLoad.ContainsKey(assemblyName.Name))
+            {
+                // Short circuit the probing logic as we're falling back to the original load
+                // context (from default), so just attempt to load the assembly:
+                var result = LoadCore(assemblyName);
+
+                if (result == null)
+                {
+                    throw new FileNotFoundException($"Could not load file or assembly '{assemblyName}'. The system cannot find the file specified.");
+                }
+
+                return result;
+            }
+
             // Try to load from deps references, if available
             if (TryLoadDepsDependency(assemblyName, out Assembly assembly))
             {
