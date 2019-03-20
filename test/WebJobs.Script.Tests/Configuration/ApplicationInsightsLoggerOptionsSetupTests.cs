@@ -149,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
 
-            Assert.Equal(5, options.SamplingSettings.MaxTelemetryItemsPerSecond);
+            Assert.Equal(20, options.SamplingSettings.MaxTelemetryItemsPerSecond);
         }
 
         [Fact]
