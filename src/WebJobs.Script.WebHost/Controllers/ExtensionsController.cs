@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
@@ -23,11 +24,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     {
         private readonly IExtensionsManager _extensionsManager;
         private readonly ScriptSettingsManager _settingsManager;
+        private readonly IExtensionBundleManager _extensionBundleManager;
 
-        public ExtensionsController(IExtensionsManager extensionsManager, ScriptSettingsManager settingsManager)
+        public ExtensionsController(IExtensionsManager extensionsManager, ScriptSettingsManager settingsManager, IExtensionBundleManager extensionBundleManager)
         {
             _extensionsManager = extensionsManager ?? throw new ArgumentNullException(nameof(extensionsManager));
             _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
+            _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
         }
 
         [HttpGet]
@@ -58,6 +61,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/extensions/{id}")]
         public async Task<IActionResult> Delete(string id)
         {
+            if (_extensionBundleManager.IsExtensionBundleConfigured())
+            {
+                return BadRequest();
+            }
             // TODO: Check if we have an active job
 
             var job = await CreateJob(new ExtensionPackageReference() { Id = id, Version = string.Empty });
@@ -98,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         public async Task<IActionResult> InstallExtension(ExtensionPackageReference package, bool verifyConflict = true)
         {
-            if (package == null)
+            if (package == null || _extensionBundleManager.IsExtensionBundleConfigured())
             {
                 return BadRequest();
             }

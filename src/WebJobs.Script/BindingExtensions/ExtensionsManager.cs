@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
         public async Task AddExtensions(params ExtensionPackageReference[] references)
         {
-            if (!references.Any() || _extensionBundleManager.IsExtensionBundleConfigured())
+            if (!references.Any())
             {
                 return;
             }
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
         public async Task DeleteExtensions(params string[] extensionIds)
         {
-            if (!extensionIds.Any() || _extensionBundleManager.IsExtensionBundleConfigured())
+            if (!extensionIds.Any())
             {
                 return;
             }
