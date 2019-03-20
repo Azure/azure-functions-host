@@ -47,7 +47,10 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 // If it's still null, we want to make sure we initialize it to default values.
                 if (options.SamplingSettings == null)
                 {
-                    options.SamplingSettings = new SamplingPercentageEstimatorSettings();
+                    options.SamplingSettings = new SamplingPercentageEstimatorSettings
+                    {
+                        MaxTelemetryItemsPerSecond = 20
+                    };
                 }
             }
             else
