@@ -1756,7 +1756,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void ApplyApplicationInsightsConfig(JObject configJson, ScriptHostConfiguration scriptConfig)
         {
-            scriptConfig.ApplicationInsightsSamplingSettings = new SamplingPercentageEstimatorSettings();
+            scriptConfig.ApplicationInsightsSamplingSettings = new SamplingPercentageEstimatorSettings
+            {
+                MaxTelemetryItemsPerSecond = 20
+            };
+
             JObject configSection = (JObject)configJson["applicationInsights"];
             JToken value;
             if (configSection != null)
