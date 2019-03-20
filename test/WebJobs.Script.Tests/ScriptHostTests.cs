@@ -1023,7 +1023,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
 
             Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
-            Assert.Equal(5, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
+            Assert.Equal(20, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
         }
 
         [Fact]
@@ -1101,7 +1101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ScriptHost.ApplyApplicationInsightsConfig(config, scriptConfig);
 
             Assert.NotNull(scriptConfig.ApplicationInsightsSamplingSettings);
-            Assert.Equal(5, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
+            Assert.Equal(20, scriptConfig.ApplicationInsightsSamplingSettings.MaxTelemetryItemsPerSecond);
         }
 
         [Fact]
