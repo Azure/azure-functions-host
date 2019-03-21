@@ -22,11 +22,18 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         public void Configure(ApplicationInsightsLoggerOptions options)
         {
+            // Initialize sampling with a non-default MaxTelemetryItemsPerSecond. This will
+            // be removed if sampling is disabled.
+            options.SamplingSettings = new SamplingPercentageEstimatorSettings
+            {
+                MaxTelemetryItemsPerSecond = 20
+            };
+
             // SnapshotConfiguration will be null by default. The presence of a SnapshotConfiguration section in
             // IConfiguration will cause the SnapshotConfiguration to be created and the TelemetryProcessor to be applied.
             _configuration.Bind(options);
 
-            ConfigureSampling(options);
+            ApplySamplingIsEnabled(options);
 
             string quickPulseKey = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsQuickPulseAuthApiKey);
             if (!string.IsNullOrEmpty(quickPulseKey))
@@ -35,25 +42,13 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             }
         }
 
-        private void ConfigureSampling(ApplicationInsightsLoggerOptions options)
+        private void ApplySamplingIsEnabled(ApplicationInsightsLoggerOptions options)
         {
             // Sampling settings do not have a built-in "IsEnabled" value, so we are making our own.
             string samplingPath = nameof(ApplicationInsightsLoggerOptions.SamplingSettings);
             bool samplingEnabled = _configuration.GetSection(samplingPath).GetValue("IsEnabled", true);
 
-            if (samplingEnabled)
-            {
-                // If the config had values set up, the call to Bind() will create this for us.
-                // If it's still null, we want to make sure we initialize it to default values.
-                if (options.SamplingSettings == null)
-                {
-                    options.SamplingSettings = new SamplingPercentageEstimatorSettings
-                    {
-                        MaxTelemetryItemsPerSecond = 20
-                    };
-                }
-            }
-            else
+            if (!samplingEnabled)
             {
                 options.SamplingSettings = null;
             }
