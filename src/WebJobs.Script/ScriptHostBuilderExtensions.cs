@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Configuration;
@@ -58,7 +59,6 @@ namespace Microsoft.Azure.WebJobs.Script
             loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
 
             builder.SetAzureFunctionsConfigurationRoot();
-
             // Host configuration
             builder.ConfigureLogging((context, loggingBuilder) =>
             {
@@ -89,7 +89,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public static IHostBuilder AddScriptHostCore(this IHostBuilder builder, ScriptApplicationHostOptions applicationHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
         {
             var skipHostInitialization = builder.Properties.ContainsKey(ScriptConstants.SkipHostInitializationKey);
-
             builder.ConfigureWebJobs(webJobsBuilder =>
             {
                 // Built in binding registrations
@@ -144,6 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // TODO: pgopa only add this to WebHostServiceCollection
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
                 services.ConfigureOptions<ExtensionBundleOptionsSetup>();
+                services.ConfigureOptions<ManagedDependencyOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
                     .Configure<IConfiguration>((o, c) =>
                     {
@@ -185,7 +185,6 @@ namespace Microsoft.Azure.WebJobs.Script
             services.AddSingleton<IRpcServer, GrpcServer>();
             services.TryAddSingleton<ILanguageWorkerConsoleLogSource, LanguageWorkerConsoleLogSource>();
             services.TryAddSingleton<ILanguageWorkerChannelManager, LanguageWorkerChannelManager>();
-
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);

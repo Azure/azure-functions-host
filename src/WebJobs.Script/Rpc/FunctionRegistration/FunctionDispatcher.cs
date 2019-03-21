@@ -10,6 +10,7 @@ using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -30,13 +31,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IList<IDisposable> _workerStateSubscriptions = new List<IDisposable>();
         private ScriptJobHostOptions _scriptOptions;
         private bool disposedValue = false;
+        private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
 
         public FunctionDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
-            ILanguageWorkerChannelManager languageWorkerChannelManager)
+            ILanguageWorkerChannelManager languageWorkerChannelManager,
+            IOptions<ManagedDependencyOptions> managedDependencyOptions)
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
@@ -47,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);
+            _managedDependencyOptions = managedDependencyOptions;
         }
 
         public IDictionary<string, LanguageWorkerState> LanguageWorkerChannelStates => _workerStates;
@@ -59,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     _channelFactory = (language, registrations, attemptCount) =>
                     {
-                        var languageWorkerChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(Guid.NewGuid().ToString(), _scriptOptions.RootScriptPath, language, registrations, _metricsLogger, attemptCount, false);
+                        var languageWorkerChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(Guid.NewGuid().ToString(), _scriptOptions.RootScriptPath, language, registrations, _metricsLogger, attemptCount, false, _managedDependencyOptions);
                         languageWorkerChannel.StartWorkerProcess();
                         return languageWorkerChannel;
                     };

@@ -12,5 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public const string HealthMonitor = "healthMonitor";
         public const string HostIdPath = WebHost + ":hostid";
         public const string ExtensionBundle = "extensionBundle";
+        public const string ManagedDependency = "managedDependency";
     }
 }
