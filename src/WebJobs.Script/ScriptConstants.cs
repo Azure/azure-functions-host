@@ -96,5 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const int HostTimeoutSeconds = 30;
         public const int HostPollingIntervalMilliseconds = 25;
         public const int MaximumSecretBackupCount = 10;
+
+        public const string AzureWebJobsHostsContainerName = "azure-webjobs-hosts";
     }
 }

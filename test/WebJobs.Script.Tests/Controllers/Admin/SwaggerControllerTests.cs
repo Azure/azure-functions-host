@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
@@ -45,9 +46,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
             _hostMock.Setup(p => p.Functions).Returns(_testFunctions);
             _hostMock.Object.ScriptConfig.SwaggerEnabled = true;
 
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
             WebHostSettings settings = new WebHostSettings();
             settings.SecretsPath = _secretsDirectory.Path;
-            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { _config, new TestSecretManagerFactory(), eventManager.Object, _settingsManager, settings });
+            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { _config, new TestSecretManagerFactory(), eventManager.Object, _settingsManager, settings, loggerFactory });
             _managerMock.SetupGet(p => p.Instance).Returns(_hostMock.Object);
             _swaggerDocumentManagerMock = new Mock<ISwaggerDocumentManager>(MockBehavior.Strict);
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);

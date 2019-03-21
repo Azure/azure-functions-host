@@ -28,7 +28,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public IEnumerable<LogMessage> GetAllLogMessages()
         {
-            return CreatedLoggers.SelectMany(l => l.LogMessages);
+            return CreatedLoggers.SelectMany(l => l.GetLogMessages());
+        }
+
+        public void ClearAllLogMessages()
+        {
+            foreach (TestLogger logger in CreatedLoggers)
+            {
+                logger.ClearLogMessages();
+            }
         }
 
         public void Dispose()

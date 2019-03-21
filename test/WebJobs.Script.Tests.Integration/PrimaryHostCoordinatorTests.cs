@@ -261,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             CloudStorageAccount account = CloudStorageAccount.Parse(accountConnectionString);
             CloudBlobClient client = account.CreateCloudBlobClient();
 
-            var container = client.GetContainerReference(PrimaryHostCoordinator.HostContainerName);
+            var container = client.GetContainerReference(ScriptConstants.AzureWebJobsHostsContainerName);
 
             await container.CreateIfNotExistsAsync();
             CloudBlockBlob blob = container.GetBlockBlobReference(PrimaryHostCoordinator.GetBlobName(hostId));

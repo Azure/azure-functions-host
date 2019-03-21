@@ -1215,7 +1215,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var loggers = loggerProvider.CreatedLoggers.Where(p => p.Category != LogCategories.Startup);
             foreach (var logger in loggers)
             {
-                Assert.Empty(logger.LogMessages);
+                Assert.Empty(logger.GetLogMessages());
             }
         }
 
@@ -1287,7 +1287,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string expectedMessage = $"Host configuration file read:{Environment.NewLine}{hostJson}";
 
             var logger = loggerProvider.CreatedLoggers.Single(l => l.Category == LogCategories.Startup);
-            var logMessage = logger.LogMessages.Single(l => l.FormattedMessage.StartsWith("Host configuration file read")).FormattedMessage;
+            var logMessage = logger.GetLogMessages().Single(l => l.FormattedMessage.StartsWith("Host configuration file read")).FormattedMessage;
             Assert.Equal(expectedMessage, logMessage);
 
             var traceMessage = traceWriter.GetTraces().Single(t => t.Message.StartsWith("Host configuration file read")).Message;

@@ -38,6 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public string RootScriptPath { get; set; }
 
         /// <summary>
+        /// Gets or sets the root path for sample test data.
+        /// </summary>
+        public string TestDataPath { get; set; }
+
+        /// <summary>
         /// Gets or sets the root path for log files.
         /// </summary>
         public string RootLogPath { get; set; }

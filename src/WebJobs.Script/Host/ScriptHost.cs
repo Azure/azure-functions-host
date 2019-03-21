@@ -1084,7 +1084,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionMetadata;
         }
 
-        public static Collection<FunctionMetadata> ReadFunctionMetadata(IEnumerable<string> functionDirectories, TraceWriter traceWriter, ILogger logger, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null)
+        public static Collection<FunctionMetadata> ReadFunctionMetadata(IEnumerable<string> functionDirectories, TraceWriter traceWriter, ILogger logger, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null, IFileSystem fileSystem = null)
         {
             var functions = new Collection<FunctionMetadata>();
             settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
@@ -1093,11 +1093,12 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 string msg = $"A function whitelist has been specified, excluding all but the following functions: [{string.Join(", ", functionWhitelist)}]";
                 traceWriter.Info(msg);
+                logger?.LogInformation(msg);
             }
 
             foreach (var functionDirectory in functionDirectories)
             {
-                var function = ReadFunctionMetadata(functionDirectory, traceWriter, logger, functionErrors, settingsManager, functionWhitelist);
+                var function = ReadFunctionMetadata(functionDirectory, traceWriter, logger, functionErrors, settingsManager, functionWhitelist, fileSystem);
                 if (function != null)
                 {
                     functions.Add(function);
@@ -1107,15 +1108,16 @@ namespace Microsoft.Azure.WebJobs.Script
             return functions;
         }
 
-        public static FunctionMetadata ReadFunctionMetadata(string functionDirectory, TraceWriter traceWriter, ILogger logger, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null)
+        public static FunctionMetadata ReadFunctionMetadata(string functionDirectory, TraceWriter traceWriter, ILogger logger, Dictionary<string, Collection<string>> functionErrors, ScriptSettingsManager settingsManager = null, IEnumerable<string> functionWhitelist = null, IFileSystem fileSystem = null)
         {
+            fileSystem = fileSystem ?? FileUtility.Instance;
             string functionName = null;
 
             try
             {
                 // read the function config
                 string json = null;
-                if (!TryReadFunctionConfig(functionDirectory, out json))
+                if (!TryReadFunctionConfig(functionDirectory, out json, fileSystem))
                 {
                     // not a function directory
                     return null;
@@ -1136,7 +1138,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 string functionError = null;
                 FunctionMetadata functionMetadata = null;
-                if (!TryParseFunctionMetadata(functionName, functionConfig, traceWriter, logger, functionDirectory, settingsManager, out functionMetadata, out functionError))
+                if (!TryParseFunctionMetadata(functionName, functionConfig, traceWriter, logger, functionDirectory, settingsManager, out functionMetadata, out functionError, fileSystem))
                 {
                     // for functions in error, log the error and don't
                     // add to the functions collection

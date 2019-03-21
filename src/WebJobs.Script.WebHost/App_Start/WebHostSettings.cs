@@ -23,6 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public string SecretsPath { get; set; }
 
+        public string TestDataPath { get; set; }
+
         /// <summary>
         /// Gets or sets a value indicating whether authentication/authorization
         /// should be disabled. Useful for local debugging or CLI scenarios.
@@ -46,12 +48,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 settings.ScriptPath = Path.Combine(home, @"site\wwwroot");
                 settings.LogPath = Path.Combine(home, @"LogFiles\Application\Functions");
                 settings.SecretsPath = Path.Combine(home, @"data\Functions\secrets");
+                settings.TestDataPath = Path.Combine(home, @"data\Functions\sampledata");
             }
             else
             {
                 settings.ScriptPath = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebJobsScriptRoot);
                 settings.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
                 settings.SecretsPath = System.Web.HttpContext.Current.Server.MapPath("~/App_Data/Secrets");
+                settings.TestDataPath = System.Web.HttpContext.Current.Server.MapPath("~/App_Data/SampleData");
             }
 
             if (string.IsNullOrEmpty(settings.ScriptPath))

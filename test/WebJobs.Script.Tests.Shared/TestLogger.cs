@@ -3,13 +3,16 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class TestLogger : ILogger
     {
+        private readonly object _syncLock = new object();
         private readonly Func<string, LogLevel, bool> _filter;
+        private IList<LogMessage> _logMessages = new List<LogMessage>();
 
         public TestLogger(string category, Func<string, LogLevel, bool> filter = null)
         {
@@ -18,8 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public string Category { get; private set; }
-
-        public IList<LogMessage> LogMessages { get; } = new List<LogMessage>();
 
         public IDisposable BeginScope<TState>(TState state)
         {
@@ -31,6 +32,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return _filter?.Invoke(Category, logLevel) ?? true;
         }
 
+        public IList<LogMessage> GetLogMessages()
+        {
+            lock (_syncLock)
+            {
+                return _logMessages.ToList();
+            }
+        }
+
+        public void ClearLogMessages()
+        {
+            lock (_syncLock)
+            {
+                _logMessages.Clear();
+            }
+        }
+
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
             if (!IsEnabled(logLevel))
@@ -38,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return;
             }
 
-            LogMessages.Add(new LogMessage
+            var logMessage = new LogMessage
             {
                 Level = logLevel,
                 EventId = eventId,
@@ -46,7 +63,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Exception = exception,
                 FormattedMessage = formatter(state, exception),
                 Category = Category
-            });
+            };
+
+            lock (_syncLock)
+            {
+                _logMessages.Add(logMessage);
+            }
         }
     }
 

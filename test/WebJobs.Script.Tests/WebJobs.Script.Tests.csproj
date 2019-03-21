@@ -575,6 +575,8 @@
     <Compile Include="Handlers\SystemTraceHandlerTests.cs" />
     <Compile Include="IO\AutoRecoveringFileSystemWatcherTests.cs" />
     <Compile Include="IO\FileUtilityTests.cs" />
+    <Compile Include="Management\FunctionsSyncManagerTests.cs" />
+    <Compile Include="Management\WebFunctionsManagerTests.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>

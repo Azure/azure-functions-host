@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
+using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using WebJobs.Script.Tests;
@@ -38,9 +39,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var eventManager = new Mock<IScriptEventManager>();
             Mock<ScriptHost> hostMock = new Mock<ScriptHost>(MockBehavior.Strict, new object[] { environment, eventManager.Object, scriptHostConfiguration, null, null });
 
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
             WebHostSettings settings = new WebHostSettings();
             settings.SecretsPath = _secretsDirectory.Path;
-            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { scriptHostConfiguration, new TestSecretManagerFactory(), eventManager.Object, _settingsManager, settings });
+            _managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new object[] { scriptHostConfiguration, new TestSecretManagerFactory(), eventManager.Object, _settingsManager, settings, loggerFactory });
             _managerMock.SetupGet(p => p.Instance).Returns(hostMock.Object);
             _managerMock.Setup(p => p.EnsureInitialized());
             Mock<IDependencyResolver> mockResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);

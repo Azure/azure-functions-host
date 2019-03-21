@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -31,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private Collection<FunctionDescriptor> _testFunctions;
         private KeysController _testController;
         private Mock<ISecretManager> _secretsManagerMock;
+        private Mock<IFunctionsSyncManager> _functionsSyncManagerMock;
 
         public KeysControllerTests()
         {
@@ -58,7 +60,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "TestFunction2", ScriptConstants.FunctionMetadataFileName))).Returns("{}");
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "DNE", ScriptConstants.FunctionMetadataFileName))).Throws(new DirectoryNotFoundException());
 
-            _testController = new KeysController(settings, _secretsManagerMock.Object, traceWriter, null, fileSystem.Object);
+            _functionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
+            _functionsSyncManagerMock.Setup(p => p.TrySyncTriggersAsync(false)).ReturnsAsync(new SyncTriggersResult { Success = true });
+
+            _testController = new KeysController(settings, _secretsManagerMock.Object, traceWriter, null, fileSystem.Object, _functionsSyncManagerMock.Object);
 
             var keys = new Dictionary<string, string>
             {
@@ -108,6 +113,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = await _testController.Put("DNE", key.Name, key);
             Assert.True(result is NotFoundResult);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
         }
 
         [Fact]
@@ -123,6 +130,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var content = (JObject)result.Content;
             Assert.Equal("key2", content["name"]);
             Assert.Equal("secret2", content["value"]);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Once);
         }
 
         [Fact]
@@ -134,6 +143,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = (StatusCodeResult)(await _testController.Delete("TestFunction1", "key2"));
             Assert.Equal(HttpStatusCode.NoContent, result.StatusCode);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Once);
         }
 
         [Fact]
@@ -141,6 +152,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var result = await _testController.Delete("DNE", "key2");
             Assert.True(result is NotFoundResult);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
         }
 
         [Fact]
@@ -150,6 +163,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = await _testController.Delete("TestFunction1", "dne");
             Assert.True(result is NotFoundResult);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
         }
 
         [Fact]
@@ -157,6 +172,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var result = (BadRequestErrorMessageResult)(await _testController.Delete("TestFunction1", "_test"));
             Assert.Equal("Invalid key name.", result.Message);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
         }
 
         protected virtual void Dispose(bool disposing)

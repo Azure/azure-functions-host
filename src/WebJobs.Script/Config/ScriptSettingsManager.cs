@@ -28,6 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public virtual bool ContainerReady => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady));
 
+        public virtual bool IsCoreToolsEnvironment => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.CoreToolsEnvironment));
+
         public virtual bool ConfigurationReady => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteConfigurationReady));
 
         public string WebsiteSku => GetSetting(EnvironmentSettingNames.AzureWebsiteSku);
@@ -98,6 +100,11 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
 
             return Environment.GetEnvironmentVariable(settingKey);
+        }
+
+        public string GetSettingOrDefault(string settingKey, string defaultValue)
+        {
+            return GetSetting(settingKey) ?? defaultValue;
         }
 
         public virtual void SetSetting(string settingKey, string settingValue)

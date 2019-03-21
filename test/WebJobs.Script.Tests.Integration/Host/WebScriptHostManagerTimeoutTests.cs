@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Logging;
 using Moq;
 using WebJobs.Script.Tests;
 using Xunit;
@@ -81,7 +82,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             };
 
             var mockEventManager = new Mock<IScriptEventManager>();
-            var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(), mockEventManager.Object, ScriptSettingsManager.Instance, new WebHostSettings { SecretsPath = _secretsDirectory.Path });
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+            var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(), mockEventManager.Object, ScriptSettingsManager.Instance, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, loggerFactory);
             Task task = Task.Run(() => { manager.RunAndBlock(); });
             await TestHelpers.Await(() => manager.State == ScriptHostState.Running, userMessageCallback: () => "Expected host to be running");
 

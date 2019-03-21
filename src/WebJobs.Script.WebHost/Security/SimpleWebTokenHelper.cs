@@ -11,6 +11,46 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 {
     internal static class SimpleWebTokenHelper
     {
+        /// <summary>
+        /// A SWT or a Simple Web Token is a token that's made of key=value pairs separated
+        /// by &. We only specify expiration in ticks from now (exp={ticks})
+        /// The SWT is then returned as an encrypted string
+        /// </summary>
+        /// <param name="validUntil">Datetime for when the token should expire</param>
+        /// <param name="key">Optional key to encrypt the token with</param>
+        /// <returns>a SWT signed by this app</returns>
+        public static string CreateToken(DateTime validUntil, byte[] key = null) => Encrypt($"exp={validUntil.Ticks}", key);
+
+        internal static string Encrypt(string value, byte[] key = null)
+        {
+            if (key == null)
+            {
+                TryGetEncryptionKey(EnvironmentSettingNames.WebsiteAuthEncryptionKey, out key);
+            }
+
+            using (var aes = new AesManaged { Key = key })
+            {
+                // IV is always generated for the key every time
+                aes.GenerateIV();
+                var input = Encoding.UTF8.GetBytes(value);
+                var iv = Convert.ToBase64String(aes.IV);
+
+                using (var encrypter = aes.CreateEncryptor(aes.Key, aes.IV))
+                using (var cipherStream = new MemoryStream())
+                {
+                    using (var cryptoStream = new CryptoStream(cipherStream, encrypter, CryptoStreamMode.Write))
+                    using (var binaryWriter = new BinaryWriter(cryptoStream))
+                    {
+                        binaryWriter.Write(input);
+                        cryptoStream.FlushFinalBlock();
+                    }
+
+                    // return {iv}.{swt}.{sha236(key)}
+                    return string.Format("{0}.{1}.{2}", iv, Convert.ToBase64String(cipherStream.ToArray()), GetSHA256Base64String(aes.Key));
+                }
+            }
+        }
+
         public static string Decrypt(byte[] encryptionKey, string value)
         {
             var parts = value.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
@@ -58,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
         public static bool ValidateToken(string token, DateTime dateTime)
         {
             // Use WebSiteAuthEncryptionKey if available.
-            byte[] key = GetEncryptionKey(EnvironmentSettingNames.WebsiteAuthEncryptionKey);
+            TryGetEncryptionKey(EnvironmentSettingNames.WebsiteAuthEncryptionKey, out byte[] key);
 
             var data = Decrypt(key, token);
 
@@ -81,15 +121,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             }
         }
 
-        internal static byte[] GetEncryptionKey(string keyName)
+        public static bool TryGetEncryptionKey(string keyName, out byte[] encryptionKey, bool throwIfFailed = true)
         {
+            encryptionKey = null;
             var hexOrBase64 = Environment.GetEnvironmentVariable(keyName);
             if (string.IsNullOrEmpty(hexOrBase64))
             {
-                throw new InvalidOperationException($"No {keyName} defined in the environment");
+                if (throwIfFailed)
+                {
+                    throw new InvalidOperationException($"No {keyName} defined in the environment");
+                }
+
+                return false;
             }
 
-            return hexOrBase64.ToKeyBytes();
+            encryptionKey = hexOrBase64.ToKeyBytes();
+
+            return true;
         }
 
         public static byte[] ToKeyBytes(this string hexOrBase64)

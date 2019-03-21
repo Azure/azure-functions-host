@@ -320,7 +320,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Same(ex, trace.Exception);
 
             var startupLogger = provider.CreatedLoggers.Last();
-            var loggerMessage = startupLogger.LogMessages.First();
+            var loggerMessage = startupLogger.GetLogMessages().First();
             Assert.Equal(msg, loggerMessage.FormattedMessage);
             Assert.Same(ex, loggerMessage.Exception);
         }
@@ -369,9 +369,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Unable to parse host.json file.", ex.Message);
 
             var logger = loggerProvider.CreatedLoggers.Last();
-            Assert.Equal(3, logger.LogMessages.Count);
-            Assert.StartsWith("A ScriptHost error has occurred", logger.LogMessages[1].FormattedMessage);
-            Assert.Equal("Unable to parse host.json file.", logger.LogMessages[1].Exception.Message);
+            var logMessages = logger.GetLogMessages();
+            Assert.Equal(3, logMessages.Count);
+            Assert.StartsWith("A ScriptHost error has occurred", logMessages[1].FormattedMessage);
+            Assert.Equal("Unable to parse host.json file.", logMessages[1].Exception.Message);
         }
 
         [Fact]

@@ -346,7 +346,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string sanitizedMachineName = Environment.MachineName
                     .Where(char.IsLetterOrDigit)
                     .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString().ToLowerInvariant();
-            Assert.Equal($"{sanitizedMachineName}-789851553", hostId);
+            var hash = Math.Abs(config.RootScriptPath.GetHashCode());
+            Assert.Equal($"{sanitizedMachineName}-{hash}", hostId);
         }
     }
 }

@@ -15,9 +15,11 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
@@ -33,13 +35,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly WebHostSettings _webHostSettings;
         private readonly TraceWriter _traceWriter;
         private readonly ILogger _logger;
+        private readonly IFunctionsSyncManager _functionsSyncManager;
 
-        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, TraceWriter traceWriter, ILoggerFactory loggerFactory)
+        public AdminController(WebScriptHostManager scriptHostManager, WebHostSettings webHostSettings, TraceWriter traceWriter, ILoggerFactory loggerFactory, IFunctionsSyncManager functionsSyncManager)
         {
             _scriptHostManager = scriptHostManager;
             _webHostSettings = webHostSettings;
             _traceWriter = traceWriter.WithDefaults($"{ScriptConstants.TraceSourceHostAdmin}.Api");
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryAdminController);
+            _functionsSyncManager = functionsSyncManager;
         }
 
         [HttpPost]
@@ -204,6 +208,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 }
             }
             return new HttpResponseMessage(HttpStatusCode.NotImplemented);
+        }
+
+        [HttpPost]
+        [Route("admin/host/synctriggers")]
+        public async Task<HttpResponseMessage> SyncTriggers()
+        {
+            var result = await _functionsSyncManager.TrySyncTriggersAsync();
+
+            // Return a dummy body to make it valid in ARM template action evaluation
+            var statusCode = result.Success ? HttpStatusCode.OK : HttpStatusCode.InternalServerError;
+            var responseContent = new JObject
+            {
+                { "status", result.Success ? "success" : result.Error }
+            };
+
+            return Request.CreateResponse(statusCode, responseContent);
         }
 
         [Route("admin/extensions/{name}/{*extra}")]

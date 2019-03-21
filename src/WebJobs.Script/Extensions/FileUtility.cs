@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Text;
@@ -18,6 +19,77 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             get { return _instance ?? _default; }
             set { _instance = value; }
+        }
+
+        public static bool FileExists(string path) => Instance.File.Exists(path);
+
+        public static IEnumerable<string> EnumerateDirectories(string path) => Instance.Directory.EnumerateDirectories(path);
+
+        public static FileInfoBase FileInfoFromFileName(string localFilePath) => Instance.FileInfo.FromFileName(localFilePath);
+
+        public static DirectoryInfoBase DirectoryInfoFromDirectoryName(string localSiteRootPath) => Instance.DirectoryInfo.FromDirectoryName(localSiteRootPath);
+
+        public static void DeleteFileSafe(string path)
+        {
+            try
+            {
+                var info = FileInfoFromFileName(path);
+                DeleteFileSystemInfo(info, ignoreErrors: true);
+            }
+            catch
+            {
+            }
+        }
+
+        private static void DeleteFileSystemInfo(FileSystemInfoBase fileSystemInfo, bool ignoreErrors)
+        {
+            if (!fileSystemInfo.Exists)
+            {
+                return;
+            }
+
+            try
+            {
+                fileSystemInfo.Attributes = FileAttributes.Normal;
+            }
+            catch when (ignoreErrors)
+            {
+            }
+
+            if (fileSystemInfo is DirectoryInfoBase directoryInfo)
+            {
+                DeleteDirectoryContentsSafe(directoryInfo, ignoreErrors);
+            }
+
+            DoSafeAction(fileSystemInfo.Delete, ignoreErrors);
+        }
+
+        private static void DoSafeAction(Action action, bool ignoreErrors)
+        {
+            try
+            {
+                action();
+            }
+            catch when (ignoreErrors)
+            {
+            }
+        }
+
+        private static void DeleteDirectoryContentsSafe(DirectoryInfoBase directoryInfo, bool ignoreErrors)
+        {
+            try
+            {
+                if (directoryInfo.Exists)
+                {
+                    foreach (var fsi in directoryInfo.GetFileSystemInfos())
+                    {
+                        DeleteFileSystemInfo(fsi, ignoreErrors);
+                    }
+                }
+            }
+            catch when (ignoreErrors)
+            {
+            }
         }
 
         public static void EnsureDirectoryExists(string path)

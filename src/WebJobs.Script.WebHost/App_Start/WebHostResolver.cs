@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 using Microsoft.Extensions.Logging;
@@ -55,18 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             else
             {
                 // if there is no active host, return the default logger factory
-                if (_defaultLoggerFactory == null)
-                {
-                    lock (_syncLock)
-                    {
-                        if (_defaultLoggerFactory == null)
-                        {
-                            _defaultLoggerFactory = CreateDefaultLoggerFactory(settings);
-                        }
-                    }
-                }
-                
-                return _defaultLoggerFactory;
+                return GetDefaultLoggerFactory(settings);
             }
         }
 
@@ -112,6 +102,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return GetWebScriptHostManager(settings).SecretManager;
         }
 
+        public IFunctionsSyncManager GetFunctionsSyncManager(WebHostSettings settings)
+        {
+            return GetWebScriptHostManager(settings).FunctionsSyncManager;
+        }
+
         public WebScriptHostManager GetWebScriptHostManager(WebHostSettings settings)
         {
             return GetActiveInstance(settings, ref _activeHostManager, ref _standbyHostManager);
@@ -143,7 +138,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _specializationTimer = null;
 
                         _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
-                        _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings);
+                        var defaultLoggerFactory = GetDefaultLoggerFactory(settings);
+                        _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings, defaultLoggerFactory);
                         _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
                         InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
 
@@ -177,7 +173,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         var standbySettings = CreateStandbySettings(settings);
                         _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
-                        _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings);
+                        var defaultLoggerFactory = GetDefaultLoggerFactory(settings);
+                        _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings, defaultLoggerFactory);
                         _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
 
                         InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
@@ -218,6 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var scriptHostConfig = new ScriptHostConfiguration
             {
                 RootScriptPath = settings.ScriptPath,
+                TestDataPath = settings.TestDataPath,
                 RootLogPath = settings.LogPath,
                 FileLoggingMode = FileLoggingMode.DebugOnly,
                 TraceWriter = settings.TraceWriter,
@@ -245,6 +243,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             TraceWriter systemTraceWriter = new SystemTraceWriter(systemEventGenerator, _settingsManager, TraceLevel.Verbose);
 
             return systemTraceWriter;
+        }
+
+        private ILoggerFactory GetDefaultLoggerFactory(WebHostSettings settings)
+        {
+            if (_defaultLoggerFactory == null)
+            {
+                lock (_syncLock)
+                {
+                    if (_defaultLoggerFactory == null)
+                    {
+                        _defaultLoggerFactory = CreateDefaultLoggerFactory(settings);
+                    }
+                }
+            }
+
+            return _defaultLoggerFactory;
         }
 
         private ILoggerFactory CreateDefaultLoggerFactory(WebHostSettings settings)

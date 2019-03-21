@@ -27,6 +27,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -48,7 +49,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly int _hostTimeoutSeconds;
         private readonly int _hostRunningPollIntervalMilliseconds;
         private readonly WebJobsSdkExtensionHookProvider _bindingWebHookProvider;
+        private readonly IFunctionsSyncManager _functionsSyncManager;
+        private readonly ILogger _logger;
 
+        private Timer _syncTimer;
         private bool _hostStarted = false;
         private HttpRouteCollection _httpRoutes;
         private HttpRequestManager _httpRequestManager;
@@ -59,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IScriptEventManager eventManager,
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
+            ILoggerFactory loggerFactory,
             IScriptHostFactory scriptHostFactory = null,
             ISecretsRepositoryFactory secretsRepositoryFactory = null,
             HostPerformanceManager hostPerformanceManager = null,
@@ -73,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _settingsManager = settingsManager;
             _hostTimeoutSeconds = hostTimeoutSeconds;
             _hostRunningPollIntervalMilliseconds = hostPollingIntervalMilliseconds;
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
 
             var systemEventGenerator = config.HostConfig.GetService<IEventGenerator>() ?? new EventGenerator();
             _systemTraceWriter = new SystemTraceWriter(systemEventGenerator, settingsManager, TraceLevel.Verbose);
@@ -91,9 +97,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             secretsRepositoryFactory = secretsRepositoryFactory ?? new DefaultSecretsRepositoryFactory();
             var secretsRepository = secretsRepositoryFactory.Create(settingsManager, webHostSettings, config);
-            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter.WithDefaults(ScriptConstants.TraceSourceSecretManagement), config.HostConfig.LoggerFactory, secretsRepository);
+            _secretManager = secretManagerFactory.Create(settingsManager, config.TraceWriter.WithDefaults(ScriptConstants.TraceSourceSecretManagement), loggerFactory, secretsRepository);
 
             _bindingWebHookProvider = new WebJobsSdkExtensionHookProvider(_secretManager);
+
+            _functionsSyncManager = new FunctionsSyncManager(_config, loggerFactory, _secretManager, settingsManager);
         }
 
         public WebScriptHostManager(ScriptHostConfiguration config,
@@ -101,8 +109,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IScriptEventManager eventManager,
             ScriptSettingsManager settingsManager,
             WebHostSettings webHostSettings,
+            ILoggerFactory loggerFactory,
             IScriptHostFactory scriptHostFactory)
-            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, scriptHostFactory, null)
+            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, loggerFactory, scriptHostFactory, null)
         {
         }
 
@@ -110,14 +119,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ISecretManagerFactory secretManagerFactory,
             IScriptEventManager eventManager,
             ScriptSettingsManager settingsManager,
-            WebHostSettings webHostSettings)
-            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, new ScriptHostFactory())
+            WebHostSettings webHostSettings,
+            ILoggerFactory loggerFactory)
+            : this(config, secretManagerFactory, eventManager, settingsManager, webHostSettings, loggerFactory, new ScriptHostFactory())
         {
         }
 
         internal WebJobsSdkExtensionHookProvider BindingWebHookProvider => _bindingWebHookProvider;
 
         public ISecretManager SecretManager => _secretManager;
+
+        public IFunctionsSyncManager FunctionsSyncManager => _functionsSyncManager;
 
         public ISwaggerDocumentManager SwaggerDocumentManager => _swaggerDocumentManager;
 
@@ -250,6 +262,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 (_secretManager as IDisposable)?.Dispose();
                 _metricsLogger?.Dispose();
                 _httpRoutes?.Dispose();
+                (_functionsSyncManager as IDisposable)?.Dispose();
+                _syncTimer?.Dispose();
             }
 
             base.Dispose(disposing);
@@ -386,6 +400,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             base.OnHostInitialized();
         }
 
+        internal bool ShouldSyncTriggers
+        {
+            get
+            {
+                if (Instance != null)
+                {
+                    return Instance.IsPrimary && (State == ScriptHostState.Running);
+                }
+                return false;
+            }
+        }
+
         protected override void OnHostStarted()
         {
             if (!InStandbyMode)
@@ -394,7 +420,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _secretManager.PurgeOldSecretsAsync(Instance.ScriptConfig.RootScriptPath, Instance.TraceWriter, Instance.Logger);
             }
 
+            if (Microsoft.Azure.WebJobs.Script.WebHost.Management.FunctionsSyncManager.IsSyncTriggersEnvironment(_settingsManager))
+            {
+                // create a onetime invocation timer
+                if (_syncTimer != null)
+                {
+                    // cancel any outstanding timer
+                    _syncTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                }
+                _syncTimer = new Timer(OnSyncTimerTick, null, 30 * 1000, Timeout.Infinite);
+            }
+
             base.OnHostStarted();
+        }
+
+        private async void OnSyncTimerTick(object state)
+        {
+            try
+            {
+                if (ShouldSyncTriggers)
+                {
+                    _logger.LogDebug("Initiating background SyncTriggers operation");
+                    await _functionsSyncManager.TrySyncTriggersAsync(checkHash: true);
+                }
+            }
+            catch (Exception exc) when (!exc.IsFatal())
+            {
+                // failures are already logged in the sync triggers call
+                // we need to suppress background exceptions from the timer thread
+            }
         }
 
         private void InitializeHttp()

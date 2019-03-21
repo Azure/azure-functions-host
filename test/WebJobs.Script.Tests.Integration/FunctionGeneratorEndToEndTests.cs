@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -112,8 +113,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             webHostSettings.SecretsPath = secretsPath;
             var eventManagerMock = new Mock<IScriptEventManager>();
             var secretManager = new SecretManager(SettingsManager, repository, NullTraceWriter.Instance, null);
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
 
-            using (var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), eventManagerMock.Object, SettingsManager, webHostSettings))
+            using (var manager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), eventManagerMock.Object, SettingsManager, webHostSettings, loggerFactory))
             {
                 Thread runLoopThread = new Thread(_ =>
                 {

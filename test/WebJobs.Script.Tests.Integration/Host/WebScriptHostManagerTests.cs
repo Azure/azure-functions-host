@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
@@ -63,8 +64,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockEventManager = new Mock<IScriptEventManager>();
             _mockScriptHostFactory = new Mock<IScriptHostFactory>();
 
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
             _hostManager = new WebScriptHostManager(_config, new TestSecretManagerFactory(secretManager), mockEventManager.Object,
-                _settingsManager, webHostSettings, _mockScriptHostFactory.Object, new DefaultSecretsRepositoryFactory(), null, 2, 500);
+                _settingsManager, webHostSettings, loggerFactory, _mockScriptHostFactory.Object, new DefaultSecretsRepositoryFactory(), null, 2, 500);
         }
 
         [Fact]
@@ -148,7 +152,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             webHostSettings.SecretsPath = _secretsDirectory.Path;
             var mockEventManager = new Mock<IScriptEventManager>();
 
-            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings);
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+            ScriptHostManager hostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings, loggerFactory);
 
             Task runTask = Task.Run(() => hostManager.RunAndBlock());
 
@@ -282,10 +289,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task DelayUntilHostReady_HostInErrorState_ThrowsImmediately()
         {
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
             var settingsManager = ScriptSettingsManager.Instance;
             var eventManager = new Mock<IScriptEventManager>();
             var managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new TestSecretManagerFactory(), eventManager.Object,
-                settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, null, null, null, 1, 50);
+                settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, loggerFactory, null, null, null, 1, 50);
 
             managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Error);
             managerMock.SetupGet(p => p.LastError).Returns(new Exception());
@@ -299,10 +309,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task DelayUntilHostReady_HostNotRunning_Returns503()
         {
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
             var settingsManager = ScriptSettingsManager.Instance;
             var eventManager = new Mock<IScriptEventManager>();
             var managerMock = new Mock<WebScriptHostManager>(MockBehavior.Strict, new ScriptHostConfiguration(), new TestSecretManagerFactory(), eventManager.Object,
-                settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, null, null, null, 1, 50);
+                settingsManager, new WebHostSettings { SecretsPath = _secretsDirectory.Path }, loggerFactory, null, null, null, 1, 50);
 
             managerMock.SetupGet(p => p.State).Returns(ScriptHostState.Default);
             managerMock.SetupGet(p => p.LastError).Returns((Exception)null);
@@ -370,7 +383,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testEventGenerator = new TestSystemEventGenerator();
                 hostConfig.AddService<IEventGenerator>(EventGenerator);
                 var mockEventManager = new Mock<IScriptEventManager>();
-                var mockHostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings);
+                var loggerProvider = new TestLoggerProvider();
+                var loggerFactory = new LoggerFactory();
+                loggerFactory.AddProvider(loggerProvider);
+                var mockHostManager = new WebScriptHostManager(config, new TestSecretManagerFactory(secretManager), mockEventManager.Object, _settingsManager, webHostSettings, loggerFactory);
                 HostManager = mockHostManager;
                 Task task = Task.Run(() => { HostManager.RunAndBlock(); });
 

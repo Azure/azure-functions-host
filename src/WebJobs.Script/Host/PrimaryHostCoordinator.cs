@@ -16,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script
     internal sealed class PrimaryHostCoordinator : IDisposable
     {
         internal const string LockBlobName = "host";
-        internal const string HostContainerName = "azure-webjobs-hosts";
 
         private readonly Timer _timer;
         private readonly TimeSpan _leaseTimeout;

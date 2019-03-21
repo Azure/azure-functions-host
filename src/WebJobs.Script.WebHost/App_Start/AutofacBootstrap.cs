@@ -2,10 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.IO.Abstractions;
+using System.Net.Http;
 using Autofac;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.WebHooks;
 using Microsoft.Extensions.Logging;
 
@@ -31,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.Register<WebScriptHostManager>(ct => ct.Resolve<WebHostResolver>().GetWebScriptHostManager(settings)).ExternallyOwned();
             builder.Register<WebHookReceiverManager>(ct => ct.Resolve<WebHostResolver>().GetWebHookReceiverManager(settings)).ExternallyOwned();
             builder.Register<ILoggerFactory>(ct => ct.Resolve<WebHostResolver>().GetLoggerFactory(settings)).ExternallyOwned();
+            builder.Register<IFunctionsSyncManager>(ct => ct.Resolve<WebHostResolver>().GetFunctionsSyncManager(settings)).ExternallyOwned();
         }
     }
 }

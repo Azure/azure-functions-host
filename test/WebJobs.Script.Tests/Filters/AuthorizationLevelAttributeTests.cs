@@ -500,7 +500,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             if (key == null)
             {
-                key = SimpleWebTokenHelper.GetEncryptionKey(EnvironmentSettingNames.WebsiteAuthEncryptionKey);
+                SimpleWebTokenHelper.TryGetEncryptionKey(EnvironmentSettingNames.WebsiteAuthEncryptionKey, out key);
             }
 
             using (var aes = new AesManaged { Key = key })
