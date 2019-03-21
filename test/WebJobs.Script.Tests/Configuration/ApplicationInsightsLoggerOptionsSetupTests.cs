@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
 
-            Assert.Equal(5, options.SamplingSettings.MaxTelemetryItemsPerSecond);
+            Assert.Equal(20, options.SamplingSettings.MaxTelemetryItemsPerSecond);
         }
 
         [Fact]
@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             IConfiguration config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
-                    { $"{SamplingSettings}:MaxTelemetryItemsPerSecond", "25" },
+                    { $"{SamplingSettings}:MaxTelemetryItemsPerSecond", "100" },
                 })
                 .Build();
 
@@ -167,7 +167,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
 
-            Assert.Equal(25, options.SamplingSettings.MaxTelemetryItemsPerSecond);
+            Assert.Equal(100, options.SamplingSettings.MaxTelemetryItemsPerSecond);
+        }
+
+        [Fact]
+        public void Configure_Sampling_Property_Initializes_MaxTelemetryItemsPerSecond()
+        {
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { $"{SamplingSettings}:MaxSamplingPercentage", "50" },
+                })
+                .Build();
+
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
+
+            ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
+            setup.Configure(options);
+
+            Assert.Equal(50, options.SamplingSettings.MaxSamplingPercentage);
+            Assert.Equal(20, options.SamplingSettings.MaxTelemetryItemsPerSecond);
         }
 
         [Fact]
