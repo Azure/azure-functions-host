@@ -8,6 +8,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.KeyVault.Models;
@@ -98,9 +99,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             // so we read the secrets running them through the appropriate readers
                             hostSecrets = ReadHostSecrets(hostSecrets);
                         }
-                        catch (CryptographicException)
+                        catch (CryptographicException ex)
                         {
-                            _logger?.LogDebug(Resources.TraceNonDecryptedHostSecretRefresh);
+                            string message = string.Format(Resources.TraceNonDecryptedHostSecretRefresh, ex);
+                            _logger?.LogDebug(message);
                             await PersistSecretsAsync(hostSecrets, null, true);
                             hostSecrets = GenerateHostSecrets(hostSecrets);
                             await RefreshSecretsAsync(hostSecrets);
@@ -162,9 +164,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         // Read all secrets, which will run the keys through the appropriate readers
                         secrets.Keys = secrets.Keys.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList();
                     }
-                    catch (CryptographicException)
+                    catch (CryptographicException ex)
                     {
-                        string message = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName);
+                        string message = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName, ex);
                         _logger?.LogDebug(message);
                         await PersistSecretsAsync(secrets, functionName, true);
                         secrets = GenerateFunctionSecrets(secrets);
@@ -451,6 +453,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ScriptSecretsType secretsType = secrets.SecretsType;
             if (isNonDecryptable)
             {
+                string decryptionKey = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey);
+                if (!string.IsNullOrEmpty(decryptionKey))
+                {
+                    SHA256Managed hash = new SHA256Managed();
+                    byte[] hashBytes = hash.ComputeHash(Encoding.UTF8.GetBytes(decryptionKey));
+                    secrets.DecryptionKeyId = Convert.ToBase64String(hashBytes);
+                }
+
                 string[] secretBackups = await _repository.GetSecretSnapshots(secrets.SecretsType, keyScope);
 
                 if (secretBackups.Length >= ScriptConstants.MaximumSecretBackupCount)

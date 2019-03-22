@@ -239,7 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Non-decryptable function (&apos;{0}&apos;) secrets detected. Refreshing secrets..
+        ///   Looks up a localized string similar to Non-decryptable function (&apos;{0}&apos;) secrets detected. Refreshing secrets. Exception: {1}..
         /// </summary>
         internal static string TraceNonDecryptedFunctionSecretRefresh {
             get {
@@ -248,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Non-decryptable host secrets detected. Refreshing secrets..
+        ///   Looks up a localized string similar to Non-decryptable host secrets detected. Refreshing secrets. Exception: {0}..
         /// </summary>
         internal static string TraceNonDecryptedHostSecretRefresh {
             get {
