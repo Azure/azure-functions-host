@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
-            return new FunctionDispatcher(scriptOptions, metricsLogger.Object, eventManager.Object, loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(workerConfigOptions), languageWorkerChannelManager.Object);
+            return new FunctionDispatcher(scriptOptions, metricsLogger.Object, eventManager.Object, loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(workerConfigOptions), languageWorkerChannelManager.Object, null);
         }
     }
 }

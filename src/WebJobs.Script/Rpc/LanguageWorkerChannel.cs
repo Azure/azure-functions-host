@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -16,7 +17,10 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
@@ -52,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDisposable _startSubscription;
         private IDisposable _startLatencyMetric;
         private Uri _serverUri;
+        private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
 
         internal LanguageWorkerChannel()
         {
@@ -71,7 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            IMetricsLogger metricsLogger,
            int attemptCount,
            ILanguageWorkerConsoleLogSource consoleLogSource,
-           bool isWebHostChannel = false)
+           bool isWebHostChannel = false,
+           IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
             _workerId = workerId;
             _functionRegistrations = functionRegistrations;
@@ -104,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
 
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
+            _managedDependencyOptions = managedDependencyOptions;
         }
 
         public string Id => _workerId;
@@ -343,6 +350,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
             };
 
+            if (_managedDependencyOptions?.Value != null)
+            {
+                _workerChannelLogger?.LogInformation($"Adding dependency download request to {_workerConfig.Language} language worker");
+                request.ManagedDependencyEnabled = _managedDependencyOptions.Value.Enabled;
+            }
+
             foreach (var binding in metadata.Bindings)
             {
                 BindingInfo bindingInfo = binding.ToBindingInfo();
@@ -363,6 +376,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 //Cache function load errors to replay error messages on invoking failed functions
                 _functionLoadErrors[loadResponse.FunctionId] = ex;
             }
+
+            if (loadResponse.IsDependencyDownloaded)
+            {
+                _workerChannelLogger?.LogInformation($"Managed dependency successfully downloaded by the {_workerConfig.Language} language worker");
+            }
+
             var inputBuffer = _functionInputBuffers[loadResponse.FunctionId];
             // link the invocation inputs to the invoke call
             var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequest(ctx));
