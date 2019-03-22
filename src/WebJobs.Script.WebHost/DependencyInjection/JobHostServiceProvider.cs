@@ -64,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             container.Populate(descriptors);
             container.UseInstance<IServiceProvider>(this);
+            container.UseInstance<IServiceScopeFactory>(this);
             container.UseInstance<JobHostServiceProvider>(this);
 
             return container;
