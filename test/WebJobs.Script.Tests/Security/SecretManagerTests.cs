@@ -507,12 +507,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         [Fact]
         public async Task GetFunctiontSecrets_WhenNonDecryptedSecrets_SavesAndRefreshes()
         {
-            using (var directory = new TempDirectory())
+            string key = TestHelpers.GenerateKeyHexString();
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, key))
             {
-                string functionName = "testfunction";
-                string expectedTraceMessage = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName);
-                string functionSecretsJson =
-                     @"{
+                using (var directory = new TempDirectory())
+                {
+                    string functionName = "testfunction";
+                    string expectedTraceMessage = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName, string.Empty);
+                    string functionSecretsJson =
+                         @"{
     'keys': [
         {
             'name': 'Key1',
@@ -526,21 +529,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
     ]
 }";
-                File.WriteAllText(Path.Combine(directory.Path, functionName + ".json"), functionSecretsJson);
-                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(true, false);
-                IDictionary<string, string> functionSecrets;
-                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                    File.WriteAllText(Path.Combine(directory.Path, functionName + ".json"), functionSecretsJson);
+                    Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(true, false);
+                    IDictionary<string, string> functionSecrets;
+                    ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
 
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, null, new TestMetricsLogger()))
-                {
-                    functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
+                    using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, null, new TestMetricsLogger()))
+                    {
+                            functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
+                    }
+
+                    Assert.NotNull(functionSecrets);
+                    Assert.NotEqual(functionSecrets["Key1"], "cryptoError");
+                    var result = JsonConvert.DeserializeObject<FunctionSecrets>(File.ReadAllText(Path.Combine(directory.Path, functionName + ".json")));
+                    Assert.Equal(result.GetFunctionKey("Key1", functionName).Value, "!" + functionSecrets["Key1"]);
+                    Assert.Equal(1, Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length);
+
+                    result = JsonConvert.DeserializeObject<FunctionSecrets>(File.ReadAllText(Path.Combine(directory.Path, functionName + ".json")));
+                    string snapShotFileName = Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*")[0];
+                    result = JsonConvert.DeserializeObject<FunctionSecrets>(File.ReadAllText(Path.Combine(directory.Path, snapShotFileName)));
+                    Assert.NotEqual(result.DecryptionKeyId, key);
                 }
-
-                Assert.NotNull(functionSecrets);
-                Assert.NotEqual(functionSecrets["Key1"], "cryptoError");
-                var result = JsonConvert.DeserializeObject<FunctionSecrets>(File.ReadAllText(Path.Combine(directory.Path, functionName + ".json")));
-                Assert.Equal(result.GetFunctionKey("Key1", functionName).Value, "!" + functionSecrets["Key1"]);
-                Assert.Equal(1, Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length);
             }
         }
 
@@ -780,7 +789,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             using (var directory = new TempDirectory())
             {
                 string functionName = "testfunction";
-                string expectedTraceMessage = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName);
                 string functionSecretsJson =
                      @"{
     'keys': [

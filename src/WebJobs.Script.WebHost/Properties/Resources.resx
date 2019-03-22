@@ -280,10 +280,10 @@
     <value>Master key {0}</value>
   </data>
   <data name="TraceNonDecryptedFunctionSecretRefresh" xml:space="preserve">
-    <value>Non-decryptable function ('{0}') secrets detected. Refreshing secrets.</value>
+    <value>Non-decryptable function ('{0}') secrets detected. Refreshing secrets. Exception: {1}.</value>
   </data>
   <data name="TraceNonDecryptedHostSecretRefresh" xml:space="preserve">
-    <value>Non-decryptable host secrets detected. Refreshing secrets.</value>
+    <value>Non-decryptable host secrets detected. Refreshing secrets. Exception: {0}.</value>
   </data>
   <data name="TraceSecretDeleted" xml:space="preserve">
     <value>{0} secret '{1}' deleted.</value>
