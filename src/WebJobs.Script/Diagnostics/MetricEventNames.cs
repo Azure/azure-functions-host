@@ -37,5 +37,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string SecretManagerAddOrUpdateFunctionSecret = "secretmanager.addorupdatefunctionsecret.{0}";
         public const string SecretManagerSetMasterKey = "secretmanager.setmasterkey.{0}";
         public const string SecretManagerPurgeOldSecrets = "secretmanager.purgeoldsecrets.{0}";
+
+        // Linux container specialization events
+        public const string LinuxContainerSpecializationZipExtract = "linux.container.specialization.zip.extract";
+        public const string LinuxContainerSpecializationZipDownload = "linux.container.specialization.zip.download";
+        public const string LinuxContainerSpecializationZipWrite = "linux.container.specialization.zip.write";
+        public const string LinuxContainerSpecializationZipHead = "linux.container.specialization.zip.head";
     }
 }

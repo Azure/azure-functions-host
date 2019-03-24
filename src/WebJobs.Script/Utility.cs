@@ -521,6 +521,24 @@ namespace Microsoft.Azure.WebJobs.Script
             return false;
         }
 
+        public static bool TryCleanUrl(string url, out string cleaned)
+        {
+            cleaned = null;
+
+            Uri uri = null;
+            if (Uri.TryCreate(url, UriKind.Absolute, out uri))
+            {
+                cleaned = $"{uri.Scheme}://{uri.Host}{uri.AbsolutePath}";
+                if (uri.Query.Length > 0)
+                {
+                    cleaned += "...";
+                }
+                return true;
+            }
+
+            return false;
+        }
+
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
         {
             public override bool CanWrite => true;
