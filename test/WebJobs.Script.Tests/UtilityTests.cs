@@ -322,5 +322,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             Assert.Equal(expected, Utility.IsNullable(type));
         }
+
+        [Theory]
+        [InlineData("", null, false)]
+        [InlineData(null, null, false)]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D",
+            "http://storage.blob.core.windows.net/functions/func.zip...", true)]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip",
+            "http://storage.blob.core.windows.net/functions/func.zip", true)]
+        [InlineData("https://storage.blob.core.windows.net/functions/func.zip",
+            "https://storage.blob.core.windows.net/functions/func.zip", true)]
+        [InlineData("https://storage.blob.core.windows.net/functions/func.zip?",
+            "https://storage.blob.core.windows.net/functions/func.zip...", true)]
+        public void CleanUrlTests(string url, string expectedCleanUrl, bool cleanResult)
+        {
+            string cleanedUrl;
+            Assert.Equal(cleanResult, Utility.TryCleanUrl(url, out cleanedUrl));
+            Assert.Equal(expectedCleanUrl, cleanedUrl);
+        }
     }
 }
