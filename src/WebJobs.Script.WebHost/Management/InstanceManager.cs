@@ -3,10 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
@@ -20,17 +22,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private static HostAssignmentContext _assignmentContext;
 
         private readonly ILogger _logger;
+        private readonly IMetricsLogger _metricsLogger;
         private readonly IEnvironment _environment;
         private readonly IOptionsFactory<ScriptApplicationHostOptions> _optionsFactory;
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
 
         public InstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, ILogger<InstanceManager> logger)
+            IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _metricsLogger = metricsLogger;
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _optionsFactory = optionsFactory ?? throw new ArgumentNullException(nameof(optionsFactory));
         }
@@ -80,21 +84,40 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             _logger.LogInformation($"Validating host assignment context (SiteId: {assignmentContext.SiteId}, SiteName: '{assignmentContext.SiteName}')");
 
-            var zipUrl = assignmentContext.ZipUrl;
-            if (!string.IsNullOrEmpty(zipUrl))
+            string error = null;
+            HttpResponseMessage response = null;
+            try
             {
-                // make sure the zip uri is valid and accessible
-                var request = new HttpRequestMessage(HttpMethod.Head, zipUrl);
-                var response = await _client.SendAsync(request);
-                if (!response.IsSuccessStatusCode)
+                var zipUrl = assignmentContext.ZipUrl;
+                if (!string.IsNullOrEmpty(zipUrl))
                 {
-                    string error = $"Invalid zip url specified (StatusCode: {response.StatusCode})";
-                    _logger.LogError(error);
-                    return error;
+                    // make sure the zip uri is valid and accessible
+                    await Utility.InvokeWithRetriesAsync(async () =>
+                    {
+                        try
+                        {
+                            using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationZipHead))
+                            {
+                                var request = new HttpRequestMessage(HttpMethod.Head, zipUrl);
+                                response = await _client.SendAsync(request);
+                                response.EnsureSuccessStatusCode();
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.LogError(e, $"{MetricEventNames.LinuxContainerSpecializationZipHead} failed");
+                            throw;
+                        }
+                    }, maxRetries: 2, retryInterval: TimeSpan.FromSeconds(0.3)); // Keep this less than ~1s total
                 }
             }
+            catch (Exception e)
+            {
+                error = $"Invalid zip url specified (StatusCode: {response?.StatusCode})";
+                _logger.LogError(e, "ValidateContext failed");
+            }
 
-            return null;
+            return error;
         }
 
         private async Task Assign(HostAssignmentContext assignmentContext)
@@ -140,32 +163,55 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 var filePath = Path.GetTempFileName();
                 await DownloadAsync(zipUri, filePath);
 
-                _logger.LogInformation($"Extracting files to '{options.ScriptPath}'");
-                ZipFile.ExtractToDirectory(filePath, options.ScriptPath, overwriteFiles: true);
-                _logger.LogInformation($"Zip extraction complete");
+                using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationZipExtract))
+                {
+                    _logger.LogInformation($"Extracting files to '{options.ScriptPath}'");
+                    ZipFile.ExtractToDirectory(filePath, options.ScriptPath, overwriteFiles: true);
+                    _logger.LogInformation($"Zip extraction complete");
+                }
             }
         }
 
         private async Task DownloadAsync(Uri zipUri, string filePath)
         {
-            var zipPath = $"{zipUri.Authority}{zipUri.AbsolutePath}";
-            _logger.LogInformation($"Downloading zip contents from '{zipPath}' to temp file '{filePath}'");
+            string cleanedUrl;
+            Utility.TryCleanUrl(zipUri.AbsoluteUri, out cleanedUrl);
 
-            var response = await _client.GetAsync(zipUri);
-            if (!response.IsSuccessStatusCode)
+            _logger.LogInformation($"Downloading zip contents from '{cleanedUrl}' to temp file '{filePath}'");
+
+            HttpResponseMessage response = null;
+
+            await Utility.InvokeWithRetriesAsync(async () =>
             {
-                string error = $"Error downloading zip content {zipPath}";
-                _logger.LogError(error);
-                throw new InvalidDataException(error);
-            }
+                try
+                {
+                    using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationZipDownload))
+                    {
+                        var request = new HttpRequestMessage(HttpMethod.Get, zipUri);
+                        response = await _client.SendAsync(request);
+                        response.EnsureSuccessStatusCode();
+                    }
+                }
+                catch (Exception e)
+                {
+                    string error = $"Error downloading zip content {cleanedUrl}";
+                    _logger.LogError(e, error);
+                    throw;
+                }
 
-            using (var content = await response.Content.ReadAsStreamAsync())
-            using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
+                _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes downloaded");
+            }, 2, TimeSpan.FromSeconds(0.5));
+
+            using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationZipWrite))
             {
-                await content.CopyToAsync(stream);
-            }
+                using (var content = await response.Content.ReadAsStreamAsync())
+                using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
+                {
+                    await content.CopyToAsync(stream);
+                }
 
-            _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes downloaded");
+                _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes written");
+            }
         }
 
         public IDictionary<string, string> GetInstanceInfo()
