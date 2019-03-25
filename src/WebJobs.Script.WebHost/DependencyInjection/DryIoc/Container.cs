@@ -2045,7 +2045,9 @@ namespace DryIoc
 #if FEC_EXPRESSION_INFO
             return lambdaExpr.ToLambdaExpression().Compile();
 #else
-            return lambdaExpr.Compile();
+            // Passing preferInterpretation: true as the default value of False uses JIT compile which has a huge impact on Functions cold start time
+            // This optimization is needed for Functions Host only and is not part of the DryIoc codebase which it was copied from.
+            return lambdaExpr.Compile(preferInterpretation: true);
 #endif
         }
 
