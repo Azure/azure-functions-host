@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Newtonsoft.Json;
@@ -63,8 +64,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             if (_extensionBundleManager.IsExtensionBundleConfigured())
             {
-                return BadRequest();
+                return BadRequest(Resources.ExtensionBundleBadRequestDelete);
             }
+
             // TODO: Check if we have an active job
 
             var job = await CreateJob(new ExtensionPackageReference() { Id = id, Version = string.Empty });
@@ -105,9 +107,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         public async Task<IActionResult> InstallExtension(ExtensionPackageReference package, bool verifyConflict = true)
         {
-            if (package == null || _extensionBundleManager.IsExtensionBundleConfigured())
+            if (package == null)
             {
                 return BadRequest();
+            }
+
+            if (_extensionBundleManager.IsExtensionBundleConfigured())
+            {
+                return BadRequest(Resources.ExtensionBundleBadRequestInstall);
             }
 
             if (verifyConflict)

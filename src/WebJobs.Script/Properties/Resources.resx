@@ -168,4 +168,10 @@
   <data name="LoadingExtensionBundle" xml:space="preserve">
     <value>Loading Extension bundle from {0}</value>
   </data>
+  <data name="ExtensionBundleBadRequestInstall" xml:space="preserve">
+    <value>Cannot install extension when ExtensionBundles is configured.</value>
+  </data>
+  <data name="ExtensionBundleBadRequestDelete" xml:space="preserve">
+    <value>Cannot delete extension when ExtensionBundles is configured.</value>
+  </data>
 </root>

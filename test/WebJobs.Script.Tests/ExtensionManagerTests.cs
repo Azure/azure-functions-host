@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 await manager.AddExtensions(extension);
 
-                Assert.True(File.Exists(manager.DefaultProjectPath));
+                Assert.True(File.Exists(manager.DefaultExtensionsProjectPath));
 
                 // Create a new manager pointing to the same path:
                 manager = GetExtensionsManager(testDir.Path);
@@ -137,9 +137,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 await manager.AddExtensions(extension);
 
-                Assert.True(File.Exists(manager.DefaultProjectPath));
+                Assert.True(File.Exists(manager.DefaultExtensionsProjectPath));
 
-                var bundlePath = Path.GetDirectoryName(manager.DefaultProjectPath);
+                var bundlePath = Path.GetDirectoryName(manager.DefaultExtensionsProjectPath);
                 // Create a new manager using extension bundle with same csproj
                 manager = GetExtensionsManager(testDir.Path, new TestExtensionBundleManager(bundlePath, true));
 

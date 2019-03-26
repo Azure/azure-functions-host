@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             _extensionBundleManager = extensionBundleManager;
         }
 
-        internal string DefaultProjectPath => Path.Combine(_scriptRootPath, ExtensionsProjectFileName);
+        internal string DefaultExtensionsProjectPath => Path.Combine(_scriptRootPath, ExtensionsProjectFileName);
 
         private async Task<string> GetBundleProjectPath()
         {
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                 return;
             }
 
-            var project = await GetOrCreateProjectAsync(DefaultProjectPath);
+            var project = await GetOrCreateProjectAsync(DefaultExtensionsProjectPath);
 
             // Ensure the metadata generator version we're using is what we expect
             project.AddPackageReference(MetadataGeneratorPackageId, MetadataGeneratorPackageVersion);
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                 return;
             }
 
-            var project = await GetOrCreateProjectAsync(DefaultProjectPath);
+            var project = await GetOrCreateProjectAsync(DefaultExtensionsProjectPath);
             foreach (var id in extensionIds)
             {
                 project.RemovePackageReference(id);
@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
         public async Task<IEnumerable<ExtensionPackageReference>> GetExtensions()
         {
-            string csProjPath = _extensionBundleManager.IsExtensionBundleConfigured() ? await GetBundleProjectPath() : DefaultProjectPath;
+            string csProjPath = _extensionBundleManager.IsExtensionBundleConfigured() ? await GetBundleProjectPath() : DefaultExtensionsProjectPath;
             if (string.IsNullOrEmpty(csProjPath))
             {
                 return Enumerable.Empty<ExtensionPackageReference>();
@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                     Arguments = $"build \"{ExtensionsProjectFileName}\" -o bin --force --no-incremental"
                 };
 
-                string nugetPath = Path.Combine(Path.GetDirectoryName(DefaultProjectPath), "nuget.config");
+                string nugetPath = Path.Combine(Path.GetDirectoryName(DefaultExtensionsProjectPath), "nuget.config");
                 if (File.Exists(nugetPath))
                 {
                     startInfo.Arguments += $" --configfile \"{nugetPath}\"";
@@ -258,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
             FileUtility.CopyDirectory(sourceBin, target);
 
-            File.Copy(Path.Combine(tempFolder, ExtensionsProjectFileName), DefaultProjectPath, true);
+            File.Copy(Path.Combine(tempFolder, ExtensionsProjectFileName), DefaultExtensionsProjectPath, true);
         }
 
         private Task<ProjectRootElement> GetOrCreateProjectAsync(string path)
