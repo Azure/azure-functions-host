@@ -29,8 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         public ExtensionBundleManager(ExtensionBundleOptions options, IEnvironment environment, ILoggerFactory loggerFactory)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryExtensionBundles) ?? throw new ArgumentNullException(nameof(loggerFactory));
-            _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AlternateCdnUri) ?? ScriptConstants.CdnBaseUri;
+            _logger = loggerFactory.CreateLogger<ExtensionBundleManager>() ?? throw new ArgumentNullException(nameof(loggerFactory));
+            _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsFallbackCdnUri) ?? ScriptConstants.CdnBaseUri;
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
@@ -39,19 +39,26 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return !string.IsNullOrEmpty(_options.Id) && !string.IsNullOrEmpty(_options.Version?.OriginalString);
         }
 
-        public async Task<string> GetExtensionBundle(HttpClient httpClient = null)
+        /// <summary>
+        /// Attempts to locate the extension bundle inside the probing paths and download paths. If the extension bundle is not found then it will download the extension bundle.
+        /// </summary>
+        /// <returns>Path of the extension bundle</returns>
+        public async Task<string> GetExtensionBundlePath()
         {
-            if (httpClient == null)
-            {
-                using (httpClient = new HttpClient())
-                {
-                    return await GetBundle(httpClient);
-                }
-            }
-            else
+            using (var httpClient = new HttpClient())
             {
                 return await GetBundle(httpClient);
             }
+        }
+
+        /// <summary>
+        /// Attempts to locate the extension bundle inside the probing paths and download paths. If the extension bundle is not found then it will download the extension bundle.
+        /// </summary>
+        /// <param name="httpClient">HttpClient used to download the extension bundle</param>
+        /// <returns>Path of the extension bundle</returns>
+        public async Task<string> GetExtensionBundlePath(HttpClient httpClient)
+        {
+            return await GetBundle(httpClient);
         }
 
         private async Task<string> GetBundle(HttpClient httpClient)

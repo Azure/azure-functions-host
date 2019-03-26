@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             directoryBase.Setup(d => d.EnumerateDirectories(firstDefaultProbingPath)).Returns(new[] { Path.Combine(firstDefaultProbingPath, "3.0.2") });
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
-            var manager = GetExtensionBundleManager(options, GetAppServiceEnvironment());
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
             Assert.False(manager.TryLocateExtensionBundle(out string path));
             Assert.Null(path);
         }
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var options = GetTestExtensionBundleOptions(BundleId, "[1.*, 2.0.0)");
             var fileSystemTuple = CreateFileSystem();
             FileUtility.Instance = fileSystemTuple.Item1.Object;
-            var manager = GetExtensionBundleManager(options, GetAppServiceEnvironment());
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
             Assert.False(manager.TryLocateExtensionBundle(out string path));
             Assert.Null(path);
         }
@@ -95,8 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             fileBase.Setup(f => f.Exists(Path.Combine(defaultPath, "bundle.json"))).Returns(true);
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
-            var manager = GetExtensionBundleManager(options, GetAppServiceEnvironment());
-            string path = await manager.GetExtensionBundle(httpclient);
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            string path = await manager.GetExtensionBundlePath(httpclient);
             Assert.NotNull(path);
 
             Assert.Equal(defaultPath, path);
@@ -121,8 +121,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             fileBase.Setup(f => f.Exists(Path.Combine(downloadPath, "bundle.json"))).Returns(true);
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
-            var manager = GetExtensionBundleManager(options, GetAppServiceEnvironment());
-            string path = await manager.GetExtensionBundle(httpclient);
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            string path = await manager.GetExtensionBundlePath(httpclient);
             Assert.NotNull(path);
             Assert.Equal(downloadPath, path);
         }
@@ -131,9 +131,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task GetExtensionBundle_DownloadsMatchingVersion_ReturnsTrueAsync()
         {
             var options = GetTestExtensionBundleOptions(BundleId, "[1.*, 2.0.0)");
-            var manager = GetExtensionBundleManager(options, GetAppServiceEnvironment());
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
             var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK));
-            var path = await manager.GetExtensionBundle(httpclient);
+            var path = await manager.GetExtensionBundlePath(httpclient);
             var bundleDirectory = Path.Combine(_downloadPath, "1.0.1");
             Assert.True(Directory.Exists(bundleDirectory));
             Assert.Equal(bundleDirectory, path);
@@ -143,9 +143,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task GetExtensionBundle_DownloadsLatest_WhenEnsureLatestTrue()
         {
             var options = GetTestExtensionBundleOptions(BundleId, "[1.0.0, 1.0.1)");
-            var manager = GetExtensionBundleManager(options, GetAppServiceEnvironment());
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
             var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK));
-            var path = await manager.GetExtensionBundle(httpclient);
+            var path = await manager.GetExtensionBundlePath(httpclient);
             var bundleDirectory = Path.Combine(_downloadPath, "1.0.0");
             Assert.True(Directory.Exists(bundleDirectory));
             Assert.Equal(bundleDirectory, path);
@@ -153,9 +153,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var newOptions = options;
             newOptions.Version = VersionRange.Parse("[1.*, 2.0.0)", true);
             newOptions.EnsureLatest = true;
-            manager = GetExtensionBundleManager(newOptions, GetAppServiceEnvironment());
+            manager = GetExtensionBundleManager(newOptions, GetTestAppServiceEnvironment());
             httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK));
-            path = await manager.GetExtensionBundle(httpclient);
+            path = await manager.GetExtensionBundlePath(httpclient);
             bundleDirectory = Path.Combine(_downloadPath, "1.0.1");
             Assert.True(Directory.Exists(bundleDirectory));
             Assert.Equal(bundleDirectory, path);
@@ -168,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var manager = GetExtensionBundleManager(options, new TestEnvironment());
 
             var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK));
-            var path = await manager.GetExtensionBundle(httpclient);
+            var path = await manager.GetExtensionBundlePath(httpclient);
             Assert.Null(path);
         }
 
@@ -177,8 +177,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var options = GetTestExtensionBundleOptions(BundleId, "[1.*, 2.0.0)");
             var httpClient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.NotFound, statusCodeForZipFile: HttpStatusCode.OK));
-            var manager = GetExtensionBundleManager(options, GetAppServiceEnvironment());
-            Assert.Null(await manager.GetExtensionBundle(httpClient));
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            Assert.Null(await manager.GetExtensionBundlePath(httpClient));
         }
 
         [Fact]
@@ -186,8 +186,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var options = GetTestExtensionBundleOptions(BundleId, "[1.*, 2.0.0)");
             var httpClient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.NotFound));
-            var manager = GetExtensionBundleManager(options, GetAppServiceEnvironment());
-            Assert.Null(await manager.GetExtensionBundle(httpClient));
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            Assert.Null(await manager.GetExtensionBundlePath(httpClient));
         }
 
         private ExtensionBundleManager GetExtensionBundleManager(ExtensionBundleOptions bundleOptions, TestEnvironment environment = null)
@@ -196,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return new ExtensionBundleManager(bundleOptions, environment, MockNullLoggerFactory.CreateLoggerFactory());
         }
 
-        private TestEnvironment GetAppServiceEnvironment()
+        private TestEnvironment GetTestAppServiceEnvironment()
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
@@ -262,7 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                await Task.Delay(1);
+                await Task.Yield();
                 var response = new HttpResponseMessage();
                 if (request.RequestUri.AbsolutePath.EndsWith("index.json"))
                 {

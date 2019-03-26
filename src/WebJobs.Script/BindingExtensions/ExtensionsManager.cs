@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
         private async Task<string> GetBundleProjectPath()
         {
-            string bundlePath = await _extensionBundleManager.GetExtensionBundle();
+            string bundlePath = await _extensionBundleManager.GetExtensionBundlePath();
             return !string.IsNullOrEmpty(bundlePath) ? Path.Combine(bundlePath, ExtensionsProjectFileName) : null;
         }
 
@@ -96,13 +96,13 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
         public async Task<IEnumerable<ExtensionPackageReference>> GetExtensions()
         {
-            string csProjPath = _extensionBundleManager.IsExtensionBundleConfigured() ? await GetBundleProjectPath() : DefaultExtensionsProjectPath;
-            if (string.IsNullOrEmpty(csProjPath))
+            string extensionsProjectPath = _extensionBundleManager.IsExtensionBundleConfigured() ? await GetBundleProjectPath() : DefaultExtensionsProjectPath;
+            if (string.IsNullOrEmpty(extensionsProjectPath))
             {
                 return Enumerable.Empty<ExtensionPackageReference>();
             }
 
-            var project = await GetOrCreateProjectAsync(csProjPath);
+            var project = await GetOrCreateProjectAsync(extensionsProjectPath);
 
             return project.Items
                 .Where(i => PackageReferenceElementName.Equals(i.ItemType, StringComparison.Ordinal) && !MetadataGeneratorPackageId.Equals(i.Include, StringComparison.Ordinal))

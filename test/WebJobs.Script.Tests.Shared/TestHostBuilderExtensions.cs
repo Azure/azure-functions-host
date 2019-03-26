@@ -5,6 +5,7 @@ using System;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -47,7 +48,6 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
             services.AddScriptStartupTypeLocator();
-            services.AddHostingEnvironment();
 
             configureRootServices?.Invoke(services);
 
@@ -80,12 +80,6 @@ namespace Microsoft.WebJobs.Script.Tests
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
             var scriptStartupTypeLocator = new ScriptStartupTypeLocator(string.Empty, null, mockExtensionBundleManager.Object);
             return services.AddSingleton(scriptStartupTypeLocator);
-        }
-
-        private static IServiceCollection AddHostingEnvironment(this IServiceCollection services)
-        {
-            var hostingEnvironment = new Mock<AspNetCore.Hosting.IHostingEnvironment>();
-            return services.AddSingleton(hostingEnvironment.Object);
         }
     }
 }

@@ -8,7 +8,9 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 {
     public interface IExtensionBundleManager
     {
-        Task<string> GetExtensionBundle(HttpClient httpClient = null);
+        Task<string> GetExtensionBundlePath();
+
+        Task<string> GetExtensionBundlePath(HttpClient httpClient = null);
 
         bool IsExtensionBundleConfigured();
     }

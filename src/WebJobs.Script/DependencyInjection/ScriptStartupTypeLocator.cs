@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             string binPath;
             if (_extensionBundleManager.IsExtensionBundleConfigured())
             {
-                string extensionBundlePath = await _extensionBundleManager.GetExtensionBundle();
+                string extensionBundlePath = await _extensionBundleManager.GetExtensionBundlePath();
                 if (string.IsNullOrEmpty(extensionBundlePath))
                 {
                     _logger.LogError(Resources.ErrorLoadingExtensionBundle);

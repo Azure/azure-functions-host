@@ -26,12 +26,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IExtensionsManager _extensionsManager;
         private readonly ScriptSettingsManager _settingsManager;
         private readonly IExtensionBundleManager _extensionBundleManager;
+        private readonly IEnvironment _environment;
 
-        public ExtensionsController(IExtensionsManager extensionsManager, ScriptSettingsManager settingsManager, IExtensionBundleManager extensionBundleManager)
+        public ExtensionsController(IExtensionsManager extensionsManager, ScriptSettingsManager settingsManager, IExtensionBundleManager extensionBundleManager, IEnvironment environment)
         {
             _extensionsManager = extensionsManager ?? throw new ArgumentNullException(nameof(extensionsManager));
             _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
+            _environment = environment;
         }
 
         [HttpGet]
@@ -65,6 +67,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             if (_extensionBundleManager.IsExtensionBundleConfigured())
             {
                 return BadRequest(Resources.ExtensionBundleBadRequestDelete);
+            }
+
+            if (_environment.IsPersistentFileSystemAvailable())
+            {
+                return BadRequest(Resources.ErrorDeletingExtension);
             }
 
             // TODO: Check if we have an active job
@@ -115,6 +122,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             if (_extensionBundleManager.IsExtensionBundleConfigured())
             {
                 return BadRequest(Resources.ExtensionBundleBadRequestInstall);
+            }
+
+            if (_environment.IsPersistentFileSystemAvailable())
+            {
+                return BadRequest(Resources.ErrorInstallingExtension);
             }
 
             if (verifyConflict)

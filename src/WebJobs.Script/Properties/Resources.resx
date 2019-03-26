@@ -174,4 +174,10 @@
   <data name="ExtensionBundleBadRequestDelete" xml:space="preserve">
     <value>Cannot delete extension when ExtensionBundles is configured.</value>
   </data>
+  <data name="ErrorDeletingExtension" xml:space="preserve">
+    <value>Cannot delete an extension. Persistent file system not available in the current hosting environment</value>
+  </data>
+  <data name="ErrorInstallingExtension" xml:space="preserve">
+    <value>Cannot install an extension. Persistent file system not available in the current hosting environment</value>
+  </data>
 </root>

@@ -211,7 +211,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestExtensionBundleManager : IExtensionBundleManager
         {
-            public Task<string> GetExtensionBundle(HttpClient httpClient = null) => null;
+            public Task<string> GetExtensionBundlePath(HttpClient httpClient = null) => null;
+
+            public Task<string> GetExtensionBundlePath() => null;
 
             public bool IsExtensionBundleConfigured() => false;
 

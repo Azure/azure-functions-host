@@ -4,9 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NuGet.Packaging;
 using NuGet.Versioning;
@@ -30,10 +30,10 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         {
             IConfigurationSection jobHostSection = _configuration.GetSection(ConfigurationSectionNames.JobHost);
             var extensionBundleSection = jobHostSection.GetSection(ConfigurationSectionNames.ExtensionBundle);
-            extensionBundleSection.Bind(options);
 
             if (extensionBundleSection.Exists())
             {
+                extensionBundleSection.Bind(options);
                 ValidateBundleId(options.Id);
                 ConfigureBundleVersion(extensionBundleSection, options);
 

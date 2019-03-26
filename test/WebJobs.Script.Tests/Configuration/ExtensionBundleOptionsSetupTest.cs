@@ -5,10 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var hostingEnvironment = new Mock<IHostingEnvironment>();
 
             var configuration = BuildHostJsonConfiguration();
-            ExtensionBundleOptionsSetup setup = new ExtensionBundleOptionsSetup(configuration, GetAppServiceEnvironment(), _hostingEnvironment);
+            ExtensionBundleOptionsSetup setup = new ExtensionBundleOptionsSetup(configuration, CreateTestAppServiceEnvironment(), _hostingEnvironment);
             ExtensionBundleOptions options = new ExtensionBundleOptions();
             var ex = Record.Exception(() => setup.Configure(options));
 
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             File.WriteAllText(_hostJsonFile, hostJsonContent);
 
             var configuration = BuildHostJsonConfiguration();
-            ExtensionBundleOptionsSetup setup = new ExtensionBundleOptionsSetup(configuration, GetAppServiceEnvironment(), _hostingEnvironment);
+            ExtensionBundleOptionsSetup setup = new ExtensionBundleOptionsSetup(configuration, CreateTestAppServiceEnvironment(), _hostingEnvironment);
             ExtensionBundleOptions options = new ExtensionBundleOptions();
             setup.Configure(options);
 
@@ -258,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             return configurationBuilder.Build();
         }
 
-        private TestEnvironment GetAppServiceEnvironment()
+        private TestEnvironment CreateTestAppServiceEnvironment()
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));

@@ -105,8 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (!skipHostInitialization)
                 {
-                    var hostingEnvironment = builder.Properties[nameof(AspNetCore.Hosting.IHostingEnvironment)] as AspNetCore.Hosting.IHostingEnvironment;
-                    var extensionBundleOptions = GetExtensionBundleOptions(context, hostingEnvironment);
+                    var extensionBundleOptions = GetExtensionBundleOptions(context);
                     var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory);
 
                     // Only set our external startup if we're not suppressing host initialization
@@ -256,10 +255,10 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal static ExtensionBundleOptions GetExtensionBundleOptions(HostBuilderContext context, AspNetCore.Hosting.IHostingEnvironment hostingEnvironment)
+        internal static ExtensionBundleOptions GetExtensionBundleOptions(HostBuilderContext context)
         {
             var options = new ExtensionBundleOptions();
-            var optionsSetup = new ExtensionBundleOptionsSetup(context.Configuration, SystemEnvironment.Instance, hostingEnvironment);
+            var optionsSetup = new ExtensionBundleOptionsSetup(context.Configuration, SystemEnvironment.Instance, context.HostingEnvironment);
             context.Configuration.Bind(options);
             optionsSetup.Configure(options);
             return options;

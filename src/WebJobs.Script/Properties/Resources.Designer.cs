@@ -88,6 +88,15 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Cannot delete an extension. Persistent file system not available in the current hosting environment.
+        /// </summary>
+        internal static string ErrorDeletingExtension {
+            get {
+                return ResourceManager.GetString("ErrorDeletingExtension", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Error downloading zip content {0}. Status Code:{1}. Reason:{2}.
         /// </summary>
         internal static string ErrorDownloadingZip {
@@ -102,6 +111,15 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         internal static string ErrorFetchingVersionInfo {
             get {
                 return ResourceManager.GetString("ErrorFetchingVersionInfo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot install an extension. Persistent file system not available in the current hosting environment.
+        /// </summary>
+        internal static string ErrorInstallingExtension {
+            get {
+                return ResourceManager.GetString("ErrorInstallingExtension", resourceCulture);
             }
         }
         

@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class ScriptStartupTypeDiscovererTests
     {
         [Fact]
-        public async System.Threading.Tasks.Task GetExtensionsStartupTypes_FiltersBuiltinExtensionsAsync()
+        public async Task GetExtensionsStartupTypes_FiltersBuiltinExtensionsAsync()
         {
             var references = new[]
             {
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
-            mockExtensionBundleManager.Setup(e => e.GetExtensionBundle(null)).ReturnsAsync(string.Empty);
+            mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).ReturnsAsync(string.Empty);
 
             using (var directory = new TempDirectory())
             {
@@ -114,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (var directory = new TempDirectory())
             {
                 var binPath = Path.Combine(directory.Path, "bin");
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundle(null)).ReturnsAsync(directory.Path);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).ReturnsAsync(directory.Path);
                 Directory.CreateDirectory(binPath);
 
                 void CopyToBin(string path)
@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
-            mockExtensionBundleManager.Setup(e => e.GetExtensionBundle(null)).ReturnsAsync(string.Empty);
+            mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).ReturnsAsync(string.Empty);
             var testLogger = new TestLogger("test");
             var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object);
 
