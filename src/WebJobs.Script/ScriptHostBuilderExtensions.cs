@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -234,7 +235,9 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static void ConfigureApplicationInsights(HostBuilderContext context, ILoggingBuilder builder)
         {
             string appInsightsKey = context.Configuration[EnvironmentSettingNames.AppInsightsInstrumentationKey];
-            if (!string.IsNullOrEmpty(appInsightsKey))
+
+            // Initializing AppInsights services during placeholder mode as well to avoid the cost of JITting these objects during specialization
+            if (!string.IsNullOrEmpty(appInsightsKey) || SystemEnvironment.Instance.IsPlaceholderModeEnabled())
             {
                 builder.AddApplicationInsights(o => o.InstrumentationKey = appInsightsKey);
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
@@ -252,6 +255,19 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     return client;
                 });
+
+                if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+                {
+                    for (int i = 0; i < builder.Services.Count; i++)
+                    {
+                        // This is to avoid possible race condition during specialization when disposing old AI listeners created during placeholder mode.
+                        if (builder.Services[i].ServiceType == typeof(ITelemetryModule) && builder.Services[i].ImplementationFactory?.Method.ReturnType == typeof(DependencyTrackingTelemetryModule))
+                        {
+                            builder.Services.RemoveAt(i);
+                            break;
+                        }
+                    }
+                }
             }
         }
 
