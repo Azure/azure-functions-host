@@ -43,11 +43,11 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         /// Attempts to locate the extension bundle inside the probing paths and download paths. If the extension bundle is not found then it will download the extension bundle.
         /// </summary>
         /// <returns>Path of the extension bundle</returns>
-        public Task<string> GetExtensionBundlePath()
+        public async Task<string> GetExtensionBundlePath()
         {
             using (var httpClient = new HttpClient())
             {
-                return GetBundle(httpClient);
+                return await GetBundle(httpClient);
             }
         }
 
@@ -56,9 +56,9 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         /// </summary>
         /// <param name="httpClient">HttpClient used to download the extension bundle</param>
         /// <returns>Path of the extension bundle</returns>
-        public Task<string> GetExtensionBundlePath(HttpClient httpClient)
+        public async Task<string> GetExtensionBundlePath(HttpClient httpClient)
         {
-            return GetBundle(httpClient);
+            return await GetBundle(httpClient);
         }
 
         private async Task<string> GetBundle(HttpClient httpClient)
