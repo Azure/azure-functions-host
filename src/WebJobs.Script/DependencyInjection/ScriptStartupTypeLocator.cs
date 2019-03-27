@@ -5,9 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Properties;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
@@ -23,17 +27,19 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
     {
         private readonly string _rootScriptPath;
         private readonly ILogger _logger;
+        private readonly IExtensionBundleManager _extensionBundleManager;
 
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
-        public ScriptStartupTypeLocator(string rootScriptPath)
-            : this(rootScriptPath, NullLogger.Instance)
+        public ScriptStartupTypeLocator(string rootScriptPath, IExtensionBundleManager extensionBundleManager)
+            : this(rootScriptPath, NullLogger.Instance, extensionBundleManager)
         {
         }
 
-        public ScriptStartupTypeLocator(string rootScriptPath, ILogger logger)
+        public ScriptStartupTypeLocator(string rootScriptPath, ILogger logger, IExtensionBundleManager extensionBundleManager)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
+            _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
             _logger = logger;
         }
 
@@ -48,16 +54,32 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
         public Type[] GetStartupTypes()
         {
-            IEnumerable<Type> startupTypes = GetExtensionsStartupTypes();
+            IEnumerable<Type> startupTypes = GetExtensionsStartupTypesAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 
             return startupTypes
                 .Distinct(new TypeNameEqualityComparer())
                 .ToArray();
         }
 
-        public IEnumerable<Type> GetExtensionsStartupTypes()
+        public async Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()
         {
-            string binPath = Path.Combine(_rootScriptPath, "bin");
+            string binPath;
+            if (_extensionBundleManager.IsExtensionBundleConfigured())
+            {
+                string extensionBundlePath = await _extensionBundleManager.GetExtensionBundlePath();
+                if (string.IsNullOrEmpty(extensionBundlePath))
+                {
+                    _logger.LogError(Resources.ErrorLoadingExtensionBundle);
+                    return null;
+                }
+                _logger.LogInformation(Resources.LoadingExtensionBundle, extensionBundlePath);
+                binPath = Path.Combine(extensionBundlePath, "bin");
+            }
+            else
+            {
+                binPath = Path.Combine(_rootScriptPath, "bin");
+            }
+
             string metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
 
             // parse the extensions file to get declared startup extensions

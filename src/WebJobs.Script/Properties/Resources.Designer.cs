@@ -70,6 +70,87 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Completed downloading extension bundle from {0} to {1}.
+        /// </summary>
+        internal static string DownloadComplete {
+            get {
+                return ResourceManager.GetString("DownloadComplete", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Downloading extension bundle from {0} to {1}.
+        /// </summary>
+        internal static string DownloadingZip {
+            get {
+                return ResourceManager.GetString("DownloadingZip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot delete an extension. Persistent file system not available in the current hosting environment.
+        /// </summary>
+        internal static string ErrorDeletingExtension {
+            get {
+                return ResourceManager.GetString("ErrorDeletingExtension", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Error downloading zip content {0}. Status Code:{1}. Reason:{2}.
+        /// </summary>
+        internal static string ErrorDownloadingZip {
+            get {
+                return ResourceManager.GetString("ErrorDownloadingZip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Error fetching version information for extension bundle {0}.
+        /// </summary>
+        internal static string ErrorFetchingVersionInfo {
+            get {
+                return ResourceManager.GetString("ErrorFetchingVersionInfo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot install an extension. Persistent file system not available in the current hosting environment.
+        /// </summary>
+        internal static string ErrorInstallingExtension {
+            get {
+                return ResourceManager.GetString("ErrorInstallingExtension", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unable to find or download extension bundle.
+        /// </summary>
+        internal static string ErrorLoadingExtensionBundle {
+            get {
+                return ResourceManager.GetString("ErrorLoadingExtensionBundle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot delete extension when ExtensionBundles is configured..
+        /// </summary>
+        internal static string ExtensionBundleBadRequestDelete {
+            get {
+                return ResourceManager.GetString("ExtensionBundleBadRequestDelete", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot install extension when ExtensionBundles is configured..
+        /// </summary>
+        internal static string ExtensionBundleBadRequestInstall {
+            get {
+                return ResourceManager.GetString("ExtensionBundleBadRequestInstall", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The value of id property in extensionBundle section of {0} file is invalid or missing. See https://aka.ms/functions-hostjson for more information.
         /// </summary>
         internal static string ExtensionBundleConfigMissingId {
@@ -97,11 +178,74 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Found a matching extension bundle at {0}.
+        /// </summary>
+        internal static string ExtensionBundleFound {
+            get {
+                return ResourceManager.GetString("ExtensionBundleFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Extracting extension bundle at {0}.
+        /// </summary>
+        internal static string ExtractingBundleZip {
+            get {
+                return ResourceManager.GetString("ExtractingBundleZip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Fetching information on versions of extension bundle {0} available on {1}{2}.
+        /// </summary>
+        internal static string FetchingVersionInfo {
+            get {
+                return ResourceManager.GetString("FetchingVersionInfo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Starting language worker channel specialization.
         /// </summary>
         internal static string LanguageWorkerChannelSpecializationTrace {
             get {
                 return ResourceManager.GetString("LanguageWorkerChannelSpecializationTrace", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Loading Extension bundle from {0}.
+        /// </summary>
+        internal static string LoadingExtensionBundle {
+            get {
+                return ResourceManager.GetString("LoadingExtensionBundle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Looking for extension bundle {0} at {1}.
+        /// </summary>
+        internal static string LocateExtensionBundle {
+            get {
+                return ResourceManager.GetString("LocateExtensionBundle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Bundle version matching the {0} was not found.
+        /// </summary>
+        internal static string MatchingBundleNotFound {
+            get {
+                return ResourceManager.GetString("MatchingBundleNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Zip extraction complete.
+        /// </summary>
+        internal static string ZipExtractionComplete {
+            get {
+                return ResourceManager.GetString("ZipExtractionComplete", resourceCulture);
             }
         }
     }

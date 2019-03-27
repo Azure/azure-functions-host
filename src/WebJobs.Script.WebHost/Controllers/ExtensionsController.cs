@@ -11,7 +11,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Newtonsoft.Json;
@@ -23,11 +25,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     {
         private readonly IExtensionsManager _extensionsManager;
         private readonly ScriptSettingsManager _settingsManager;
+        private readonly IExtensionBundleManager _extensionBundleManager;
+        private readonly IEnvironment _environment;
 
-        public ExtensionsController(IExtensionsManager extensionsManager, ScriptSettingsManager settingsManager)
+        public ExtensionsController(IExtensionsManager extensionsManager, ScriptSettingsManager settingsManager, IExtensionBundleManager extensionBundleManager, IEnvironment environment)
         {
             _extensionsManager = extensionsManager ?? throw new ArgumentNullException(nameof(extensionsManager));
             _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
+            _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
+            _environment = environment;
         }
 
         [HttpGet]
@@ -58,6 +64,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/extensions/{id}")]
         public async Task<IActionResult> Delete(string id)
         {
+            if (_extensionBundleManager.IsExtensionBundleConfigured())
+            {
+                return BadRequest(Resources.ExtensionBundleBadRequestDelete);
+            }
+
+            if (_environment.IsPersistentFileSystemAvailable())
+            {
+                return BadRequest(Resources.ErrorDeletingExtension);
+            }
+
             // TODO: Check if we have an active job
 
             var job = await CreateJob(new ExtensionPackageReference() { Id = id, Version = string.Empty });
@@ -101,6 +117,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             if (package == null)
             {
                 return BadRequest();
+            }
+
+            if (_extensionBundleManager.IsExtensionBundleConfigured())
+            {
+                return BadRequest(Resources.ExtensionBundleBadRequestInstall);
+            }
+
+            if (_environment.IsPersistentFileSystemAvailable())
+            {
+                return BadRequest(Resources.ErrorInstallingExtension);
             }
 
             if (verifyConflict)
@@ -184,6 +210,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".azurefunctions", "extensions");
             }
+
+            FileUtility.EnsureDirectoryExists(basePath);
             return basePath;
         }
 

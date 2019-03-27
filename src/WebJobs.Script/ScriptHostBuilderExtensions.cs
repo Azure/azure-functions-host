@@ -11,7 +11,6 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.BindingExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -19,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
@@ -83,13 +83,13 @@ namespace Microsoft.Azure.WebJobs.Script
             });
 
             // WebJobs configuration
-            return builder.AddScriptHostCore(applicationOptions, configureWebJobs);
+            return builder.AddScriptHostCore(applicationOptions, configureWebJobs, loggerFactory);
         }
 
-        public static IHostBuilder AddScriptHostCore(this IHostBuilder builder, ScriptApplicationHostOptions applicationHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
+        public static IHostBuilder AddScriptHostCore(this IHostBuilder builder, ScriptApplicationHostOptions applicationHostOptions, Action<IWebJobsBuilder> configureWebJobs = null, ILoggerFactory loggerFactory = null)
         {
             var skipHostInitialization = builder.Properties.ContainsKey(ScriptConstants.SkipHostInitializationKey);
-            builder.ConfigureWebJobs(webJobsBuilder =>
+            builder.ConfigureWebJobs((context, webJobsBuilder) =>
             {
                 // Built in binding registrations
                 webJobsBuilder.AddExecutionContextBinding(o =>
@@ -105,9 +105,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (!skipHostInitialization)
                 {
+                    var extensionBundleOptions = GetExtensionBundleOptions(context);
+                    var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory);
+
                     // Only set our external startup if we're not suppressing host initialization
                     // as we don't want to load user assemblies otherwise.
-                    webJobsBuilder.UseScriptExternalStartup(applicationHostOptions.ScriptPath);
+                    webJobsBuilder.UseScriptExternalStartup(applicationHostOptions.ScriptPath, bundleManager);
+                    webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
                 }
 
                 configureWebJobs?.Invoke(webJobsBuilder);
@@ -142,7 +146,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 // TODO: pgopa only add this to WebHostServiceCollection
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
-                services.ConfigureOptions<ExtensionBundleOptionsSetup>();
                 services.ConfigureOptions<ManagedDependencyOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
                     .Configure<IConfiguration>((o, c) =>
@@ -192,9 +195,9 @@ namespace Microsoft.Azure.WebJobs.Script
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
         }
 
-        public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, string rootScriptPath)
+        public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, string rootScriptPath, IExtensionBundleManager extensionBundleManager)
         {
-            return builder.UseExternalStartup(new ScriptStartupTypeLocator(rootScriptPath));
+            return builder.UseExternalStartup(new ScriptStartupTypeLocator(rootScriptPath, extensionBundleManager));
         }
 
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)
@@ -249,6 +252,15 @@ namespace Microsoft.Azure.WebJobs.Script
                     return client;
                 });
             }
+        }
+
+        internal static ExtensionBundleOptions GetExtensionBundleOptions(HostBuilderContext context)
+        {
+            var options = new ExtensionBundleOptions();
+            var optionsSetup = new ExtensionBundleConfigurationHelper(context.Configuration, SystemEnvironment.Instance, context.HostingEnvironment);
+            context.Configuration.Bind(options);
+            optionsSetup.Configure(options);
+            return options;
         }
     }
 }
