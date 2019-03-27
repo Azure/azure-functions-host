@@ -146,7 +146,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 // TODO: pgopa only add this to WebHostServiceCollection
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
-                services.ConfigureOptions<ExtensionBundleOptionsSetup>();
                 services.ConfigureOptions<ManagedDependencyOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
                     .Configure<IConfiguration>((o, c) =>
@@ -258,7 +257,7 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static ExtensionBundleOptions GetExtensionBundleOptions(HostBuilderContext context)
         {
             var options = new ExtensionBundleOptions();
-            var optionsSetup = new ExtensionBundleOptionsSetup(context.Configuration, SystemEnvironment.Instance, context.HostingEnvironment);
+            var optionsSetup = new ExtensionBundleConfigurationHelper(context.Configuration, SystemEnvironment.Instance, context.HostingEnvironment);
             context.Configuration.Bind(options);
             optionsSetup.Configure(options);
             return options;

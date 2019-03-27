@@ -2,24 +2,22 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using NuGet.Packaging;
 using NuGet.Versioning;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
-    public class ExtensionBundleOptionsSetup : IConfigureOptions<ExtensionBundleOptions>
+    public class ExtensionBundleConfigurationHelper
     {
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
         private readonly IHostingEnvironment _hostingEnvironment;
 
-        public ExtensionBundleOptionsSetup(IConfiguration configuration, IEnvironment environment, IHostingEnvironment hostingEnvironment)
+        public ExtensionBundleConfigurationHelper(IConfiguration configuration, IEnvironment environment, IHostingEnvironment hostingEnvironment)
         {
             _configuration = configuration;
             _environment = environment;

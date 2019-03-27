@@ -53,6 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LinuxAzureAppServiceStorage = "WEBSITES_ENABLE_APP_SERVICE_STORAGE";
         public const string CoreToolsEnvironment = "FUNCTIONS_CORETOOLS_ENVIRONMENT";
 
-        public const string FunctionsFallbackCdnUri = "FUNCTIONS_FALLBACK_CDN_URI";
+        public const string ExtensionBundleSourceUri = "FUNCTIONS_EXTENSIONBUNDLE_SOURCE_URI";
     }
 }

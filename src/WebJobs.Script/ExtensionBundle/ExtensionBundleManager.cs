@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = loggerFactory.CreateLogger<ExtensionBundleManager>() ?? throw new ArgumentNullException(nameof(loggerFactory));
-            _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsFallbackCdnUri) ?? ScriptConstants.CdnBaseUri;
+            _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ExtensionBundleSourceUri) ?? ScriptConstants.ExtensionBundleDefaultSourceUri;
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 

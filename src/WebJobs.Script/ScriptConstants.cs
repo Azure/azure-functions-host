@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string DefaultExtensionBundleDirectory = "FuncExtensionBundles";
         public const string ExtensionBundleDirectory = "ExtensionBundles";
-        public const string CdnBaseUri = "https://functionscdn.azureedge.net/public";
+        public const string ExtensionBundleDefaultSourceUri = "https://functionscdn.azureedge.net/public";
         public const string ExtensionBundleMetadatFile = "bundle.json";
         public const string ExtensionBundleVersionIndexFile = "index.json";
 
