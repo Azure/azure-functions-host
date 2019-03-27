@@ -2,13 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.FileAugmentation;
-using Microsoft.Azure.WebJobs.Script.FileAugmentation.PowerShell;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Options;
 using Xunit;
 
@@ -47,6 +45,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
             Assert.True(!File.Exists(Path.Combine(_scriptRootPath, "host.json")));
             Assert.True(!File.Exists(Path.Combine(_scriptRootPath, "requirements.psd1")));
             Assert.True(!File.Exists(Path.Combine(_scriptRootPath, "profile.ps1")));
+        }
+
+        [Theory]
+        [InlineData("dotnet")]
+        [InlineData("powershell")]
+        public async Task Create_App_Files_NonPowershell_Runtime_Test(string workerRuntime)
+        {
+            File.Delete(Path.Combine(_scriptRootPath, "host.json"));
+            File.Delete(Path.Combine(_scriptRootPath, "requirements.psd1"));
+            File.Delete(Path.Combine(_scriptRootPath, "profile.ps1"));
+            _environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+            var appFileAugmentationService = new AppFileAugmentationService(_environment, _optionsMonitor, _funcAppFileAugmentorFactory);
+            await appFileAugmentationService.StartAsync(_cancellationTokenSource.Token);
+            if (string.Equals(workerRuntime, "powershell", StringComparison.InvariantCultureIgnoreCase))
+            {
+                Assert.True(File.Exists(Path.Combine(_scriptRootPath, "host.json")));
+                Assert.True(File.Exists(Path.Combine(_scriptRootPath, "requirements.psd1")));
+                Assert.True(File.Exists(Path.Combine(_scriptRootPath, "profile.ps1")));
+            }
+            else
+            {
+                Assert.True(!File.Exists(Path.Combine(_scriptRootPath, "host.json")));
+                Assert.True(!File.Exists(Path.Combine(_scriptRootPath, "requirements.psd1")));
+                Assert.True(!File.Exists(Path.Combine(_scriptRootPath, "profile.ps1")));
+            }
         }
     }
 }

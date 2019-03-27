@@ -2,8 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Text;
 using Microsoft.Azure.WebJobs.Script.FileAugmentation;
 using Microsoft.Azure.WebJobs.Script.FileAugmentation.PowerShell;
 using Xunit;
@@ -23,19 +21,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         [InlineData("")]
         [InlineData(null)]
         [InlineData("dotnet")]
-        public void CreatFileAugmentor_Null_Or_Empty_OtherThanPowerShell_Runtime(string runtime)
+        [InlineData("powershell")]
+        public void CreatFileAugmentor_Test(string runtime)
         {
             var fileAugmentor = _funcAppFileAugmentorFactory.CreatFileAugmentor(runtime);
-            Assert.True(fileAugmentor == null);
-        }
-
-        [Fact]
-        public void CreatFileAugmentor_PowerShell_Runtime()
-        {
-            var runtime = "powershell";
-            var fileAugmentor = _funcAppFileAugmentorFactory.CreatFileAugmentor(runtime);
-            Assert.True(fileAugmentor != null);
-            Assert.True(fileAugmentor is PowerShellFileAugmentor);
+            if (string.Equals(runtime, "powershell", StringComparison.InvariantCultureIgnoreCase))
+            {
+                Assert.True(fileAugmentor != null);
+                Assert.True(fileAugmentor is PowerShellFileAugmentor);
+            }
+            else
+            {
+                Assert.True(fileAugmentor == null);
+            }
         }
     }
 }
