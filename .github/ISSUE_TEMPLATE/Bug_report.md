@@ -1,3 +1,8 @@
+---
+name: "Bug report"
+about: Create a report to help us improve
+
+---
 
 <!-- 
 Please provide a succinct description of the issue. Please make an effort to fill in the all the sections below or we may close your issue for being low quality. 
