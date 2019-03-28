@@ -3,15 +3,15 @@
 
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.WebJobs.Script.FileAugmentation
+namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
 {
-    public interface IFuncAppFileAugmentor
+    public interface IFuncAppFileProvisioner
     {
         /// <summary>
         /// Adds the required files to the function app
         /// </summary>
         /// <param name="scriptRootPath">The root path of the function app</param>
-        /// <returns>An empty completed <see cref="Task"/> object with</returns>
-        Task AugmentFiles(string scriptRootPath);
+        /// <returns>An empty completed task <see cref="Task"/></returns>
+        Task ProvisionFiles(string scriptRootPath);
     }
 }

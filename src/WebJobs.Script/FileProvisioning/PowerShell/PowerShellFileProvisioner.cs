@@ -7,52 +7,25 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script.FileAugmentation.PowerShell
+namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
 {
-    internal class PowerShellFileAugmentor : IFuncAppFileAugmentor
+    internal class PowerShellFileProvisioner : IFuncAppFileProvisioner
     {
         /// <summary>
         /// Adds the required files to the function app
         /// </summary>
         /// <param name="scriptRootPath">The root path of the function app</param>
-        /// <returns>An empty completed <see cref="Task"/> object with</returns>
-        public Task AugmentFiles(string scriptRootPath)
+        /// <returns>An empty completed task <see cref="Task"/></returns>
+        public Task ProvisionFiles(string scriptRootPath)
         {
             if (string.IsNullOrWhiteSpace(scriptRootPath))
             {
                 throw new ArgumentException("The parameter {0} cannot be null or empty", nameof(scriptRootPath));
             }
 
-            AddOrUpdateHostFile(scriptRootPath);
             AddRequirementsFile(scriptRootPath);
             AddProfileFile(scriptRootPath);
             return Task.CompletedTask;
-        }
-
-        private void AddOrUpdateHostFile(string scriptRootPath)
-        {
-            string hostFilePath = Path.Combine(scriptRootPath, "host.json");
-            string hostJsonContent = null;
-            if (File.Exists(hostFilePath))
-            {
-                using (StreamReader r = new StreamReader(hostFilePath))
-                {
-                    hostJsonContent = r.ReadToEnd();
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(hostJsonContent))
-            {
-                hostJsonContent = "{'version': '2.0'}";
-            }
-
-            var hostJsonJObj = JObject.Parse(hostJsonContent);
-            var managedDependency = hostJsonJObj.GetValue("managedDependency");
-            if (managedDependency == null)
-            {
-                hostJsonJObj.Add("managedDependency", JToken.Parse("{'Enabled': true}"));
-                File.WriteAllText(hostFilePath, hostJsonJObj.ToString(Formatting.Indented));
-            }
         }
 
         private void AddRequirementsFile(string scriptRootPath)

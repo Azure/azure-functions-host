@@ -17,14 +17,14 @@
     <WarningsAsErrors />
   </PropertyGroup>
   <ItemGroup>
-    <None Remove="FileAugmentation\PowerShell\profile.ps1" />
-    <None Remove="FileAugmentation\PowerShell\requirements.psd1" />
+    <None Remove="FileProvisioning\PowerShell\profile.ps1" />
+    <None Remove="FileProvisioning\PowerShell\requirements.psd1" />
     <None Remove="runtimeassemblies.json" />
     <None Remove="runtimes.json" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="FileAugmentation\PowerShell\profile.ps1" />
-    <EmbeddedResource Include="FileAugmentation\PowerShell\requirements.psd1" />
+    <EmbeddedResource Include="FileProvisioning\PowerShell\profile.ps1" />
+    <EmbeddedResource Include="FileProvisioning\PowerShell\requirements.psd1" />
     <EmbeddedResource Include="runtimeassemblies.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>

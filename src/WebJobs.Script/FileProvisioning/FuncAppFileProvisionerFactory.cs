@@ -2,13 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.WebJobs.Script.FileAugmentation.PowerShell;
+using Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell;
 
-namespace Microsoft.Azure.WebJobs.Script.FileAugmentation
+namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
 {
-    internal class FuncAppFileAugmentorFactory : IFuncAppFileAugmentorFactory
+    internal class FuncAppFileProvisionerFactory : IFuncAppFileProvisionerFactory
     {
-        public IFuncAppFileAugmentor CreatFileAugmentor(string runtime)
+        public IFuncAppFileProvisioner CreatFileProvisioner(string runtime)
         {
             if (string.IsNullOrWhiteSpace(runtime))
             {
@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.FileAugmentation
             switch (runtime.ToLowerInvariant())
             {
                 case "powershell":
-                    return new PowerShellFileAugmentor();
+                    return new PowerShellFileProvisioner();
                 default:
                     return null;
             }

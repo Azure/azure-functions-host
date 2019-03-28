@@ -7,32 +7,32 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
-namespace Microsoft.Azure.WebJobs.Script.FileAugmentation
+namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
 {
-    internal class AppFileAugmentationService : IHostedService
+    internal class FuncAppFileProvisioningService : IHostedService
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
         private readonly IEnvironment _environment;
-        private readonly IFuncAppFileAugmentorFactory _funcAppFileAugmentorFactory;
+        private readonly IFuncAppFileProvisionerFactory _funcAppFileProvisionerFactory;
 
-        public AppFileAugmentationService(
+        public FuncAppFileProvisioningService(
             IEnvironment environment,
             IOptionsMonitor<ScriptApplicationHostOptions> options,
-            IFuncAppFileAugmentorFactory funcAppFileAugmentorFactory)
+            IFuncAppFileProvisionerFactory funcAppFileProvisionerFactory)
         {
             _environment = environment;
             _options = options;
-            _funcAppFileAugmentorFactory = funcAppFileAugmentorFactory;
+            _funcAppFileProvisionerFactory = funcAppFileProvisionerFactory;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             if (!_environment.FileSystemIsReadOnly())
             {
-                var funcAppFileAugmentor = _funcAppFileAugmentorFactory.CreatFileAugmentor(_environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName));
-                if (funcAppFileAugmentor != null)
+                var funcAppFileProvisioner = _funcAppFileProvisionerFactory.CreatFileProvisioner(_environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName));
+                if (funcAppFileProvisioner != null)
                 {
-                    await funcAppFileAugmentor.AugmentFiles(_options.CurrentValue.ScriptPath);
+                    await funcAppFileProvisioner.ProvisionFiles(_options.CurrentValue.ScriptPath);
                 }
             }
         }
