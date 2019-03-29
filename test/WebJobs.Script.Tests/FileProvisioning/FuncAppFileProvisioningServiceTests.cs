@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         [Theory]
         [InlineData("dotnet")]
         [InlineData("powershell")]
-        public async Task Create_App_Files_NonPowershell_Runtime_Test(string workerRuntime)
+        public async Task Create_App_Files_Runtime_Test(string workerRuntime)
         {
             File.Delete(Path.Combine(_scriptRootPath, "requirements.psd1"));
             File.Delete(Path.Combine(_scriptRootPath, "profile.ps1"));

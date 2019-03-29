@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
             string requirementsFilePath = Path.Combine(scriptRootPath, "requirements.psd1");
             if (!File.Exists(requirementsFilePath))
             {
-                string content = FileUtility.ReadResourceString($"Microsoft.Azure.WebJobs.Script.FileAugmentation.PowerShell.requirements.psd1");
+                string content = FileUtility.ReadResourceString($"Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell.requirements.psd1");
                 File.WriteAllText(requirementsFilePath, content);
             }
         }
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
             string profileFilePath = Path.Combine(scriptRootPath, "profile.ps1");
             if (!File.Exists(profileFilePath))
             {
-                string content = FileUtility.ReadResourceString($"Microsoft.Azure.WebJobs.Script.FileAugmentation.PowerShell.profile.ps1");
+                string content = FileUtility.ReadResourceString($"Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell.profile.ps1");
                 File.WriteAllText(profileFilePath, content);
             }
         }
