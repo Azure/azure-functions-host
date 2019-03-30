@@ -55,10 +55,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 else
                 {
                     // Local hosting or Linux container scenarios
-                    Data[WebHostScriptPathProperty] = GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot);
-                    Data[LogPathProperty] = Path.Combine(Path.GetTempPath(), @"Functions");
-                    Data[SecretsPathProperty] = Path.Combine(AppContext.BaseDirectory, "Secrets");
-                    Data[TestDataPathProperty] = Path.Combine(Path.GetTempPath(), @"FunctionsData");
+                    Data[WebHostScriptPathProperty] = GetOrDefault(EnvironmentSettingNames.AzureWebJobsScriptRoot, Environment.CurrentDirectory);
+                    Data[LogPathProperty] = GetOrDefault(EnvironmentSettingNames.FunctionsLogPath, Path.Combine(Path.GetTempPath(), @"Functions"));
+                    Data[SecretsPathProperty] = GetOrDefault(EnvironmentSettingNames.FunctionsSecretsPath, Path.Combine(AppContext.BaseDirectory, "Secrets"));
+                    Data[TestDataPathProperty] = GetOrDefault(EnvironmentSettingNames.FunctionsTestDataPath, Path.Combine(Path.GetTempPath(), @"FunctionsData"));
+                }
+
+                string GetOrDefault(string variableName, string @default)
+                {
+                    var result = GetEnvironmentVariable(variableName);
+                    return string.IsNullOrEmpty(result) ? @default : result;
                 }
             }
         }
