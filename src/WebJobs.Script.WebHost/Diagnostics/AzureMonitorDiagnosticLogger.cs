@@ -40,7 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            return true;
+            // We want to instantiate this Logger in placeholder mode to warm it up, but do not want to log anything.
+            return !string.IsNullOrEmpty(_websiteHostName) && !_environment.IsPlaceholderModeEnabled();
         }
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)

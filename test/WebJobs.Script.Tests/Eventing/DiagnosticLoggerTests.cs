@@ -163,6 +163,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             Assert.True(JToken.DeepEquals(actual, expected), $"Actual: {actual.ToString()}{Environment.NewLine}Expected: {expected.ToString()}");
         }
 
+        [Fact]
+        public void Log_DisabledIfPlaceholder()
+        {
+            string message = "TestMessage";
+            string functionInvocationId = Guid.NewGuid().ToString();
+            string activityId = Guid.NewGuid().ToString();
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
+            _logger.LogInformation(message);
+
+            Assert.False(_logger.IsEnabled(LogLevel.Information));
+            _mockEventGenerator.Verify(m => m.LogAzureMonitorDiagnosticLogEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public void Log_DisabledIfNoSiteName()
+        {
+            string message = "TestMessage";
+            string functionInvocationId = Guid.NewGuid().ToString();
+            string activityId = Guid.NewGuid().ToString();
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, null);
+
+            // Recreate the logger was we cache the site name in the constructor
+            ILogger logger = new AzureMonitorDiagnosticLogger(_category, _hostInstanceId, _mockEventGenerator.Object, _environment, new LoggerExternalScopeProvider());
+
+            logger.LogInformation(message);
+
+            Assert.False(logger.IsEnabled(LogLevel.Information));
+            _mockEventGenerator.Verify(m => m.LogAzureMonitorDiagnosticLogEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
         // Creates a scope based on the non-null values passed in. Allows us to test various permutations and make sure that the logger handles them.
         private IDisposable CreateScope(string functionName = null, string activityId = null, string functionInvocationId = null)
         {
