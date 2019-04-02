@@ -60,7 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                     return new DelegateFactory(_ => _rootProvider.GetService(request.ServiceType));
                 });
 
-            var container = new Container(r => rules);
+            // preferInterpretation will be set to true to significanly improve cold start in consumption mode
+            // it will be set to false for premium and appservice plans to make sure throughput is not impacted
+            // there is no throughput drop in consumption with this setting.
+            var preferInterpretation = SystemEnvironment.Instance.IsDynamic() ? true : false;
+            var container = new Container(r => rules, preferInterpretation: preferInterpretation);
 
             container.Populate(descriptors);
             container.UseInstance<IServiceProvider>(this);
