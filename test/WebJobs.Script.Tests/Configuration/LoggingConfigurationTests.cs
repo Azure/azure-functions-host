@@ -11,7 +11,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -183,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             loggerProviders.OfType<HostFileLoggerProvider>().Single();
             loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
             loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
-            loggerProviders.OfType<NullLoggerProvider>().Single();
+            loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
         }
 
         [Fact]
@@ -202,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
             loggerProviders.OfType<ConsoleLoggerProvider>().Single();
             loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
-            loggerProviders.OfType<NullLoggerProvider>().Single();
+            loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
         }
 
         [Fact]
@@ -227,7 +226,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
             loggerProviders.OfType<ConsoleLoggerProvider>().Single();
             loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
-            loggerProviders.OfType<NullLoggerProvider>().Single();
+            loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
         }
 
         [Fact]
@@ -252,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
             loggerProviders.OfType<ApplicationInsightsLoggerProvider>().Single();
             loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
-            loggerProviders.OfType<NullLoggerProvider>().Single();
+            loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
         }
 
         [Fact]
