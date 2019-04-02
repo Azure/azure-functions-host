@@ -71,22 +71,22 @@ namespace DryIoc
     public sealed partial class Container : IContainer
     {
         /// <summary>Creates new container with default rules <see cref="DryIoc.Rules.Default"/>.</summary>
-        public Container() : this(Rules.Default, Ref.Of(Registry.Default), NewSingletonScope())
+        public Container(bool preferInterpretation = false) : this(Rules.Default, Ref.Of(Registry.Default), NewSingletonScope(), preferInterpretation: preferInterpretation)
         { }
 
         /// <summary>Creates new container, optionally providing <see cref="Rules"/> to modify default container behavior.</summary>
         /// <param name="rules">(optional) Rules to modify container default resolution behavior.
         /// If not specified, then <see cref="DryIoc.Rules.Default"/> will be used.</param>
         /// <param name="scopeContext">(optional) Scope context to use for scoped reuse.</param>
-        public Container(Rules rules = null, IScopeContext scopeContext = null)
-            : this(rules ?? Rules.Default, Ref.Of(Registry.Default), NewSingletonScope(), scopeContext)
+        public Container(Rules rules = null, IScopeContext scopeContext = null, bool preferInterpretation = false)
+            : this(rules ?? Rules.Default, Ref.Of(Registry.Default), NewSingletonScope(), scopeContext, preferInterpretation: preferInterpretation)
         { }
 
         /// <summary>Creates new container with configured rules.</summary>
         /// <param name="configure">Allows to modify <see cref="DryIoc.Rules.Default"/> rules.</param>
         /// <param name="scopeContext">(optional) Scope context to use for <see cref="Reuse.InCurrentScope"/>.</param>
-        public Container(Func<Rules, Rules> configure, IScopeContext scopeContext = null)
-            : this(configure.ThrowIfNull()(Rules.Default) ?? Rules.Default, scopeContext)
+        public Container(Func<Rules, Rules> configure, IScopeContext scopeContext = null, bool preferInterpretation = false)
+            : this(configure.ThrowIfNull()(Rules.Default) ?? Rules.Default, scopeContext, preferInterpretation: preferInterpretation)
         { }
 
         /// <summary>Helper to create singleton scope</summary>
@@ -1417,6 +1417,10 @@ namespace DryIoc
         private readonly IResolverContext _root;
         private readonly IResolverContext _parent;
 
+        private readonly bool _preferInterpretation;
+
+        internal bool PreferInterpretation => _preferInterpretation;
+
         internal sealed class InstanceFactory : Factory
         {
             public override Type ImplementationType { get; }
@@ -1927,7 +1931,8 @@ namespace DryIoc
         private Container(Rules rules, Ref<Registry> registry, IScope singletonScope,
             IScopeContext scopeContext = null, IScope ownCurrentScope = null,
             int disposed = 0, StackTrace disposeStackTrace = null,
-            IResolverContext parent = null, IResolverContext root = null)
+            IResolverContext parent = null, IResolverContext root = null,
+            bool preferInterpretation = false)
         {
             Rules = rules;
 
@@ -1942,6 +1947,7 @@ namespace DryIoc
 
             _parent = parent;
             _root = root;
+            _preferInterpretation = preferInterpretation;
         }
 
         #endregion
@@ -2022,7 +2028,7 @@ namespace DryIoc
 
         /// <summary>First wraps the input service expression into lambda expression and
         /// then compiles lambda expression to actual <see cref="FactoryDelegate"/> used for service resolution.</summary>
-        public static FactoryDelegate CompileToFactoryDelegate(this Expr expression)
+        public static FactoryDelegate CompileToFactoryDelegate(this Expr expression, bool preferInterpretation = false)
         {
             expression = expression.NormalizeExpression();
 
@@ -2046,8 +2052,8 @@ namespace DryIoc
             return lambdaExpr.ToLambdaExpression().Compile();
 #else
             // Passing preferInterpretation: true as the default value of False uses JIT compile which has a huge impact on Functions cold start time
-            // This optimization is needed for Functions Host only and is not part of the DryIoc codebase which it was copied from.
-            return lambdaExpr.Compile(preferInterpretation: true);
+            // This optimization is needed for Functions Host only and is not part of the DryIoc codebase which it was copied from.            
+            return lambdaExpr.Compile(preferInterpretation: preferInterpretation);
 #endif
         }
 
@@ -6574,7 +6580,8 @@ namespace DryIoc
                 !request.TracksTransientDisposable &&
                 !request.IsWrappedInFunc())
             {
-                var factoryDelegate = serviceExpr.CompileToFactoryDelegate();
+                var container = request.Container as Container;
+                var factoryDelegate = serviceExpr.CompileToFactoryDelegate(container != null ? container.PreferInterpretation : false);
                 var factory = factoryDelegate;
 
                 if (Setup.WeaklyReferenced)
