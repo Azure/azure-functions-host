@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
@@ -72,6 +73,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
         {
             TestHost?.Dispose();
             HttpClient?.Dispose();
+
+            // App Insights takes 2 seconds to flush telemetry and because our container
+            // is disposed on a background task, it doesn't block. So waiting here to ensure
+            // everything is flushed and can't affect subsequent tests.
+            Thread.Sleep(2000);
         }
 
         private class ScriptHostBuilder : IConfigureBuilder<IWebJobsBuilder>

@@ -3,10 +3,8 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
@@ -242,19 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 builder.AddApplicationInsights(o => o.InstrumentationKey = appInsightsKey);
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
 
-                builder.Services.AddSingleton<ISdkVersionProvider, ApplicationInsightsSdkVersionProvider>();
-
-                // Override the default SdkVersion with the functions key
-                builder.Services.AddSingleton<TelemetryClient>(provider =>
-                {
-                    TelemetryConfiguration configuration = provider.GetService<TelemetryConfiguration>();
-                    TelemetryClient client = new TelemetryClient(configuration);
-
-                    ISdkVersionProvider versionProvider = provider.GetService<ISdkVersionProvider>();
-                    client.Context.GetInternalContext().SdkVersion = versionProvider.GetSdkVersion();
-
-                    return client;
-                });
+                builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
 
                 if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
                 {
@@ -267,6 +253,12 @@ namespace Microsoft.Azure.WebJobs.Script
                             break;
                         }
                     }
+
+                    // Disable auto-http tracking when in placeholder mode.
+                    builder.Services.Configure<ApplicationInsightsLoggerOptions>(o =>
+                    {
+                        o.HttpAutoCollectionOptions.EnableHttpTriggerExtendedInfoCollection = false;
+                    });
                 }
             }
         }
