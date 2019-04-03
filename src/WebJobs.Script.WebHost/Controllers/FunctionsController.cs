@@ -108,7 +108,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 { inputParameter.Name, invocation.Input }
             };
-            Task.Run(() => scriptHost.CallAsync(function.Name, arguments));
+
+            Task.Run(async () =>
+            {
+                IDictionary<string, object> loggerScope = new Dictionary<string, object>
+                {
+                    { "MS_IgnoreActivity", null }
+                };
+
+                using (_logger.BeginScope(loggerScope))
+                {
+                    await scriptHost.CallAsync(function.Name, arguments);
+                }
+            });
 
             return Accepted();
         }
