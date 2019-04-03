@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
@@ -163,11 +164,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     AddCommonServices(services);
                 }
 
-                // Hosted services
                 services.AddSingleton<IHostedService, LanguageWorkerConsoleLogService>();
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
             });
 
+            RegisterFileProvisioningService(builder);
             return builder;
         }
 
@@ -261,6 +262,18 @@ namespace Microsoft.Azure.WebJobs.Script
             context.Configuration.Bind(options);
             optionsSetup.Configure(options);
             return options;
+        }
+
+        private static void RegisterFileProvisioningService(IHostBuilder builder)
+        {
+            if (string.Equals(Environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell"))
+            {
+                builder.ConfigureServices(services =>
+                {
+                    services.AddSingleton<IFuncAppFileProvisionerFactory, FuncAppFileProvisionerFactory>();
+                    services.AddSingleton<IHostedService, FuncAppFileProvisioningService>();
+                });
+            }
         }
     }
 }

@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -189,9 +190,15 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 return hostConfigObject;
             }
 
-            private static JObject GetDefaultHostConfigObject()
+            private JObject GetDefaultHostConfigObject()
             {
-                return new JObject { { "version", "2.0" } };
+                var hostJsonJObj = JObject.Parse("{'version': '2.0'}");
+                if (string.Equals(_configurationSource.Environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    hostJsonJObj.Add("managedDependency", JToken.Parse("{'Enabled': true}"));
+                }
+
+                return hostJsonJObj;
             }
 
             private void TryWriteHostJson(string filePath, JObject content)
