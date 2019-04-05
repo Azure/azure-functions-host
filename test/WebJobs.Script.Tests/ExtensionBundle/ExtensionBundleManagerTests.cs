@@ -25,7 +25,7 @@ using NuGet.Versioning;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests
+namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 {
     public class ExtensionBundleManagerTests : IDisposable
     {
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var options = GetTestExtensionBundleOptions(BundleId, "[1.*, 2.0.0)");
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
-            var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK));
+            var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK, "1.0.1"));
             var path = await manager.GetExtensionBundlePath(httpclient);
             var bundleDirectory = Path.Combine(_downloadPath, "1.0.1");
             Assert.True(Directory.Exists(bundleDirectory));
@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var options = GetTestExtensionBundleOptions(BundleId, "[1.0.0, 1.0.1)");
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
-            var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK));
+            var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK, "1.0.0"));
             var path = await manager.GetExtensionBundlePath(httpclient);
             var bundleDirectory = Path.Combine(_downloadPath, "1.0.0");
             Assert.True(Directory.Exists(bundleDirectory));
@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             newOptions.Version = VersionRange.Parse("[1.*, 2.0.0)", true);
             newOptions.EnsureLatest = true;
             manager = GetExtensionBundleManager(newOptions, GetTestAppServiceEnvironment());
-            httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK));
+            httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK, "1.0.1"));
             path = await manager.GetExtensionBundlePath(httpclient);
             bundleDirectory = Path.Combine(_downloadPath, "1.0.1");
             Assert.True(Directory.Exists(bundleDirectory));
@@ -251,13 +251,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class MockHttpHandler : HttpClientHandler
         {
+            private readonly string _version;
             private HttpStatusCode _statusCodeForIndexJson;
             private HttpStatusCode _statusCodeForZipFile;
 
-            public MockHttpHandler(HttpStatusCode statusCodeForIndexJson, HttpStatusCode statusCodeForZipFile)
+            public MockHttpHandler(HttpStatusCode statusCodeForIndexJson, HttpStatusCode statusCodeForZipFile, string version = null)
             {
                 _statusCodeForIndexJson = statusCodeForIndexJson;
                 _statusCodeForZipFile = statusCodeForZipFile;
+                _version = version;
             }
 
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -270,14 +272,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                                        ? new StringContent("[ \"1.0.0\", \"1.0.1\", \"2.0.0\" ]")
                                        : null;
                     response.StatusCode = _statusCodeForIndexJson;
+                    return response;
                 }
-                else
+
+                if (request.RequestUri.AbsolutePath.Contains($"{BundleId}.{_version}"))
                 {
                     response.Content = _statusCodeForZipFile == HttpStatusCode.OK
                                        ? GetBundleZip()
                                        : null;
                     response.StatusCode = _statusCodeForZipFile;
                 }
+                else
+                {
+                    response.Content = null;
+                    response.StatusCode = HttpStatusCode.NotFound;
+                }
+
                 return response;
             }
 

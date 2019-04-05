@@ -15,13 +15,11 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
     {
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
-        private readonly IHostingEnvironment _hostingEnvironment;
 
-        public ExtensionBundleConfigurationHelper(IConfiguration configuration, IEnvironment environment, IHostingEnvironment hostingEnvironment)
+        public ExtensionBundleConfigurationHelper(IConfiguration configuration, IEnvironment environment)
         {
             _configuration = configuration;
             _environment = environment;
-            _hostingEnvironment = hostingEnvironment;
         }
 
         public void Configure(ExtensionBundleOptions options)
@@ -35,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 ValidateBundleId(options.Id);
                 ConfigureBundleVersion(extensionBundleSection, options);
 
-                if (_environment.IsAppServiceEnvironment() || _hostingEnvironment.IsDevelopment())
+                if (_environment.IsAppServiceEnvironment())
                 {
                     options.DownloadPath = Path.Combine(_environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath),
                                                    "data", "Functions", ScriptConstants.ExtensionBundleDirectory, options.Id);
@@ -66,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private void ConfigureProbingPaths(ExtensionBundleOptions options)
         {
-            if (_environment.IsAppServiceWindowsEnvironment() || _hostingEnvironment.IsDevelopment())
+            if (_environment.IsAppServiceWindowsEnvironment())
             {
                 string windowsDefaultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
                                                          ScriptConstants.DefaultExtensionBundleDirectory,

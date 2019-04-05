@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             bool bundleFound = TryLocateExtensionBundle(out string bundlePath);
             string bundleVersion = Path.GetFileName(bundlePath);
 
-            if (_environment.IsPersistentFileSystemAvailable()
+            if ((_environment.IsAppServiceEnvironment() || _environment.IsCoreToolsEnvironment())
                 && (!bundleFound || (Version.Parse(bundleVersion) < Version.Parse(latestBundleVersion) && _options.EnsureLatest)))
             {
                 bundlePath = await DownloadExtensionBundleAsync(latestBundleVersion, httpClient);
@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                     if (!string.IsNullOrEmpty(version))
                     {
                         bundlePath = Path.Combine(path, version);
-                        bundleMetatdataFile = Path.Combine(bundlePath, ScriptConstants.ExtensionBundleMetadatFile);
+                        bundleMetatdataFile = Path.Combine(bundlePath, ScriptConstants.ExtensionBundleMetadataFile);
                         if (!string.IsNullOrEmpty(bundleMetatdataFile) && FileUtility.FileExists(bundleMetatdataFile))
                         {
                             _logger.LogInformation(Resources.ExtensionBundleFound, bundlePath);
@@ -118,8 +118,8 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             string zipDirectoryPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             FileUtility.EnsureDirectoryExists(zipDirectoryPath);
 
-            string zipFilePath = Path.Combine(zipDirectoryPath, $"{version}.zip");
-            var zipUri = new Uri($"{_cdnUri}/{ScriptConstants.ExtensionBundleDirectory}/{_options.Id}/{version}/{version}.zip");
+            string zipFilePath = Path.Combine(zipDirectoryPath, $"{_options.Id}.{version}.zip");
+            var zipUri = new Uri($"{_cdnUri}/{ScriptConstants.ExtensionBundleDirectory}/{_options.Id}/{version}/{_options.Id}.{version}.zip");
 
             string bundleMetatdataFile = null;
             string bundlePath = null;
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 ZipFile.ExtractToDirectory(zipFilePath, bundlePath);
                 _logger.LogInformation(Resources.ZipExtractionComplete);
 
-                bundleMetatdataFile = Path.Combine(_options.DownloadPath, version, ScriptConstants.ExtensionBundleMetadatFile);
+                bundleMetatdataFile = Path.Combine(_options.DownloadPath, version, ScriptConstants.ExtensionBundleMetadataFile);
             }
             return FileUtility.FileExists(bundleMetatdataFile) ? bundlePath : null;
         }

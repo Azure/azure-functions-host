@@ -24,7 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         private readonly string _hostJsonFile;
         private readonly string _rootPath;
         private readonly ScriptApplicationHostOptions _options;
-        private IHostingEnvironment _hostingEnvironment;
 
         public ExtensionBundleConfigHelperTest()
         {
@@ -46,8 +45,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 File.Delete(_hostJsonFile);
             }
-
-            _hostingEnvironment = new Mock<IHostingEnvironment>().Object;
         }
 
         [Theory]
@@ -66,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
 
-            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, _environment, _hostingEnvironment);
+            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, _environment);
             ExtensionBundleOptions options = new ExtensionBundleOptions();
             var ex = Record.Exception(() => setup.Configure(options));
             Assert.Null(ex);
@@ -86,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var hostingEnvironment = new Mock<IHostingEnvironment>();
 
             var configuration = BuildHostJsonConfiguration();
-            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, CreateTestAppServiceEnvironment(), _hostingEnvironment);
+            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, CreateTestAppServiceEnvironment());
             ExtensionBundleOptions options = new ExtensionBundleOptions();
             var ex = Record.Exception(() => setup.Configure(options));
 
@@ -110,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             File.WriteAllText(_hostJsonFile, hostJsonContent);
 
             var configuration = BuildHostJsonConfiguration();
-            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, CreateTestAppServiceEnvironment(), _hostingEnvironment);
+            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, CreateTestAppServiceEnvironment());
             ExtensionBundleOptions options = new ExtensionBundleOptions();
             setup.Configure(options);
 
@@ -141,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             File.WriteAllText(_hostJsonFile, hostJsonContent);
 
             var configuration = BuildHostJsonConfiguration();
-            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, _environment, _hostingEnvironment);
+            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, _environment);
             ExtensionBundleOptions options = new ExtensionBundleOptions();
             setup.Configure(options);
 
@@ -166,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var configuration = BuildHostJsonConfiguration();
 
-            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, _environment, _hostingEnvironment);
+            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, _environment);
             ExtensionBundleOptions options = new ExtensionBundleOptions();
             var ex = Assert.Throws<ArgumentException>(() => setup.Configure(options));
             Assert.StartsWith($"The value of id property in extensionBundle section of {ScriptConstants.HostMetadataFileName} file is invalid or missing.", ex.Message);
@@ -198,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
 
-            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, _environment, _hostingEnvironment);
+            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, _environment);
             ExtensionBundleOptions options = new ExtensionBundleOptions();
             var ex = Assert.Throws<ArgumentException>(() => setup.Configure(options));
             Assert.StartsWith($"The value of id property in extensionBundle section of {ScriptConstants.HostMetadataFileName} file is invalid or missing.", ex.Message);
@@ -237,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
 
-            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, _environment, _hostingEnvironment);
+            ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, _environment);
             ExtensionBundleOptions options = new ExtensionBundleOptions();
             var ex = Assert.Throws<ArgumentException>(() => setup.Configure(options));
             Assert.StartsWith($"The value of version property in extensionBundle section of {ScriptConstants.HostMetadataFileName} file is invalid or missing.", ex.Message);

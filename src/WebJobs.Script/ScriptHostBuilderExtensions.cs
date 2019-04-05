@@ -133,6 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddTransient<IExtensionsManager, ExtensionsManager>();
                 services.TryAddSingleton<IMetricsLogger, MetricsLogger>();
                 services.TryAddSingleton<IScriptJobHostEnvironment, ConsoleScriptJobHostEnvironment>();
+                services.AddTransient<IExtensionBundleContentProvider, ExtensionBundleContentProvider>();
 
                 // Script binding providers
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IScriptBindingProvider, WebJobsCoreScriptBindingProvider>());
@@ -266,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static ExtensionBundleOptions GetExtensionBundleOptions(HostBuilderContext context)
         {
             var options = new ExtensionBundleOptions();
-            var optionsSetup = new ExtensionBundleConfigurationHelper(context.Configuration, SystemEnvironment.Instance, context.HostingEnvironment);
+            var optionsSetup = new ExtensionBundleConfigurationHelper(context.Configuration, SystemEnvironment.Instance);
             context.Configuration.Bind(options);
             optionsSetup.Configure(options);
             return options;
