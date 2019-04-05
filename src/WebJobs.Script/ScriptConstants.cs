@@ -125,8 +125,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DefaultExtensionBundleDirectory = "FuncExtensionBundles";
         public const string ExtensionBundleDirectory = "ExtensionBundles";
         public const string ExtensionBundleDefaultSourceUri = "https://functionscdn.azureedge.net/public";
-        public const string ExtensionBundleMetadatFile = "bundle.json";
+        public const string ExtensionBundleMetadataFile = "bundle.json";
         public const string ExtensionBundleVersionIndexFile = "index.json";
+        public const string ExtensionBundleBindingMetadataFile = "bindings.json";
+        public const string ExtensionBundleTemplatesFile = "templates.json";
+        public const string ExtensionBundleResourcesFile = "Resources.json";
 
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
