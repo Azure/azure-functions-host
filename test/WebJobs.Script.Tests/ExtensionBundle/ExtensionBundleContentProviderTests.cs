@@ -14,7 +14,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 {
-    public class ExtensionBundleContentProviderTests
+    public class ExtensionBundleContentProviderTests : IDisposable
     {
         private const string StreamContent = "stream content";
 
@@ -102,6 +102,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var resources = await contentProvider.GetResources(resourceFileName);
             Assert.NotNull(resources);
             Assert.Equal(resources, StreamContent);
+        }
+
+        public void Dispose()
+        {
+            FileUtility.Instance = null;
         }
 
         private Tuple<Mock<IFileSystem>, Mock<DirectoryBase>, Mock<FileBase>> CreateFileSystem()
