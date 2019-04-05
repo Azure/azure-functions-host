@@ -8,6 +8,7 @@ using System.IO.Compression;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -20,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async void GetTemplates_BundleNotConfigured_ReturnsNull()
         {
-            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(isExtensionBundleConfigured: false));
+            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(isExtensionBundleConfigured: false), NullLogger<ExtensionBundleContentProvider>.Instance);
             var templates = await contentProvider.GetTemplates();
             Assert.Null(templates);
         }
@@ -28,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async void GetTemplates_BundleConfigured_ReturnsTemplates()
         {
-            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(bundlePath: "bundlePath", isExtensionBundleConfigured: true));
+            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(bundlePath: "bundlePath", isExtensionBundleConfigured: true), NullLogger<ExtensionBundleContentProvider>.Instance);
             var fileSystemTuple = CreateFileSystem();
             var fileBase = fileSystemTuple.Item3;
             var path = Path.Combine("bundlePath", "StaticContent", "v1", "templates", "templates.json");
@@ -43,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async void GetBindings_BundleNotConfigured_ReturnsNull()
         {
-            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(isExtensionBundleConfigured: false));
+            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(isExtensionBundleConfigured: false), NullLogger<ExtensionBundleContentProvider>.Instance);
             var bindings = await contentProvider.GetBindings();
             Assert.Null(bindings);
         }
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async void GetBindings_BundleConfigured_ReturnsBindings()
         {
-            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(bundlePath: "bundlePath", isExtensionBundleConfigured: true));
+            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(bundlePath: "bundlePath", isExtensionBundleConfigured: true), NullLogger<ExtensionBundleContentProvider>.Instance);
             var fileSystemTuple = CreateFileSystem();
             var fileBase = fileSystemTuple.Item3;
             var path = Path.Combine("bundlePath", "StaticContent", "v1", "bindings", "bindings.json");
@@ -66,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async void GetResources_BundleNotConfigured_ReturnsNull()
         {
-            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(isExtensionBundleConfigured: false));
+            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(isExtensionBundleConfigured: false), NullLogger<ExtensionBundleContentProvider>.Instance);
             var resources = await contentProvider.GetResources();
             Assert.Null(resources);
         }
@@ -74,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async void GetResources_BundleConfigured_ReturnsResources()
         {
-            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(bundlePath: "bundlePath", isExtensionBundleConfigured: true));
+            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(bundlePath: "bundlePath", isExtensionBundleConfigured: true), NullLogger<ExtensionBundleContentProvider>.Instance);
             var fileSystemTuple = CreateFileSystem();
             var fileBase = fileSystemTuple.Item3;
             var path = Path.Combine("bundlePath", "StaticContent", "v1", "resources", "Resources.json");
@@ -89,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async void GetResourcesLocale_BundleConfigured_ReturnsResourcesLocale()
         {
-            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(bundlePath: "bundlePath", isExtensionBundleConfigured: true));
+            var contentProvider = new ExtensionBundleContentProvider(new TestExtensionBundleManager(bundlePath: "bundlePath", isExtensionBundleConfigured: true), NullLogger<ExtensionBundleContentProvider>.Instance);
             var fileSystemTuple = CreateFileSystem();
             var fileBase = fileSystemTuple.Item3;
             var resourceFileName = "Resources.es-ES.json";

@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             bool bundleFound = TryLocateExtensionBundle(out string bundlePath);
             string bundleVersion = Path.GetFileName(bundlePath);
 
-            if (_environment.IsPersistentFileSystemAvailable()
+            if ((_environment.IsAppServiceEnvironment() || _environment.IsCoreToolsEnvironment())
                 && (!bundleFound || (Version.Parse(bundleVersion) < Version.Parse(latestBundleVersion) && _options.EnsureLatest)))
             {
                 bundlePath = await DownloadExtensionBundleAsync(latestBundleVersion, httpClient);

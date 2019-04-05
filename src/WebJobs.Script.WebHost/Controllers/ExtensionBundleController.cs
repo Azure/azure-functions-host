@@ -33,10 +33,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [HttpGet]
-        [Route("admin/host/extensionBundle/staticcontent/v1/templates")]
+        [Route("admin/host/extensionBundle/v1/templates")]
         public async Task<IActionResult> GetTemplates()
         {
-            var templates = await _extensionBundleContent.GetTemplates();
+            string templates = await _extensionBundleContent.GetTemplates();
 
             if (string.IsNullOrEmpty(templates))
             {
@@ -48,10 +48,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [HttpGet]
-        [Route("admin/host/extensionBundle/staticcontent/v1/bindings")]
+        [Route("admin/host/extensionBundle/v1/bindings")]
         public async Task<IActionResult> GetBindings()
         {
-            var bindings = await _extensionBundleContent.GetBindings();
+            string bindings = await _extensionBundleContent.GetBindings();
 
             if (string.IsNullOrEmpty(bindings))
             {
@@ -63,10 +63,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [HttpGet]
-        [Route("admin/host/extensionBundle/staticcontent/v1/resources")]
+        [Route("admin/host/extensionBundle/v1/resources")]
         public async Task<IActionResult> GetResources()
         {
-            var resources = await _extensionBundleContent.GetResources();
+            string resources = await _extensionBundleContent.GetResources();
 
             if (string.IsNullOrEmpty(resources))
             {
@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [HttpGet]
-        [Route("admin/host/extensionBundle/staticcontent/v1/resources.{locale}")]
+        [Route("admin/host/extensionBundle/v1/resources.{locale}")]
         public async Task<IActionResult> GetResourcesLocale(string locale)
         {
             string resourceFileName = $"Resources.{locale}.json";
