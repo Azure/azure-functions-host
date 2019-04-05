@@ -180,4 +180,22 @@
   <data name="ErrorInstallingExtension" xml:space="preserve">
     <value>Cannot install an extension. Persistent file system not available in the current hosting environment</value>
   </data>
+  <data name="ExtensionBundleBindingMetadataNotFound" xml:space="preserve">
+    <value>Binding metadata not found within the extension bundle or extension bundle is not configured for the function app.</value>
+  </data>
+  <data name="ExtensionBundleNotConfigured" xml:space="preserve">
+    <value>Extension bundle configuration is not present in host.json. Cannot load content for file {0} content.</value>
+  </data>
+  <data name="ExtensionBundleResourcesLocaleNotFound" xml:space="preserve">
+    <value>Resources.{0} not found within the extension bundle or extension bundle is not configured for the function app.</value>
+  </data>
+  <data name="ExtensionBundleResourcesNotFound" xml:space="preserve">
+    <value>Resources metadata not found within the extension bundle or extension bundle is not configured for the function app.</value>
+  </data>
+  <data name="ExtensionBundleTemplatesNotFound" xml:space="preserve">
+    <value>Templates not found within the extension bundle or extension bundle is not configured for the function app.</value>
+  </data>
+  <data name="FileNotFound" xml:space="preserve">
+    <value>File not found at {0}.</value>
+  </data>
 </root>
