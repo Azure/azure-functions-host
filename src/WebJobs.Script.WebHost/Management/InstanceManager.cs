@@ -169,6 +169,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     ZipFile.ExtractToDirectory(filePath, options.ScriptPath, overwriteFiles: true);
                     _logger.LogInformation($"Zip extraction complete");
                 }
+
+                string bundlePath = Path.Combine(options.ScriptPath, "worker-bundle");
+                if (Directory.Exists(bundlePath))
+                {
+                    _logger.LogInformation($"Python worker bundle detected");
+                }
             }
         }
 
