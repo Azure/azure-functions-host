@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return BadRequest(Resources.ExtensionBundleBadRequestDelete);
             }
 
-            if (_environment.IsPersistentFileSystemAvailable())
+            if (!_environment.IsPersistentFileSystemAvailable())
             {
                 return BadRequest(Resources.ErrorDeletingExtension);
             }
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return BadRequest(Resources.ExtensionBundleBadRequestInstall);
             }
 
-            if (_environment.IsPersistentFileSystemAvailable())
+            if (!_environment.IsPersistentFileSystemAvailable())
             {
                 return BadRequest(Resources.ErrorInstallingExtension);
             }
