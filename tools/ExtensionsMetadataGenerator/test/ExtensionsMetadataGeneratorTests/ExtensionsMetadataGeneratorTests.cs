@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using ExtensionsMetadataGenerator.Console;
+using Microsoft.Azure.WebJobs.Hosting;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -72,6 +73,18 @@ namespace ExtensionsMetadataGeneratorTests
 
             Assert.Equal("BarExtension", extensions[1]["name"]);
             Assert.Equal(typeof(BarWebJobsStartup).AssemblyQualifiedName, extensions[1]["typeName"]);
+        }
+
+        [Theory]
+        [InlineData(typeof(WebJobsStartupAttribute), true)]
+        [InlineData(typeof(TestStartupAttribute), true)]
+        [InlineData(typeof(CLSCompliantAttribute), false)]
+        [InlineData(typeof(Attribute), false)]
+        public void IsWebJobsStartupAttributeType_CorrectlyIdentifiesAttributes(Type attributeType, bool isWebJobsType)
+        {
+            bool result = ExtensionsMetadataGenerator.ExtensionsMetadataGenerator.IsWebJobsStartupAttributeType(attributeType);
+
+            Assert.Equal(isWebJobsType, result);
         }
 
         [Theory]

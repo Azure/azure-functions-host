@@ -58,9 +58,27 @@ namespace ExtensionsMetadataGenerator
             return json;
         }
 
+        public static bool IsWebJobsStartupAttributeType(Type attributeType)
+        {
+            Type currentType = attributeType;
+
+            while (currentType != null)
+            {
+                if (string.Equals(currentType.FullName, WebJobsStartupAttributeType, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                currentType = currentType.BaseType;
+            }
+
+            return false;
+        }
+
         public static IEnumerable<ExtensionReference> GenerateExtensionReferences(Assembly assembly)
         {
-            var startupAttributes = assembly.GetCustomAttributes().Where(a => string.Equals(a.GetType().FullName, WebJobsStartupAttributeType, StringComparison.OrdinalIgnoreCase));
+            var startupAttributes = assembly.GetCustomAttributes()
+                .Where(a => IsWebJobsStartupAttributeType(a.GetType()));
 
             List<ExtensionReference> extensionReferences = new List<ExtensionReference>();
             foreach (var attribute in startupAttributes)
