@@ -199,7 +199,7 @@
   </PropertyGroup>
 
   <Target Name="MochaTest" DependsOnTargets="TestBuild" AfterTargets="UnitTest">
-    <Exec Command="npm i mocha chai $(AppveyorModules)" />
+    <Exec Command="npm i mocha@5.2.0 chai@4.2.0 $(AppveyorModules)@0.4.2" />
     <Exec Command=".\node_modules\.bin\mocha .\test\WebJobs.Script.Tests.Integration\TestScripts\Node\*.tests.js $(AppveyorReporter) --config=$(BuildConfiguration)" />
   </Target>
 
