@@ -126,10 +126,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         internal static bool IsSyncTriggersEnvironment(IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)
         {
-            // only want to do background sync triggers when NOT
-            // in standby mode and not running locally
-            return !environment.IsCoreToolsEnvironment() &&
-                !webHostEnvironment.InStandbyMode && environment.IsContainerReady();
+            if (environment.IsCoreToolsEnvironment())
+            {
+                // don't sync triggers when running locally or not running in app service in general
+                return false;
+            }
+
+            if (environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey) == null)
+            {
+                // We don't have the encryption key required for SetTriggers,
+                // so sync calls would fail auth anyways.
+                // This might happen in other not core tools environments for example.
+                return false;
+            }
+
+            if (webHostEnvironment.InStandbyMode)
+            {
+                // don’t sync triggers when in standby mode
+                return false;
+            }
+
+            // Windows (Dedicated/Consumption)
+            // Linux Consumption
+            if ((environment.IsAppServiceWindowsEnvironment() || environment.IsLinuxContainerEnvironment()) &&
+                !environment.IsContainerReady())
+            {
+                // container ready flag not set yet – site not fully specialized/initialized
+                return false;
+            }
+
+            return true;
         }
 
         internal async Task<string> CheckHashAsync(CloudBlockBlob hashBlob, string content)
