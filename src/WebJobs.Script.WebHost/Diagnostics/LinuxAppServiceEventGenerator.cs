@@ -57,7 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
             var logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory);
-            WriteEvent(logger, $"{executionStage}");
+            string currentUtcTime = DateTime.UtcNow.ToString();
+            WriteEvent(logger, $"{currentUtcTime}");
         }
 
         private static void WriteEvent(LinuxAppServiceFileLogger logger, string evt)
