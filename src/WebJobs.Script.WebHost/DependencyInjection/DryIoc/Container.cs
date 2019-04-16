@@ -1439,7 +1439,10 @@ namespace DryIoc
                 {
                     var decoratedExpr = request.Container.GetDecoratorExpressionOrDefault(request.WithResolvedFactory(this));
                     if (decoratedExpr != null)
-                        return decoratedExpr.CompileToFactoryDelegate();
+                    {
+                        var container = request.Container as Container;
+                        return decoratedExpr.CompileToFactoryDelegate(container != null ? container.PreferInterpretation : false);
+                    }
                 }
 
                 return GetInstanceFromScopeChainOrSingletons;
@@ -6515,7 +6518,7 @@ namespace DryIoc
                 !request.OpensResolutionScope && // preventing recursion
                (Setup.OpenResolutionScope ||
                !request.IsResolutionCall && // preventing recursion
-               (Setup.AsResolutionCall || Setup.UseParentReuse || request.ShouldSplitObjectGraph()) && 
+               (Setup.AsResolutionCall || Setup.UseParentReuse || request.ShouldSplitObjectGraph()) &&
                request.GetActualServiceType() != typeof(void)))
                return Resolver.CreateResolutionExpression(request, Setup.OpenResolutionScope);
 
@@ -6616,8 +6619,11 @@ namespace DryIoc
         }
 
         /// <summary>Creates factory delegate from service expression and returns it.</summary>
-        public virtual FactoryDelegate GetDelegateOrDefault(Request request) =>
-            GetExpressionOrDefault(request)?.CompileToFactoryDelegate();
+        public virtual FactoryDelegate GetDelegateOrDefault(Request request)
+        {
+            var container = request.Container as Container;
+            return GetExpressionOrDefault(request)?.CompileToFactoryDelegate(container != null ? container.PreferInterpretation : false);
+        }
 
         internal virtual bool ThrowIfInvalidRegistration(Type serviceType, object serviceKey, bool isStaticallyChecked, Rules rules)
         {
