@@ -220,8 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Accepted();
         }
 
-        [HttpGet]
-        [HttpPost]
+        [AcceptVerbs("GET", "POST", "DELETE")]
         [Authorize(AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
         [Route("runtime/webhooks/{name}/{*extra}")]
         [RequiresRunningHost]
