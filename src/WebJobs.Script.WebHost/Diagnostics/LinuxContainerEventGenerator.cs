@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 _consoleEnabled = false;
             }
 
-            _containerName = containerName?.ToUpperInvariant();
+            _containerName = containerName?.ToLowerInvariant();
             _stampName = stampName?.ToLowerInvariant();
             _tenantId = tenantId?.ToLowerInvariant();
         }
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             string hostVersion = ScriptHost.Version;
 
-            _writeEvent($"{ScriptConstants.LinuxMetricEventStreamName} {subscriptionId},{appName},{functionName},{eventName},{average},{minimum},{maximum},{count},{hostVersion},{eventTimestamp.ToString(EventTimestampFormat)},{NormalizeString(data)},{_containerName},{_stampName},{_tenantId},,,,");
+            _writeEvent($"{ScriptConstants.LinuxMetricEventStreamName} {subscriptionId},{appName},{functionName},{eventName},{average},{minimum},{maximum},{count},{hostVersion},{eventTimestamp.ToString(EventTimestampFormat)},{NormalizeString(data)},{_containerName},{_stampName},{_tenantId}");
         }
 
         public override void LogFunctionDetailsEvent(string siteName, string functionName, string inputBindings, string outputBindings, string scriptType, bool isDisabled)
