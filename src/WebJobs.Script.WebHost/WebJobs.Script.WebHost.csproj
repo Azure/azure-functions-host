@@ -24,6 +24,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Remove="Resources\Functions\host.json" />
+    <Content Remove="Resources\Functions\proxies.json" />
     <Content Remove="Resources\Functions\WarmUp\function.json" />
   </ItemGroup>
   <ItemGroup>
@@ -72,6 +73,7 @@
     <EmbeddedResource Include="Home.html" />
     <EmbeddedResource Include="Resources\app_offline.htm" />
     <EmbeddedResource Include="Resources\Functions\host.json" />
+    <EmbeddedResource Include="Resources\Functions\proxies.json" />
     <EmbeddedResource Include="Resources\Functions\WarmUp\function.json" />
     <EmbeddedResource Include="Resources\Functions\WarmUp\run.csx" />
   </ItemGroup>
