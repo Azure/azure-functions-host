@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logLines.Count(p => p.Contains("Triggering specialization")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
             Assert.Equal(3, logLines.Count(p => p.Contains($"Starting Host (HostId={sanitizedMachineName}")));
-            Assert.Equal(1, logLines.Count(p => p.Contains($"Loading proxies metadata")));
+            Assert.Equal(3, logLines.Count(p => p.Contains($"Loading proxies metadata")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
             Assert.Equal(1, logLines.Count(p => p.Contains($"0 proxies loaded")));
             Assert.Contains("Node.js HttpTrigger function invoked.", logLines);
