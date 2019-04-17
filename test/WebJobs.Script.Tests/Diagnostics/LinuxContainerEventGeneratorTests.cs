@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -18,6 +19,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
     {
         private readonly LinuxContainerEventGenerator _generator;
         private readonly List<string> _events;
+        private readonly string _containerName = "test-container";
+        private readonly string _stampName = "test-stamp";
+        private readonly string _tenantId = "test-tenant";
 
         public LinuxContainerEventGeneratorTests()
         {
@@ -26,7 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             {
                 _events.Add(s);
             };
-            _generator = new LinuxContainerEventGenerator(writer);
+
+            var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns(_containerName);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteHomeStampName)).Returns(_stampName);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteStampDeploymentId)).Returns(_tenantId);
+
+            _generator = new LinuxContainerEventGenerator(mockEnvironment.Object, writer);
         }
 
         [Theory]
@@ -42,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
-            Assert.Equal(16, match.Groups.Count);
+            Assert.Equal(19, match.Groups.Count);
 
             DateTime dt;
             var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
@@ -61,7 +71,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(exceptionMessage, JsonUnescape(p)),
                 p => Assert.Equal(functionInvocationId, p),
                 p => Assert.Equal(hostInstanceId, p),
-                p => Assert.Equal(activityId, p));
+                p => Assert.Equal(activityId, p),
+                p => Assert.Equal(_containerName.ToUpperInvariant(), p),
+                p => Assert.Equal(_stampName, p),
+                p => Assert.Equal(_tenantId, p));
         }
 
         private static string JsonUnescape(string value)
@@ -104,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
-            Assert.Equal(12, match.Groups.Count);
+            Assert.Equal(15, match.Groups.Count);
 
             DateTime dt;
             var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
@@ -119,7 +132,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(count, long.Parse(p)),
                 p => Assert.Equal(ScriptHost.Version, p),
                 p => Assert.True(DateTime.TryParse(p, out dt)),
-                p => Assert.Equal(data, p));
+                p => Assert.Equal(data, JsonUnescape(p)),
+                p => Assert.Equal(_containerName.ToUpperInvariant(), p),
+                p => Assert.Equal(_stampName, p),
+                p => Assert.Equal(_tenantId, p));
         }
 
         [Theory]
