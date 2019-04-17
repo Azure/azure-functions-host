@@ -97,6 +97,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         [Theory]
         [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, null, null, null, null, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Strict, null, null, null, null, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.None, null, null, null, null, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, "4/17/2019", null, null, null, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, null, "bing.com", null, null, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, null, null, true, null, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, null, null, null, 60 * 60 * 24, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, null, null, null, null, "/example/route", null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, null, null, null, null, null, true)]
         public void SetCookie_ReturnsExpectedResult(string name, string value, RpcHttpCookie.Types.SameSite sameSite, string expires,
             string domain, bool? httpOnly, double? maxAge, string path, bool? secure)
         {
@@ -108,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 SameSite = sameSite
             };
 
-            if (string.IsNullOrEmpty(domain))
+            if (!string.IsNullOrEmpty(domain))
             {
                 rpcCookie.Domain = new NullableString()
                 {
@@ -116,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 };
             }
 
-            if (string.IsNullOrEmpty(path))
+            if (!string.IsNullOrEmpty(path))
             {
                 rpcCookie.Path = new NullableString()
                 {
@@ -133,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             }
 
             DateTimeOffset? expiresDateTime = null;
-            if (string.IsNullOrEmpty(expires))
+            if (!string.IsNullOrEmpty(expires))
             {
                 if (DateTimeOffset.TryParse(expires, out DateTimeOffset result))
                 {
@@ -167,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             var cookieOptions = appendCookieArguments.Item3;
             Assert.Equal(cookieOptions.Domain, domain);
-            Assert.Equal(cookieOptions.Path, path);
+            Assert.Equal(cookieOptions.Path, path ?? "/");
 
             Assert.Equal(cookieOptions.MaxAge?.TotalSeconds, maxAge);
             Assert.Equal(cookieOptions.Expires?.UtcDateTime.ToString(), expiresDateTime?.UtcDateTime.ToString());
