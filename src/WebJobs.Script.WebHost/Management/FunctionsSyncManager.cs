@@ -128,7 +128,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             if (environment.IsCoreToolsEnvironment())
             {
-                // don't sync triggers when running locally or not running in app service in general
+                // don't sync triggers when running locally or not running in a cloud
+                // hosted environment
                 return false;
             }
 
@@ -136,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 // We don't have the encryption key required for SetTriggers,
                 // so sync calls would fail auth anyways.
-                // This might happen in other not core tools environments for example.
+                // This might happen in when running locally for example.
                 return false;
             }
 
