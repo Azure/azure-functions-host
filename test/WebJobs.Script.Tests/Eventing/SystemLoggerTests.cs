@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -41,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _category = LogCategories.CreateFunctionCategory(_functionName);
             _debugStateProvider = new Mock<IDebugStateProvider>(MockBehavior.Strict);
             _debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
-            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, environment, _debugStateProvider.Object);
+            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, environment, _debugStateProvider.Object, null);
         }
 
         [Fact]
@@ -151,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Log_Ignores_FunctionUserCategory()
         {
             // Create a logger with the Function.{FunctionName}.User category, which is what determines user logs.
-            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment(), _debugStateProvider.Object);
+            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment(), _debugStateProvider.Object, null);
             logger.LogDebug("TestMessage");
 
             // Make sure it's never been called.

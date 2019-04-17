@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
@@ -304,6 +305,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(expectedValue, Utility.RemoveUtf8ByteOrderMark(result));
         }
 
+        [Fact]
+        public async Task FunctionWithIndexingError_ReturnsError()
+        {
+            FunctionStatus status = await Fixture.Host.GetFunctionStatusAsync("FunctionIndexingError");
+            string error = status.Errors.Single();
+            Assert.Equal("Microsoft.Azure.WebJobs.Host: Error indexing method 'Functions.FunctionIndexingError'. Microsoft.Azure.WebJobs.Extensions.Storage: Storage account 'setting_does_not_exist' is not configured.", error);
+        }
+
         //[Theory(Skip = "Not yet enabled.")]
         //[InlineData("application/json", "\"Name: Fabio Cavalcante, Location: Seattle\"")]
         //[InlineData("application/xml", "<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">Name: Fabio Cavalcante, Location: Seattle</string>")]
@@ -427,7 +436,8 @@ namespace SecondaryDependency
                         "ManualTrigger",
                         "MultipleOutputs",
                         "QueueTriggerToBlob",
-                        "Scenarios"
+                        "Scenarios",
+                        "FunctionIndexingError"
                     };
                 });
 

@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var debugStateProvider = new Mock<IDebugStateProvider>(MockBehavior.Strict);
             debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
 
-            _provider = new SystemLoggerProvider(_options, null, _environment, debugStateProvider.Object);
+            _provider = new SystemLoggerProvider(_options, null, _environment, debugStateProvider.Object, null);
         }
 
         [Fact]
