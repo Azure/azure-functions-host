@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -83,19 +85,21 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             int statusCode = StatusCodes.Status200OK;
             IDictionary<string, object> responseHeaders = null;
             bool enableContentNegotiation = false;
+            List<Tuple<string, string, CookieOptions>> cookies = new List<Tuple<string, string, CookieOptions>>();
             if (responseObject != null)
             {
-                ParseResponseObject(responseObject, ref content, out responseHeaders, out statusCode, out enableContentNegotiation);
+                ParseResponseObject(responseObject, ref content, out responseHeaders, out statusCode, out cookies, out enableContentNegotiation);
             }
 
-            return CreateResult(request, statusCode, content, responseHeaders, enableContentNegotiation);
+            return CreateResult(request, statusCode, content, responseHeaders, cookies, enableContentNegotiation);
         }
 
-        internal static void ParseResponseObject(IDictionary<string, object> responseObject, ref object content, out IDictionary<string, object> headers, out int statusCode, out bool enableContentNegotiation)
+        internal static void ParseResponseObject(IDictionary<string, object> responseObject, ref object content, out IDictionary<string, object> headers, out int statusCode, out List<Tuple<string, string, CookieOptions>> cookies, out bool enableContentNegotiation)
         {
             headers = null;
             statusCode = StatusCodes.Status200OK;
             enableContentNegotiation = false;
+            cookies = new List<Tuple<string, string, CookieOptions>>();
 
             // TODO: Improve this logic
             // Sniff the object to see if it looks like a response object
@@ -119,6 +123,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 if (responseObject.TryGetValue<bool>("enableContentNegotiation", out bool enableContentNegotiationValue, ignoreCase: true))
                 {
                     enableContentNegotiation = enableContentNegotiationValue;
+                }
+
+                if (responseObject.TryGetValue("cookies", out List<RpcHttpCookie> cookiesValue, ignoreCase: true))
+                {
+                    foreach (RpcHttpCookie cookie in cookiesValue)
+                    {
+                        cookies.Add(Utilities.RpcHttpCookieConverter(cookie));
+                    }
                 }
             }
         }
@@ -161,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return false;
         }
 
-        private static IActionResult CreateResult(HttpRequest request, int statusCode, object content, IDictionary<string, object> headers, bool enableContentNegotiation)
+        private static IActionResult CreateResult(HttpRequest request, int statusCode, object content, IDictionary<string, object> headers, List<Tuple<string, string, CookieOptions>> cookies, bool enableContentNegotiation)
         {
             if (enableContentNegotiation)
             {
@@ -171,7 +183,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
             else
             {
-                return new RawScriptResult(statusCode, content) { Headers = headers };
+                return new RawScriptResult(statusCode, content)
+                {
+                    Headers = headers,
+                    Cookies = cookies
+                };
             }
         }
 

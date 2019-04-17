@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
@@ -37,7 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             object content = null;
             int statusCode = StatusCodes.Status200OK;
-            HttpBinding.ParseResponseObject(responseObject, ref content, out IDictionary<string, object> headers, out statusCode, out bool enableContentNegotiationResponse);
+            List<Tuple<string, string, CookieOptions>> cookies = null;
+            HttpBinding.ParseResponseObject(responseObject, ref content, out IDictionary<string, object> headers, out statusCode, out cookies, out bool enableContentNegotiationResponse);
 
             Assert.Equal("Test Body", content);
             Assert.Same(headers, headers);
@@ -56,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             headers = null;
             statusCode = StatusCodes.Status200OK;
             enableContentNegotiationResponse = false;
-            HttpBinding.ParseResponseObject(responseObject, ref content, out headers, out statusCode, out enableContentNegotiationResponse);
+            HttpBinding.ParseResponseObject(responseObject, ref content, out headers, out statusCode, out cookies, out enableContentNegotiationResponse);
 
             Assert.Equal("Test Body", content);
             Assert.Same(headers, headers);
@@ -75,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             IDictionary<string, object> headers = null;
             int statusCode = StatusCodes.Status200OK;
             bool enableContentNegotiationResponse = false;
-            HttpBinding.ParseResponseObject(responseObject, ref content, out headers, out statusCode, out enableContentNegotiationResponse);
+            HttpBinding.ParseResponseObject(responseObject, ref content, out headers, out statusCode, out List<Tuple<string, string, CookieOptions>> cookies, out enableContentNegotiationResponse);
 
             Assert.Equal(null, content);
             Assert.Equal(StatusCodes.Status202Accepted, statusCode);

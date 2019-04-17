@@ -6,3 +6,15 @@ message NullableString {
 		string value = 1;
 	}
 }
+
+message NullableBool {
+	oneof bool {
+		bool value = 1;
+	}
+}
+
+message NullableDouble {
+	oneof double {
+		double value = 1;
+	}
+}

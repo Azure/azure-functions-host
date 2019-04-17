@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Script.WebHost.Formatters;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
@@ -35,6 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public object Content { get; set; }
 
         public IDictionary<string, object> Headers { get; set; }
+
+        public List<Tuple<string, string, CookieOptions>> Cookies { get; set; }
 
         public async Task ExecuteResultAsync(ActionContext context)
         {
@@ -71,6 +74,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             if (StatusCode != null)
             {
                 response.StatusCode = StatusCode.Value;
+            }
+
+            if (Cookies != null)
+            {
+                foreach (var cookie in Cookies)
+                {
+                    response.Cookies.Append(cookie.Item1, cookie.Item2, cookie.Item3);
+                }
             }
 
             await WriteResponseBodyAsync(response, Content);
