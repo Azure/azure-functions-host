@@ -73,7 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, logLines.Count(p => p.Contains($"1 functions loaded")));
             Assert.Equal(1, logLines.Count(p => p.Contains($"0 functions loaded")));
             Assert.Equal(3, logLines.Count(p => p.Contains($"Loading proxies metadata")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
+            Assert.Equal(3, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
+            Assert.Equal(2, logLines.Count(p => p.Contains($"1 proxies loaded")));
             Assert.Equal(1, logLines.Count(p => p.Contains($"0 proxies loaded")));
             Assert.Contains("Generating 0 job function(s)", logLines);
 
