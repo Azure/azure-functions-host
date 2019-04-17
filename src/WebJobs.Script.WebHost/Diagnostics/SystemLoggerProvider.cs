@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -16,18 +17,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IEventGenerator _eventGenerator;
         private readonly IEnvironment _environment;
         private readonly IDebugStateProvider _debugStateProvider;
+        private readonly IScriptEventManager _eventManager;
 
-        public SystemLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider)
-            : this(scriptOptions.Value.InstanceId, eventGenerator, environment, debugStateProvider)
+        public SystemLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider, IScriptEventManager eventManager)
+            : this(scriptOptions.Value.InstanceId, eventGenerator, environment, debugStateProvider, eventManager)
         {
         }
 
-        protected SystemLoggerProvider(string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider)
+        protected SystemLoggerProvider(string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider, IScriptEventManager eventManager)
         {
             _eventGenerator = eventGenerator;
             _environment = environment;
             _hostInstanceId = hostInstanceId;
             _debugStateProvider = debugStateProvider;
+            _eventManager = eventManager;
         }
 
         public ILogger CreateLogger(string categoryName)
@@ -37,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 // The SystemLogger is not used for user logs.
                 return NullLogger.Instance;
             }
-            return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment, _debugStateProvider);
+            return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment, _debugStateProvider, _eventManager);
         }
 
         private bool IsUserLogCategory(string categoryName)

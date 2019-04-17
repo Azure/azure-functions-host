@@ -4,7 +4,9 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -19,8 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IEnvironment _environment;
         private readonly LogLevel _logLevel;
         private readonly IDebugStateProvider _debugStateProvider;
+        private readonly IScriptEventManager _eventManager;
 
-        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider)
+        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider, IScriptEventManager eventManager)
         {
             _environment = environment;
             _eventGenerator = eventGenerator;
@@ -30,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _isUserFunction = LogCategories.IsFunctionUserCategory(_categoryName);
             _hostInstanceId = hostInstanceId;
             _debugStateProvider = debugStateProvider;
+            _eventManager = eventManager;
         }
 
         public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope.Push(state);
@@ -58,6 +62,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
+            // propagate special exceptions through the EventManager
+            string source = _categoryName ?? Utility.GetValueFromState(state, ScriptConstants.LogPropertySourceKey);
+            if (exception is FunctionIndexingException && _eventManager != null)
+            {
+                _eventManager.Publish(new FunctionIndexingEvent("FunctionIndexingException", source, exception));
+            }
+
             // User logs are not logged to system logs.
             if (!IsEnabled(logLevel) || IsUserLog(state))
             {
@@ -79,7 +90,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // otherwise the ETW event will fail to be persisted (silently)
             string subscriptionId = _environment.GetSubscriptionId() ?? string.Empty;
             string appName = _environment.GetAzureWebsiteUniqueSlotName() ?? string.Empty;
-            string source = _categoryName ?? Utility.GetValueFromState(state, ScriptConstants.LogPropertySourceKey);
             string summary = Sanitizer.Sanitize(formattedMessage) ?? string.Empty;
             string innerExceptionType = string.Empty;
             string innerExceptionMessage = string.Empty;

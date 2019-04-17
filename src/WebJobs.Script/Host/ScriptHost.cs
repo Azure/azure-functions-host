@@ -135,6 +135,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     HandleHostError(evt.Exception);
                 }));
+            _eventSubscriptions.Add(EventManager.OfType<FunctionIndexingEvent>()
+                .Subscribe(evt =>
+                {
+                    HandleHostError(evt.Exception);
+                }));
         }
 
         public event EventHandler HostInitializing;

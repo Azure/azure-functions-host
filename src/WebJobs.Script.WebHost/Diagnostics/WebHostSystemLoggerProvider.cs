@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.WebJobs.Script.Eventing;
+
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     /// <summary>
@@ -9,8 +11,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     /// </summary>
     public class WebHostSystemLoggerProvider : SystemLoggerProvider
     {
-        public WebHostSystemLoggerProvider(IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider)
-            : base(string.Empty, eventGenerator, environment, debugStateProvider)
+        public WebHostSystemLoggerProvider(IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider, IScriptEventManager eventManager)
+            : base(string.Empty, eventGenerator, environment, debugStateProvider, eventManager)
         {
         }
     }
