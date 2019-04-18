@@ -16,6 +16,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{A829A3BC-40A2-4415-9494-8126AE4FE561}"
 	ProjectSection(SolutionItems) = preProject
 		build\metadatagenerator.props = build\metadatagenerator.props
+		..\..\build\package.props = ..\..\build\package.props
 	EndProjectSection
 EndProject
 Global
