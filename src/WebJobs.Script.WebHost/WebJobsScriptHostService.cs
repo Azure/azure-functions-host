@@ -345,7 +345,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (_scriptWebHostEnvironment.InStandbyMode)
             {
-                logger.LogInformation("Host is in standby mode");
+                // Reading the string from resources to make sure resource loading code path is warmed up during placeholder as well.
+                logger.LogInformation(Properties.Resources.HostPlaceHolderTrace);
             }
         }
 

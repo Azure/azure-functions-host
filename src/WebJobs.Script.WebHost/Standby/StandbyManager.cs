@@ -135,6 +135,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.host.json");
             File.WriteAllText(Path.Combine(scriptPath, "host.json"), content);
 
+            content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.proxies.json");
+            File.WriteAllText(Path.Combine(scriptPath, "proxies.json"), content);
+
             string functionPath = Path.Combine(scriptPath, WarmUpConstants.FunctionName);
             Directory.CreateDirectory(functionPath);
             content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.function.json");
