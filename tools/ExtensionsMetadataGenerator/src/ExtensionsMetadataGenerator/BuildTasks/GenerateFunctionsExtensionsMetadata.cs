@@ -4,6 +4,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Text;
 using Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
@@ -44,31 +45,46 @@ namespace ExtensionsMetadataGenerator.BuildTasks
                 Arguments = $"Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.Console.dll \"{SourcePath}\" \"{outputPath}\""
             };
 
-            var process = new Process { StartInfo = info };
-            process.EnableRaisingEvents = true;
-            process.ErrorDataReceived += (s, e) =>
+            Log.LogMessage(MessageImportance.Low, $"Extensions generator working directory: '{info.WorkingDirectory}'");
+            Log.LogMessage(MessageImportance.Low, $"Extensions generator path: '{info.FileName}'");
+            Log.LogCommandLine(MessageImportance.Low, info.Arguments);
+
+            using (var process = new Process { StartInfo = info })
             {
-                if (e.Data != null)
+                process.EnableRaisingEvents = true;
+
+                StringBuilder errorString = new StringBuilder();
+                process.ErrorDataReceived += (s, e) =>
                 {
-                    Log.LogWarning(e.Data);
+                    if (e.Data != null)
+                    {
+                        Log.LogWarning(e.Data);
+                        errorString.Append(e.Data);
+                    }
+                };
+
+                StringBuilder outputString = new StringBuilder();
+                process.OutputDataReceived += (s, e) =>
+                {
+                    if (e.Data != null)
+                    {
+                        outputString.Append(e.Data);
+                    }
+                };
+
+                process.Start();
+                process.BeginErrorReadLine();
+                process.BeginOutputReadLine();
+                process.WaitForExit();
+
+                if (process.ExitCode != 0)
+                {
+                    Log.LogError($"Metadata generation failed. Exit code: '{process.ExitCode}' Output: '{outputString.ToString()}' Error: '{errorString.ToString()}'");
+                    return false;
                 }
-            };
 
-            process.Start();
-            process.BeginErrorReadLine();
-            process.BeginOutputReadLine();
-            process.WaitForExit();
-
-            if (process.ExitCode != 0)
-            {
-                Log.LogError("Metadata generation failed.");
-
-                return false;
+                return true;
             }
-
-            process.Close();
-
-            return true;
         }
     }
 }
