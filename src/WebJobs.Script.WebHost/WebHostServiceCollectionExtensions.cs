@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var environment = p.GetService<IEnvironment>();
                 if (environment.IsLinuxContainerEnvironment())
                 {
-                    return new LinuxContainerEventGenerator();
+                    return new LinuxContainerEventGenerator(environment);
                 }
                 else if (SystemEnvironment.Instance.IsLinuxAppServiceEnvironment())
                 {
