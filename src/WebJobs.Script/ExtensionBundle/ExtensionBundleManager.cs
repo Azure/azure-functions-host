@@ -187,19 +187,14 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             {
                 var dirName = Path.GetFileName(p);
                 NuGetVersion.TryParse(dirName, out NuGetVersion version);
+                if (version != null)
+                {
+                    version = versionRange.Satisfies(version) ? version : null;
+                }
                 return version;
             }).Where(v => v != null);
 
-            var sortedBundleVersions = bundleVersions.OrderByDescending(version => version.Version);
-            for (int i = 0; i < sortedBundleVersions.Count(); i++)
-            {
-                var bundleVersion = sortedBundleVersions.ElementAt(i);
-                if (versionRange.Satisfies(bundleVersion))
-                {
-                    return bundleVersion.ToString();
-                }
-            }
-            return null;
+            return bundleVersions.OrderByDescending(version => version.Version).FirstOrDefault()?.ToString();
         }
     }
 }
