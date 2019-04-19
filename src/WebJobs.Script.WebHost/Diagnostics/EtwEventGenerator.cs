@@ -9,6 +9,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     internal class EtwEventGenerator : IEventGenerator
     {
         private const string EventTimestamp = "MM/dd/yyyy hh:mm:ss.fff tt";
+        private readonly AzureMonitorDiagnosticLogsEventSource _azureMonitorEventSource;
+
+        public EtwEventGenerator()
+        {
+            // Make sure this instance is accessed, even in placeholder mode (where no logs may use it).
+            _azureMonitorEventSource = AzureMonitorDiagnosticLogsEventSource.Instance;
+        }
 
         public void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId)
         {
@@ -62,14 +69,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 case LogLevel.Trace:
                 case LogLevel.Debug:
                 case LogLevel.Information:
-                    AzureMonitorDiagnosticLogsEventSource.Instance.RaiseFunctionsDiagnosticEventInformational(resourceId, operationName, category, regionName, "Informational", properties);
+                    _azureMonitorEventSource.RaiseFunctionsDiagnosticEventInformational(resourceId, operationName, category, regionName, "Informational", properties);
                     break;
                 case LogLevel.Warning:
-                    AzureMonitorDiagnosticLogsEventSource.Instance.RaiseFunctionsDiagnosticEventWarning(resourceId, operationName, category, regionName, "Warning", properties);
+                    _azureMonitorEventSource.RaiseFunctionsDiagnosticEventWarning(resourceId, operationName, category, regionName, "Warning", properties);
                     break;
                 case LogLevel.Error:
                 case LogLevel.Critical:
-                    AzureMonitorDiagnosticLogsEventSource.Instance.RaiseFunctionsDiagnosticEventError(resourceId, operationName, category, regionName, "Error", properties);
+                    _azureMonitorEventSource.RaiseFunctionsDiagnosticEventError(resourceId, operationName, category, regionName, "Error", properties);
                     break;
             }
         }
