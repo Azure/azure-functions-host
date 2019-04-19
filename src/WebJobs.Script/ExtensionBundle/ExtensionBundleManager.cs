@@ -190,7 +190,16 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 return version;
             }).Where(v => v != null);
 
-            return versionRange.FindBestMatch(bundleVersions)?.ToString();
+            var sortedBundleVersions = bundleVersions.OrderByDescending(version => version.Version);
+            for (int i = 0; i < sortedBundleVersions.Count(); i++)
+            {
+                var bundleVersion = sortedBundleVersions.ElementAt(i);
+                if (versionRange.Satisfies(bundleVersion))
+                {
+                    return bundleVersion.ToString();
+                }
+            }
+            return null;
         }
     }
 }

@@ -71,10 +71,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             Assert.Null(path);
         }
 
-        [Fact]
-        public async Task GetExtensionBundle_BundlePresentAtProbingLocation_ReturnsTrue()
+        [Theory]
+        [InlineData("[2.*, 3.0.0)")]
+        [InlineData("[2.0.0, 3.0.0)")]
+        public async Task GetExtensionBundle_BundlePresentAtProbingLocation_ReturnsTrue(string versionRange)
         {
-            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, versionRange);
             var fileSystemTuple = CreateFileSystem();
             var directoryBase = fileSystemTuple.Item2;
             var fileBase = fileSystemTuple.Item3;
@@ -87,11 +89,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             {
                     Path.Combine(firstDefaultProbingPath, "1.0.0"),
                     Path.Combine(firstDefaultProbingPath, "2.0.0"),
+                    Path.Combine(firstDefaultProbingPath, "2.0.1"),
+                    Path.Combine(firstDefaultProbingPath, "2.0.2"),
                     Path.Combine(firstDefaultProbingPath, "3.0.2"),
                     Path.Combine(firstDefaultProbingPath, "invalidVersion")
             });
 
-            string defaultPath = Path.Combine(firstDefaultProbingPath, "2.0.0");
+            string defaultPath = Path.Combine(firstDefaultProbingPath, "2.0.2");
             fileBase.Setup(f => f.Exists(Path.Combine(defaultPath, "bundle.json"))).Returns(true);
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
