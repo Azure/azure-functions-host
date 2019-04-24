@@ -20,6 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class WebHostResolverTests
     {
+        public WebHostResolverTests()
+        {
+            HostNameProvider.Reset();
+        }
+
         [Fact]
         public void GetScriptHostConfiguration_SetsHostId()
         {
@@ -82,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     ScriptPath = Path.Combine(tempRoot, @"Functions"),
                     SecretsPath = Path.Combine(tempRoot, @"Functions"),
                 };
+                FileUtility.EnsureDirectoryExists(settings.ScriptPath);
                 File.WriteAllText(Path.Combine(settings.ScriptPath, "host.json"), "{ id: 'testid' }");
 
                 var secretsManagerMock = new Mock<ISecretManager>();
@@ -106,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 if (hostManager.State == ScriptHostState.Error)
                 {
-                    Assert.True(false, hostManager.LastError.Message);
+                    Assert.True(false, $"HostError: {hostManager.LastError?.ToString()}");
                 }
 
                 // verify the trace writer returned is the host trace writer

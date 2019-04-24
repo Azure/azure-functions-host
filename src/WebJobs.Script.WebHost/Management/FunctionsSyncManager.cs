@@ -387,18 +387,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         internal static HttpRequestMessage BuildSetTriggersRequest()
         {
             var protocol = "https";
-            // On private stamps with no ssl certificate use http instead.
             if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.SkipSslValidation) == "1")
             {
+                // On private stamps with no ssl certificate use http instead.
                 protocol = "http";
             }
 
-            var hostname = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName);
-            // Linux Dedicated on AppService doesn't have WEBSITE_HOSTNAME
-            hostname = string.IsNullOrWhiteSpace(hostname)
-                ? $"{Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)}.azurewebsites.net"
-                : hostname;
-
+            var hostname = HostNameProvider.Value;
             var url = $"{protocol}://{hostname}/operations/settriggers";
 
             return new HttpRequestMessage(HttpMethod.Post, url);

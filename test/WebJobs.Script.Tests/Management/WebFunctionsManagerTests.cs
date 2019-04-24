@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Extensions.Logging;
@@ -40,6 +41,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 TestDataPath = @"x:\root\data\functions\sampledata"
             };
             _hostConfig.HostConfig.HostId = "testhostid123";
+
+            HostNameProvider.Reset();
         }
 
         [Fact]
@@ -138,18 +141,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        [Fact]
-        public void GetAppBaseUrl_ReturnsExpectedValue()
+        [Theory]
+        [InlineData(null, null, "https://localhost")]
+        [InlineData(null, "testhost", "https://testhost.azurewebsites.net")]
+        [InlineData("testhost.foo.com", null, "https://testhost.foo.com")]
+        public void GetAppBaseUrl_ReturnsExpectedValue(string hostName, string siteName, string expected)
         {
-            Assert.Equal("https://localhost", FunctionMetadataExtensions.GetAppBaseUrl());
-
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.AzureWebsiteHostName, "testapp.azurewebsites.net" }
+                { EnvironmentSettingNames.AzureWebsiteHostName, hostName },
+                { EnvironmentSettingNames.AzureWebsiteName, siteName }
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
-                Assert.Equal("https://testapp.azurewebsites.net", FunctionMetadataExtensions.GetAppBaseUrl());
+                Assert.Equal(expected, FunctionMetadataExtensions.GetAppBaseUrl());
             }
         }
 

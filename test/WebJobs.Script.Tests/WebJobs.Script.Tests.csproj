@@ -573,6 +573,7 @@
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Handlers\ExceptionProcessingHandlerTests.cs" />
     <Compile Include="Handlers\SystemTraceHandlerTests.cs" />
+    <Compile Include="HostNameProviderTests.cs" />
     <Compile Include="IO\AutoRecoveringFileSystemWatcherTests.cs" />
     <Compile Include="IO\FileUtilityTests.cs" />
     <Compile Include="Management\FunctionsSyncManagerTests.cs" />

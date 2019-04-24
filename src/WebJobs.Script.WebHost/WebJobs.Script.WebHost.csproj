@@ -510,6 +510,7 @@
     <Compile Include="Extensions\IEnumerableTasksExtensions.cs" />
     <Compile Include="Filters\EnableDebugModeAttribute.cs" />
     <Compile Include="Filters\RequiresRunningHostAttribute.cs" />
+    <Compile Include="HostNameProvider.cs" />
     <Compile Include="Management\FunctionsSyncManager.cs" />
     <Compile Include="Management\IFunctionsSyncManager.cs" />
     <Compile Include="Management\IWebFunctionsManager.cs" />

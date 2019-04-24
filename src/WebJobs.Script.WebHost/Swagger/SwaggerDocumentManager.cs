@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public JObject GenerateSwaggerDocument(HttpRouteCollection routes)
         {
             var swaggerDocument = new SwaggerDocument();
-            string hostname = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
+            string hostname = HostNameProvider.Value;
             swaggerDocument.SwaggerInfo.FunctionAppName = hostname;
             swaggerDocument.Host = hostname;
             swaggerDocument.ApiEndpoints = GetEndpointsData(routes);

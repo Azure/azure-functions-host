@@ -71,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DynamicSku = "Dynamic";
         public const string DefaultProductionSlotName = "production";
 
+        public const string AntaresDefaultHostNameHeader = "WAS-DEFAULT-HOSTNAME";
         public const string AzureProxyFunctionLocalRedirectHeaderName = "X-PROXY-LOCAL-REDIRECT-COUNT";
         public const int AzureProxyFunctionMaxLocalRedirects = 10;
 

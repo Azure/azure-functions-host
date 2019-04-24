@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var generatedDocument = swaggerDocumentManager.GenerateSwaggerDocument(routes);
 
-            string hostName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName);
+            string hostName = HostNameProvider.Value;
             if (hostName == null)
             {
                 generatedDocument["info"]["title"] = string.Empty;

@@ -170,8 +170,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         {
             // VFS APIs aren't exposed by the v1 runtime, so we must redirect
             // to the SCM site
-            string hostName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName);
-            
+            string hostName = HostNameProvider.Value;
+
             string scmHostName = null;
             if (!string.IsNullOrEmpty(hostName))
             {
@@ -195,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 
         internal static string GetAppBaseUrl()
         {
-            string hostName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName) ?? "localhost";
+            string hostName = HostNameProvider.Value ?? "localhost";
             return $"https://{hostName}";
         }
 

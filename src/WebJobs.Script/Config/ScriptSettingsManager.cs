@@ -38,23 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public virtual bool FileSystemIsReadOnly => IsZipDeployment;
 
-        public virtual string AzureWebsiteDefaultSubdomain
-        {
-            get
-            {
-                string siteHostName = GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
-
-                int? periodIndex = siteHostName?.IndexOf('.');
-
-                if (periodIndex != null && periodIndex > 0)
-                {
-                    return siteHostName.Substring(0, periodIndex.Value);
-                }
-
-                return null;
-            }
-        }
-
         /// <summary>
         /// Gets a value that uniquely identifies the site and slot.
         /// </summary>

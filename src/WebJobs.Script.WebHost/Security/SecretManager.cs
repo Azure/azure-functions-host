@@ -47,8 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (createHostSecretsIfMissing)
             {
-                // The SecretManager implementation of GetHostSecrets will
-                // create a host secret if one is not present.
+                // GetHostSecrets will create host secrets if not present
                 GetHostSecretsAsync().GetAwaiter().GetResult();
             }
 
@@ -461,6 +460,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task PersistSecretsAsync<T>(T secrets, string keyScope = null, bool isNonDecryptable = false) where T : ScriptSecrets
         {
+            if (secrets != null)
+            {
+                secrets.HostName = HostNameProvider.Value;
+            }
+
             ScriptSecretsType secretsType = secrets.SecretsType;
             string secretsContent = ScriptSecretSerializer.SerializeSecrets<T>(secrets);
             if (isNonDecryptable)

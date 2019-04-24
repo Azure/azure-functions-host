@@ -626,6 +626,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                                 await Task.Delay(500);
                             }
 
+                            // reset hostname provider and set a new hostname to force another backup
+                            HostNameProvider.Reset();
                             string hostName = "test" + (i % 2).ToString();
                             _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHostName, hostName);
                             functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);

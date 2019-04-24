@@ -12,6 +12,8 @@ using System.Web.Http;
 using System.Web.Http.Dependencies;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Handlers;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -19,13 +21,20 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
 {
-    public class SystemTraceHandlerTests
+    public class SystemTraceHandlerTests : IDisposable
     {
+        private const string TestHostName = "test.azurewebsites.net";
+
         private readonly TestTraceWriter _traceWriter;
         private readonly HttpMessageInvoker _invoker;
+        private readonly Mock<ScriptSettingsManager> _mockSettings;
 
         public SystemTraceHandlerTests()
         {
+            _mockSettings = new Mock<ScriptSettingsManager>(MockBehavior.Strict);
+            _mockSettings.Setup(p => p.GetSetting(EnvironmentSettingNames.AzureWebsiteHostName)).Returns(TestHostName);
+            ScriptSettingsManager.Instance = _mockSettings.Object;
+
             _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             var config = new System.Web.Http.HttpConfiguration();
             Mock<IDependencyResolver> mockResolver = new Mock<IDependencyResolver>(MockBehavior.Strict);
@@ -37,31 +46,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
                 InnerHandler = new TestHandler()
             };
             _invoker = new HttpMessageInvoker(handler);
+
+            HostNameProvider.Reset();
         }
 
         [Fact]
         public async Task SendAsync_WritesExpectedTraces()
         {
+            Assert.Equal(TestHostName, HostNameProvider.Value);
+
             var request = new HttpRequestMessage(HttpMethod.Get, "http://functions.com/api/testfunc?code=123");
             string requestId = Guid.NewGuid().ToString();
             request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, requestId);
+            request.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "test2.azurewebsites.net");
             SystemTraceHandler.SetRequestId(request);
             request.SetAuthorizationLevel(AuthorizationLevel.Function);
 
             await _invoker.SendAsync(request, CancellationToken.None);
 
             var traces = _traceWriter.GetTraces().ToArray();
-            Assert.Equal(2, traces.Length);
+            Assert.Equal(3, traces.Length);
+
+            // validate hostname sync trace
+            var trace = traces[0];
+            var message = trace.Message;
+            Assert.Equal(TraceLevel.Info, trace.Level);
+            Assert.Equal("HostName updated from 'test.azurewebsites.net' to 'test2.azurewebsites.net'", message);
+            Assert.Equal(ScriptConstants.TraceSourceHttpHandler, trace.Source);
+
+            // verify the hostname was synchronized
+            Assert.Equal("test2.azurewebsites.net", HostNameProvider.Value);
 
             // validate executing trace
-            var trace = traces[0];
+            trace = traces[1];
             Assert.Equal(TraceLevel.Info, trace.Level);
-            string message = Regex.Replace(trace.Message, @"\s+", string.Empty);
+            message = Regex.Replace(trace.Message, @"\s+", string.Empty);
             Assert.Equal($"ExecutingHTTPrequest:{{\"requestId\":\"{requestId}\",\"method\":\"GET\",\"uri\":\"/api/testfunc\"}}", message);
             Assert.Equal(ScriptConstants.TraceSourceHttpHandler, trace.Source);
 
             // validate executed trace
-            trace = traces[1];
+            trace = traces[2];
             Assert.Equal(TraceLevel.Info, trace.Level);
             message = Regex.Replace(trace.Message, @"\s+", string.Empty);
             Assert.Equal($"ExecutedHTTPrequest:{{\"requestId\":\"{requestId}\",\"method\":\"GET\",\"uri\":\"/api/testfunc\",\"authorizationLevel\":\"Function\",\"status\":\"OK\"}}", message);
@@ -84,6 +108,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             SystemTraceHandler.SetRequestId(request);
             requestId = request.GetRequestId();
             Guid.Parse(requestId);
+        }
+
+        public void Dispose()
+        {
+            ScriptSettingsManager.Instance = new ScriptSettingsManager();
         }
     }
 }

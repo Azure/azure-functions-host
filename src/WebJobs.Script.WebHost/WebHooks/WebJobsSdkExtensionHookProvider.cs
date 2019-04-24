@@ -52,8 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         // Provides the URL for accessing the admin extensions WebHook route.
         private Uri GetExtensionWebHookRoute(string extensionName)
         {
-            var settings = ScriptSettingsManager.Instance;
-            var hostName = settings.GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
+            var hostName = HostNameProvider.Value;
             if (hostName == null)
             {
                 return null;

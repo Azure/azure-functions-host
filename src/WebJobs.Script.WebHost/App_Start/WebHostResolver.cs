@@ -153,6 +153,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             // settings configured by the user (WEBSITE_TIME_ZONE) are honored.
                             // DateTime caches timezone information, so we need to clear the cache.
                             TimeZoneInfo.ClearCachedData();
+
+                            // ensure we reinitialize hostname after specialization
+                            HostNameProvider.Reset();
                         }
 
                         if (_standbyHostManager != null)

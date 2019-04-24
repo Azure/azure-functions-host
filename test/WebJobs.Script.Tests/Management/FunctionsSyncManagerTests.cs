@@ -103,6 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _expectedSyncTriggersPayload = "[{\"authLevel\":\"anonymous\",\"type\":\"httpTrigger\",\"direction\":\"in\",\"name\":\"req\",\"functionName\":\"function1\"}," +
                 "{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"DurableStorage\",\"functionName\":\"function2\",\"taskHubName\":\"TestHubValue\"}," +
                 "{\"name\":\"myQueueItem\",\"type\":\"activityTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"DurableStorage\",\"functionName\":\"function3\",\"taskHubName\":\"TestHubValue\"}]";
+
+            HostNameProvider.Reset();
         }
 
         private void ResetMockFileSystem(string hostJsonContent = null)
@@ -371,6 +373,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [InlineData(0, "https://sitename/operations/settriggers")]
         public void Disables_Ssl_If_SkipSslValidation_Enabled(int skipSslValidation, string syncTriggersUri)
         {
+            HostNameProvider.Reset();
+
             var vars = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.SkipSslValidation, skipSslValidation.ToString() },
@@ -390,6 +394,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [InlineData(EnvironmentSettingNames.AzureWebsiteHostName, "sitename", "https://sitename/operations/settriggers")]
         public void Use_Website_Name_If_Website_Hostname_Is_Not_Available(string envKey, string envValue, string expectedSyncTriggersUri)
         {
+            HostNameProvider.Reset();
+
             var vars = new Dictionary<string, string>
             {
                 { envKey, envValue },

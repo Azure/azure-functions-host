@@ -29,6 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Handlers
                     .WithDefaults(ScriptConstants.TraceSourceHttpHandler);
 
             SetRequestId(request);
+            HostNameProvider.Synchronize(request, traceWriter);
+
             if (request.IsColdStart())
             {
                 // for cold start requests we want to measure the request
