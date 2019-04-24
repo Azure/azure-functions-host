@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -32,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private Dictionary<string, Collection<string>> _testFunctionErrors;
         private KeysController _testController;
         private Mock<ISecretManager> _secretsManagerMock;
+        private Mock<IFunctionsSyncManager> _functionsSyncManagerMock;
 
         public KeysControllerTests()
         {
@@ -60,7 +62,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "TestFunction2", ScriptConstants.FunctionMetadataFileName))).Returns("{}");
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "DNE", ScriptConstants.FunctionMetadataFileName))).Throws(new DirectoryNotFoundException());
 
-            _testController = new KeysController(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new TestSecretManagerProvider(_secretsManagerMock.Object), new LoggerFactory(), fileSystem.Object);
+            _functionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
+            _functionsSyncManagerMock.Setup(p => p.TrySyncTriggersAsync(false)).ReturnsAsync(new SyncTriggersResult { Success = true });
+            _testController = new KeysController(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new TestSecretManagerProvider(_secretsManagerMock.Object), new LoggerFactory(), fileSystem.Object, _functionsSyncManagerMock.Object);
 
             var keys = new Dictionary<string, string>
             {
@@ -113,6 +117,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = (StatusCodeResult)(await _testController.Put("DNE", key.Name, key));
             Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
         }
 
         [Fact]
@@ -126,6 +132,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var content = (JObject)result.Value;
             Assert.Equal("key2", content["name"]);
             Assert.Equal("secret2", content["value"]);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Once);
         }
 
         [Fact]
@@ -135,6 +143,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = (StatusCodeResult)(await _testController.Delete("TestFunction1", "key2"));
             Assert.Equal(StatusCodes.Status204NoContent, result.StatusCode);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Once);
         }
 
         [Fact]
@@ -142,6 +152,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var result = (StatusCodeResult)(await _testController.Delete("DNE", "key2"));
             Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
         }
 
         [Fact]
@@ -151,6 +163,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = (StatusCodeResult)(await _testController.Delete("TestFunction1", "dne"));
             Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
         }
 
         [Fact]
@@ -158,6 +172,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var result = (BadRequestObjectResult)(await _testController.Delete("TestFunction1", "_test"));
             Assert.Equal("Invalid key name.", result.Value);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
         }
 
         protected virtual void Dispose(bool disposing)

@@ -13,6 +13,11 @@ namespace Microsoft.Azure.WebJobs.Script
         // For testing
         internal static string BaseDirectory { get; set; }
 
+        public static string GetEnvironmentVariableOrDefault(this IEnvironment environment, string name, string defaultValue)
+        {
+            return environment.GetEnvironmentVariable(name) ?? defaultValue;
+        }
+
         public static bool IsAppServiceEnvironment(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteInstanceId));

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
@@ -28,13 +29,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly ILogger _logger;
         private readonly IOptions<ScriptApplicationHostOptions> _applicationOptions;
         private readonly IFileSystem _fileSystem;
+        private readonly IFunctionsSyncManager _functionsSyncManager;
 
-        public KeysController(IOptions<ScriptApplicationHostOptions> applicationOptions, ISecretManagerProvider secretManagerProvider, ILoggerFactory loggerFactory, IFileSystem fileSystem)
+        public KeysController(IOptions<ScriptApplicationHostOptions> applicationOptions, ISecretManagerProvider secretManagerProvider, ILoggerFactory loggerFactory, IFileSystem fileSystem, IFunctionsSyncManager functionsSyncManager)
         {
             _applicationOptions = applicationOptions;
             _secretManagerProvider = secretManagerProvider;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryKeysController);
             _fileSystem = fileSystem;
+            _functionsSyncManager = functionsSyncManager;
         }
 
         [HttpGet]
@@ -186,11 +189,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 case OperationResult.Created:
                     {
                         var keyResponse = ApiModelUtility.CreateApiModel(new { name = keyName, value = operationResult.Secret }, Request);
+                        await _functionsSyncManager.TrySyncTriggersAsync();
                         return Created(ApiModelUtility.GetBaseUri(Request), keyResponse);
                     }
                 case OperationResult.Updated:
                     {
                         var keyResponse = ApiModelUtility.CreateApiModel(new { name = keyName, value = operationResult.Secret }, Request);
+                        await _functionsSyncManager.TrySyncTriggersAsync();
                         return Ok(keyResponse);
                     }
                 case OperationResult.NotFound:
@@ -244,6 +249,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 // Either the function or the key were not found
                 return NotFound();
             }
+
+            await _functionsSyncManager.TrySyncTriggersAsync();
 
             _logger.LogDebug(string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", "Deleted"));
 

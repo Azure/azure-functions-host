@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string EasyAuthEnabled = "WEBSITE_AUTH_ENABLED";
         public const string AzureWebJobsSecretStorageKeyVaultName = "AzureWebJobsSecretStorageKeyVaultName";
         public const string AzureWebJobsSecretStorageKeyVaultConnectionString = "AzureWebJobsSecretStorageKeyVaultConnectionString";
+        public const string AzureWebsiteArmCacheEnabled = "WEBSITE_FUNCTIONS_ARMCACHE_ENABLED";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to

@@ -27,8 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IEnumerable<WorkerConfig> _workerConfigs;
         private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly IFunctionsSyncManager _functionsSyncManager;
+        private readonly HostNameProvider _hostNameProvider;
 
-        public WebFunctionsManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient client, ISecretManagerProvider secretManagerProvider, IFunctionsSyncManager functionsSyncManager)
+        public WebFunctionsManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient client, ISecretManagerProvider secretManagerProvider, IFunctionsSyncManager functionsSyncManager, HostNameProvider hostNameProvider)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
@@ -36,33 +37,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _secretManagerProvider = secretManagerProvider;
             _functionsSyncManager = functionsSyncManager;
+            _hostNameProvider = hostNameProvider;
         }
 
-        /// <summary>
-        /// Calls into ScriptHost to retrieve list of FunctionMetadata
-        /// and maps them to FunctionMetadataResponse.
-        /// </summary>
-        /// <param name="request">Current HttpRequest for figuring out baseUrl</param>
-        /// <returns>collection of FunctionMetadataResponse</returns>
-        public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(HttpRequest request, bool includeProxies)
-        {
-            var baseUrl = $"{request.Scheme}://{request.Host}";
-            return await GetFunctionsMetadata(baseUrl, includeProxies);
-        }
-
-        public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(string baseUrl, bool includeProxies)
+        public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(bool includeProxies)
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
+            var functionsMetadata = GetFunctionsMetadata(hostOptions, _workerConfigs, _logger, includeProxies);
 
+            return await GetFunctionMetadataResponse(functionsMetadata, hostOptions, _hostNameProvider);
+        }
+
+        internal static async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionMetadataResponse(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions, HostNameProvider hostNameProvider)
+        {
+            string baseUrl = GetBaseUrl(hostNameProvider);
             string routePrefix = await GetRoutePrefix(hostOptions.RootScriptPath);
-            var tasks = GetFunctionsMetadata(includeProxies).Select(p => p.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl));
-            return await tasks.WhenAll();
-        }
+            var tasks = functionsMetadata.Select(p => p.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl));
 
-        internal IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool includeProxies = false)
-        {
-            var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            return GetFunctionsMetadata(hostOptions, _workerConfigs, _logger, includeProxies);
+            return await tasks.WhenAll();
         }
 
         internal static IEnumerable<FunctionMetadata> GetFunctionsMetadata(ScriptJobHostOptions hostOptions, IEnumerable<WorkerConfig> workerConfigs, ILogger logger, bool includeProxies = false)
@@ -252,6 +244,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
 
             return routePrefix;
+        }
+
+        internal static string GetBaseUrl(HostNameProvider hostNameProvider)
+        {
+            string hostName = hostNameProvider.Value ?? "localhost";
+            return $"https://{hostName}";
+        }
+
+        internal string GetBaseUrl()
+        {
+            return GetBaseUrl(_hostNameProvider);
         }
     }
 }

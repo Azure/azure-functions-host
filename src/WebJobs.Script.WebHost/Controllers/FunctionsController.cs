@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> List(bool includeProxies = false)
         {
-            var result = await _functionsManager.GetFunctionsMetadata(Request, includeProxies);
+            var result = await _functionsManager.GetFunctionsMetadata(includeProxies);
             return Ok(result);
         }
 
@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 // if we don't have any errors registered, make sure the function exists
                 // before returning empty errors
-                var result = await _functionsManager.GetFunctionsMetadata(Request, includeProxies: true);
+                var result = await _functionsManager.GetFunctionsMetadata(includeProxies: true);
                 var function = result.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
                 if (function == null)
                 {
