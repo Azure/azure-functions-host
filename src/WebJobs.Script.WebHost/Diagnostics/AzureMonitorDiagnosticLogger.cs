@@ -18,22 +18,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly string _regionName;
         private readonly string _category;
         private readonly string _hostInstanceId;
-        private readonly string _websiteHostName;
 
+        private readonly HostNameProvider _hostNameProvider;
         private readonly IEventGenerator _eventGenerator;
         private readonly IEnvironment _environment;
         private readonly IExternalScopeProvider _scopeProvider;
 
-        public AzureMonitorDiagnosticLogger(string category, string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment, IExternalScopeProvider scopeProvider)
+        public AzureMonitorDiagnosticLogger(string category, string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment, IExternalScopeProvider scopeProvider, HostNameProvider hostNameProvider)
         {
             _category = category ?? throw new ArgumentNullException(nameof(category));
             _hostInstanceId = hostInstanceId ?? throw new ArgumentNullException(nameof(hostInstanceId));
             _eventGenerator = eventGenerator ?? throw new ArgumentNullException(nameof(eventGenerator));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _scopeProvider = scopeProvider ?? throw new ArgumentNullException(nameof(scopeProvider));
+            _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
 
             _regionName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.RegionName) ?? string.Empty;
-            _websiteHostName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName);
         }
 
         public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public bool IsEnabled(LogLevel logLevel)
         {
             // We want to instantiate this Logger in placeholder mode to warm it up, but do not want to log anything.
-            return !string.IsNullOrEmpty(_websiteHostName) && !_environment.IsPlaceholderModeEnabled();
+            return !string.IsNullOrEmpty(_hostNameProvider.Value) && !_environment.IsPlaceholderModeEnabled();
         }
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 writer.WriteEndObject();
             }
 
-            _eventGenerator.LogAzureMonitorDiagnosticLogEvent(logLevel, _websiteHostName, AzureMonitorOperationName, AzureMonitorCategoryName, _regionName, sw.ToString());
+            _eventGenerator.LogAzureMonitorDiagnosticLogEvent(logLevel, _hostNameProvider.Value, AzureMonitorOperationName, AzureMonitorCategoryName, _regionName, sw.ToString());
         }
 
         private static void WritePropertyIfNotNull(JsonTextWriter writer, string propertyName, string propertyValue)

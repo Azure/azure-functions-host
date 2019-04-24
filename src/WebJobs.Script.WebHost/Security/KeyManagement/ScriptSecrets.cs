@@ -13,7 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         protected ScriptSecrets()
         {
-            HostName = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
             InstanceId = ScriptSettingsManager.Instance.AzureWebsiteInstanceId;
             Source = ScriptConstants.Runtime;
         }

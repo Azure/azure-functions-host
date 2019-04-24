@@ -39,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly TestLoggerProvider _loggerProvider;
         private readonly Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
         private readonly Mock<IEnvironment> _mockEnvironment;
+        private readonly HostNameProvider _hostNameProvider;
 
         public FunctionsSyncManagerTests()
         {
@@ -55,10 +56,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 TestDataPath = @"x:\test"
             };
 
+            string testHostName = "appName.azurewebsites.net";
             _vars = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString() },
-                { EnvironmentSettingNames.AzureWebsiteHostName, "appName.azurewebsites.net" }
+                { EnvironmentSettingNames.AzureWebsiteHostName, testHostName }
             };
 
             ResetMockFileSystem();
@@ -87,7 +89,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.CoreToolsEnvironment)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey)).Returns("1");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns("1");
-            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns(testHostName);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.SkipSslValidation)).Returns((string)null);
+            _hostNameProvider = new HostNameProvider(_mockEnvironment.Object, loggerFactory.CreateLogger<HostNameProvider>());
+            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider);
 
             _expectedSyncTriggersPayload = "[{\"authLevel\":\"anonymous\",\"type\":\"httpTrigger\",\"direction\":\"in\",\"name\":\"req\",\"functionName\":\"function1\"}," +
                 "{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"DurableStorage\",\"functionName\":\"function2\",\"taskHubName\":\"TestHubValue\"}," +
@@ -235,36 +240,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [InlineData(0, "https://sitename/operations/settriggers")]
         public void Disables_Ssl_If_SkipSslValidation_Enabled(int skipSslValidation, string syncTriggersUri)
         {
-            var vars = new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.SkipSslValidation, skipSslValidation.ToString() },
-                { EnvironmentSettingNames.AzureWebsiteHostName, "sitename" },
-            };
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.SkipSslValidation)).Returns(skipSslValidation.ToString());
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns("sitename");
 
-            using (var env = new TestScopedEnvironmentVariable(vars))
-            {
-                var httpRequest = FunctionsSyncManager.BuildSetTriggersRequest();
-                Assert.Equal(syncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
-                Assert.Equal(HttpMethod.Post, httpRequest.Method);
-            }
+            var httpRequest = _functionsSyncManager.BuildSetTriggersRequest();
+            Assert.Equal(syncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
+            Assert.Equal(HttpMethod.Post, httpRequest.Method);
         }
 
         [Theory]
-        [InlineData(EnvironmentSettingNames.AzureWebsiteName, "sitename", "https://sitename.azurewebsites.net/operations/settriggers")]
-        [InlineData(EnvironmentSettingNames.AzureWebsiteHostName, "sitename", "https://sitename/operations/settriggers")]
-        public void Use_Website_Name_If_Website_Hostname_Is_Not_Available(string envKey, string envValue, string expectedSyncTriggersUri)
+        [InlineData(null, "sitename", "https://sitename.azurewebsites.net/operations/settriggers")]
+        [InlineData("hostname", null, "https://hostname/operations/settriggers")]
+        public void Use_Website_Name_If_Website_Hostname_Is_Not_Available(string hostName, string siteName, string expectedSyncTriggersUri)
         {
-            var vars = new Dictionary<string, string>
-            {
-                { envKey, envValue },
-            };
+            _hostNameProvider.Reset();
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns(siteName);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns(hostName);
 
-            using (var env = new TestScopedEnvironmentVariable(vars))
-            {
-                var httpRequest = FunctionsSyncManager.BuildSetTriggersRequest();
-                Assert.Equal(expectedSyncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
-                Assert.Equal(HttpMethod.Post, httpRequest.Method);
-            }
+            var httpRequest = _functionsSyncManager.BuildSetTriggersRequest();
+            Assert.Equal(expectedSyncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
+            Assert.Equal(HttpMethod.Post, httpRequest.Method);
         }
 
         private static HttpClient CreateHttpClient(MockHttpHandler httpHandler)

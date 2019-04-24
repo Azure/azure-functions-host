@@ -17,7 +17,9 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -26,6 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 {
     public class WebFunctionsManagerTests : IDisposable
     {
+        private const string TestHostName = "test.azurewebsites.net";
+
         private readonly string _testRootScriptPath;
         private readonly string _testHostConfigFilePath;
         private readonly ScriptApplicationHostOptions _hostOptions;
@@ -74,7 +78,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady)).Returns("1");
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.CoreToolsEnvironment)).Returns((string)null);
-            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, mockEnvironment.Object);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns(TestHostName);
+            var hostNameProvider = new HostNameProvider(mockEnvironment.Object, loggerFactory.CreateLogger<HostNameProvider>());
+            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, mockEnvironment.Object, hostNameProvider);
             var webManager = new WebFunctionsManager(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object, functionsSyncManager);
 
             FileUtility.Instance = fileSystem;

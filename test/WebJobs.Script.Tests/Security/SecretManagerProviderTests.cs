@@ -4,8 +4,10 @@
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
@@ -35,8 +37,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             mockIdProvider.Setup(p => p.GetHostIdAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync("testhostid");
 
+            IEnvironment environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "test.azurewebsites.net");
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+            var hostNameProvider = new HostNameProvider(environment, loggerFactory.CreateLogger<HostNameProvider>());
+
             _provider = new DefaultSecretManagerProvider(optionsMonitor, mockIdProvider.Object, config,
-                new TestEnvironment(), NullLoggerFactory.Instance, new TestMetricsLogger());
+                new TestEnvironment(), NullLoggerFactory.Instance, new TestMetricsLogger(), hostNameProvider);
         }
 
         [Fact]

@@ -17,13 +17,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     internal class DefaultScriptWebHookProvider : IScriptWebHookProvider
     {
         private readonly ISecretManagerProvider _secretManagerProvider;
+        private readonly HostNameProvider _hostNameProvider;
 
         // Map from an extension name to a http handler.
         private IDictionary<string, HttpHandler> _customHttpHandlers = new Dictionary<string, HttpHandler>(StringComparer.OrdinalIgnoreCase);
 
-        public DefaultScriptWebHookProvider(ISecretManagerProvider secretManagerProvider)
+        public DefaultScriptWebHookProvider(ISecretManagerProvider secretManagerProvider, HostNameProvider hostNameProvider)
         {
             _secretManagerProvider = secretManagerProvider;
+            _hostNameProvider = hostNameProvider;
         }
 
         public bool TryGetHandler(string name, out HttpHandler handler)
@@ -53,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private Uri GetExtensionWebHookRoute(string extensionName)
         {
             var settings = ScriptSettingsManager.Instance;
-            var hostName = settings.GetSetting(EnvironmentSettingNames.AzureWebsiteHostName);
+            var hostName = _hostNameProvider.Value;
             if (hostName == null)
             {
                 return null;

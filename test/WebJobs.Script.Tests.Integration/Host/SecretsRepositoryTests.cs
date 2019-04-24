@@ -342,7 +342,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var configuration = TestHelpers.GetTestConfiguration();
                 BlobConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
                 BlobContainer = CloudStorageAccount.Parse(BlobConnectionString).CreateCloudBlobClient().GetContainerReference("azure-webjobs-secrets");
-                string keyVaultConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
                 KeyVaultConnectionString = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultConnectionString);
                 KeyVaultName = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultName);
                 AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider(KeyVaultConnectionString);

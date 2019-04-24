@@ -46,6 +46,7 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<IEventGenerator>(services);
             AddMockedSingleton<AspNetCore.Hosting.IApplicationLifetime>(services);
             AddMockedSingleton<IDependencyValidator>(services);
+            services.AddSingleton<HostNameProvider>();
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
             services.AddScriptStartupTypeLocator();

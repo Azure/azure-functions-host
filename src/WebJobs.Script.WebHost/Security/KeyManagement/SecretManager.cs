@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IKeyValueConverterFactory _keyValueConverterFactory;
         private readonly ILogger _logger;
         private readonly ISecretsRepository _repository;
+        private readonly HostNameProvider _hostNameProvider;
         private HostSecretsInfo _hostSecrets;
         private SemaphoreSlim _hostSecretsLock = new SemaphoreSlim(1, 1);
         private IMetricsLogger _metricsLogger;
@@ -35,12 +36,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
         }
 
-        public SecretManager(ISecretsRepository repository, ILogger logger, IMetricsLogger metricsLogger, bool createHostSecretsIfMissing = false)
-            : this(repository, new DefaultKeyValueConverterFactory(repository.IsEncryptionSupported), logger, metricsLogger, createHostSecretsIfMissing)
+        public SecretManager(ISecretsRepository repository, ILogger logger, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, bool createHostSecretsIfMissing = false)
+            : this(repository, new DefaultKeyValueConverterFactory(repository.IsEncryptionSupported), logger, metricsLogger, hostNameProvider, createHostSecretsIfMissing)
         {
         }
 
-        public SecretManager(ISecretsRepository repository, IKeyValueConverterFactory keyValueConverterFactory, ILogger logger, IMetricsLogger metricsLogger, bool createHostSecretsIfMissing = false)
+        public SecretManager(ISecretsRepository repository, IKeyValueConverterFactory keyValueConverterFactory, ILogger logger, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, bool createHostSecretsIfMissing = false)
         {
             _repository = repository;
             _keyValueConverterFactory = keyValueConverterFactory;
@@ -48,11 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger = logger;
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _repositoryClassName = _repository.GetType().Name.ToLower();
+            _hostNameProvider = hostNameProvider;
 
             if (createHostSecretsIfMissing)
             {
-                // The SecretManager implementation of GetHostSecrets will
-                // create a host secret if one is not present.
+                // GetHostSecrets will create host secrets if not present
                 GetHostSecretsAsync().GetAwaiter().GetResult();
             }
         }
@@ -450,6 +451,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task PersistSecretsAsync<T>(T secrets, string keyScope = null, bool isNonDecryptable = false) where T : ScriptSecrets
         {
+            if (secrets != null)
+            {
+                secrets.HostName = _hostNameProvider.Value;
+            }
+
             ScriptSecretsType secretsType = secrets.SecretsType;
             if (isNonDecryptable)
             {

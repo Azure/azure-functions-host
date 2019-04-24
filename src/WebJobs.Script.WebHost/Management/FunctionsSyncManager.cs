@@ -42,11 +42,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IEnvironment _environment;
+        private readonly HostNameProvider _hostNameProvider;
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
 
         private CloudBlockBlob _hashBlob;
 
-        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)
+        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
@@ -57,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _hostIdProvider = hostIdProvider;
             _webHostEnvironment = webHostEnvironment;
             _environment = environment;
+            _hostNameProvider = hostNameProvider;
         }
 
         public async Task<SyncTriggersResult> TrySyncTriggersAsync(bool checkHash = false)
@@ -329,21 +331,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return config;
         }
 
-        internal static HttpRequestMessage BuildSetTriggersRequest()
+        internal HttpRequestMessage BuildSetTriggersRequest()
         {
             var protocol = "https";
-            // On private stamps with no ssl certificate use http instead.
-            if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.SkipSslValidation) == "1")
+            if (_environment.GetEnvironmentVariable(EnvironmentSettingNames.SkipSslValidation) == "1")
             {
+                // On private stamps with no ssl certificate use http instead.
                 protocol = "http";
             }
 
-            var hostname = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName);
-            // Linux Dedicated on AppService doesn't have WEBSITE_HOSTNAME
-            hostname = string.IsNullOrWhiteSpace(hostname)
-                ? $"{Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)}.azurewebsites.net"
-                : hostname;
-
+            var hostname = _hostNameProvider.Value;
             var url = $"{protocol}://{hostname}/operations/settriggers";
 
             return new HttpRequestMessage(HttpMethod.Post, url);

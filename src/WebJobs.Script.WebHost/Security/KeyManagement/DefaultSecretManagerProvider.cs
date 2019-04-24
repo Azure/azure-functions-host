@@ -21,10 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
+        private readonly HostNameProvider _hostNameProvider;
         private Lazy<ISecretManager> _secretManagerLazy;
 
         public DefaultSecretManagerProvider(IOptionsMonitor<ScriptApplicationHostOptions> options, IHostIdProvider hostIdProvider,
-            IConfiguration configuration, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
+            IConfiguration configuration, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider)
         {
             if (loggerFactory == null)
             {
@@ -35,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _hostIdProvider = hostIdProvider ?? throw new ArgumentNullException(nameof(hostIdProvider));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
 
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
@@ -48,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void ResetSecretManager() => Interlocked.Exchange(ref _secretManagerLazy, new Lazy<ISecretManager>(Create));
 
-        private ISecretManager Create() => new SecretManager(CreateSecretsRepository(), _logger, _metricsLogger);
+        private ISecretManager Create() => new SecretManager(CreateSecretsRepository(), _logger, _metricsLogger, _hostNameProvider);
 
         internal ISecretsRepository CreateSecretsRepository()
         {
