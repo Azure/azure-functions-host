@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ILanguageWorkerChannelManager _languageWorkerChannelManager;
         private readonly IConfigurationRoot _configuration;
         private readonly ILogger _logger;
+        private readonly HostNameProvider _hostNameProvider;
         private readonly TimeSpan _specializationTimerInterval = TimeSpan.FromMilliseconds(500);
 
         private Timer _specializationTimer;
@@ -37,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         public StandbyManager(IScriptHostManager scriptHostManager, ILanguageWorkerChannelManager languageWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger)
+            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -47,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _configuration = configuration as IConfigurationRoot ?? throw new ArgumentNullException(nameof(configuration));
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
+            _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
         }
 
         public static IChangeToken ChangeToken => _standbyChangeToken;
@@ -67,6 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Trigger a configuration reload to pick up all current settings
             _configuration?.Reload();
+
+            _hostNameProvider.Reset();
 
             await _languageWorkerChannelManager.SpecializeAsync();
             NotifyChange();

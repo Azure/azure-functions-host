@@ -63,7 +63,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        // for testing only
         internal void Reset()
         {
             _hostName = null;
