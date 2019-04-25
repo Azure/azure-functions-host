@@ -383,7 +383,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             Assert.Equal(23, telemetry.Max);
             Assert.Equal("100", telemetry.Properties[$"{LogConstants.CustomPropertyPrefix}MyCustomMetricProperty"]);
 
-            ValidateSdkVersion(telemetry);
+            ValidateSdkVersion(telemetry, "f_");
         }
 
         protected static void ValidateTrace(TraceTelemetry telemetry, string expectedMessageContains,
@@ -449,9 +449,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             }
         }
 
-        private static void ValidateSdkVersion(ITelemetry telemetry)
+        private static void ValidateSdkVersion(ITelemetry telemetry, string prefix = null)
         {
-            Assert.StartsWith("azurefunctions: ", telemetry.Context.GetInternalContext().SdkVersion);
+            Assert.StartsWith($"{prefix}azurefunctions: ", telemetry.Context.GetInternalContext().SdkVersion);
         }
 
         private static string GetInvocationId(ISupportProperties telemetry)
