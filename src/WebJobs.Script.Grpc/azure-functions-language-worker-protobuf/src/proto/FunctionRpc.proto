@@ -13,6 +13,8 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "identity/ClaimsIdentityRpc.proto";
 import "shared/NullableString.proto";
+import "shared/NullableBool.proto";
+import "shared/NullableDouble.proto";
 
 // Interface exported by the server.
 service FunctionRpc {
