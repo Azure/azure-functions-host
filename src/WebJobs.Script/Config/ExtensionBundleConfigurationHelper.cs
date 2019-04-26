@@ -75,10 +75,10 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             if (_environment.IsLinuxAppServiceEnvironment())
             {
-                string linuxDefaultPath = Path.Combine(Path.PathSeparator.ToString(), ScriptConstants.DefaultExtensionBundleDirectory, options.Id);
-
+                var homeDirectory = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+                string linuxDefaultPath = Path.Combine(Path.GetPathRoot(homeDirectory), ScriptConstants.DefaultExtensionBundleDirectory, options.Id);
                 string deploymentPackageBundlePath = Path.Combine(
-                    _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath),
+                    homeDirectory,
                     "site", "wwwroot", ".azureFunctions", ScriptConstants.ExtensionBundleDirectory, options.Id);
 
                 options.ProbingPaths.Add(linuxDefaultPath);
