@@ -122,7 +122,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
 
             // Configuration
-            services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsSetup>());
+            services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
+            services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
@@ -130,13 +131,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static void AddStandbyServices(this IServiceCollection services)
         {
-            services.AddSingleton<IOptionsChangeTokenSource<ScriptApplicationHostOptions>, StandbyChangeTokenSource>();
+            services.AddSingleton<IOptionsChangeTokenSource<StandbyOptions>, StandbyChangeTokenSource>();
 
             // Core script host service
             services.AddSingleton<IHostedService>(p =>
             {
-                var hostEnvironment = p.GetService<IScriptWebHostEnvironment>();
-                if (hostEnvironment.InStandbyMode)
+                var standbyOptions = p.GetService<IOptionsMonitor<StandbyOptions>>();
+                if (standbyOptions.CurrentValue.InStandbyMode)
                 {
                     var standbyManager = p.GetService<IStandbyManager>();
                     return new StandbyInitializationService(standbyManager);

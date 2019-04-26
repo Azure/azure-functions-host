@@ -9,22 +9,23 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
-    public class ScriptApplicationHostOptionsSetup : IConfigureNamedOptions<ScriptApplicationHostOptions>
+    public class ScriptApplicationHostOptionsSetup : IConfigureNamedOptions<ScriptApplicationHostOptions>, IDisposable
     {
         public const string SkipPlaceholder = "SkipPlaceholder";
-
+        private readonly IOptionsMonitorCache<ScriptApplicationHostOptions> _cache;
         private readonly IConfiguration _configuration;
-        private readonly IEnvironment _environment;
+        private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
+        private readonly IDisposable _standbyOptionsOnChangeSubscription;
 
-        public ScriptApplicationHostOptionsSetup(IConfiguration configuration)
-            : this(configuration, SystemEnvironment.Instance)
+        public ScriptApplicationHostOptionsSetup(IConfiguration configuration, IOptionsMonitor<StandbyOptions> standbyOptions,
+            IOptionsMonitorCache<ScriptApplicationHostOptions> cache)
         {
-        }
-
-        public ScriptApplicationHostOptionsSetup(IConfiguration configuration, IEnvironment environment)
-        {
+            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
+
+            // If standby options change, invalidate this options cache.
+            _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => _cache.Clear());
         }
 
         public void Configure(ScriptApplicationHostOptions options)
@@ -43,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             // During assignment, we need a way to get the non-placeholder ScriptPath
             // while we are still in PlaceholderMode. This is a way for us to request it from the
             // OptionsFactory and still allow other setups to run.
-            if (_environment.IsPlaceholderModeEnabled() &&
+            if (_standbyOptions.CurrentValue.InStandbyMode &&
                 !string.Equals(name, SkipPlaceholder, StringComparison.Ordinal))
             {
                 // If we're in standby mode, override relevant properties with values
@@ -57,6 +58,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 options.SecretsPath = Path.Combine(tempRoot, @"functions\standby\secrets");
                 options.IsSelfHost = options.IsSelfHost;
             }
+        }
+
+        public void Dispose()
+        {
+            _standbyOptionsOnChangeSubscription?.Dispose();
         }
     }
 }
