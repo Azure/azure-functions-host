@@ -37,12 +37,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .Expect("Microsoft.Azure.WebJobs.Logging.FunctionResultAggregatorProvider");
 
             expected.ExpectCollection<IHostedService>()
-                .Expect<JobHostService>()
                 .Expect<JobHostService>("Microsoft.Azure.WebJobs.Hosting.OptionsLoggingService")
                 .Expect<PrimaryHostCoordinator>()
                 .Expect<HttpInitializationService>()
                 .Expect<FileMonitoringService>()
                 .Expect<LanguageWorkerConsoleLogService>()
+                .Optional<JobHostService>() // This service will be missing when host is offline.
                 .Optional<FunctionsSyncService>(); // This service is conditionally registered.
 
             expected.ExpectSubcollection<ILoggerProvider>()

@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
@@ -34,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public async Task Validator_InvalidServices_LogsError()
         {
-            LogMessage invalidServicesMessage = await RunTest(s =>
+            LogMessage invalidServicesMessage = await RunTest(configureJobHost: s =>
             {
                 s.AddSingleton<IHostedService, MyHostedService>();
                 s.AddSingleton<IScriptEventManager, MyScriptEventManager>();
@@ -53,7 +54,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Contains(messageLines, p => p.StartsWith("[Missing]") && p.EndsWith(nameof(SystemLoggerProvider)));
         }
 
-        private async Task<LogMessage> RunTest(Action<IServiceCollection> configure = null)
+        [Fact]
+        public async Task Validator_NoJobHost()
+        {
+            LogMessage invalidServicesMessage = await RunTest(configureWebHost: s =>
+            {
+                // This will force us to skip host startup (which removes the JobHost)
+                s.AddSingleton<IScriptHostBuilder, TestScriptHostBuilder>();
+            });
+
+            string msg = $"If you have registered new dependencies, make sure to update the DependencyValidator. Invalid Services:{Environment.NewLine}";
+            Assert.True(invalidServicesMessage == null, msg + invalidServicesMessage?.Exception?.ToString());
+        }
+
+        private async Task<LogMessage> RunTest(Action<IServiceCollection> configureWebHost = null, Action<IServiceCollection> configureJobHost = null)
         {
             LogMessage invalidServicesMessage = null;
             TestLoggerProvider loggerProvider = new TestLoggerProvider();
@@ -68,7 +82,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                         s.AddSingleton<IConfigureBuilder<ILoggingBuilder>>(new DelegatedConfigureBuilder<ILoggingBuilder>(b =>
                         {
                             b.AddProvider(loggerProvider);
-                            configure?.Invoke(b.Services);
+
+                            configureJobHost?.Invoke(b.Services);
                         }));
 
                         string uniqueTestRootPath = Path.Combine(Path.GetTempPath(), "FunctionsTest", "DependencyValidatorTests");
@@ -80,6 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                             o.SecretsPath = Path.Combine(uniqueTestRootPath, "secrets");
                             o.ScriptPath = uniqueTestRootPath;
                         });
+
+                        configureWebHost?.Invoke(s);
                     });
 
             using (var host = builder.Build())
@@ -123,6 +140,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             public IDisposable Subscribe(IObserver<ScriptEvent> observer)
             {
                 return null;
+            }
+        }
+
+        private class TestScriptHostBuilder : IScriptHostBuilder
+        {
+            private readonly DefaultScriptHostBuilder _builder;
+
+            public TestScriptHostBuilder(IOptionsMonitor<ScriptApplicationHostOptions> appHostOptions, IServiceProvider rootServiceProvider, IServiceScopeFactory rootServiceScopeFactory)
+            {
+                _builder = new DefaultScriptHostBuilder(appHostOptions, rootServiceProvider, rootServiceScopeFactory);
+            }
+
+            public IHost BuildHost(bool skipHostStartup, bool skipHostConfigurationParsing)
+            {
+                // always skip host startup
+                return _builder.BuildHost(true, false);
             }
         }
     }
