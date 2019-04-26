@@ -1,13 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Text;
-using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -19,12 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void Configure_InStandbyMode_ReturnsExpectedConfiguration()
         {
-            var settings = new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" }
-            };
-
-            ScriptApplicationHostOptionsSetup setup = CreateSetupWithConfiguration(new TestEnvironment(settings));
+            ScriptApplicationHostOptionsSetup setup = CreateSetupWithConfiguration(true);
 
             var options = new ScriptApplicationHostOptions();
             setup.Configure(options);
@@ -35,14 +27,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.False(options.IsSelfHost);
         }
 
-        private ScriptApplicationHostOptionsSetup CreateSetupWithConfiguration(IEnvironment environment = null)
+        private ScriptApplicationHostOptionsSetup CreateSetupWithConfiguration(bool inStandbyMode)
         {
             var builder = new ConfigurationBuilder();
-            environment = environment ?? SystemEnvironment.Instance;
-
             var configuration = builder.Build();
 
-            return new ScriptApplicationHostOptionsSetup(configuration, environment);
+            var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions { InStandbyMode = inStandbyMode });
+            var mockCache = new Mock<IOptionsMonitorCache<ScriptApplicationHostOptions>>();
+
+            return new ScriptApplicationHostOptionsSetup(configuration, standbyOptions, mockCache.Object);
         }
     }
 }

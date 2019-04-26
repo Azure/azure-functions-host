@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     /// <summary>
     /// Contains methods related to standby mode (placeholder) app initialization.
     /// </summary>
-    public class StandbyManager : IStandbyManager
+    public class StandbyManager : IStandbyManager, IDisposable
     {
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IConfigurationRoot _configuration;
         private readonly ILogger _logger;
         private readonly HostNameProvider _hostNameProvider;
+        private readonly IDisposable _changeTokenCallbackSubscription;
         private readonly TimeSpan _specializationTimerInterval = TimeSpan.FromMilliseconds(500);
 
         private Timer _specializationTimer;
@@ -49,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _configuration = configuration as IConfigurationRoot ?? throw new ArgumentNullException(nameof(configuration));
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
+            _changeTokenCallbackSubscription = ChangeToken.RegisterChangeCallback(_ => _logger.LogDebug($"{nameof(StandbyManager)}.{nameof(ChangeToken)} callback has fired."), null);
         }
 
         public static IChangeToken ChangeToken => _standbyChangeToken;
@@ -162,6 +164,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 SpecializeHostAsync().ContinueWith(t => _logger.LogError(t.Exception, "Error specializing host."),
                     TaskContinuationOptions.OnlyOnFaulted);
             }
+        }
+
+        public void Dispose()
+        {
+            _changeTokenCallbackSubscription?.Dispose();
         }
     }
 }
