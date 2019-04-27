@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     }
                     else
                     {
-                        response.Headers.Add(header.Key, header.Value?.ToString() ?? string.Empty);
+                        response.Headers.AppendCommaSeparatedValues(header.Key, header.Value.ToString() ?? string.Empty);
                     }
                 }
             }
