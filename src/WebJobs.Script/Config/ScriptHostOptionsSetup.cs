@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             {
                 TimeSpan functionTimeout = _environment.IsDynamic() ? DefaultFunctionTimeoutDynamic : DefaultFunctionTimeout;
                 string value = jobHostSection.GetValue<string>("functionTimeout");
-                if (value != null)
+                if (!string.IsNullOrEmpty(value))
                 {
                     TimeSpan requestedTimeout = TimeSpan.Parse(value, CultureInfo.InvariantCulture);
                     ValidateTimeoutValue(options, requestedTimeout);
