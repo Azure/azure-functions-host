@@ -101,7 +101,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var options = GetConfiguredOptions(settings, environment);
 
             Assert.Equal(ScriptHostOptionsSetup.DefaultFunctionTimeoutDynamic, options.FunctionTimeout);
-
+            
+            // When functionTimeout is set as null
+            settings.Add(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout"), null);
+            Assert.Equal(ScriptHostOptionsSetup.DefaultFunctionTimeoutDynamic, options.FunctionTimeout);
+            
             // TODO: DI Need to ensure JobHostOptions is correctly configured
             //var timeoutConfig = options.HostOptions.FunctionTimeout;
             //Assert.NotNull(timeoutConfig);
@@ -126,7 +130,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void Configure_TimeoutDefaultsNull_IfNotDynamic()
         {
             var options = GetConfiguredOptions(new Dictionary<string, string>());
-            Assert.Equal(ScriptHostOptionsSetup.DefaultFunctionTimeout, options.FunctionTimeout);
+            Assert.Equal(ScriptHostOptionsSetup.DefaultFunctionTimeout, options.FunctionTimeout);            
+            
+            // When functionTimeout is set as null
+            settings.Add(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout"), null);
+            Assert.Equal(ScriptHostOptionsSetup.DefaultFunctionTimeoutDynamic, options.FunctionTimeout);
         }
 
         [Fact]
