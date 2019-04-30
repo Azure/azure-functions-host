@@ -131,6 +131,9 @@ function DownloadNupkg([string] $nupkgPath, [string[]]$from, [string[]]$to) {
 function BuildPackages([bool] $isNoRuntime) {
     if($isNoRuntime) {
         BuildOutput ""
+        $applicationHost = Get-Content $buildOutput\publish.no-runtime\SiteExtensions\Functions\applicationHost.xdt
+        $applicationHost -replace "\\%XDT_BITNESS%","" | Out-File $buildOutput\publish.no-runtime\SiteExtensions\Functions\applicationHost.xdt
+
         CreateZips ".no-runtime"
     } else {
         BuildOutput "win-x86"
