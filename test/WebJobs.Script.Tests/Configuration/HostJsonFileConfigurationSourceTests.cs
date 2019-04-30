@@ -146,6 +146,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal($"Host configuration file read:{Environment.NewLine}{hostJson}", logMessage);
         }
 
+        [Fact]
+        public void Parse_Json_Token_For_NullOrEmptyString()
+        {
+            //  Invalid empty string as value
+            string hostJsonContent = @"
+            {
+                'version': '2.0',
+                'functionTimeout': ''
+            }";
+
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            Assert.True(File.Exists(_hostJsonFile));
+
+            var config = BuildHostJsonConfiguration();
+            Assert.Equal(config["AzureFunctionsJobHost:functionTimeout"], string.Empty);
+
+            // Valid null as value
+            hostJsonContent = @"
+            {
+                'version': '2.0',
+                'functionTimeout': null
+            }";
+
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            Assert.True(File.Exists(_hostJsonFile));
+            config = BuildHostJsonConfiguration();
+            Assert.Equal(config["AzureFunctionsJobHost:functionTimeout"], null);
+        }
+
         private IConfiguration BuildHostJsonConfiguration(IEnvironment environment = null)
         {
             environment = environment ?? new TestEnvironment();
