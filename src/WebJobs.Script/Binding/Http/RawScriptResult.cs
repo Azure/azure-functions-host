@@ -54,7 +54,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     }
                     else
                     {
-                        response.Headers.AppendCommaSeparatedValues(header.Key, header.Value.ToString() ?? string.Empty);
+                        if (response.Headers.ContainsKey(header.Key))
+                        {
+                            // Add duplicate http header to HttpContext.Items. This will be logged in HttpContextItemsCheckMiddleware
+                            response.HttpContext.Items[ScriptConstants.AzureFunctionsDuplicateHttpHeaderKey] = header.Key;
+                        }
+                        else
+                        {
+                            response.Headers.Add(header.Key, header.Value.ToString() ?? string.Empty);
+                        }
                     }
                 }
             }

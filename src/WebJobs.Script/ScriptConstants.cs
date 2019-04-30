@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsHostKey = "MS_AzureFunctionsHost";
         public const string AzureFunctionsNestedProxyCount = "MS_AzureFunctionsNestedProxyCount";
         public const string AzureFunctionsProxyResult = "MS_AzureFunctionsProxyResult";
+        public const string AzureFunctionsDuplicateHttpHeaderKey = "MS_AzureFunctionsDuplicateHttpHeader";
 
         public const string LogPropertyPrimaryHostKey = "MS_PrimaryHost";
         public const string LogPropertySourceKey = "MS_Source";
