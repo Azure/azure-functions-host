@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     case JTokenType.Bytes:
                     case JTokenType.TimeSpan:
                         string key = ConfigurationSectionNames.JobHost + ConfigurationPath.KeyDelimiter + ConfigurationPath.Combine(_path.Reverse());
-                        Data[key] = token.Value<string>().ToString(CultureInfo.InvariantCulture);
+                        Data[key] = token.Value<string>()?.ToString(CultureInfo.InvariantCulture);
                         break;
                     default:
                         break;
