@@ -6,7 +6,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
@@ -160,15 +163,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 // download zip and extract
                 var zipUri = new Uri(zipPath);
-                var filePath = Path.GetTempFileName();
-                await DownloadAsync(zipUri, filePath);
-
-                using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationZipExtract))
-                {
-                    _logger.LogInformation($"Extracting files to '{options.ScriptPath}'");
-                    ZipFile.ExtractToDirectory(filePath, options.ScriptPath, overwriteFiles: true);
-                    _logger.LogInformation($"Zip extraction complete");
-                }
+                var filePath = await DownloadAsync(zipUri);
+                UnpackPackage(filePath, options.ScriptPath);
 
                 string bundlePath = Path.Combine(options.ScriptPath, "worker-bundle");
                 if (Directory.Exists(bundlePath))
@@ -178,11 +174,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        private async Task DownloadAsync(Uri zipUri, string filePath)
+        private async Task<string> DownloadAsync(Uri zipUri)
         {
-            string cleanedUrl;
-            Utility.TryCleanUrl(zipUri.AbsoluteUri, out cleanedUrl);
+            if (!Utility.TryCleanUrl(zipUri.AbsoluteUri, out string cleanedUrl))
+            {
+                throw new Exception("Invalid url for the package");
+            }
 
+            var filePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(zipUri.AbsolutePath));
             _logger.LogInformation($"Downloading zip contents from '{cleanedUrl}' to temp file '{filePath}'");
 
             HttpResponseMessage response = null;
@@ -218,6 +217,75 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes written");
             }
+
+            return filePath;
+        }
+
+        private void UnpackPackage(string filePath, string scriptPath)
+        {
+            if (_environment.IsMountEnabled() &&
+                // Only attempt to use FUSE on Linux
+                RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationFuseMount))
+                {
+                    if (FileIsAny(".squashfs", ".sfs", ".sqsh", ".img", ".fs"))
+                    {
+                        MountFsImage(filePath, scriptPath);
+                    }
+                    else if (FileIsAny(".zip"))
+                    {
+                        MountZipFile(filePath, scriptPath);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Can't find Filesystem to match {filePath}");
+                    }
+                }
+            }
+            else
+            {
+                using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationZipExtract))
+                {
+                    _logger.LogInformation($"Extracting files to '{scriptPath}'");
+                    ZipFile.ExtractToDirectory(filePath, scriptPath, overwriteFiles: true);
+                    _logger.LogInformation($"Zip extraction complete");
+                }
+            }
+
+            bool FileIsAny(params string[] options)
+                => options.Any(o => filePath.EndsWith(o, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private void MountFsImage(string filePath, string scriptPath)
+            => RunFuseMount($"squashfuse_ll '{filePath}' '{scriptPath}'", scriptPath);
+
+        private void MountZipFile(string filePath, string scriptPath)
+            => RunFuseMount($"fuse-zip -r '{filePath}' '{scriptPath}'", scriptPath);
+
+        private void RunFuseMount(string mountCommand, string targetPath)
+        {
+            var bashCommand = $"(mknod /dev/fuse c 10 229 || true) && (mkdir -p '{targetPath}' || true) && ({mountCommand})";
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "bash",
+                    Arguments = $"-c \"{bashCommand}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+            _logger.LogInformation($"Running: {process.StartInfo.FileName} {process.StartInfo.Arguments}");
+            process.Start();
+            var output = process.StandardOutput.ReadToEnd();
+            var error = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            _logger.LogInformation($"Output: {output}");
+            _logger.LogInformation($"error: {output}");
+            _logger.LogInformation($"exitCode: {process.ExitCode}");
         }
 
         public IDictionary<string, string> GetInstanceInfo()

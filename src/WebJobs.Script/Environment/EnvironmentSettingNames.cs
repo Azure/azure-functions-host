@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebJobsSecretStorageKeyVaultName = "AzureWebJobsSecretStorageKeyVaultName";
         public const string AzureWebJobsSecretStorageKeyVaultConnectionString = "AzureWebJobsSecretStorageKeyVaultConnectionString";
         public const string AzureWebsiteArmCacheEnabled = "WEBSITE_FUNCTIONS_ARMCACHE_ENABLED";
+        public const string MountEnabled = "WEBSITE_MOUNT_ENABLED";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
