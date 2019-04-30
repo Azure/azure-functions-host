@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     {
                         if (response.Headers.ContainsKey(header.Key))
                         {
-                            // Add duplicate http header to HttpContext.Items. This will be logged in HttpContextItemsCheckMiddleware
+                            // Add duplicate http header to HttpContext.Items. This will be logged in ResponseContextItemsCheckMiddleware
                             response.HttpContext.Items[ScriptConstants.AzureFunctionsDuplicateHttpHeaderKey] = header.Key;
                         }
                         else
