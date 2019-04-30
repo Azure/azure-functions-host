@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,8 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .Expect<HttpInitializationService>()
                 .Expect<FileMonitoringService>()
                 .Expect<LanguageWorkerConsoleLogService>()
-                .Optional<JobHostService>() // This service will be missing when host is offline.
-                .Optional<FunctionsSyncService>(); // This service is conditionally registered.
+                .Optional<FuncAppFileProvisioningService>() // Used by powershell.
+                .Optional<JobHostService>() // Missing when host is offline.
+                .Optional<FunctionsSyncService>(); // Conditionally registered.
 
             expected.ExpectSubcollection<ILoggerProvider>()
                 .Expect<AzureMonitorDiagnosticLoggerProvider>()
