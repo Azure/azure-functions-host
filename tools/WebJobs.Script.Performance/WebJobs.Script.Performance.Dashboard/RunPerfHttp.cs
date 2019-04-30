@@ -21,14 +21,14 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
             {
                 log.LogInformation($"Performance tests were started by http trigger at: {DateTime.Now}");
 
-                string testIds = string.Empty;
-                req.GetQueryParameterDictionary().TryGetValue("testIds", out testIds);
+                string testId = string.Empty;
+                req.GetQueryParameterDictionary().TryGetValue("testId", out testId);
 
-                await PerformanceManager.Execute(testIds, log);
+                await PerformanceManager.Execute(testId, log);
 
                 return new ContentResult()
                 {
-                    Content = string.IsNullOrEmpty(testIds) ? "All tests started" : $"Tests started: {testIds}",
+                    Content = string.IsNullOrEmpty(testId) ? "All tests started" : $"Tests started: {testId}",
                     ContentType = "text/html"
                 };
             }

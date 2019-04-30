@@ -12,7 +12,7 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
 {
     public static class PerformanceManager
     {
-        public static async Task Execute(string testIds, ILogger log)
+        public static async Task Execute(string testId, ILogger log)
         {
             string clientId = Environment.GetEnvironmentVariable("AzureWebJobsTargetSiteApplicationId", EnvironmentVariableTarget.Process);
             string clientSecret = Environment.GetEnvironmentVariable("AzureWebJobsTargetSiteClientSecret", EnvironmentVariableTarget.Process);
@@ -46,11 +46,9 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
             using (var client = new ComputeManagementClient(credentials))
             {
                 client.SubscriptionId = subscriptionId;
-                string command = string.IsNullOrEmpty(testIds) ? string.Empty : $"-t {testIds}";
-                command += string.IsNullOrEmpty(extensionUrl) ? string.Empty : $" -r {extensionUrl}";
                 await VirtualMachinesOperationsExtensions.BeginRunCommandAsync(client.VirtualMachines, siteResourceGroup, vm,
                     new RunCommandInput("RunPowerShellScript",
-                    new List<string>() { $"& 'C:\\Tools\\ps\\run.ps1' '{appUrl}' '{command}'" }));
+                    new List<string>() { $"& 'C:\\Tools\\ps\\run.ps1' '{appUrl}' '{testId}' '{extensionUrl}'" }));
             }
         }
     }

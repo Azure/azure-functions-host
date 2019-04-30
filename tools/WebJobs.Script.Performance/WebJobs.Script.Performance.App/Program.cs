@@ -9,27 +9,14 @@ namespace WebJobs.Script.PerformanceMeter
 {
     class Program
     {
-
-        public class Options
-        {
-            [Option('r', "runtime", Required = false, HelpText = "Private site extension url.")]
-            public string RuntimeExtensionPackageUrl { get; set; }
-
-            [Option('t', "tests", Required = false, HelpText = "List of test to execute.")]
-            public IEnumerable<string> Tests { get; set; }
-        }
-
         static async Task Main(string[] args)
         {
-            // For tests
-            // args = new string[] { "-t", "win-csharp-ping.jmx", "-r", "https://ci.appveyor.com/api/buildjobs/pstc3ypcff897hc4/artifacts/Functions.Private.2.0.12279-prerelease.win-x32.inproc.zip" };
             Console.Write("Args:");
             foreach (string a in args)
             {
                 Console.Write(a + " ");
             }
             Console.WriteLine();
-
             var result = Parser.Default.ParseArguments<Options>(args);
             await result.MapResult(
                 async (Options opts) => await RunAddAndReturnExitCodeAsync(opts),
@@ -38,23 +25,30 @@ namespace WebJobs.Script.PerformanceMeter
 
         static async Task RunAddAndReturnExitCodeAsync(Options o)
         {
-            Settings.RuntimeExtensionPackageUrl = o.RuntimeExtensionPackageUrl;
+            Settings.RuntimeExtensionPackageUrl = o.RuntimeUrl;
             using (PerformanceManager manager = new PerformanceManager())
             {
-                if (o.Tests.ToArray().Length > 0)
-                {
-                    foreach (var test in o.Tests)
-                    {
-                        Console.WriteLine($"Executing specified test '{test}'...");
-                        await manager.ExecuteAsync(test);
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Executing all available tests...");
-                    await manager.ExecuteAllAsync();
-                }
+                Console.WriteLine($"Executing specified test '{o.RunFromZip}'...");
+                await manager.ExecuteAsync(o);
             }
         }
+    }
+    public class Options
+    {
+
+        [Option('u', "runtimeUrl", Required = true, HelpText = "Runtime url")]
+        public string RuntimeUrl { get; set; }
+
+        [Option('r', "runtime", Required = true, HelpText = "Runtime")]
+        public string Runtime { get; set; }
+
+        [Option('z', "runfromzip", Required = true, HelpText = "run-from-zip url")]
+        public string RunFromZip { get; set; }
+
+        [Option('j', "jmx", Required = true, HelpText = "Jmx url")]
+        public string Jmx { get; set; }
+
+        [Option('d', "description", Required = true, HelpText = "Description")]
+        public string Description { get; set; }
     }
 }

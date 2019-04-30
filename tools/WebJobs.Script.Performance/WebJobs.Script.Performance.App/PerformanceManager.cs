@@ -18,7 +18,6 @@ namespace WebJobs.Script.PerformanceMeter
     {
         private readonly FunctionAppFixture _fixture;
         private readonly ComputeManagementClient _client;
-        private readonly List<TestDefinition> _tests;
         private bool _disposed = false;
 
         public PerformanceManager()
@@ -37,43 +36,31 @@ namespace WebJobs.Script.PerformanceMeter
 
             var credentials = new TokenCredentials(result.Result.AccessToken);
             _client = new ComputeManagementClient(credentials);
-            _client.SubscriptionId = Settings.SiteSubscriptionId;
-
-            _tests = new List<TestDefinition>();
-            Settings.Tests.Bind(_tests);
+            _client.SubscriptionId = Settings.SiteSubscriptionId;   
         }
 
-        public async Task ExecuteAsync(string testId)
+        public async Task ExecuteAsync(Options options)
         {
-            // We assume first word in testId is platform
-            var test = _tests.FirstOrDefault(x => x.Jmx.Contains(testId));
-            if (test == null)
+            await SetAppSettings(options);
+            _fixture.Logger.LogInformation($"Executing: {options.Jmx}, {options.Description}");
+            if (Environment.MachineName == "func-perf-vm")
             {
-                Console.WriteLine($"Test '{testId}' is not found");
+                System.Diagnostics.Process process = new System.Diagnostics.Process();
+                System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+                startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+                startInfo.FileName = "powershell.exe";
+                startInfo.Arguments = $"\"& 'C:\\Tools\\ps\\test-throughput.ps1'\" '{options.Jmx}' '{options.Description}' '{Settings.RuntimeVersion}'";
+                Console.WriteLine($"Exectuing PS directly on VM: {startInfo.FileName}{startInfo.Arguments}");
+                process.StartInfo = startInfo;
+                process.Start();
+                process.WaitForExit();
             }
             else
             {
-                await SetAppSettings(test);
-                _fixture.Logger.LogInformation($"Executing: {test.Jmx}, {test.Desciption}");
-                if (Environment.MachineName == "func-perf-vm")
-                {
-                    System.Diagnostics.Process process = new System.Diagnostics.Process();
-                    System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
-                    startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
-                    startInfo.FileName = "powershell.exe";
-                    startInfo.Arguments = $"\"& 'C:\\Tools\\ps\\test-throughput.ps1'\" '{test.Jmx}' '{test.Desciption}' '{Settings.RuntimeVersion}'";
-                    Console.WriteLine($"Exectuing PS directly on VM: {startInfo.FileName}{startInfo.Arguments}");
-                    process.StartInfo = startInfo;
-                    process.Start();
-                    process.WaitForExit();
-                }
-                else
-                {
-                    Console.WriteLine("Exectuing PS using VM operation API");
-                    var commandResult = await VirtualMachinesOperationsExtensions.RunCommandAsync(_client.VirtualMachines, Settings.SiteResourceGroup, Settings.VM,
-                        new RunCommandInput("RunPowerShellScript",
-                        new List<string>() { $"& 'C:\\Tools\\ps\\test-throughput.ps1' '{test.Jmx}' '{test.Desciption}' '{Settings.RuntimeVersion}'" }));
-                }
+                Console.WriteLine("Exectuing PS using VM operation API");
+                var commandResult = await VirtualMachinesOperationsExtensions.RunCommandAsync(_client.VirtualMachines, Settings.SiteResourceGroup, Settings.VM,
+                    new RunCommandInput("RunPowerShellScript",
+                    new List<string>() { $"& 'C:\\Tools\\ps\\test-throughput.ps1' '{options.Jmx}' '{options.Description}' '{Settings.RuntimeVersion}'" }));
             }
         }
 
@@ -91,39 +78,20 @@ namespace WebJobs.Script.PerformanceMeter
             }
         }
 
-        public async Task ExecuteAllAsync()
-        {
-            foreach(var test in _tests)
-            {
-                await ExecuteAsync(test.Jmx);
-            }
-        }
-
-        private async Task SetAppSettings(TestDefinition test)
+        private async Task SetAppSettings(Options options)
         {
             // Setting FUNCTIONS_WORKER_RUNTIME
-            _fixture.Logger.LogInformation($"Changing FUNCTIONS_WORKER_RUNTIME: {test.Runtime}");
-            await _fixture.AddAppSetting("FUNCTIONS_WORKER_RUNTIME", test.Runtime);
+            _fixture.Logger.LogInformation($"Changing FUNCTIONS_WORKER_RUNTIME: {options.Runtime}");
+            await _fixture.AddAppSetting("FUNCTIONS_WORKER_RUNTIME", options.Runtime);
 
             // Setting
-            _fixture.Logger.LogInformation($"Changing WEBSITE_RUN_FROM_PACKAGE: {test.RunFromZipUri}");
-            await _fixture.AddAppSetting("WEBSITE_RUN_FROM_PACKAGE", test.RunFromZipUri);
+            _fixture.Logger.LogInformation($"Changing WEBSITE_RUN_FROM_PACKAGE: {options.RunFromZip}");
+            await _fixture.AddAppSetting("WEBSITE_RUN_FROM_PACKAGE", options.RunFromZip);
 
             // Wait until the app fully restaeted and ready to run
             await _fixture.StopSite();
             await _fixture.StartSite();
             await _fixture.WaitForSite();
-        }
-
-        private class TestDefinition
-        {
-            public string Jmx { get; set; }
-
-            public string Runtime { get; set; }
-
-            public string Desciption { get; set; }
-
-            public string RunFromZipUri { get; set; }
         }
     }
 }
