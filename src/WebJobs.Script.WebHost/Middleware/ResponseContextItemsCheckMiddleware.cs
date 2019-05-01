@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -15,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private readonly ILogger _logger;
         private readonly RequestDelegate _next;
 
-        public ResponseContextItemsCheckMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
+        public ResponseContextItemsCheckMiddleware(RequestDelegate next, ILogger<ResponseContextItemsCheckMiddleware> logger)
         {
             _logger = logger;
             _next = next;
@@ -29,10 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
 
             // Check response for duplicate http headers
-            object value = null;
-            if (context?.Items?.TryGetValue(ScriptConstants.AzureFunctionsDuplicateHttpHeaderKey, out value) ?? false)
+            if (context.Items.TryGetValue(ScriptConstants.AzureFunctionsDuplicateHttpHeadersKey, out object value))
             {
-                _logger.LogInformation($"Duplicate HTTP header from function invocation removed. Key: '{value.ToString() ?? string.Empty}'.");
+                _logger.LogDebug($"Duplicate HTTP header from function invocation removed. Duplicates: {value?.ToString()}.");
             }
         }
     }
