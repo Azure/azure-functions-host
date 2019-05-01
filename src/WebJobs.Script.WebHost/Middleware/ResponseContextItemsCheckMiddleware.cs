@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             // Check response for duplicate http headers
             if (context.Items.TryGetValue(ScriptConstants.AzureFunctionsDuplicateHttpHeadersKey, out object value))
             {
-                _logger.LogDebug($"Duplicate HTTP header from function invocation removed. Duplicates: {value?.ToString()}.");
+                _logger.LogDebug($"Duplicate HTTP header from function invocation removed. Duplicate key(s): {value?.ToString()}.");
             }
         }
     }
