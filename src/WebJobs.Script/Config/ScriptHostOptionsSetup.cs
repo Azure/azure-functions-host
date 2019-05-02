@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -51,7 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             }
 
             // FunctionTimeout
-            ConfigureFunctionTimeout(jobHostSection, options);
+            ConfigureFunctionTimeout(options);
+
             // If we have a read only file system, override any configuration and
             // disable file watching
             if (_environment.FileSystemIsReadOnly())
@@ -67,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.TestDataPath = webHostOptions.TestDataPath;
         }
 
-        private void ConfigureFunctionTimeout(IConfigurationSection jobHostSection, ScriptJobHostOptions options)
+        private void ConfigureFunctionTimeout(ScriptJobHostOptions options)
         {
             if (options.FunctionTimeout != null)
             {
@@ -75,15 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             }
             else
             {
-                TimeSpan functionTimeout = _environment.IsDynamic() ? DefaultFunctionTimeoutDynamic : DefaultFunctionTimeout;
-                string value = jobHostSection.GetValue<string>("functionTimeout");
-                if (!string.IsNullOrEmpty(value))
-                {
-                    TimeSpan requestedTimeout = TimeSpan.Parse(value, CultureInfo.InvariantCulture);
-                    ValidateTimeoutValue(options, requestedTimeout);
-                    functionTimeout = requestedTimeout;
-                }
-                options.FunctionTimeout = functionTimeout;
+                options.FunctionTimeout = _environment.IsDynamic() ? DefaultFunctionTimeoutDynamic : DefaultFunctionTimeout;
             }
         }
 
