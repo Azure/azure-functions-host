@@ -77,6 +77,14 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));
         }
 
+        public static bool IsContainerEnvironment(this IEnvironment environment)
+        {
+            var runningInContainer = environment.GetEnvironmentVariable(RunningInContainer);
+            return !string.IsNullOrEmpty(runningInContainer)
+                && bool.TryParse(runningInContainer, out bool runningInContainerValue)
+                && runningInContainerValue;
+        }
+
         public static bool IsPersistentFileSystemAvailable(this IEnvironment environment)
         {
             return environment.IsAppServiceWindowsEnvironment()
