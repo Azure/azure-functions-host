@@ -33,10 +33,13 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 ValidateBundleId(options.Id);
                 ConfigureBundleVersion(extensionBundleSection, options);
 
-                if (_environment.IsAppServiceEnvironment())
+                string homeDirectory = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+                if ((_environment.IsAppServiceEnvironment()
+                    || _environment.IsLinuxContainerEnvironment()
+                    || _environment.IsContainerEnvironment())
+                    && !string.IsNullOrEmpty(homeDirectory))
                 {
-                    options.DownloadPath = Path.Combine(_environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath),
-                                                   "data", "Functions", ScriptConstants.ExtensionBundleDirectory, options.Id);
+                    options.DownloadPath = Path.Combine(homeDirectory, "data", "Functions", ScriptConstants.ExtensionBundleDirectory, options.Id);
                     ConfigureProbingPaths(options);
                 }
             }
@@ -73,9 +76,12 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 options.ProbingPaths.Add(windowsDefaultPath);
             }
 
-            if (_environment.IsLinuxAppServiceEnvironment())
+            var homeDirectory = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+            if ((_environment.IsLinuxAppServiceEnvironment()
+                || _environment.IsLinuxContainerEnvironment()
+                || _environment.IsContainerEnvironment())
+                && !string.IsNullOrEmpty(homeDirectory))
             {
-                var homeDirectory = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
                 string linuxDefaultPath = Path.Combine(Path.GetPathRoot(homeDirectory), ScriptConstants.DefaultExtensionBundleDirectory, options.Id);
                 string deploymentPackageBundlePath = Path.Combine(
                     homeDirectory,
