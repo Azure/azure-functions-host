@@ -104,6 +104,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void IsContainerEnvironment_valid_ReturnsTrue()
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(RunningInContainer, "true");
+            Assert.True(environment.IsContainerEnvironment());
+        }
+
+        [Theory]
+        [InlineData("false")]
+        [InlineData(null)]
+        public void IsContainerEnvironment_Invalid_ReturnsFalse(string runningInContainerValue)
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(RunningInContainer, runningInContainerValue);
+            Assert.False(environment.IsContainerEnvironment());
+        }
+
+        [Fact]
         public void IsPersistentStorageAvailable_IsLinuxWithoutStorage_ReturnsFalse()
         {
             var environment = new TestEnvironment();
