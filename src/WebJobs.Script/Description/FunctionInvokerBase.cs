@@ -163,12 +163,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             foreach (var diagnostic in diagnostics.Where(d => !d.IsSuppressed))
             {
                 FunctionLogger.Log(diagnostic.Severity.ToLogLevel(), 0, logState, null, (s, e) => diagnostic.ToString());
-                // Check if script compilation failed due to missing assembly (CS0246)
-                if (diagnostic.Id.Equals(DotNetConstants.TypeOrNamespaceNotFoundCompilerErrorCode))
-                {
-                    // If so, check for extensions.csproj and project.json files. Log warning.
-                    WarnIfDeprecatedNugetReferenceFound(diagnostic);
-                }
             }
 
             // log structured logs
@@ -196,25 +190,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                     return logEntry;
                 }));
-            }
-        }
-
-        private void WarnIfDeprecatedNugetReferenceFound(Diagnostic diagnostic)
-        {
-            string functionDirectory = Metadata.FunctionDirectory;
-            string deprecatedProjectPath = Path.Combine(functionDirectory, DotNetConstants.DeprecatedProjectFileName);
-            string extensionsProjectPath = Path.Combine(functionDirectory, ScriptConstants.ExtensionsProjectFileName);
-            const string warningString = "You may be referencing NuGet packages incorrectly. The file '{0}' should not be used to reference NuGet packages. Try creating a '{1}' file instead.";
-
-            if (File.Exists(deprecatedProjectPath))
-            {
-                string warning = string.Format(warningString, deprecatedProjectPath, DotNetConstants.ProjectFileName);
-                FunctionLogger.LogWarning(warning);
-            }
-            if (File.Exists(extensionsProjectPath))
-            {
-                string warning = string.Format(warningString, extensionsProjectPath, DotNetConstants.ProjectFileName);
-                FunctionLogger.LogWarning(warning);
             }
         }
 

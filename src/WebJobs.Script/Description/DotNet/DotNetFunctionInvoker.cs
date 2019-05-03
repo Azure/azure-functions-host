@@ -380,6 +380,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     return ImmutableArray.Create(Diagnostic.Create(descriptor, diagnostic.Location));
                 }
             }
+            // Check if script compilation failed due to missing assembly (CS0246)
+            else if (string.Compare(diagnostic.Id, DotNetConstants.TypeOrNamespaceNotFoundCompilerErrorCode, StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                // If so, check for extensions.csproj and project.json files. Log warning.
+                WarnIfDeprecatedNugetReferenceFound(diagnostic);
+            }
 
             return ImmutableArray<Diagnostic>.Empty;
         }
@@ -450,6 +456,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return null;
+        }
+
+        private void WarnIfDeprecatedNugetReferenceFound(Diagnostic diagnostic)
+        {
+            string functionDirectory = Metadata.FunctionDirectory;
+            string deprecatedProjectPath = Path.Combine(functionDirectory, DotNetConstants.DeprecatedProjectFileName);
+            string extensionsProjectPath = Path.Combine(functionDirectory, ScriptConstants.ExtensionsProjectFileName);
+            const string warningString = "You may be referencing NuGet packages incorrectly. The file '{0}' should not be used to reference NuGet packages. Try creating a '{1}' file instead. Learn more: https://go.microsoft.com/fwlink/?linkid=2091419";
+
+            if (File.Exists(deprecatedProjectPath))
+            {
+                string warning = string.Format(warningString, deprecatedProjectPath, DotNetConstants.ProjectFileName);
+                FunctionLogger.LogWarning(warning);
+            }
+            if (File.Exists(extensionsProjectPath))
+            {
+                string warning = string.Format(warningString, extensionsProjectPath, DotNetConstants.ProjectFileName);
+                FunctionLogger.LogWarning(warning);
+            }
         }
 
         protected override void Dispose(bool disposing)
