@@ -5,11 +5,8 @@ using System.IO.Abstractions;
 using System.Net.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host.Loggers;
-using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
@@ -63,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static void AddWebJobsScriptHost(this IServiceCollection services, IConfiguration configuration)
         {
+            services.AddHttpContextAccessor();
             services.AddWebJobsScriptHostRouting();
             services.AddMvc()
                 .AddXmlDataContractSerializerFormatters();
