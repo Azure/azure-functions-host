@@ -24,7 +24,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using HttpHandler = Microsoft.Azure.WebJobs.IAsyncConverter<System.Net.Http.HttpRequestMessage, System.Net.Http.HttpResponseMessage>;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
@@ -226,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [RequiresRunningHost]
         public async Task<IActionResult> ExtensionWebHookHandler(string name, CancellationToken token, [FromServices] IScriptWebHookProvider provider)
         {
-            if (provider.TryGetHandler(name, out HttpHandler handler))
+            if (provider.TryGetHandler(name, out WebhookHttpHandler handler))
             {
                 // must either be authorized at the admin level, or system level with
                 // a matching key name
@@ -236,12 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     return Unauthorized();
                 }
 
-                var requestMessage = new HttpRequestMessageFeature(this.HttpContext).HttpRequestMessage;
-                HttpResponseMessage response = await handler.ConvertAsync(requestMessage, token);
-
-                var result = new ObjectResult(response);
-                result.Formatters.Add(new HttpResponseMessageOutputFormatter());
-                return result;
+                return await handler.ConvertAsync(this.HttpContext.Request, token);
             }
 
             return NotFound();

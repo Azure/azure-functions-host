@@ -13,6 +13,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.Rpc;
@@ -44,13 +47,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
 
         [Fact]
-        public async Task ExtensionWebHook_Succeeds()
+        public async Task ExtensionWebHook_LegacyHttpHandler_Succeeds()
         {
-            // configure a mock webhook handler for the "test" extension
-            Mock<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>> mockHandler = new Mock<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>>(MockBehavior.Strict);
-            mockHandler.Setup(p => p.ConvertAsync(It.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>()))
+            Mock<IExtensionConfigProvider> mockExtension = new Mock<IExtensionConfigProvider>(MockBehavior.Strict);
+            Mock<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>> legacyHandlerMock = mockExtension.As<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>>();
+            legacyHandlerMock.Setup(p => p.ConvertAsync(It.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
-            var handler = mockHandler.Object;
+
+            var handler = new WebhookHttpHandler(mockExtension.Object);
+            await this.ExtensionWebhook_Succeeds_Core(handler);
+        }
+
+        [Fact]
+        public async Task ExtensionWebHook_NetCoreHttpHandler_Succeeds()
+        {
+            Mock<IExtensionConfigProvider> mockExtension = new Mock<IExtensionConfigProvider>(MockBehavior.Strict);
+            Mock<IAsyncConverter<HttpRequest, IActionResult>> legacyHandlerMock = mockExtension.As<IAsyncConverter<HttpRequest, IActionResult>>();
+            legacyHandlerMock.Setup(p => p.ConvertAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new OkResult());
+
+            var handler = new WebhookHttpHandler(mockExtension.Object);
+            await this.ExtensionWebhook_Succeeds_Core(handler);
+        }
+
+        [Fact]
+        public void ExtensionWebHook_ExtensionNotImplementedHttpHandler_ThrowsException()
+        {
+            Mock<IExtensionConfigProvider> mockExtension = new Mock<IExtensionConfigProvider>(MockBehavior.Strict);
+            Assert.ThrowsAny<Exception>(() => new WebhookHttpHandler(mockExtension.Object));
+        }
+
+        private async Task ExtensionWebhook_Succeeds_Core(WebhookHttpHandler handler)
+        {
             _fixture.MockWebHookProvider.Setup(p => p.TryGetHandler("test", out handler)).Returns(true);
             _fixture.MockWebHookProvider.Setup(p => p.TryGetHandler("invalid", out handler)).Returns(false);
 

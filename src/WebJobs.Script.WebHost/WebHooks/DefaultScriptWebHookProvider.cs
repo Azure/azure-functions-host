@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Config;
-using HttpHandler = Microsoft.Azure.WebJobs.IAsyncConverter<System.Net.Http.HttpRequestMessage, System.Net.Http.HttpResponseMessage>;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -20,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly HostNameProvider _hostNameProvider;
 
         // Map from an extension name to a http handler.
-        private IDictionary<string, HttpHandler> _customHttpHandlers = new Dictionary<string, HttpHandler>(StringComparer.OrdinalIgnoreCase);
+        private IDictionary<string, WebhookHttpHandler> _customHttpHandlers = new Dictionary<string, WebhookHttpHandler>(StringComparer.OrdinalIgnoreCase);
 
         public DefaultScriptWebHookProvider(ISecretManagerProvider secretManagerProvider, HostNameProvider hostNameProvider)
         {
@@ -28,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _hostNameProvider = hostNameProvider;
         }
 
-        public bool TryGetHandler(string name, out HttpHandler handler)
+        public bool TryGetHandler(string name, out WebhookHttpHandler handler)
         {
             return _customHttpHandlers.TryGetValue(name, out handler);
         }
@@ -36,11 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         // Exposed to extensions to get the URL for their http handler.
         public Uri GetUrl(IExtensionConfigProvider extension)
         {
-            var handler = extension as HttpHandler;
-            if (handler == null)
-            {
-                throw new InvalidOperationException($"Extension must implement IAsyncConverter<HttpRequestMessage, HttpResponseMessage> in order to receive webhooks");
-            }
+            WebhookHttpHandler handler = new WebhookHttpHandler(extension);
 
             // use the config section moniker for the extension as the URL name
             var extensionType = extension.GetType();
