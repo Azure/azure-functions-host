@@ -16,6 +16,7 @@
     <ProjectReference Include="..\..\src\ExtensionsMetadataGenerator.Console\ExtensionsMetadataGenerator.Console.csproj" />
     <ProjectReference Include="..\TestProject_Core21\TestProject_Core21.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" OutputItemType="Content" CopyToOutputDirectory="PreserveNewest" />
     <ProjectReference Include="..\TestProject_Core22\TestProject_Core22.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" OutputItemType="Content" CopyToOutputDirectory="PreserveNewest" />
+    <ProjectReference Include="..\TestProject_Razor\TestProject_Razor.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" OutputItemType="Content" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -16,7 +16,7 @@ namespace ExtensionsMetadataGeneratorTests
         [Fact]
         public void Generator_DifferentTargetFrameworks()
         {
-            // The TestProject_Core22.dll will be in the output directory.
+            // The TestProject_Core21.dll, TestProject_Core22.dll, and TestProject_Razor.dll will be in the output directory.
             string sourcePath = Path.GetDirectoryName(GetType().Assembly.Location);
             string outputFile = Path.Combine(Path.GetTempPath(), "Functions_ExtensionsMetadataGeneratorTests", $"{DateTime.UtcNow.Ticks}.json");
 
@@ -27,21 +27,37 @@ namespace ExtensionsMetadataGeneratorTests
             }
             Directory.CreateDirectory(outputDir);
 
-            Program.Main(new[] { sourcePath, outputFile });
+            var log = new StringWriter();
+            var originalOut = Console.Out;
+            Console.SetOut(log);
 
-            string extensionsJson = File.ReadAllText(outputFile);
-            JObject json = JObject.Parse(extensionsJson);
+            try
+            {
+                Program.Main(new[] { sourcePath, outputFile });
 
-            // We expect to see the Startups from this assembly (running on Core 2.0),
-            // plus the two from the 2.1 and 2.2 test projects.
-            JToken extensions = json["extensions"];
-            int startups = extensions.Count();
-            Assert.Equal(4, startups);
+                string extensionsJson = File.ReadAllText(outputFile);
+                JObject json = JObject.Parse(extensionsJson);
 
-            Assert.Single(extensions, e => e["name"].ToString() == "Foo" && e["typeName"].ToString().StartsWith("ExtensionsMetadataGeneratorTests.FooWebJobsStartup, ExtensionsMetadataGeneratorTests"));
-            Assert.Single(extensions, e => e["name"].ToString() == "BarExtension" && e["typeName"].ToString().StartsWith("ExtensionsMetadataGeneratorTests.BarWebJobsStartup, ExtensionsMetadataGeneratorTests"));
-            Assert.Single(extensions, e => e["name"].ToString() == "Startup" && e["typeName"].ToString().StartsWith("TestProject_Core21.Startup"));
-            Assert.Single(extensions, e => e["name"].ToString() == "Startup" && e["typeName"].ToString().StartsWith("TestProject_Core22.Startup"));
+                // We expect to see the Startups from this assembly (running on Core 2.0),
+                // plus the two from the 2.1 and 2.2 test projects.
+                JToken extensions = json["extensions"];
+                int startups = extensions.Count();
+                Assert.Equal(4, startups);
+
+                Assert.Single(extensions, e => e["name"].ToString() == "Foo" && e["typeName"].ToString().StartsWith("ExtensionsMetadataGeneratorTests.FooWebJobsStartup, ExtensionsMetadataGeneratorTests"));
+                Assert.Single(extensions, e => e["name"].ToString() == "BarExtension" && e["typeName"].ToString().StartsWith("ExtensionsMetadataGeneratorTests.BarWebJobsStartup, ExtensionsMetadataGeneratorTests"));
+                Assert.Single(extensions, e => e["name"].ToString() == "Startup" && e["typeName"].ToString().StartsWith("TestProject_Core21.Startup"));
+                Assert.Single(extensions, e => e["name"].ToString() == "Startup" && e["typeName"].ToString().StartsWith("TestProject_Core22.Startup"));
+
+                // We cannot read TestProject_Razor.dll because it has a dependency we cannot find. Make sure
+                // we log correctly even though we've skipped this assembly.
+                Assert.Contains("Cannot load 'Microsoft.AspNetCore.Razor.Runtime'. Aborting assembly resolution.", log.ToString());
+                Assert.Contains("Could not evaluate 'TestProject_Razor.dll' for extension metadata. If this assembly contains a Functions extension, ensure that all dependent assemblies exist in ", log.ToString());
+            }
+            finally
+            {
+                Console.SetOut(originalOut);
+            }
         }
 
         [Fact]
