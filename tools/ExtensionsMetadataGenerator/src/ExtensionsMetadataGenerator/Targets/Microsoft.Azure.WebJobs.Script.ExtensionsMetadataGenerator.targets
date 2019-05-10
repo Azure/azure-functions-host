@@ -4,27 +4,40 @@
     <_FunctionsExtensionsTaskFramework Condition=" '$(MSBuildRuntimeType)' == 'Core'">netstandard2.0</_FunctionsExtensionsTaskFramework>
     <_FunctionsExtensionsTaskFramework Condition=" '$(_FunctionsExtensionsTaskFramework)' == ''">net46</_FunctionsExtensionsTaskFramework>
     <_FunctionsExtensionsTasksDir Condition=" '$(_FunctionsExtensionsTasksDir)'=='' ">$(MSBuildThisFileDirectory)..\tools\$(_FunctionsExtensionsTaskFramework)</_FunctionsExtensionsTasksDir>
-    <_FunctionsExtensionsTaskAssemblyFullPath Condition=" '$(_FunctionsExtensionsTaskAssemblyFullPath)'=='' ">$(_FunctionsExtensionsTasksDir)\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll</_FunctionsExtensionsTaskAssemblyFullPath>
-    <IsPackable>false</IsPackable>
-    <_IsFunctionsSdkBuild Condition="$(_FunctionsTaskFramework) != ''">true</_IsFunctionsSdkBuild>
+    <_FunctionsExtensionsTaskAssemblyFullPath Condition=" '$(_FunctionsExtensionsTaskAssemblyFullPath)'=='' ">$(_FunctionsExtensionsTasksDir)\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll</_FunctionsExtensionsTaskAssemblyFullPath>    
     <_FunctionsExtensionsDir>$(TargetDir)</_FunctionsExtensionsDir>
-    <_FunctionsExtensionsDir Condition="$(_IsFunctionsSdkBuild) == 'true'">$(_FunctionsExtensionsDir)bin</_FunctionsExtensionsDir>
+    <_ExtensionsMetadataGeneratorTargetsImported>true</_ExtensionsMetadataGeneratorTargetsImported>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
+  
+  <!--
+    These properties must be overwritten in a Target because they depend on the
+    Microsoft.NET.Sdk.Functions.targets properties being evaluated first. This cannot
+    be guaranteed if a direct reference is added to the ExtensionsMetadataGenerator
+    package. Running this after _InitializeFunctionsSdk (which exists in the Microsoft.Net.Sdk.Functions
+    package) ensures that properties from that file are already evaluated.
+  -->
+  <Target Name="_InitializeExtensionMetadataGeneratorProps" AfterTargets="_InitializeFunctionsSdk">
+    <PropertyGroup>
+      <_IsFunctionsSdkBuild Condition="$(_FunctionsTaskFramework) != ''">true</_IsFunctionsSdkBuild>
+      <_FunctionsExtensionsDir Condition="$(_IsFunctionsSdkBuild) == 'true'">$(_FunctionsExtensionsDir)bin</_FunctionsExtensionsDir>
+    </PropertyGroup>
+  </Target>
 
   <UsingTask TaskName="GenerateFunctionsExtensionsMetadata"
              AssemblyFile="$(_FunctionsExtensionsTaskAssemblyFullPath)"/>
 
   <Target Name="_GenerateFunctionsExtensionsMetadataPostBuild"
           AfterTargets="Build">
-    
+
     <GenerateFunctionsExtensionsMetadata
       SourcePath="$(_FunctionsExtensionsDir)"
       OutputPath="$(_FunctionsExtensionsDir)"/>
-    
-    <Move Condition="$(_IsFunctionsSdkBuild) == 'true' AND Exists('$(TargetDir)extensions.json')" 
+
+    <Move Condition="$(_IsFunctionsSdkBuild) == 'true' AND Exists('$(TargetDir)extensions.json')"
           SourceFiles="$(TargetDir)extensions.json"
           DestinationFiles="$(TargetDir)bin\extensions.json"
-          OverwriteReadOnlyFiles="true" 
+          OverwriteReadOnlyFiles="true"
           ContinueOnError="true"/>
   </Target>
 
