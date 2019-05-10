@@ -18,19 +18,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     {
         private readonly ILogger _logger;
         private readonly RequestDelegate _next;
-        private readonly HostNameProvider _hostNameProvider;
 
-        public SystemTraceMiddleware(RequestDelegate next, ILogger<SystemTraceMiddleware> logger, HostNameProvider hostNameProvider)
+        public SystemTraceMiddleware(RequestDelegate next, ILogger<SystemTraceMiddleware> logger)
         {
             _logger = logger;
             _next = next;
-            _hostNameProvider = hostNameProvider;
         }
 
         public async Task Invoke(HttpContext context)
         {
             SetRequestId(context.Request);
-            _hostNameProvider.Synchronize(context.Request);
 
             var sw = new Stopwatch();
             sw.Start();

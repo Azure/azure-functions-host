@@ -431,16 +431,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 sanitizedContent.Remove("secrets");
                 sanitizedContentString = sanitizedContent.ToString();
             }
-            _logger.LogDebug($"SyncTriggers content: {sanitizedContentString}");
 
             using (var request = BuildSetTriggersRequest())
             {
-                // This has to start with Mozilla because the frontEnd checks for it.
-                request.Headers.Add("User-Agent", "Mozilla/5.0");
+                var requestId = Guid.NewGuid().ToString();
+                request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, requestId);
+                request.Headers.Add("User-Agent", ScriptConstants.FunctionsUserAgent);
                 request.Headers.Add("x-ms-site-restricted-token", token);
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
 
+                _logger.LogDebug($"Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).");
+
                 var response = await _httpClient.SendAsync(request);
+
                 if (response.IsSuccessStatusCode)
                 {
                     _logger.LogDebug($"SyncTriggers call succeeded.");
@@ -448,7 +451,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
                 else
                 {
-                    string message = $"SyncTriggers call failed. StatusCode={response.StatusCode}";
+                    string message = $"SyncTriggers call failed (StatusCode={response.StatusCode}).";
                     _logger.LogDebug(message);
                     return (false, message);
                 }

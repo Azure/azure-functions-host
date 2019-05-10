@@ -177,6 +177,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncResult.Success, "SyncTriggers should return success true");
                 Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
 
+                // verify expected headers
+                Assert.Equal(ScriptConstants.FunctionsUserAgent, _mockHttpHandler.LastRequest.Headers.UserAgent.ToString());
+                Assert.True(_mockHttpHandler.LastRequest.Headers.Contains(ScriptConstants.AntaresLogIdHeaderName));
+
                 if (cacheEnabled)
                 {
                     // verify triggers
@@ -208,8 +212,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                     var logs = _loggerProvider.GetAllLogMessages();
                     var log = logs[0];
-                    int idx = log.FormattedMessage.IndexOf(':');
-                    var triggersLog = log.FormattedMessage.Substring(idx + 1).Trim();
+                    int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
+                    int endIdx = log.FormattedMessage.LastIndexOf(')');
+                    var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
                     var logObject = JObject.Parse(triggersLog);
 
                     Assert.Equal(_expectedSyncTriggersPayload, logObject["triggers"].ToString(Formatting.None));
@@ -222,8 +227,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                     var logs = _loggerProvider.GetAllLogMessages();
                     var log = logs[0];
-                    int idx = log.FormattedMessage.IndexOf(':');
-                    var triggersLog = log.FormattedMessage.Substring(idx + 1).Trim();
+                    int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
+                    int endIdx = log.FormattedMessage.LastIndexOf(')');
+                    var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
                     Assert.Equal(_expectedSyncTriggersPayload, triggersLog);
                 }
             }
@@ -249,9 +255,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 // verify log statements
                 var logMessages = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
-                Assert.True(logMessages[0].StartsWith("SyncTriggers content: {"));
-                var idx = logMessages[0].IndexOf('{');
-                var sanitizedContent = logMessages[0].Substring(idx);
+                Assert.True(logMessages[0].StartsWith("Making SyncTriggers request"));
+                var startIdx = logMessages[0].IndexOf("Content=") + 8;
+                var endIdx = logMessages[0].LastIndexOf(')');
+                var sanitizedContent = logMessages[0].Substring(startIdx, endIdx - startIdx);
                 var sanitizedObject = JObject.Parse(sanitizedContent);
                 JToken value = null;
                 var secretsLogged = sanitizedObject.TryGetValue("secrets", out value);
@@ -294,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _mockHttpHandler.MockStatusCode = HttpStatusCode.InternalServerError;
                 var syncResult = await _functionsSyncManager.TrySyncTriggersAsync(checkHash: true);
                 Assert.False(syncResult.Success);
-                string expectedErrorMessage = "SyncTriggers call failed. StatusCode=InternalServerError";
+                string expectedErrorMessage = "SyncTriggers call failed (StatusCode=InternalServerError).";
                 Assert.Equal(expectedErrorMessage, syncResult.Error);
                 Assert.Equal(1, _mockHttpHandler.RequestCount);
                 var result = JObject.Parse(_contentBuilder.ToString());
@@ -305,7 +312,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 // verify log statements
                 var logMessages = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
-                Assert.True(logMessages[0].StartsWith("SyncTriggers content: {"));
+                Assert.True(logMessages[0].Contains("Content="));
                 Assert.Equal(expectedErrorMessage, logMessages[1]);
             }
         }
@@ -499,8 +506,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             public HttpStatusCode MockStatusCode { get; set; }
 
+            public HttpRequestMessage LastRequest { get; set;  }
+
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
+                LastRequest = request;
                 RequestCount++;
                 _content.Append(await request.Content.ReadAsStringAsync());
                 return new HttpResponseMessage(MockStatusCode);
@@ -508,6 +518,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             public void Reset()
             {
+                LastRequest = null;
                 _content.Clear();
                 RequestCount = 0;
             }

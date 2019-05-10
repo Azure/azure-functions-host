@@ -9,14 +9,12 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Microsoft.WebJobs.Script.Tests;
-using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -24,11 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
 {
     public class SystemTraceMiddlewareTests
     {
-        private const string TestHostName = "test.azurewebsites.net";
-
         private readonly TestLoggerProvider _loggerProvider;
         private readonly SystemTraceMiddleware _middleware;
-        private readonly HostNameProvider _hostNameProvider;
 
         public SystemTraceMiddlewareTests()
         {
@@ -41,19 +36,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
                 await Task.Delay(25);
             };
 
-            var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns(TestHostName);
-
             var logger = loggerFactory.CreateLogger<SystemTraceMiddleware>();
-            _hostNameProvider = new HostNameProvider(mockEnvironment.Object, loggerFactory.CreateLogger<HostNameProvider>());
-            _middleware = new SystemTraceMiddleware(requestDelegate, logger, _hostNameProvider);
+            _middleware = new SystemTraceMiddleware(requestDelegate, logger);
         }
 
         [Fact]
         public async Task SendAsync_WritesExpectedTraces()
         {
-            Assert.Equal(TestHostName, _hostNameProvider.Value);
-
             string requestId = Guid.NewGuid().ToString();
             var context = new DefaultHttpContext();
             Uri uri = new Uri("http://functions.com/api/testfunc?code=123");
@@ -66,7 +55,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
 
             var headers = new HeaderDictionary();
             headers.Add(ScriptConstants.AntaresLogIdHeaderName, new StringValues(requestId));
-            headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "test2.azurewebsites.net");
             requestFeature.Headers = headers;
 
             var claims = new List<Claim>
@@ -79,16 +67,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             await _middleware.Invoke(context);
 
             var logs = _loggerProvider.GetAllLogMessages().ToArray();
-            Assert.Equal(3, logs.Length);
-
-            // validate hostname sync trace
-            var log = logs[0];
-            Assert.Equal("Microsoft.Azure.WebJobs.Script.WebHost.HostNameProvider", log.Category);
-            Assert.Equal(LogLevel.Information, log.Level);
-            Assert.Equal("HostName updated from 'test.azurewebsites.net' to 'test2.azurewebsites.net'", log.FormattedMessage);
+            Assert.Equal(2, logs.Length);
 
             // validate executing trace
-            log = logs[1];
+            var log = logs[0];
             Assert.Equal(typeof(SystemTraceMiddleware).FullName, log.Category);
             Assert.Equal(LogLevel.Information, log.Level);
             var idx = log.FormattedMessage.IndexOf(':');
@@ -102,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             Assert.Equal("/api/testfunc", jo["uri"]);
 
             // validate executed trace
-            log = logs[2];
+            log = logs[1];
             Assert.Equal(typeof(SystemTraceMiddleware).FullName, log.Category);
             Assert.Equal(LogLevel.Information, log.Level);
             idx = log.FormattedMessage.IndexOf(':');
@@ -123,9 +105,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             var keyIdentity = authentication.Single();
             Assert.Equal(AuthLevelAuthenticationDefaults.AuthenticationScheme, keyIdentity["type"]);
             Assert.Equal("Function", keyIdentity["level"]);
-
-            // verify the hostname was synchronized
-            Assert.Equal("test2.azurewebsites.net", _hostNameProvider.Value);
         }
     }
 }

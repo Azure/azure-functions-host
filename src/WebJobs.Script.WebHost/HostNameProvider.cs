@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
+        private readonly object _syncLock = new object();
         private string _hostName;
 
         public HostNameProvider(IEnvironment environment, ILogger<HostNameProvider> logger)
@@ -52,15 +53,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public virtual void Synchronize(HttpRequest request)
+        public virtual bool Synchronize(HttpRequest request)
         {
             string hostNameHeaderValue = request.Headers[ScriptConstants.AntaresDefaultHostNameHeader];
             if (!string.IsNullOrEmpty(hostNameHeaderValue) &&
                 string.Compare(Value, hostNameHeaderValue) != 0)
             {
-                _logger.LogInformation("HostName updated from '{0}' to '{1}'", Value, hostNameHeaderValue);
-                _hostName = hostNameHeaderValue;
+                // lock here so we return true for only one request
+                lock (_syncLock)
+                {
+                    if (string.Compare(Value, hostNameHeaderValue) != 0)
+                    {
+                        _logger.LogInformation("HostName updated from '{0}' to '{1}'", Value, hostNameHeaderValue);
+                        _hostName = hostNameHeaderValue;
+                        return true;
+                    }
+                }
             }
+
+            return false;
         }
 
         internal void Reset()
