@@ -229,6 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/extensions/{name}/{*extra}")]
         [HttpGet]
         [HttpPost]
+        [HttpDelete]
         [AllowAnonymous]
         [RequiresRunningHost]
         public async Task<HttpResponseMessage> ExtensionWebHookHandler(string name, CancellationToken token)
