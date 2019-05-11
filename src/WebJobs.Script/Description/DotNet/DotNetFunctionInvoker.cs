@@ -470,10 +470,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 string warning = string.Format(warningString, deprecatedProjectPath, DotNetConstants.ProjectFileName);
                 FunctionLogger.LogWarning(warning);
             }
-            if (File.Exists(extensionsProjectPath))
+            else if (File.Exists(extensionsProjectPath))
             {
                 string warning = string.Format(warningString, extensionsProjectPath, DotNetConstants.ProjectFileName);
                 FunctionLogger.LogWarning(warning);
+            }
+            else
+            {
+                FunctionLogger.LogWarning($"You may be referencing NuGet packages incorrectly. Learn more: https://go.microsoft.com/fwlink/?linkid=2091419");
             }
         }
 
