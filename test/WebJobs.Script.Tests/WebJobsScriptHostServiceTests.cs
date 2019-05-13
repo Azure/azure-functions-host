@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -57,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _hostPerformanceManager = new HostPerformanceManager(_mockEnvironment.Object, _healthMonitorOptions);
         }
 
-        private Mock<IHost> CreateMockHost()
+        private Mock<IHost> CreateMockHost(SemaphoreSlim disposedSemaphore = null)
         {
             // The tests can pull the logger from a specific host if they need to.
             var services = new ServiceCollection()
@@ -70,7 +71,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Returns(services);
 
             host.Setup(h => h.Dispose())
-                .Callback(() => services.Dispose());
+                .Callback(() =>
+                {
+                    services.Dispose();
+                    disposedSemaphore?.Release();
+                });
 
             return host;
         }
@@ -204,6 +209,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(ScriptHostState.Running, _hostService.State);
         }
 
+        [Fact]
+        public async Task DisposedHost_ServicesNotExposed()
+        {
+            SemaphoreSlim blockingSemaphore = new SemaphoreSlim(0, 1);
+            SemaphoreSlim disposedSemaphore = new SemaphoreSlim(0, 1);
+
+            // Have the first host throw upon starting. Then pause while building the second
+            // host. When accessing Services then, they should be null, rather than disposed.
+            var hostA = CreateMockHost(disposedSemaphore);
+            hostA
+                .Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns(() =>
+                {
+                    throw new InvalidOperationException("Something happened at startup!");
+                });
+
+            var hostB = CreateMockHost();
+            hostB
+                .Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns(async () =>
+                {
+                    await blockingSemaphore.WaitAsync();
+                });
+
+            var hostBuilder = new Mock<IScriptHostBuilder>();
+            hostBuilder.SetupSequence(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
+                .Returns(hostA.Object)
+                .Returns(hostB.Object);
+
+            _hostService = new WebJobsScriptHostService(
+               _monitor, hostBuilder.Object, NullLoggerFactory.Instance, _mockRootServiceProvider.Object, _mockRootScopeFactory.Object,
+               _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions);
+
+            Task startTask = _hostService.StartAsync(CancellationToken.None);
+
+            await disposedSemaphore.WaitAsync();
+
+            Assert.Null(_hostService.Services);
+
+            blockingSemaphore.Release();
+
+            await startTask;
+        }
+
         public void RestartHost()
         {
             _hostService.RestartHostAsync(CancellationToken.None).Wait();
@@ -222,6 +271,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var hostNameProvider = new HostNameProvider(mockEnvironment.Object, loggerFactory.CreateLogger<HostNameProvider>());
             var manager = new StandbyManager(_hostService, mockLanguageWorkerChannelManager.Object, mockConfiguration.Object, mockScriptWebHostEnvironment.Object, mockEnvironment.Object, _monitor, testLogger, hostNameProvider);
             manager.SpecializeHostAsync().Wait();
+        }
+
+        private class ThrowThenPauseScriptHostBuilder : IScriptHostBuilder
+        {
+            private readonly Action _pause;
+            private int _count = 0;
+
+            public ThrowThenPauseScriptHostBuilder(Action pause)
+            {
+                _pause = pause;
+            }
+
+            public IHost BuildHost(bool skipHostStartup, bool skipHostConfigurationParsing)
+            {
+                if (_count == 0)
+                {
+                    _count++;
+                    var services = new ServiceCollection();
+                    var rootServiceProvider = new WebHostServiceProvider(services);
+                    var mockDepValidator = new Mock<IDependencyValidator>();
+
+                    var host = new HostBuilder()
+                        .UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootServiceProvider, mockDepValidator.Object))
+                        .Build();
+
+                    throw new InvalidOperationException("boom!");
+                }
+                else if (_count == 1)
+                {
+                    _count++;
+                    _pause();
+                }
+                else
+                {
+                    throw new InvalidOperationException("We should never get here.");
+                }
+
+                return null;
+            }
         }
     }
 }
