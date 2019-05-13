@@ -94,10 +94,13 @@ namespace Microsoft.Azure.WebJobs.Script
         /// of 2, 4, 8, 16, etc. seconds.</param>
         /// <param name="min">The minimum delay.</param>
         /// <param name="max">The maximum delay.</param>
+        /// <param name="logger">An optional logger that will emit the delay.</param>
         /// <returns>A <see cref="Task"/> representing the computed backoff interval.</returns>
-        public static async Task DelayWithBackoffAsync(int exponent, CancellationToken cancellationToken, TimeSpan? unit = null, TimeSpan? min = null, TimeSpan? max = null)
+        public static async Task DelayWithBackoffAsync(int exponent, CancellationToken cancellationToken, TimeSpan? unit = null,
+            TimeSpan? min = null, TimeSpan? max = null, ILogger logger = null)
         {
             TimeSpan delay = ComputeBackoff(exponent, unit, min, max);
+            logger?.LogDebug($"Delay is '{delay}'.");
 
             if (delay.TotalMilliseconds > 0)
             {

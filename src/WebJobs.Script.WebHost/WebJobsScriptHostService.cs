@@ -202,7 +202,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     return;
                 }
 
-                var orphanTask = Orphan(localHost, logger)
+                if (isActiveHost)
+                {
+                    // We don't want to return disposed services via the Services property, so
+                    // set this to null before calling Orphan().
+                    _host = null;
+                }
+
+                var orphanTask = Orphan(localHost)
                     .ContinueWith(t =>
                     {
                         if (t.IsFaulted)
@@ -210,6 +217,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             t.Exception.Handle(e => true);
                         }
                     }, TaskContinuationOptions.ExecuteSynchronously);
+
+                // Use the fallback logger now, as we cannot trust when the host
+                // logger will be disposed.
+                logger = _logger;
 
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -232,14 +243,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 if (nextStartupAttemptMode != JobHostStartupMode.Normal)
                 {
+                    logger.LogDebug($"Starting new host with '{nextStartupAttemptMode}'.");
                     Task ignore = StartHostAsync(cancellationToken, attemptCount, nextStartupAttemptMode);
                 }
                 else
                 {
+                    logger.LogDebug($"Will start a new host after delay.");
                     await Utility.DelayWithBackoffAsync(attemptCount, cancellationToken, min: TimeSpan.FromSeconds(1), max: TimeSpan.FromMinutes(2))
                         .ContinueWith(t =>
                         {
-                            cancellationToken.ThrowIfCancellationRequested();
+                            if (cancellationToken.IsCancellationRequested)
+                            {
+                                logger.LogDebug("Cancellation requested during delay. A new host will not be started.");
+                                cancellationToken.ThrowIfCancellationRequested();
+                            }
+
+                            logger.LogDebug("Starting new host after delay.");
                             return StartHostAsync(cancellationToken, attemptCount);
                         });
                 }
@@ -260,7 +279,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.LogInformation("Stopping host...");
 
             var currentHost = _host;
-            Task stopTask = Orphan(currentHost, _logger, cancellationToken);
+            _host = null;
+            Task stopTask = Orphan(currentHost, cancellationToken);
             Task result = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(10), cancellationToken));
 
             if (result != stopTask)
@@ -293,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var previousHost = _host;
                 _host = null;
                 Task startTask = StartAsync(cancellationToken);
-                Task stopTask = Orphan(previousHost, _logger, cancellationToken);
+                Task stopTask = Orphan(previousHost, cancellationToken);
 
                 await startTask;
 
@@ -410,7 +430,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// allowing it to finish currently executing functions before stopping and disposing of it.
         /// </summary>
         /// <param name="instance">The <see cref="IHost"/> instance to remove</param>
-        private async Task Orphan(IHost instance, ILogger logger, CancellationToken cancellationToken = default)
+        private async Task Orphan(IHost instance, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -436,7 +456,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             finally
             {
-                instance?.Dispose();
+                if (instance != null)
+                {
+                    GetHostLogger(instance).LogDebug("Disposing ScriptHost.");
+                    instance.Dispose();
+                }
             }
         }
 
