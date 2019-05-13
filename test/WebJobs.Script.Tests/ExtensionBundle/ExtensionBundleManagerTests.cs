@@ -80,7 +80,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var fileSystemTuple = CreateFileSystem();
             var directoryBase = fileSystemTuple.Item2;
             var fileBase = fileSystemTuple.Item3;
-            var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK));
 
             string firstDefaultProbingPath = options.ProbingPaths.ElementAt(0);
             directoryBase.Setup(d => d.Exists(firstDefaultProbingPath)).Returns(true);
@@ -100,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
-            string path = await manager.GetExtensionBundlePath(httpclient);
+            string path = await manager.GetExtensionBundlePath();
             Assert.NotNull(path);
 
             Assert.Equal(defaultPath, path);
@@ -113,7 +112,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var fileSystemTuple = CreateFileSystem();
             var directoryBase = fileSystemTuple.Item2;
             var fileBase = fileSystemTuple.Item3;
-            var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK));
 
             string firstDefaultProbingPath = options.ProbingPaths.ElementAt(0);
             directoryBase.Setup(d => d.Exists(firstDefaultProbingPath)).Returns(true);
@@ -126,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
-            string path = await manager.GetExtensionBundlePath(httpclient);
+            string path = await manager.GetExtensionBundlePath();
             Assert.NotNull(path);
             Assert.Equal(downloadPath, path);
         }
@@ -150,8 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var manager = GetExtensionBundleManager(options, new TestEnvironment());
-            var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK, "1.0.1"));
-            string path = await manager.GetExtensionBundlePath(httpclient);
+            string path = await manager.GetExtensionBundlePath();
 
             Assert.Null(path);
         }
@@ -195,9 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         {
             var options = GetTestExtensionBundleOptions(BundleId, "[1.0.0, 1.0.1)");
             var manager = GetExtensionBundleManager(options, new TestEnvironment());
-
-            var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK));
-            var path = await manager.GetExtensionBundlePath(httpclient);
+            var path = await manager.GetExtensionBundlePath();
             Assert.Null(path);
         }
 
