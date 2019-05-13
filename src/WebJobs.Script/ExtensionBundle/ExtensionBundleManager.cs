@@ -110,6 +110,10 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                             _logger.LogInformation(Resources.ExtensionBundleFound, bundlePath);
                             break;
                         }
+                        else
+                        {
+                            bundlePath = null;
+                        }
                     }
                 }
             }

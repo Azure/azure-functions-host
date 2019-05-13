@@ -132,6 +132,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         }
 
         [Fact]
+        public async Task GetExtensionBundle_PartialBundlePresentAtDownloadLocation_ReturnsNullPath()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[1.*, 2.0.0)");
+            var fileSystemTuple = CreateFileSystem();
+            var directoryBase = fileSystemTuple.Item2;
+            var fileBase = fileSystemTuple.Item3;
+
+            string firstDefaultProbingPath = options.ProbingPaths.ElementAt(0);
+            directoryBase.Setup(d => d.Exists(firstDefaultProbingPath)).Returns(true);
+            directoryBase.Setup(d => d.EnumerateDirectories(firstDefaultProbingPath)).Returns(new List<string>());
+
+            string downloadPath = Path.Combine(options.DownloadPath, "1.0.1");
+            directoryBase.Setup(d => d.Exists(options.DownloadPath)).Returns(true);
+            directoryBase.Setup(d => d.EnumerateDirectories(options.DownloadPath)).Returns(new[] { downloadPath });
+            fileBase.Setup(f => f.Exists(Path.Combine(downloadPath, "bundle.json"))).Returns(false);
+
+            FileUtility.Instance = fileSystemTuple.Item1.Object;
+            var manager = GetExtensionBundleManager(options, new TestEnvironment());
+            var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK, "1.0.1"));
+            string path = await manager.GetExtensionBundlePath(httpclient);
+
+            Assert.Null(path);
+        }
+
+        [Fact]
         public async Task GetExtensionBundle_DownloadsMatchingVersion_ReturnsTrueAsync()
         {
             var options = GetTestExtensionBundleOptions(BundleId, "[1.*, 2.0.0)");
