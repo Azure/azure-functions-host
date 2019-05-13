@@ -63,21 +63,20 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         private async Task<string> GetBundle(HttpClient httpClient)
         {
-            string latestBundleVersion = await GetLatestMatchingBundleVersion(httpClient);
-            if (string.IsNullOrEmpty(latestBundleVersion))
-            {
-                return null;
-            }
-
             bool bundleFound = TryLocateExtensionBundle(out string bundlePath);
-            string bundleVersion = Path.GetFileName(bundlePath);
 
             if ((_environment.IsAppServiceEnvironment()
                 || _environment.IsCoreToolsEnvironment()
                 || _environment.IsLinuxContainerEnvironment()
                 || _environment.IsContainerEnvironment())
-                && (!bundleFound || (Version.Parse(bundleVersion) < Version.Parse(latestBundleVersion) && _options.EnsureLatest)))
+                && (!bundleFound || _options.EnsureLatest))
             {
+                string latestBundleVersion = await GetLatestMatchingBundleVersion(httpClient);
+                if (string.IsNullOrEmpty(latestBundleVersion))
+                {
+                    return null;
+                }
+
                 bundlePath = await DownloadExtensionBundleAsync(latestBundleVersion, httpClient);
             }
             return bundlePath;
@@ -122,24 +121,27 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         private async Task<string> DownloadExtensionBundleAsync(string version, HttpClient httpClient)
         {
+            string bundleMetatdataFile = Path.Combine(_options.DownloadPath, version, ScriptConstants.ExtensionBundleMetadataFile);
+            string bundlePath = Path.Combine(_options.DownloadPath, version);
+            if (FileUtility.FileExists(bundleMetatdataFile))
+            {
+                _logger.LogInformation($"Skipping bundle download since it already exists at path {bundlePath}");
+                return bundlePath;
+            }
+
             string zipDirectoryPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             FileUtility.EnsureDirectoryExists(zipDirectoryPath);
 
             string zipFilePath = Path.Combine(zipDirectoryPath, $"{_options.Id}.{version}.zip");
             var zipUri = new Uri($"{_cdnUri}/{ScriptConstants.ExtensionBundleDirectory}/{_options.Id}/{version}/{_options.Id}.{version}.zip");
 
-            string bundleMetatdataFile = null;
-            string bundlePath = null;
             if (await TryDownloadZipFileAsync(zipUri, zipFilePath, httpClient))
             {
-                bundlePath = Path.Combine(_options.DownloadPath, version);
                 FileUtility.EnsureDirectoryExists(bundlePath);
 
                 _logger.LogInformation(Resources.ExtractingBundleZip, bundlePath);
                 ZipFile.ExtractToDirectory(zipFilePath, bundlePath);
                 _logger.LogInformation(Resources.ZipExtractionComplete);
-
-                bundleMetatdataFile = Path.Combine(_options.DownloadPath, version, ScriptConstants.ExtensionBundleMetadataFile);
             }
             return FileUtility.FileExists(bundleMetatdataFile) ? bundlePath : null;
         }
