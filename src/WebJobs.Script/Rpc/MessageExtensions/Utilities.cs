@@ -21,21 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 return null;
             }
 
-            // TEST
-            inputMessage.Cookies.Add(new RpcHttpCookie()
-            {
-                Name = "myname",
-                Value = "myvalue",
-                Expires = new NullableTimestamp()
-                {
-                    Value = new Timestamp()
-                    {
-                        Seconds = 60 * 60 * 12 * 200
-                    }
-                }
-            });
-            // end test input
-
             dynamic expando = new ExpandoObject();
             expando.method = inputMessage.Method;
             expando.query = inputMessage.Query as IDictionary<string, string>;
