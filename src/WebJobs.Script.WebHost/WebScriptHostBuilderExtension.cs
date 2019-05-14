@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // register default configuration
                     // must happen before the script host is added below
                     services.ConfigureOptions<HttpOptionsSetup>();
+                    services.ConfigureOptions<HostHstsOptionsSetup>();
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, webJobsBuilder =>
                 {
