@@ -38,10 +38,11 @@ From within the Azure Functions language worker repo:
 
 ## Releasing a Language Worker Protobuf version
 
-1.	Draft a release in the GitHub UI.
+1.	Draft a release in the GitHub UI
     -   Be sure to inculde details of the release
-2.	Create a release version, following semantic versioning guidelines ([semver.org](https://semver.org/)).
-3.	Tag the version with the pattern: `v<M>.<m>.<p>-protofile` (example: `v1.1.0-protofile`).
+2.	Create a release version, following semantic versioning guidelines ([semver.org](https://semver.org/))
+3.	Tag the version with the pattern: `v<M>.<m>.<p>-protofile` (example: `v1.1.0-protofile`)
+3.	Merge `dev` to `master`
 
 ## Consuming FunctionRPC.proto
 *Note: Update versionNumber before running following commands*
