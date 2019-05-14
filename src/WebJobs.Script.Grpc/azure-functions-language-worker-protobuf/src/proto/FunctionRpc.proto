@@ -10,11 +10,8 @@ option go_package ="github.com/Azure/azure-functions-go-worker/internal/rpc";
 package AzureFunctionsRpcMessages;
 
 import "google/protobuf/duration.proto";
-import "google/protobuf/timestamp.proto";
 import "identity/ClaimsIdentityRpc.proto";
-import "shared/NullableString.proto";
-import "shared/NullableBool.proto";
-import "shared/NullableDouble.proto";
+import "shared/NullableTypes.proto";
 
 // Interface exported by the server.
 service FunctionRpc {
@@ -379,12 +376,6 @@ message RpcException {
   string message = 2;
 }
 
-message NullableTimestamp {
-	oneof timestamp {
-		google.protobuf.Timestamp value = 1;
-	}
-}
-
 // Http cookie type. Note that only name and value are used for Http requests
 message RpcHttpCookie {
   // Enum that lets servers require that a cookie shouoldn't be sent with cross-site requests
@@ -406,7 +397,8 @@ message RpcHttpCookie {
   // Specifies URL path that must exist in the requested URL
   NullableString path = 4;
 
-  // The maximum lifetime of the cookie as an HTTP-date timestamp
+  // Sets the cookie to expire at a specific date instead of when the client closes.
+  // It is generally recommended that you use "Max-Age" over "Expires".
   NullableTimestamp expires = 5;
 
   // Sets the cookie to only be sent with an encrypted request
