@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // This middleware must be registered before any other middleware depending on
             // JobHost/ScriptHost scoped services.
             builder.UseMiddleware<ScriptHostRequestServiceProviderMiddleware>();
+            builder.UseMiddleware<ScriptJobHostMiddlewareProvider>();
 
             if (!environment.IsAppServiceEnvironment())
             {
