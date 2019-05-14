@@ -10,6 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public const string ProjectFileName = "function.proj";
         public const string ProjectLockFileName = "project.assets.json";
         public const string FunctionsDepsFileName = "function.deps.json";
+        public const string DeprecatedProjectFileName = "project.json";
 
         public const string MissingFunctionEntryPointCompilationCode = "AF001";
         public const string AmbiguousFunctionEntryPointsCompilationCode = "AF002";
@@ -19,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public const string InvalidFileMetadataReferenceCode = "AF006";
         public const string InvalidEntryPointNameCompilationCode = "AF007";
         public const string AsyncVoidCode = "AF008";
+        public const string TypeOrNamespaceNotFoundCompilerErrorCode = "CS0246";
 
         public const string DefaultWindowsRID = "win10";
         public const string DefaultOSXRID = "osx.10.12";

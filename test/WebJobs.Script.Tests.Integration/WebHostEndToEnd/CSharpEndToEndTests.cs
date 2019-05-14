@@ -207,6 +207,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task MissingAssemblies_ShowsHelpfulMessage()
+        {
+            HttpResponseMessage response = await Fixture.Host.HttpClient.GetAsync($"api/MissingAssemblies");
+            var logs = Fixture.Host.GetScriptHostLogMessages().Select(p => p.FormattedMessage).Where(p => p != null).ToArray();
+            var hasWarning = logs.Any(p => p.Contains("project.json' should not be used to reference NuGet packages. Try creating a 'function.proj' file instead. Learn more: https://go.microsoft.com/fwlink/?linkid=2091419"));
+            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+            Assert.Equal(true, hasWarning);
+        }
+
+        [Fact]
         public async Task ExecutionContext_IsPopulated()
         {
             string functionName = "FunctionExecutionContext";
@@ -437,7 +447,8 @@ namespace SecondaryDependency
                         "MultipleOutputs",
                         "QueueTriggerToBlob",
                         "Scenarios",
-                        "FunctionIndexingError"
+                        "FunctionIndexingError",
+                        "MissingAssemblies"
                     };
                 });
 
