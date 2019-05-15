@@ -14,16 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
-        private readonly IEnvironment _environment;
         private HstsMiddleware _hstsMiddleware;
         private HostHstsOptions _hostHstsOptions;
 
-        public HstsConfigurationMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment)
+        public HstsConfigurationMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment)
         {
             _next = next;
             _webHostEnvironment = webHostEnvironment;
-            _environment = environment;
         }
 
         public async Task Invoke(HttpContext httpContext, IOptions<HostHstsOptions> options)
