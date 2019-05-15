@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             return new HostJsonFileConfigurationProvider(this, _logger);
         }
 
-        private class HostJsonFileConfigurationProvider : ConfigurationProvider
+        public class HostJsonFileConfigurationProvider : ConfigurationProvider
         {
             private static readonly string[] WellKnownHostJsonProperties = new[]
             {
