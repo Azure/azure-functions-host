@@ -9,8 +9,8 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -21,18 +21,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
-        private readonly BindingMetadata _trigger;
+        private readonly BindingMetadata _bindingMetadata;
+        private readonly ILogger _logger;
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
-        private readonly BufferBlock<ScriptInvocationContext> _invocationBuffer;
+        private readonly IFunctionDispatcher _functionDispatcher;
 
-        internal WorkerLanguageInvoker(ScriptHost host, BindingMetadata trigger, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
-            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, BufferBlock<ScriptInvocationContext> invocationBuffer)
+        internal WorkerLanguageInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionDispatcher fuctionDispatcher)
             : base(host, functionMetadata, loggerFactory)
         {
-            _trigger = trigger;
+            _bindingMetadata = bindingMetadata;
             _inputBindings = inputBindings;
             _outputBindings = outputBindings;
-            _invocationBuffer = invocationBuffer;
+            _functionDispatcher = fuctionDispatcher;
+            _logger = loggerFactory.CreateLogger<WorkerLanguageInvoker>();
 
             InitializeFileWatcherIfEnabled();
 
@@ -48,11 +50,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
+            // Need to wait for atleast one language worker process to be initialized before accepting invocations
+            await DelayUntilFunctionDispatcherInitialized();
             string invocationId = context.ExecutionContext.InvocationId.ToString();
 
             // TODO: fix extensions and remove
             object triggerValue = TransformInput(parameters[0], context.Binder.BindingData);
-            var triggerInput = (_trigger.Name, _trigger.DataType ?? DataType.String, triggerValue);
+            var triggerInput = (_bindingMetadata.Name, _bindingMetadata.DataType ?? DataType.String, triggerValue);
             var inputs = new[] { triggerInput }.Concat(await BindInputsAsync(context.Binder));
 
             ScriptInvocationContext invocationContext = new ScriptInvocationContext()
@@ -70,11 +74,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             };
 
             ScriptInvocationResult result;
-            _invocationBuffer.Post(invocationContext);
+            _logger.LogDebug($"Sending invocation id:{invocationId}");
+            await _functionDispatcher.InvokeAsync(invocationContext);
             result = await invocationContext.ResultSource.Task;
 
             await BindOutputsAsync(triggerValue, context.Binder, result);
             return result.Return;
+        }
+
+        private async Task DelayUntilFunctionDispatcherInitialized()
+        {
+            if (_functionDispatcher != null && _functionDispatcher.State == FunctionDispatcherState.Initializing)
+            {
+                _logger.LogDebug($"functionDispatcher state: {_functionDispatcher.State}");
+                await Utility.DelayAsync(ScriptConstants.HostTimeoutSeconds, ScriptConstants.HostPollingIntervalMilliseconds, () =>
+                {
+                    return _functionDispatcher.State != FunctionDispatcherState.Initialized;
+                });
+            }
         }
 
         private async Task<(string name, DataType type, object value)[]> BindInputsAsync(Binder binder)
@@ -130,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (input is Stream)
             {
-                var dataType = _trigger.DataType ?? DataType.String;
+                var dataType = _bindingMetadata.DataType ?? DataType.String;
                 FunctionBinding.ConvertStreamToValue((Stream)input, dataType, ref input);
             }
 

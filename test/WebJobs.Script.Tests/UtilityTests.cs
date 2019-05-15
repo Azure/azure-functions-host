@@ -340,5 +340,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(cleanResult, Utility.TryCleanUrl(url, out cleanedUrl));
             Assert.Equal(expectedCleanUrl, cleanedUrl);
         }
+
+        [Theory]
+        [InlineData("httpTrigger", true)]
+        [InlineData("manualTrigger", true)]
+        [InlineData("HttptRIGGER", true)]
+        [InlineData("MANUALtRIGGER", true)]
+        [InlineData(null, false)]
+        [InlineData("", false)]
+        [InlineData("blob", false)]
+        public void IsHttporManualTriggerTests(string triggerType, bool expectedResult)
+        {
+            Assert.Equal(expectedResult, Utility.IsHttporManualTrigger(triggerType));
+        }
     }
 }

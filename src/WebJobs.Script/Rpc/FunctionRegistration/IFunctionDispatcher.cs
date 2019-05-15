@@ -10,14 +10,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public interface IFunctionDispatcher : IDisposable
     {
-        IDictionary<string, LanguageWorkerState> LanguageWorkerChannelStates { get; }
+        FunctionDispatcherState State { get; }
+
+        LanguageWorkerState WorkerState { get; }
 
         // Tests if the function metadata is supported by a known language worker
         bool IsSupported(FunctionMetadata metadata, string language);
 
-        // Registers a supported function with the dispatcher
-        void Register(FunctionRegistrationContext context);
+        Task InvokeAsync(ScriptInvocationContext invocationContext);
 
-        void Initialize(string runtime, IEnumerable<FunctionMetadata> functions);
+        Task InitializeAsync(IEnumerable<FunctionMetadata> functions);
     }
 }

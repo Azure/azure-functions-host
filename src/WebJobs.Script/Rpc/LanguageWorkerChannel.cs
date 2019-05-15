@@ -9,7 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -20,7 +20,6 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
@@ -42,14 +41,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private bool _disposed;
         private bool _disposing;
         private bool _isWebHostChannel;
-        private IObservable<FunctionRegistrationContext> _functionRegistrations;
         private WorkerInitResponse _initMessage;
         private string _workerId;
         private Process _process;
+        private LanguageWorkerChannelState _state;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
-        private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new Dictionary<string, BufferBlock<ScriptInvocationContext>>();
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
+        private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private IObservable<InboundEvent> _inboundWorkerEvents;
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
@@ -67,7 +66,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            string workerId,
            string rootScriptPath,
            IScriptEventManager eventManager,
-           IObservable<FunctionRegistrationContext> functionRegistrations,
            IWorkerProcessFactory processFactory,
            IProcessRegistry processRegistry,
            WorkerConfig workerConfig,
@@ -80,16 +78,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
             _workerId = workerId;
-            _functionRegistrations = functionRegistrations;
             _rootScriptPath = rootScriptPath;
             _eventManager = eventManager;
             _processFactory = processFactory;
             _processRegistry = processRegistry;
             _workerConfig = workerConfig;
             _serverUri = serverUri;
-            _isWebHostChannel = isWebHostChannel;
             _workerChannelLogger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
             _consoleLogSource = consoleLogSource;
+            _isWebHostChannel = isWebHostChannel;
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
@@ -111,6 +108,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Language, attemptCount));
             _managedDependencyOptions = managedDependencyOptions;
+
+            _state = LanguageWorkerChannelState.Default;
         }
 
         public string Id => _workerId;
@@ -121,7 +120,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal Process WorkerProcess => _process;
 
-        public bool IsWebhostChannel => _isWebHostChannel;
+        public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => _functionInputBuffers;
+
+        public LanguageWorkerChannelState State => _state;
 
         internal void StartProcess()
         {
@@ -238,7 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public void StartWorkerProcess()
+        public Task StartWorkerProcessAsync()
         {
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(processStartTimeout)
@@ -258,6 +259,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _process = _processFactory.CreateWorkerProcess(workerContext);
             StartProcess();
             _processRegistry?.Register(_process);
+
+            _state = LanguageWorkerChannelState.Initializing;
+
+            return Task.CompletedTask;
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
@@ -266,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
-                .Subscribe(PublishWebhostRpcChannelReadyEvent, HandleWorkerError);
+                .Subscribe(PublishRpcChannelReadyEvent, HandleWorkerError);
 
             SendStreamingMessage(new StreamingMessage
             {
@@ -283,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _eventManager.Publish(wpEvent);
         }
 
-        internal void PublishWebhostRpcChannelReadyEvent(RpcEvent initEvent)
+        internal void PublishRpcChannelReadyEvent(RpcEvent initEvent)
         {
             _startLatencyMetric?.Dispose();
             _startLatencyMetric = null;
@@ -294,21 +299,27 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 HandleWorkerError(exc);
                 return;
             }
-            if (_functionRegistrations == null)
+
+            _state = LanguageWorkerChannelState.Initialized;
+            if (_isWebHostChannel)
             {
                 RpcWebHostChannelReadyEvent readyEvent = new RpcWebHostChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
                 _eventManager.Publish(readyEvent);
             }
             else
             {
-                RegisterFunctions(_functionRegistrations);
+                RpcJobHostChannelReadyEvent readyEvent = new RpcJobHostChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
+                _eventManager.Publish(readyEvent);
             }
         }
 
-        public void RegisterFunctions(IObservable<FunctionRegistrationContext> functionRegistrations)
+        public void RegisterFunctions(IObservable<FunctionMetadata> functionRegistrations)
         {
-            _functionRegistrations = functionRegistrations ?? throw new ArgumentNullException(nameof(functionRegistrations));
-            _eventSubscriptions.Add(_functionRegistrations.Subscribe(SendFunctionLoadRequest));
+            if (functionRegistrations == null)
+            {
+                throw new ArgumentNullException(nameof(functionRegistrations));
+            }
+            _eventSubscriptions.Add(functionRegistrations.Subscribe(SendFunctionLoadRequest));
         }
 
         public void SendFunctionEnvironmentReloadRequest()
@@ -330,13 +341,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             });
         }
 
-        internal void SendFunctionLoadRequest(FunctionRegistrationContext context)
+        internal void SendFunctionLoadRequest(FunctionMetadata metadata)
         {
-            FunctionMetadata metadata = context.Metadata;
-
-            // associate the invocation input buffer with the function
-            _functionInputBuffers[context.Metadata.FunctionId] = context.InputBuffer;
-
             // send a load request for the registered function
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
@@ -371,6 +377,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void LoadResponse(FunctionLoadResponse loadResponse)
         {
+            // associate the invocation input buffer with the function
+            _functionInputBuffers[loadResponse.FunctionId] = new BufferBlock<ScriptInvocationContext>();
+
             if (loadResponse.Result.IsFailure(out Exception ex))
             {
                 //Cache function load errors to replay error messages on invoking failed functions
@@ -382,10 +391,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _workerChannelLogger?.LogInformation($"Managed dependency successfully downloaded by the {_workerConfig.Language} language worker");
             }
 
-            var inputBuffer = _functionInputBuffers[loadResponse.FunctionId];
             // link the invocation inputs to the invoke call
             var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequest(ctx));
-            var disposableLink = inputBuffer.LinkTo(invokeBlock);
+            var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
             _inputLinks.Add(disposableLink);
         }
 
@@ -446,6 +454,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void InvokeResponse(InvocationResponse invokeResponse)
         {
+            _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: {Id}", invokeResponse.InvocationId);
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
                 && invokeResponse.Result.IsSuccess(context.ResultSource))
             {
@@ -531,9 +540,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             _process.Dispose();
                         }
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
-                        _workerChannelLogger.LogError(e, "LanguageWorkerChannel Dispose failure");
+                        //ignore
                     }
 
                     foreach (var sub in _eventSubscriptions)
