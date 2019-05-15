@@ -14,6 +14,5 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public const string ExtensionBundle = "extensionBundle";
         public const string ManagedDependency = "managedDependency";
         public const string Hsts = "hsts";
-        public const string HstsEnabled = Hsts + ":isEnabled";
     }
 }
