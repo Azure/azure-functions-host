@@ -182,5 +182,18 @@ namespace Microsoft.Azure.WebJobs.Script
             var mountEnabled = environment.GetEnvironmentVariable(MountEnabled);
             return !string.IsNullOrEmpty(mountEnabled) && string.Equals(mountEnabled, "1");
         }
+
+        public static string GetKubernetesApiServerUrl(this IEnvironment environment)
+        {
+            string host = environment.GetEnvironmentVariable(KubernetesServiceHost);
+            string port = environment.GetEnvironmentVariable(KubernetesServiceHttpsPort);
+
+            if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(port))
+            {
+                throw new InvalidOperationException($"Both {KubernetesServiceHost} and {KubernetesServiceHttpsPort} are required for {nameof(GetKubernetesApiServerUrl)}.");
+            }
+
+            return $"https://{host}:{port}";
+        }
     }
 }

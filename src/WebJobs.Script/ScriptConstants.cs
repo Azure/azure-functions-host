@@ -136,5 +136,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
+        public static readonly string HostUserAgent = $"azure-functions-host/{ScriptHost.Version}";
     }
 }
