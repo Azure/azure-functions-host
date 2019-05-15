@@ -88,6 +88,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.StartsWith($"The value of IsEnabled property in hsts section of {ScriptConstants.HostMetadataFileName} file is missing. See https://aka.ms/functions-hostjson for more information", ex.Message);
         }
 
+        [Fact]
+        public void ValidHstsConfig_BindsToOptions()
+        {
+            string hostJsonContent = @"{
+                    'version': '2.0',
+                    'hsts' : { 
+                        'isEnabled' : true,
+                        'maxAge' : '10'
+                        }
+                    }";
+
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            var configuration = BuildHostJsonConfiguration();
+
+            HostHstsOptionsSetup setup = new HostHstsOptionsSetup(configuration);
+            HostHstsOptions options = new HostHstsOptions();
+            setup.Configure(options);
+            Assert.Equal(options.MaxAge, new TimeSpan(10, 0, 0, 0));
+        }
+
         private IConfiguration BuildHostJsonConfiguration(IEnvironment environment = null)
         {
             environment = environment ?? new TestEnvironment();
