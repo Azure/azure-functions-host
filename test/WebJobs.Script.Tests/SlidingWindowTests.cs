@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -63,8 +64,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             for (int i = 0; i < 5; i++)
             {
                 window.AddEvent(new MyItem { Data = i });
-                log.AppendLine($"{DateTime.UtcNow}: Added item: {i}");
-                await Task.Delay(100);
+                log.AppendLine($"{DateTime.UtcNow.ToString("HH:mm:ss.FFFZ")}: Added item: {i}");
+                Thread.Sleep(50);
             }
 
             var eventsField = window.GetType().GetField("_events", BindingFlags.Instance | BindingFlags.NonPublic);
