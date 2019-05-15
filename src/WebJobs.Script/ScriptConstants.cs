@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string ExtensionsProjectFileName = "extensions.csproj";
         public const string MetadataGeneratorPackageId = "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator";
-        public const string MetadataGeneratorPackageVersion = "1.0.*";
+        public const string MetadataGeneratorPackageVersion = "1.1.*";
         public const string PackageReferenceElementName = "PackageReference";
         public const string PackageReferenceVersionElementName = "Version";
         public const int HostTimeoutSeconds = 30;
