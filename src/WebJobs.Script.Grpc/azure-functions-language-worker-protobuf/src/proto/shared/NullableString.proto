@@ -1,8 +1,0 @@
-syntax = "proto3";
-// protobuf vscode extension: https://marketplace.visualstudio.com/items?itemName=zxh404.vscode-proto3
-
-message NullableString {
-	oneof string {
-		string value = 1;
-	}
-}
