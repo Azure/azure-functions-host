@@ -16,13 +16,29 @@ namespace Microsoft.Azure.WebJobs.Script.Middleware
         private HstsMiddleware _hstsMiddleware;
         private RequestDelegate _next;
         private RequestDelegate _invoke;
-        private double _configured = 0;
+        private double _nextConfigured = 0;
         private double _initialized = 0;
 
         public HstsConfigurationMiddleware(IOptions<HostHstsOptions> hostHstsOptions)
         {
             _hostHstsOptions = hostHstsOptions;
             _invoke = InvokeInitialization;
+        }
+
+        public RequestDelegate Next
+        {
+            get
+            {
+                return _next;
+            }
+
+            set
+            {
+                if (Interlocked.CompareExchange(ref _nextConfigured, 1, 0) == 0)
+                {
+                    _next = value;
+                }
+            }
         }
 
         public async Task Invoke(HttpContext httpContext)
@@ -45,14 +61,6 @@ namespace Microsoft.Azure.WebJobs.Script.Middleware
                 }
             }
             await _invoke(httpContext);
-        }
-
-        public void ConfigureRequestDelegate(RequestDelegate next)
-        {
-            if (Interlocked.CompareExchange(ref _configured, 1, 0) == 0)
-            {
-                _next = next;
-            }
         }
     }
 }

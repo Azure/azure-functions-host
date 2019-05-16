@@ -8,8 +8,8 @@ namespace Microsoft.Azure.WebJobs.Script.Middleware
 {
     public interface IScriptJobHostMiddleware
     {
-        Task Invoke(HttpContext context);
+        RequestDelegate Next { get; set; }
 
-        void ConfigureRequestDelegate(RequestDelegate next);
+        Task Invoke(HttpContext context);
     }
 }

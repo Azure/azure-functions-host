@@ -19,10 +19,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _next = next;
         }
 
-        public async Task Invoke(HttpContext httpContext, IScriptJobHostMiddleware scriptJobHostMiddleware)
+        public async Task Invoke(HttpContext httpContext, IEnumerable<IScriptJobHostMiddleware> hostMiddlewareCollection)
         {
-            scriptJobHostMiddleware.ConfigureRequestDelegate(_next);
-            await scriptJobHostMiddleware.Invoke(httpContext);
+            var middlewareCount = hostMiddlewareCollection.Count();
+            if (middlewareCount > 0)
+            {
+                hostMiddlewareCollection.ElementAt(middlewareCount - 1).Next = _next;
+            }
+
+            for (int i = middlewareCount - 1; i >= 0; i--)
+            {
+                if (i > 0)
+                {
+                    hostMiddlewareCollection.ElementAt(i - 1).Next = hostMiddlewareCollection.ElementAt(i).Invoke;
+                }
+            }
+            await hostMiddlewareCollection.ElementAt(0).Invoke(httpContext);
         }
     }
 }
