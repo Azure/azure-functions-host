@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("functionapp.zip", false)]
         [InlineData("0", false)]
         [InlineData("", false)]
-        public void IsValidZipSetting_CorrectlyValidates(string appSettingValue, bool expectedOutcome)
+        public void IsZipDeployment_CorrectlyValidatesSetting(string appSettingValue, bool expectedOutcome)
         {
             var zipSettings = new string[]
             {
