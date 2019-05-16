@@ -138,5 +138,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             Assert.True(nextInvoked);
             Assert.Equal(httpContext.Response.Headers["Strict-Transport-Security"].ToString(), "max-age=864000");
         }
+
+        [Fact]
+        public async Task Invoke_hstsDisabledByDefault()
+        {
+            var hstsOptions = new OptionsWrapper<HostHstsOptions>(new HostHstsOptions());
+            var standbyOptions = new OptionsWrapper<StandbyOptions>(new StandbyOptions() { InStandbyMode = false });
+
+            bool nextInvoked = false;
+            RequestDelegate next = (ctxt) =>
+            {
+                nextInvoked = true;
+                ctxt.Response.StatusCode = (int)HttpStatusCode.Accepted;
+                return Task.CompletedTask;
+            };
+
+            var middleware = new HstsConfigurationMiddleware(next);
+
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.IsHttps = true;
+            await middleware.Invoke(httpContext, hstsOptions, standbyOptions);
+            Assert.True(nextInvoked);
+            Assert.Equal(httpContext.Response.Headers.Count, 0);
+        }
     }
 }
