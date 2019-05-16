@@ -62,9 +62,16 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsZipDeployment(this IEnvironment environment)
         {
-            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment)) ||
-                !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteAltZipDeployment)) ||
-                !string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage));
+            // Run From Package app setting exists
+            return IsValidZipSetting(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment)) ||
+                IsValidZipSetting(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteAltZipDeployment)) ||
+                IsValidZipSetting(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage));
+        }
+
+        private static bool IsValidZipSetting(string appSetting)
+        {
+            // valid values are 1 or an absolute URI
+            return string.Equals(appSetting, "1") || Uri.TryCreate(appSetting, UriKind.Absolute, out Uri result);
         }
 
         public static bool IsAppServiceWindowsEnvironment(this IEnvironment environment)
