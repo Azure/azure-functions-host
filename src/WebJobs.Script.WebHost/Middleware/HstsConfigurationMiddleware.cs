@@ -16,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private HstsMiddleware _hstsMiddleware;
         private HostHstsOptions _hostHstsOptions;
+        private static object _syncLock = new object();
 
         public HstsConfigurationMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment)
         {
@@ -25,10 +26,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public async Task Invoke(HttpContext httpContext, IOptions<HostHstsOptions> options)
         {
-            if (_hostHstsOptions != options.Value)
+            if (!object.ReferenceEquals(_hostHstsOptions, options.Value))
             {
-                _hostHstsOptions = options.Value;
-                _hstsMiddleware = new HstsMiddleware(_next, options);
+                lock (_syncLock)
+                {
+                    if (!object.ReferenceEquals(_hostHstsOptions, options.Value))
+                    {
+                        if (options.Value.IsEnabled)
+                        {
+                            _hstsMiddleware = new HstsMiddleware(_next, options);
+                        }
+                        _hostHstsOptions = options.Value;
+                    }
+                }
             }
 
             if (!_webHostEnvironment.InStandbyMode && _hostHstsOptions.IsEnabled)
