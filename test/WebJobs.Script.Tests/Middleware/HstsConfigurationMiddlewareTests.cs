@@ -21,8 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         [Fact]
         public async Task Invoke_hstsEnabled_NotInStandbyMode_AddsResponseHeader()
         {
-            var mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>(MockBehavior.Strict);
-            mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(false);
+            var hstsOptions = new OptionsWrapper<HostHstsOptions>(new HostHstsOptions() { IsEnabled = true });
+            var standbyOptions = new OptionsWrapper<StandbyOptions>(new StandbyOptions() { InStandbyMode = false });
 
             bool nextInvoked = false;
             RequestDelegate next = (ctxt) =>
@@ -32,11 +32,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 return Task.CompletedTask;
             };
 
-            var middleware = new HstsConfigurationMiddleware(next, mockWebHostEnvironment.Object);
+            var middleware = new HstsConfigurationMiddleware(next);
 
             var httpContext = new DefaultHttpContext();
             httpContext.Request.IsHttps = true;
-            await middleware.Invoke(httpContext, new OptionsWrapper<HostHstsOptions>(new HostHstsOptions() { IsEnabled = true }));
+            await middleware.Invoke(httpContext, hstsOptions, standbyOptions);
             Assert.True(nextInvoked);
             Assert.Equal(httpContext.Response.Headers["Strict-Transport-Security"].ToString(), "max-age=2592000");
         }
@@ -44,8 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         [Fact]
         public async Task Invoke_hstsDisabledNotInStandbyMode_DoesNotAddsResponseHeader()
         {
-            var mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>(MockBehavior.Strict);
-            mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(false);
+            var hstsOptions = new OptionsWrapper<HostHstsOptions>(new HostHstsOptions() { IsEnabled = false });
+            var standbyOptions = new OptionsWrapper<StandbyOptions>(new StandbyOptions() { InStandbyMode = false });
 
             bool nextInvoked = false;
             RequestDelegate next = (ctxt) =>
@@ -55,11 +55,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 return Task.CompletedTask;
             };
 
-            var middleware = new HstsConfigurationMiddleware(next, mockWebHostEnvironment.Object);
+            var middleware = new HstsConfigurationMiddleware(next);
 
             var httpContext = new DefaultHttpContext();
             httpContext.Request.IsHttps = true;
-            await middleware.Invoke(httpContext, new OptionsWrapper<HostHstsOptions>(new HostHstsOptions() { IsEnabled = false }));
+            await middleware.Invoke(httpContext, hstsOptions, standbyOptions);
             Assert.True(nextInvoked);
             Assert.Equal(httpContext.Response.Headers.Count, 0);
         }
@@ -67,8 +67,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         [Fact]
         public async Task Invoke_hstsEnabledInStandbyMode_DoesNotAddResponseHeader()
         {
-            var mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>(MockBehavior.Strict);
-            mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(true);
+            var hstsOptions = new OptionsWrapper<HostHstsOptions>(new HostHstsOptions() { IsEnabled = true });
+            var standbyOptions = new OptionsWrapper<StandbyOptions>(new StandbyOptions() { InStandbyMode = true });
 
             bool nextInvoked = false;
             RequestDelegate next = (ctxt) =>
@@ -78,11 +78,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 return Task.CompletedTask;
             };
 
-            var middleware = new HstsConfigurationMiddleware(next, mockWebHostEnvironment.Object);
+            var middleware = new HstsConfigurationMiddleware(next);
 
             var httpContext = new DefaultHttpContext();
             httpContext.Request.IsHttps = true;
-            await middleware.Invoke(httpContext, new OptionsWrapper<HostHstsOptions>(new HostHstsOptions() { IsEnabled = true }));
+            await middleware.Invoke(httpContext, hstsOptions, standbyOptions);
             Assert.True(nextInvoked);
             Assert.Equal(httpContext.Response.Headers.Count, 0);
         }
@@ -90,8 +90,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         [Fact]
         public async Task Invoke_hstsDisabledInStandbyMode_DoesNotAddResponseHeader()
         {
-            var mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>(MockBehavior.Strict);
-            mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(true);
+            var hstsOptions = new OptionsWrapper<HostHstsOptions>(new HostHstsOptions() { IsEnabled = true });
+            var standbyOptions = new OptionsWrapper<StandbyOptions>(new StandbyOptions() { InStandbyMode = true });
 
             bool nextInvoked = false;
             RequestDelegate next = (ctxt) =>
@@ -101,11 +101,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 return Task.CompletedTask;
             };
 
-            var middleware = new HstsConfigurationMiddleware(next, mockWebHostEnvironment.Object);
+            var middleware = new HstsConfigurationMiddleware(next);
 
             var httpContext = new DefaultHttpContext();
             httpContext.Request.IsHttps = true;
-            await middleware.Invoke(httpContext, new OptionsWrapper<HostHstsOptions>(new HostHstsOptions() { IsEnabled = false }));
+            await middleware.Invoke(httpContext, hstsOptions, standbyOptions);
             Assert.True(nextInvoked);
             Assert.Equal(httpContext.Response.Headers.Count, 0);
         }
@@ -113,8 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         [Fact]
         public async Task Invoke_hstsEnabled_NotInStandbyMode_AddsResponseHeaderWithCorrectValue()
         {
-            var mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>(MockBehavior.Strict);
-            mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(false);
+            var standbyOptions = new OptionsWrapper<StandbyOptions>(new StandbyOptions() { InStandbyMode = false });
 
             bool nextInvoked = false;
             RequestDelegate next = (ctxt) =>
@@ -124,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 return Task.CompletedTask;
             };
 
-            var middleware = new HstsConfigurationMiddleware(next, mockWebHostEnvironment.Object);
+            var middleware = new HstsConfigurationMiddleware(next);
 
             var httpContext = new DefaultHttpContext();
             httpContext.Request.IsHttps = true;
@@ -133,8 +132,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 IsEnabled = true,
                 MaxAge = new TimeSpan(10, 0, 0, 0)
             };
+            var hstsOptions = new OptionsWrapper<HostHstsOptions>(options);
 
-            await middleware.Invoke(httpContext, new OptionsWrapper<HostHstsOptions>(options));
+            await middleware.Invoke(httpContext, hstsOptions, standbyOptions);
             Assert.True(nextInvoked);
             Assert.Equal(httpContext.Response.Headers["Strict-Transport-Security"].ToString(), "max-age=864000");
         }

@@ -13,35 +13,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     public class HstsConfigurationMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private HstsMiddleware _hstsMiddleware;
         private HostHstsOptions _hostHstsOptions;
         private static object _syncLock = new object();
 
-        public HstsConfigurationMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment)
+        public HstsConfigurationMiddleware(RequestDelegate next)
         {
             _next = next;
-            _webHostEnvironment = webHostEnvironment;
         }
 
-        public async Task Invoke(HttpContext httpContext, IOptions<HostHstsOptions> options)
+        public async Task Invoke(HttpContext httpContext, IOptions<HostHstsOptions> hostHstsOptions, IOptions<StandbyOptions> standbyOptions)
         {
-            if (!object.ReferenceEquals(_hostHstsOptions, options.Value))
+            if (!object.ReferenceEquals(_hostHstsOptions, hostHstsOptions.Value))
             {
                 lock (_syncLock)
                 {
-                    if (!object.ReferenceEquals(_hostHstsOptions, options.Value))
+                    if (!object.ReferenceEquals(_hostHstsOptions, hostHstsOptions.Value))
                     {
-                        if (options.Value.IsEnabled)
+                        if (hostHstsOptions.Value.IsEnabled)
                         {
-                            _hstsMiddleware = new HstsMiddleware(_next, options);
+                            _hstsMiddleware = new HstsMiddleware(_next, hostHstsOptions);
                         }
-                        _hostHstsOptions = options.Value;
+                        _hostHstsOptions = hostHstsOptions.Value;
                     }
                 }
             }
 
-            if (!_webHostEnvironment.InStandbyMode && _hostHstsOptions.IsEnabled)
+            if (!standbyOptions.Value.InStandbyMode && _hostHstsOptions.IsEnabled)
             {
                 await _hstsMiddleware.Invoke(httpContext);
             }
