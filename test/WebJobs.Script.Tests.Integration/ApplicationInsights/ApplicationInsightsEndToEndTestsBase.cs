@@ -383,7 +383,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             Assert.Equal(23, telemetry.Max);
             Assert.Equal("100", telemetry.Properties[$"{LogConstants.CustomPropertyPrefix}MyCustomMetricProperty"]);
 
-            ValidateSdkVersion(telemetry, "f_");
+            ValidateSdkVersion(telemetry, "af_");
         }
 
         protected static void ValidateTrace(TraceTelemetry telemetry, string expectedMessageContains,
