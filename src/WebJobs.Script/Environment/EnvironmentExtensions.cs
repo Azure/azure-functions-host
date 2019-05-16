@@ -68,6 +68,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 IsValidZipSetting(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage));
         }
 
+        private static bool IsValidZipSetting(string appSetting)
+        {
+            // valid values are 1 or an absolute URI
+            return string.Equals(appSetting, "1") || Uri.TryCreate(appSetting, UriKind.Absolute, out Uri result);
+        }
+
         public static bool IsAppServiceWindowsEnvironment(this IEnvironment environment)
         {
             return environment.IsAppServiceEnvironment() && RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
@@ -170,12 +176,6 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             var mountEnabled = environment.GetEnvironmentVariable(MountEnabled);
             return !string.IsNullOrEmpty(mountEnabled) && string.Equals(mountEnabled, "1");
-        }
-
-        private static bool IsValidZipSetting(string appSetting)
-        {
-            // valid values are 1 or an absolute URI
-            return string.Equals(appSetting, "1") || Uri.TryCreate(appSetting, UriKind.Absolute, out Uri result);
         }
     }
 }

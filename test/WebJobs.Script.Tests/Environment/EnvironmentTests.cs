@@ -148,5 +148,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(environment.IsLinuxAppServiceEnvWithPersistentFileSystem());
             Assert.True(environment.IsPersistentFileSystemAvailable());
         }
+
+        [Theory]
+        [InlineData("1", true)]
+        [InlineData("https://functionstest.blob.core.windows.net/microsoft/functionapp.zip", true)]
+        [InlineData("https://functionstest.blob.core.windows.net/microsoft/functionapp.zip?sv=123434234234&other=key", true)]
+        [InlineData("/microsoft/functionapp.zip", false)]
+        [InlineData("functionapp.zip", false)]
+        [InlineData("0", false)]
+        [InlineData("", false)]
+        public void IsValidZipSetting_CorrectlyValidates(string appSettingValue, bool expectedOutcome)
+        {
+            var zipSettings = new string[]
+            {
+                EnvironmentSettingNames.AzureWebsiteZipDeployment,
+                EnvironmentSettingNames.AzureWebsiteAltZipDeployment,
+                EnvironmentSettingNames.AzureWebsiteRunFromPackage
+            };
+
+            // Test each environment variable being set
+            foreach (var setting in zipSettings)
+            {
+                var environment = new TestEnvironment();
+                environment.SetEnvironmentVariable(setting, appSettingValue);
+                Assert.Equal(environment.IsZipDeployment(), expectedOutcome);
+            }
+
+            // Test multiple being set
+            var allSettingsEnvironment = new TestEnvironment();
+
+            foreach (var setting in zipSettings)
+            {
+                allSettingsEnvironment.SetEnvironmentVariable(setting, appSettingValue);
+            }
+
+            Assert.Equal(allSettingsEnvironment.IsZipDeployment(), expectedOutcome);
+        }
     }
 }
