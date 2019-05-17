@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IDisposable _rpcChannelReadySubscriptions;
         private readonly int _debounceSeconds = 10;
         private readonly int _maxAllowedProcessCount = 10;
-        private readonly object _disposeLock = new object();
         private IScriptEventManager _eventManager;
         private IEnumerable<WorkerConfig> _workerConfigs;
         private ILanguageWorkerChannelManager _languageWorkerChannelManager;
