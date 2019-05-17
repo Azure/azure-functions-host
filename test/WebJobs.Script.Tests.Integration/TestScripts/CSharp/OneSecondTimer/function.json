@@ -1,0 +1,10 @@
+﻿{
+    "bindings": [
+      {
+        "type": "timerTrigger",
+        "name": "timerInfo",
+        "schedule": "*/1 * * * * *",
+        "direction": "in"
+      }
+    ]
+}

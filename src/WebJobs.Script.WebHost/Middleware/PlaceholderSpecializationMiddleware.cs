@@ -35,7 +35,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             if (!_webHostEnvironment.InStandbyMode && _environment.IsContainerReady())
             {
-                await _standbyManager.SpecializeHostAsync();
+                // We don't want AsyncLocal context (like Activity.Current) to flow
+                // here as it will contain request details. Suppressing this context
+                // prevents the request context from being captured by the host.
+                Task specializeTask;
+                using (System.Threading.ExecutionContext.SuppressFlow())
+                {
+                    // We need this to go async immediately, so use Task.Run.
+                    specializeTask = Task.Run(_standbyManager.SpecializeHostAsync);
+                }
+                await specializeTask;
 
                 if (Interlocked.CompareExchange(ref _specialized, 1, 0) == 0)
                 {
