@@ -264,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed && _disposing)
+            if (!_disposed && disposing)
             {
                 _workerErrorSubscription.Dispose();
                 _rpcChannelReadySubscriptions.Dispose();
