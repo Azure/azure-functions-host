@@ -21,6 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("lastModifiedTime")]
         public DateTime LastModifiedTime { get; set; }
 
+        [JsonProperty("MSISpecializationPayload")]
+        public MSIContext MSIContext { get; set; }
+
         public string ZipUrl
         {
             get
@@ -42,6 +45,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                     return string.Empty;
                 }
             }
+        }
+
+        public bool IsMSIEnabled(out string endpoint)
+        {
+            endpoint = null;
+            if (Environment.TryGetValue(EnvironmentSettingNames.MsiEndpoint, out endpoint))
+            {
+                string secret;
+                if (Environment.TryGetValue(EnvironmentSettingNames.MsiSecret, out secret))
+                {
+                    return !string.IsNullOrEmpty(endpoint) && !string.IsNullOrEmpty(secret);
+                }
+            }
+
+            return false;
         }
 
         public bool Equals(HostAssignmentContext other)
