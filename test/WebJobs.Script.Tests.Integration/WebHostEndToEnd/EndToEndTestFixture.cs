@@ -21,6 +21,8 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Moq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -60,6 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestMetricsLogger MetricsLogger { get; private set; } = new TestMetricsLogger();
 
+        public Mock<IFunctionsSyncManager> FunctionsSyncManagerMock { get; private set; }
+
         protected virtual ExtensionPackageReference[] GetExtensionsToInstall()
         {
             return null;
@@ -89,9 +93,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime);
             }
 
+            FunctionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
+            FunctionsSyncManagerMock.Setup(p => p.TrySyncTriggersAsync(It.IsAny<bool>())).ReturnsAsync(new SyncTriggersResult { Success = true });
+
             Host = new TestFunctionHost(_copiedRootPath, logPath, webJobsBuilder =>
             {
                 webJobsBuilder.Services.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
+                webJobsBuilder.Services.AddSingleton<IFunctionsSyncManager>(_ => FunctionsSyncManagerMock.Object);
                 ConfigureJobHost(webJobsBuilder);
             });
 

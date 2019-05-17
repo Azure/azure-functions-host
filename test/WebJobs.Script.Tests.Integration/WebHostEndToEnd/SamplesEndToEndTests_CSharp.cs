@@ -99,6 +99,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task SyncTriggers_InternalAuth_Succeeds()
+        {
+            using (new TestScopedSettings(_settingsManager, EnvironmentSettingNames.AzureWebsiteInstanceId, "testinstance"))
+            {
+                string uri = "admin/host/synctriggers";
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+                HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            }
+        }
+
+        [Fact]
+        public async Task SyncTriggers_ExternalUnauthorized_ReturnsUnauthorized()
+        {
+            string uri = "admin/host/synctriggers";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task SyncTriggers_AdminLevel_Succeeds()
+        {
+            string uri = "admin/host/synctriggers";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
         public async Task HostLog_Anonymous_Fails()
         {
             var request = new HttpRequestMessage(HttpMethod.Post, "admin/host/log");

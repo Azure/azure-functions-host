@@ -27,7 +27,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class AdminControllerTests : IDisposable
+    public class FunctionsControllerTests : IDisposable
     {
         private readonly TempDirectory _secretsDirectory = new TempDirectory();
 
