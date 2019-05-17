@@ -73,6 +73,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return !request.Headers.Contains(ScriptConstants.AntaresLogIdHeaderName);
         }
 
+        public static bool IsAdminOrInternalRequest(this HttpRequestMessage request)
+        {
+            var authorizationLevel = request.GetAuthorizationLevel();
+            return authorizationLevel == AuthorizationLevel.Admin || request.IsAntaresInternalRequest();
+        }
+
         public static bool IsAuthDisabled(this HttpRequestMessage request)
         {
             return request.GetRequestPropertyOrDefault<bool>(ScriptConstants.AzureFunctionsHttpRequestAuthorizationDisabledKey);

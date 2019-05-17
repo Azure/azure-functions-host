@@ -14,11 +14,13 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Xml.Linq;
+using Autofac;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
@@ -26,6 +28,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
+using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -37,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class SamplesEndToEndTests : IClassFixture<SamplesEndToEndTests.TestFixture>
     {
         internal const string MasterKey = "t8laajal0a1ajkgzoqlfv5gxr4ebhqozebw4qzdy";
+        private const string TestInstanceId = "a03948aa41d0c354ce659d273031a12c9b5755727cb9f66c1b4792a0cd3c5998";
 
         private readonly ScriptSettingsManager _settingsManager;
         private TestFixture _fixture;
@@ -224,6 +228,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
             }
+        }
+
+        [Fact]
+        public async Task SyncTriggers_AdminAuth_Succeeds()
+        {
+            string uri = "admin/host/synctriggers";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, MasterKey);
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task SyncTriggers_InternalAuth_Succeeds()
+        {
+            using (new TestScopedSettings(_settingsManager, EnvironmentSettingNames.AzureWebsiteInstanceId, "testinstance"))
+            {
+                string uri = "admin/host/synctriggers";
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+                HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            }
+        }
+
+        [Fact]
+        public async Task SyncTriggers_ExternalUnauthorized_ReturnsUnauthorized()
+        {
+            string uri = "admin/host/synctriggers";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            HttpResponseMessage response = await this._fixture.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
         [Fact]
@@ -1178,7 +1213,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     SecretsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\src\WebJobs.Script.WebHost\App_Data\Secrets"),
                     TraceWriter = _traceWriter
                 };
-                WebApiConfig.Register(_config, _settingsManager, HostSettings);
+                WebApiConfig.Register(_config, _settingsManager, HostSettings, (builder, settings) =>
+                {
+                    var syncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
+                    syncManagerMock.Setup(p => p.TrySyncTriggersAsync(It.IsAny<bool>())).ReturnsAsync(new SyncTriggersResult { Success = true });
+                    builder.Register<IFunctionsSyncManager>(_ => syncManagerMock.Object);
+                });
 
                 HttpServer = new HttpServer(_config);
                 HttpClient = new HttpClient(HttpServer);

@@ -106,10 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [EnableDebugMode]
         public IHttpActionResult GetHostStatus()
         {
-            var authorizationLevel = Request.GetAuthorizationLevel();
-            if (Request.IsAuthDisabled() ||
-                authorizationLevel == AuthorizationLevel.Admin ||
-                Request.IsAntaresInternalRequest())
+            if (Request.IsAuthDisabled() || Request.IsAdminOrInternalRequest())
             {
                 var status = new HostStatus
                 {
@@ -159,10 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return BadRequest("An array of log entry objects is expected.");
             }
 
-            var authorizationLevel = Request.GetAuthorizationLevel();
-            if (Request.IsAuthDisabled() ||
-                authorizationLevel == AuthorizationLevel.Admin ||
-                Request.IsAntaresInternalRequest())
+            if (Request.IsAuthDisabled() || Request.IsAdminOrInternalRequest())
             {
                 foreach (var logEntry in logEntries)
                 {
@@ -212,18 +206,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/host/synctriggers")]
+        [AllowAnonymous]
         public async Task<HttpResponseMessage> SyncTriggers()
         {
-            var result = await _functionsSyncManager.TrySyncTriggersAsync();
-
-            // Return a dummy body to make it valid in ARM template action evaluation
-            var statusCode = result.Success ? HttpStatusCode.OK : HttpStatusCode.InternalServerError;
-            var responseContent = new JObject
+            if (Request.IsAuthDisabled() || Request.IsAdminOrInternalRequest())
             {
-                { "status", result.Success ? "success" : result.Error }
-            };
+                var result = await _functionsSyncManager.TrySyncTriggersAsync();
 
-            return Request.CreateResponse(statusCode, responseContent);
+                // Return a dummy body to make it valid in ARM template action evaluation
+                var statusCode = result.Success ? HttpStatusCode.OK : HttpStatusCode.InternalServerError;
+                var responseContent = new JObject
+                {
+                    { "status", result.Success ? "success" : result.Error }
+                };
+
+                return Request.CreateResponse(statusCode, responseContent);
+            }
+            else
+            {
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+            }
         }
 
         [Route("admin/extensions/{name}/{*extra}")]
