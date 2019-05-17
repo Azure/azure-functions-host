@@ -284,6 +284,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void PublishWorkerProcessReadyEvent(FunctionEnvironmentReloadResponse res)
         {
+            if (_disposing)
+            {
+                // do not publish ready events when disposing
+                return;
+            }
             WorkerProcessReadyEvent wpEvent = new WorkerProcessReadyEvent(_workerId, _workerConfig.Language);
             _eventManager.Publish(wpEvent);
         }
