@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ILogger _logger;
         private readonly HostNameProvider _hostNameProvider;
         private readonly IDisposable _changeTokenCallbackSubscription;
-        private readonly TimeSpan _specializationTimerInterval = TimeSpan.FromMilliseconds(500);
+        private readonly TimeSpan _specializationTimerInterval;
 
         private Timer _specializationTimer;
         private static CancellationTokenSource _standbyCancellationTokenSource = new CancellationTokenSource();
@@ -40,6 +40,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public StandbyManager(IScriptHostManager scriptHostManager, ILanguageWorkerChannelManager languageWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider)
+            : this(scriptHostManager, languageWorkerChannelManager, configuration, webHostEnvironment, environment, options, logger, hostNameProvider, TimeSpan.FromMilliseconds(500))
+        {
+        }
+
+        public StandbyManager(IScriptHostManager scriptHostManager, ILanguageWorkerChannelManager languageWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
+            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, TimeSpan specializationTimerInterval)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -51,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _changeTokenCallbackSubscription = ChangeToken.RegisterChangeCallback(_ => _logger.LogDebug($"{nameof(StandbyManager)}.{nameof(ChangeToken)} callback has fired."), null);
+            _specializationTimerInterval = specializationTimerInterval;
         }
 
         public static IChangeToken ChangeToken => _standbyChangeToken;
