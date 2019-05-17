@@ -293,6 +293,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _startLatencyMetric?.Dispose();
             _startLatencyMetric = null;
 
+            if (_disposing)
+            {
+                // do not publish ready events when disposing
+                return;
+            }
             _initMessage = initEvent.Message.WorkerInitResponse;
             if (_initMessage.Result.IsFailure(out Exception exc))
             {

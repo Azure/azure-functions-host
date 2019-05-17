@@ -37,9 +37,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             foreach (string channelId in _channels.Keys)
             {
-                _channels[channelId].Dispose();
+                if (_channels.TryRemove(channelId, out ILanguageWorkerChannel channel))
+                {
+                    channel?.Dispose();
+                }
             }
-            _channels.Clear();
         }
 
         internal IEnumerable<ILanguageWorkerChannel> GetChannels()
