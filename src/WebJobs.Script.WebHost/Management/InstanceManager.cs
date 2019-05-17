@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
@@ -40,6 +41,44 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _metricsLogger = metricsLogger;
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _optionsFactory = optionsFactory ?? throw new ArgumentNullException(nameof(optionsFactory));
+        }
+
+        public async Task<string> SpecializeMSISidecar(HostAssignmentContext context)
+        {
+            string endpoint;
+            var msiEnabled = context.IsMSIEnabled(out endpoint);
+
+            _logger.LogInformation($"MSI enabled status: {msiEnabled}");
+
+            if (msiEnabled)
+            {
+                using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationMSIInit))
+                {
+                    var uri = new Uri(endpoint);
+                    var address = $"http://{uri.Host}:{uri.Port}{ScriptConstants.LinuxMSISpecializationStem}";
+
+                    _logger.LogDebug($"Specializing sidecar at {address}");
+
+                    var requestMessage = new HttpRequestMessage(HttpMethod.Post, address)
+                    {
+                        Content = new StringContent(JsonConvert.SerializeObject(context.MSIContext),
+                            Encoding.UTF8, "application/json")
+                    };
+
+                    var response = await _client.SendAsync(requestMessage);
+
+                    _logger.LogInformation($"Specialize MSI sidecar returned {response.StatusCode}");
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var message = $"Specialize MSI sidecar call failed. StatusCode={response.StatusCode}";
+                        _logger.LogError(message);
+                        return message;
+                    }
+                }
+            }
+
+            return null;
         }
 
         public bool StartAssignment(HostAssignmentContext context)

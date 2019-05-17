@@ -43,6 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return StatusCode(StatusCodes.Status400BadRequest, error);
             }
 
+            // Wait for Sidecar specialization to complete before returning ok.
+            // This shouldn't take too long so ok to do this sequentially.
+            error = await _instanceManager.SpecializeMSISidecar(assignmentContext);
+            if (error != null)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, error);
+            }
+
             var result = _instanceManager.StartAssignment(assignmentContext);
 
             return result

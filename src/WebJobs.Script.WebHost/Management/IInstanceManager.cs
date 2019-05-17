@@ -14,5 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         Task<string> ValidateContext(HostAssignmentContext assignmentContext);
 
         bool StartAssignment(HostAssignmentContext assignmentContext);
+
+        Task<string> SpecializeMSISidecar(HostAssignmentContext assignmentContext);
     }
 }

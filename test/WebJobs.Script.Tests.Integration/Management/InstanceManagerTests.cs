@@ -5,13 +5,17 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
+using Moq.Protected;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
@@ -25,20 +29,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly ScriptWebHostEnvironment _scriptWebEnvironment;
         private readonly InstanceManager _instanceManager;
         private readonly HttpClient _httpClient;
+        private readonly LoggerFactory _loggerFactory = new LoggerFactory();
+        private readonly TestOptionsFactory<ScriptApplicationHostOptions> _optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions());
 
         public InstanceManagerTests()
         {
             _httpClient = new HttpClient();
 
             _loggerProvider = new TestLoggerProvider();
-            var loggerFactory = new LoggerFactory();
-            loggerFactory.AddProvider(_loggerProvider);
+            _loggerFactory.AddProvider(_loggerProvider);
 
             _environment = new TestEnvironmentEx();
             _scriptWebEnvironment = new ScriptWebHostEnvironment(_environment);
 
-            var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions());
-            _instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment, loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger());
+            _instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment, _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger());
 
             InstanceManager.Reset();
         }
@@ -106,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
 
-            var error = _loggerProvider.GetAllLogMessages().Where(p => p.Level == LogLevel.Error).First();
+            var error = _loggerProvider.GetAllLogMessages().First(p => p.Level == LogLevel.Error);
             Assert.Equal("Assign failed", error.FormattedMessage);
             Assert.Equal("Kaboom!", error.Exception.Message);
         }
@@ -207,6 +211,103 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
                 p => Assert.StartsWith("Validating host assignment context (SiteId: 1234, SiteName: 'TestSite')", p));
+        }
+
+        [Fact]
+        public async Task SpecializeMSISidecar_EmptyMSIEndpoint_NoOp()
+        {
+            var environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.MsiEndpoint, "" }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment
+            };
+
+            string error = await _instanceManager.SpecializeMSISidecar(assignmentContext);
+            Assert.Null(error);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs, p => Assert.StartsWith("MSI enabled status: False", p));
+        }
+
+        [Fact]
+        public async Task SpecializeMSISidecar_Succeeds()
+        {
+            var environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.MsiEndpoint, "http://localhost:8081" },
+                { EnvironmentSettingNames.MsiSecret, "secret" }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment
+            };
+
+            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK);
+
+            string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
+            Assert.Null(error);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("MSI enabled status: True", p),
+                p => Assert.StartsWith("Specializing sidecar at http://localhost:8081", p),
+                p => Assert.StartsWith("Specialize MSI sidecar returned OK", p));
+        }
+
+        [Fact]
+        public async Task SpecializeMSISidecar_Fails()
+        {
+            var environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.MsiEndpoint, "http://localhost:8081" },
+                { EnvironmentSettingNames.MsiSecret, "secret" }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment
+            };
+
+            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.BadRequest);
+
+            string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
+            Assert.NotNull(error);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("MSI enabled status: True", p),
+                p => Assert.StartsWith("Specializing sidecar at http://localhost:8081", p),
+                p => Assert.StartsWith("Specialize MSI sidecar returned BadRequest", p),
+                p => Assert.StartsWith("Specialize MSI sidecar call failed. StatusCode=BadRequest", p));
+        }
+
+        private InstanceManager GetInstanceManagerForMSISpecialization(HostAssignmentContext hostAssignmentContext, HttpStatusCode httpStatusCode)
+        {
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+            var msiEndpoint = hostAssignmentContext.Environment[EnvironmentSettingNames.MsiEndpoint] + ScriptConstants.LinuxMSISpecializationStem;
+
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", 
+                ItExpr.Is<HttpRequestMessage>(request => request.Method == HttpMethod.Post 
+                                                         && request.RequestUri.AbsoluteUri.Equals(msiEndpoint)
+                                                         && request.Content != null), 
+                ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = httpStatusCode
+            });
+
+            InstanceManager.Reset();
+
+            return new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger());
         }
 
         public void Dispose()

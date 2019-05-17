@@ -36,6 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebJobsSecretStorageKeyVaultConnectionString = "AzureWebJobsSecretStorageKeyVaultConnectionString";
         public const string AzureWebsiteArmCacheEnabled = "WEBSITE_FUNCTIONS_ARMCACHE_ENABLED";
         public const string MountEnabled = "WEBSITE_MOUNT_ENABLED";
+        public const string MsiEndpoint = "MSI_ENDPOINT";
+        public const string MsiSecret = "MSI_SECRET";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
