@@ -504,6 +504,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void HandleWorkerError(Exception exc)
         {
+            if (_disposing)
+            {
+                return;
+            }
             LanguageWorkerProcessExitException langExc = exc as LanguageWorkerProcessExitException;
             // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
             if (langExc != null && langExc.ExitCode == -1)
