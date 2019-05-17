@@ -263,15 +263,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed)
+            if (!_disposed && disposing)
             {
-                if (disposing)
-                {
-                    _workerErrorSubscription.Dispose();
-                    _rpcChannelReadySubscriptions.Dispose();
-                    _workerState.DisposeAndRemoveChannels();
-                    _workerState.Functions.Dispose();
-                }
+                _workerErrorSubscription.Dispose();
+                _rpcChannelReadySubscriptions.Dispose();
+                _workerState.DisposeAndRemoveChannels();
+                _workerState.Functions.Dispose();
                 _disposed = true;
             }
         }
