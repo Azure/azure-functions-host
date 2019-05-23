@@ -88,10 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
                 foreach (var pair in request.Headers)
                 {
-                    if (!string.IsNullOrEmpty(pair.Value))
-                    {
-                        http.Headers.Add(pair.Key.ToLowerInvariant(), pair.Value.ToString());
-                    }
+                    http.Headers.Add(pair.Key.ToLowerInvariant(), pair.Value.ToString());
                 }
 
                 if (request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out object routeData))
@@ -137,21 +134,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         }
 
                         http.Identities.Add(rpcClaimsIdentity);
-                    }
-                }
-
-                // Http cookies
-                if (request.Cookies != null)
-                {
-                    foreach (var cookie in request.Cookies)
-                    {
-                        var rpcCookie = new RpcHttpCookie()
-                        {
-                            Name = cookie.Key,
-                            Value = cookie.Value
-                        };
-
-                        http.Cookies.Add(rpcCookie);
                     }
                 }
 

@@ -14,8 +14,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -97,9 +95,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         internal static void ParseResponseObject(IDictionary<string, object> responseObject, ref object content, out IDictionary<string, object> headers, out int statusCode, out List<Tuple<string, string, CookieOptions>> cookies, out bool enableContentNegotiation)
         {
             headers = null;
+            cookies = null;
             statusCode = StatusCodes.Status200OK;
             enableContentNegotiation = false;
-            cookies = new List<Tuple<string, string, CookieOptions>>();
 
             // TODO: Improve this logic
             // Sniff the object to see if it looks like a response object
@@ -125,12 +123,9 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     enableContentNegotiation = enableContentNegotiationValue;
                 }
 
-                if (responseObject.TryGetValue("cookies", out List<RpcHttpCookie> cookiesValue, ignoreCase: true))
+                if (responseObject.TryGetValue("cookies", out List<Tuple<string, string, CookieOptions>> cookiesValue, ignoreCase: true))
                 {
-                    foreach (RpcHttpCookie cookie in cookiesValue)
-                    {
-                        cookies.Add(Utilities.RpcHttpCookieConverter(cookie));
-                    }
+                    cookies = cookiesValue;
                 }
             }
         }

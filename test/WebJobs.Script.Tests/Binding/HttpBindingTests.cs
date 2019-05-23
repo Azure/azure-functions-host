@@ -4,18 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
-using System.Net;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web.Http;
+using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.WebJobs.Script.Tests;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -45,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Same(headers, headers);
             Assert.Equal(StatusCodes.Status202Accepted, statusCode);
             Assert.False(enableContentNegotiationResponse);
+            // No cookies found or set
+            Assert.True(cookies == null || !cookies.Any());
 
             // verify case insensitivity
             responseObject = new ExpandoObject();
@@ -64,6 +58,69 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Same(headers, headers);
             Assert.Equal(StatusCodes.Status202Accepted, statusCode);
             Assert.True(enableContentNegotiationResponse);
+            // No cookies found or set
+            Assert.True(cookies == null || !cookies.Any());
+        }
+
+        [Fact]
+        public void ParseResponseObject_WithCookies_ReturnsExpectedResult()
+        {
+            var cookieNameValue = new RpcHttpCookie()
+            {
+                Name = "hello-1",
+                Value = "world"
+            };
+
+            var cookieWithProperties = new RpcHttpCookie()
+            {
+                Name = "hello-2",
+                Value = "seattle",
+                Domain = new NullableString()
+                {
+                    Value = "/"
+                },
+                MaxAge = new NullableDouble()
+                {
+                    Value = 60 * 20
+                },
+                HttpOnly = new NullableBool()
+                {
+                    Value = true
+                }
+            };
+
+            IList<RpcHttpCookie> rpcCookies = new List<RpcHttpCookie>()
+            {
+                cookieNameValue,
+                cookieWithProperties
+            };
+
+            dynamic responseObject = new ExpandoObject();
+            responseObject.Body = "Test Body";
+            responseObject.Cookies = rpcCookies;
+            responseObject.StatusCode = "202";  // verify string works as well
+
+            object content = null;
+            var statusCode = StatusCodes.Status200OK;
+            HttpBinding.ParseResponseObject(responseObject, ref content, out IDictionary<string, object> headers, out statusCode, out List<Tuple<string, string, CookieOptions>> cookies, out bool enableContentNegotiationResponse);
+
+            Assert.Equal("Test Body", content);
+            Assert.Same(headers, headers);
+            Assert.Equal(StatusCodes.Status202Accepted, statusCode);
+            Assert.False(enableContentNegotiationResponse);
+
+            Assert.Equal(2, cookies.Count);
+            var firstCookie = cookies.First();
+            Assert.Equal("hello-1", firstCookie.Item1);
+            Assert.Equal("world", firstCookie.Item2);
+            Assert.Equal(new CookieOptions(), firstCookie.Item3);
+            var secondCookie = cookies.Last();
+            Assert.Equal("hello-2", secondCookie.Item1);
+            Assert.Equal("seattle", firstCookie.Item2);
+            Assert.Equal("/", firstCookie.Item3.Domain);
+            Assert.Equal(null, firstCookie.Item3.Expires);
+            Assert.Equal(true, firstCookie.Item3.HttpOnly);
+            Assert.Equal(TimeSpan.FromSeconds(60 * 2), firstCookie.Item3.MaxAge);
         }
 
         [Fact]

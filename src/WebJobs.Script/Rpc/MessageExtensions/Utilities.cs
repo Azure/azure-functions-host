@@ -5,10 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
@@ -27,7 +25,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             expando.statusCode = inputMessage.StatusCode;
             expando.headers = inputMessage.Headers.ToDictionary(p => p.Key, p => (object)p.Value);
             expando.enableContentNegotiation = inputMessage.EnableContentNegotiation;
-            expando.cookies = inputMessage.Cookies.ToList<RpcHttpCookie>();
+
+            expando.cookies = new List<Tuple<string, string, CookieOptions>>();
+            foreach (RpcHttpCookie cookie in inputMessage.Cookies)
+            {
+                expando.cookies.Add(RpcHttpCookieConverter(cookie));
+            }
 
             if (inputMessage.Body != null)
             {
@@ -68,16 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             if (cookie.MaxAge != null)
             {
-                try
-                {
-                    var age = TimeSpan.FromSeconds(cookie.MaxAge.Value);
-                    cookieOptions.MaxAge = age;
-                }
-                catch (Exception e)
-                {
-                    // TODO: log warning that unparseable.
-                    Console.WriteLine(e);
-                }
+                cookieOptions.MaxAge = TimeSpan.FromSeconds(cookie.MaxAge.Value);
             }
 
             return new Tuple<string, string, CookieOptions>(cookie.Name, cookie.Value, cookieOptions);
