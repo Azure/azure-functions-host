@@ -242,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public Task StartWorkerProcessAsync()
         {
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
-                .Timeout(processStartTimeout)
+                .Timeout(TimeSpan.FromSeconds(LanguageWorkerConstants.ProcessStartTimeoutSeconds))
                 .Take(1)
                 .Subscribe(SendWorkerInitRequest, HandleWorkerError);
 
