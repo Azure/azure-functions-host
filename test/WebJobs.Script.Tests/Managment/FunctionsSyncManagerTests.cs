@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public void ArmCacheEnabled_VerifyDefault()
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns((string)null);
-            Assert.False(_functionsSyncManager.ArmCacheEnabled);
+            Assert.True(_functionsSyncManager.ArmCacheEnabled);
         }
 
         [Theory]

@@ -27,12 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
     public class FunctionsSyncManager : IFunctionsSyncManager, IDisposable
     {
-        // Until ANT 82 is fully released, the default value is disabled and we continue
-        // to return just the trigger data.
-        // After ANT 82, we will change the default to enabled.
-        // Note that this app setting is honored by both GeoMaster and Runtime.
-        public const string AzureWebsiteArmCacheEnabledDefaultValue = "0";
-
         private const string HubName = "HubName";
         private const string TaskHubName = "taskHubName";
         private const string Connection = "connection";
@@ -71,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             get
             {
-                return _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled, AzureWebsiteArmCacheEnabledDefaultValue) == "1";
+                return _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled, "1") == "1";
             }
         }
 
