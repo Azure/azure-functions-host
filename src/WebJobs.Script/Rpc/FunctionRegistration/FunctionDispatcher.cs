@@ -179,33 +179,26 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public async Task InvokeAsync(ScriptInvocationContext invocationContext)
+        public void Invoke(ScriptInvocationContext invocationContext)
         {
             try
             {
                 IEnumerable<ILanguageWorkerChannel> workerChannels = GetInitializedWorkerChannels();
                 var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels, _maxProcessCount);
-                BufferBlock<ScriptInvocationContext> bufferBlock = await GetFunctionInvocationBufferBlock(languageWorkerChannel, invocationContext.FunctionMetadata.FunctionId);
-                _logger.LogDebug("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, languageWorkerChannel.Id);
-                languageWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
+                if (languageWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out BufferBlock<ScriptInvocationContext> bufferBlock))
+                {
+                    _logger.LogDebug("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, languageWorkerChannel.Id);
+                    languageWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Function:{invocationContext.FunctionMetadata.Name} is not loaded by the language worker: {languageWorkerChannel.Id}");
+                }
             }
             catch (Exception invokeEx)
             {
                 invocationContext.ResultSource.TrySetException(invokeEx);
             }
-        }
-
-        private async Task<BufferBlock<ScriptInvocationContext>> GetFunctionInvocationBufferBlock(ILanguageWorkerChannel languageWorkerChannel, string functionId)
-        {
-            BufferBlock<ScriptInvocationContext> bufferBlock = null;
-            if (languageWorkerChannel != null)
-            {
-                await Utility.DelayAsync(ScriptConstants.HostTimeoutSeconds, ScriptConstants.HostPollingIntervalMilliseconds, () =>
-                {
-                    return !languageWorkerChannel.FunctionInputBuffers.TryGetValue(functionId, out bufferBlock);
-                });
-            }
-            return bufferBlock;
         }
 
         internal IEnumerable<ILanguageWorkerChannel> GetInitializedWorkerChannels()
