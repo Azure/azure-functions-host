@@ -65,39 +65,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ParseResponseObject_WithCookies_ReturnsExpectedResult()
         {
-            var cookieNameValue = new RpcHttpCookie()
+            var cookieProperties = new Tuple<string, string, CookieOptions>("hello", "world", new CookieOptions()
             {
-                Name = "hello-1",
-                Value = "world"
-            };
+                Domain = "/",
+                MaxAge = TimeSpan.FromSeconds(60),
+                HttpOnly = true
+            });
 
-            var cookieWithProperties = new RpcHttpCookie()
+            IList<Tuple<string, string, CookieOptions>> cookieContents = new List<Tuple<string, string, CookieOptions>>()
             {
-                Name = "hello-2",
-                Value = "seattle",
-                Domain = new NullableString()
-                {
-                    Value = "/"
-                },
-                MaxAge = new NullableDouble()
-                {
-                    Value = 60 * 20
-                },
-                HttpOnly = new NullableBool()
-                {
-                    Value = true
-                }
-            };
-
-            IList<RpcHttpCookie> rpcCookies = new List<RpcHttpCookie>()
-            {
-                cookieNameValue,
-                cookieWithProperties
+                cookieProperties
             };
 
             dynamic responseObject = new ExpandoObject();
             responseObject.Body = "Test Body";
-            responseObject.Cookies = rpcCookies;
+            responseObject.Cookies = cookieContents;
             responseObject.StatusCode = "202";  // verify string works as well
 
             object content = null;
@@ -105,22 +87,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpBinding.ParseResponseObject(responseObject, ref content, out IDictionary<string, object> headers, out statusCode, out List<Tuple<string, string, CookieOptions>> cookies, out bool enableContentNegotiationResponse);
 
             Assert.Equal("Test Body", content);
-            Assert.Same(headers, headers);
+            Assert.Same(cookieContents, cookies);
             Assert.Equal(StatusCodes.Status202Accepted, statusCode);
             Assert.False(enableContentNegotiationResponse);
-
-            Assert.Equal(2, cookies.Count);
-            var firstCookie = cookies.First();
-            Assert.Equal("hello-1", firstCookie.Item1);
-            Assert.Equal("world", firstCookie.Item2);
-            Assert.Equal(new CookieOptions(), firstCookie.Item3);
-            var secondCookie = cookies.Last();
-            Assert.Equal("hello-2", secondCookie.Item1);
-            Assert.Equal("seattle", firstCookie.Item2);
-            Assert.Equal("/", firstCookie.Item3.Domain);
-            Assert.Equal(null, firstCookie.Item3.Expires);
-            Assert.Equal(true, firstCookie.Item3.HttpOnly);
-            Assert.Equal(TimeSpan.FromSeconds(60 * 2), firstCookie.Item3.MaxAge);
+            Assert.Same(headers, headers);
         }
 
         [Fact]
