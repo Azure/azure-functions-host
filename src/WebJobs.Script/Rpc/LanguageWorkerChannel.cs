@@ -352,6 +352,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void SendFunctionLoadRequest(FunctionMetadata metadata)
         {
+            _workerChannelLogger.LogDebug("Sending FunctionLoadRequest for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
             _functionInputBuffers[metadata.FunctionId] = new BufferBlock<ScriptInvocationContext>();
 
             // send a load request for the registered function
@@ -388,6 +389,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void LoadResponse(FunctionLoadResponse loadResponse)
         {
+            _workerChannelLogger.LogDebug("Received FunctionLoadRequest for functionId:{functionId}", loadResponse.FunctionId);
             if (loadResponse.Result.IsFailure(out Exception ex))
             {
                 //Cache function load errors to replay error messages on invoking failed functions
