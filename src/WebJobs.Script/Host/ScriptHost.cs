@@ -1053,8 +1053,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            // A function can be disabled at the trigger or function level
-            if (IsDisabled(triggerDisabledValue, settingsManager) ||
+            // A function can be disabled at the trigger or function level, or via an
+            // app level per function setting
+            if (settingsManager.SettingIsEnabled($"AzureWebJobs.{functionName}.Disabled") ||
+                IsDisabled(triggerDisabledValue, settingsManager) ||
                 IsDisabled((JValue)configMetadata["disabled"], settingsManager))
             {
                 functionMetadata.IsDisabled = true;
@@ -1980,10 +1982,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 else
                 {
                     string settingName = (string)isDisabledValue;
-                    string value = settingsManager.GetSetting(settingName);
-                    if (!string.IsNullOrEmpty(value) &&
-                        (string.Compare(value, "1", StringComparison.OrdinalIgnoreCase) == 0 ||
-                         string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0))
+                    if (settingsManager.SettingIsEnabled(settingName))
                     {
                         return true;
                     }

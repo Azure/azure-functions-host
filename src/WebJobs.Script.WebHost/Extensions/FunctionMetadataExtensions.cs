@@ -69,25 +69,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// <returns>JObject that represent the trigger for scale controller to consume</returns>
         public static async Task<JObject> ToFunctionTrigger(this FunctionMetadata functionMetadata, ScriptHostConfiguration config)
         {
-            // Only look at the function if it's not disabled
-            if (!functionMetadata.IsDisabled)
+            // Get function.json path
+            var functionPath = Path.Combine(config.RootScriptPath, functionMetadata.Name);
+            var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
+
+            // Read function.json as a JObject
+            var functionConfig = await GetFunctionConfig(functionMetadataFilePath);
+
+            // Find the trigger and add functionName to it
+            foreach (JObject binding in (JArray)functionConfig["bindings"])
             {
-                // Get function.json path
-                var functionPath = Path.Combine(config.RootScriptPath, functionMetadata.Name);
-                var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
-
-                // Read function.json as a JObject
-                var functionConfig = await GetFunctionConfig(functionMetadataFilePath);
-
-                // Find the trigger and add functionName to it
-                foreach (JObject binding in (JArray)functionConfig["bindings"])
+                var type = (string)binding["type"];
+                if (type.EndsWith("Trigger", StringComparison.OrdinalIgnoreCase))
                 {
-                    var type = (string)binding["type"];
-                    if (type.EndsWith("Trigger", StringComparison.OrdinalIgnoreCase))
-                    {
-                        binding.Add("functionName", functionMetadata.Name);
-                        return binding;
-                    }
+                    binding.Add("functionName", functionMetadata.Name);
+                    return binding;
                 }
             }
 

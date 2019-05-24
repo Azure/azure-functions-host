@@ -66,6 +66,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionDirectories = Directory.EnumerateDirectories(config.RootScriptPath);
             var metadata = ScriptHost.ReadFunctionMetadata(functionDirectories, traceWriter, null, functionErrors, functionWhitelist: config.Functions);
             Assert.Equal(51, metadata.Count);
+
+            var disabledFunctions = metadata.Where(p => p.IsDisabled).OrderBy(p => p.Name).ToArray();
+            Assert.Equal(2, disabledFunctions.Length);
+            Assert.Equal("HttpTrigger-Disabled", disabledFunctions[0].Name);
+            Assert.Equal("SendGrid", disabledFunctions[1].Name);
         }
 
         [Fact]
@@ -1753,10 +1758,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public class TestFixture
+        public class TestFixture : IDisposable
         {
             public TestFixture()
             {
+                // disable function using app level setting - test verifies this above
+                Environment.SetEnvironmentVariable("AzureWebJobs.SendGrid.Disabled", "1");
+
                 ScriptHostConfiguration config = new ScriptHostConfiguration()
                 {
                     TraceWriter = NullTraceWriter.Instance
@@ -1769,6 +1777,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             public ScriptHost Host { get; private set; }
+
+            public void Dispose()
+            {
+                Environment.SetEnvironmentVariable("AzureWebJobs.SendGrid.Disabled", null);
+            }
         }
     }
 }

@@ -99,5 +99,18 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
             Environment.SetEnvironmentVariable(settingKey, settingValue);
         }
+
+        public bool SettingIsEnabled(string settingKey)
+        {
+            string value = GetSetting(settingKey);
+            if (!string.IsNullOrEmpty(value) &&
+                (string.Compare(value, "1", StringComparison.OrdinalIgnoreCase) == 0 ||
+                 string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0))
+            {
+                return true;
+            }
+
+            return false;
+        }
     }
 }
