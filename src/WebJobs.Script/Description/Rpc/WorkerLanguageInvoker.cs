@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             ScriptInvocationResult result;
             _logger.LogDebug($"Sending invocation id:{invocationId}");
-            await _functionDispatcher.InvokeAsync(invocationContext);
+            _functionDispatcher.Invoke(invocationContext);
             result = await invocationContext.ResultSource.Task;
 
             await BindOutputsAsync(triggerValue, context.Binder, result);
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (_functionDispatcher != null && _functionDispatcher.State == FunctionDispatcherState.Initializing)
             {
                 _logger.LogDebug($"functionDispatcher state: {_functionDispatcher.State}");
-                await Utility.DelayAsync(ScriptConstants.HostTimeoutSeconds, ScriptConstants.HostPollingIntervalMilliseconds, () =>
+                await Utility.DelayAsync(LanguageWorkerConstants.ProcessStartTimeoutSeconds, 25, () =>
                 {
                     return _functionDispatcher.State != FunctionDispatcherState.Initialized;
                 });
