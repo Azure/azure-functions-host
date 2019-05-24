@@ -353,6 +353,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void SendFunctionLoadRequest(FunctionMetadata metadata)
         {
+            _functionInputBuffers[metadata.FunctionId] = new BufferBlock<ScriptInvocationContext>();
             // send a load request for the registered function
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
@@ -387,9 +388,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void LoadResponse(FunctionLoadResponse loadResponse)
         {
-            // associate the invocation input buffer with the function
-            _functionInputBuffers[loadResponse.FunctionId] = new BufferBlock<ScriptInvocationContext>();
-
             if (loadResponse.Result.IsFailure(out Exception ex))
             {
                 //Cache function load errors to replay error messages on invoking failed functions
@@ -403,6 +401,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             // link the invocation inputs to the invoke call
             var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequest(ctx));
+            // associate the invocation input buffer with the function
             var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
             _inputLinks.Add(disposableLink);
         }
