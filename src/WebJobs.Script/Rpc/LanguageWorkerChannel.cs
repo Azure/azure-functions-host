@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class LanguageWorkerChannel : ILanguageWorkerChannel
     {
-        private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly string _rootScriptPath;
         private readonly IScriptEventManager _eventManager;
@@ -353,7 +352,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void SendFunctionLoadRequest(FunctionMetadata metadata)
         {
+            _workerChannelLogger.LogDebug("Sending FunctionLoadRequest for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
             _functionInputBuffers[metadata.FunctionId] = new BufferBlock<ScriptInvocationContext>();
+
             // send a load request for the registered function
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
@@ -388,6 +389,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void LoadResponse(FunctionLoadResponse loadResponse)
         {
+            _workerChannelLogger.LogDebug("Received FunctionLoadRequest for functionId:{functionId}", loadResponse.FunctionId);
             if (loadResponse.Result.IsFailure(out Exception ex))
             {
                 //Cache function load errors to replay error messages on invoking failed functions
