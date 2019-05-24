@@ -389,7 +389,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void LoadResponse(FunctionLoadResponse loadResponse)
         {
-            _workerChannelLogger.LogDebug("Received FunctionLoadRequest for functionId:{functionId}", loadResponse.FunctionId);
+            _workerChannelLogger.LogDebug("Received FunctionLoadResponse for functionId:{functionId}", loadResponse.FunctionId);
             if (loadResponse.Result.IsFailure(out Exception ex))
             {
                 //Cache function load errors to replay error messages on invoking failed functions
