@@ -243,6 +243,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
 
+                builder.Services.AddSingleton<ITelemetryInitializer, ScriptTelemetryInitializer>();
+
                 if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
                 {
                     for (int i = 0; i < builder.Services.Count; i++)
