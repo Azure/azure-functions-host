@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.UseMiddleware<HttpThrottleMiddleware>();
             });
             builder.UseMiddleware<ResponseContextItemsCheckMiddleware>();
+            builder.UseMiddleware<JobHostPipelineMiddleware>();
             builder.UseMiddleware<FunctionInvocationMiddleware>();
 
             // Register /admin/vfs, and /admin/zip to the VirtualFileSystem middleware.
