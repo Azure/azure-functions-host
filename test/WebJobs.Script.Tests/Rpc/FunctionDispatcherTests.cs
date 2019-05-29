@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             await functionDispatcher.InitializeAsync(GetTestFunctionsList(LanguageWorkerConstants.NodeLanguageWorkerName));
 
             var finalChannelCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
-            Assert.Equal(finalChannelCount, expectedProcessCount);
+            Assert.Equal(expectedProcessCount, finalChannelCount);
 
             // Verify LanguageWorkerChannelState when channel after it is initialized
             Assert.True(functionDispatcher.WorkerState.GetChannels().All(ch => ch.State == LanguageWorkerChannelState.Initialized));
@@ -70,23 +70,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             await functionDispatcher.InitializeAsync(GetTestFunctionsList(LanguageWorkerConstants.JavaLanguageWorkerName));
 
             var finalWebhostChannelCount = await WaitForWebhostWorkerChannelsToStartup(functionDispatcher.ChannelManager, expectedProcessCount, "java");
-            Assert.Equal(finalWebhostChannelCount, expectedProcessCount);
+            Assert.Equal(expectedProcessCount, finalWebhostChannelCount);
 
             var finalJobhostChannelCount = functionDispatcher.WorkerState.GetChannels().Count();
-            Assert.Equal(finalJobhostChannelCount, 0);
+            Assert.Equal(0, finalJobhostChannelCount);
         }
 
         [Fact]
         public void MaxProcessCount_Returns_Default()
         {
             FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher();
-            Assert.Equal(functionDispatcher.MaxProcessCount, 1);
+            Assert.Equal(1, functionDispatcher.MaxProcessCount);
 
             functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher("0");
-            Assert.Equal(functionDispatcher.MaxProcessCount, 1);
+            Assert.Equal(1, functionDispatcher.MaxProcessCount);
 
             functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher("-1");
-            Assert.Equal(functionDispatcher.MaxProcessCount, 1);
+            Assert.Equal(1, functionDispatcher.MaxProcessCount);
         }
 
         [Fact]
@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             int expectedProcessCount = 3;
             FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(expectedProcessCount.ToString());
-            Assert.Equal(functionDispatcher.MaxProcessCount, expectedProcessCount);
+            Assert.Equal(expectedProcessCount, functionDispatcher.MaxProcessCount);
         }
 
         [Fact]
@@ -102,14 +102,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             int expectedProcessCount = 30;
             FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(expectedProcessCount.ToString());
-            Assert.Equal(functionDispatcher.MaxProcessCount, 10);
+            Assert.Equal(10, functionDispatcher.MaxProcessCount);
         }
 
         [Fact]
         public async void FunctionDispatcherState_Default_DotNetFunctions()
         {
             FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher();
-            Assert.Equal(functionDispatcher.State, FunctionDispatcherState.Default);
+            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
             FunctionMetadata func1 = new FunctionMetadata()
             {
                 Name = "func1",
@@ -120,20 +120,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 func1
             };
             await functionDispatcher.InitializeAsync(functions);
-            Assert.Equal(functionDispatcher.State, FunctionDispatcherState.Default);
+            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
 
             await functionDispatcher.InitializeAsync(functions);
-            Assert.Equal(functionDispatcher.State, FunctionDispatcherState.Default);
+            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
 
             await functionDispatcher.InitializeAsync(functions);
-            Assert.Equal(functionDispatcher.State, FunctionDispatcherState.Default);
+            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
         }
 
         [Fact]
         public async void FunctionDispatcherState_Default_NoFunctions()
         {
             FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher();
-            Assert.Equal(functionDispatcher.State, FunctionDispatcherState.Default);
+            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
             await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
         }
 
@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             var mockLanguageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
             FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(mockLanguageWorkerChannelManager: mockLanguageWorkerChannelManager);
-            Assert.Equal(functionDispatcher.State, FunctionDispatcherState.Default);
+            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
             await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
             // Wait longer than debouce action.
             await Task.Delay(6000);
@@ -163,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             var mockLanguageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
             FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(mockLanguageWorkerChannelManager: mockLanguageWorkerChannelManager);
-            Assert.Equal(functionDispatcher.State, FunctionDispatcherState.Default);
+            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
             await functionDispatcher.InitializeAsync(functions);
             // Wait longer than debouce action.
             await Task.Delay(6000);
@@ -184,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 func1
             };
             await functionDispatcher.InitializeAsync(functions);
-            Assert.Equal(functionDispatcher.State, FunctionDispatcherState.Initializing);
+            Assert.True(functionDispatcher.State == FunctionDispatcherState.Initializing || functionDispatcher.State == FunctionDispatcherState.Initialized);
             await WaitForFunctionDispactherStateInitialized(functionDispatcher);
         }
 
