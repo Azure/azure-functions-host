@@ -10,6 +10,7 @@ using Google.Protobuf;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Grpc.Capabilities;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -141,6 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (request.Body != null && request.ContentLength > 0)
                 {
                     object body = null;
+                    object rawBodyBytes = null;
                     string rawBody = null;
 
                     MediaTypeHeaderValue mediaType = null;
@@ -166,7 +168,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             var bytes = new byte[length];
                             request.Body.Read(bytes, 0, length);
                             body = bytes;
-                            rawBody = Encoding.UTF8.GetString(bytes);
+                            if (Capabilities.IsCapabilityEnabled(ExposedCapabilities.RawHttpBodyBytes))
+                            {
+                                rawBodyBytes = bytes;
+                            }
+                            else
+                            {
+                                rawBody = Encoding.UTF8.GetString(bytes);
+                            }
                         }
                     }
                     // default if content-tye not found or recognized
@@ -178,7 +187,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
                     request.Body.Position = 0;
                     http.Body = body.ToRpc(logger);
-                    http.RawBody = rawBody.ToRpc(logger);
+                    if (Capabilities.IsCapabilityEnabled(ExposedCapabilities.RawHttpBodyBytes))
+                    {
+                        http.RawBody = rawBodyBytes.ToRpc(logger);
+                    }
+                    else
+                    {
+                        http.RawBody = rawBody.ToRpc(logger);
+                    }
                 }
             }
             else
