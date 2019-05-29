@@ -3,7 +3,7 @@
 
 using Microsoft.AspNetCore.HttpsPolicy;
 
-namespace Microsoft.Azure.WebJobs.Script.Config
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
     public class HostHstsOptions : HstsOptions
     {

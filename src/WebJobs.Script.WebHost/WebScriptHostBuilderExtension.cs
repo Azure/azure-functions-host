@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // register default configuration
                     // must happen before the script host is added below
                     services.ConfigureOptions<HttpOptionsSetup>();
+                    services.ConfigureOptions<HostHstsOptionsSetup>();
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, webJobsBuilder =>
                 {
@@ -75,6 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.TryAddSingleton<IScriptWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
+                    services.TryAddSingleton<IJobHostHttpMiddleware, HstsConfigurationMiddleware>();
 
                     // Make sure the registered IHostIdProvider is used
                     IHostIdProvider provider = rootServiceProvider.GetService<IHostIdProvider>();

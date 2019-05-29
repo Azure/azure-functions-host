@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
-namespace Microsoft.Azure.WebJobs.Script.Config
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
     internal class HostHstsOptionsSetup : IConfigureOptions<HostHstsOptions>
     {
