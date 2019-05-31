@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 { ExposedCapabilities.RawHttpBodyBytes, "true" }
             };
 
-            Capabilities.HandleCapabilities(capabilities);
+            Capabilities.UpdateCapabilities(capabilities);
 
             Assert.True(Capabilities.IsCapabilityEnabled(ExposedCapabilities.RawHttpBodyBytes));
         }
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 { ExposedCapabilities.RawHttpBodyBytes, "true" }
             };
 
-            Capabilities.HandleCapabilities(capabilities);
+            Capabilities.UpdateCapabilities(capabilities);
 
             Assert.True(Capabilities.IsCapabilityEnabled(ExposedCapabilities.RawHttpBodyBytes));
 
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 { ExposedCapabilities.RawHttpBodyBytes, "false" }
             };
 
-            Capabilities.HandleCapabilities(changedCapabilities);
+            Capabilities.UpdateCapabilities(changedCapabilities);
 
             Assert.False(Capabilities.IsCapabilityEnabled(ExposedCapabilities.RawHttpBodyBytes));
         }
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 { testCapability, TestCapability.State1.ToString() }
             };
 
-            Capabilities.HandleCapabilities(capabilities);
+            Capabilities.UpdateCapabilities(capabilities);
 
             Assert.Equal(TestCapability.State1.ToString(), Capabilities.GetCapabilityState(testCapability));
         }
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 { testCapability, TestCapability.State1.ToString() }
             };
 
-            Capabilities.HandleCapabilities(capabilities);
+            Capabilities.UpdateCapabilities(capabilities);
 
             Assert.Equal(TestCapability.State1.ToString(), Capabilities.GetCapabilityState(testCapability));
 
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 { testCapability, TestCapability.State3.ToString() }
             };
 
-            Capabilities.HandleCapabilities(changedCapabilities);
+            Capabilities.UpdateCapabilities(changedCapabilities);
 
             Assert.Equal(TestCapability.State3.ToString(), Capabilities.GetCapabilityState(testCapability));
         }
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 { ExposedCapabilities.RawHttpBodyBytes, "true" }
             };
 
-            Capabilities.HandleCapabilities(capabilities);
+            Capabilities.UpdateCapabilities(capabilities);
 
             Assert.Equal(TestCapability.State1.ToString(), Capabilities.GetCapabilityState(testCapability));
             Assert.True(Capabilities.IsCapabilityEnabled(ExposedCapabilities.RawHttpBodyBytes));

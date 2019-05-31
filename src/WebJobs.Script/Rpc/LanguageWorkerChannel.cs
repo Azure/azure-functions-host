@@ -314,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _state = LanguageWorkerChannelState.Initialized;
 
-            Capabilities.HandleCapabilities(_initMessage.Capabilities);
+            Capabilities.UpdateCapabilities(_initMessage.Capabilities);
 
             if (_isWebHostChannel)
             {

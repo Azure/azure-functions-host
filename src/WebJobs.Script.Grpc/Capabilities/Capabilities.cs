@@ -27,15 +27,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Capabilities
             return state;
         }
 
-        public static void HandleCapabilities(MapField<string, string> capabilities)
+        public static void UpdateCapabilities(MapField<string, string> capabilities)
         {
             foreach (KeyValuePair<string, string> capability in capabilities)
             {
-                HandleCapability(capability);
+                UpdateCapability(capability);
             }
         }
 
-        public static void HandleCapability(KeyValuePair<string, string> capability)
+        public static void UpdateCapability(KeyValuePair<string, string> capability)
         {
             bool enable = false;
             if (bool.TryParse(capability.Value, out enable))
