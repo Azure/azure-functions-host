@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -12,47 +13,33 @@ namespace Microsoft.Azure.WebJobs.Script.Middleware
 {
     public class HstsConfigurationMiddleware : IJobHostHttpMiddleware
     {
-        private readonly IOptions<HostHstsOptions> _hostHstsOptions;
-        private HstsMiddleware _hstsMiddleware;
-        private RequestDelegate _next;
-        private double _nextConfigured = 0;
-        private InvokeDelegate _invoke;
+        private RequestDelegate _invoke;
 
         public HstsConfigurationMiddleware(IOptions<HostHstsOptions> hostHstsOptions)
         {
-            _hostHstsOptions = hostHstsOptions;
-            _invoke = InvokeIntialization;
-        }
+            RequestDelegate invoke = async context =>
+            {
+                if (context.Items.Remove(ScriptConstants.HstsMiddlewareRequestDelegate, out object requestDelegate) && requestDelegate is RequestDelegate next)
+                {
+                    await next(context);
+                }
+            };
 
-        private delegate Task InvokeDelegate(HttpContext httpContext, RequestDelegate next);
+            if (hostHstsOptions.Value.IsEnabled)
+            {
+                var hstsMiddleware = new HstsMiddleware(invoke, hostHstsOptions);
+                _invoke = hstsMiddleware.Invoke;
+            }
+            else
+            {
+                _invoke = invoke;
+            }
+        }
 
         public async Task Invoke(HttpContext context, RequestDelegate next)
         {
-            await _invoke(context, next);
-        }
-
-        public async Task InvokeIntialized(HttpContext context, RequestDelegate next)
-        {
-            await _next(context);
-        }
-
-        private async Task InvokeIntialization(HttpContext httpContext, RequestDelegate next)
-        {
-            if (Interlocked.CompareExchange(ref _nextConfigured, 1, 0) == 0)
-            {
-                if (_hostHstsOptions.Value.IsEnabled)
-                {
-                    _hstsMiddleware = new HstsMiddleware(next, _hostHstsOptions);
-                    Interlocked.Exchange(ref _next, _hstsMiddleware.Invoke);
-                }
-                else
-                {
-                    Interlocked.Exchange(ref _next, next);
-                }
-
-                Interlocked.Exchange(ref _invoke, InvokeIntialized);
-            }
-            await _invoke(httpContext, _next);
+            context.Items.Add(ScriptConstants.HstsMiddlewareRequestDelegate, next);
+            await _invoke(context);
         }
     }
 }
