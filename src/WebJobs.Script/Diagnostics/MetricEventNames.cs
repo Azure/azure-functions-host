@@ -43,7 +43,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string LinuxContainerSpecializationZipDownload = "linux.container.specialization.zip.download";
         public const string LinuxContainerSpecializationZipWrite = "linux.container.specialization.zip.write";
         public const string LinuxContainerSpecializationZipHead = "linux.container.specialization.zip.head";
-        public const string LinuxContainerSpecializationFuseMount = "linux.container.specialization.zip.mount";
+        public const string LinuxContainerSpecializationFuseMount = "linux.container.specialization.mount";
         public const string LinuxContainerSpecializationMSIInit = "linux.container.specialization.msi.init";
+        public const string LinuxContainerSpecializationUnsquash = "linux.container.specialization.unsquash";
+        public const string LinuxContainerSpecializationFileCommand = "linux.container.specialization.file.command";
+        public const string LinuxContainerSpecializationAzureFilesMount = "linux.container.specialization.azure.files.mount";
     }
 }

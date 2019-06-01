@@ -24,6 +24,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("MSISpecializationPayload")]
         public MSIContext MSIContext { get; set; }
 
+        public string AzureFilesConnectionString
+            => Environment.ContainsKey(EnvironmentSettingNames.AzureFilesConnectionString)
+                ? Environment[EnvironmentSettingNames.AzureFilesConnectionString]
+                : string.Empty;
+
+        public string AzureFilesContentShare
+            => Environment.ContainsKey(EnvironmentSettingNames.AzureFilesContentShare)
+                && !string.IsNullOrEmpty(Environment[EnvironmentSettingNames.AzureFilesContentShare])
+                ? Environment[EnvironmentSettingNames.AzureFilesContentShare]
+                : SiteName;
+
         public RunFromPackageContext GetRunFromPkgContext()
         {
             if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteRunFromPackage))
