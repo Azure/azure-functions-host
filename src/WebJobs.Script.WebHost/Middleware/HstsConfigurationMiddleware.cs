@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Middleware
 
         public HstsConfigurationMiddleware(IOptions<HostHstsOptions> hostHstsOptions)
         {
-            RequestDelegate invoke = async context =>
+            RequestDelegate contextNext = async context =>
             {
                 if (context.Items.Remove(ScriptConstants.HstsMiddlewareRequestDelegate, out object requestDelegate) && requestDelegate is RequestDelegate next)
                 {
@@ -27,12 +27,12 @@ namespace Microsoft.Azure.WebJobs.Script.Middleware
 
             if (hostHstsOptions.Value.IsEnabled)
             {
-                var hstsMiddleware = new HstsMiddleware(invoke, hostHstsOptions);
+                var hstsMiddleware = new HstsMiddleware(contextNext, hostHstsOptions);
                 _invoke = hstsMiddleware.Invoke;
             }
             else
             {
-                _invoke = invoke;
+                _invoke = contextNext;
             }
         }
 
