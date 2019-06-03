@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public const string HostIdPath = WebHost + ":hostid";
         public const string ExtensionBundle = "extensionBundle";
         public const string ManagedDependency = "managedDependency";
-        public const string Hsts = "hsts";
+        public const string Http = "http";
+        public const string Hsts = Http + ":hsts";
     }
 }

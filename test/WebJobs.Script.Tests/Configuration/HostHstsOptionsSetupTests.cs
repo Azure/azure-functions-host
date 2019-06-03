@@ -56,8 +56,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }")]
         [InlineData(@"{
                     'version': '2.0',
-                    'hsts' : {
-                        'isEnabled' : true
+                    'http' : {
+                        'hsts' : {
+                            'isEnabled' : true
+                            }
                         }
                     }")]
         public void MissingOrValidHstsConfig_DoesNotThrowException(string hostJsonContent)
@@ -71,35 +73,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Null(ex);
         }
 
-        [Theory]
-        [InlineData(@"{
-                    'version': '2.0',
-                    'hsts' : {
-                        'maxAge' : '30'
-                        }
-                    }")]
-        public void HstsConfig_IsEnabledNotSet_Throws(string hostJsonContent)
-        {
-            File.WriteAllText(_hostJsonFile, hostJsonContent);
-            var configuration = BuildHostJsonConfiguration();
-
-            HostHstsOptionsSetup setup = new HostHstsOptionsSetup(configuration);
-            HostHstsOptions options = new HostHstsOptions();
-            var ex = Record.Exception(() => setup.Configure(options));
-            Assert.NotNull(ex);
-        }
-
         [Fact]
         public void ValidHstsConfig_BindsToOptions()
         {
             string hostJsonContent = @"{
-                    'version': '2.0',
-                    'hsts' : {
-                        'isEnabled' : true,
-                        'maxAge' : '10'
-                        }
-                    }";
-
+                                         'version': '2.0',
+                                         'http': {
+                                             'hsts': {
+                                                 'isEnabled': true,
+                                                 'maxAge': '10'
+                                             }
+                                         }
+                                     }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
 

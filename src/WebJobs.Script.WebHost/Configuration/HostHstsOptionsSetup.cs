@@ -21,17 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         {
             IConfigurationSection jobHostSection = _configuration.GetSection(ConfigurationSectionNames.JobHost);
             var hstsSection = jobHostSection.GetSection(ConfigurationSectionNames.Hsts);
-
-            if (hstsSection.Exists())
-            {
-                var hstsIsEnabled = hstsSection.GetValue<bool?>(ScriptConstants.HstsIsEnabledPropertyName);
-                if (!hstsIsEnabled.HasValue)
-                {
-                    string message = $"The value of IsEnabled property in hsts section of {ScriptConstants.HostMetadataFileName} file is missing. See https://aka.ms/functions-hostjson for more information";
-                    throw new ArgumentException(message);
-                }
-                hstsSection.Bind(options);
-            }
+            hstsSection.Bind(options);
         }
     }
 }

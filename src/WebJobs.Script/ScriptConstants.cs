@@ -133,8 +133,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ExtensionBundleTemplatesFile = "templates.json";
         public const string ExtensionBundleResourcesFile = "Resources.json";
 
-        public const string HstsIsEnabledPropertyName = "isEnabled";
-
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
     }
