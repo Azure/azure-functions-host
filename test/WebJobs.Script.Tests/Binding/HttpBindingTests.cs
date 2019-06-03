@@ -7,7 +7,6 @@ using System.Dynamic;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -55,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpBinding.ParseResponseObject(responseObject, ref content, out headers, out statusCode, out cookies, out enableContentNegotiationResponse);
 
             Assert.Equal("Test Body", content);
-            Assert.Same(headers, headers);
+            Assert.Equal(null, headers);
             Assert.Equal(StatusCodes.Status202Accepted, statusCode);
             Assert.True(enableContentNegotiationResponse);
             // No cookies found or set
@@ -88,9 +87,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal("Test Body", content);
             Assert.Same(cookieContents, cookies);
+            Assert.Equal(cookieContents.Count, cookies.Count);
+            var firstCookie = cookies.First();
+            Assert.Same(cookieProperties, firstCookie);
+            Assert.Same(cookieProperties.Item1, firstCookie.Item1);
+            Assert.Same(cookieProperties.Item2, firstCookie.Item2);
+            Assert.Same(cookieProperties.Item3, firstCookie.Item3);
+            Assert.Same(cookieContents.First(), cookies.First());
+            Assert.Same(cookieContents.First(), cookies.First());
             Assert.Equal(StatusCodes.Status202Accepted, statusCode);
             Assert.False(enableContentNegotiationResponse);
-            Assert.Same(headers, headers);
+            Assert.Equal(null, headers);
         }
 
         [Fact]

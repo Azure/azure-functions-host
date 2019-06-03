@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -103,12 +104,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             // Sniff the object to see if it looks like a response object
             // by convention
             object bodyValue = null;
-            if (responseObject.TryGetValue("body", out bodyValue, ignoreCase: true))
+            if (responseObject.TryGetValue(LanguageWorkerConstants.RpcHttpBody, out bodyValue, ignoreCase: true))
             {
                 // the response content becomes the specified body value
                 content = bodyValue;
 
-                if (responseObject.TryGetValue("headers", out IDictionary<string, object> headersValue, ignoreCase: true))
+                if (responseObject.TryGetValue(LanguageWorkerConstants.RpcHttpHeaders, out IDictionary<string, object> headersValue, ignoreCase: true))
                 {
                     headers = headersValue;
                 }
@@ -118,12 +119,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     statusCode = responseStatusCode.Value;
                 }
 
-                if (responseObject.TryGetValue<bool>("enableContentNegotiation", out bool enableContentNegotiationValue, ignoreCase: true))
+                if (responseObject.TryGetValue<bool>(LanguageWorkerConstants.RpcHttpEnableContentNegotiation, out bool enableContentNegotiationValue, ignoreCase: true))
                 {
                     enableContentNegotiation = enableContentNegotiationValue;
                 }
 
-                if (responseObject.TryGetValue("cookies", out List<Tuple<string, string, CookieOptions>> cookiesValue, ignoreCase: true))
+                if (responseObject.TryGetValue(LanguageWorkerConstants.RpcHttpCookies, out List<Tuple<string, string, CookieOptions>> cookiesValue, ignoreCase: true))
                 {
                     cookies = cookiesValue;
                 }
@@ -134,8 +135,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             statusCode = StatusCodes.Status200OK;
 
-            if (!responseObject.TryGetValue("statusCode", out object statusValue, ignoreCase: true) &&
-                !responseObject.TryGetValue("status", out statusValue, ignoreCase: true))
+            if (!responseObject.TryGetValue(LanguageWorkerConstants.RpcHttpStatusCode, out object statusValue, ignoreCase: true) &&
+                !responseObject.TryGetValue(LanguageWorkerConstants.RpcHttpStatus, out statusValue, ignoreCase: true))
             {
                 return false;
             }

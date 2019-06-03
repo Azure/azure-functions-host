@@ -35,8 +35,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public const int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
 
-        //Logs
+        // Logs
         public const string LanguageWorkerConsoleLogPrefix = "LanguageWorkerConsoleLog";
         public const string FunctionConsoleLogCategoryName = "Host.Function.Console";
+
+        // Rpc Http Constants
+        public const string RpcHttpBody = "body";
+        public const string RpcHttpHeaders = "headers";
+        public const string RpcHttpEnableContentNegotiation = "enableContentNegotiation";
+        public const string RpcHttpCookies = "cookies";
+        public const string RpcHttpStatusCode = "statusCode";
+        public const string RpcHttpStatus = "status";
     }
 }
