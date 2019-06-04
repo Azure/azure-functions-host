@@ -1,9 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using Google.Protobuf.Collections;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -90,6 +93,95 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Equal(bindingInfo.Direction, (BindingInfo.Types.Direction)bindingMetadata.Direction);
             Assert.Equal(bindingInfo.Type, bindingMetadata.Type);
             Assert.Equal(bindingInfo.DataType, BindingInfo.Types.DataType.Undefined);
+        }
+
+        [Theory]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, null, null, null, null, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Strict, null, null, null, null, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.None, null, null, null, null, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, "4/17/2019", null, null, null, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, null, "bing.com", null, null, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, null, null, true, null, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, null, null, null, 60 * 60 * 24, null, null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, null, null, null, null, "/example/route", null)]
+        [InlineData("testuser", "testvalue", RpcHttpCookie.Types.SameSite.Lax, null, null, null, null, null, true)]
+        public void SetCookie_ReturnsExpectedResult(string name, string value, RpcHttpCookie.Types.SameSite sameSite, string expires,
+            string domain, bool? httpOnly, double? maxAge, string path, bool? secure)
+        {
+            // Mock rpc cookie
+            var rpcCookie = new RpcHttpCookie()
+            {
+                Name = name,
+                Value = value,
+                SameSite = sameSite
+            };
+
+            if (!string.IsNullOrEmpty(domain))
+            {
+                rpcCookie.Domain = new NullableString()
+                {
+                    Value = domain
+                };
+            }
+
+            if (!string.IsNullOrEmpty(path))
+            {
+                rpcCookie.Path = new NullableString()
+                {
+                    Value = path
+                };
+            }
+
+            if (maxAge.HasValue)
+            {
+                rpcCookie.MaxAge = new NullableDouble()
+                {
+                    Value = maxAge.Value
+                };
+            }
+
+            DateTimeOffset? expiresDateTime = null;
+            if (!string.IsNullOrEmpty(expires))
+            {
+                if (DateTimeOffset.TryParse(expires, out DateTimeOffset result))
+                {
+                    expiresDateTime = result;
+                    rpcCookie.Expires = new NullableTimestamp()
+                    {
+                        Value = result.ToTimestamp()
+                    };
+                }
+            }
+
+            if (httpOnly.HasValue)
+            {
+                rpcCookie.HttpOnly = new NullableBool()
+                {
+                    Value = httpOnly.Value
+                };
+            }
+
+            if (secure.HasValue)
+            {
+                rpcCookie.Secure = new NullableBool()
+                {
+                    Value = secure.Value
+                };
+            }
+
+            var appendCookieArguments = Utilities.RpcHttpCookieConverter(rpcCookie);
+            Assert.Equal(appendCookieArguments.Item1, name);
+            Assert.Equal(appendCookieArguments.Item2, value);
+
+            var cookieOptions = appendCookieArguments.Item3;
+            Assert.Equal(cookieOptions.Domain, domain);
+            Assert.Equal(cookieOptions.Path, path ?? "/");
+
+            Assert.Equal(cookieOptions.MaxAge?.TotalSeconds, maxAge);
+            Assert.Equal(cookieOptions.Expires?.UtcDateTime.ToString(), expiresDateTime?.UtcDateTime.ToString());
+
+            Assert.Equal(cookieOptions.Secure, secure ?? false);
+            Assert.Equal(cookieOptions.HttpOnly, httpOnly ?? false);
         }
 
         [Fact]
