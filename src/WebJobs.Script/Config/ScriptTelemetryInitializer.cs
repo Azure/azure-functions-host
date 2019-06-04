@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Options;
@@ -29,7 +30,14 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public void Initialize(ITelemetry telemetry)
         {
-            telemetry?.Context?.Properties?.Add(ScriptConstants.LogPropertyHostInstanceIdKey, _hostOptions.InstanceId);
+            IDictionary<string, string> telemetryProps = telemetry?.Context?.Properties;
+
+            if (telemetryProps == null)
+            {
+                return;
+            }
+
+            telemetryProps[ScriptConstants.LogPropertyHostInstanceIdKey] = _hostOptions.InstanceId;
         }
     }
 }
