@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpBinding.ParseResponseObject(responseObject, ref content, out headers, out statusCode, out cookies, out enableContentNegotiationResponse);
 
             Assert.Equal("Test Body", content);
-            Assert.Equal(null, headers);
+            Assert.Same(headers, headers);
             Assert.Equal(StatusCodes.Status202Accepted, statusCode);
             Assert.True(enableContentNegotiationResponse);
             // No cookies found or set
@@ -93,11 +93,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Same(cookieProperties.Item1, firstCookie.Item1);
             Assert.Same(cookieProperties.Item2, firstCookie.Item2);
             Assert.Same(cookieProperties.Item3, firstCookie.Item3);
-            Assert.Same(cookieContents.First(), cookies.First());
-            Assert.Same(cookieContents.First(), cookies.First());
             Assert.Equal(StatusCodes.Status202Accepted, statusCode);
             Assert.False(enableContentNegotiationResponse);
-            Assert.Equal(null, headers);
+            Assert.Null(headers);
         }
 
         [Fact]
@@ -113,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             bool enableContentNegotiationResponse = false;
             HttpBinding.ParseResponseObject(responseObject, ref content, out headers, out statusCode, out List<Tuple<string, string, CookieOptions>> cookies, out enableContentNegotiationResponse);
 
-            Assert.Equal(null, content);
+            Assert.Null(content);
             Assert.Equal(StatusCodes.Status202Accepted, statusCode);
         }
 
