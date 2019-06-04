@@ -296,6 +296,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             await AwaitHostStateAsync(ScriptHostState.Running);
 
+            // need to reinitialize TestFunctionHost to reset IApplicationLifetime
+            await _fixture.InitializeAsync();
+
             // verify functions can be invoked
             await InvokeAndValidateHttpTrigger(functionName);
 
