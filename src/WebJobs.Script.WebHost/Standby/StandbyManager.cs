@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _hostNameProvider.Reset();
 
-            await _languageWorkerChannelManager.SpecializeAsync();
+            // await _languageWorkerChannelManager.SpecializeAsync();
             NotifyChange();
             await _scriptHostManager.RestartHostAsync();
             await _scriptHostManager.DelayUntilHostReady();
