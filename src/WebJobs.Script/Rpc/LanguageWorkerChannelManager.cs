@@ -11,7 +11,6 @@ using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
-using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -24,20 +23,19 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly TimeSpan processStartTimeout = TimeSpan.FromSeconds(40);
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
-        private readonly ILanguageWorkerConsoleLogSource _consoleLogSource;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
-        private readonly IWorkerProcessFactory _processFactory;
-        private readonly IProcessRegistry _processRegistry;
         private readonly IRpcServer _rpcServer = null;
+        private readonly ILanguageWorkerProcessManager _languageWorkerProcessManager;
         private readonly IDisposable _rpcChannelReadySubscriptions;
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
+
         private ConcurrentDictionary<string, List<ILanguageWorkerChannel>> _workerChannels = new ConcurrentDictionary<string, List<ILanguageWorkerChannel>>();
 
         public LanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerConsoleLogSource consoleLogSource)
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerProcessManager languageWorkerProcessManager)
         {
             _rpcServer = rpcServer;
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -46,17 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger = loggerFactory.CreateLogger<LanguageWorkerChannelManager>();
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _applicationHostOptions = applicationHostOptions;
-            _consoleLogSource = consoleLogSource;
-
-            _processFactory = new DefaultWorkerProcessFactory();
-            try
-            {
-                _processRegistry = ProcessRegistryFactory.Create();
-            }
-            catch (Exception e)
-            {
-                _logger.LogWarning(e, "Unable to create process registry");
-            }
+            _languageWorkerProcessManager = languageWorkerProcessManager;
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(5000);
@@ -71,18 +59,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 throw new InvalidOperationException($"WorkerCofig for runtime: {language} not found");
             }
+            ILanguageWorkerProcess languageWorkerProcess = _languageWorkerProcessManager.CreateLanguageWorkerProcess(workerId, language, scriptRootPath);
             return new LanguageWorkerChannel(
                          workerId,
                          scriptRootPath,
                          _eventManager,
-                         _processFactory,
-                         _processRegistry,
                          languageWorkerConfig,
-                         _rpcServer.Uri,
+                         languageWorkerProcess,
                          _loggerFactory,
                          metricsLogger,
                          attemptCount,
-                         _consoleLogSource,
                          isWebhostChannel,
                          managedDependencyOptions);
         }
@@ -210,11 +196,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 }
             }
-        }
-
-        public void ShutdownProcessRegistry()
-        {
-            (_processRegistry as IDisposable)?.Dispose();
         }
 
         private void AddOrUpdateWorkerChannels(RpcWebHostChannelReadyEvent rpcChannelReadyEvent)

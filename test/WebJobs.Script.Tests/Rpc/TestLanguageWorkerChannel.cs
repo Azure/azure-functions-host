@@ -32,8 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         public string Id => _workerId;
 
-        public WorkerConfig Config => throw new NotImplementedException();
-
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => throw new NotImplementedException();
 
         public LanguageWorkerChannelState State => _state;

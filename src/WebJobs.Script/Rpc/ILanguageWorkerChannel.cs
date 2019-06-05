@@ -17,8 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         LanguageWorkerChannelState State { get; }
 
-        WorkerConfig Config { get; }
-
         void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions);
 
         void SendFunctionLoadRequests();

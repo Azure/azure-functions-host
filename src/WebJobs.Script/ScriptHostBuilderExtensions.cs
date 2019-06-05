@@ -188,6 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.AddSingleton<FunctionRpc.FunctionRpcBase, FunctionRpcService>();
             services.AddSingleton<IRpcServer, GrpcServer>();
             services.TryAddSingleton<ILanguageWorkerConsoleLogSource, LanguageWorkerConsoleLogSource>();
+            services.AddSingleton<ILanguageWorkerProcessManager, LanguageWorkerProcessManager>();
             services.TryAddSingleton<ILanguageWorkerChannelManager, LanguageWorkerChannelManager>();
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();

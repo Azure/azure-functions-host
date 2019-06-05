@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using Google.Protobuf.Collections;
 using Microsoft.Extensions.Logging;
@@ -14,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public Capabilities(ILogger logger)
         {
-            _logger = logger;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public string GetCapabilityState(string capability)
