@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (_channels.TryRemove(channel.Id, out ILanguageWorkerChannel removedChannel))
             {
-                channel?.Dispose();
+                removedChannel?.Dispose();
             }
         }
 

@@ -42,7 +42,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
         }
 
-        public void RegisterFunctions(IObservable<FunctionMetadata> functionRegistrations)
+        public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
+        {
+            _testLogger.LogInformation("SetupFunctionInvocationBuffers called");
+        }
+
+        public void SendFunctionLoadRequests()
         {
             _testLogger.LogInformation("RegisterFunctions called");
         }

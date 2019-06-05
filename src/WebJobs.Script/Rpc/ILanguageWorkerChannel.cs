@@ -19,7 +19,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         WorkerConfig Config { get; }
 
-        void RegisterFunctions(IObservable<FunctionMetadata> functionRegistrations);
+        void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions);
+
+        void SendFunctionLoadRequests();
 
         void SendFunctionEnvironmentReloadRequest();
 
