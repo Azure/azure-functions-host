@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private List<string> _languages = new List<string>()
         {
-            LanguageWorkerConstants.JavaLanguageWorkerName
+            LanguageWorkerConstants.NodeLanguageWorkerName
         };
 
         public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, ILanguageWorkerChannelManager languageWorkerChannelManager, ILogger<RpcInitializationService> logger)
