@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsProxyResult = "MS_AzureFunctionsProxyResult";
         public const string AzureFunctionsDuplicateHttpHeadersKey = "MS_AzureFunctionsDuplicateHttpHeaders";
         public const string JobHostMiddlewarePipelineRequestDelegate = "MS_JobHostMiddlewarePipelineRequestDelegate";
+        public const string HstsMiddlewareRequestDelegate = "MS_HstsMiddlewareRequestDelegate";
 
         public const string LogPropertyPrimaryHostKey = "MS_PrimaryHost";
         public const string LogPropertySourceKey = "MS_Source";
