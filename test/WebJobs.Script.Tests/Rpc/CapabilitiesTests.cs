@@ -3,6 +3,7 @@
 
 using Google.Protobuf.Collections;
 using Microsoft.Azure.WebJobs.Script.Grpc.Capabilities;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
@@ -19,88 +20,93 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
-        public static void Boolean_Capability_Handled_Correctly()
+        public static void Single_Capability_Handled_Correctly()
         {
-            MapField<string, string> capabilities = new MapField<string, string>
+            Capabilities capabilities = new Capabilities();
+            MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { ExposedCapabilities.RawHttpBodyBytes, "true" }
+                { LanguageWorkerConstants.RawHttpBodyBytes, "true" }
             };
 
-            Capabilities.UpdateCapabilities(capabilities);
+            capabilities.UpdateCapabilities(addedCapabilities);
 
-            Assert.True(Capabilities.IsCapabilityEnabled(ExposedCapabilities.RawHttpBodyBytes));
+            Assert.Equal("true", capabilities.GetCapabilityState(LanguageWorkerConstants.RawHttpBodyBytes));
         }
 
         [Fact]
-        public static void Boolean_Capability_Change_Handled_Correctly()
+        public static void Single_Capability_Change_Handled_Correctly()
         {
-            MapField<string, string> capabilities = new MapField<string, string>
+            Capabilities capabilities = new Capabilities();
+            MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { ExposedCapabilities.RawHttpBodyBytes, "true" }
+                { LanguageWorkerConstants.RawHttpBodyBytes, "true" }
             };
 
-            Capabilities.UpdateCapabilities(capabilities);
+            capabilities.UpdateCapabilities(addedCapabilities);
 
-            Assert.True(Capabilities.IsCapabilityEnabled(ExposedCapabilities.RawHttpBodyBytes));
+            Assert.Equal("true", capabilities.GetCapabilityState(LanguageWorkerConstants.RawHttpBodyBytes));
 
             MapField<string, string> changedCapabilities = new MapField<string, string>
             {
-                { ExposedCapabilities.RawHttpBodyBytes, "false" }
+                { LanguageWorkerConstants.RawHttpBodyBytes, "false" }
             };
 
-            Capabilities.UpdateCapabilities(changedCapabilities);
+            capabilities.UpdateCapabilities(changedCapabilities);
 
-            Assert.False(Capabilities.IsCapabilityEnabled(ExposedCapabilities.RawHttpBodyBytes));
+            Assert.Equal("false", capabilities.GetCapabilityState(LanguageWorkerConstants.RawHttpBodyBytes));
         }
 
         [Fact]
         public static void Multi_Value_Capability_Handled_Correctly()
         {
-            MapField<string, string> capabilities = new MapField<string, string>
+            Capabilities capabilities = new Capabilities();
+            MapField<string, string> addedCapabilities = new MapField<string, string>
             {
                 { testCapability, TestCapability.State1.ToString() }
             };
 
-            Capabilities.UpdateCapabilities(capabilities);
+            capabilities.UpdateCapabilities(addedCapabilities);
 
-            Assert.Equal(TestCapability.State1.ToString(), Capabilities.GetCapabilityState(testCapability));
+            Assert.Equal(TestCapability.State1.ToString(), capabilities.GetCapabilityState(testCapability));
         }
 
         [Fact]
         public static void Multi_Value_Capability_Change_Handled_Correctly()
         {
-            MapField<string, string> capabilities = new MapField<string, string>
+            Capabilities capabilities = new Capabilities();
+            MapField<string, string> addedCapabilities = new MapField<string, string>
             {
                 { testCapability, TestCapability.State1.ToString() }
             };
 
-            Capabilities.UpdateCapabilities(capabilities);
+            capabilities.UpdateCapabilities(addedCapabilities);
 
-            Assert.Equal(TestCapability.State1.ToString(), Capabilities.GetCapabilityState(testCapability));
+            Assert.Equal(TestCapability.State1.ToString(), capabilities.GetCapabilityState(testCapability));
 
             MapField<string, string> changedCapabilities = new MapField<string, string>
             {
                 { testCapability, TestCapability.State3.ToString() }
             };
 
-            Capabilities.UpdateCapabilities(changedCapabilities);
+            capabilities.UpdateCapabilities(changedCapabilities);
 
-            Assert.Equal(TestCapability.State3.ToString(), Capabilities.GetCapabilityState(testCapability));
+            Assert.Equal(TestCapability.State3.ToString(), capabilities.GetCapabilityState(testCapability));
         }
 
         [Fact]
-        public static void Multi_Value_And_Boolean_Capabilities_Handled_Correctly()
+        public static void Multi_Value_Capabilities_Handled_Correctly()
         {
-            MapField<string, string> capabilities = new MapField<string, string>
+            Capabilities capabilities = new Capabilities();
+            MapField<string, string> addedCapabilities = new MapField<string, string>
             {
                 { testCapability, TestCapability.State1.ToString() },
-                { ExposedCapabilities.RawHttpBodyBytes, "true" }
+                { LanguageWorkerConstants.RawHttpBodyBytes, "true" }
             };
 
-            Capabilities.UpdateCapabilities(capabilities);
+            capabilities.UpdateCapabilities(addedCapabilities);
 
-            Assert.Equal(TestCapability.State1.ToString(), Capabilities.GetCapabilityState(testCapability));
-            Assert.True(Capabilities.IsCapabilityEnabled(ExposedCapabilities.RawHttpBodyBytes));
+            Assert.Equal(TestCapability.State1.ToString(), capabilities.GetCapabilityState(testCapability));
+            Assert.Equal("true", capabilities.GetCapabilityState(LanguageWorkerConstants.RawHttpBodyBytes));
         }
     }
 }

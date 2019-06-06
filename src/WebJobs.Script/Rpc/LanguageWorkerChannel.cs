@@ -58,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Uri _serverUri;
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
         private IEnumerable<FunctionMetadata> _functions;
+        private Capabilities _capabilities = new Capabilities();
 
         internal LanguageWorkerChannel()
         {
@@ -314,7 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _state = LanguageWorkerChannelState.Initialized;
 
-            Capabilities.UpdateCapabilities(_initMessage.Capabilities);
+            _capabilities.UpdateCapabilities(_initMessage.Capabilities);
 
             if (_isWebHostChannel)
             {
