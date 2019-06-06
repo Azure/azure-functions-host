@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
@@ -20,8 +21,22 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly ILanguageWorkerChannelManager _languageWorkerChannelManager;
         private readonly IRpcServer _rpcServer;
         private readonly ILogger _logger;
+        private readonly string _workerRuntime;
 
-        private List<string> _languages = new List<string>()
+        private Dictionary<OSPlatform, List<string>> _hostingOSToWhitelistedRuntimes = new Dictionary<OSPlatform, List<string>>()
+        {
+            {
+                OSPlatform.Windows,
+                new List<string>() { LanguageWorkerConstants.JavaLanguageWorkerName }
+            },
+            {
+                OSPlatform.Linux,
+                new List<string>() { LanguageWorkerConstants.PythonLanguageWorkerName }
+            }
+        };
+
+        // _webHostLevelWhitelistedRuntimes are started at webhost level when running in Azure and locally
+        private List<string> _webHostLevelWhitelistedRuntimes = new List<string>()
         {
             LanguageWorkerConstants.JavaLanguageWorkerName
         };
@@ -33,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _rpcServer = rpcServer;
             _environment = environment;
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
+            _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -69,28 +85,46 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal Task InitializeChannelsAsync()
         {
-            string workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-            if (_environment.IsLinuxAppServiceEnvironment())
+            if (ShouldStartInPlaceholderMode())
             {
-                return Task.CompletedTask;
+                return InitializePlaceholderChannelsAsync();
             }
-            if (_environment.IsLinuxContainerEnvironment())
+
+            return InitializeWebHostRuntimeChannelsAsync();
+        }
+
+        private Task InitializePlaceholderChannelsAsync()
+        {
+            if (_environment.IsLinuxHostingEnvironment())
             {
-                return Task.CompletedTask;
+                return InitializePlaceholderChannelsAsync(OSPlatform.Linux);
             }
-            if (string.IsNullOrEmpty(workerRuntime) && _environment.IsPlaceholderModeEnabled())
+
+            return InitializePlaceholderChannelsAsync(OSPlatform.Windows);
+        }
+
+        private Task InitializePlaceholderChannelsAsync(OSPlatform os)
+        {
+            return Task.WhenAll(_hostingOSToWhitelistedRuntimes[os].Select(runtime =>
+                _languageWorkerChannelManager.InitializeChannelAsync(runtime)));
+        }
+
+        private Task InitializeWebHostRuntimeChannelsAsync()
+        {
+            if (_webHostLevelWhitelistedRuntimes.Contains(_workerRuntime))
             {
-                // Only warm up language workers in placeholder mode in worker runtime is not set
-                return Task.WhenAll(_languages.Select(runtime => _languageWorkerChannelManager.InitializeChannelAsync(runtime)));
+                return _languageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             }
-            if (_languages.Contains(workerRuntime))
-            {
-                return _languageWorkerChannelManager.InitializeChannelAsync(workerRuntime);
-            }
+
             return Task.CompletedTask;
         }
 
+        private bool ShouldStartInPlaceholderMode()
+        {
+            return string.IsNullOrEmpty(_workerRuntime) && _environment.IsPlaceholderModeEnabled();
+        }
+
         // To help with unit tests
-        internal void AddSupportedRuntime(string language) => _languages.Add(language);
+        internal void AddSupportedWebHostLevelRuntime(string language) => _webHostLevelWhitelistedRuntimes.Add(language);
     }
 }
