@@ -55,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDisposable _startLatencyMetric;
         private Uri _serverUri;
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
+        private IEnumerable<FunctionMetadata> _functions;
 
         internal LanguageWorkerChannel()
         {
@@ -322,13 +323,25 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public void RegisterFunctions(IObservable<FunctionMetadata> functionRegistrations)
+        public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
         {
-            if (functionRegistrations == null)
+            _functions = functions;
+            foreach (FunctionMetadata metadata in functions)
             {
-                throw new ArgumentNullException(nameof(functionRegistrations));
+                _workerChannelLogger.LogDebug("Setting up FunctionInvocationBuffer for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
+                _functionInputBuffers[metadata.FunctionId] = new BufferBlock<ScriptInvocationContext>();
             }
-            _eventSubscriptions.Add(functionRegistrations.Subscribe(SendFunctionLoadRequest));
+        }
+
+        public void SendFunctionLoadRequests()
+        {
+            if (_functions != null)
+            {
+                foreach (FunctionMetadata metadata in _functions)
+                {
+                    SendFunctionLoadRequest(metadata);
+                }
+            }
         }
 
         public void SendFunctionEnvironmentReloadRequest()
@@ -353,7 +366,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void SendFunctionLoadRequest(FunctionMetadata metadata)
         {
             _workerChannelLogger.LogDebug("Sending FunctionLoadRequest for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
-            _functionInputBuffers[metadata.FunctionId] = new BufferBlock<ScriptInvocationContext>();
 
             // send a load request for the registered function
             FunctionLoadRequest request = new FunctionLoadRequest()
