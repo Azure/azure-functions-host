@@ -56,12 +56,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDisposable _startLatencyMetric;
         private Uri _serverUri;
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
-<<<<<<< HEAD
         private IEnumerable<FunctionMetadata> _functions;
-        private Capabilities _capabilities = new Capabilities();
-=======
         private Capabilities _workerCapabilities;
->>>>>>> Addressing further CR comments
 
         internal LanguageWorkerChannel()
         {
