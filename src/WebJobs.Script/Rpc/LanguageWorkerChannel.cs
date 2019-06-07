@@ -11,6 +11,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Google.Protobuf.Collections;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -56,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Uri _serverUri;
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
         private IEnumerable<FunctionMetadata> _functions;
+        private Capabilities _workerCapabilities;
 
         internal LanguageWorkerChannel()
         {
@@ -85,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerConfig = workerConfig;
             _serverUri = serverUri;
             _workerChannelLogger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
+            _workerCapabilities = new Capabilities(_workerChannelLogger);
             _consoleLogSource = consoleLogSource;
             _isWebHostChannel = isWebHostChannel;
 
@@ -311,6 +314,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
 
             _state = LanguageWorkerChannelState.Initialized;
+
+            _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
+
             if (_isWebHostChannel)
             {
                 RpcWebHostChannelReadyEvent readyEvent = new RpcWebHostChannelReadyEvent(_workerId, _workerConfig.Language, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
