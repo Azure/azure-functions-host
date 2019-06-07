@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 return;
             }
 
-            _logger.LogInformation($"Requested capabilities: {capabilities.ToString()}");
+            _logger.LogDebug($"Updating capabilities: {capabilities.ToString()}");
 
             foreach (KeyValuePair<string, string> capability in capabilities)
             {

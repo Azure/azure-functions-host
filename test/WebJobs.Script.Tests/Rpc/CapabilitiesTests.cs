@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
-                p => Assert.Equal($"Requested capabilities: {addedCapabilities.ToString()}", p));
+                p => Assert.Equal($"Updating capabilities: {{ \"{testCapability2}\": \"{value}\" }}", p));
         }
 
         [Fact]
@@ -86,16 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
-                p => Assert.Equal($"Requested capabilities: {addedCapabilities.ToString()}", p),
-                p => Assert.Equal($"Requested capabilities: {changedCapabilities.ToString()}", p));
-        }
-
-        [Fact]
-        public void No_Error_For_Null_Capabilities()
-        {
-            MapField<string, string> addedCapabilities = null;
-
-            _capabilities.UpdateCapabilities(addedCapabilities);
+                p => Assert.Equal($"Updating capabilities: {{ \"{testCapability1}\": \"{TestCapability.State1}\", \"{testCapability2}\": \"true\" }}", p),
+                p => Assert.Equal($"Updating capabilities: {{ \"{testCapability2}\": \"false\" }}", p));
         }
     }
 }
