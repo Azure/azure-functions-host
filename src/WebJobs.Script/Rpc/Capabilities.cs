@@ -1,15 +1,21 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using Google.Protobuf.Collections;
+using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc.Capabilities
+namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class Capabilities
     {
+        private readonly ILogger _logger;
         private IDictionary<string, string> _capabilities = new Dictionary<string, string>();
+
+        public Capabilities(ILogger logger)
+        {
+            _logger = logger;
+        }
 
         public string GetCapabilityState(string capability)
         {
@@ -22,13 +28,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Capabilities
 
         public void UpdateCapabilities(MapField<string, string> capabilities)
         {
+            if (capabilities == null)
+            {
+                return;
+            }
+
+            _logger.LogInformation($"Requested capabilities: {capabilities.ToString()}");
+
             foreach (KeyValuePair<string, string> capability in capabilities)
             {
                 UpdateCapability(capability);
             }
         }
 
-        public void UpdateCapability(KeyValuePair<string, string> capability)
+        private void UpdateCapability(KeyValuePair<string, string> capability)
         {
             _capabilities[capability.Key] = capability.Value;
         }

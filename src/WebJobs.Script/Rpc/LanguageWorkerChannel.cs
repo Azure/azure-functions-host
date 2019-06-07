@@ -17,7 +17,6 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
-using Microsoft.Azure.WebJobs.Script.Grpc.Capabilities;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Logging;
@@ -57,8 +56,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDisposable _startLatencyMetric;
         private Uri _serverUri;
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
+<<<<<<< HEAD
         private IEnumerable<FunctionMetadata> _functions;
         private Capabilities _capabilities = new Capabilities();
+=======
+        private Capabilities _workerCapabilities;
+>>>>>>> Addressing further CR comments
 
         internal LanguageWorkerChannel()
         {
@@ -88,6 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerConfig = workerConfig;
             _serverUri = serverUri;
             _workerChannelLogger = loggerFactory.CreateLogger($"Worker.{workerConfig.Language}.{_workerId}");
+            _workerCapabilities = new Capabilities(_workerChannelLogger);
             _consoleLogSource = consoleLogSource;
             _isWebHostChannel = isWebHostChannel;
 
@@ -315,7 +319,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _state = LanguageWorkerChannelState.Initialized;
 
-            _capabilities.UpdateCapabilities(_initMessage.Capabilities);
+            _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
 
             if (_isWebHostChannel)
             {
