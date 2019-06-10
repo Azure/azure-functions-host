@@ -24,6 +24,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using HttpHandler = Microsoft.Azure.WebJobs.IAsyncConverter<System.Net.Http.HttpRequestMessage, System.Net.Http.HttpResponseMessage>;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -93,8 +94,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/ping")]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-        public IActionResult Ping()
+        public IActionResult Ping([FromServices] IScriptHostManager scriptHostManager)
         {
+            var pingStatus = new JObject
+            {
+                { "hostState", scriptHostManager.State.ToString() }
+            };
+
+            string message = $"Ping Status: {pingStatus.ToString()}";
+            _logger.Log(LogLevel.Debug, new EventId(0, "PingStatus"), message);
+
             return Ok();
         }
 
