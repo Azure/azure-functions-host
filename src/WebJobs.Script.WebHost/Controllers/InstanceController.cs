@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -51,7 +52,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, error);
             }
 
-            var result = _instanceManager.StartAssignment(assignmentContext);
+            var result = false;
+            if (string.Equals(assignmentContext.ZipUrlEnvVar, EnvironmentSettingNames.ScmRunFromPackage,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                result = _instanceManager.SpecializeForScmBuilds(assignmentContext);
+            }
+            else
+            {
+                result = _instanceManager.StartAssignment(assignmentContext);
+            }
 
             return result
                 ? Accepted()

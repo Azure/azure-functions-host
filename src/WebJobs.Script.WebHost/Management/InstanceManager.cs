@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
@@ -41,6 +42,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _metricsLogger = metricsLogger;
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _optionsFactory = optionsFactory ?? throw new ArgumentNullException(nameof(optionsFactory));
+        }
+
+        public bool SpecializeForScmBuilds(HostAssignmentContext context)
+        {
+            try
+            {
+                string zipUrl = context.ZipUrl;
+                CloudBlockBlob blob = new CloudBlockBlob(new Uri(zipUrl));
+                bool blobExists = blob.ExistsAsync().Result;
+
+                if (blobExists)
+                {
+                    // follow standard specialization path
+                    return StartAssignment(context);
+                }
+                else
+                {
+                    // a build has not been generated yet, but we do not
+                    // want to fail since this is a valid scenario
+                    _logger.LogInformation("Specialized with currently empty scm package");
+                    _webHostEnvironment.FlagAsSpecializedAndReady();
+                    return true;
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("Specializing for Scm builds failed {0}", e);
+                return false;
+            }
         }
 
         public async Task<string> SpecializeMSISidecar(HostAssignmentContext context)
@@ -130,9 +160,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             HttpResponseMessage response = null;
             try
             {
+                _logger.LogInformation($"Will be using {assignmentContext.ZipUrlEnvVar} app setting as zip url");
+
                 var zipUrl = assignmentContext.ZipUrl;
                 if (!string.IsNullOrEmpty(zipUrl))
                 {
+                    // ScmRunFromPackage can be empty since it is a placeholder for the actual build zip
+                    // so don't do a HEAD call against it. Just check if it is a valid blob url.
+                    if (string.Equals(assignmentContext.ZipUrlEnvVar, EnvironmentSettingNames.ScmRunFromPackage,
+                        StringComparison.OrdinalIgnoreCase))
+                    {
+                        bool isValid = IsValidBlobReference(zipUrl);
+                        return isValid ? null : $"Invalid blob reference {EnvironmentSettingNames.ScmRunFromPackage}. ValidateContext failed.";
+                    }
+
                     // make sure the zip uri is valid and accessible
                     await Utility.InvokeWithRetriesAsync(async () =>
                     {
@@ -160,6 +201,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
 
             return error;
+        }
+
+        private bool IsValidBlobReference(string uri)
+        {
+            try
+            {
+                new CloudBlockBlob(new Uri(uri));
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+            return true;
         }
 
         private async Task Assign(HostAssignmentContext assignmentContext)
@@ -197,6 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // This asks the factory to skip the PlaceholderMode check when configuring options.
             var options = _optionsFactory.Create(ScriptApplicationHostOptionsSetup.SkipPlaceholder);
 
+            _logger.LogInformation($"Will be using {assignmentContext.ZipUrlEnvVar} app setting as zip url");
             var zipPath = assignmentContext.ZipUrl;
             if (!string.IsNullOrEmpty(zipPath))
             {

@@ -28,17 +28,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         {
             get
             {
+                if (ZipUrlEnvVar != string.Empty)
+                {
+                    return Environment[ZipUrlEnvVar];
+                }
+                else
+                {
+                    return string.Empty;
+                }
+            }
+        }
+
+        public string ZipUrlEnvVar
+        {
+            get
+            {
                 if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteRunFromPackage))
                 {
-                    return Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage];
+                    return EnvironmentSettingNames.AzureWebsiteRunFromPackage;
                 }
                 else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteAltZipDeployment))
                 {
-                    return Environment[EnvironmentSettingNames.AzureWebsiteAltZipDeployment];
+                    return EnvironmentSettingNames.AzureWebsiteAltZipDeployment;
                 }
                 else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteZipDeployment))
                 {
-                    return Environment[EnvironmentSettingNames.AzureWebsiteZipDeployment];
+                    return EnvironmentSettingNames.AzureWebsiteZipDeployment;
+                }
+                else if (Environment.ContainsKey(EnvironmentSettingNames.ScmRunFromPackage))
+                {
+                    return EnvironmentSettingNames.ScmRunFromPackage;
                 }
                 else
                 {

@@ -15,6 +15,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         bool StartAssignment(HostAssignmentContext assignmentContext);
 
+        bool SpecializeForScmBuilds(HostAssignmentContext assignmentContext);
+
         Task<string> SpecializeMSISidecar(HostAssignmentContext assignmentContext);
     }
 }
