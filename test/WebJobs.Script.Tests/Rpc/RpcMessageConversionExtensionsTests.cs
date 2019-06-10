@@ -3,8 +3,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Claims;
+using System.Text;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Http;
@@ -18,17 +21,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
     public class RpcMessageConversionExtensionsTests
     {
+        private static readonly string TestImageLocation = "Rpc\\Resources\\functions.png";
+
         [Theory]
         [InlineData("application/x-www-form-urlencoded’", "say=Hi&to=Mom")]
         public void HttpObjects_StringBody(string expectedContentType, object body)
         {
             var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
 
             var headers = new HeaderDictionary();
             headers.Add("content-type", expectedContentType);
             HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", "http://localhost/api/httptrigger-scenarios", headers, body);
 
-            var rpcRequestObject = request.ToRpc(logger);
+            var rpcRequestObject = request.ToRpc(logger, capabilities);
             Assert.Equal(body.ToString(), rpcRequestObject.Http.Body.String);
 
             string contentType;
@@ -43,10 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void HttpObjects_Query(string queryString, string[] expectedKeys, string[] expectedValues)
         {
             var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
 
             HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", $"http://localhost/api/httptrigger-scenarios?{queryString}");
 
-            var rpcRequestObject = request.ToRpc(logger);
+            var rpcRequestObject = request.ToRpc(logger, capabilities);
             // Same number of expected key value pairs
             Assert.Equal(rpcRequestObject.Http.Query.Count, expectedKeys.Length);
             Assert.Equal(rpcRequestObject.Http.Query.Count, expectedValues.Length);
@@ -188,6 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void HttpObjects_ClaimsPrincipal()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
 
             HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", $"http://localhost/apihttptrigger-scenarios");
 
@@ -201,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             request.HttpContext.User = new ClaimsPrincipal(claimsIdentities);
 
-            var rpcRequestObject = request.ToRpc(logger);
+            var rpcRequestObject = request.ToRpc(logger, capabilities);
 
             var identities = request.HttpContext.User.Identities.ToList();
             var rpcIdentities = rpcRequestObject.Http.Identities.ToList();
@@ -246,6 +254,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 "http://schemas.microsoft.com/ws/2008/06/identity/claims/role");
 
             return identity;
+        }
+
+        [Theory]
+        [InlineData("application/octet-stream", true)]
+        [InlineData("image/png", true)]
+        [InlineData("application/octet-stream", false)]
+        [InlineData("image/png", false)]
+        public void HttpObjects_RawBodyBytes_Image_Length(string contentType, bool rawBytesEnabled)
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+            capabilities.UpdateCapabilities(new MapField<string, string>
+            {
+                { LanguageWorkerConstants.RawHttpBodyBytes, rawBytesEnabled.ToString() }
+            });
+
+            FileStream image = new FileStream(TestImageLocation, FileMode.Open, FileAccess.Read);
+            byte[] imageBytes = FileStreamToBytes(image);
+            long imageLength;
+
+            imageLength = imageBytes.Length;
+
+            var headers = new HeaderDictionary();
+            headers.Add("content-type", contentType);
+            HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", "http://localhost/api/httptrigger-scenarios", headers, imageBytes);
+
+            var rpcRequestObject = request.ToRpc(logger, capabilities);
+            if (rawBytesEnabled)
+            {
+                Assert.Equal(imageLength, rpcRequestObject.Http.RawBody.Bytes.ToByteArray().Length);
+            }
+            else
+            {
+                Assert.NotEqual(imageLength, rpcRequestObject.Http.RawBody.Bytes.ToByteArray().Length);
+            }
+        }
+
+        private byte[] FileStreamToBytes(FileStream file)
+        {
+            using (var memoryStream = new MemoryStream())
+            {
+                file.CopyTo(memoryStream);
+                return memoryStream.ToArray();
+            }
         }
     }
 }

@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public static TypedData ToRpc(this object value, ILogger logger)
+        public static TypedData ToRpc(this object value, ILogger logger, Capabilities capabilities)
         {
             TypedData typedData = new TypedData();
 
@@ -141,7 +141,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (request.Body != null && request.ContentLength > 0)
                 {
                     object body = null;
+                    object rawBodyBytes = null;
                     string rawBody = null;
+                    byte[] bytes = RequestBodyToBytes(request);
 
                     MediaTypeHeaderValue mediaType = null;
                     if (MediaTypeHeaderValue.TryParse(request.ContentType, out mediaType))
@@ -162,11 +164,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         else if (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
                             mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
-                            var length = Convert.ToInt32(request.ContentLength);
-                            var bytes = new byte[length];
-                            request.Body.Read(bytes, 0, length);
                             body = bytes;
-                            rawBody = Encoding.UTF8.GetString(bytes);
+                            if (RawBodyBytesRequested(capabilities))
+                            {
+                                rawBodyBytes = bytes;
+                            }
+                            else
+                            {
+                                rawBody = Encoding.UTF8.GetString(bytes);
+                            }
                         }
                     }
                     // default if content-tye not found or recognized
@@ -177,8 +183,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
 
                     request.Body.Position = 0;
-                    http.Body = body.ToRpc(logger);
-                    http.RawBody = rawBody.ToRpc(logger);
+                    http.Body = body.ToRpc(logger, capabilities);
+                    if (RawBodyBytesRequested(capabilities))
+                    {
+                        http.RawBody = rawBodyBytes.ToRpc(logger, capabilities);
+                    }
+                    else
+                    {
+                        http.RawBody = rawBody.ToRpc(logger, capabilities);
+                    }
+
+                    if (rawBodyBytes == null && RawBodyBytesRequested(capabilities))
+                    {
+                        http.RawBody = bytes.ToRpc(logger, capabilities);
+                    }
                 }
             }
             else
@@ -194,6 +212,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
             }
             return typedData;
+        }
+
+        private static bool RawBodyBytesRequested(Capabilities capabilities)
+        {
+            return string.Equals(capabilities.GetCapabilityState(LanguageWorkerConstants.RawHttpBodyBytes),
+                        "true", StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static byte[] RequestBodyToBytes(HttpRequest request)
+        {
+            var length = Convert.ToInt32(request.ContentLength);
+            var bytes = new byte[length];
+            request.Body.Read(bytes, 0, length);
+            return bytes;
         }
 
         public static BindingInfo ToBindingInfo(this BindingMetadata bindingMetadata)
