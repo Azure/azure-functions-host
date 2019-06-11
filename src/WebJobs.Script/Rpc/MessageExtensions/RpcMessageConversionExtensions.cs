@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     object body = null;
                     object rawBodyBytes = null;
-                    string rawBody = null;
+                    string rawBodyString = null;
                     byte[] bytes = RequestBodyToBytes(request);
 
                     MediaTypeHeaderValue mediaType = null;
@@ -151,51 +151,46 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         if (string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
                         {
                             var jsonReader = new StreamReader(request.Body, Encoding.UTF8);
-                            rawBody = jsonReader.ReadToEnd();
+                            rawBodyString = jsonReader.ReadToEnd();
                             try
                             {
-                                body = JsonConvert.DeserializeObject(rawBody);
+                                body = JsonConvert.DeserializeObject(rawBodyString);
                             }
                             catch (JsonException)
                             {
-                                body = rawBody;
+                                body = rawBodyString;
                             }
                         }
                         else if (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
                             mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
                             body = bytes;
-                            if (RawBodyBytesRequested(capabilities))
+                            if (IsRawBodyBytesRequested(capabilities))
                             {
                                 rawBodyBytes = bytes;
                             }
                             else
                             {
-                                rawBody = Encoding.UTF8.GetString(bytes);
+                                rawBodyString = Encoding.UTF8.GetString(bytes);
                             }
                         }
                     }
                     // default if content-tye not found or recognized
-                    if (body == null && rawBody == null)
+                    if (body == null && rawBodyString == null)
                     {
                         var reader = new StreamReader(request.Body, Encoding.UTF8);
-                        body = rawBody = reader.ReadToEnd();
+                        body = rawBodyString = reader.ReadToEnd();
                     }
 
                     request.Body.Position = 0;
                     http.Body = body.ToRpc(logger, capabilities);
-                    if (RawBodyBytesRequested(capabilities))
+                    if (IsRawBodyBytesRequested(capabilities))
                     {
-                        http.RawBody = rawBodyBytes.ToRpc(logger, capabilities);
+                        http.RawBody = bytes.ToRpc(logger, capabilities);
                     }
                     else
                     {
-                        http.RawBody = rawBody.ToRpc(logger, capabilities);
-                    }
-
-                    if (rawBodyBytes == null && RawBodyBytesRequested(capabilities))
-                    {
-                        http.RawBody = bytes.ToRpc(logger, capabilities);
+                        http.RawBody = rawBodyString.ToRpc(logger, capabilities);
                     }
                 }
             }
@@ -214,10 +209,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return typedData;
         }
 
-        private static bool RawBodyBytesRequested(Capabilities capabilities)
+        private static bool IsRawBodyBytesRequested(Capabilities capabilities)
         {
-            return string.Equals(capabilities.GetCapabilityState(LanguageWorkerConstants.RawHttpBodyBytes),
-                        "true", StringComparison.OrdinalIgnoreCase);
+            return !string.Equals(capabilities.GetCapabilityState(LanguageWorkerConstants.RawHttpBodyBytes), null);
         }
 
         internal static byte[] RequestBodyToBytes(HttpRequest request)

@@ -257,37 +257,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Theory]
-        [InlineData("application/octet-stream", true)]
-        [InlineData("image/png", true)]
-        [InlineData("application/octet-stream", false)]
-        [InlineData("image/png", false)]
-        public void HttpObjects_RawBodyBytes_Image_Length(string contentType, bool rawBytesEnabled)
+        [InlineData("application/octet-stream", "true")]
+        [InlineData("image/png", "true")]
+        [InlineData("application/octet-stream", null)]
+        [InlineData("image/png", null)]
+        public void HttpObjects_RawBodyBytes_Image_Length(string contentType, string rawBytesEnabled)
         {
             var logger = MockNullLoggerFactory.CreateLogger();
             var capabilities = new Capabilities(logger);
-            capabilities.UpdateCapabilities(new MapField<string, string>
+            if (!string.Equals(rawBytesEnabled, null))
             {
-                { LanguageWorkerConstants.RawHttpBodyBytes, rawBytesEnabled.ToString() }
-            });
+                capabilities.UpdateCapabilities(new MapField<string, string>
+                {
+                    { LanguageWorkerConstants.RawHttpBodyBytes, rawBytesEnabled.ToString() }
+                });
+            }
 
             FileStream image = new FileStream(TestImageLocation, FileMode.Open, FileAccess.Read);
             byte[] imageBytes = FileStreamToBytes(image);
-            long imageLength;
+            string imageString = Encoding.UTF8.GetString(imageBytes);
 
-            imageLength = imageBytes.Length;
+            long imageBytesLength = imageBytes.Length;
+            long imageStringLength = imageString.Length;
 
             var headers = new HeaderDictionary();
             headers.Add("content-type", contentType);
             HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", "http://localhost/api/httptrigger-scenarios", headers, imageBytes);
 
             var rpcRequestObject = request.ToRpc(logger, capabilities);
-            if (rawBytesEnabled)
+            if (!string.Equals(rawBytesEnabled, null))
             {
-                Assert.Equal(imageLength, rpcRequestObject.Http.RawBody.Bytes.ToByteArray().Length);
+                Assert.Equal(imageBytesLength, rpcRequestObject.Http.RawBody.Bytes.ToByteArray().Length);
             }
             else
             {
-                Assert.NotEqual(imageLength, rpcRequestObject.Http.RawBody.Bytes.ToByteArray().Length);
+                Assert.Equal(imageStringLength, rpcRequestObject.Http.RawBody.String.Length);
             }
         }
 
