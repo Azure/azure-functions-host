@@ -225,6 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             var length = Convert.ToInt32(request.ContentLength);
             var bytes = new byte[length];
             request.Body.Read(bytes, 0, length);
+            request.Body.Position = 0;
             return bytes;
         }
 
