@@ -7,8 +7,10 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -19,8 +21,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 {
     public class VirtualFileSystemFacts : IDisposable
     {
-        private const string SiteRootPath = @"C:\DWASFiles\Sites\SiteName\VirtualDirectory0";
+        private const string HomePath = @"D:\home";
+        private const string SiteRootPath = @"D:\home\site\wwwroot";
         private static readonly string LocalSiteRootPath = Path.GetFullPath(Path.Combine(SiteRootPath, @".."));
+
+        public VirtualFileSystemFacts()
+        {
+            // In AppService HOME will be set
+            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteHomePath, HomePath);
+        }
 
         public static IEnumerable<object[]> MapRouteToLocalPathData
         {
@@ -45,6 +54,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 yield return new object[] { EntityTagHeaderValue.Any };
                 yield return new object[] { new EntityTagHeaderValue("\"00c0b16b2129cf08\"") };
             }
+        }
+
+        [Fact]
+        public async Task GetRequestSucceedsIfItemExists()
+        {
+            // Arrange
+            var date = new DateTime(2012, 07, 06);
+            string path = @"/foo/bar.txt";
+            var fileInfo = new Mock<FileInfoBase>();
+            fileInfo.SetupGet(f => f.Attributes).Returns(FileAttributes.Normal);
+            fileInfo.SetupGet(f => f.LastWriteTimeUtc).Returns(date);
+            var dirInfo = new Mock<DirectoryInfoBase>();
+            dirInfo.SetupGet(d => d.Attributes).Returns(FileAttributes.Normal);
+            dirInfo.SetupGet(d => d.Extension).Returns("txt");
+            var fileBase = new Mock<FileBase>();
+            var fileStream = new MemoryStream(Encoding.UTF8.GetBytes("Testing"));
+            fileStream.Position = 0;
+            var filePath = Path.Combine(SiteRootPath, @"foo\bar.txt");
+            fileBase.Setup(f => f.Open(filePath, It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(fileStream);
+            var fileSystem = CreateFileSystem(path, dirInfo.Object, fileInfo.Object, fileBase.Object);
+            FileUtility.Instance = fileSystem;
+
+            var controller = CreateVirtualFileSystem();
+
+            // Make a request using an absolute path
+            var request = CreateRequest(path);
+            var result = await controller.GetItem(request);
+            Assert.Equal(HttpStatusCode.OK, result.StatusCode);
+            Assert.Equal("Testing", await result.Content.ReadAsStringAsync());
+
+            // Now make a relative path request
+            fileStream.Position = 0;
+            request = new DefaultHttpContext().Request;
+            request.Host = new HostString("localhost");
+            request.QueryString = new QueryString("?relativePath=1");
+            request.Path = new PathString("/admin/vfs" + path);  // relative path without site/wwwroot
+            result = await controller.GetItem(request);
+            Assert.Equal(HttpStatusCode.OK, result.StatusCode);
+            Assert.Equal("Testing", await result.Content.ReadAsStringAsync());
         }
 
         [Fact]
@@ -188,18 +236,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             var r = new DefaultHttpContext().Request;
             r.Host = new HostString("localhost");
-            r.Path = new PathString("/admin/vfs" + path);
+            r.Path = new PathString("/admin/vfs/site/wwwroot" + path);
             return r;
         }
 
-        private static IFileSystem CreateFileSystem(string path, DirectoryInfoBase dir, FileInfoBase file)
+        private static IFileSystem CreateFileSystem(string path, DirectoryInfoBase dir, FileInfoBase fileInfo, FileBase file = null)
         {
             var directoryFactory = new Mock<IDirectoryInfoFactory>();
             directoryFactory.Setup(d => d.FromDirectoryName(It.IsAny<string>()))
                             .Returns(dir);
             var fileInfoFactory = new Mock<IFileInfoFactory>();
             fileInfoFactory.Setup(f => f.FromFileName(It.IsAny<string>()))
-                           .Returns(file);
+                           .Returns(fileInfo);
 
             var pathBase = new Mock<PathBase>();
             pathBase.Setup(p => p.GetFullPath(It.IsAny<string>()))
@@ -209,6 +257,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             fileSystem.SetupGet(f => f.DirectoryInfo).Returns(directoryFactory.Object);
             fileSystem.SetupGet(f => f.FileInfo).Returns(fileInfoFactory.Object);
             fileSystem.SetupGet(f => f.Path).Returns(pathBase.Object);
+
+            if (file != null)
+            {
+                fileSystem.SetupGet(f => f.File).Returns(file);
+            }
 
             FileUtility.Instance = fileSystem.Object;
 
@@ -225,8 +278,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         public void Dispose()
         {
-            // clear FileUtility.Instance after this test is done
             FileUtility.Instance = null;
+            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteHomePath, null);
         }
     }
 }

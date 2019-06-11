@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
@@ -489,7 +490,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
 
             // Open file exclusively for read-sharing
-            return new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, BufferSize, useAsync: true);
+            return FileUtility.Instance.File.Open(localFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         }
 
         /// <summary>
@@ -575,7 +576,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
             }
 
-            result = RootPath;
+            if (request.Query.TryGetValue("relativePath", out StringValues values) &&
+                values.Contains("1"))
+            {
+                // the VFS path should be treated as relative to the functions script root directory
+                result = Path.GetFullPath(_options.CurrentValue.ScriptPath);
+            }
+            else
+            {
+                result = RootPath;
+            }
+
             if (path != null && path.HasValue)
             {
                 result = Path.GetFullPath(Path.Combine(result, path.Value.TrimStart('/')));
