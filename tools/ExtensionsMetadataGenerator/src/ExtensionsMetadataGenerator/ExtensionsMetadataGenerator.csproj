@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\build\metadatagenerator.props" />
   <PropertyGroup>
-    <Version>1.1.1</Version>
+    <Version>1.1.2</Version>
     <OutputType>Library</OutputType>
     <TargetFrameworks>netstandard2.0;net46</TargetFrameworks>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator</AssemblyName>
