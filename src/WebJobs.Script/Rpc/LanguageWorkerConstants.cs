@@ -47,5 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string RpcHttpCookies = "cookies";
         public const string RpcHttpStatusCode = "statusCode";
         public const string RpcHttpStatus = "status";
+
+        // Capabilites
+        public const string RawHttpBodyBytes = "RawHttpBodyBytes";
     }
 }
