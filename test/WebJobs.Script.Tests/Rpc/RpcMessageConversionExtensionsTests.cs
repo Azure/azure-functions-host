@@ -285,13 +285,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", "http://localhost/api/httptrigger-scenarios", headers, imageBytes);
 
             var rpcRequestObject = request.ToRpc(logger, capabilities);
-            if (!string.Equals(rawBytesEnabled, null))
+            if (string.IsNullOrEmpty(rawBytesEnabled))
             {
-                Assert.Equal(imageBytesLength, rpcRequestObject.Http.RawBody.Bytes.ToByteArray().Length);
+                Assert.Empty(rpcRequestObject.Http.RawBody.Bytes);
+                Assert.Equal(imageStringLength, rpcRequestObject.Http.RawBody.String.Length);
             }
             else
             {
-                Assert.Equal(imageStringLength, rpcRequestObject.Http.RawBody.String.Length);
+                Assert.Empty(rpcRequestObject.Http.RawBody.String);
+                Assert.Equal(imageBytesLength, rpcRequestObject.Http.RawBody.Bytes.ToByteArray().Length);
             }
         }
 

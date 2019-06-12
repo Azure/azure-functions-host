@@ -211,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private static bool IsRawBodyBytesRequested(Capabilities capabilities)
         {
-            return !string.Equals(capabilities.GetCapabilityState(LanguageWorkerConstants.RawHttpBodyBytes), null);
+            return capabilities.GetCapabilityState(LanguageWorkerConstants.RawHttpBodyBytes) != null;
         }
 
         internal static byte[] RequestBodyToBytes(HttpRequest request)
