@@ -85,7 +85,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var environment = p.GetService<IEnvironment>();
                 if (environment.IsLinuxContainerEnvironment())
                 {
-                    return new LinuxContainerEventGenerator(environment);
+                    var standbyOptions = p.GetService<IOptionsMonitor<StandbyOptions>>();
+                    var httpClient = p.GetService<HttpClient>();
+                    return new LinuxContainerEventGenerator(environment, standbyOptions, httpClient);
                 }
                 else if (SystemEnvironment.Instance.IsLinuxAppServiceEnvironment())
                 {
