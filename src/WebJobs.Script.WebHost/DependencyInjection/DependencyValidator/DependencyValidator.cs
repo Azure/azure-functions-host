@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Text;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -16,7 +15,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
-    internal class DependencyValidator : IDependencyValidator
+    public class DependencyValidator : IDependencyValidator
     {
         private static readonly ExpectedDependencyBuilder _expectedDependencies = CreateExpectedDependencies();
 
@@ -57,18 +56,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             return expected;
         }
 
-        public void Validate(IServiceCollection services)
+        public virtual void Validate(IServiceCollection services)
         {
             StringBuilder sb = new StringBuilder();
 
             foreach (InvalidServiceDescriptor invalidDescriptor in _expectedDependencies.FindInvalidServices(services))
             {
-                sb.AppendLine($"  [{invalidDescriptor.Reason}] {FormatServiceDescriptor(invalidDescriptor.Descriptor)}");
+                sb.AppendLine();
+                sb.Append($"  [{invalidDescriptor.Reason}] {FormatServiceDescriptor(invalidDescriptor.Descriptor)}");
             }
 
             if (sb.Length > 0)
             {
-                string msg = $"The following service registrations did not match the expected services:{Environment.NewLine}{sb.ToString()}";
+                string msg = $"The following service registrations did not match the expected services:{sb.ToString()}";
                 throw new InvalidHostServicesException(msg);
             }
         }
