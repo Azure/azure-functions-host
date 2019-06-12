@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -146,8 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _lastRenewal = DateTime.UtcNow;
                 _lastRenewalLatency = _lastRenewal - requestStart;
 
-                string message = $"Host lock lease acquired by instance ID '{_websiteInstanceId}'.";
-                _logger.LogInformation(message);
+                _logger.PrimaryHostCoordinatorLockLeaseAcquired(_websiteInstanceId);
 
                 // We've successfully acquired the lease, change the timer to use our renewal interval
                 SetTimerInterval(_renewalInterval);
@@ -163,13 +163,11 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 ResetLease();
 
-                string message = $"Failed to renew host lock lease: {reason}";
-                _logger.LogInformation(message);
+                _logger.PrimaryHostCoordinatorFailedToRenewLockLease(reason);
             }
             else
             {
-                string message = $"Host instance '{_websiteInstanceId}' failed to acquire host lock lease: {reason}";
-                _logger.LogDebug(message);
+                _logger.PrimaryHostCoordinatorFailedToAcquireLockLease(_websiteInstanceId, reason);
             }
         }
 
@@ -195,8 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     Task.Run(() => _lockManager.ReleaseLockAsync(_lockHandle, CancellationToken.None)).GetAwaiter().GetResult();
 
-                    string message = $"Host instance '{_websiteInstanceId}' released lock lease.";
-                    _logger.LogDebug(message);
+                    _logger.PrimaryHostCoordinatorReleasedLocklLease(_websiteInstanceId);
                 }
             }
             catch (Exception)

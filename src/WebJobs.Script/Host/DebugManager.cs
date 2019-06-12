@@ -3,6 +3,8 @@
 
 using System;
 using System.IO;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -50,8 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script
             catch (Exception ex)
             {
                 // best effort
-                string message = "Unable to update the debug sentinel file.";
-                _logger.LogError(0, ex, message);
+                _logger.DebugerManagerUnableToUpdateSentinelFile(ex);
 
                 if (ex.IsFatal())
                 {
