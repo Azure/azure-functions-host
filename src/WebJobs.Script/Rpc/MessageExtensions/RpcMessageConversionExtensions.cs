@@ -141,7 +141,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (request.Body != null && request.ContentLength > 0)
                 {
                     object body = null;
-                    object rawBodyBytes = null;
                     string rawBodyString = null;
                     byte[] bytes = RequestBodyToBytes(request);
 
@@ -165,11 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
                             body = bytes;
-                            if (IsRawBodyBytesRequested(capabilities))
-                            {
-                                rawBodyBytes = bytes;
-                            }
-                            else
+                            if (!IsRawBodyBytesRequested(capabilities))
                             {
                                 rawBodyString = Encoding.UTF8.GetString(bytes);
                             }
