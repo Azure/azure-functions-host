@@ -11,6 +11,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -45,9 +46,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private ImmutableArray<FunctionMetadata> LoadFunctionMetadata()
         {
-            _logger.LogInformation("Loading functions metadata");
+            _logger.FunctionMetadataManagerLoadingFunctionsMetadata();
             Collection<FunctionMetadata> functionMetadata = ReadFunctionsMetadata();
-            _logger.LogInformation($"{functionMetadata.Count} functions loaded");
+            _logger.FunctionMetadataManagerFunctionsLoaded(functionMetadata.Count);
 
             return functionMetadata.ToImmutableArray();
         }

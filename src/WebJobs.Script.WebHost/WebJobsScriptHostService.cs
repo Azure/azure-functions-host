@@ -12,6 +12,7 @@ using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -112,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogInformation("Initialization cancellation requested by runtime.");
+                    _logger.ScriptHostServiceInitCanceledByRuntime();
                     throw;
                 }
 
@@ -174,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (OperationCanceledException)
             {
-                GetHostLogger(localHost).LogDebug("Host startup was canceled.");
+                GetHostLogger(localHost).StartupWasCanceled();
                 throw;
             }
             catch (Exception exc)
@@ -186,14 +187,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     LastError = exc;
                     State = ScriptHostState.Error;
-                    logger.LogError(exc, "A host error has occurred");
+                    logger.ErrorOccured(exc);
                 }
                 else
                 {
                     // Another host has been created before this host
                     // threw its startup exception. We want to make sure it
                     // doesn't control the state of the service.
-                    logger.LogWarning(exc, "A host error has occurred on an inactive host");
+                    logger.ErrorOccuredInactive(exc);
                 }
 
                 attemptCount++;
@@ -225,7 +226,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    logger.LogDebug($"Cancellation requested. A new host will not be started.");
+                    logger.CancellationRequested();
                     cancellationToken.ThrowIfCancellationRequested();
                 }
 
@@ -277,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _startupLoopTokenSource?.Cancel();
 
             State = ScriptHostState.Stopping;
-            _logger.LogInformation("Stopping host...");
+            _logger.Stopping();
 
             var currentHost = _host;
             _host = null;
@@ -286,11 +287,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (result != stopTask)
             {
-                _logger.LogWarning("Host did not shutdown within its allotted time.");
+                _logger.DidNotShutDown();
             }
             else
             {
-                _logger.LogInformation("Host shutdown completed.");
+                _logger.ShutDownCompleted();
             }
 
             State = ScriptHostState.Stopped;
@@ -303,13 +304,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 await _hostRestartSemaphore.WaitAsync();
                 if (State == ScriptHostState.Stopping || State == ScriptHostState.Stopped)
                 {
-                    _logger.LogDebug($"Host restart was requested, but current host state is '{State}'. Skipping restart.");
+                    _logger.SkipRestart(State.ToString());
                     return;
                 }
 
                 _startupLoopTokenSource?.Cancel();
                 State = ScriptHostState.Default;
-                _logger.LogInformation("Restarting host.");
+                _logger.Restarting();
 
                 var previousHost = _host;
                 _host = null;
@@ -318,7 +319,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 await startTask;
 
-                _logger.LogInformation("Host restarted.");
+                _logger.Restarted();
             }
             finally
             {
@@ -333,9 +334,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IsHostHealthy(throwWhenUnhealthy: true);
         }
 
-        private IHost BuildHost(bool skipHostStartup = false, bool skipHostJsonConfiguration = false)
+        private IHost BuildHost(bool skipHostStartup, bool skipHostJsonConfiguration)
         {
-            _logger.LogInformation("Building host: startup suppressed:{skipHostStartup}, configuration suppressed: {skipHostJsonConfiguration}", skipHostStartup, skipHostJsonConfiguration);
+            _logger.Building(skipHostStartup.ToString(), skipHostJsonConfiguration.ToString());
             return _scriptHostBuilder.BuildHost(skipHostStartup, skipHostJsonConfiguration);
         }
 
@@ -360,14 +361,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             var logger = GetHostLogger(host);
 
-            var log = isOffline ? "Host is offline." : "Initializing Host.";
-            logger.LogInformation(log);
-            logger.LogInformation($"Host initialization: ConsecutiveErrors={attemptCount}, StartupCount={startCount}");
+            if (isOffline)
+            {
+                logger.Offline();
+            }
+            else
+            {
+                logger.Initializing();
+            }
+            logger.Initialization(attemptCount, startCount);
 
             if (_scriptWebHostEnvironment.InStandbyMode)
             {
                 // Reading the string from resources to make sure resource loading code path is warmed up during placeholder as well.
-                logger.LogInformation(Properties.Resources.HostPlaceHolderTrace);
+                logger.InStandByMode();
             }
         }
 
@@ -382,8 +389,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // loop. The health check performed in OnHostInitializing will then
                 // fail and we'll enter a restart loop (exponentially backing off)
                 // until the host is healthy again and we can resume host processing.
-                var message = "Host is unhealthy. Initiating a restart.";
-                _logger.LogError(0, message);
+                _logger.UnhealthyRestart();
                 var tIgnore = RestartHostAsync(CancellationToken.None);
             }
         }
@@ -416,8 +422,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // if the number of times the host has been unhealthy in
                 // the current time window exceeds the threshold, recover by
                 // initiating shutdown
-                var message = $"Host unhealthy count exceeds the threshold of {_healthMonitorOptions.Value.HealthCheckThreshold} for time window {_healthMonitorOptions.Value.HealthCheckWindow}. Initiating shutdown.";
-                _logger.LogError(0, message);
+                _logger.UnhealthyCountExceeded(_healthMonitorOptions.Value.HealthCheckThreshold, _healthMonitorOptions.Value.HealthCheckWindow);
                 var environment = _rootServiceProvider.GetService<IScriptJobHostEnvironment>();
                 environment.Shutdown();
                 return true;

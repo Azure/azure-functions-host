@@ -187,9 +187,6 @@
     ]
 }</value>
   </data>
-  <data name="HostPlaceHolderTrace" xml:space="preserve">
-    <value>Host is in standby mode</value>
-  </data>
   <data name="HostSecretsSchemaV0" xml:space="preserve">
     <value>{
     "type": "object",
