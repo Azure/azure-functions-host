@@ -22,7 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
-        private readonly IDisposable _rpcChannelReadySubscriptions;
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
 
@@ -39,8 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(5000);
-            _rpcChannelReadySubscriptions = _eventManager.OfType<RpcWebHostChannelReadyEvent>()
-               .Subscribe(AddOrUpdateWorkerChannels);
         }
 
         public Task<ILanguageWorkerChannel> InitializeChannelAsync(string runtime)
@@ -62,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                                                                         .Where(msg => msg.Language == runtime).Timeout(workerInitTimeout);
                 // Wait for response from language worker process
                 RpcWebHostChannelReadyEvent readyEvent = await rpcChannelReadyEvent.FirstAsync();
+                AddOrUpdateWorkerChannels(readyEvent);
             }
             catch (Exception ex)
             {
@@ -168,9 +166,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        private void AddOrUpdateWorkerChannels(RpcWebHostChannelReadyEvent rpcChannelReadyEvent)
+        internal void AddOrUpdateWorkerChannels(RpcWebHostChannelReadyEvent rpcChannelReadyEvent)
         {
-            _logger.LogDebug("Adding language worker channel for runtime: {language}.", rpcChannelReadyEvent.Language);
+            _logger.LogDebug("Adding webhost language worker channel for runtime: {language}. workerId:{id}", rpcChannelReadyEvent.Language, rpcChannelReadyEvent.LanguageWorkerChannel.Id);
             _workerChannels.AddOrUpdate(rpcChannelReadyEvent.Language,
                     (runtime) =>
                     {
