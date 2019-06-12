@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Options;
-using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
@@ -21,8 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         bool ShutdownChannelIfExists(string language, string workerId);
 
         void ShutdownChannels();
-
-        void ShutdownProcessRegistry();
 
         ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false, IOptions<ManagedDependencyOptions> managedDependencyOptions = null);
     }
