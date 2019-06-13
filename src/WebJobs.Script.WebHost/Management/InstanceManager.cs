@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             if (string.Equals(context.ZipUrl.EnvVar, EnvironmentSettingNames.ScmRunFromPackage,
                 StringComparison.OrdinalIgnoreCase))
             {
-                ScmSpecialization.Type specializationPath = ScmSpecializationPath(context);
+                ScmSpecialization.Type specializationPath = ScmSpecializationType(context);
                 switch (specializationPath)
                 {
                     case ScmSpecialization.Type.Empty:
@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        private ScmSpecialization.Type ScmSpecializationPath(HostAssignmentContext context)
+        private ScmSpecialization.Type ScmSpecializationType(HostAssignmentContext context)
         {
             try
             {
@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _logger.LogInformation($"Applying {assignmentContext.Environment.Count} app setting(s)");
             assignmentContext.ApplyAppSettings(_environment);
 
-            // We need to get the non-PlaceholderMode script ScmSpecialization.Path so we can unzip to the correct location.
+            // We need to get the non-PlaceholderMode script Path so we can unzip to the correct location.
             // This asks the factory to skip the PlaceholderMode check when configuring options.
             var options = _optionsFactory.Create(ScriptApplicationHostOptionsSetup.SkipPlaceholder);
 
