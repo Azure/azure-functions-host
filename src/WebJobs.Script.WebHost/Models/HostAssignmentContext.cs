@@ -28,48 +28,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         {
             get
             {
-                string zipUrlEnvVar = GetDefinedZipUrlEnvVar();
-
-                if (!string.IsNullOrEmpty(zipUrlEnvVar))
+                if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteRunFromPackage))
                 {
-                    return new HostAssignmentZipUrl
-                    {
-                        EnvVar = zipUrlEnvVar,
-                        Url = Environment[zipUrlEnvVar]
-                    };
+                    return new HostAssignmentZipUrl(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
+                        Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage]);
+                }
+                else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteAltZipDeployment))
+                {
+                    return new HostAssignmentZipUrl(EnvironmentSettingNames.AzureWebsiteAltZipDeployment,
+                        Environment[EnvironmentSettingNames.AzureWebsiteAltZipDeployment]);
+                }
+                else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteZipDeployment))
+                {
+                    return new HostAssignmentZipUrl(EnvironmentSettingNames.AzureWebsiteZipDeployment,
+                        Environment[EnvironmentSettingNames.AzureWebsiteZipDeployment]);
+                }
+                else if (Environment.ContainsKey(EnvironmentSettingNames.ScmRunFromPackage))
+                {
+                    return new HostAssignmentZipUrl(EnvironmentSettingNames.ScmRunFromPackage,
+                        Environment[EnvironmentSettingNames.ScmRunFromPackage]);
                 }
                 else
                 {
-                    return new HostAssignmentZipUrl
-                    {
-                        EnvVar = string.Empty,
-                        Url = string.Empty
-                    };
+                    return new HostAssignmentZipUrl(string.Empty, string.Empty);
                 }
-            }
-        }
-
-        private string GetDefinedZipUrlEnvVar()
-        {
-            if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteRunFromPackage))
-            {
-                return EnvironmentSettingNames.AzureWebsiteRunFromPackage;
-            }
-            else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteAltZipDeployment))
-            {
-                return EnvironmentSettingNames.AzureWebsiteAltZipDeployment;
-            }
-            else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteZipDeployment))
-            {
-                return EnvironmentSettingNames.AzureWebsiteZipDeployment;
-            }
-            else if (Environment.ContainsKey(EnvironmentSettingNames.ScmRunFromPackage))
-            {
-                return EnvironmentSettingNames.ScmRunFromPackage;
-            }
-            else
-            {
-                return string.Empty;
             }
         }
 

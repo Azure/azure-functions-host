@@ -84,20 +84,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public bool StartAssignment(HostAssignmentContext context)
         {
-            if (string.Equals(context.ZipUrl.EnvVar, EnvironmentSettingNames.ScmRunFromPackage,
-                StringComparison.OrdinalIgnoreCase))
+            if (context.ZipUrl.IsScmRunFromPackage())
             {
-                ScmSpecialization.Type specializationPath = ScmSpecializationType(context);
-                switch (specializationPath)
+                if (!context.ZipUrl.BlobExistsAsync(_logger).Result)
                 {
-                    case ScmSpecialization.Type.Empty:
-                        SpecializeForEmptyScmPackage();
-                        return true;
-                    case ScmSpecialization.Type.Standard:
-                        // Continue with normal assignment
-                        break;
-                    case ScmSpecialization.Type.Abort:
-                        return false;
+                    SpecializeForEmptyScmPackage();
+                    return true;
                 }
             }
 
@@ -140,32 +132,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        private ScmSpecialization.Type ScmSpecializationType(HostAssignmentContext context)
-        {
-            try
-            {
-                HostAssignmentZipUrl zipUrl = context.ZipUrl;
-                CloudBlockBlob blob = new CloudBlockBlob(new Uri(zipUrl.Url));
-                bool blobExists = blob.ExistsAsync().Result;
-
-                if (blobExists)
-                {
-                    return ScmSpecialization.Type.Standard;
-                }
-                else
-                {
-                    // a build has not been generated yet, but we do not
-                    // want to fail since this is a valid scenario
-                    return ScmSpecialization.Type.Empty;
-                }
-            }
-            catch (Exception e)
-            {
-                _logger.LogError("Specializing for Scm builds failed {0}", e);
-                return ScmSpecialization.Type.Abort;
-            }
-        }
-
         private void SpecializeForEmptyScmPackage()
         {
             _logger.LogInformation("Specialized with currently empty scm package");
@@ -187,10 +153,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     // ScmRunFromPackage can be empty since it is a placeholder for the actual build zip
                     // so don't do a HEAD call against it. Just check if it is a valid blob url.
-                    if (string.Equals(assignmentContext.ZipUrl.EnvVar, EnvironmentSettingNames.ScmRunFromPackage,
-                        StringComparison.OrdinalIgnoreCase))
+                    if (assignmentContext.ZipUrl.IsScmRunFromPackage())
                     {
-                        bool isValid = IsValidBlobReference(zipUrl);
+                        bool isValid = assignmentContext.ZipUrl.IsValidBlobReference();
                         return isValid ? null : $"Invalid blob reference {EnvironmentSettingNames.ScmRunFromPackage}. ValidateContext failed.";
                     }
 
@@ -221,19 +186,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
 
             return error;
-        }
-
-        private bool IsValidBlobReference(string uri)
-        {
-            try
-            {
-                new CloudBlockBlob(new Uri(uri));
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-            return true;
         }
 
         private async Task Assign(HostAssignmentContext assignmentContext)
