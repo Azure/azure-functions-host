@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class LanguageWorkerProcess : ILanguageWorkerProcess
+    internal class LanguageWorkerProcess : ILanguageWorkerProcess, IDisposable
     {
         private readonly IWorkerProcessFactory _processFactory;
         private readonly IProcessRegistry _processRegistry;
@@ -39,14 +39,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                                        IScriptEventManager eventManager,
                                        IWorkerProcessFactory processFactory,
                                        IProcessRegistry processRegistry,
-                                       ILoggerFactory loggerFactory,
+                                       ILogger workerProcessLogger,
                                        ILanguageWorkerConsoleLogSource consoleLogSource)
         {
             _runtime = runtime;
             _workerId = workerId;
             _processFactory = processFactory;
             _processRegistry = processRegistry;
-            _workerProcessLogger = loggerFactory.CreateLogger($"LanguageWorkerProcess.{runtime}.{workerId}");
+            _workerProcessLogger = workerProcessLogger;
             _consoleLogSource = consoleLogSource;
             _eventManager = eventManager;
 

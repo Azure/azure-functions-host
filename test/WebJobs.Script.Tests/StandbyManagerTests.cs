@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private Mock<IConfigurationRoot> _mockConfiguration;
         private Mock<IOptionsMonitor<ScriptApplicationHostOptions>> _mockOptionsMonitor;
         private Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
-        private Mock<ILanguageWorkerChannelManager> _mockLanguageWorkerChannelManager;
+        private Mock<IWebHostLanguageWorkerChannelManager> _mockLanguageWorkerChannelManager;
         private TestEnvironment _testEnvironment;
         private string _testSettingName = "TestSetting";
         private string _testSettingValue = "TestSettingValue";
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockConfiguration = new Mock<IConfigurationRoot>();
             _mockOptionsMonitor = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
             _mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
-            _mockLanguageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
+            _mockLanguageWorkerChannelManager = new Mock<IWebHostLanguageWorkerChannelManager>();
             _testEnvironment = new TestEnvironment();
 
             _testLoggerProvider = new TestLoggerProvider();

@@ -17,14 +17,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
     public class LanguageWorkerChannelManagerTests
     {
-        private LanguageWorkerChannelManager _languageWorkerChannelManager;
+        private WebHostLanguageWorkerChannelManager _languageWorkerChannelManager;
         private IScriptEventManager _eventManager;
         private IEnvironment _testEnvironment;
         private IRpcServer _rpcServer;
         private TestLoggerProvider _loggerProvider;
         private ILoggerFactory _loggerFactory;
         private LanguageWorkerOptions _languageWorkerOptions;
-        private Mock<ILanguageWorkerProcessManager> _languageWorkerProcessManager;
+        private Mock<ILanguageWorkerProcessFactory> _languageWorkerProcessFactory;
+        private ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
         private IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
 
         private string _scriptRootPath = @"c:\testing\FUNCTIONS-TEST";
@@ -51,25 +52,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 ScriptPath = @"c:\testing\FUNCTIONS-TEST\test$#"
             };
             _optionsMonitor = TestHelpers.CreateOptionsMonitor(applicationHostOptions);
-            _languageWorkerProcessManager = new Mock<ILanguageWorkerProcessManager>();
-            _languageWorkerProcessManager.Setup(m => m.CreateLanguageWorkerProcess(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(new LanguageWorkerProcess());
+
+            _languageWorkerProcessFactory = new Mock<ILanguageWorkerProcessFactory>();
+            _languageWorkerProcessFactory.Setup(m => m.CreateLanguageWorkerProcess(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(new LanguageWorkerProcess());
+
+            _languageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, null, _scriptRootPath);
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
         }
 
         [Fact]
         public void CreateChannels_Succeeds()
         {
-            _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor, _languageWorkerProcessManager.Object);
-
-            string workerId = Guid.NewGuid().ToString();
             string language = LanguageWorkerConstants.JavaLanguageWorkerName;
-            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(workerId, language);
-
+            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(language);
             var initializedChannel = _languageWorkerChannelManager.GetChannel(language);
-            string javaWorkerId2 = Guid.NewGuid().ToString();
-            ILanguageWorkerChannel javaWorkerChannel2 = CreateTestChannel(javaWorkerId2, LanguageWorkerConstants.JavaLanguageWorkerName);
+            ILanguageWorkerChannel javaWorkerChannel2 = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
 
             Assert.NotNull(initializedChannel);
-            Assert.Equal(workerId, initializedChannel.Id);
+            Assert.Equal(javaWorkerChannel.Id, initializedChannel.Id);
             Assert.Equal(_languageWorkerChannelManager.GetChannels(LanguageWorkerConstants.JavaLanguageWorkerName).Count(), 2);
         }
 
@@ -77,13 +77,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void ShutdownStandByChannels_Succeeds()
         {
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
-            _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor, _languageWorkerProcessManager.Object);
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
 
-            string javaWorkerId = Guid.NewGuid().ToString();
-            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(javaWorkerId, LanguageWorkerConstants.JavaLanguageWorkerName);
+            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
 
-            string nodeWorkerId = Guid.NewGuid().ToString();
-            ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(nodeWorkerId, LanguageWorkerConstants.NodeLanguageWorkerName);
+            ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
 
             _languageWorkerChannelManager.ScheduleShutdownStandbyChannels();
             var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
@@ -91,20 +89,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Null(_languageWorkerChannelManager.GetChannels(LanguageWorkerConstants.NodeLanguageWorkerName));
             initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.NotNull(initializedChannel);
-            Assert.Equal(javaWorkerId, initializedChannel.Id);
+            Assert.Equal(javaWorkerChannel.Id, initializedChannel.Id);
         }
 
         [Fact]
         public void ShutdownStandByChannels_WorkerRuntinmeDotNet_Succeeds()
         {
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName);
-            _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor, _languageWorkerProcessManager.Object);
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
 
-            string javaWorkerId = Guid.NewGuid().ToString();
-            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(javaWorkerId, LanguageWorkerConstants.JavaLanguageWorkerName);
-
-            string nodeWorkerId = Guid.NewGuid().ToString();
-            ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(nodeWorkerId, LanguageWorkerConstants.NodeLanguageWorkerName);
+            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
+            ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
 
             _languageWorkerChannelManager.ScheduleShutdownStandbyChannels();
             var initializedChannel = _languageWorkerChannelManager.GetChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
@@ -116,13 +111,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void ShutdownChannels_Succeeds()
         {
-            _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor, _languageWorkerProcessManager.Object);
-
             string javaWorkerId = Guid.NewGuid().ToString();
-            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(javaWorkerId, LanguageWorkerConstants.JavaLanguageWorkerName);
+            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
 
             string nodeWorkerId = Guid.NewGuid().ToString();
-            ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(nodeWorkerId, LanguageWorkerConstants.NodeLanguageWorkerName);
+            ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
 
             // Shutdown
             _languageWorkerChannelManager.ShutdownChannels();
@@ -139,12 +132,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void ShutdownStandyChannels_WorkerRuntime_Node_Set()
         {
-            _testEnvironment = new TestEnvironment();
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
 
-            _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor, _languageWorkerProcessManager.Object);
-            string javaWorkerId = Guid.NewGuid().ToString();
-            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(javaWorkerId, LanguageWorkerConstants.JavaLanguageWorkerName);
+            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
 
             _languageWorkerChannelManager.ScheduleShutdownStandbyChannels();
 
@@ -155,11 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void ShutdownStandbyChannels_WorkerRuntime_Not_Set()
         {
-            _testEnvironment = new TestEnvironment();
-
-            _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor, _languageWorkerProcessManager.Object);
-            string javaWorkerId = Guid.NewGuid().ToString();
-            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(javaWorkerId, LanguageWorkerConstants.JavaLanguageWorkerName);
+            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
 
             _languageWorkerChannelManager.ShutdownChannels();
 
@@ -170,16 +157,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void ShutdownChannelsIfExist_Succeeds()
         {
-            _testEnvironment = new TestEnvironment();
-            _languageWorkerChannelManager = new LanguageWorkerChannelManager(_eventManager, _testEnvironment, _rpcServer, _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), _optionsMonitor, _languageWorkerProcessManager.Object);
-            string javaWorkerId1 = Guid.NewGuid().ToString();
-            ILanguageWorkerChannel javaWorkerChannel1 = CreateTestChannel(javaWorkerId1, LanguageWorkerConstants.JavaLanguageWorkerName);
+            ILanguageWorkerChannel javaWorkerChannel1 = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
+            ILanguageWorkerChannel javaWorkerChannel2 = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
 
-            string javaWorkerId2 = Guid.NewGuid().ToString();
-            ILanguageWorkerChannel javaWorkerChannel2 = CreateTestChannel(javaWorkerId2, LanguageWorkerConstants.JavaLanguageWorkerName);
-
-            _languageWorkerChannelManager.ShutdownChannelIfExists(LanguageWorkerConstants.JavaLanguageWorkerName, javaWorkerId1);
-            _languageWorkerChannelManager.ShutdownChannelIfExists(LanguageWorkerConstants.JavaLanguageWorkerName, javaWorkerId2);
+            _languageWorkerChannelManager.ShutdownChannelIfExists(LanguageWorkerConstants.JavaLanguageWorkerName, javaWorkerChannel1.Id);
+            _languageWorkerChannelManager.ShutdownChannelIfExists(LanguageWorkerConstants.JavaLanguageWorkerName, javaWorkerChannel2.Id);
 
             Assert.Empty(_languageWorkerChannelManager.GetChannels(LanguageWorkerConstants.JavaLanguageWorkerName));
 
@@ -187,11 +169,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Null(initializedChannel);
         }
 
-        private ILanguageWorkerChannel CreateTestChannel(string workerId, string language)
+        private ILanguageWorkerChannel CreateTestChannel(string language)
         {
-            var testChannel = _languageWorkerChannelManager.CreateLanguageWorkerChannel(workerId, _scriptRootPath, language, null, 0, false, null);
+            var testChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptRootPath, language, null, 0, false, null);
             // Generate event to mock language worker response
-            RpcWebHostChannelReadyEvent javaReadyEvent = new RpcWebHostChannelReadyEvent(workerId, language, testChannel, "testVersion", _capabilities);
+            RpcWebHostChannelReadyEvent javaReadyEvent = new RpcWebHostChannelReadyEvent(testChannel.Id, language, testChannel, "testVersion", _capabilities);
             _eventManager.Publish(javaReadyEvent);
             return testChannel;
         }

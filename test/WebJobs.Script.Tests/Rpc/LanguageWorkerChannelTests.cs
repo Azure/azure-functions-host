@@ -48,10 +48,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                _eventManager,
                testWorkerConfig,
                _mockLanguageWorkerProcess.Object,
-               _loggerFactory,
+               _logger,
                _mockMetricsLogger.Object,
                0);
-            _workerChannel.WorkerChannelLogger = _logger;
         }
 
         [Fact]

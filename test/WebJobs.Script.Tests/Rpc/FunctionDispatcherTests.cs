@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -52,40 +53,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public async void Starting_MultipleJobhostChannels_Succeeds()
         {
             int expectedProcessCount = 3;
-            FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(expectedProcessCount.ToString());
+            FunctionDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
             await functionDispatcher.InitializeAsync(GetTestFunctionsList(LanguageWorkerConstants.NodeLanguageWorkerName));
 
             var finalChannelCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
             Assert.Equal(expectedProcessCount, finalChannelCount);
 
             // Verify LanguageWorkerChannelState when channel after it is initialized
-            Assert.True(functionDispatcher.WorkerState.GetChannels().All(ch => ch.State == LanguageWorkerChannelState.Initialized));
+            Assert.True(functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().All(ch => ch.State == LanguageWorkerChannelState.Initialized));
         }
 
         [Fact]
         public async void Starting_MultipleWebhostChannels_Succeeds()
         {
             int expectedProcessCount = 2;
-            FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(expectedProcessCount.ToString(), true);
+            FunctionDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString(), true);
             await functionDispatcher.InitializeAsync(GetTestFunctionsList(LanguageWorkerConstants.JavaLanguageWorkerName));
 
-            var finalWebhostChannelCount = await WaitForWebhostWorkerChannelsToStartup(functionDispatcher.ChannelManager, expectedProcessCount, "java");
+            var finalWebhostChannelCount = await WaitForWebhostWorkerChannelsToStartup(functionDispatcher.WebHostLanguageWorkerChannelManager, expectedProcessCount, "java");
             Assert.Equal(expectedProcessCount, finalWebhostChannelCount);
 
-            var finalJobhostChannelCount = functionDispatcher.WorkerState.GetChannels().Count();
+            var finalJobhostChannelCount = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count();
             Assert.Equal(0, finalJobhostChannelCount);
         }
 
         [Fact]
         public void MaxProcessCount_Returns_Default()
         {
-            FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher();
+            FunctionDispatcher functionDispatcher = GetTestFunctionDispatcher();
             Assert.Equal(1, functionDispatcher.MaxProcessCount);
 
-            functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher("0");
+            functionDispatcher = GetTestFunctionDispatcher("0");
             Assert.Equal(1, functionDispatcher.MaxProcessCount);
 
-            functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher("-1");
+            functionDispatcher = GetTestFunctionDispatcher("-1");
             Assert.Equal(1, functionDispatcher.MaxProcessCount);
         }
 
@@ -93,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void MaxProcessCount_ProcessCount_Set_Returns_ExpectedCount()
         {
             int expectedProcessCount = 3;
-            FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(expectedProcessCount.ToString());
+            FunctionDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
             Assert.Equal(expectedProcessCount, functionDispatcher.MaxProcessCount);
         }
 
@@ -101,14 +102,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void MaxProcessCount_ProcessCount_Set_ExceedsMax_Returns_ExpectedCount()
         {
             int expectedProcessCount = 30;
-            FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(expectedProcessCount.ToString());
+            FunctionDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
             Assert.Equal(10, functionDispatcher.MaxProcessCount);
         }
 
         [Fact]
         public async void FunctionDispatcherState_Default_DotNetFunctions()
         {
-            FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher();
+            FunctionDispatcher functionDispatcher = GetTestFunctionDispatcher();
             Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
             FunctionMetadata func1 = new FunctionMetadata()
             {
@@ -132,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async void FunctionDispatcherState_Default_NoFunctions()
         {
-            FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher();
+            FunctionDispatcher functionDispatcher = GetTestFunctionDispatcher();
             Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
             await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
         }
@@ -140,8 +141,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async void ShutdownChannels_NoFunctions()
         {
-            var mockLanguageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
-            FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(mockLanguageWorkerChannelManager: mockLanguageWorkerChannelManager);
+            var mockLanguageWorkerChannelManager = new Mock<IWebHostLanguageWorkerChannelManager>();
+            mockLanguageWorkerChannelManager.Setup(m => m.ShutdownChannels());
+            FunctionDispatcher functionDispatcher = GetTestFunctionDispatcher(mockwebHostLanguageWorkerChannelManager: mockLanguageWorkerChannelManager);
             Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
             await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
             // Wait longer than debouce action.
@@ -161,8 +163,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 func1
             };
-            var mockLanguageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
-            FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(mockLanguageWorkerChannelManager: mockLanguageWorkerChannelManager);
+            var mockLanguageWorkerChannelManager = new Mock<IWebHostLanguageWorkerChannelManager>();
+            FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(mockwebHostLanguageWorkerChannelManager: mockLanguageWorkerChannelManager);
             Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
             await functionDispatcher.InitializeAsync(functions);
             // Wait longer than debouce action.
@@ -173,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async void FunctionDispatcherState_Transitions_From_Starting_To_Initialized()
         {
-            FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher();
+            FunctionDispatcher functionDispatcher = GetTestFunctionDispatcher();
             FunctionMetadata func1 = new FunctionMetadata()
             {
                 Name = "func1",
@@ -199,8 +201,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             int finalChannelCount = 0;
             for (int restartCount = 0; restartCount < expectedProcessCount * 3; restartCount++)
             {
-                TestLanguageWorkerChannel testWorkerChannel = (TestLanguageWorkerChannel)functionDispatcher.WorkerState.GetChannels().FirstOrDefault();
-                if (functionDispatcher.WorkerState.Errors.Count < (expectedProcessCount * 3) - 1)
+                TestLanguageWorkerChannel testWorkerChannel = (TestLanguageWorkerChannel)functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
+                if (functionDispatcher.LanguageWorkerErrors.Count < (expectedProcessCount * 3) - 1)
                 {
                     testWorkerChannel.RaiseWorkerError();
                 }
@@ -219,16 +221,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
             for (int restartCount = 0; restartCount < expectedProcessCount * 3; restartCount++)
             {
-                foreach (var channel in functionDispatcher.WorkerState.GetChannels())
+                foreach (var channel in functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels())
                 {
                     TestLanguageWorkerChannel testWorkerChannel = channel as TestLanguageWorkerChannel;
                     testWorkerChannel.RaiseWorkerError();
                 }
             }
-            Assert.Equal(0, functionDispatcher.WorkerState.GetChannels().Count());
+            Assert.Equal(0, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());
         }
 
-        private static IFunctionDispatcher GetTestFunctionDispatcher(string maxProcessCountValue = null, bool addWebhostChannel = false, Mock<ILanguageWorkerChannelManager> mockLanguageWorkerChannelManager = null)
+        private static FunctionDispatcher GetTestFunctionDispatcher(string maxProcessCountValue = null, bool addWebhostChannel = false, Mock<IWebHostLanguageWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null)
         {
             var eventManager = new ScriptEventManager();
             var scriptJobHostEnvironment = new Mock<IScriptJobHostEnvironment>();
@@ -254,64 +256,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
-
-            ILanguageWorkerChannelManager testLanguageWorkerChannelManager = new TestLanguageWorkerChannelManager(eventManager, testLogger, scriptOptions.Value.RootScriptPath);
+            IWebHostLanguageWorkerChannelManager testWebHostLanguageWorkerChannelManager = new TestLanguageWorkerChannelManager(eventManager, testLogger, scriptOptions.Value.RootScriptPath);
+            ILanguageWorkerChannelFactory testLanguageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(eventManager, testLogger, scriptOptions.Value.RootScriptPath);
+            IJobHostLanguageWorkerChannelManager jobHostLanguageWorkerChannelManager = new JobHostLanguageWorkerChannelManager();
             if (addWebhostChannel)
             {
-                testLanguageWorkerChannelManager.InitializeChannelAsync("java");
+                testWebHostLanguageWorkerChannelManager.InitializeChannelAsync("java");
+            }
+            if (mockwebHostLanguageWorkerChannelManager != null)
+            {
+                testWebHostLanguageWorkerChannelManager = mockwebHostLanguageWorkerChannelManager.Object;
             }
             var mockFunctionDispatcherLoadBalancer = new Mock<IFunctionDispatcherLoadBalancer>();
-            if (mockLanguageWorkerChannelManager != null)
-            {
-                return new FunctionDispatcher(scriptOptions, metricsLogger.Object, testEnv, scriptJobHostEnvironment.Object, eventManager, loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(workerConfigOptions), mockLanguageWorkerChannelManager.Object, null, mockFunctionDispatcherLoadBalancer.Object);
-            }
-            return new FunctionDispatcher(scriptOptions, metricsLogger.Object, testEnv, scriptJobHostEnvironment.Object, eventManager, loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(workerConfigOptions), testLanguageWorkerChannelManager, null, mockFunctionDispatcherLoadBalancer.Object);
+            return new FunctionDispatcher(scriptOptions,
+                metricsLogger.Object,
+                testEnv,
+                scriptJobHostEnvironment.Object,
+                eventManager,
+                loggerFactory,
+                testLanguageWorkerChannelFactory,
+                new OptionsWrapper<LanguageWorkerOptions>(workerConfigOptions),
+                testWebHostLanguageWorkerChannelManager,
+                jobHostLanguageWorkerChannelManager,
+                null,
+                mockFunctionDispatcherLoadBalancer.Object);
         }
 
-        private static IFunctionDispatcher GetTestFunctionDispatcherWithMockLanguageWorkerChannelManager(string maxProcessCountValue = null, bool addWebhostChannel = false)
-        {
-            var eventManager = new ScriptEventManager();
-            var scriptJobHostEnvironment = new Mock<IScriptJobHostEnvironment>();
-            var metricsLogger = new Mock<IMetricsLogger>();
-            var testEnv = new TestEnvironment();
-
-            if (!string.IsNullOrEmpty(maxProcessCountValue))
-            {
-                testEnv.SetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName, maxProcessCountValue);
-            }
-
-            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
-            var testLogger = new TestLogger("FunctionDispatcherTests");
-
-            var options = new ScriptJobHostOptions
-            {
-                RootLogPath = Path.GetTempPath()
-            };
-
-            IOptions<ScriptJobHostOptions> scriptOptions = new OptionsManager<ScriptJobHostOptions>(new TestOptionsFactory<ScriptJobHostOptions>(options));
-
-            var workerConfigOptions = new LanguageWorkerOptions
-            {
-                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
-            };
-
-            var languageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
-            var mockFunctionDispatcherLoadBalancer = new Mock<IFunctionDispatcherLoadBalancer>();
-            return new FunctionDispatcher(scriptOptions, metricsLogger.Object, testEnv, scriptJobHostEnvironment.Object, eventManager, loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(workerConfigOptions), languageWorkerChannelManager.Object, null, mockFunctionDispatcherLoadBalancer.Object);
-        }
-
-        private async Task<int> WaitForJobhostWorkerChannelsToStartup(IFunctionDispatcher functionDispatcher, int expectedCount)
+        private async Task<int> WaitForJobhostWorkerChannelsToStartup(FunctionDispatcher functionDispatcher, int expectedCount)
         {
             int currentChannelCount = 0;
             await TestHelpers.Await(() =>
             {
-                currentChannelCount = functionDispatcher.WorkerState.GetChannels().Count();
+                currentChannelCount = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count();
                 return currentChannelCount == expectedCount;
             }, pollingInterval: 5 * 1000, timeout: 60 * 1000);
             return currentChannelCount;
         }
 
-        private async Task<int> WaitForWebhostWorkerChannelsToStartup(ILanguageWorkerChannelManager channelManager, int expectedCount, string language)
+        private async Task<int> WaitForWebhostWorkerChannelsToStartup(IWebHostLanguageWorkerChannelManager channelManager, int expectedCount, string language)
         {
             int currentChannelCount = 0;
             await TestHelpers.Await(() =>

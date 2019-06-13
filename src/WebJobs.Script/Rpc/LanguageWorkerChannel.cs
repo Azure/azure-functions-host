@@ -10,7 +10,6 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Google.Protobuf.Collections;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -25,14 +24,13 @@ using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.Co
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    internal class LanguageWorkerChannel : ILanguageWorkerChannel
+    internal class LanguageWorkerChannel : ILanguageWorkerChannel, IDisposable
     {
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly string _rootScriptPath;
         private readonly IScriptEventManager _eventManager;
         private readonly WorkerConfig _workerConfig;
         private readonly string _runtime;
-        private readonly ILoggerFactory _loggerFactory;
 
         private bool _disposed;
         private bool _disposing;
@@ -66,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            IScriptEventManager eventManager,
            WorkerConfig workerConfig,
            ILanguageWorkerProcess languageWorkerProcess,
-           ILoggerFactory loggerFactory,
+           ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount,
            bool isWebHostChannel = false,
@@ -78,10 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerConfig = workerConfig;
             _runtime = workerConfig.Language;
             _isWebHostChannel = isWebHostChannel;
-            _loggerFactory = loggerFactory;
             _languageWorkerProcess = languageWorkerProcess;
-
-            _workerChannelLogger = loggerFactory.CreateLogger($"LanguageWorkerChannel.{_runtime}.{_workerId}");
+            _workerChannelLogger = logger;
 
             _workerCapabilities = new Capabilities(_workerChannelLogger);
 
@@ -116,20 +112,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public LanguageWorkerChannelState State => _state;
 
         internal ILanguageWorkerProcess WorkerProcess => _languageWorkerProcess;
-
-        internal ILogger WorkerChannelLogger
-        {
-            get
-            {
-                return _workerChannelLogger;
-            }
-
-            set
-            {
-                // used for unit tests to incject testLogger
-                _workerChannelLogger = value;
-            }
-        }
 
         public Task StartWorkerProcessAsync()
         {
@@ -434,7 +416,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         link.Dispose();
                     }
 
-                    _languageWorkerProcess?.Dispose();
+                    (_languageWorkerProcess as IDisposable)?.Dispose();
 
                     foreach (var sub in _eventSubscriptions)
                     {

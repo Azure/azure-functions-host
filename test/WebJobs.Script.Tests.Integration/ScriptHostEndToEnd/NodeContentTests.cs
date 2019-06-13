@@ -17,12 +17,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class NodeContentTests : IClassFixture<NodeContentTests.TestFixture>
     {
-        private ILanguageWorkerChannelManager _languageWorkerChannelManager;
+        private IWebHostLanguageWorkerChannelManager _languageWorkerChannelManager;
 
         public NodeContentTests(TestFixture fixture)
         {
             Fixture = fixture;
-            _languageWorkerChannelManager = (ILanguageWorkerChannelManager)fixture.Host.Services.GetService(typeof(ILanguageWorkerChannelManager));
+            _languageWorkerChannelManager = (IWebHostLanguageWorkerChannelManager)fixture.Host.Services.GetService(typeof(IWebHostLanguageWorkerChannelManager));
         }
 
         public TestFixture Fixture { get; set; }
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void InitializeAsync_WorkerRuntime_Node_DoNotInitialize_JavaWorker()
         {
-            var channelManager = _languageWorkerChannelManager as LanguageWorkerChannelManager;
+            var channelManager = _languageWorkerChannelManager as WebHostLanguageWorkerChannelManager;
 
             var javaChannel = channelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(javaChannel);
