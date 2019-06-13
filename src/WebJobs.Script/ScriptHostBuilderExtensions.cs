@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -198,6 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
             services.TryAddSingleton<HostPerformanceManager>();
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
+            AddProcessRegistry(services);
         }
 
         public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, string rootScriptPath, IExtensionBundleManager extensionBundleManager)
@@ -288,6 +290,20 @@ namespace Microsoft.Azure.WebJobs.Script
                     services.AddSingleton<IFuncAppFileProvisionerFactory, FuncAppFileProvisionerFactory>();
                     services.AddSingleton<IHostedService, FuncAppFileProvisioningService>();
                 });
+            }
+        }
+
+        private static void AddProcessRegistry(IServiceCollection services)
+        {
+            // W3WP already manages job objects
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                && !ScriptSettingsManager.Instance.IsAppServiceEnvironment)
+            {
+                services.AddSingleton<IProcessRegistry, JobObjectRegistry>();
+            }
+            else
+            {
+                services.AddSingleton<IProcessRegistry, EmptyProcessRegistry>();
             }
         }
     }

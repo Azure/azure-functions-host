@@ -16,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IWorkerProcessFactory _workerProcessFactory;
         private readonly IEnumerable<WorkerConfig> _workerConfigs = null;
         private readonly IProcessRegistry _processRegistry;
-        private readonly ILogger _logger = null;
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IRpcServer _rpcServer = null;
@@ -27,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                                        IScriptEventManager eventManager,
                                        ILoggerFactory loggerFactory,
                                        IWorkerProcessFactory defaultWorkerProcessFactory,
+                                       IProcessRegistry processRegistry,
                                        ILanguageWorkerConsoleLogSource consoleLogSource)
         {
             _loggerFactory = loggerFactory;
@@ -34,22 +34,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _rpcServer = rpcServer;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _consoleLogSource = consoleLogSource;
-
             _workerProcessFactory = defaultWorkerProcessFactory;
-            try
-            {
-                _processRegistry = ProcessRegistryFactory.Create();
-            }
-            catch (Exception e)
-            {
-                _logger.LogWarning(e, "Unable to create process registry");
-            }
+            _processRegistry = processRegistry;
         }
 
         public ILanguageWorkerProcess CreateLanguageWorkerProcess(string workerId, string runtime, string scriptRootPath)
         {
             WorkerConfig workerConfig = _workerConfigs.Where(c => c.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            return new LanguageWorkerProcess(runtime, workerId, scriptRootPath, _rpcServer.Uri, workerConfig.Arguments, _eventManager, _workerProcessFactory, _processRegistry, _loggerFactory, _consoleLogSource);
+            ILogger workerProcessLogger = _loggerFactory.CreateLogger($"LanguageWorkerProcess.{runtime}.{workerId}");
+            return new LanguageWorkerProcess(runtime, workerId, scriptRootPath, _rpcServer.Uri, workerConfig.Arguments, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource);
         }
     }
 }
