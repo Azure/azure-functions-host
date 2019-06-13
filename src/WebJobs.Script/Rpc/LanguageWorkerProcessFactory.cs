@@ -11,9 +11,9 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public class LanguageWorkerProcessFactory : ILanguageWorkerProcessFactory
+    internal class LanguageWorkerProcessFactory : ILanguageWorkerProcessFactory
     {
-        private readonly IWorkerProcessFactory _processFactory;
+        private readonly IWorkerProcessFactory _workerProcessFactory;
         private readonly IEnumerable<WorkerConfig> _workerConfigs = null;
         private readonly IProcessRegistry _processRegistry;
         private readonly ILogger _logger = null;
@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                                        IOptions<LanguageWorkerOptions> languageWorkerOptions,
                                        IScriptEventManager eventManager,
                                        ILoggerFactory loggerFactory,
+                                       IWorkerProcessFactory defaultWorkerProcessFactory,
                                        ILanguageWorkerConsoleLogSource consoleLogSource)
         {
             _loggerFactory = loggerFactory;
@@ -34,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _consoleLogSource = consoleLogSource;
 
-            _processFactory = new DefaultWorkerProcessFactory();
+            _workerProcessFactory = defaultWorkerProcessFactory;
             try
             {
                 _processRegistry = ProcessRegistryFactory.Create();
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public ILanguageWorkerProcess CreateLanguageWorkerProcess(string workerId, string runtime, string scriptRootPath)
         {
             WorkerConfig workerConfig = _workerConfigs.Where(c => c.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            return new LanguageWorkerProcess(runtime, workerId, scriptRootPath, _rpcServer.Uri, workerConfig.Arguments, _eventManager, _processFactory, _processRegistry, _loggerFactory, _consoleLogSource);
+            return new LanguageWorkerProcess(runtime, workerId, scriptRootPath, _rpcServer.Uri, workerConfig.Arguments, _eventManager, _workerProcessFactory, _processRegistry, _loggerFactory, _consoleLogSource);
         }
     }
 }
