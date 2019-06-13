@@ -25,7 +25,7 @@ In **V2**, running a language **out of process** is no longer considered experim
 
 Here's a simple Node.js function that receives a queue message and writes that message to Azure Blob storage:
 
-``javascript
+```javascript
 module.exports = function (context, workItem) {
     context.log('Node.js queue trigger function processed work item ', workItem.id);
     context.bindings.receipt = workItem;
