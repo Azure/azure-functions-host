@@ -53,11 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private ILogger _workerChannelLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
 
-        internal LanguageWorkerChannel()
-        {
-            // To help with unit tests
-        }
-
         internal LanguageWorkerChannel(
            string workerId,
            string rootScriptPath,
