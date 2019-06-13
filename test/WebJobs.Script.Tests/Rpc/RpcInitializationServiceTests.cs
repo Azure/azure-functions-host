@@ -18,13 +18,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     {
         private RpcInitializationService _rpcInitializationService;
         private IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
-        private Mock<ILanguageWorkerChannelManager> _mockLanguageWorkerChannelManager;
+        private Mock<IWebHostLanguageWorkerChannelManager> _mockLanguageWorkerChannelManager;
         private LoggerFactory _loggerFactory;
         private ILogger<RpcInitializationService> _logger;
 
         public RpcInitializationServiceTests()
         {
-            _mockLanguageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
+            _mockLanguageWorkerChannelManager = new Mock<IWebHostLanguageWorkerChannelManager>();
             _loggerFactory = new LoggerFactory();
             _logger = _loggerFactory.CreateLogger<RpcInitializationService>();
 
