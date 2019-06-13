@@ -268,7 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (!_disposing)
             {
-                _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}.", rpcChannelReadyEvent.Language);
+                _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", rpcChannelReadyEvent.Language, rpcChannelReadyEvent.LanguageWorkerChannel.Id);
                 rpcChannelReadyEvent.LanguageWorkerChannel.SendFunctionLoadRequests();
                 State = FunctionDispatcherState.Initialized;
             }

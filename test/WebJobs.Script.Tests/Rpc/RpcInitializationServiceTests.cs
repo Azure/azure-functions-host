@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -34,8 +35,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 ScriptPath = Path.GetTempPath()
             };
             _optionsMonitor = TestHelpers.CreateOptionsMonitor(applicationHostOptions);
+            ILanguageWorkerChannel testLanguageWorkerChannel = new TestLanguageWorkerChannel(Guid.NewGuid().ToString(), LanguageWorkerConstants.NodeLanguageWorkerName);
             _mockLanguageWorkerChannelManager.Setup(m => m.InitializeChannelAsync(It.IsAny<string>()))
-                                             .Returns(Task.FromResult<ILanguageWorkerChannel>(new LanguageWorkerChannel()));
+                                             .Returns(Task.FromResult<ILanguageWorkerChannel>(testLanguageWorkerChannel));
         }
 
         [Fact]

@@ -53,11 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private ILogger _workerChannelLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
 
-        internal LanguageWorkerChannel()
-        {
-            // To help with unit tests
-        }
-
         internal LanguageWorkerChannel(
            string workerId,
            string rootScriptPath,
@@ -178,11 +173,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             if (_isWebHostChannel)
             {
+                _workerChannelLogger.LogDebug("Publishing RpcWebHostChannelReadyEvent for runtime:{language}, workerId:{id}", _workerConfig.Language, _workerId);
                 RpcWebHostChannelReadyEvent readyEvent = new RpcWebHostChannelReadyEvent(_workerId, _runtime, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
                 _eventManager.Publish(readyEvent);
             }
             else
             {
+                _workerChannelLogger.LogDebug("Publishing RpcJobHostChannelReadyEvent for runtime:{language}, workerId:{id}", _workerConfig.Language, _workerId);
                 RpcJobHostChannelReadyEvent readyEvent = new RpcJobHostChannelReadyEvent(_workerId, _runtime, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
                 _eventManager.Publish(readyEvent);
             }

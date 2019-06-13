@@ -57,14 +57,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 return;
             }
-            _logger.LogInformation("Starting Rpc Initialization Service.");
+            _logger.LogDebug("Starting Rpc Initialization Service.");
             await InitializeRpcServerAsync();
             await InitializeChannelsAsync();
+            _logger.LogDebug("Rpc Initialization Service started.");
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Shuttingdown Rpc Channels Manager");
+            _logger.LogDebug("Shuttingdown Rpc Channels Manager");
             _languageWorkerChannelManager.ShutdownChannels();
             await _rpcServer.KillAsync();
         }
@@ -73,8 +74,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             try
             {
-                _logger.LogInformation("Initializing RpcServer");
+                _logger.LogDebug("Initializing RpcServer");
                 await _rpcServer.StartAsync();
+                _logger.LogDebug("RpcServer initialized");
             }
             catch (Exception grpcInitEx)
             {
