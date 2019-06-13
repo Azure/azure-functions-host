@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var channel = languageWorkerChannels.FirstOrDefault(ch => ch.Id == workerId);
                 if (channel != null)
                 {
-                    channel.Dispose();
+                    (channel as IDisposable).Dispose();
                     languageWorkerChannels.Remove(channel);
                     return true;
                 }
@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         {
                             if (channel != null)
                             {
-                                channel.Dispose();
+                                (channel as IDisposable).Dispose();
                             }
                         }
                     }
@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     {
                         if (channel != null)
                         {
-                            channel.Dispose();
+                            (channel as IDisposable).Dispose();
                         }
                     }
                 }

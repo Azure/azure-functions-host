@@ -9,7 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public interface ILanguageWorkerChannel : IDisposable
+    public interface ILanguageWorkerChannel
     {
         string Id { get; }
 
