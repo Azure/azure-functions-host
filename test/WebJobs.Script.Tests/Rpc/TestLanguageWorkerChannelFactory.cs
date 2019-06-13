@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -26,9 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _scriptRootPath = scriptRootPath;
         }
 
-        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
+        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
-            return new TestLanguageWorkerChannel(workerId, language, _eventManager, _testLogger, isWebhostChannel);
+            return new TestLanguageWorkerChannel(Guid.NewGuid().ToString(), language, _eventManager, _testLogger, isWebhostChannel);
         }
     }
 }

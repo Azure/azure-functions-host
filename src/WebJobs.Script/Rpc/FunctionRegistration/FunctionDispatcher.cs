@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal async Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {
-            var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(Guid.NewGuid().ToString(), _scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, false, _managedDependencyOptions);
+            var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, false, _managedDependencyOptions);
             languageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
             _jobHostLanguageWorkerChannelManager.AddChannel(languageWorkerChannel);
             await languageWorkerChannel.StartWorkerProcessAsync();

@@ -30,13 +30,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _languageWorkerProcessManager = languageWorkerProcessManager;
         }
 
-        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string workerId, string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
+        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
             var languageWorkerConfig = _workerConfigs.Where(c => c.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             if (languageWorkerConfig == null)
             {
                 throw new InvalidOperationException($"WorkerCofig for runtime: {language} not found");
             }
+            string workerId = Guid.NewGuid().ToString();
             ILanguageWorkerProcess languageWorkerProcess = _languageWorkerProcessManager.CreateLanguageWorkerProcess(workerId, language, scriptRootPath);
             return new LanguageWorkerChannel(
                          workerId,

@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             set
             {
-                // used for unit tests to incject testLogger
+                // used for unit tests to inject testLogger
                 _workerChannelLogger = value;
             }
         }
