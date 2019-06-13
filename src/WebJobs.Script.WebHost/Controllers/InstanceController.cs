@@ -52,16 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, error);
             }
 
-            var result = false;
-            if (string.Equals(assignmentContext.ZipUrlEnvVar, EnvironmentSettingNames.ScmRunFromPackage,
-                StringComparison.OrdinalIgnoreCase))
-            {
-                result = _instanceManager.SpecializeForScmBuilds(assignmentContext);
-            }
-            else
-            {
-                result = _instanceManager.StartAssignment(assignmentContext);
-            }
+            var result = _instanceManager.StartAssignment(assignmentContext);
 
             return result
                 ? Accepted()

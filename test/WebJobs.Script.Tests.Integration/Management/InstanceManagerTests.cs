@@ -144,6 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
 
             var context = new HostAssignmentContext();
+            context.Environment = new Dictionary<string, string>();
             bool result = _instanceManager.StartAssignment(context);
             Assert.False(result);
         }

@@ -44,35 +44,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _optionsFactory = optionsFactory ?? throw new ArgumentNullException(nameof(optionsFactory));
         }
 
-        public bool SpecializeForScmBuilds(HostAssignmentContext context)
-        {
-            try
-            {
-                string zipUrl = context.ZipUrl;
-                CloudBlockBlob blob = new CloudBlockBlob(new Uri(zipUrl));
-                bool blobExists = blob.ExistsAsync().Result;
-
-                if (blobExists)
-                {
-                    // follow standard specialization path
-                    return StartAssignment(context);
-                }
-                else
-                {
-                    // a build has not been generated yet, but we do not
-                    // want to fail since this is a valid scenario
-                    _logger.LogInformation("Specialized with currently empty scm package");
-                    _webHostEnvironment.FlagAsSpecializedAndReady();
-                    return true;
-                }
-            }
-            catch (Exception e)
-            {
-                _logger.LogError("Specializing for Scm builds failed {0}", e);
-                return false;
-            }
-        }
-
         public async Task<string> SpecializeMSISidecar(HostAssignmentContext context)
         {
             string endpoint;
@@ -113,6 +84,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public bool StartAssignment(HostAssignmentContext context)
         {
+            if (string.Equals(context.ZipUrl.EnvVar, EnvironmentSettingNames.ScmRunFromPackage,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                ScmSpecialization.Type specializationPath = ScmSpecializationPath(context);
+                switch (specializationPath)
+                {
+                    case ScmSpecialization.Type.Empty:
+                        SpecializeForEmptyScmPackage();
+                        return true;
+                    case ScmSpecialization.Type.Standard:
+                        // Continue with normal assignment
+                        break;
+                    case ScmSpecialization.Type.Abort:
+                        return false;
+                }
+            }
+
             if (!_webHostEnvironment.InStandbyMode)
             {
                 _logger.LogError("Assign called while host is not in placeholder mode");
@@ -152,6 +140,38 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
+        private ScmSpecialization.Type ScmSpecializationPath(HostAssignmentContext context)
+        {
+            try
+            {
+                HostAssignmentZipUrl zipUrl = context.ZipUrl;
+                CloudBlockBlob blob = new CloudBlockBlob(new Uri(zipUrl.Url));
+                bool blobExists = blob.ExistsAsync().Result;
+
+                if (blobExists)
+                {
+                    return ScmSpecialization.Type.Standard;
+                }
+                else
+                {
+                    // a build has not been generated yet, but we do not
+                    // want to fail since this is a valid scenario
+                    return ScmSpecialization.Type.Empty;
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("Specializing for Scm builds failed {0}", e);
+                return ScmSpecialization.Type.Abort;
+            }
+        }
+
+        private void SpecializeForEmptyScmPackage()
+        {
+            _logger.LogInformation("Specialized with currently empty scm package");
+            _webHostEnvironment.FlagAsSpecializedAndReady();
+        }
+
         public async Task<string> ValidateContext(HostAssignmentContext assignmentContext)
         {
             _logger.LogInformation($"Validating host assignment context (SiteId: {assignmentContext.SiteId}, SiteName: '{assignmentContext.SiteName}')");
@@ -160,14 +180,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             HttpResponseMessage response = null;
             try
             {
-                _logger.LogInformation($"Will be using {assignmentContext.ZipUrlEnvVar} app setting as zip url");
+                _logger.LogInformation($"Will be using {assignmentContext.ZipUrl.EnvVar} app setting as zip url");
 
-                var zipUrl = assignmentContext.ZipUrl;
+                var zipUrl = assignmentContext.ZipUrl.Url;
                 if (!string.IsNullOrEmpty(zipUrl))
                 {
                     // ScmRunFromPackage can be empty since it is a placeholder for the actual build zip
                     // so don't do a HEAD call against it. Just check if it is a valid blob url.
-                    if (string.Equals(assignmentContext.ZipUrlEnvVar, EnvironmentSettingNames.ScmRunFromPackage,
+                    if (string.Equals(assignmentContext.ZipUrl.EnvVar, EnvironmentSettingNames.ScmRunFromPackage,
                         StringComparison.OrdinalIgnoreCase))
                     {
                         bool isValid = IsValidBlobReference(zipUrl);
@@ -247,12 +267,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _logger.LogInformation($"Applying {assignmentContext.Environment.Count} app setting(s)");
             assignmentContext.ApplyAppSettings(_environment);
 
-            // We need to get the non-PlaceholderMode script path so we can unzip to the correct location.
+            // We need to get the non-PlaceholderMode script ScmSpecialization.Path so we can unzip to the correct location.
             // This asks the factory to skip the PlaceholderMode check when configuring options.
             var options = _optionsFactory.Create(ScriptApplicationHostOptionsSetup.SkipPlaceholder);
 
-            _logger.LogInformation($"Will be using {assignmentContext.ZipUrlEnvVar} app setting as zip url");
-            var zipPath = assignmentContext.ZipUrl;
+            _logger.LogInformation($"Will be using {assignmentContext.ZipUrl.EnvVar} app setting as zip url");
+            var zipPath = assignmentContext.ZipUrl.Url;
             if (!string.IsNullOrEmpty(zipPath))
             {
                 // download zip and extract

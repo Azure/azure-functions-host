@@ -24,45 +24,52 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("MSISpecializationPayload")]
         public MSIContext MSIContext { get; set; }
 
-        public string ZipUrl
+        public HostAssignmentZipUrl ZipUrl
         {
             get
             {
-                if (ZipUrlEnvVar != string.Empty)
+                string zipUrlEnvVar = GetDefinedZipUrlEnvVar();
+
+                if (!string.IsNullOrEmpty(zipUrlEnvVar))
                 {
-                    return Environment[ZipUrlEnvVar];
+                    return new HostAssignmentZipUrl
+                    {
+                        EnvVar = zipUrlEnvVar,
+                        Url = Environment[zipUrlEnvVar]
+                    };
                 }
                 else
                 {
-                    return string.Empty;
+                    return new HostAssignmentZipUrl
+                    {
+                        EnvVar = string.Empty,
+                        Url = string.Empty
+                    };
                 }
             }
         }
 
-        public string ZipUrlEnvVar
+        private string GetDefinedZipUrlEnvVar()
         {
-            get
+            if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteRunFromPackage))
             {
-                if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteRunFromPackage))
-                {
-                    return EnvironmentSettingNames.AzureWebsiteRunFromPackage;
-                }
-                else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteAltZipDeployment))
-                {
-                    return EnvironmentSettingNames.AzureWebsiteAltZipDeployment;
-                }
-                else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteZipDeployment))
-                {
-                    return EnvironmentSettingNames.AzureWebsiteZipDeployment;
-                }
-                else if (Environment.ContainsKey(EnvironmentSettingNames.ScmRunFromPackage))
-                {
-                    return EnvironmentSettingNames.ScmRunFromPackage;
-                }
-                else
-                {
-                    return string.Empty;
-                }
+                return EnvironmentSettingNames.AzureWebsiteRunFromPackage;
+            }
+            else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteAltZipDeployment))
+            {
+                return EnvironmentSettingNames.AzureWebsiteAltZipDeployment;
+            }
+            else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteZipDeployment))
+            {
+                return EnvironmentSettingNames.AzureWebsiteZipDeployment;
+            }
+            else if (Environment.ContainsKey(EnvironmentSettingNames.ScmRunFromPackage))
+            {
+                return EnvironmentSettingNames.ScmRunFromPackage;
+            }
+            else
+            {
+                return string.Empty;
             }
         }
 
