@@ -47,11 +47,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private CloudBlockBlob _hashBlob;
 
-        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider)
+        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerConfigurationService languageWorkerConfigurationService, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
-            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
+            _workerConfigs = languageWorkerConfigurationService.WorkerConfigs;
             _httpClient = httpClient;
             _secretManagerProvider = secretManagerProvider;
             _configuration = configuration;

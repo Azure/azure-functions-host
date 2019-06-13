@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
@@ -161,10 +160,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         private class InfiniteTimerStandbyManager : StandbyManager
         {
-            public InfiniteTimerStandbyManager(IScriptHostManager scriptHostManager, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager,
+            public InfiniteTimerStandbyManager(IScriptHostManager scriptHostManager, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, ILanguageWorkerConfigurationService languageWorkerConfigurationService,
                 IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment,
                 IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider)
-                : base(scriptHostManager, languageWorkerChannelManager, configuration, webHostEnvironment, environment, options,
+                : base(scriptHostManager, languageWorkerChannelManager, languageWorkerConfigurationService, configuration, webHostEnvironment, environment, options,
                       logger, hostNameProvider, TimeSpan.FromMilliseconds(-1))
             {
             }         

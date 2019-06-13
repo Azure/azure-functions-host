@@ -21,12 +21,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnumerable<WorkerConfig> _workerConfigs = null;
 
-        public LanguageWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
+        public LanguageWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, ILanguageWorkerConfigurationService languageWorkerConfigurationService,
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerProcessFactory languageWorkerProcessManager)
         {
             _eventManager = eventManager;
             _loggerFactory = loggerFactory;
-            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
+            _workerConfigs = languageWorkerConfigurationService.WorkerConfigs;
             _languageWorkerProcessManager = languageWorkerProcessManager;
         }
 

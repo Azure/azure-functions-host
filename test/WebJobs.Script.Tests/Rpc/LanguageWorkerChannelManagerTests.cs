@@ -23,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private IRpcServer _rpcServer;
         private TestLoggerProvider _loggerProvider;
         private ILoggerFactory _loggerFactory;
-        private LanguageWorkerOptions _languageWorkerOptions;
         private Mock<ILanguageWorkerProcessFactory> _languageWorkerProcessFactory;
         private ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
         private IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
@@ -42,10 +41,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _loggerFactory = new LoggerFactory();
             _testEnvironment = new TestEnvironment();
             _loggerFactory.AddProvider(_loggerProvider);
-            _languageWorkerOptions = new LanguageWorkerOptions
-            {
-                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
-            };
             var applicationHostOptions = new ScriptApplicationHostOptions
             {
                 IsSelfHost = true,

@@ -29,12 +29,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IFunctionsSyncManager _functionsSyncManager;
         private readonly HostNameProvider _hostNameProvider;
 
-        public WebFunctionsManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient client, ISecretManagerProvider secretManagerProvider, IFunctionsSyncManager functionsSyncManager, HostNameProvider hostNameProvider)
+        public WebFunctionsManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerConfigurationService languageWorkerConfigurationService, ILoggerFactory loggerFactory, HttpClient client, ISecretManagerProvider secretManagerProvider, IFunctionsSyncManager functionsSyncManager, HostNameProvider hostNameProvider)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
             _client = client;
-            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
+            _workerConfigs = languageWorkerConfigurationService.WorkerConfigs;
             _secretManagerProvider = secretManagerProvider;
             _functionsSyncManager = functionsSyncManager;
             _hostNameProvider = hostNameProvider;

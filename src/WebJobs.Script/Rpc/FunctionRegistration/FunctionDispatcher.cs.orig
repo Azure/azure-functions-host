@@ -52,10 +52,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             IScriptJobHostEnvironment scriptJobHostEnvironment,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
+<<<<<<< HEAD
             ILanguageWorkerChannelFactory languageWorkerChannelFactory,
-            ILanguageWorkerConfigurationService languageWorkerConfigurationService,
+            IOptions<LanguageWorkerOptions> languageWorkerOptions,
             IWebHostLanguageWorkerChannelManager webHostLanguageWorkerChannelManager,
             IJobHostLanguageWorkerChannelManager jobHostLanguageWorkerChannelManager,
+=======
+            ILanguageWorkerConfigurationService languageWorkerConfigurationService,
+            ILanguageWorkerChannelManager languageWorkerChannelManager,
+>>>>>>> Add LanguageWorkerConfigurationService
             IOptions<ManagedDependencyOptions> managedDependencyOptions,
             IFunctionDispatcherLoadBalancer functionDispatcherLoadBalancer)
         {
@@ -268,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (!_disposing)
             {
-                _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", rpcChannelReadyEvent.Language, rpcChannelReadyEvent.LanguageWorkerChannel.Id);
+                _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}.", rpcChannelReadyEvent.Language);
                 rpcChannelReadyEvent.LanguageWorkerChannel.SendFunctionLoadRequests();
                 State = FunctionDispatcherState.Initialized;
             }

@@ -264,12 +264,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Mock<IConfigurationRoot> mockConfiguration = new Mock<IConfigurationRoot>();
             var mockEnvironment = new Mock<IEnvironment>();
             Mock<IWebHostLanguageWorkerChannelManager> mockLanguageWorkerChannelManager = new Mock<IWebHostLanguageWorkerChannelManager>();
+            Mock<ILanguageWorkerConfigurationService> mockLanguageWorkerConfigurationService = new Mock<ILanguageWorkerConfigurationService>();
             ILogger<StandbyManager> testLogger = new Logger<StandbyManager>(_loggerFactory);
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
             var hostNameProvider = new HostNameProvider(mockEnvironment.Object, loggerFactory.CreateLogger<HostNameProvider>());
-            var manager = new StandbyManager(_hostService, mockLanguageWorkerChannelManager.Object, mockConfiguration.Object, mockScriptWebHostEnvironment.Object, mockEnvironment.Object, _monitor, testLogger, hostNameProvider);
+            var manager = new StandbyManager(_hostService, mockLanguageWorkerChannelManager.Object, mockLanguageWorkerConfigurationService.Object, mockConfiguration.Object, mockScriptWebHostEnvironment.Object, mockEnvironment.Object, _monitor, testLogger, hostNameProvider);
             manager.SpecializeHostAsync().Wait();
         }
 

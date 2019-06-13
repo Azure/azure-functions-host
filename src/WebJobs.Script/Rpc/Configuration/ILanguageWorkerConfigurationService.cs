@@ -2,11 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public class LanguageWorkerOptions
+    public interface ILanguageWorkerConfigurationService
     {
-        public IList<WorkerConfig> WorkerConfigs { get; set; }
+        IList<WorkerConfig> WorkerConfigs { get; }
+
+        void Reload(IConfiguration configuration);
     }
 }

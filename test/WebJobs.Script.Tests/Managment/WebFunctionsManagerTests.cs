@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Tests.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -79,8 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.CoreToolsEnvironment)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns(TestHostName);
             var hostNameProvider = new HostNameProvider(_mockEnvironment.Object, loggerFactory.CreateLogger<HostNameProvider>());
-            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider);
-            _webFunctionsManager = new WebFunctionsManager(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object, functionsSyncManager, hostNameProvider);
+            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, new TestLanguageWorkerConfigurationService(), loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider);
+            _webFunctionsManager = new WebFunctionsManager(optionsMonitor, new TestLanguageWorkerConfigurationService(), loggerFactory, httpClient, secretManagerProviderMock.Object, functionsSyncManager, hostNameProvider);
 
             FileUtility.Instance = fileSystem;
         }
@@ -162,14 +163,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private static HttpClient CreateHttpClient(StringBuilder writeContent)
         {
             return new HttpClient(new MockHttpHandler(writeContent));
-        }
-
-        private static LanguageWorkerOptions CreateLanguageWorkerConfigSettings()
-        {
-            return new LanguageWorkerOptions
-            {
-                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
-            };
         }
 
         private static IFileSystem CreateFileSystem(ScriptApplicationHostOptions options)

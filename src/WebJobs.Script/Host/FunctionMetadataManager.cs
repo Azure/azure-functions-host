@@ -28,12 +28,12 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
         private readonly ILogger _logger;
 
-        public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IOptions<LanguageWorkerOptions> workerConfigOptions, ILoggerFactory loggerFactory)
+        public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, ILanguageWorkerConfigurationService languageWorkerConfigurationService, ILoggerFactory loggerFactory)
         {
             _scriptOptions = scriptOptions;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _metadata = new Lazy<ImmutableArray<FunctionMetadata>>(LoadFunctionMetadata);
-            _workerConfigs = workerConfigOptions.Value.WorkerConfigs;
+            _workerConfigs = languageWorkerConfigurationService.WorkerConfigs;
         }
 
         public ImmutableArray<FunctionMetadata> Functions => _metadata.Value;

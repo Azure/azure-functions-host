@@ -1,10 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
@@ -24,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private Mock<IOptionsMonitor<ScriptApplicationHostOptions>> _mockOptionsMonitor;
         private Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
         private Mock<IWebHostLanguageWorkerChannelManager> _mockLanguageWorkerChannelManager;
+        private Mock<ILanguageWorkerConfigurationService> _mockLanguageWorkerConfigurationService;
         private TestEnvironment _testEnvironment;
         private string _testSettingName = "TestSetting";
         private string _testSettingValue = "TestSettingValue";
@@ -38,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockOptionsMonitor = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
             _mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
             _mockLanguageWorkerChannelManager = new Mock<IWebHostLanguageWorkerChannelManager>();
+            _mockLanguageWorkerConfigurationService = new Mock<ILanguageWorkerConfigurationService>();
             _testEnvironment = new TestEnvironment();
 
             _testLoggerProvider = new TestLoggerProvider();
@@ -49,11 +48,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task Specialize_ResetsConfiguration()
         {
             var hostNameProvider = new HostNameProvider(_testEnvironment, _testLoggerFactory.CreateLogger<HostNameProvider>());
-            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider);
+            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockLanguageWorkerConfigurationService.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider);
 
             await manager.SpecializeHostAsync();
 
             _mockConfiguration.Verify(c => c.Reload());
+            _mockLanguageWorkerConfigurationService.Verify(c => c.Reload(_mockConfiguration.Object));
         }
 
         [Fact]
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "placeholder.azurewebsites.net");
 
             var hostNameProvider = new HostNameProvider(_testEnvironment, _testLoggerFactory.CreateLogger<HostNameProvider>());
-            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider);
+            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockLanguageWorkerConfigurationService.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider);
 
             Assert.Equal("placeholder.azurewebsites.net", hostNameProvider.Value);
 
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
 
             var hostNameProvider = new HostNameProvider(_testEnvironment, _testLoggerFactory.CreateLogger<HostNameProvider>());
-            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider);
+            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockLanguageWorkerConfigurationService.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider);
             await manager.SpecializeHostAsync();
             Assert.Equal(_testSettingValue, _testEnvironment.GetEnvironmentVariable(_testSettingName));
         }

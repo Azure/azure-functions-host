@@ -124,8 +124,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Configuration
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
             services.ConfigureOptions<StandbyOptionsSetup>();
-            services.ConfigureOptions<LanguageWorkerOptionsSetup>();
-
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
         }
 

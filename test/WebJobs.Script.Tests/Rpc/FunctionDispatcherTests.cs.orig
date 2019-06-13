@@ -251,20 +251,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
 
             IOptions<ScriptJobHostOptions> scriptOptions = new OptionsManager<ScriptJobHostOptions>(new TestOptionsFactory<ScriptJobHostOptions>(options));
-            ILanguageWorkerConfigurationService testLanguageWorkerConfigurationService = new TestLanguageWorkerConfigurationService();
+<<<<<<< HEAD
+            ILanguageWorkerConfigurationService testLanguageWorkerConfigurationService = TestLanguageWorkerConfigurationService()
+            var workerConfigOptions = new LanguageWorkerOptions
+            {
+                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
+            };
             IWebHostLanguageWorkerChannelManager testWebHostLanguageWorkerChannelManager = new TestLanguageWorkerChannelManager(eventManager, testLogger, scriptOptions.Value.RootScriptPath);
             ILanguageWorkerChannelFactory testLanguageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(eventManager, testLogger, scriptOptions.Value.RootScriptPath);
             IJobHostLanguageWorkerChannelManager jobHostLanguageWorkerChannelManager = new JobHostLanguageWorkerChannelManager();
-            var mockFunctionDispatcherLoadBalancer = new Mock<IFunctionDispatcherLoadBalancer>();
+=======
+            ILanguageWorkerConfigurationService testLanguageWorkerConfigurationService = new TestLanguageWorkerConfigurationService();
+            ILanguageWorkerChannelManager testLanguageWorkerChannelManager = new TestLanguageWorkerChannelManager(eventManager, testLogger, scriptOptions.Value.RootScriptPath);
 
+>>>>>>> works
             if (addWebhostChannel)
             {
                 testWebHostLanguageWorkerChannelManager.InitializeChannelAsync("java");
             }
             if (mockwebHostLanguageWorkerChannelManager != null)
             {
+<<<<<<< HEAD
                 testWebHostLanguageWorkerChannelManager = mockwebHostLanguageWorkerChannelManager.Object;
             }
+            var mockFunctionDispatcherLoadBalancer = new Mock<IFunctionDispatcherLoadBalancer>();
             return new FunctionDispatcher(scriptOptions,
                 metricsLogger.Object,
                 testEnv,
@@ -272,11 +282,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 eventManager,
                 loggerFactory,
                 testLanguageWorkerChannelFactory,
-                testLanguageWorkerConfigurationService,
+                new OptionsWrapper<LanguageWorkerOptions>(workerConfigOptions),
                 testWebHostLanguageWorkerChannelManager,
                 jobHostLanguageWorkerChannelManager,
                 null,
                 mockFunctionDispatcherLoadBalancer.Object);
+=======
+                return new FunctionDispatcher(scriptOptions, metricsLogger.Object, testEnv, scriptJobHostEnvironment.Object, eventManager, loggerFactory, testLanguageWorkerConfigurationService, mockLanguageWorkerChannelManager.Object, null, mockFunctionDispatcherLoadBalancer.Object);
+            }
+            return new FunctionDispatcher(scriptOptions, metricsLogger.Object, testEnv, scriptJobHostEnvironment.Object, eventManager, loggerFactory, testLanguageWorkerConfigurationService, testLanguageWorkerChannelManager, null, mockFunctionDispatcherLoadBalancer.Object);
+>>>>>>> works
         }
 
         private async Task<int> WaitForJobhostWorkerChannelsToStartup(FunctionDispatcher functionDispatcher, int expectedCount)

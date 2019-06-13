@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IEnvironment _environment;
         private readonly IWebHostLanguageWorkerChannelManager _languageWorkerChannelManager;
+        private readonly ILanguageWorkerConfigurationService _languageWorkerConfigurationService;
         private readonly IConfigurationRoot _configuration;
         private readonly ILogger _logger;
         private readonly HostNameProvider _hostNameProvider;
@@ -38,13 +39,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static IChangeToken _standbyChangeToken = new CancellationChangeToken(_standbyCancellationTokenSource.Token);
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
-        public StandbyManager(IScriptHostManager scriptHostManager, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
+        public StandbyManager(IScriptHostManager scriptHostManager, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, ILanguageWorkerConfigurationService languageWorkerConfigurationService, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider)
-            : this(scriptHostManager, languageWorkerChannelManager, configuration, webHostEnvironment, environment, options, logger, hostNameProvider, TimeSpan.FromMilliseconds(500))
+            : this(scriptHostManager, languageWorkerChannelManager, languageWorkerConfigurationService, configuration, webHostEnvironment, environment, options, logger, hostNameProvider, TimeSpan.FromMilliseconds(500))
         {
         }
 
-        public StandbyManager(IScriptHostManager scriptHostManager, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
+        public StandbyManager(IScriptHostManager scriptHostManager, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, ILanguageWorkerConfigurationService languageWorkerConfigurationService, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, TimeSpan specializationTimerInterval)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
@@ -55,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _configuration = configuration as IConfigurationRoot ?? throw new ArgumentNullException(nameof(configuration));
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
+            _languageWorkerConfigurationService = languageWorkerConfigurationService ?? throw new ArgumentNullException(nameof(languageWorkerConfigurationService));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _changeTokenCallbackSubscription = ChangeToken.RegisterChangeCallback(_ => _logger.LogDebug($"{nameof(StandbyManager)}.{nameof(ChangeToken)} callback has fired."), null);
             _specializationTimerInterval = specializationTimerInterval;
@@ -80,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _configuration?.Reload();
 
             _hostNameProvider.Reset();
-
+            _languageWorkerConfigurationService.Reload(_configuration);
             await _languageWorkerChannelManager.SpecializeAsync();
             NotifyChange();
             await _scriptHostManager.RestartHostAsync();

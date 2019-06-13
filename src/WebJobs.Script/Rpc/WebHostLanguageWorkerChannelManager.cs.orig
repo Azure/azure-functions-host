@@ -22,21 +22,35 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
+        private readonly IDisposable _rpcChannelReadySubscriptions;
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
 
         private ConcurrentDictionary<string, List<ILanguageWorkerChannel>> _workerChannels = new ConcurrentDictionary<string, List<ILanguageWorkerChannel>>();
 
+<<<<<<< HEAD:src/WebJobs.Script/Rpc/WebHostLanguageWorkerChannelManager.cs
         public WebHostLanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, ILanguageWorkerChannelFactory languageWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
+=======
+        public LanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, ILanguageWorkerConfigurationService languageWorkerConfigurationService,
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerProcessManager languageWorkerProcessManager)
+>>>>>>> Add LanguageWorkerConfigurationService:src/WebJobs.Script/Rpc/LanguageWorkerChannelManager.cs
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;
             _loggerFactory = loggerFactory;
+<<<<<<< HEAD:src/WebJobs.Script/Rpc/WebHostLanguageWorkerChannelManager.cs
             _languageWorkerChannelFactory = languageWorkerChannelFactory;
+            _logger = loggerFactory.CreateLogger<WebHostLanguageWorkerChannelManager>();
+=======
+            _logger = loggerFactory.CreateLogger<LanguageWorkerChannelManager>();
+            _workerConfigs = languageWorkerConfigurationService.WorkerConfigs;
+>>>>>>> Add LanguageWorkerConfigurationService:src/WebJobs.Script/Rpc/LanguageWorkerChannelManager.cs
             _applicationHostOptions = applicationHostOptions;
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(5000);
+            _rpcChannelReadySubscriptions = _eventManager.OfType<RpcWebHostChannelReadyEvent>()
+               .Subscribe(AddOrUpdateWorkerChannels);
         }
 
         public Task<ILanguageWorkerChannel> InitializeChannelAsync(string runtime)
@@ -58,7 +72,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                                                                         .Where(msg => msg.Language == runtime).Timeout(workerInitTimeout);
                 // Wait for response from language worker process
                 RpcWebHostChannelReadyEvent readyEvent = await rpcChannelReadyEvent.FirstAsync();
-                AddOrUpdateWorkerChannels(readyEvent);
             }
             catch (Exception ex)
             {
@@ -165,9 +178,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        internal void AddOrUpdateWorkerChannels(RpcWebHostChannelReadyEvent rpcChannelReadyEvent)
+        private void AddOrUpdateWorkerChannels(RpcWebHostChannelReadyEvent rpcChannelReadyEvent)
         {
-            _logger.LogDebug("Adding webhost language worker channel for runtime: {language}. workerId:{id}", rpcChannelReadyEvent.Language, rpcChannelReadyEvent.LanguageWorkerChannel.Id);
+            _logger.LogDebug("Adding language worker channel for runtime: {language}.", rpcChannelReadyEvent.Language);
             _workerChannels.AddOrUpdate(rpcChannelReadyEvent.Language,
                     (runtime) =>
                     {

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Tests.Rpc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -49,9 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             IOptions<ScriptJobHostOptions> scriptOptions = new OptionsManager<ScriptJobHostOptions>(new TestOptionsFactory<ScriptJobHostOptions>(scriptConfig));
-            IOptions<LanguageWorkerOptions> languageWorkerOptions = new OptionsManager<LanguageWorkerOptions>(new TestOptionsFactory<LanguageWorkerOptions>(new LanguageWorkerOptions()));
 
-            var functionMetadataManager = new FunctionMetadataManager(scriptOptions, languageWorkerOptions, NullLoggerFactory.Instance);
+            var functionMetadataManager = new FunctionMetadataManager(scriptOptions, new TestLanguageWorkerConfigurationService(), NullLoggerFactory.Instance);
             Assert.False(functionMetadataManager.Functions.IsDefault);
             Assert.True(functionMetadataManager.Functions.IsEmpty);
         }

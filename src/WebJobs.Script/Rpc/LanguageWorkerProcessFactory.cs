@@ -7,7 +7,6 @@ using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
@@ -22,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly ILanguageWorkerConsoleLogSource _consoleLogSource;
 
         public LanguageWorkerProcessFactory(IRpcServer rpcServer,
-                                       IOptions<LanguageWorkerOptions> languageWorkerOptions,
+                                       ILanguageWorkerConfigurationService languageWorkerConfigurationService,
                                        IScriptEventManager eventManager,
                                        ILoggerFactory loggerFactory,
                                        IWorkerProcessFactory defaultWorkerProcessFactory,
@@ -32,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _loggerFactory = loggerFactory;
             _eventManager = eventManager;
             _rpcServer = rpcServer;
-            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
+            _workerConfigs = languageWorkerConfigurationService.WorkerConfigs;
             _consoleLogSource = consoleLogSource;
             _workerProcessFactory = defaultWorkerProcessFactory;
             _processRegistry = processRegistry;
