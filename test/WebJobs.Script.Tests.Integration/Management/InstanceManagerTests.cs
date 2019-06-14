@@ -79,7 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Collection(logs,
                 p => Assert.StartsWith("Starting Assignment", p),
                 p => Assert.StartsWith("Applying 1 app setting(s)", p),
-                p => Assert.StartsWith($"Will be using  app setting as zip url", p),
                 p => Assert.StartsWith("Triggering specialization", p));
 
             // calling again should return false, since we're no longer
@@ -134,7 +133,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Collection(logs,
                 p => Assert.StartsWith("Starting Assignment", p),
                 p => Assert.StartsWith("Applying 0 app setting(s)", p),
-                p => Assert.StartsWith($"Will be using  app setting as zip url", p),
                 p => Assert.StartsWith("Triggering specialization", p));
         }
 
@@ -297,54 +295,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 Assert.StartsWith(expectedOutputLines[i], logs[i]);
             }
-        }
-
-        [Fact]
-        public async Task ValidateContext_InvalidBlobReference_ScmPackage_ReturnsError()
-        {
-            var environment = new Dictionary<string, string>()
-            {
-                { EnvironmentSettingNames.ScmRunFromPackage,
-                    "https://nocontainerreference.blob.core.windows.net" }
-            };
-            var assignmentContext = new HostAssignmentContext
-            {
-                SiteId = 1234,
-                SiteName = "TestSite",
-                Environment = environment
-            };
-
-            string error = await _instanceManager.ValidateContext(assignmentContext);
-            Assert.Equal($"Invalid blob reference {EnvironmentSettingNames.ScmRunFromPackage}. ValidateContext failed.", error);
-
-            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
-            Assert.Collection(logs,
-                p => Assert.StartsWith("Validating host assignment context (SiteId: 1234, SiteName: 'TestSite')", p),
-                p => Assert.StartsWith($"Will be using {EnvironmentSettingNames.ScmRunFromPackage} app setting as zip url", p));
-        }
-
-        [Fact]
-        public async Task ValidateContext_ValidBlobReference_ScmPackage_ReturnsNoError()
-        {
-            var environment = new Dictionary<string, string>()
-            {
-                { EnvironmentSettingNames.ScmRunFromPackage,
-                    "https://notarealstorageaccount.blob.core.windows.net/releases/test.zip?st=2019-05-22T15%3A00%3A09Z&se=2099-05-23T15%3A00%3A00Z&sp=rwl&sv=2018-03-28&sr=b&sig=d%2F7gP6ZGXvv%2RfHegvbwO88HaX0URZ%2BbXR6WGK%2BpcZE4%3D" }
-            };
-            var assignmentContext = new HostAssignmentContext
-            {
-                SiteId = 1234,
-                SiteName = "TestSite",
-                Environment = environment
-            };
-
-            string error = await _instanceManager.ValidateContext(assignmentContext);
-            Assert.Null(error);
-
-            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
-            Assert.Collection(logs,
-                p => Assert.StartsWith("Validating host assignment context (SiteId: 1234, SiteName: 'TestSite')", p),
-                p => Assert.StartsWith($"Will be using {EnvironmentSettingNames.ScmRunFromPackage} app setting as zip url", p));
         }
 
         [Fact]

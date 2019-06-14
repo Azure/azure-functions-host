@@ -8,21 +8,21 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
-    public class HostAssignmentZipUrl
+    public class RunFromPackageContext
     {
-        public HostAssignmentZipUrl(string envVar, string url)
+        public RunFromPackageContext(string envVarName, string url)
         {
-            EnvVar = envVar;
+            EnvironmentVariableName = envVarName;
             Url = url;
         }
 
-        public string EnvVar { get; set; }
+        public string EnvironmentVariableName { get; set; }
 
         public string Url { get; set; }
 
         public bool IsScmRunFromPackage()
         {
-            return string.Equals(EnvVar, EnvironmentSettingNames.ScmRunFromPackage,
+            return string.Equals(EnvironmentVariableName, EnvironmentSettingNames.ScmRunFromPackage,
                         StringComparison.OrdinalIgnoreCase);
         }
 
@@ -44,19 +44,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             }, maxRetries: 2, retryInterval: TimeSpan.FromSeconds(0.3));
 
             return exists;
-        }
-
-        public bool IsValidBlobReference()
-        {
-            try
-            {
-                new CloudBlockBlob(new Uri(Url));
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-            return true;
         }
     }
 }

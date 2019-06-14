@@ -84,15 +84,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public bool StartAssignment(HostAssignmentContext context)
         {
-            if (context.ZipUrl.IsScmRunFromPackage())
-            {
-                if (!context.ZipUrl.BlobExistsAsync(_logger).Result)
-                {
-                    SpecializeForEmptyScmPackage();
-                    return true;
-                }
-            }
-
             if (!_webHostEnvironment.InStandbyMode)
             {
                 _logger.LogError("Assign called while host is not in placeholder mode");
@@ -132,12 +123,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        private void SpecializeForEmptyScmPackage()
-        {
-            _logger.LogInformation("Specialized with currently empty scm package");
-            _webHostEnvironment.FlagAsSpecializedAndReady();
-        }
-
         public async Task<string> ValidateContext(HostAssignmentContext assignmentContext)
         {
             _logger.LogInformation($"Validating host assignment context (SiteId: {assignmentContext.SiteId}, SiteName: '{assignmentContext.SiteName}')");
@@ -146,19 +131,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             HttpResponseMessage response = null;
             try
             {
-                _logger.LogInformation($"Will be using {assignmentContext.ZipUrl.EnvVar} app setting as zip url");
+                RunFromPackageContext pkgContext = assignmentContext.GetRunFromPkgContext();
+                _logger.LogInformation($"Will be using {pkgContext.EnvironmentVariableName} app setting as zip url");
 
-                var zipUrl = assignmentContext.ZipUrl.Url;
+                if (pkgContext.IsScmRunFromPackage())
+                {
+                    // Not user assigned so limit validation
+                    return null;
+                }
+
+                var zipUrl = pkgContext.Url;
                 if (!string.IsNullOrEmpty(zipUrl))
                 {
-                    // ScmRunFromPackage can be empty since it is a placeholder for the actual build zip
-                    // so don't do a HEAD call against it. Just check if it is a valid blob url.
-                    if (assignmentContext.ZipUrl.IsScmRunFromPackage())
-                    {
-                        bool isValid = assignmentContext.ZipUrl.IsValidBlobReference();
-                        return isValid ? null : $"Invalid blob reference {EnvironmentSettingNames.ScmRunFromPackage}. ValidateContext failed.";
-                    }
-
                     // make sure the zip uri is valid and accessible
                     await Utility.InvokeWithRetriesAsync(async () =>
                     {
@@ -222,14 +206,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // We need to get the non-PlaceholderMode script Path so we can unzip to the correct location.
             // This asks the factory to skip the PlaceholderMode check when configuring options.
             var options = _optionsFactory.Create(ScriptApplicationHostOptionsSetup.SkipPlaceholder);
+            RunFromPackageContext zipUrl = assignmentContext.GetRunFromPkgContext();
 
-            _logger.LogInformation($"Will be using {assignmentContext.ZipUrl.EnvVar} app setting as zip url");
-            var zipPath = assignmentContext.ZipUrl.Url;
+            var zipPath = assignmentContext.GetRunFromPkgContext().Url;
             if (!string.IsNullOrEmpty(zipPath))
             {
                 // download zip and extract
                 var zipUri = new Uri(zipPath);
-                var filePath = await DownloadAsync(zipUri);
+                string filePath = null;
+
+                if (zipUrl.IsScmRunFromPackage())
+                {
+                    if (zipUrl.BlobExistsAsync(_logger).Result)
+                    {
+                        filePath = await DownloadAsync(zipUri);
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
+
+                filePath = await DownloadAsync(zipUri);
                 UnpackPackage(filePath, options.ScriptPath);
 
                 string bundlePath = Path.Combine(options.ScriptPath, "worker-bundle");
