@@ -226,8 +226,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                         return;
                     }
                 }
+                else
+                {
+                    filePath = await DownloadAsync(zipUri);
+                }
 
-                filePath = await DownloadAsync(zipUri);
                 UnpackPackage(filePath, options.ScriptPath);
 
                 string bundlePath = Path.Combine(options.ScriptPath, "worker-bundle");

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -16,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -306,6 +308,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var factory = new TestOptionsFactory<T>(options);
             return new OptionsMonitor<T>(factory, Array.Empty<IOptionsChangeTokenSource<T>>(), factory);
+        }
+
+        public static async Task CreateContentZip(string contentRoot, string zipPath, params string[] copyDirs)
+        {
+            var contentTemp = Path.Combine(contentRoot, @"ZipContent");
+            await FileUtility.DeleteDirectoryAsync(contentTemp, true);
+
+            foreach (var sourceDir in copyDirs)
+            {
+                var directoryName = Path.GetFileName(sourceDir);
+                var targetPath = Path.Combine(contentTemp, directoryName);
+                FileUtility.EnsureDirectoryExists(targetPath);
+                var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), sourceDir);
+                FileUtility.CopyDirectory(sourcePath, targetPath);
+            }
+
+            FileUtility.DeleteFileSafe(zipPath);
+            ZipFile.CreateFromDirectory(contentTemp, zipPath);
+        }
+
+        public static async Task<Uri> CreateBlobSas(string connectionString, string filePath, string blobContainer, string blobName)
+        {
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+            var blobClient = storageAccount.CreateCloudBlobClient();
+            var container = blobClient.GetContainerReference(blobContainer);
+            await container.CreateIfNotExistsAsync();
+            var blob = container.GetBlockBlobReference(blobName);
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                await blob.UploadFromFileAsync(filePath);
+            }
+            var policy = new SharedAccessBlobPolicy
+            {
+                SharedAccessStartTime = DateTime.UtcNow,
+                SharedAccessExpiryTime = DateTime.UtcNow.AddHours(1),
+                Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.List
+            };
+            var sas = blob.GetSharedAccessSignature(policy);
+            var sasUri = new Uri(blob.Uri, sas);
+
+            return sasUri;
         }
     }
 }

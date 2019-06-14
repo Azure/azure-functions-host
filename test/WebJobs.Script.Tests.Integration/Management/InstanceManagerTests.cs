@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -24,13 +25,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
     [Trait(TestTraits.Group, TestTraits.ContainerInstanceTests)]
     public class InstanceManagerTests : IDisposable
     {
+        private const int assignmentWaitPeriod = 2000; //ms
+
         private readonly TestLoggerProvider _loggerProvider;
         private readonly TestEnvironmentEx _environment;
         private readonly ScriptWebHostEnvironment _scriptWebEnvironment;
         private readonly InstanceManager _instanceManager;
         private readonly HttpClient _httpClient;
         private readonly LoggerFactory _loggerFactory = new LoggerFactory();
-        private readonly TestOptionsFactory<ScriptApplicationHostOptions> _optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions());
+        private readonly TestOptionsFactory<ScriptApplicationHostOptions> _optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = Path.GetTempPath() });
 
         public InstanceManagerTests()
         {
@@ -117,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         [Fact]
         public async Task StartAssignment_Succeeds_With_No_RunFromPackage_AppSetting()
-        {
+        { 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             var context = new HostAssignmentContext
             {
@@ -133,6 +136,73 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Collection(logs,
                 p => Assert.StartsWith("Starting Assignment", p),
                 p => Assert.StartsWith("Applying 0 app setting(s)", p),
+                p => Assert.StartsWith("Triggering specialization", p));
+        }
+
+        [Fact]
+        public  async void StartAssignment_Succeeds_With_NonEmpty_ScmRunFromPackage_Blob()
+        {
+            var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
+            var zipFilePath = Path.Combine(contentRoot, "content.zip");
+            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, @"TestScripts\DotNet");
+
+            IConfiguration configuration = TestHelpers.GetTestConfiguration();
+            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+            Uri sasUri = await TestHelpers.CreateBlobSas(connectionString, zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                Environment = new Dictionary<string, string>()
+                {
+                    { EnvironmentSettingNames.ScmRunFromPackage, sasUri.ToString() }
+                }
+            };
+            bool result = _instanceManager.StartAssignment(context);
+            Assert.True(result);
+
+            Thread.Sleep(assignmentWaitPeriod);
+
+            Assert.False(_scriptWebEnvironment.InStandbyMode);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("Starting Assignment", p),
+                p => Assert.StartsWith("Applying 1 app setting(s)", p),
+                p => Assert.StartsWith("Downloading zip contents from", p),
+                p => Assert.EndsWith(" bytes downloaded", p),
+                p => Assert.EndsWith(" bytes written", p),
+                p => Assert.StartsWith("Extracting files to ", p),
+                p => Assert.StartsWith("Zip extraction complete", p),
+                p => Assert.StartsWith("Triggering specialization", p));
+        }
+
+        [Fact]
+        public async void StartAssignment_Succeeds_With_Empty_ScmRunFromPackage_Blob()
+        {
+            IConfiguration configuration = TestHelpers.GetTestConfiguration();
+            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+            Uri sasUri = await TestHelpers.CreateBlobSas(connectionString, string.Empty, "scm-run-from-pkg-test", "Empty.zip");
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                Environment = new Dictionary<string, string>()
+                {
+                    { EnvironmentSettingNames.ScmRunFromPackage, sasUri.ToString() }
+                }
+            };
+            bool result = _instanceManager.StartAssignment(context);
+            Assert.True(result);
+
+            Thread.Sleep(assignmentWaitPeriod);
+
+            Assert.False(_scriptWebEnvironment.InStandbyMode);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("Starting Assignment", p),
+                p => Assert.StartsWith("Applying 1 app setting(s)", p),
                 p => Assert.StartsWith("Triggering specialization", p));
         }
 
