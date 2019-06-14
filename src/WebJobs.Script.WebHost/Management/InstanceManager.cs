@@ -206,18 +206,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // We need to get the non-PlaceholderMode script Path so we can unzip to the correct location.
             // This asks the factory to skip the PlaceholderMode check when configuring options.
             var options = _optionsFactory.Create(ScriptApplicationHostOptionsSetup.SkipPlaceholder);
-            RunFromPackageContext zipUrl = assignmentContext.GetRunFromPkgContext();
+            RunFromPackageContext pkgContext = assignmentContext.GetRunFromPkgContext();
 
-            var zipPath = assignmentContext.GetRunFromPkgContext().Url;
+            var zipPath = pkgContext.Url;
             if (!string.IsNullOrEmpty(zipPath))
             {
                 // download zip and extract
                 var zipUri = new Uri(zipPath);
                 string filePath = null;
 
-                if (zipUrl.IsScmRunFromPackage())
+                if (pkgContext.IsScmRunFromPackage())
                 {
-                    if (zipUrl.BlobExistsAsync(_logger).Result)
+                    if (pkgContext.BlobExistsAsync(_logger).Result)
                     {
                         filePath = await DownloadAsync(zipUri);
                     }
