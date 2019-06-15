@@ -12,7 +12,9 @@ using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Newtonsoft.Json;
@@ -22,6 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public class HttpBinding : FunctionBinding
     {
+        private static bool isActionResultHandlingEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableActionResultHandling);
+
         public HttpBinding(ScriptJobHostOptions config, BindingMetadata metadata, FileAccess access)
             : base(config, metadata, access)
         {
@@ -208,6 +212,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 else if (result is JObject)
                 {
                     actionResult = CreateResult(request, result);
+                }
+                else if (isActionResultHandlingEnabled && result is IConvertToActionResult convertable)
+                {
+                    // Convert ActionResult<T> to ActionResult
+                    actionResult = convertable.Convert();
                 }
                 else
                 {
