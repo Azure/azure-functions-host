@@ -244,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // Initializing AppInsights services during placeholder mode as well to avoid the cost of JITting these objects during specialization
             if (!string.IsNullOrEmpty(appInsightsKey) || SystemEnvironment.Instance.IsPlaceholderModeEnabled())
             {
-                builder.AddApplicationInsights(o => o.InstrumentationKey = appInsightsKey);
+                builder.AddApplicationInsightsWebJobs(o => o.InstrumentationKey = appInsightsKey);
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
 
                 builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
