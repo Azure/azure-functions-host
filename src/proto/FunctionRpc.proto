@@ -237,6 +237,9 @@ message RpcFunctionMetadata {
 
   // Bindings info
   map<string, BindingInfo> bindings = 6;
+
+  // Is set to true for proxy
+  bool is_proxy = 7;
 }
 
 // Host requests worker to invoke a Function
