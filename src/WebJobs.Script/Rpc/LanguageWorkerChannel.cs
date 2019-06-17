@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public Task SendFunctionEnvironmentReloadRequest()
         {
-            _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
+            _workerChannelLogger.LogDebug("Sending SendFunctionEnvironmentReloadRequest");
             _eventSubscriptions
                 .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
                 .Timeout(workerInitTimeout)
@@ -222,16 +222,26 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             IDictionary processEnv = Environment.GetEnvironmentVariables();
 
-            FunctionEnvironmentReloadRequest request = new FunctionEnvironmentReloadRequest();
-            foreach (DictionaryEntry entry in processEnv)
-            {
-                request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
-            }
+            FunctionEnvironmentReloadRequest request = GetFunctionEnvironmentReloadRequest(processEnv);
 
             SendStreamingMessage(new StreamingMessage
             {
                 FunctionEnvironmentReloadRequest = request
             });
+        }
+
+        internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
+        {
+            FunctionEnvironmentReloadRequest request = new FunctionEnvironmentReloadRequest();
+            foreach (DictionaryEntry entry in processEnv)
+            {
+                if (entry.Value != null && !string.IsNullOrEmpty(entry.Value.ToString()))
+                {
+                    request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
+                }
+            }
+
+            return request;
             return _reloadTask.Task;
         }
 
@@ -257,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     Directory = metadata.FunctionDirectory ?? string.Empty,
                     EntryPoint = metadata.EntryPoint ?? string.Empty,
                     ScriptFile = metadata.ScriptFile ?? string.Empty,
-                    IsProxy = metadata.IsProxy,
+                    IsProxy = metadata.IsProxy
                 }
             };
 
