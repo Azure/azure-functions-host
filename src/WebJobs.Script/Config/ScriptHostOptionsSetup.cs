@@ -70,13 +70,18 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private void ConfigureFunctionTimeout(ScriptJobHostOptions options)
         {
-            if (options.FunctionTimeout != null)
+            if (options.FunctionTimeout == null)
             {
-                ValidateTimeoutValue(options, options.FunctionTimeout);
+                options.FunctionTimeout = _environment.IsDynamic() ? DefaultFunctionTimeoutDynamic : DefaultFunctionTimeout;
+            }
+            else if (!_environment.IsDynamic() && TimeSpan.Compare(options.FunctionTimeout.Value, TimeSpan.FromDays(-1)) == 0)
+            {
+                // If a value of -1 is specified on a dedicated host, it should result in an infinite timeout
+                options.FunctionTimeout = null;
             }
             else
             {
-                options.FunctionTimeout = _environment.IsDynamic() ? DefaultFunctionTimeoutDynamic : DefaultFunctionTimeout;
+                ValidateTimeoutValue(options, options.FunctionTimeout);
             }
         }
 
