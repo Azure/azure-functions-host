@@ -217,7 +217,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 if (pkgContext.IsScmRunFromPackage())
                 {
-                    if (pkgContext.BlobExistsAsync(_logger).Result)
+                    bool blobExists = await pkgContext.BlobExistsAsync(_logger);
+                    if (blobExists)
                     {
                         filePath = await DownloadAsync(zipUri);
                     }
