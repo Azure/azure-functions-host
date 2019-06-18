@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
 
         private static readonly Action<ILogger, string, Exception> _extensionBundleFound =
             LoggerMessage.Define<string>(
-            LogLevel.Error,
+            LogLevel.Information,
             new EventId(103, nameof(ExtensionBundleFound)),
             "Found a matching extension bundle at {bundlePath}");
 
