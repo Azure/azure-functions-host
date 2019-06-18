@@ -68,12 +68,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Ok(_instanceManager.GetInstanceInfo());
         }
 
+        /// <summary>
+        /// This endpoint generates a temporary x-ms-site-restricted-token for core tool
+        /// to access KuduLite zipdeploy endpoint in Linux Consumption
+        /// </summary>
+        /// <returns>
+        /// 200 on token generated
+        /// 400 on non-Linux container environment
+        /// 404 on WEBSITE_AUTH_ENCRYPTION_KEY is not set
+        /// </returns>
         [HttpGet]
         [Route("admin/getsitetoken")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public IActionResult GetSiteToken()
         {
-            // This endpoint is used by getting a temporary x-ms-site-restricted-token to for KuduLite request in Linux Consumption
+            if (!_environment.IsLinuxContainerEnvironment())
+            {
+                return BadRequest("Endpoint is only available when running in Linux Container");
+            }
+
             string websiteEncryptionKey = _environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey);
             if (string.IsNullOrEmpty(websiteEncryptionKey))
             {
