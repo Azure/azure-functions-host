@@ -127,6 +127,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionLoadResponse for functionId:TestFunctionId1")));
         }
 
+        [Fact]
+        public void FunctionLoadRequest_IsExpected()
+        {
+            FunctionMetadata metadata = new FunctionMetadata()
+            {
+                Language = "node",
+                Name = "js1",
+                FunctionId = "TestFunctionId1"
+            };
+            var functionLoadRequest = _workerChannel.GetFunctionLoadRequest(metadata);
+            Assert.False(functionLoadRequest.Metadata.IsProxy);
+
+            FunctionMetadata proxyMetadata = new FunctionMetadata()
+            {
+                Language = "node",
+                Name = "js1",
+                FunctionId = "TestFunctionId1",
+                IsProxy = true
+            };
+            var proxyFunctionLoadRequest = _workerChannel.GetFunctionLoadRequest(proxyMetadata);
+            Assert.True(proxyFunctionLoadRequest.Metadata.IsProxy);
+        }
+
         private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime)
         {
             return new List<FunctionMetadata>()

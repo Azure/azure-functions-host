@@ -230,6 +230,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerChannelLogger.LogDebug("Sending FunctionLoadRequest for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
 
             // send a load request for the registered function
+            SendStreamingMessage(new StreamingMessage
+            {
+                FunctionLoadRequest = GetFunctionLoadRequest(metadata)
+            });
+        }
+
+        internal FunctionLoadRequest GetFunctionLoadRequest(FunctionMetadata metadata)
+        {
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
                 FunctionId = metadata.FunctionId,
@@ -238,7 +246,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     Name = metadata.Name,
                     Directory = metadata.FunctionDirectory ?? string.Empty,
                     EntryPoint = metadata.EntryPoint ?? string.Empty,
-                    ScriptFile = metadata.ScriptFile ?? string.Empty
+                    ScriptFile = metadata.ScriptFile ?? string.Empty,
+                    IsProxy = metadata.IsProxy,
                 }
             };
 
@@ -254,11 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
                 request.Metadata.Bindings.Add(binding.Name, bindingInfo);
             }
-
-            SendStreamingMessage(new StreamingMessage
-            {
-                FunctionLoadRequest = request
-            });
+            return request;
         }
 
         internal void LoadResponse(FunctionLoadResponse loadResponse)
