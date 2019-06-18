@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnvironment _environment;
-        private readonly ILoggerFactory _loggerFactory = null;
         private readonly ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
@@ -31,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;
-            _loggerFactory = loggerFactory;
+            _logger = loggerFactory.CreateLogger<WebHostLanguageWorkerChannelManager>();
             _languageWorkerChannelFactory = languageWorkerChannelFactory;
             _applicationHostOptions = applicationHostOptions;
 
