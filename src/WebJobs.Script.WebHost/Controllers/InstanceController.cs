@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return NotFound("WEBSITE_AUTH_ENCRYPTION_KEY is not set.");
             }
 
-            string requestHeaderToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(30), websiteEncryptionKey.ToKeyBytes());
+            string requestHeaderToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddHours(2), websiteEncryptionKey.ToKeyBytes());
             return Ok(requestHeaderToken);
         }
     }
