@@ -69,9 +69,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [HttpGet]
-        [Route("admin/gettoken")]
+        [Route("admin/getsitetoken")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public IActionResult GetRequestHeaderToken()
+        public IActionResult GetSiteToken()
         {
             // This endpoint is used by getting a temporary x-ms-site-restricted-token to for KuduLite request in Linux Consumption
             string websiteEncryptionKey = _environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey);
