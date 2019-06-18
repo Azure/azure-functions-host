@@ -244,6 +244,12 @@ namespace Microsoft.Azure.WebJobs.Script
             LogHostFunctionErrors();
         }
 
+        protected override async Task StopAsyncCore(CancellationToken cancellationToken)
+        {
+            _functionDispatcher.Stop();
+            await base.StopAsyncCore(cancellationToken);
+        }
+
         /// <summary>
         /// Performs all required initialization on the host.
         /// Must be called before the host is started.
