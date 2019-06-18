@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     if (current == last)
                     {
                         // Only proceeed with the operation if there have been no
-                        // more events withing the specified time window (i.e. there
+                        // more events within the specified time window (i.e. there
                         // is a quiet period)
                         func(arg);
                     }
