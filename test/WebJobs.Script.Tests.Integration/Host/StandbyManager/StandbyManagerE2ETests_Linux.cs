@@ -139,10 +139,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
             var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), @"TestScripts\Node\HttpTrigger");
             var zipFilePath = Path.Combine(contentRoot, "content.zip");
-            await CreateContentZip(contentRoot, zipFilePath, @"TestScripts\Node\HttpTrigger");
+            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, @"TestScripts\Node\HttpTrigger");
 
             // upload the blob and get a SAS uri
-            var sasUri = await CreateBlobSas(zipFilePath, "azure-functions-test", "appcontents.zip");
+            var configuration = _httpServer.Host.Services.GetService<IConfiguration>();
+            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+            var sasUri = await TestHelpers.CreateBlobSas(connectionString, zipFilePath, "azure-functions-test", "appcontents.zip");
 
             // Now specialize the host by invoking assign
             var secretManager = _httpServer.Host.Services.GetService<ISecretManagerProvider>().Current;
@@ -165,46 +167,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
             var response = await _httpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-        }
-
-        private static async Task CreateContentZip(string contentRoot, string zipPath, params string[] copyDirs)
-        {
-            var contentTemp = Path.Combine(contentRoot, @"ZipContent");
-            await FileUtility.DeleteDirectoryAsync(contentTemp, true);
-
-            foreach (var sourceDir in copyDirs)
-            {
-                var directoryName = Path.GetFileName(sourceDir);
-                var targetPath = Path.Combine(contentTemp, directoryName);
-                FileUtility.EnsureDirectoryExists(targetPath);
-                var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), sourceDir);
-                FileUtility.CopyDirectory(sourcePath, targetPath);
-            }
-
-            FileUtility.DeleteFileSafe(zipPath);
-            ZipFile.CreateFromDirectory(contentTemp, zipPath);
-        }
-
-        private async Task<Uri> CreateBlobSas(string filePath, string blobContainer, string blobName)
-        {
-            var configuration = _httpServer.Host.Services.GetService<IConfiguration>();
-            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-            var blobClient = storageAccount.CreateCloudBlobClient();
-            var container = blobClient.GetContainerReference(blobContainer);
-            await container.CreateIfNotExistsAsync();
-            var blob = container.GetBlockBlobReference(blobName);
-            await blob.UploadFromFileAsync(filePath);
-            var policy = new SharedAccessBlobPolicy
-            {
-                SharedAccessStartTime = DateTime.UtcNow,
-                SharedAccessExpiryTime = DateTime.UtcNow.AddHours(1),
-                Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.List
-            };
-            var sas = blob.GetSharedAccessSignature(policy);
-            var sasUri = new Uri(blob.Uri, sas);
-
-            return sasUri;
         }
     }
 }

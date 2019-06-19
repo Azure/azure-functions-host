@@ -24,26 +24,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("MSISpecializationPayload")]
         public MSIContext MSIContext { get; set; }
 
-        public string ZipUrl
+        public RunFromPackageContext GetRunFromPkgContext()
         {
-            get
+            if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteRunFromPackage))
             {
-                if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteRunFromPackage))
-                {
-                    return Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage];
-                }
-                else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteAltZipDeployment))
-                {
-                    return Environment[EnvironmentSettingNames.AzureWebsiteAltZipDeployment];
-                }
-                else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteZipDeployment))
-                {
-                    return Environment[EnvironmentSettingNames.AzureWebsiteZipDeployment];
-                }
-                else
-                {
-                    return string.Empty;
-                }
+                return new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
+                    Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage]);
+            }
+            else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteAltZipDeployment))
+            {
+                return new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteAltZipDeployment,
+                    Environment[EnvironmentSettingNames.AzureWebsiteAltZipDeployment]);
+            }
+            else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteZipDeployment))
+            {
+                return new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteZipDeployment,
+                    Environment[EnvironmentSettingNames.AzureWebsiteZipDeployment]);
+            }
+            else if (Environment.ContainsKey(EnvironmentSettingNames.ScmRunFromPackage))
+            {
+                return new RunFromPackageContext(EnvironmentSettingNames.ScmRunFromPackage,
+                    Environment[EnvironmentSettingNames.ScmRunFromPackage]);
+            }
+            else
+            {
+                return new RunFromPackageContext(string.Empty, string.Empty);
             }
         }
 
