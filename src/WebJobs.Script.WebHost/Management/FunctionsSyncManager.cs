@@ -358,20 +358,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var config = new Dictionary<string, string>();
             if (FileUtility.FileExists(hostJsonPath))
             {
-                var hostJson = JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
-                JToken durableTaskValue;
+                var json = JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
+
+                // get the DurableTask extension config section
+                JToken extensionsValue;
+                if (json.TryGetValue("extensions", StringComparison.OrdinalIgnoreCase, out extensionsValue) && extensionsValue != null)
+                {
+                    json = (JObject)extensionsValue;
+                }
 
                 // we will allow case insensitivity given it is likely user hand edited
                 // see https://github.com/Azure/azure-functions-durable-extension/issues/111
-                //
-                // We're looking for {VALUE}
-                // {
-                //     "durableTask": {
-                //         "hubName": "{VALUE}",
-                //         "azureStorageConnectionStringName": "{VALUE}"
-                //     }
-                // }
-                if (hostJson.TryGetValue(DurableTask, StringComparison.OrdinalIgnoreCase, out durableTaskValue) && durableTaskValue != null)
+                JToken durableTaskValue;
+                if (json.TryGetValue(DurableTask, StringComparison.OrdinalIgnoreCase, out durableTaskValue) && durableTaskValue != null)
                 {
                     try
                     {
