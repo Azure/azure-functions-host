@@ -248,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return BadRequest("Endpoint is only available when running in Linux Container");
             }
 
-            string requestHeaderToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddHours(2));
+            string requestHeaderToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
             return Ok(requestHeaderToken);
         }
 
