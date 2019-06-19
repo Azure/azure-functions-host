@@ -15,5 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public const string ManagedDependency = "managedDependency";
         public const string Http = "http";
         public const string Hsts = Http + ":hsts";
+        public const string CustomHttpHeaders = Http + ":customHeaders";
     }
 }
