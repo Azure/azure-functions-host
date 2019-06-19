@@ -113,13 +113,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Secret management
             services.TryAddSingleton<ISecretManagerProvider, DefaultSecretManagerProvider>();
 
-            // Core script host services
-            services.AddSingleton<WebJobsScriptHostService>();
-            services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
-
             // Register common services with the WebHost
             // Language Worker Hosted Services need to be intialized before WebJobsScriptHostService
             ScriptHostBuilderExtensions.AddCommonServices(services);
+
+            // Core script host services
+            services.AddSingleton<WebJobsScriptHostService>();
+            services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
 
             // Configuration
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();

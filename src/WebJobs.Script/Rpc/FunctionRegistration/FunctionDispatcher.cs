@@ -280,6 +280,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 _workerErrorSubscription.Dispose();
                 _rpcChannelReadySubscriptions.Dispose();
+                _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannels();
                 _disposed = true;
             }
         }
@@ -288,11 +289,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _disposing = true;
             Dispose(true);
-        }
-
-        public void Stop()
-        {
-            _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannels();
         }
     }
 }

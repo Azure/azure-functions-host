@@ -18,7 +18,5 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         void Invoke(ScriptInvocationContext invocationContext);
 
         Task InitializeAsync(IEnumerable<FunctionMetadata> functions);
-
-        void Stop();
     }
 }
