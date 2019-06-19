@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -33,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // register default configuration
                     // must happen before the script host is added below
                     services.ConfigureOptions<HttpOptionsSetup>();
+                    services.ConfigureOptions<CustomHttpHeadersOptionsSetup>();
                     services.ConfigureOptions<HostHstsOptionsSetup>();
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, webJobsBuilder =>
@@ -76,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.TryAddSingleton<IScriptWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
+                    services.TryAddSingleton<IJobHostHttpMiddleware, CustomHttpHeadersMiddleware>();
                     services.TryAddSingleton<IJobHostHttpMiddleware, HstsConfigurationMiddleware>();
 
                     // Make sure the registered IHostIdProvider is used

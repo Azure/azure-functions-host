@@ -1,0 +1,13 @@
+﻿{
+  "version": "2.0",
+  "http": {
+    "customHeaders": {
+      "X-Content-Type-Options": "nosniff"
+    }
+  },
+  "extensions": {
+    "durableTask": {
+      "hubName": "CustomHeadersMiddlewareNodeTestHub"
+    }
+  }
+}
