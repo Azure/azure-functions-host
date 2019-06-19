@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
@@ -227,6 +228,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             return Accepted();
+        }
+
+        /// <summary>
+        /// This endpoint generates a temporary x-ms-site-restricted-token for core tool
+        /// to access KuduLite zipdeploy endpoint in Linux Consumption
+        /// </summary>
+        /// <returns>
+        /// 200 on token generated
+        /// 400 on non-Linux container environment
+        /// </returns>
+        [HttpGet]
+        [Route("admin/host/token")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        public IActionResult GetAdminToken()
+        {
+            if (!_environment.IsLinuxContainerEnvironment())
+            {
+                return BadRequest("Endpoint is only available when running in Linux Container");
+            }
+
+            string requestHeaderToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddHours(2));
+            return Ok(requestHeaderToken);
         }
 
         [AcceptVerbs("GET", "POST", "DELETE")]

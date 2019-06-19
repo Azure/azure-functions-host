@@ -1,14 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
-using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -66,35 +64,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public IActionResult GetInstanceInfo()
         {
             return Ok(_instanceManager.GetInstanceInfo());
-        }
-
-        /// <summary>
-        /// This endpoint generates a temporary x-ms-site-restricted-token for core tool
-        /// to access KuduLite zipdeploy endpoint in Linux Consumption
-        /// </summary>
-        /// <returns>
-        /// 200 on token generated
-        /// 400 on non-Linux container environment
-        /// 404 on WEBSITE_AUTH_ENCRYPTION_KEY is not set
-        /// </returns>
-        [HttpGet]
-        [Route("admin/getsitetoken")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public IActionResult GetSiteToken()
-        {
-            if (!_environment.IsLinuxContainerEnvironment())
-            {
-                return BadRequest("Endpoint is only available when running in Linux Container");
-            }
-
-            string websiteEncryptionKey = _environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey);
-            if (string.IsNullOrEmpty(websiteEncryptionKey))
-            {
-                return NotFound("WEBSITE_AUTH_ENCRYPTION_KEY is not set.");
-            }
-
-            string requestHeaderToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddHours(2), websiteEncryptionKey.ToKeyBytes());
-            return Ok(requestHeaderToken);
         }
     }
 }
