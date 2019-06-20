@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             LanguageWorkerConstants.JavaLanguageWorkerName
         };
 
-        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, ILogger<RpcInitializationService> logger)
+        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, IScriptHostManager scriptHostManager, ILogger<RpcInitializationService> logger)
         {
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _logger = logger;
@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _environment = environment;
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
+            scriptHostManager.PropertyChanged += KillRpcServer;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -63,11 +64,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger.LogDebug("Rpc Initialization Service started.");
         }
 
-        public async Task StopAsync(CancellationToken cancellationToken)
+        public Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogDebug("Shuttingdown Rpc Channels Manager");
             _languageWorkerChannelManager.ShutdownChannels();
-            await _rpcServer.KillAsync();
+            return Task.CompletedTask;
         }
 
         internal async Task InitializeRpcServerAsync()
@@ -123,6 +124,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private bool ShouldStartInPlaceholderMode()
         {
             return string.IsNullOrEmpty(_workerRuntime) && _environment.IsPlaceholderModeEnabled();
+        }
+
+        private void KillRpcServer(object sender, EventArgs e)
+        {
+            _rpcServer.KillAsync().Wait();
         }
 
         // To help with unit tests

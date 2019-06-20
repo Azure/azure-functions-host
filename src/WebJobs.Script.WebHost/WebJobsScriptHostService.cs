@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,7 +11,6 @@ using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly SemaphoreSlim _hostRestartSemaphore = new SemaphoreSlim(1, 1);
 
         private IHost _host;
+        private ScriptHostState _state;
         private CancellationTokenSource _startupLoopTokenSource;
         private int _hostStartCount;
         private bool _disposed = false;
@@ -71,6 +72,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        public event PropertyChangedEventHandler PropertyChanged;
+
         [Flags]
         private enum JobHostStartupMode
         {
@@ -84,7 +87,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public IServiceProvider Services => _host?.Services;
 
-        public ScriptHostState State { get; private set; }
+        public ScriptHostState State
+        {
+            get
+            {
+                return _state;
+            }
+
+            private set
+            {
+                ScriptHostState oldState = _state;
+                _state = value;
+                OnScriptHostStateChanged(oldState, _state);
+            }
+        }
 
         public Exception LastError { get; private set; }
 
@@ -119,6 +135,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 // If the exception was triggered by our loop cancellation token, just ignore as
                 // it doesn't indicate an issue.
+            }
+        }
+
+        private void OnScriptHostStateChanged(ScriptHostState oldValue, ScriptHostState newValue)
+        {
+            _logger.LogDebug($"ScriptHostState changed from {oldValue.ToString()} to {newValue.ToString()}");
+            if (oldValue.Equals(ScriptHostState.Stopping) && newValue.Equals(ScriptHostState.Stopped))
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(State)));
             }
         }
 

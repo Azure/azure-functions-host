@@ -2,14 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public interface IScriptHostManager
+    public interface IScriptHostManager : INotifyPropertyChanged
     {
-        ScriptHostState State { get;  }
+        ScriptHostState State { get; }
 
         /// <summary>
         /// Gets the last host <see cref="Exception"/> that has occurred.
