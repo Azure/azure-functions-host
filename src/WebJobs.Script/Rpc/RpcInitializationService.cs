@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
+using Microsoft.Azure.WebJobs.Script.EventHandlers.EventArgs;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -49,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _environment = environment;
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-            scriptHostManager.PropertyChanged += KillRpcServer;
+            scriptHostManager.ScriptHostStateChanged += KillRpcServer;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -126,9 +127,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return string.IsNullOrEmpty(_workerRuntime) && _environment.IsPlaceholderModeEnabled();
         }
 
-        private void KillRpcServer(object sender, EventArgs e)
+        private void KillRpcServer(object sender, ScriptHostStateChangedEventArgs e)
         {
-            _rpcServer.KillAsync().Wait();
+            if (e.OldValue.Equals(ScriptHostState.Stopping) && e.NewValue.Equals(ScriptHostState.Stopped))
+            {
+                _logger.LogDebug($"Killing RPC server due to ScriptHostState change from {e.OldValue.ToString()} to {e.NewValue.ToString()}");
+                _rpcServer.KillAsync().Wait();
+            }
         }
 
         // To help with unit tests
