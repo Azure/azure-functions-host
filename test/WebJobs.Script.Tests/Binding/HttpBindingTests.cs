@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
+using System.Reflection;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Xunit;
 
@@ -143,6 +145,56 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Assert.Equal(expectedStatusCode, statusCode);
             }
+        }
+
+        [Fact]
+        public void SetResponse_ActionResultConverted_Succeeded()
+        {
+            FieldInfo fieldInfo = typeof(HttpBinding).GetField("isActionResultHandlingEnabled", BindingFlags.NonPublic | BindingFlags.Static);
+            bool oldValue = (bool)fieldInfo.GetValue(null);
+            fieldInfo.SetValue(null, true);
+
+            try
+            {
+                var httpContext1 = new DefaultHttpContext();
+                ActionResult<string> result1 = new ActionResult<string>("test");
+                HttpBinding.SetResponse(httpContext1.Request, result1);
+                Assert.Equal("test", ((ObjectResult)httpContext1.Request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey]).Value);
+
+                var httpContext2 = new DefaultHttpContext();
+                ActionResult<DummyClass> result2 = new ActionResult<DummyClass>(new DummyClass { Value = "test" });
+                HttpBinding.SetResponse(httpContext2.Request, result2);
+                var resultObject = ((ObjectResult)httpContext2.Request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey]).Value;
+                Assert.IsType<DummyClass>(resultObject);
+                Assert.Equal("test", ((DummyClass)resultObject).Value);
+            }
+            finally
+            {
+                fieldInfo.SetValue(null, oldValue);
+            }
+        }
+
+        [Fact]
+        public void SetResponse_ActionResultGeneric_Succeeded()
+        {
+            var httpContext1 = new DefaultHttpContext();
+            ActionResult<string> result1 = new ActionResult<string>("test");
+            HttpBinding.SetResponse(httpContext1.Request, result1);
+            var resultObject1 = ((ObjectResult)httpContext1.Request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey]).Value;
+            Assert.IsType<ActionResult<string>>(resultObject1);
+            Assert.Equal("test", (resultObject1 as ActionResult<string>).Value);
+
+            var httpContext2 = new DefaultHttpContext();
+            ActionResult<DummyClass> result = new ActionResult<DummyClass>(new DummyClass { Value = "test" });
+            HttpBinding.SetResponse(httpContext2.Request, result);
+            var resultObject2 = ((ObjectResult)httpContext2.Request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey]).Value;
+            Assert.IsType<ActionResult<DummyClass>>(resultObject2);
+            Assert.Equal("test", (resultObject2 as ActionResult<DummyClass>).Value.Value);
+        }
+
+        private class DummyClass
+        {
+            public string Value { get; set; }
         }
     }
 }

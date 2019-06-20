@@ -70,13 +70,19 @@ namespace Microsoft.Azure.WebJobs.Script
             // Run From Package app setting exists
             return IsValidZipSetting(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment)) ||
                 IsValidZipSetting(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteAltZipDeployment)) ||
-                IsValidZipSetting(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage));
+                IsValidZipSetting(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage)) ||
+                IsValidZipUrl(environment.GetEnvironmentVariable(EnvironmentSettingNames.ScmRunFromPackage));
         }
 
-        private static bool IsValidZipSetting(string appSetting)
+        public static bool IsValidZipSetting(string appSetting)
         {
             // valid values are 1 or an absolute URI
-            return string.Equals(appSetting, "1") || Uri.TryCreate(appSetting, UriKind.Absolute, out Uri result);
+            return string.Equals(appSetting, "1") || IsValidZipUrl(appSetting);
+        }
+
+        public static bool IsValidZipUrl(string appSetting)
+        {
+            return Uri.TryCreate(appSetting, UriKind.Absolute, out Uri result);
         }
 
         public static bool IsAppServiceWindowsEnvironment(this IEnvironment environment)
@@ -181,6 +187,19 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             var mountEnabled = environment.GetEnvironmentVariable(MountEnabled);
             return !string.IsNullOrEmpty(mountEnabled) && string.Equals(mountEnabled, "1");
+        }
+
+        public static string GetKubernetesApiServerUrl(this IEnvironment environment)
+        {
+            string host = environment.GetEnvironmentVariable(KubernetesServiceHost);
+            string port = environment.GetEnvironmentVariable(KubernetesServiceHttpsPort);
+
+            if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(port))
+            {
+                throw new InvalidOperationException($"Both {KubernetesServiceHost} and {KubernetesServiceHttpsPort} are required for {nameof(GetKubernetesApiServerUrl)}.");
+            }
+
+            return $"https://{host}:{port}";
         }
     }
 }
