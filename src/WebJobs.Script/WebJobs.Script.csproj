@@ -86,8 +86,4 @@
     </EmbeddedResource>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="EventHandlers\EventArgs\" />
-  </ItemGroup>
-
 </Project>

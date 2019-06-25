@@ -6,7 +6,7 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing.Host
     public class ScriptHostStateChangedEvent : ScriptEvent
     {
         public ScriptHostStateChangedEvent(ScriptHostState oldState, ScriptHostState newState)
-            : base(nameof(ScriptHostStateChangedEvent), EventSources.ScriptFiles)
+            : base(nameof(ScriptHostStateChangedEvent), EventSources.ScriptHostState)
         {
             OldState = oldState;
             NewState = newState;
