@@ -326,10 +326,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         private void MountFsImage(string filePath, string scriptPath)
-            => RunFuseMount($"squashfuse_ll '{filePath}' '{scriptPath}'", scriptPath);
+            => RunFuseMount($"squashfuse_ll -o nonempty '{filePath}' '{scriptPath}'", scriptPath);
 
         private void MountZipFile(string filePath, string scriptPath)
-            => RunFuseMount($"fuse-zip -r '{filePath}' '{scriptPath}'", scriptPath);
+            => RunFuseMount($"fuse-zip -o nonempty -r '{filePath}' '{scriptPath}'", scriptPath);
 
         private void RunFuseMount(string mountCommand, string targetPath)
         {
