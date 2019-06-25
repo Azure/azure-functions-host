@@ -6,6 +6,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Eventing.Host;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -33,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private Mock<IServiceScopeFactory> _mockRootScopeFactory;
         private Mock<IScriptWebHostEnvironment> _mockScriptWebHostEnvironment;
         private Mock<IEnvironment> _mockEnvironment;
+        private Mock<IScriptEventManager> _eventManager;
         private OptionsWrapper<HostHealthMonitorOptions> _healthMonitorOptions;
         private HostPerformanceManager _hostPerformanceManager;
         private Mock<IHost> _host;
@@ -54,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockRootScopeFactory = new Mock<IServiceScopeFactory>();
             _mockScriptWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
             _mockEnvironment = new Mock<IEnvironment>();
+            _eventManager = new Mock<IScriptEventManager>();
             _healthMonitorOptions = new OptionsWrapper<HostHealthMonitorOptions>(new HostHealthMonitorOptions());
             _hostPerformanceManager = new HostPerformanceManager(_mockEnvironment.Object, _healthMonitorOptions);
         }
@@ -100,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _hostService = new WebJobsScriptHostService(
                 _monitor, hostBuilder.Object, NullLoggerFactory.Instance, _mockRootServiceProvider.Object, _mockRootScopeFactory.Object,
-                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions);
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, _eventManager.Object);
 
             await _hostService.StartAsync(CancellationToken.None);
 
@@ -124,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _hostService = new WebJobsScriptHostService(
                 _monitor, hostBuilder.Object, _loggerFactory, _mockRootServiceProvider.Object, _mockRootScopeFactory.Object,
-                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions);
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, _eventManager.Object);
 
             await _hostService.StartAsync(CancellationToken.None);
 
@@ -172,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _hostService = new WebJobsScriptHostService(
                 _monitor, hostBuilder.Object, _loggerFactory, _mockRootServiceProvider.Object, _mockRootScopeFactory.Object,
-                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions);
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, _eventManager.Object);
 
             Task initialStart = _hostService.StartAsync(CancellationToken.None);
 
@@ -240,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _hostService = new WebJobsScriptHostService(
                _monitor, hostBuilder.Object, NullLoggerFactory.Instance, _mockRootServiceProvider.Object, _mockRootScopeFactory.Object,
-               _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions);
+               _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, _eventManager.Object);
 
             Task startTask = _hostService.StartAsync(CancellationToken.None);
 
@@ -251,6 +255,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             blockingSemaphore.Release();
 
             await startTask;
+        }
+
+        [Fact]
+        public async Task HostShutdown_PublishesShutdownEvent()
+        {
+            _eventManager.Setup(a => a.Publish(It.Is<ScriptHostStateChangedEvent>(b => (b.OldState.Equals(ScriptHostState.Stopping) && b.NewState.Equals(ScriptHostState.Stopped))))).Verifiable();
+
+            var hostA = CreateMockHost();
+            hostA.Setup(h => h.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            var hostBuilder = new Mock<IScriptHostBuilder>();
+            hostBuilder.SetupSequence(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
+                .Returns(hostA.Object);
+
+            _hostService = new WebJobsScriptHostService(
+               _monitor, hostBuilder.Object, NullLoggerFactory.Instance, _mockRootServiceProvider.Object, _mockRootScopeFactory.Object,
+               _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, _eventManager.Object);
+
+            await _hostService.StartAsync(CancellationToken.None);
+            await _hostService.StopAsync(CancellationToken.None);
+
+            _eventManager.Verify();
         }
 
         public void RestartHost()

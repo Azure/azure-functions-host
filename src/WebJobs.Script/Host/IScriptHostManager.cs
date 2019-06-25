@@ -4,14 +4,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.EventHandlers;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
     public interface IScriptHostManager
     {
-        event ScriptHostStateChangedEventHandler ScriptHostStateChanged;
-
         ScriptHostState State { get; }
 
         /// <summary>

@@ -10,8 +10,8 @@ using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.EventHandlers;
-using Microsoft.Azure.WebJobs.Script.EventHandlers.EventArgs;
+using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Eventing.Host;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IServiceProvider _rootServiceProvider;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
+        private readonly IScriptEventManager _eventManager;
         private readonly HostPerformanceManager _performanceManager;
         private readonly IOptions<HostHealthMonitorOptions> _healthMonitorOptions;
         private readonly SlidingWindow<bool> _healthCheckWindow;
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory, IServiceProvider rootServiceProvider,
             IServiceScopeFactory rootScopeFactory, IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
-            HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions)
+            HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions, IScriptEventManager eventManager)
         {
             if (loggerFactory == null)
             {
@@ -63,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _performanceManager = hostPerformanceManager ?? throw new ArgumentNullException(nameof(hostPerformanceManager));
             _healthMonitorOptions = healthMonitorOptions ?? throw new ArgumentNullException(nameof(healthMonitorOptions));
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
-            ScriptHostStateChanged += LogScriptHostStateChanged;
+            _eventManager = eventManager;
 
             State = ScriptHostState.Default;
 
@@ -73,8 +74,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _hostHealthCheckTimer = new Timer(OnHostHealthCheckTimer, null, TimeSpan.Zero, _healthMonitorOptions.Value.HealthCheckInterval);
             }
         }
-
-        public event ScriptHostStateChangedEventHandler ScriptHostStateChanged;
 
         [Flags]
         private enum JobHostStartupMode
@@ -100,7 +99,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 ScriptHostState oldState = _state;
                 _state = value;
-                ScriptHostStateChanged?.Invoke(this, new EventHandlers.EventArgs.ScriptHostStateChangedEventArgs(oldState, value));
+                if (!oldState.Equals(value))
+                {
+                    _logger.LogDebug($"ScriptHostState changed from {oldState.ToString()} to {value.ToString()}");
+                    _eventManager.Publish(new ScriptHostStateChangedEvent(oldState, value));
+                }
             }
         }
 
@@ -115,11 +118,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 return _healthMonitorOptions.Value.Enabled && _environment.IsAppServiceEnvironment();
             }
-        }
-
-        private void LogScriptHostStateChanged(object sender, ScriptHostStateChangedEventArgs e)
-        {
-            _logger.LogDebug($"ScriptHostState changed from {e.OldValue.ToString()} to {e.NewValue.ToString()}");
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -529,7 +527,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _startupLoopTokenSource?.Dispose();
                     _hostRestartSemaphore.Dispose();
                     DisposeRequestTrackingModule();
-                    ScriptHostStateChanged -= LogScriptHostStateChanged;
                 }
                 _disposed = true;
             }

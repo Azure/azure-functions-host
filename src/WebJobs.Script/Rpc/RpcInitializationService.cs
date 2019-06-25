@@ -4,11 +4,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
-using Microsoft.Azure.WebJobs.Script.EventHandlers.EventArgs;
+using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Eventing.Host;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IWebHostLanguageWorkerChannelManager _languageWorkerChannelManager;
         private readonly IRpcServer _rpcServer;
         private readonly ILogger _logger;
+        private readonly IScriptEventManager _eventManager;
         private readonly string _workerRuntime;
 
         private Dictionary<OSPlatform, List<string>> _hostingOSToWhitelistedRuntimes = new Dictionary<OSPlatform, List<string>>()
@@ -42,15 +45,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             LanguageWorkerConstants.JavaLanguageWorkerName
         };
 
-        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, IScriptHostManager scriptHostManager, ILogger<RpcInitializationService> logger)
+        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, IScriptEventManager eventManager, ILogger<RpcInitializationService> logger)
         {
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _logger = logger;
             _rpcServer = rpcServer;
             _environment = environment;
+            _eventManager = eventManager;
+            _eventManager.OfType<ScriptHostStateChangedEvent>().Where(a => a.OldState.Equals(ScriptHostState.Stopping) && a.NewState.Equals(ScriptHostState.Stopped)).Subscribe(KillRpcServer);
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-            scriptHostManager.ScriptHostStateChanged += KillRpcServer;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -96,6 +100,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return InitializeWebHostRuntimeChannelsAsync();
         }
 
+        private void KillRpcServer(ScriptHostStateChangedEvent scriptHostShutdownEvent)
+        {
+            _logger.LogDebug($"Killing RPC server due to ScriptHostState change from {scriptHostShutdownEvent.OldState.ToString()} to {scriptHostShutdownEvent.NewState.ToString()}");
+            _rpcServer.KillAsync().Wait();
+        }
+
         private Task InitializePlaceholderChannelsAsync()
         {
             if (_environment.IsLinuxHostingEnvironment())
@@ -125,15 +135,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private bool ShouldStartInPlaceholderMode()
         {
             return string.IsNullOrEmpty(_workerRuntime) && _environment.IsPlaceholderModeEnabled();
-        }
-
-        private void KillRpcServer(object sender, ScriptHostStateChangedEventArgs e)
-        {
-            if (e.OldValue.Equals(ScriptHostState.Stopping) && e.NewValue.Equals(ScriptHostState.Stopped))
-            {
-                _logger.LogDebug($"Killing RPC server due to ScriptHostState change from {e.OldValue.ToString()} to {e.NewValue.ToString()}");
-                _rpcServer.KillAsync().Wait();
-            }
         }
 
         // To help with unit tests
