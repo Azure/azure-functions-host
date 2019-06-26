@@ -248,8 +248,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public async Task RpcInitializationService_Stops_DoesNotStopRpcServer()
         {
             var testRpcServer = new Mock<IRpcServer>();
-
-            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, new Mock<IEnvironment>().Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _eventManager.Object, _logger);
+            var testEventManager = new ScriptEventManager();
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, new Mock<IEnvironment>().Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, testEventManager, _logger);
+            testEventManager.Publish(new ScriptHostStateChangedEvent(ScriptHostState.Stopping, ScriptHostState.Initialized));
             await _rpcInitializationService.StopAsync(CancellationToken.None);
             testRpcServer.Verify(a => a.KillAsync(), Times.Never);
         }

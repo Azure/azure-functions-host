@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _state = value;
                 if (!oldState.Equals(value))
                 {
-                    _logger.LogDebug($"ScriptHostState changed from {oldState.ToString()} to {value.ToString()}");
+                    _logger.ScriptHostStateChanged(oldState.ToString(), value.ToString());
                     _eventManager.Publish(new ScriptHostStateChangedEvent(oldState, value));
                 }
             }

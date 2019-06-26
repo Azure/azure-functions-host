@@ -52,9 +52,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _rpcServer = rpcServer;
             _environment = environment;
             _eventManager = eventManager;
-            _eventManager.OfType<ScriptHostStateChangedEvent>().Where(a => a.OldState.Equals(ScriptHostState.Stopping) && a.NewState.Equals(ScriptHostState.Stopped)).Subscribe(KillRpcServer);
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
+
+            _eventManager.OfType<ScriptHostStateChangedEvent>().Where(a => a.OldState.Equals(ScriptHostState.Stopping) && a.NewState.Equals(ScriptHostState.Stopped)).Subscribe(KillRpcServer);
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)

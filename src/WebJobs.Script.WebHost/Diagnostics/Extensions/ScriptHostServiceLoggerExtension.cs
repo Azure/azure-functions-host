@@ -118,6 +118,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             new EventId(517, nameof(CancellationRequested)),
             "Cancellation requested. A new host will not be started.");
 
+        private static readonly Action<ILogger, string, string, Exception> _scriptHostStateChanged =
+           LoggerMessage.Define<string, string>(
+           LogLevel.Information,
+           new EventId(518, nameof(ScriptHostStateChanged)),
+           "ScriptHostState changed from {oldState} to {newState}");
+
         public static void ScriptHostServiceInitCanceledByRuntime(this ILogger logger)
         {
            _scriptHostServiceInitCanceledByRuntime(logger, null);
@@ -206,6 +212,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
         public static void CancellationRequested(this ILogger logger)
         {
             _cancellationRequested(logger, null);
+        }
+
+        public static void ScriptHostStateChanged(this ILogger logger, string oldState, string newState)
+        {
+            _scriptHostStateChanged(logger, oldState, newState, null);
         }
     }
 }
