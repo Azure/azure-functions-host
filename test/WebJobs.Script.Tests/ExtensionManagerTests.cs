@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 await manager.AddExtensions(extension);
 
-                IEnumerable<ExtensionPackageReference> extensions = await manager.GetExtensions();
+                IEnumerable<ExtensionPackageRetrieve> extensions = await manager.GetExtensions();
 
                 Assert.Equal(1, extensions.Count());
 
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 await manager.DeleteExtensions(extensions[1].Id);
 
-                IEnumerable<ExtensionPackageReference> result = await manager.GetExtensions();
+                IEnumerable<ExtensionPackageRetrieve> result = await manager.GetExtensions();
 
                 Assert.Equal(1, result.Count());
 
@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task GetExtensions_ExtensionBundleEnabled_FailedToFetchBundle_ReturnsEmpty()
         {
             var manager = GetExtensionsManager(string.Empty, new TestExtensionBundleManager(null, true));
-            IEnumerable<ExtensionPackageReference> result = await manager.GetExtensions();
+            IEnumerable<ExtensionPackageRetrieve> result = await manager.GetExtensions();
             Assert.Equal(0, result.Count());
         }
 

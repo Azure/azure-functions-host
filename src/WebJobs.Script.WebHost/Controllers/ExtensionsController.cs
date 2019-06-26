@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -27,12 +28,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly ScriptSettingsManager _settingsManager;
         private readonly IExtensionBundleManager _extensionBundleManager;
         private readonly IEnvironment _environment;
+        private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
 
-        public ExtensionsController(IExtensionsManager extensionsManager, ScriptSettingsManager settingsManager, IExtensionBundleManager extensionBundleManager, IEnvironment environment)
+        public ExtensionsController(IExtensionsManager extensionsManager, ScriptSettingsManager settingsManager, IExtensionBundleManager extensionBundleManager, IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
         {
             _extensionsManager = extensionsManager ?? throw new ArgumentNullException(nameof(extensionsManager));
             _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
+            _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _environment = environment;
         }
 
@@ -40,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/extensions")]
         public async Task<IActionResult> Get()
         {
-            IEnumerable<ExtensionPackageReference> extensions = await _extensionsManager.GetExtensions();
+            IEnumerable<ExtensionPackageRetrieve> extensions = await _extensionsManager.GetExtensions();
 
             var extensionsContent = new
             {
@@ -143,14 +146,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             string jobId = job.Id;
             var addTask = _extensionsManager.AddExtensions(package)
-                .ContinueWith(t => ProcessJobTaskResult(t, jobId));
+                .ContinueWith(t => ProcessJobTaskResult(t, jobId, package.DeferAppActivationToServer));
 
             var apiModel = ApiModelUtility.CreateApiModel(job, Request, $"jobs/{job.Id}");
             string action = $"{Request.Scheme}://{Request.Host.ToUriComponent()}{Url.Action(nameof(GetJobs), "Extensions", new { id = job.Id })}{Request.QueryString}";
             return Accepted(action, apiModel);
         }
 
-        private async Task ProcessJobTaskResult(Task jobTask, string jobId)
+        private async Task ProcessJobTaskResult(Task jobTask, string jobId, bool deferAppActivationToServer = false)
         {
             ExtensionsRestoreJob job = await GetJob(jobId);
             if (job == null)
@@ -169,6 +172,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             job.EndTime = DateTimeOffset.Now;
+
+            if (deferAppActivationToServer)
+            {
+                await FileMonitoringService.SetAppOfflineState(_applicationHostOptions.Value.ScriptPath, false);
+            }
 
             await SaveJob(job);
         }
