@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -30,6 +31,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             }
 
             _fileWriter = new FileWriter(_logFilePath);
+        }
+
+        [Fact]
+        public void FileLogger_LogsIfLogFileUnavailable()
+        {
+            ILogger logger = new FileLogger(_category, _fileWriter, isFileLoggingEnabled: () => true, isPrimary: () => true, logType: LogType.Host);
+            logger.LogInformation("Line 1");
+            _fileWriter.Flush();
+
+            string logFilePath = Directory.EnumerateFiles(_logFilePath).Single();
+            var logFile = File.Open(logFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None); // Lock the file
+
+            logger.LogInformation("Line 2");
+            _fileWriter.Flush();
+
+            logFile.Close(); // Unlock the file
+
+            var directory = new DirectoryInfo(_logFilePath);
+            var logFiles = directory.GetFiles("*.log");
+
+            Assert.Equal(2, logFiles.Length);
+
+            var logFilesDescending = logFiles.OrderByDescending(p => p.LastWriteTime);
+
+            List<string> actual = new List<string>();
+            foreach (var file in logFiles)
+            {
+                actual.AddRange(File.ReadAllLines(file.FullName));
+            }
+
+            Assert.Collection(actual,
+                t => Assert.EndsWith("Line 1", t),
+                t => Assert.EndsWith("Line 2", t));
         }
 
         [Fact]
