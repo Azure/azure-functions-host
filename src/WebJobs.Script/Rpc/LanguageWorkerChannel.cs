@@ -211,8 +211,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
             _reloadTask = reloadTask;
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
-      .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse)));
+            _eventSubscriptions
+                .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
+                .Timeout(workerInitTimeout)
+                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse)));
 
             IDictionary processEnv = Environment.GetEnvironmentVariables();
 
