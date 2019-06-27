@@ -16,7 +16,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public class RpcInitializationService : IHostedService
+    public class RpcInitializationService : IHostedService, IDisposable
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IEnvironment _environment;
@@ -24,7 +24,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IRpcServer _rpcServer;
         private readonly ILogger _logger;
         private readonly IScriptEventManager _eventManager;
+        private readonly IDisposable _subscription;
+
         private readonly string _workerRuntime;
+        private readonly int _rpcServerSutdownTimeoutInMilliseconds;
+        private bool _disposed;
 
         private Dictionary<OSPlatform, List<string>> _hostingOSToWhitelistedRuntimes = new Dictionary<OSPlatform, List<string>>()
         {
@@ -51,10 +55,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _rpcServer = rpcServer;
             _environment = environment;
             _eventManager = eventManager;
+            _rpcServerSutdownTimeoutInMilliseconds = 5000;
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
 
-            _eventManager.OfType<ScriptHostStateChangedEvent>().Where(a => a.OldState.Equals(ScriptHostState.Stopping) && a.NewState.Equals(ScriptHostState.Stopped)).Subscribe(KillRpcServer);
+            _subscription = _eventManager.OfType<ScriptHostStateChangedEvent>().Where(a => a.OldState.Equals(ScriptHostState.Stopping) && a.NewState.Equals(ScriptHostState.Stopped)).Subscribe(KillRpcServer);
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -102,8 +107,19 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private void KillRpcServer(ScriptHostStateChangedEvent scriptHostShutdownEvent)
         {
-            _logger.LogDebug($"Killing RPC server due to ScriptHostState change from {scriptHostShutdownEvent.OldState.ToString()} to {scriptHostShutdownEvent.NewState.ToString()}");
-            _rpcServer.KillAsync().Wait();
+            _logger.LogDebug($"Killing RPC server due to ScriptHostState change from {scriptHostShutdownEvent.OldState} to {scriptHostShutdownEvent.NewState}");
+            Task killRpcServer = _rpcServer.ShutdownAsync()
+                                    .ContinueWith(t => LogTerminationException(t), TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+            if (!Task.WhenAny(killRpcServer, Task.Delay(_rpcServerSutdownTimeoutInMilliseconds)).Result.Equals(killRpcServer))
+            {
+                _rpcServer.KillAsync()
+                    .ContinueWith(t => LogTerminationException(t), TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+            }
+        }
+
+        private void LogTerminationException(Task currentTask)
+        {
+            _logger.LogError($"Killing RPC server encountered an exception '{currentTask.Exception?.InnerException}'");
         }
 
         private Task InitializePlaceholderChannelsAsync()
@@ -139,5 +155,19 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         // To help with unit tests
         internal void AddSupportedWebHostLevelRuntime(string language) => _webHostLevelWhitelistedRuntimes.Add(language);
+
+        private void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _subscription.Dispose();
+                }
+                _disposed = true;
+            }
+        }
+
+        public void Dispose() => Dispose(true);
     }
 }

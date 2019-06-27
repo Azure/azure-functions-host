@@ -251,15 +251,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _eventManager.Publish(new ScriptHostStateChangedEvent(ScriptHostState.Stopping, ScriptHostState.Initialized));
             await _rpcInitializationService.StopAsync(CancellationToken.None);
             testRpcServer.Verify(a => a.KillAsync(), Times.Never);
+            testRpcServer.Verify(a => a.ShutdownAsync(), Times.Never);
         }
 
         [Fact]
         public void RpcInitializationService_TriggerShutdown()
         {
             var testRpcServer = new Mock<IRpcServer>();
-            testRpcServer.Setup(a => a.KillAsync()).Returns(Task.CompletedTask);
             _rpcInitializationService = new RpcInitializationService(_optionsMonitor, new Mock<IEnvironment>().Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _eventManager, _logger);
             _eventManager.Publish(new ScriptHostStateChangedEvent(ScriptHostState.Stopping, ScriptHostState.Stopped));
+            testRpcServer.Verify(a => a.ShutdownAsync(), Times.Once);
+            testRpcServer.Verify(a => a.KillAsync(), Times.Never);
+        }
+
+        [Fact]
+        public void RpcInitializationService_TriggerShutdown_KillGetsCalledWhenShutdownTimesout()
+        {
+            var testRpcServer = new Mock<IRpcServer>();
+            testRpcServer.Setup(a => a.ShutdownAsync()).Returns(Task.Delay(6000));
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, new Mock<IEnvironment>().Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _eventManager, _logger);
+            _eventManager.Publish(new ScriptHostStateChangedEvent(ScriptHostState.Stopping, ScriptHostState.Stopped));
+            testRpcServer.Verify(a => a.ShutdownAsync(), Times.Once);
             testRpcServer.Verify(a => a.KillAsync(), Times.Once);
         }
     }
