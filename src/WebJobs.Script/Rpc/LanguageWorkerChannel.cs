@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Capabilities _workerCapabilities;
         private ILogger _workerChannelLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
-        private TaskCompletionSource<bool> _reloadTask;
+        private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>();
 
         internal LanguageWorkerChannel(
            string workerId,
@@ -207,13 +207,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public void SendFunctionEnvironmentReloadRequest(TaskCompletionSource<bool> reloadTask)
+        public Task SendFunctionEnvironmentReloadRequest()
         {
             _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
-            _reloadTask = reloadTask;
             _eventSubscriptions
                 .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
                 .Timeout(workerInitTimeout)
+                .Take(1)
                 .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse)));
 
             IDictionary processEnv = Environment.GetEnvironmentVariables();
@@ -228,6 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 FunctionEnvironmentReloadRequest = request
             });
+            return _reloadTask.Task;
         }
 
         internal void SendFunctionLoadRequest(FunctionMetadata metadata)

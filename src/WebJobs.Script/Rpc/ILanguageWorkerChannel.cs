@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         void SendFunctionLoadRequests();
 
-        void SendFunctionEnvironmentReloadRequest(TaskCompletionSource<bool> reloadTask);
+        Task SendFunctionEnvironmentReloadRequest();
 
         Task StartWorkerProcessAsync();
     }
