@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 throw new InvalidOperationException($"WorkerCofig for runtime: {runtime} not found");
             }
             string workerId = Guid.NewGuid().ToString();
-            ILogger workerLogger = _loggerFactory.CreateLogger($"LanguageWorkerChannel.{runtime}.{workerId}");
+            ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{runtime}.{workerId}");
             ILanguageWorkerProcess languageWorkerProcess = _languageWorkerProcessManager.CreateLanguageWorkerProcess(workerId, runtime, scriptRootPath);
             return new LanguageWorkerChannel(
                          workerId,
