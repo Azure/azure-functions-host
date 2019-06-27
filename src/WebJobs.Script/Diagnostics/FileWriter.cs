@@ -219,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // we include a sequence number in case a log file is created within a second of the
                     // last one (could happen if a log file becomes locked by another process).
                     var timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ssK");
-                    string filePath = Path.Combine(_logFilePath, $"{timestamp}-{_instanceId}-{_currentLogFileSequence++}.log");
+                    string filePath = Path.Combine(_logFilePath, $"{timestamp}-{_currentLogFileSequence++}-{_instanceId}.log");
                     _currentLogFileInfo = new FileInfo(filePath);
                     _currentLogFileInfo.Create().Close();
                     newLogFileCreated = true;
