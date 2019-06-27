@@ -49,6 +49,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _eventManager.Publish(new InboundEvent(_workerId, responseMessage));
         }
 
+        public void PublishFunctionEnvironmentReloadResponseEvent()
+        {
+            FunctionEnvironmentReloadResponse relaodEnvResponse = GetTestFunctionEnvReloadResponse();
+            StreamingMessage responseMessage = new StreamingMessage()
+            {
+                FunctionEnvironmentReloadResponse = relaodEnvResponse
+            };
+            _eventManager.Publish(new InboundEvent(_workerId, responseMessage));
+        }
+
+        public static FunctionEnvironmentReloadResponse GetTestFunctionEnvReloadResponse()
+        {
+            StatusResult statusResult = new StatusResult()
+            {
+                Status = StatusResult.Types.Status.Success
+            };
+            FunctionEnvironmentReloadResponse relaodEnvResponse = new FunctionEnvironmentReloadResponse()
+            {
+                Result = statusResult
+            };
+            return relaodEnvResponse;
+        }
+
         public void PublishInvocationResponseEvent()
         {
             StatusResult statusResult = new StatusResult()
