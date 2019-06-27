@@ -11,7 +11,6 @@ using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Eventing.Host;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -101,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _state = value;
                 if (!oldState.Equals(value))
                 {
-                    _logger.ScriptHostStateChanged(oldState.ToString(), value.ToString());
+                    _logger.ScriptHostStateChanged(oldState, value);
                     _eventManager.Publish(new ScriptHostStateChangedEvent(oldState, value));
                 }
             }
