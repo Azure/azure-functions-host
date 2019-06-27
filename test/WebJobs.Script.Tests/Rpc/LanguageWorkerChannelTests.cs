@@ -150,6 +150,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.True(proxyFunctionLoadRequest.Metadata.IsProxy);
         }
 
+        [Fact]
+        public void Multiple_FunctionEnvironmentReloadResponse_Throws()
+        {
+            _workerChannel.SendFunctionEnvironmentReloadRequest();
+            _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent();
+
+            var traces = _logger.GetLogMessages();
+
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionEnvironmentReloadResponse")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest")));
+            var ex = Assert.Throws<InvalidOperationException>(() => _workerChannel.FunctionEnvironmentReloadResponse(TestFunctionRpcService.GetTestFunctionEnvReloadResponse()));
+            Assert.Contains("FunctionEnvironmentReloadResponse received more than once", ex.Message);
+        }
+
         private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime)
         {
             return new List<FunctionMetadata>()

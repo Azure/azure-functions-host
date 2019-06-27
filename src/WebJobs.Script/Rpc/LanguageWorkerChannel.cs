@@ -143,6 +143,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res)
         {
             _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse");
+            if (_reloadTask.Task.IsCompleted)
+            {
+                throw new InvalidOperationException("FunctionEnvironmentReloadResponse received more than once");
+            }
             if (res.Result.IsFailure(out Exception relaodEnvironmentVariablesException))
             {
                 _workerChannelLogger.LogError(relaodEnvironmentVariablesException, "Failed to reload environment variables");
