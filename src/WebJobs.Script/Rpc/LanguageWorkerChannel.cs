@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Capabilities _workerCapabilities;
         private ILogger _workerChannelLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
+        private TaskCompletionSource<bool> _reloadTask;
 
         internal LanguageWorkerChannel(
            string workerId,
@@ -139,15 +140,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             });
         }
 
-        internal void PublishWorkerProcessReadyEvent(FunctionEnvironmentReloadResponse res)
+        internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res)
         {
-            if (_disposing)
+            _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse");
+            if (res.Result.IsFailure(out Exception relaodEnvironmentVariablesException))
             {
-                // do not publish ready events when disposing
-                return;
+                _workerChannelLogger.LogError(relaodEnvironmentVariablesException, "Failed to reload environment variables");
+                _reloadTask.SetResult(false);
             }
-            WorkerProcessReadyEvent wpEvent = new WorkerProcessReadyEvent(_workerId, _runtime);
-            _eventManager.Publish(wpEvent);
+            _reloadTask.SetResult(true);
         }
 
         internal void PublishRpcChannelReadyEvent(RpcEvent initEvent)
@@ -206,10 +207,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public void SendFunctionEnvironmentReloadRequest()
+        public void SendFunctionEnvironmentReloadRequest(TaskCompletionSource<bool> reloadTask)
         {
+            _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
+            _reloadTask = reloadTask;
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
-      .Subscribe((msg) => PublishWorkerProcessReadyEvent(msg.Message.FunctionEnvironmentReloadResponse)));
+      .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse)));
 
             IDictionary processEnv = Environment.GetEnvironmentVariables();
 

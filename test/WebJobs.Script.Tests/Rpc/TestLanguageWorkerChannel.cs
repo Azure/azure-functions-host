@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testLogger.LogInformation("RegisterFunctions called");
         }
 
-        public void SendFunctionEnvironmentReloadRequest()
+        public void SendFunctionEnvironmentReloadRequest(TaskCompletionSource<bool> reloadTask)
         {
             _testLogger.LogInformation("SendFunctionEnvironmentReloadRequest called");
         }
