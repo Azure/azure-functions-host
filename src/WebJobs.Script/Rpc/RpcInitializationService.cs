@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IDisposable _subscription;
 
         private readonly string _workerRuntime;
-        private readonly int _rpcServerSutdownTimeoutInMilliseconds;
+        private readonly int _rpcServerShutdownTimeoutInMilliseconds;
         private bool _disposed;
 
         private Dictionary<OSPlatform, List<string>> _hostingOSToWhitelistedRuntimes = new Dictionary<OSPlatform, List<string>>()
@@ -55,11 +55,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _rpcServer = rpcServer;
             _environment = environment;
             _eventManager = eventManager;
-            _rpcServerSutdownTimeoutInMilliseconds = 5000;
+            _rpcServerShutdownTimeoutInMilliseconds = 5000;
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
 
-            _subscription = _eventManager.OfType<ScriptHostStateChangedEvent>().Where(a => a.OldState.Equals(ScriptHostState.Stopping) && a.NewState.Equals(ScriptHostState.Stopped)).Subscribe(KillRpcServer);
+            _subscription = _eventManager.OfType<ScriptHostStateChangedEvent>().Where(a => a.OldState.Equals(ScriptHostState.Stopping) && a.NewState.Equals(ScriptHostState.Stopped)).Subscribe(ShutdownRpcServer);
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -105,21 +105,21 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return InitializeWebHostRuntimeChannelsAsync();
         }
 
-        private void KillRpcServer(ScriptHostStateChangedEvent scriptHostShutdownEvent)
+        private void ShutdownRpcServer(ScriptHostStateChangedEvent scriptHostShutdownEvent)
         {
-            _logger.LogDebug($"Killing RPC server due to ScriptHostState change from {scriptHostShutdownEvent.OldState} to {scriptHostShutdownEvent.NewState}");
-            Task killRpcServer = _rpcServer.ShutdownAsync()
-                                    .ContinueWith(t => LogTerminationException(t), TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
-            if (!Task.WhenAny(killRpcServer, Task.Delay(_rpcServerSutdownTimeoutInMilliseconds)).Result.Equals(killRpcServer))
-            {
-                _rpcServer.KillAsync()
-                    .ContinueWith(t => LogTerminationException(t), TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
-            }
-        }
+            _logger.LogDebug($"Shutting down RPC server due to ScriptHostState change from {scriptHostShutdownEvent.OldState} to {scriptHostShutdownEvent.NewState}");
 
-        private void LogTerminationException(Task currentTask)
-        {
-            _logger.LogError($"Killing RPC server encountered an exception '{currentTask.Exception?.InnerException}'");
+            Task shutDownRpcServer = _rpcServer.ShutdownAsync();
+            shutDownRpcServer.ContinueWith(t => { _logger.LogError($"Shutting down RPC server encountered an exception '{t.Exception?.InnerException}'"); }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+            Task shutDownWithTimeout = Task.WhenAny(shutDownRpcServer, Task.Delay(_rpcServerShutdownTimeoutInMilliseconds)).Result;
+
+            if (!shutDownWithTimeout.Equals(shutDownRpcServer) || shutDownRpcServer.IsFaulted)
+            {
+                _logger.LogDebug($"Killing RPC server");
+                Task killRpcServer = _rpcServer.KillAsync();
+                killRpcServer.ContinueWith(t => { _logger.LogError($"Killing RPC server encountered an exception '{t.Exception?.InnerException}'"); }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+                killRpcServer.Wait();
+            }
         }
 
         private Task InitializePlaceholderChannelsAsync()
