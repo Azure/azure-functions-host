@@ -26,19 +26,30 @@ From within the Azure Functions language worker repo:
 1.	Define remote branch for cleaner git commands
     -	`git remote add proto-file https://github.com/azure/azure-functions-language-worker-protobuf.git`
     -	`git fetch proto-file`
-2.	Merge updates
-    -   `git merge -s subtree proto-file/<version branch> --squash --allow-unrelated-histories` 
-        -   You can also merge with an explicit path to subtree: `git merge -X subtree=<path in language worker repo> --squash proto-file/<version branch> --allow-unrelated-histories`
-3.	Finalize with commit
-    -	`git commit -m "Updated subtree from https://github.com/azure/azure-functions-language-worker-protobuf. Branch: <version branch>. Commit: <latest protobuf commit hash>"`
+2.	Pull a specific release tag
+    -   `git fetch proto-file refs/tags/<tag-name>`
+        -   Example: `git fetch proto-file refs/tags/v1.1.0-protofile`
+3.	Merge updates
+    -   Merge with an explicit path to subtree: `git merge -X subtree=<path in language worker repo> --squash <tag-name> --allow-unrelated-histories`
+        -   Example: `git merge -X subtree=src/WebJobs.Script.Grpc/azure-functions-language-worker-protobuf --squash v1.1.0-protofile --allow-unrelated-histories`
+4.	Finalize with commit
+    -	`git commit -m "Updated subtree from https://github.com/azure/azure-functions-language-worker-protobuf. Tag: <tag-name>. Commit: <commit hash>"`
     -	`git push`
-	
+
+## Releasing a Language Worker Protobuf version
+
+1.	Draft a release in the GitHub UI
+    -   Be sure to inculde details of the release
+2.	Create a release version, following semantic versioning guidelines ([semver.org](https://semver.org/))
+3.	Tag the version with the pattern: `v<M>.<m>.<p>-protofile` (example: `v1.1.0-protofile`)
+3.	Merge `dev` to `master`
+
 ## Consuming FunctionRPC.proto
 *Note: Update versionNumber before running following commands*
 
 ## CSharp
 ```
-set NUGET_PATH=%UserProfile%\.nuget\packages
+set NUGET_PATH="%UserProfile%\.nuget\packages"
 set GRPC_TOOLS_PATH=%NUGET_PATH%\grpc.tools\<versionNumber>\tools\windows_x86
 set PROTO_PATH=.\azure-functions-language-worker-protobuf\src\proto
 set PROTO=.\azure-functions-language-worker-protobuf\src\proto\FunctionRpc.proto

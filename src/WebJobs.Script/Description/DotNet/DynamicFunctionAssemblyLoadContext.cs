@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Text;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -36,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (assembly == null)
             {
-                Logger.AssemblyResolutionFailure(_logger, assemblyName.FullName, _functionMetadata.Name);
+                _logger.AssemblyDynamiclyResolutionFailure(assemblyName.FullName, _functionMetadata.Name);
             }
 
             return assembly;
@@ -60,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             assembly = _metadataResolver?.ResolveAssembly(assemblyName, this);
             if (assembly == null)
             {
-                Logger.AssemblyResolved(_logger, assemblyName.FullName, _functionMetadata.Name);
+                _logger.AssemblyDynamiclyResolved(assemblyName.FullName, _functionMetadata.Name);
             }
 
             return assembly;

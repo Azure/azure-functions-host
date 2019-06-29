@@ -13,9 +13,17 @@ This repo contains libraries that enable a **light-weight scripting model** for 
 
 These libraries are the runtime used by [Azure Functions](https://azure.microsoft.com/en-us/services/functions/). The runtime builds upon the tried and true [Azure WebJobs SDK](https://github.com/Azure/azure-webjobs-sdk) - this library just layers on top to allow you to "**script the WebJobs SDK**".
 
-**An important note on language support levels** - while many languages are supported, their level of support differs in important ways, making some languages more suitable than others for certain workloads. The **first class** languages are C#, F# and Javascript/Node.js. Functions written in these languages are run **in process** and are suitable for any workload. The remaining languages are considered **experimental**. Functions written in these languages are scripts that are run **out of process**. While there are many scenarios where this is acceptable, it won't be acceptable for high load scenarios where the overhead of a new process for each invocation won't scale.
+### An important note on language support levels
 
-As an example, here's a simple Node.js function that receives a queue message and writes that message to Azure Blob storage:
+While many languages are supported, their level of support differs in important ways, making some languages more suitable than others for certain workloads. These differences are explained according to host version:
+
+In **V1**, the **first class** languages are C#, F#, and Javascript/Node.js. Functions written in these languages are run **in process** and are suitable for any workload. The remaining languages are considered **experimental**. Functions written in these languages are scripts that are run **out of process**. While there are many scenarios where this is acceptable, it won't be acceptable for high load scenarios where the overhead of a new process for each invocation won't scale.
+
+In **V2**, running a language **out of process** is no longer considered experimental. Out of process languages include JavaScript/Node.js (GA), Java (GA), PowerShell (Preview), and Python (Preview). C# and F# are still run **in process**. For more information about Supported Languages, see [this Microsoft Docs page](https://docs.microsoft.com/azure/azure-functions/supported-languages).
+
+### Code Examples
+
+Here's a simple Node.js function that receives a queue message and writes that message to Azure Blob storage:
 
 ```javascript
 module.exports = function (context, workItem) {
@@ -47,12 +55,12 @@ And here's the corresponding **function.json** file which includes a trigger **i
 
 The `receipt` blob **output binding** that was referenced in the code above is also shown. Note that the blob binding path `samples-workitems/{id}` includes a parameter `{id}`. The runtime will bind this to the `id` property of the incoming JSON message. Functions can be just a single script file, or can include additional files/content. For example, a Node.js function might include a node_modules folder, multiple .js files, etc. A PowerShell function might include and load additional companion scripts.
 
-Here's a Windows Batch script that uses the **same function definition**, writing the incoming messages to blobs (it could process/modify the message in any way):
+Here's a PowerShell script that uses the **same function definition**, writing the incoming messages to blobs (it could process/modify the message in any way):
 
-```batch
-SET /p workItem=<%input%
-echo Windows Batch script processed work item '%workItem%'
-echo %workItem% > %receipt%
+```powershell
+param([string] $workItem, $TriggerMetadata)
+Write-Host "PowerShell queue trigger function processed work item: $workItem"
+Push-OutputBinding -Name receipt -Value $workItem
 ```
 
 And here's a Python function for the same function definition doing the same thing:

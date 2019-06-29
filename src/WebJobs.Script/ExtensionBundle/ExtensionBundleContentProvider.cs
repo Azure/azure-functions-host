@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
 
@@ -30,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         {
             if (!_extensionBundleManager.IsExtensionBundleConfigured())
             {
-                _logger.LogInformation(Resources.ExtensionBundleNotConfigured, path);
+                _logger.ContentProviderNotConfigured(path);
                 return null;
             }
 
@@ -43,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             }
             else
             {
-                _logger.LogInformation(Resources.FileNotFound, contentFilePath);
+                _logger.ContentFileNotFound(contentFilePath);
                 return null;
             }
         }

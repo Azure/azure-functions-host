@@ -320,7 +320,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             FunctionStatus status = await Fixture.Host.GetFunctionStatusAsync("FunctionIndexingError");
             string error = status.Errors.Single();
-            Assert.Equal("Microsoft.Azure.WebJobs.Host: Error indexing method 'Functions.FunctionIndexingError'. Microsoft.Azure.WebJobs.Extensions.Storage: Storage account 'setting_does_not_exist' is not configured.", error);
+            Assert.Equal("Microsoft.Azure.WebJobs.Host: Error indexing method 'Functions.FunctionIndexingError'. Microsoft.Azure.WebJobs.Extensions.Storage: Storage account connection string 'setting_does_not_exist' does not exist. Make sure that it is a defined App Setting.", error);
         }
 
         //[Theory(Skip = "Not yet enabled.")]

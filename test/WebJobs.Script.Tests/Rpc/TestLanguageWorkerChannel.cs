@@ -32,8 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         public string Id => _workerId;
 
-        public WorkerConfig Config => throw new NotImplementedException();
-
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => throw new NotImplementedException();
 
         public LanguageWorkerChannelState State => _state;
@@ -42,14 +40,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
         }
 
-        public void RegisterFunctions(IObservable<FunctionMetadata> functionRegistrations)
+        public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
+        {
+            _testLogger.LogInformation("SetupFunctionInvocationBuffers called");
+        }
+
+        public void SendFunctionLoadRequests()
         {
             _testLogger.LogInformation("RegisterFunctions called");
         }
 
-        public void SendFunctionEnvironmentReloadRequest()
+        public Task SendFunctionEnvironmentReloadRequest()
         {
             _testLogger.LogInformation("SendFunctionEnvironmentReloadRequest called");
+            return Task.CompletedTask;
         }
 
         public void SendInvocationRequest(ScriptInvocationContext context)

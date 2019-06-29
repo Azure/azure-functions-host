@@ -27,12 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
     public class FunctionsSyncManager : IFunctionsSyncManager, IDisposable
     {
-        // Until ANT 82 is fully released, the default value is disabled and we continue
-        // to return just the trigger data.
-        // After ANT 82, we will change the default to enabled.
-        // Note that this app setting is honored by both GeoMaster and Runtime.
-        public const string AzureWebsiteArmCacheEnabledDefaultValue = "0";
-
         private const string HubName = "HubName";
         private const string TaskHubName = "taskHubName";
         private const string Connection = "connection";
@@ -71,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             get
             {
-                return _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled, AzureWebsiteArmCacheEnabledDefaultValue) == "1";
+                return _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled, "1") == "1";
             }
         }
 
@@ -364,20 +358,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var config = new Dictionary<string, string>();
             if (FileUtility.FileExists(hostJsonPath))
             {
-                var hostJson = JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
-                JToken durableTaskValue;
+                var json = JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
+
+                // get the DurableTask extension config section
+                JToken extensionsValue;
+                if (json.TryGetValue("extensions", StringComparison.OrdinalIgnoreCase, out extensionsValue) && extensionsValue != null)
+                {
+                    json = (JObject)extensionsValue;
+                }
 
                 // we will allow case insensitivity given it is likely user hand edited
                 // see https://github.com/Azure/azure-functions-durable-extension/issues/111
-                //
-                // We're looking for {VALUE}
-                // {
-                //     "durableTask": {
-                //         "hubName": "{VALUE}",
-                //         "azureStorageConnectionStringName": "{VALUE}"
-                //     }
-                // }
-                if (hostJson.TryGetValue(DurableTask, StringComparison.OrdinalIgnoreCase, out durableTaskValue) && durableTaskValue != null)
+                JToken durableTaskValue;
+                if (json.TryGetValue(DurableTask, StringComparison.OrdinalIgnoreCase, out durableTaskValue) && durableTaskValue != null)
                 {
                     try
                     {

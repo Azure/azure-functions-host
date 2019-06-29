@@ -9,11 +9,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class LanguageWorkerChannelManagerEndToEndTests : IClassFixture<LanguageWorkerChannelManagerEndToEndTests.TestFixture>
     {
-        private ILanguageWorkerChannelManager _languageWorkerChannelManager;
+        private IWebHostLanguageWorkerChannelManager _languageWorkerChannelManager;
         public LanguageWorkerChannelManagerEndToEndTests(TestFixture fixture)
         {
             Fixture = fixture;
-            _languageWorkerChannelManager = (ILanguageWorkerChannelManager) fixture.Host.Services.GetService(typeof(ILanguageWorkerChannelManager));
+            _languageWorkerChannelManager = (IWebHostLanguageWorkerChannelManager) fixture.Host.Services.GetService(typeof(IWebHostLanguageWorkerChannelManager));
             
         }
 
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void InitializeAsync_DoNotInitialize_JavaWorker_ProxiesOnly()
         {
-            var channelManager = _languageWorkerChannelManager as LanguageWorkerChannelManager;
+            var channelManager = _languageWorkerChannelManager as WebHostLanguageWorkerChannelManager;
             var javaChannel = channelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(javaChannel);
         }

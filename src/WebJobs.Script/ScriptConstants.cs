@@ -19,6 +19,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsNestedProxyCount = "MS_AzureFunctionsNestedProxyCount";
         public const string AzureFunctionsProxyResult = "MS_AzureFunctionsProxyResult";
         public const string AzureFunctionsDuplicateHttpHeadersKey = "MS_AzureFunctionsDuplicateHttpHeaders";
+        public const string JobHostMiddlewarePipelineRequestDelegate = "MS_JobHostMiddlewarePipelineRequestDelegate";
+        public const string HstsMiddlewareRequestDelegate = "MS_HstsMiddlewareRequestDelegate";
 
         public const string LogPropertyPrimaryHostKey = "MS_PrimaryHost";
         public const string LogPropertySourceKey = "MS_Source";
@@ -88,6 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string FeatureFlagDisableShadowCopy = "DisableShadowCopy";
         public const string FeatureFlagsEnableDynamicExtensionLoading = "EnableDynamicExtensionLoading";
+        public const string FeatureFlagEnableActionResultHandling = "EnableActionResultHandling";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
@@ -133,5 +136,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
+        public static readonly string HostUserAgent = $"azure-functions-host/{ScriptHost.Version}";
     }
 }

@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -107,27 +108,22 @@ namespace Microsoft.Azure.WebJobs.Script.IO
             }
 
             string errorMessage = args.GetException()?.Message ?? "Unknown";
-            Log($"Failure detected '{errorMessage}'. Initiating recovery...", LogLevel.Warning);
+            _logger.AutoRecoveringFileSystemWatcherFailureDetected(errorMessage, _path);
 
             Recover().ContinueWith(t =>
             {
                 if (t.IsFaulted || t.IsCanceled)
                 {
                     t.Exception?.Handle(e => true);
-                    Log($"Recovery process aborted.", LogLevel.Error);
+                    _logger.AutoRecoveringFileSystemWatcherRecoveryAborted(_path);
                 }
                 else
                 {
-                    Log("File watcher recovered.", LogLevel.Information);
+                    _logger.AutoRecoveringFileSystemWatcherRecovered(_path);
                 }
 
                 Interlocked.Exchange(ref _recovering, 0);
             });
-        }
-
-        private void Log(string message, LogLevel level)
-        {
-            _logger.Log(level, 0, $"{message} (path: '{_path}')", null, (s, e) => s);
         }
 
         private async Task Recover(int attempt = 1)
@@ -141,13 +137,13 @@ namespace Microsoft.Azure.WebJobs.Script.IO
 
             try
             {
-                Log($"Attempting to recover...", LogLevel.Warning);
+                _logger.AutoRecoveringFileSystemWatcherAttemptingToRecover(_path);
                 ReleaseCurrentFileWatcher();
                 InitializeWatcher();
             }
             catch (Exception exc) when (!(exc is TaskCanceledException) && !exc.IsFatal())
             {
-                Log($"Unable to recover - {exc.ToString()}", LogLevel.Error);
+                _logger.AutoRecoveringFileSystemWatcherUnableToRecover(exc, _path);
 
                 await Recover(++attempt);
             }

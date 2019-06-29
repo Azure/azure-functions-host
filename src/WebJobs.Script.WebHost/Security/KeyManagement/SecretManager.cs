@@ -530,8 +530,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             else
             {
-                Dictionary<string, string> secrets;
-                _secretsMap.TryRemove(e.Name, out secrets);
+                if (string.IsNullOrEmpty(e.Name))
+                {
+                    _secretsMap.Clear();
+                }
+                else
+                {
+                    _secretsMap.TryRemove(e.Name, out _);
+                }
             }
         }
 

@@ -9,7 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public interface ILanguageWorkerChannel : IDisposable
+    public interface ILanguageWorkerChannel
     {
         string Id { get; }
 
@@ -17,11 +17,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         LanguageWorkerChannelState State { get; }
 
-        WorkerConfig Config { get; }
+        void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions);
 
-        void RegisterFunctions(IObservable<FunctionMetadata> functionRegistrations);
+        void SendFunctionLoadRequests();
 
-        void SendFunctionEnvironmentReloadRequest();
+        Task SendFunctionEnvironmentReloadRequest();
 
         Task StartWorkerProcessAsync();
     }

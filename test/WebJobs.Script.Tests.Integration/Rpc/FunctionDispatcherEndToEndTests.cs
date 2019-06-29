@@ -13,13 +13,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class FunctionDispatcherEndToEndTests : IClassFixture<FunctionDispatcherEndToEndTests.TestFixture>
     {
-        private LanguageWorkerState _channelState;
         private LanguageWorkerChannel _nodeWorkerChannel;
 
         public FunctionDispatcherEndToEndTests(TestFixture fixture)
         {
             Fixture = fixture;
-            _channelState = Fixture.JobHost.FunctionDispatcher.WorkerState;
         }
 
         public TestFixture Fixture { get; set; }
@@ -39,21 +37,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             await TestHelpers.Await(() =>
             {
-                var currentChannel = GetCurrentWorkerChannel();
+                var currentChannel = GetCurrentJobHostWorkerChannel();
                 return currentChannel != null && currentChannel.Id != _nodeWorkerChannel.Id;
 
             }, pollingInterval: 4 * 1000, timeout: 60 * 1000);
-            _nodeWorkerChannel = GetCurrentWorkerChannel();
+            _nodeWorkerChannel = GetCurrentJobHostWorkerChannel();
         }
 
         private async Task WaitForJobHostChannelReady()
         {
             await TestHelpers.Await(() =>
             {
-                var currentChannel = GetCurrentWorkerChannel();
+                var currentChannel = GetCurrentJobHostWorkerChannel();
                 return currentChannel != null;
             }, pollingInterval: 4 * 1000, timeout: 60 * 1000);
-            _nodeWorkerChannel = GetCurrentWorkerChannel();
+            _nodeWorkerChannel = GetCurrentJobHostWorkerChannel();
         }
 
         private static void KillProcess(int oldProcId)
@@ -67,9 +65,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             process.Start();
         }
 
-        private LanguageWorkerChannel GetCurrentWorkerChannel()
+        private LanguageWorkerChannel GetCurrentJobHostWorkerChannel()
         {
-            return (LanguageWorkerChannel)_channelState.GetChannels().FirstOrDefault();
+            FunctionDispatcher fd = Fixture.JobHost.FunctionDispatcher as FunctionDispatcher;
+            return (LanguageWorkerChannel)fd.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
         }
 
         public class TestFixture : ScriptHostEndToEndTestFixture

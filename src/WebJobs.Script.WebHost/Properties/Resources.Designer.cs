@@ -129,15 +129,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Host is in standby mode.
-        /// </summary>
-        internal static string HostPlaceHolderTrace {
-            get {
-                return ResourceManager.GetString("HostPlaceHolderTrace", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to {
         ///    &quot;type&quot;: &quot;object&quot;,
         ///    &quot;properties&quot;: {

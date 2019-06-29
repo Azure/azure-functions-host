@@ -66,6 +66,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 string azureWebJobsSecretStorageKeyVaultConnectionString = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultConnectionString);
                 return new KeyVaultSecretsRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), azureWebJobsSecretStorageKeyVaultName, azureWebJobsSecretStorageKeyVaultConnectionString);
             }
+            else if (secretStorageType != null && secretStorageType.Equals("kubernetes", StringComparison.OrdinalIgnoreCase))
+            {
+                return new KubernetesSecretsRepository(_environment, new SimpleKubernetesClient(_environment));
+            }
             else if (storageString == null)
             {
                 throw new InvalidOperationException($"Secret initialization from Blob storage failed due to a missing Azure Storage connection string. If you intend to use files for secrets, add an App Setting key '{EnvironmentSettingNames.AzureWebJobsSecretStorageType}' with value '{FileStorage}'.");

@@ -434,6 +434,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             IEnumerable<int> nodeProcessesBefore = Process.GetProcessesByName("node").Select(p => p.Id);
             // Trigger a restart
             await _fixture.Host.RestartAsync(CancellationToken.None);
+
             await HttpTrigger_Get_Succeeds();
             IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
             // Verify number of node processes before and after restart are the same.

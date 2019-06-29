@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public void ArmCacheEnabled_VerifyDefault()
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns((string)null);
-            Assert.False(_functionsSyncManager.ArmCacheEnabled);
+            Assert.True(_functionsSyncManager.ArmCacheEnabled);
         }
 
         [Theory]
@@ -384,7 +384,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             fileSystem.SetupGet(f => f.File).Returns(fileBase.Object);
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "host.json"))).Returns(true);
 
-            hostJsonContent = hostJsonContent ?? @"{ ""durableTask"": { ""HubName"": ""TestHubValue"", ""azureStorageConnectionStringName"": ""DurableStorage"" }}";
+            var durableConfig = new JObject
+            {
+                { "HubName", "TestHubValue" },
+                { "azureStorageConnectionStringName", "DurableStorage" }
+            };
+            var extensionsConfig = new JObject
+            {
+                { "durableTask", durableConfig }
+            };
+            var defaultHostConfig = new JObject
+            {
+                { "extensions", extensionsConfig }
+            };
+            hostJsonContent = hostJsonContent ?? defaultHostConfig.ToString();
             var testHostJsonStream = new MemoryStream(Encoding.UTF8.GetBytes(hostJsonContent));
             testHostJsonStream.Position = 0;
             fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"host.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(testHostJsonStream);

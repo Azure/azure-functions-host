@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description.DotNet;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Build.Construction;
@@ -121,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
             var tcs = new TaskCompletionSource<object>();
 
-            _logger.LogInformation("Restoring extension packages");
+            _logger.ExtensionsManagerRestoring();
 
             try
             {
@@ -178,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                                 else
                                 {
                                     tcs.SetResult(null);
-                                    _logger.LogInformation("Extensions packages restore succeeded.");
+                                    _logger.ExtensionsManagerRestoreSucceeded();
                                 }
                             });
                     }

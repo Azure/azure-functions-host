@@ -11,6 +11,7 @@ package AzureFunctionsRpcMessages;
 
 import "google/protobuf/duration.proto";
 import "identity/ClaimsIdentityRpc.proto";
+import "shared/NullableTypes.proto";
 
 // Interface exported by the server.
 service FunctionRpc {
@@ -236,6 +237,9 @@ message RpcFunctionMetadata {
 
   // Bindings info
   map<string, BindingInfo> bindings = 6;
+
+  // Is set to true for proxy
+  bool is_proxy = 7;
 }
 
 // Host requests worker to invoke a Function
@@ -375,6 +379,44 @@ message RpcException {
   string message = 2;
 }
 
+// Http cookie type. Note that only name and value are used for Http requests
+message RpcHttpCookie {
+  // Enum that lets servers require that a cookie shouoldn't be sent with cross-site requests
+  enum SameSite {
+      None = 0;
+      Lax = 1;
+      Strict = 2;
+  }
+
+  // Cookie name
+  string name = 1;
+
+  // Cookie value
+  string value = 2;
+
+  // Specifies allowed hosts to receive the cookie
+  NullableString domain = 3;
+
+  // Specifies URL path that must exist in the requested URL
+  NullableString path = 4;
+
+  // Sets the cookie to expire at a specific date instead of when the client closes.
+  // It is generally recommended that you use "Max-Age" over "Expires".
+  NullableTimestamp expires = 5;
+
+  // Sets the cookie to only be sent with an encrypted request
+  NullableBool secure = 6;
+
+  // Sets the cookie to be inaccessible to JavaScript's Document.cookie API
+  NullableBool http_only = 7;
+
+  // Allows servers to assert that a cookie ought not to be sent along with cross-site requests
+  SameSite same_site = 8;
+
+  // Number of seconds until the cookie expires. A zero or negative number will expire the cookie immediately.
+  NullableDouble max_age = 9;
+}
+
 // TODO - solidify this or remove it
 message RpcHttp {
   string method = 1;
@@ -387,4 +429,5 @@ message RpcHttp {
   bool enable_content_negotiation= 16;
   TypedData rawBody = 17;
   repeated RpcClaimsIdentity identities = 18;
+  repeated RpcHttpCookie cookies = 19;
 }

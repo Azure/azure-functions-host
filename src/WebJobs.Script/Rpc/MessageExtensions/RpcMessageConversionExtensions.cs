@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public static TypedData ToRpc(this object value, ILogger logger)
+        public static TypedData ToRpc(this object value, ILogger logger, Capabilities capabilities)
         {
             TypedData typedData = new TypedData();
 
@@ -141,7 +141,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (request.Body != null && request.ContentLength > 0)
                 {
                     object body = null;
-                    string rawBody = null;
+                    string rawBodyString = null;
+                    byte[] bytes = RequestBodyToBytes(request);
 
                     MediaTypeHeaderValue mediaType = null;
                     if (MediaTypeHeaderValue.TryParse(request.ContentType, out mediaType))
@@ -149,36 +150,43 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         if (string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
                         {
                             var jsonReader = new StreamReader(request.Body, Encoding.UTF8);
-                            rawBody = jsonReader.ReadToEnd();
+                            rawBodyString = jsonReader.ReadToEnd();
                             try
                             {
-                                body = JsonConvert.DeserializeObject(rawBody);
+                                body = JsonConvert.DeserializeObject(rawBodyString);
                             }
                             catch (JsonException)
                             {
-                                body = rawBody;
+                                body = rawBodyString;
                             }
                         }
                         else if (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
                             mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
-                            var length = Convert.ToInt32(request.ContentLength);
-                            var bytes = new byte[length];
-                            request.Body.Read(bytes, 0, length);
                             body = bytes;
-                            rawBody = Encoding.UTF8.GetString(bytes);
+                            if (!IsRawBodyBytesRequested(capabilities))
+                            {
+                                rawBodyString = Encoding.UTF8.GetString(bytes);
+                            }
                         }
                     }
                     // default if content-tye not found or recognized
-                    if (body == null && rawBody == null)
+                    if (body == null && rawBodyString == null)
                     {
                         var reader = new StreamReader(request.Body, Encoding.UTF8);
-                        body = rawBody = reader.ReadToEnd();
+                        body = rawBodyString = reader.ReadToEnd();
                     }
 
                     request.Body.Position = 0;
-                    http.Body = body.ToRpc(logger);
-                    http.RawBody = rawBody.ToRpc(logger);
+                    http.Body = body.ToRpc(logger, capabilities);
+                    if (IsRawBodyBytesRequested(capabilities))
+                    {
+                        http.RawBody = bytes.ToRpc(logger, capabilities);
+                    }
+                    else
+                    {
+                        http.RawBody = rawBodyString.ToRpc(logger, capabilities);
+                    }
                 }
             }
             else
@@ -194,6 +202,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
             }
             return typedData;
+        }
+
+        private static bool IsRawBodyBytesRequested(Capabilities capabilities)
+        {
+            return capabilities.GetCapabilityState(LanguageWorkerConstants.RawHttpBodyBytes) != null;
+        }
+
+        internal static byte[] RequestBodyToBytes(HttpRequest request)
+        {
+            var length = Convert.ToInt32(request.ContentLength);
+            var bytes = new byte[length];
+            request.Body.Read(bytes, 0, length);
+            request.Body.Position = 0;
+            return bytes;
         }
 
         public static BindingInfo ToBindingInfo(this BindingMetadata bindingMetadata)

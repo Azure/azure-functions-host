@@ -56,6 +56,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteRunFromPackage = "WEBSITE_RUN_FROM_PACKAGE";
         public const string RegionName = "REGION_NAME";
 
+        // handling server side builds
+        public const string ScmRunFromPackage = "SCM_RUN_FROM_PACKAGE";
+
         public const string LinuxAzureAppServiceStorage = "WEBSITES_ENABLE_APP_SERVICE_STORAGE";
         public const string CoreToolsEnvironment = "FUNCTIONS_CORETOOLS_ENVIRONMENT";
         public const string RunningInContainer = "DOTNET_RUNNING_IN_CONTAINER";
@@ -63,5 +66,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ExtensionBundleSourceUri = "FUNCTIONS_EXTENSIONBUNDLE_SOURCE_URI";
 
         public const string NodeIpAddress = "Fabric_NodeIPOrFQDN";
+        public const string AzureWebJobsKubernetesSecretName = "AzureWebJobsKubernetesSecretName";
+
+        public const string KubernetesServiceHost = "KUBERNETES_SERVICE_HOST";
+        public const string KubernetesServiceHttpsPort = "KUBERNETES_SERVICE_PORT_HTTPS";
     }
 }

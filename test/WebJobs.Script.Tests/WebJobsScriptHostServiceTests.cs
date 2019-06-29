@@ -263,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockScriptWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
             Mock<IConfigurationRoot> mockConfiguration = new Mock<IConfigurationRoot>();
             var mockEnvironment = new Mock<IEnvironment>();
-            Mock<ILanguageWorkerChannelManager> mockLanguageWorkerChannelManager = new Mock<ILanguageWorkerChannelManager>();
+            Mock<IWebHostLanguageWorkerChannelManager> mockLanguageWorkerChannelManager = new Mock<IWebHostLanguageWorkerChannelManager>();
             ILogger<StandbyManager> testLogger = new Logger<StandbyManager>(_loggerFactory);
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();

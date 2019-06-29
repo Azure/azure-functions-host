@@ -159,6 +159,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
+        public void Configure_AppliesInfiniteTimeout_IfNotDynamic()
+        {
+            var settings = new Dictionary<string, string>
+            {
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout"), "-1" }
+            };
+
+            var options = GetConfiguredOptions(settings);
+            Assert.Equal(null, options.FunctionTimeout);
+        }
+
+        [Fact]
         public void Configure_AppliesTimeoutLimits_IfDynamic()
         {
             string configPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout");
@@ -175,6 +187,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(expectedMessage, ex.Message);
 
             settings[configPath] = (ScriptHostOptionsSetup.MinFunctionTimeout - TimeSpan.FromSeconds(1)).ToString();
+            ex = Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings, environment));
+            Assert.Equal(expectedMessage, ex.Message);
+
+            settings[configPath] = "-1";
             ex = Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings, environment));
             Assert.Equal(expectedMessage, ex.Message);
         }

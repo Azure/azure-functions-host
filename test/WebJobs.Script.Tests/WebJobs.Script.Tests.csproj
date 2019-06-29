@@ -88,6 +88,9 @@
     <None Update="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedProjectDependencies\project.assets.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Rpc\Resources\functions.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="xunit.runner.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

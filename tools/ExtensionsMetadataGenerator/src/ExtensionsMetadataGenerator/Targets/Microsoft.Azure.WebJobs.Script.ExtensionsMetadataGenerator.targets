@@ -41,8 +41,14 @@
           ContinueOnError="true"/>
   </Target>
 
+  <!--
+    This target must run after the function assemblies are copied to the bin directory. Otherwise, 
+    extensions will be missed during Publish. This AfterTargets (which references a target in
+    Microsoft.NET.Sdk.Functions.Publish.targets) ensures that the ordering is correct, even if the
+    ExtensionsMetadataGenerator package is referenced directly in the project file.
+  -->
   <Target Name="_GenerateFunctionsExtensionsMetadataPostPublish"
-          AfterTargets="Publish">
+          AfterTargets="_GenerateFunctionsAndCopyContentFiles">
     <GenerateFunctionsExtensionsMetadata
           SourcePath="$(PublishDir)bin"
           OutputPath="$(PublishDir)bin"/>

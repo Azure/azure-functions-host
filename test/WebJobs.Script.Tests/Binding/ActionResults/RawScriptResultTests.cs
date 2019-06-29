@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -49,6 +50,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
             var body = await TestHelpers.ReadStreamToEnd(context.HttpContext.Response.Body);
             Assert.Equal(obj, body);
             Assert.Equal(200, context.HttpContext.Response.StatusCode);
+        }
+
+        [Fact]
+        public async Task AddsHttpCookies()
+        {
+            var result = new RawScriptResult(null, null)
+            {
+                Headers = new Dictionary<string, object>(),
+                Cookies = new List<Tuple<string, string, CookieOptions>>()
+                {
+                    new Tuple<string, string, CookieOptions>("firstCookie", "cookieValue", new CookieOptions()
+                    {
+                        SameSite = SameSiteMode.None
+                    }),
+                    new Tuple<string, string, CookieOptions>("secondCookie", "cookieValue2", new CookieOptions()
+                    {
+                        Path = "/",
+                        HttpOnly = true,
+                        MaxAge = TimeSpan.FromSeconds(20)
+                    })
+                }
+            };
+
+            var context = new ActionContext() { HttpContext = new DefaultHttpContext() };
+            context.HttpContext.Response.Body = new MemoryStream();
+            await result.ExecuteResultAsync(context);
+            context.HttpContext.Response.Headers.TryGetValue("Set-Cookie", out StringValues cookies);
+
+            Assert.Equal(2, cookies.Count);
+            Assert.Equal("firstCookie=cookieValue; path=/", cookies[0]);
+            Assert.Equal("secondCookie=cookieValue2; max-age=20; path=/; samesite=lax; httponly", cookies[1]);
         }
 
         [Fact]

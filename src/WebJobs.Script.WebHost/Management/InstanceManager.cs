@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
@@ -130,7 +131,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             HttpResponseMessage response = null;
             try
             {
-                var zipUrl = assignmentContext.ZipUrl;
+                RunFromPackageContext pkgContext = assignmentContext.GetRunFromPkgContext();
+                _logger.LogInformation($"Will be using {pkgContext.EnvironmentVariableName} app setting as zip url");
+
+                if (pkgContext.IsScmRunFromPackage())
+                {
+                    // Not user assigned so limit validation
+                    return null;
+                }
+
+                var zipUrl = pkgContext.Url;
                 if (!string.IsNullOrEmpty(zipUrl))
                 {
                     // make sure the zip uri is valid and accessible
@@ -193,16 +203,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _logger.LogInformation($"Applying {assignmentContext.Environment.Count} app setting(s)");
             assignmentContext.ApplyAppSettings(_environment);
 
-            // We need to get the non-PlaceholderMode script path so we can unzip to the correct location.
+            // We need to get the non-PlaceholderMode script Path so we can unzip to the correct location.
             // This asks the factory to skip the PlaceholderMode check when configuring options.
             var options = _optionsFactory.Create(ScriptApplicationHostOptionsSetup.SkipPlaceholder);
+            RunFromPackageContext pkgContext = assignmentContext.GetRunFromPkgContext();
 
-            var zipPath = assignmentContext.ZipUrl;
+            var zipPath = pkgContext.Url;
             if (!string.IsNullOrEmpty(zipPath))
             {
                 // download zip and extract
                 var zipUri = new Uri(zipPath);
-                var filePath = await DownloadAsync(zipUri);
+                string filePath = null;
+
+                if (pkgContext.IsScmRunFromPackage())
+                {
+                    bool blobExists = await pkgContext.BlobExistsAsync(_logger);
+                    if (blobExists)
+                    {
+                        filePath = await DownloadAsync(zipUri);
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    filePath = await DownloadAsync(zipUri);
+                }
+
                 UnpackPackage(filePath, options.ScriptPath);
 
                 string bundlePath = Path.Combine(options.ScriptPath, "worker-bundle");
@@ -297,10 +326,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         private void MountFsImage(string filePath, string scriptPath)
-            => RunFuseMount($"squashfuse_ll '{filePath}' '{scriptPath}'", scriptPath);
+            => RunFuseMount($"squashfuse_ll -o nonempty '{filePath}' '{scriptPath}'", scriptPath);
 
         private void MountZipFile(string filePath, string scriptPath)
-            => RunFuseMount($"fuse-zip -r '{filePath}' '{scriptPath}'", scriptPath);
+            => RunFuseMount($"fuse-zip -o nonempty -r '{filePath}' '{scriptPath}'", scriptPath);
 
         private void RunFuseMount(string mountCommand, string targetPath)
         {
