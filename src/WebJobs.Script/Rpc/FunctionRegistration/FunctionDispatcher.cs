@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
         private readonly IEnvironment _environment;
         private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
-        private readonly IDisposable _rpcChannelReadySubscriptions;
         private readonly int _debounceSeconds = 10;
         private readonly int _maxAllowedProcessCount = 10;
         private IScriptEventManager _eventManager;
@@ -84,10 +83,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);
 
-            _rpcChannelReadySubscriptions = _eventManager.OfType<RpcJobHostChannelReadyEvent>()
-                .ObserveOn(NewThreadScheduler.Default)
-                .Subscribe(AddOrUpdateWorkerChannels);
-
             _shutdownStandbyWorkerChannels = ShutdownWebhostLanguageWorkerChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
         }
@@ -107,12 +102,19 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             await InitializeJobhostLanguageWorkerChannelAsync(0);
         }
 
-        internal async Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
+        internal Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {
-            var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, false, _managedDependencyOptions);
+            var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _managedDependencyOptions);
             languageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
             _jobHostLanguageWorkerChannelManager.AddChannel(languageWorkerChannel);
-            await languageWorkerChannel.StartWorkerProcessAsync();
+            languageWorkerChannel.StartWorkerProcessAsync()
+                 .ContinueWith(workerInitTask =>
+                 {
+                     _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
+                     languageWorkerChannel.SendFunctionLoadRequests();
+                     State = FunctionDispatcherState.Initialized;
+                 }, TaskContinuationOptions.OnlyOnRanToCompletion);
+            return Task.CompletedTask;
         }
 
         internal async void InitializeWebhostLanguageWorkerChannel()
@@ -224,7 +226,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             IEnumerable<ILanguageWorkerChannel> webhostChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
             IEnumerable<ILanguageWorkerChannel> workerChannels = webhostChannels == null ? _jobHostLanguageWorkerChannelManager.GetChannels() : webhostChannels.Union(_jobHostLanguageWorkerChannelManager.GetChannels());
-            IEnumerable<ILanguageWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.State == LanguageWorkerChannelState.Initialized);
+            IEnumerable<ILanguageWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.State == LanguageWorkerChannelState.Initialized || ch.State == LanguageWorkerChannelState.Specialized);
             if (initializedWorkers.Count() > _maxProcessCount)
             {
                 throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {_maxProcessCount}");
@@ -266,22 +268,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        private void AddOrUpdateWorkerChannels(RpcJobHostChannelReadyEvent rpcChannelReadyEvent)
-        {
-            if (!_disposing)
-            {
-                _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", rpcChannelReadyEvent.Language, rpcChannelReadyEvent.LanguageWorkerChannel.Id);
-                rpcChannelReadyEvent.LanguageWorkerChannel.SendFunctionLoadRequests();
-                State = FunctionDispatcherState.Initialized;
-            }
-        }
-
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed && disposing)
             {
                 _workerErrorSubscription.Dispose();
-                _rpcChannelReadySubscriptions.Dispose();
                 _processStartCancellationToken.Cancel();
                 _processStartCancellationToken.Dispose();
                 _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannels();

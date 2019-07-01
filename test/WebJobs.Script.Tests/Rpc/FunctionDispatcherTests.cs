@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 currentChannelCount = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count();
                 return currentChannelCount == expectedCount;
-            }, pollingInterval: 5 * 1000, timeout: 60 * 1000);
+            }, pollingInterval: expectedCount * 5 * 1000, timeout: 60 * 1000);
             return currentChannelCount;
         }
 

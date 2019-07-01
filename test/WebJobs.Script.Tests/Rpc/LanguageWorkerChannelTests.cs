@@ -56,9 +56,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task StartWorkerProcessAsync_Invoked()
         {
-            await _workerChannel.StartWorkerProcessAsync();
+            var initTask = _workerChannel.StartWorkerProcessAsync();
             _testFunctionRpcService.PublishStartStreamEvent(_workerId);
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
+            await initTask;
             _mockLanguageWorkerProcess.Verify(m => m.StartProcess(), Times.Once);
         }
 
@@ -186,9 +187,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent();
 
             var traces = _logger.GetLogMessages();
-
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionEnvironmentReloadResponse")));
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest")));
+            Assert.True(_workerChannel.State == LanguageWorkerChannelState.Specialized);
             var ex = Assert.Throws<InvalidOperationException>(() => _workerChannel.FunctionEnvironmentReloadResponse(TestFunctionRpcService.GetTestFunctionEnvReloadResponse()));
             Assert.Contains("FunctionEnvironmentReloadResponse received more than once", ex.Message);
         }

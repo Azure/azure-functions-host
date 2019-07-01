@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _languageWorkerProcessManager = languageWorkerProcessManager;
         }
 
-        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
+        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
             var languageWorkerConfig = _workerConfigs.Where(c => c.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             if (languageWorkerConfig == null)
@@ -49,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                          workerLogger,
                          metricsLogger,
                          attemptCount,
-                         isWebhostChannel,
                          managedDependencyOptions);
         }
     }

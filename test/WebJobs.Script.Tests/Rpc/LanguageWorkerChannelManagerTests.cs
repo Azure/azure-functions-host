@@ -173,10 +173,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         private ILanguageWorkerChannel CreateTestChannel(string language)
         {
-            var testChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptRootPath, language, null, 0, false, null);
-            // Generate event to mock language worker response
-            RpcWebHostChannelReadyEvent javaReadyEvent = new RpcWebHostChannelReadyEvent(testChannel.Id, language, testChannel, "testVersion", _capabilities);
-            _languageWorkerChannelManager.AddOrUpdateWorkerChannels(javaReadyEvent);
+            var testChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptRootPath, language, null, 0, null);
+            _languageWorkerChannelManager.AddOrUpdateWorkerChannels(language, testChannel);
             return testChannel;
         }
     }

@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -34,7 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private bool _disposed;
         private bool _disposing;
-        private bool _isWebHostChannel;
         private WorkerInitResponse _initMessage;
         private string _workerId;
         private LanguageWorkerChannelState _state;
@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private ILogger _workerChannelLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>();
+        private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>();
 
         internal LanguageWorkerChannel(
            string workerId,
@@ -63,7 +64,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount,
-           bool isWebHostChannel = false,
            IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
             _workerId = workerId;
@@ -71,7 +71,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _eventManager = eventManager;
             _workerConfig = workerConfig;
             _runtime = workerConfig.Language;
-            _isWebHostChannel = isWebHostChannel;
             _languageWorkerProcess = languageWorkerProcess;
             _workerChannelLogger = logger;
 
@@ -120,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _state = LanguageWorkerChannelState.Initializing;
 
-            return Task.CompletedTask;
+            return _workerInitTask.Task;
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
@@ -129,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
-                .Subscribe(PublishRpcChannelReadyEvent, HandleWorkerChannelError);
+                .Subscribe(WorkerInitResponse, HandleWorkerChannelError);
 
             SendStreamingMessage(new StreamingMessage
             {
@@ -143,51 +142,36 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res)
         {
             _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse");
-            if (_reloadTask.Task.IsCompleted)
+            if (_state == LanguageWorkerChannelState.Specialized)
             {
+                _workerChannelLogger.LogError("LanguageWorkerChannel already specialized");
                 throw new InvalidOperationException("FunctionEnvironmentReloadResponse received more than once");
             }
-            if (res.Result.IsFailure(out Exception relaodEnvironmentVariablesException))
+            if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
             {
-                _workerChannelLogger.LogError(relaodEnvironmentVariablesException, "Failed to reload environment variables");
+                _workerChannelLogger.LogError(reloadEnvironmentVariablesException, "Failed to reload environment variables");
                 _reloadTask.SetResult(false);
             }
+            _state = LanguageWorkerChannelState.Specialized;
             _reloadTask.SetResult(true);
         }
 
-        internal void PublishRpcChannelReadyEvent(RpcEvent initEvent)
+        internal void WorkerInitResponse(RpcEvent initEvent)
         {
             _startLatencyMetric?.Dispose();
             _startLatencyMetric = null;
 
-            if (_disposing)
-            {
-                // do not publish ready events when disposing
-                return;
-            }
+            _workerChannelLogger.LogDebug("Received WorkerInitResponse");
             _initMessage = initEvent.Message.WorkerInitResponse;
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
                 HandleWorkerChannelError(exc);
+                _workerInitTask.SetResult(false);
                 return;
             }
-
             _state = LanguageWorkerChannelState.Initialized;
-
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
-
-            if (_isWebHostChannel)
-            {
-                _workerChannelLogger.LogDebug("Publishing RpcWebHostChannelReadyEvent for runtime:{language}, workerId:{id}", _workerConfig.Language, _workerId);
-                RpcWebHostChannelReadyEvent readyEvent = new RpcWebHostChannelReadyEvent(_workerId, _runtime, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
-                _eventManager.Publish(readyEvent);
-            }
-            else
-            {
-                _workerChannelLogger.LogDebug("Publishing RpcJobHostChannelReadyEvent for runtime:{language}, workerId:{id}", _workerConfig.Language, _workerId);
-                RpcJobHostChannelReadyEvent readyEvent = new RpcJobHostChannelReadyEvent(_workerId, _runtime, this, _initMessage.WorkerVersion, _initMessage.Capabilities);
-                _eventManager.Publish(readyEvent);
-            }
+            _workerInitTask.SetResult(true);
         }
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
@@ -213,6 +197,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public Task SendFunctionEnvironmentReloadRequest()
         {
+            if (_state == LanguageWorkerChannelState.Specialized)
+            {
+                throw new InvalidOperationException("LanguageWorkerChannel already specialized");
+            }
             _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
             _eventSubscriptions
                 .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
