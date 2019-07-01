@@ -41,8 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 Task specializeTask;
                 using (System.Threading.ExecutionContext.SuppressFlow())
                 {
-                    // We need this to go async immediately, so use Task.Run.
-                    specializeTask = Task.Run(_standbyManager.SpecializeHostAsync);
+                    specializeTask = _standbyManager.SpecializeHostAsync();
                 }
                 await specializeTask;
 
