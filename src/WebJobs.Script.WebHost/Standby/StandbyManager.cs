@@ -69,6 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task SpecializeHostCoreAsync()
         {
+            // Go async immediately to ensure that any async context from
+            // the PlaceholderSpecializationMiddleware is properly suppressed.
+            await Task.Yield();
+
             _logger.LogInformation(Resources.HostSpecializationTrace);
 
             // After specialization, we need to ensure that custom timezone
