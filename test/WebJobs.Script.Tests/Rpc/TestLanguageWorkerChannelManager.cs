@@ -86,5 +86,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             throw new System.NotImplementedException();
         }
+
+        public bool MatchingPlaceholderChannelExists(string workerRuntime)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
