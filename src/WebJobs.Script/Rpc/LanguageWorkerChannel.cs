@@ -222,17 +222,24 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             IDictionary processEnv = Environment.GetEnvironmentVariables();
 
-            FunctionEnvironmentReloadRequest request = new FunctionEnvironmentReloadRequest();
-            foreach (DictionaryEntry entry in processEnv)
-            {
-                request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
-            }
+            FunctionEnvironmentReloadRequest request = GetFunctionEnvironmentReloadRequest(processEnv);
 
             SendStreamingMessage(new StreamingMessage
             {
                 FunctionEnvironmentReloadRequest = request
             });
+
             return _reloadTask.Task;
+        }
+
+        internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
+        {
+            FunctionEnvironmentReloadRequest request = new FunctionEnvironmentReloadRequest();
+            foreach (DictionaryEntry entry in processEnv)
+            {
+                request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
+            }
+            return request;
         }
 
         internal void SendFunctionLoadRequest(FunctionMetadata metadata)
@@ -257,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     Directory = metadata.FunctionDirectory ?? string.Empty,
                     EntryPoint = metadata.EntryPoint ?? string.Empty,
                     ScriptFile = metadata.ScriptFile ?? string.Empty,
-                    IsProxy = metadata.IsProxy,
+                    IsProxy = metadata.IsProxy
                 }
             };
 

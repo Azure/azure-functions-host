@@ -109,6 +109,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
+        public void SendSendFunctionEnvironmentReloadRequest_PublishesOutboundEvents()
+        {
+            Environment.SetEnvironmentVariable("TestNull", null);
+            Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
+            Environment.SetEnvironmentVariable("TestValid", "TestValue");
+            _workerChannel.SendFunctionEnvironmentReloadRequest();
+            var traces = _logger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest"));
+            Assert.True(functionLoadLogs.Count() == 1);
+        }
+
+        [Fact]
+        public void SendSendFunctionEnvironmentReloadRequest_SanitizedEnvironmentVariables()
+        {
+            Environment.SetEnvironmentVariable("TestNull", null);
+            Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
+            Environment.SetEnvironmentVariable("TestValid", "TestValue");
+            FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(Environment.GetEnvironmentVariables());
+            Assert.False(envReloadRequest.EnvironmentVariables.ContainsKey("TestNull"));
+            Assert.False(envReloadRequest.EnvironmentVariables.ContainsKey("TestEmpty"));
+            Assert.True(envReloadRequest.EnvironmentVariables.ContainsKey("TestValid"));
+            Assert.True(envReloadRequest.EnvironmentVariables["TestValid"] == "TestValue");
+        }
+
+        [Fact]
         public void ReceivesInboundEvent_InvocationResponse()
         {
             _testFunctionRpcService.PublishInvocationResponseEvent();
