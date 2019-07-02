@@ -26,6 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Action _shutdownStandbyWorkerChannels;
 
         private ConcurrentDictionary<string, List<ILanguageWorkerChannel>> _workerChannels = new ConcurrentDictionary<string, List<ILanguageWorkerChannel>>();
+        // Keeps environment config from placeholder mode that must be consistent for placeholders to run correctly
+        private Dictionary<string, Dictionary<string, string>> _placeholderEnvironmentConfig = new Dictionary<string, Dictionary<string, string>>();
 
         public WebHostLanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, ILanguageWorkerChannelFactory languageWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
         {
@@ -38,6 +40,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(5000);
+
+            // Set up initial checks for environment variables
+            _placeholderEnvironmentConfig.Add(LanguageWorkerConstants.NodeLanguageWorkerName, new Dictionary<string, string>
+            {
+                { LanguageWorkerConstants.FunctionsNodeVersionSetting, _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionsNodeVersionSetting) }
+            });
         }
 
         public Task<ILanguageWorkerChannel> InitializeChannelAsync(string runtime)
@@ -175,6 +183,36 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         existingLanguageWorkerChannels.Add(rpcChannelReadyEvent.LanguageWorkerChannel);
                         return existingLanguageWorkerChannels;
                     });
+        }
+
+        public bool MatchingPlaceholderChannelExists(string selectedRuntime)
+        {
+            // Don't use placeholders if worker runtime not determined for function app
+            if (string.IsNullOrEmpty(selectedRuntime))
+            {
+                return false;
+            }
+
+            // Don't use placeholders if running dotnet
+            if (selectedRuntime.Equals(LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
+            {
+                return false;
+            }
+
+            // Check environment config to see if placeholder worker can be used by the function app
+            if (_placeholderEnvironmentConfig.TryGetValue(selectedRuntime, out Dictionary<string, string> environmentConfig))
+            {
+                foreach (string settingKey in environmentConfig.Keys)
+                {
+                    var currentValue = _environment.GetEnvironmentVariable(settingKey);
+                    environmentConfig.TryGetValue(settingKey, out string cachedValue);
+                    if (!string.Equals(currentValue, cachedValue))
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
     }
 }

@@ -17,5 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         bool ShutdownChannelIfExists(string language, string workerId);
 
         void ShutdownChannels();
+
+        bool MatchingPlaceholderChannelExists(string workerRuntime);
     }
 }

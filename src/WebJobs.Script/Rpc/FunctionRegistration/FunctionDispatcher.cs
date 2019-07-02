@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private bool _disposing = false;
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
         private string _workerRuntime;
-        private Action _shutdownStandbyWorkerChannels;
+        private Action _shutdownWebhostWorkerChannels;
         private IEnumerable<FunctionMetadata> _functions;
         private ConcurrentBag<Exception> _languageWorkerErrors = new ConcurrentBag<Exception>();
 
@@ -84,10 +84,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _rpcChannelReadySubscriptions = _eventManager.OfType<RpcJobHostChannelReadyEvent>()
                 .ObserveOn(NewThreadScheduler.Default)
-                .Subscribe(AddOrUpdateWorkerChannels);
+                .Subscribe(SendFunctionLoadRequests);
 
-            _shutdownStandbyWorkerChannels = ShutdownWebhostLanguageWorkerChannels;
-            _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(5000);
+            _shutdownWebhostWorkerChannels = ShutdownWebhostLanguageWorkerChannels;
+            _shutdownWebhostWorkerChannels = _shutdownWebhostWorkerChannels.Debounce(5000);
         }
 
         public FunctionDispatcherState State { get; private set; }
@@ -158,12 +158,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions);
             _functions = functions;
-            if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
+            if (!_webHostLanguageWorkerChannelManager.MatchingPlaceholderChannelExists(_workerRuntime))
             {
-                // Shutdown any placeholder channels for empty function apps or dotnet function apps.
+                // Shutdown any placeholder channels for empty function apps, dotnet function apps, or function apps with
+                // the wrong environment configurations.
                 // This is needed as specilization does not kill standby placeholder channels if worker runtime is not set.
                 // Debouce to ensure this does not effect cold start
-                _shutdownStandbyWorkerChannels();
+                _shutdownWebhostWorkerChannels();
                 return;
             }
 
@@ -264,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        private void AddOrUpdateWorkerChannels(RpcJobHostChannelReadyEvent rpcChannelReadyEvent)
+        private void SendFunctionLoadRequests(RpcJobHostChannelReadyEvent rpcChannelReadyEvent)
         {
             if (!_disposing)
             {
