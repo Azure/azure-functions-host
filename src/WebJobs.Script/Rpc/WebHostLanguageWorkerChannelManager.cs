@@ -42,10 +42,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(5000);
 
             // Set up initial checks for environment variables
-            _placeholderEnvironmentConfig.Add(LanguageWorkerConstants.NodeLanguageWorkerName, new Dictionary<string, string>
+            if (!_environment.IsLinuxHostingEnvironment())
             {
-                { LanguageWorkerConstants.FunctionsNodeVersionSetting, _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionsNodeVersionSetting) }
-            });
+                _placeholderEnvironmentConfig.Add(LanguageWorkerConstants.NodeLanguageWorkerName, new Dictionary<string, string>
+                    {
+                        { LanguageWorkerConstants.FunctionsNodeVersionSetting, _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionsNodeVersionSetting) }
+                    });
+            }
         }
 
         public Task<ILanguageWorkerChannel> InitializeChannelAsync(string runtime)
@@ -212,6 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 }
             }
+
             return true;
         }
     }
