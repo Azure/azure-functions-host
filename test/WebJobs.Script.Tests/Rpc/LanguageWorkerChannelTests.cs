@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Environment.SetEnvironmentVariable("TestValid", "TestValue");
             _workerChannel.SendFunctionEnvironmentReloadRequest();
             var traces = _logger.GetLogMessages();
-            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending SendFunctionEnvironmentReloadRequest"));
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest"));
             Assert.True(functionLoadLogs.Count() == 1);
         }
 
@@ -126,6 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Environment.SetEnvironmentVariable("TestNull", null);
             Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
             Environment.SetEnvironmentVariable("TestValid", "TestValue");
+            _workerChannel.PublishRpcChannelReadyEvent(TestFunctionRpcService.GetTestRpcInitEventWithSanitizeEnvCapability(_workerId));
             FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(Environment.GetEnvironmentVariables());
             Assert.False(envReloadRequest.EnvironmentVariables.ContainsKey("TestNull"));
             Assert.False(envReloadRequest.EnvironmentVariables.ContainsKey("TestEmpty"));

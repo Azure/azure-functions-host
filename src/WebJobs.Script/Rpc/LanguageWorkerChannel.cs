@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public Task SendFunctionEnvironmentReloadRequest()
         {
-            _workerChannelLogger.LogDebug("Sending SendFunctionEnvironmentReloadRequest");
+            _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
             _eventSubscriptions
                 .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
                 .Timeout(workerInitTimeout)
@@ -228,6 +228,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 FunctionEnvironmentReloadRequest = request
             });
+
+            return _reloadTask.Task;
         }
 
         internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
@@ -235,14 +237,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             FunctionEnvironmentReloadRequest request = new FunctionEnvironmentReloadRequest();
             foreach (DictionaryEntry entry in processEnv)
             {
-                if (entry.Value != null && !string.IsNullOrEmpty(entry.Value.ToString()))
-                {
-                    request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
-                }
+                request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
             }
-
             return request;
-            return _reloadTask.Task;
         }
 
         internal void SendFunctionLoadRequest(FunctionMetadata metadata)
