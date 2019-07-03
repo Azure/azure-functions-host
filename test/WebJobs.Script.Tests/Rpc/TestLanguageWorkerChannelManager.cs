@@ -87,9 +87,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             throw new System.NotImplementedException();
         }
 
-        public bool MatchingPlaceholderChannelExists(string workerRuntime)
+        public bool MatchingPlaceholderChannelExists(string selectedRuntime)
         {
-            throw new NotImplementedException();
+            // Don't use placeholders if worker runtime not determined for function app
+            return !string.IsNullOrEmpty(selectedRuntime) && !selectedRuntime.Equals(LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase);
         }
     }
 }
