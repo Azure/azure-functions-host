@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Middleware;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
@@ -127,6 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
+            services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
         }
 
         private static void AddStandbyServices(this IServiceCollection services)
