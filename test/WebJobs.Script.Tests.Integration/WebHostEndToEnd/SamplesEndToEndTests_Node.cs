@@ -252,43 +252,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task HttpTrigger_Get_Succeeds()
         {
-            await InvokeAndValidateHttpTrigger("HttpTrigger");
-        }
-
-        private async Task InvokeAndValidateHttpTrigger(string functionName)
-        {
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync($"{functionName}");
-            string uri = $"api/{functionName}?code={functionKey}&name=Mathew";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string body = await response.Content.ReadAsStringAsync();
-            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("Hello Mathew", body);
-
-            // verify request also succeeds with master key
-            string masterKey = await _fixture.Host.GetMasterKeyAsync();
-            uri = $"api/{functionName}?code={masterKey}&name=Mathew";
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        }
-
-        private async Task<HttpResponseMessage> InvokeHttpTrigger(string functionName)
-        {
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync($"{functionName}");
-            string uri = $"api/{functionName}?code={functionKey}&name=Mathew";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-
-            return await _fixture.Host.HttpClient.SendAsync(request);
+            await SamplesTestHelpers.InvokeAndValidateHttpTrigger(_fixture, "HttpTrigger");
         }
 
         [Fact]
         public async Task HttpTrigger_DuplicateQueryParams_Succeeds()
         {
-
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger");
             string uri = $"api/httptrigger?code={functionKey}&name=Mathew&name=Amy";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -436,6 +405,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await _fixture.Host.RestartAsync(CancellationToken.None);
 
             await HttpTrigger_Get_Succeeds();
+            // wait for orphaned jobhost instance to be disposed
+            await Task.Delay(TimeSpan.FromSeconds(5));
             IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
             // Verify number of node processes before and after restart are the same.
             Assert.Equal(nodeProcessesBefore.Count(), nodeProcessesAfter.Count());
@@ -447,7 +418,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task HttpTrigger_Disabled_SucceedsWithAdminKey()
         {
-
             // first try with function key only - expect 404
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Disabled");
             string uri = $"api/httptrigger-disabled?code={functionKey}";
