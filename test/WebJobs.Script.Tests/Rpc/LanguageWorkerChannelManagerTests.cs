@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private Mock<ILanguageWorkerProcessFactory> _languageWorkerProcessFactory;
         private ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
         private IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
+        private Mock<ILanguageWorkerProcess> _languageWorkerProcess;
 
         private string _scriptRootPath = @"c:\testing\FUNCTIONS-TEST";
         private IDictionary<string, string> _capabilities = new Dictionary<string, string>()
@@ -42,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _loggerFactory = new LoggerFactory();
             _testEnvironment = new TestEnvironment();
             _loggerFactory.AddProvider(_loggerProvider);
+            _languageWorkerProcess = new Mock<ILanguageWorkerProcess>();
             _languageWorkerOptions = new LanguageWorkerOptions
             {
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
@@ -54,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _optionsMonitor = TestHelpers.CreateOptionsMonitor(applicationHostOptions);
 
             _languageWorkerProcessFactory = new Mock<ILanguageWorkerProcessFactory>();
-            _languageWorkerProcessFactory.Setup(m => m.CreateLanguageWorkerProcess(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(new LanguageWorkerProcess());
+            _languageWorkerProcessFactory.Setup(m => m.CreateLanguageWorkerProcess(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(_languageWorkerProcess.Object);
 
             _languageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, null, _scriptRootPath);
             _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
