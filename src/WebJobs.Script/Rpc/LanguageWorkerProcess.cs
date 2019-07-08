@@ -26,11 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private bool _disposing;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
 
-        internal LanguageWorkerProcess()
-        {
-            // To help with unit tests
-        }
-
         internal LanguageWorkerProcess(string runtime,
                                        string workerId,
                                        string rootScriptPath,
