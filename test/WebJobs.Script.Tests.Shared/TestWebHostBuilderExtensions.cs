@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Hosting
 {
@@ -17,5 +18,8 @@ namespace Microsoft.AspNetCore.Hosting
 
         public static IWebHostBuilder ConfigureScriptHostAppConfiguration(this IWebHostBuilder webHostBuilder, Action<IConfigurationBuilder> builder) =>
             webHostBuilder.ConfigureServices(s => s.AddSingleton<IConfigureBuilder<IConfigurationBuilder>>(_ => new DelegatedConfigureBuilder<IConfigurationBuilder>(builder)));
+
+        public static IWebHostBuilder ConfigureScriptHostLogging(this IWebHostBuilder webHostBuilder, Action<ILoggingBuilder> builder) =>
+            webHostBuilder.ConfigureServices(s => s.AddSingleton<IConfigureBuilder<ILoggingBuilder>>(_ => new DelegatedConfigureBuilder<ILoggingBuilder>(builder)));
     }
 }

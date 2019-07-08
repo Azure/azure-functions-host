@@ -10,7 +10,6 @@ using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IOptions<HostHealthMonitorOptions> _healthMonitorOptions;
         private readonly SlidingWindow<bool> _healthCheckWindow;
         private readonly Timer _hostHealthCheckTimer;
-        private readonly SemaphoreSlim _hostRestartSemaphore = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _hostStartSemaphore = new SemaphoreSlim(1, 1);
 
         private IHost _host;
         private CancellationTokenSource _startupLoopTokenSource;
@@ -82,7 +81,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             HandlingInitializationError = 16 | HandlingNonTransientError
         }
 
-        public IServiceProvider Services => _host?.Services;
+        private IHost ActiveHost
+        {
+            get
+            {
+                return _host;
+            }
+
+            set
+            {
+                _logger?.ActiveHostChanging(GetHostInstanceId(_host), GetHostInstanceId(value));
+                _host = value;
+            }
+        }
+
+        public IServiceProvider Services => ActiveHost?.Services;
 
         public ScriptHostState State { get; private set; }
 
@@ -124,6 +137,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task StartHostAsync(CancellationToken cancellationToken, int attemptCount = 0, JobHostStartupMode startupMode = JobHostStartupMode.Normal)
         {
+            try
+            {
+                await _hostStartSemaphore.WaitAsync();
+                await UnsynchronizedStartHostAsync(cancellationToken, attemptCount, startupMode);
+            }
+            finally
+            {
+                _hostStartSemaphore.Release();
+            }
+        }
+
+        /// <summary>
+        /// Starts the host without taking a lock. Callers must take a lock on _hostStartSemaphore
+        /// before calling this method. Host starts and restarts must be synchronous to prevent orphaned
+        /// hosts or an incorrect ActiveHost.
+        /// </summary>
+        private async Task UnsynchronizedStartHostAsync(CancellationToken cancellationToken, int attemptCount = 0, JobHostStartupMode startupMode = JobHostStartupMode.Normal)
+        {
             cancellationToken.ThrowIfCancellationRequested();
             IHost localHost = null;
 
@@ -144,9 +175,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 bool skipJobHostStartup = isOffline || hasNonTransientErrors;
 
                 localHost = BuildHost(skipJobHostStartup, skipHostJsonConfiguration: startupMode == JobHostStartupMode.HandlingConfigurationParsingError);
-                _host = localHost;
+                ActiveHost = localHost;
 
-                var scriptHost = (ScriptHost)_host.Services.GetService<ScriptHost>();
+                var scriptHost = (ScriptHost)ActiveHost.Services.GetService<ScriptHost>();
                 if (scriptHost != null)
                 {
                     scriptHost.HostInitializing += OnHostInitializing;
@@ -161,7 +192,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     DisposeRequestTrackingModule();
                 }
 
-                await _host.StartAsync(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                await ActiveHost.StartAsync(cancellationToken);
 
                 if (!startupMode.HasFlag(JobHostStartupMode.HandlingError))
                 {
@@ -180,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (Exception exc)
             {
-                bool isActiveHost = ReferenceEquals(localHost, _host);
+                bool isActiveHost = ReferenceEquals(localHost, ActiveHost);
                 ILogger logger = GetHostLogger(localHost);
 
                 if (isActiveHost)
@@ -208,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     // We don't want to return disposed services via the Services property, so
                     // set this to null before calling Orphan().
-                    _host = null;
+                    ActiveHost = null;
                 }
 
                 var orphanTask = Orphan(localHost)
@@ -280,8 +313,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             State = ScriptHostState.Stopping;
             _logger.Stopping();
 
-            var currentHost = _host;
-            _host = null;
+            var currentHost = ActiveHost;
+            ActiveHost = null;
             Task stopTask = Orphan(currentHost, cancellationToken);
             Task result = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(10), cancellationToken));
 
@@ -299,22 +332,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task RestartHostAsync(CancellationToken cancellationToken)
         {
+            _logger.EnteringRestart();
+
+            // If anything is mid-startup, cancel it.
+            _startupLoopTokenSource?.Cancel();
+
             try
             {
-                await _hostRestartSemaphore.WaitAsync();
+                await _hostStartSemaphore.WaitAsync();
+
                 if (State == ScriptHostState.Stopping || State == ScriptHostState.Stopped)
                 {
                     _logger.SkipRestart(State.ToString());
                     return;
                 }
 
-                _startupLoopTokenSource?.Cancel();
                 State = ScriptHostState.Default;
                 _logger.Restarting();
 
-                var previousHost = _host;
-                _host = null;
-                Task startTask = StartAsync(cancellationToken);
+                var previousHost = ActiveHost;
+                ActiveHost = null;
+                Task startTask = UnsynchronizedStartHostAsync(cancellationToken);
                 Task stopTask = Orphan(previousHost, cancellationToken);
 
                 await startTask;
@@ -323,7 +361,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             finally
             {
-                _hostRestartSemaphore.Release();
+                _hostStartSemaphore.Release();
             }
         }
 
@@ -338,6 +376,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             _logger.Building(skipHostStartup.ToString(), skipHostJsonConfiguration.ToString());
             return _scriptHostBuilder.BuildHost(skipHostStartup, skipHostJsonConfiguration);
+        }
+
+        private string GetHostInstanceId(IHost host)
+        {
+            IOptions<ScriptJobHostOptions> scriptHostOptions = null;
+
+            try
+            {
+                scriptHostOptions = host?.Services.GetService<IOptions<ScriptJobHostOptions>>();
+            }
+            catch (ObjectDisposedException)
+            {
+                // If the host is disposed, we cannot access services.
+            }
+
+            return scriptHostOptions?.Value?.InstanceId;
         }
 
         private ILogger GetHostLogger(IHost host)
@@ -504,7 +558,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (disposing)
                 {
                     _startupLoopTokenSource?.Dispose();
-                    _hostRestartSemaphore.Dispose();
+                    _hostStartSemaphore.Dispose();
                     DisposeRequestTrackingModule();
                 }
                 _disposed = true;
