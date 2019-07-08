@@ -62,7 +62,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             // The tests can pull the logger from a specific host if they need to.
             var services = new ServiceCollection()
-               .AddLogging(l => l.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>())
+               .AddLogging(l =>
+               {
+                   l.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>();
+                   l.AddFilter(_ => true);
+               })
                .BuildServiceProvider();
 
             var host = new Mock<IHost>();
@@ -140,18 +144,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task HostRestart_DuringInitialization_Recovers()
+        public async Task HostRestart_DuringInitializationWithError_Recovers()
         {
             SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
             await semaphore.WaitAsync();
+            bool waitingInHostBuilder = false;
 
-            // Have the first host start, but pause. We'll issue a restart, wait for the
-            // second host to be running, then let this first host throw an exception.
+            // Have the first host start, but pause. We'll issue a restart, then let
+            // this first host throw an exception.
             var hostA = CreateMockHost();
             hostA
                 .Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
                 .Returns(async () =>
                  {
+                     waitingInHostBuilder = true;
                      await semaphore.WaitAsync();
                      throw new InvalidOperationException("Something happened at startup!");
                  });
@@ -174,38 +180,106 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _monitor, hostBuilder.Object, _loggerFactory, _mockRootServiceProvider.Object, _mockRootScopeFactory.Object,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions);
 
+            TestLoggerProvider hostALogger = hostA.Object.GetTestLoggerProvider();
+            TestLoggerProvider hostBLogger = hostB.Object.GetTestLoggerProvider();
+
             Task initialStart = _hostService.StartAsync(CancellationToken.None);
 
             Thread restartHostThread = new Thread(new ThreadStart(RestartHost));
             restartHostThread.Start();
-            restartHostThread.Join();
+            await TestHelpers.Await(() => waitingInHostBuilder);
+
+            // Now let the first host continue. It will throw, which should be correctly handled.
+            semaphore.Release();
 
             await TestHelpers.Await(() => _hostService.State == ScriptHostState.Running);
 
-            // Now let the first host throw its startup exception.
-            semaphore.Release();
+            restartHostThread.Join();
 
             await initialStart;
 
-            // Note that HostA is disposed so its services cannot be accessed. Logging will fall
-            // back to using the WebHost's logger.
-            Assert.Throws<ObjectDisposedException>(() => hostA.Object.GetTestLoggerProvider());
-            TestLoggerProvider hostBLogger = hostB.Object.GetTestLoggerProvider();
-
             // Make sure the error was logged to the correct logger
-            Assert.Contains(_webHostLoggerProvider.GetAllLogMessages(), m => m.FormattedMessage != null && m.FormattedMessage.Contains("A host error has occurred on an inactive host"));
+            Assert.Contains(hostALogger.GetAllLogMessages(), m => m.FormattedMessage != null && m.FormattedMessage.Contains("A host error has occurred"));
             Assert.DoesNotContain(hostBLogger.GetAllLogMessages(), m => m.FormattedMessage != null && m.FormattedMessage.Contains("A host error has occurred"));
 
-            // Make sure we orphaned the correct host when the exception was thrown. This will happen
-            // twice: once during Restart and once during the Orphan call when handling the exception.
-            hostA.Verify(m => m.StopAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
-            hostA.Verify(m => m.Dispose(), Times.Exactly(2));
+            // Make sure we orphaned the correct host when the exception was thrown.
+            hostA.Verify(m => m.StopAsync(It.IsAny<CancellationToken>()), Times.Exactly(1));
+            hostA.Verify(m => m.Dispose(), Times.Exactly(1));
 
             // We should not be calling Orphan on the good host
             hostB.Verify(m => m.StopAsync(It.IsAny<CancellationToken>()), Times.Never);
             hostB.Verify(m => m.Dispose(), Times.Never);
 
             // The "late" exception from the first host shouldn't bring things down
+            Assert.Equal(ScriptHostState.Running, _hostService.State);
+        }
+
+        [Fact]
+        public async Task HostRestart_DuringInitialization_Cancels()
+        {
+            SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+            await semaphore.WaitAsync();
+            bool waitingInHostBuilder = false;
+
+            // Have the first host start, but pause. We'll issue a restart, then
+            // let this first host continue and see the cancelation token has fired.
+            var hostA = CreateMockHost();
+            hostA
+                .Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns<CancellationToken>(async ct =>
+                {
+                    waitingInHostBuilder = true;
+                    await semaphore.WaitAsync();
+                    ct.ThrowIfCancellationRequested();
+                });
+
+            var hostB = CreateMockHost();
+            hostB
+                .Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns(() => Task.CompletedTask);
+
+            var hostBuilder = new Mock<IScriptHostBuilder>();
+            hostBuilder.SetupSequence(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
+                .Returns(hostA.Object)
+                .Returns(hostB.Object);
+
+            _webHostLoggerProvider = new TestLoggerProvider();
+            _loggerFactory = new LoggerFactory();
+            _loggerFactory.AddProvider(_webHostLoggerProvider);
+
+            _hostService = new WebJobsScriptHostService(
+                _monitor, hostBuilder.Object, _loggerFactory, _mockRootServiceProvider.Object, _mockRootScopeFactory.Object,
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions);
+
+            TestLoggerProvider hostALogger = hostA.Object.GetTestLoggerProvider();
+
+            Task initialStart = _hostService.StartAsync(CancellationToken.None);
+
+            Thread restartHostThread = new Thread(new ThreadStart(RestartHost));
+            restartHostThread.Start();
+            await TestHelpers.Await(() => waitingInHostBuilder);
+            await TestHelpers.Await(() => _webHostLoggerProvider.GetLog().Contains("Restart requested."));
+
+            // Now let the first host continue. It will see that startup is canceled.
+            semaphore.Release();
+
+            await TestHelpers.Await(() => _hostService.State == ScriptHostState.Running);
+
+            restartHostThread.Join();
+
+            await initialStart;
+
+            // Make sure the error was logged to the correct logger
+            Assert.Contains(hostALogger.GetAllLogMessages(), m => m.FormattedMessage != null && m.FormattedMessage.Contains("Host startup was canceled."));
+
+            // Make sure we orphaned the correct host
+            hostA.Verify(m => m.StopAsync(It.IsAny<CancellationToken>()), Times.Exactly(1));
+            hostA.Verify(m => m.Dispose(), Times.Exactly(1));
+
+            // We should not be calling Orphan on the good host
+            hostB.Verify(m => m.StopAsync(It.IsAny<CancellationToken>()), Times.Never);
+            hostB.Verify(m => m.Dispose(), Times.Never);
+
             Assert.Equal(ScriptHostState.Running, _hostService.State);
         }
 
