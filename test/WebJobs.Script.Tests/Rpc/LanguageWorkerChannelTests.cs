@@ -57,6 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public async Task StartWorkerProcessAsync_Invoked()
         {
             await _workerChannel.StartWorkerProcessAsync();
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
             _mockLanguageWorkerProcess.Verify(m => m.StartProcess(), Times.Once);
         }
 
@@ -73,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             RpcEvent rpcEvent = new RpcEvent(_workerId, startStreamMessage);
             _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
         }
@@ -115,6 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
             Environment.SetEnvironmentVariable("TestValid", "TestValue");
             _workerChannel.SendFunctionEnvironmentReloadRequest();
+            _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent();
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest"));
             Assert.True(functionLoadLogs.Count() == 1);
