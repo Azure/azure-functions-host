@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,17 +20,20 @@ using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class ApplicationInsightsSpecializationTests
+    public class SpecializationE2ETests
     {
+        private static SemaphoreSlim _pause = new SemaphoreSlim(1, 1);
+
         [Fact]
-        public async Task InvocationsContainDifferentOperationIds()
+        public async Task ApplicationInsights_InvocationsContainDifferentOperationIds()
         {
             // Verify that when a request specializes the host we don't capture the context
             // of that request. Application Insights uses this context to correlate telemetry
@@ -159,6 +163,95 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             }
         }
 
+        [Fact]
+        public async Task Specialization_ThreadUtilization()
+        {
+            // Start a host in standby mode.
+            StandbyManager.ResetChangeToken();
+
+            string standbyPath = Path.Combine(Path.GetTempPath(), "functions", "standby", "wwwroot");
+            string specializedScriptRoot = @"TestScripts\CSharp";
+            string scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
+
+            var settings = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
+                { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
+             };
+
+            var environment = new TestEnvironment(settings);
+            var loggerProvider = new TestLoggerProvider();
+
+            var builder = Program.CreateWebHostBuilder()
+                .ConfigureLogging(b =>
+                {
+                    b.AddProvider(loggerProvider);
+                })
+                .ConfigureAppConfiguration(c =>
+                {
+                    c.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        { scriptRootConfigPath, specializedScriptRoot }
+                    });
+                })
+                .ConfigureServices((bc, s) =>
+                {
+                    s.AddSingleton<IEnvironment>(environment);
+
+                    // Ensure that we don't have a race between the timer and the 
+                    // request for triggering specialization.
+                    s.AddSingleton<IStandbyManager, InfiniteTimerStandbyManager>();
+
+                    s.AddSingleton<IScriptHostBuilder, PausingScriptHostBuilder>();
+                })
+                .AddScriptHostBuilder(webJobsBuilder =>
+                {
+                    webJobsBuilder.Services.PostConfigure<ScriptJobHostOptions>(o =>
+                    {
+                        // Only load the function we care about, but not during standby
+                        if (o.RootScriptPath != standbyPath)
+                        {
+                            o.Functions = new[]
+                            {
+                                "FunctionExecutionContext"
+                            };
+                        }
+                    });
+                });
+
+            using (var testServer = new TestServer(builder))
+            {
+                var client = testServer.CreateClient();
+
+                var response = await client.GetAsync("api/warmup");
+                response.EnsureSuccessStatusCode();
+
+                await _pause.WaitAsync();
+
+                List<Task<HttpResponseMessage>> requestTasks = new List<Task<HttpResponseMessage>>();
+
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+                for (int i = 0; i < 100; i++)
+                {
+                    requestTasks.Add(client.GetAsync("api/functionexecutioncontext"));
+                }
+
+                ThreadPool.GetAvailableThreads(out int originalWorkerThreads, out int originalcompletionThreads);
+                Thread.Sleep(5000);
+                ThreadPool.GetAvailableThreads(out int workerThreads, out int completionThreads);
+
+                _pause.Release();
+
+                Assert.True(workerThreads >= originalWorkerThreads, $"Available ThreadPool threads should not have decreased. Actual: {workerThreads}. Original: {originalWorkerThreads}.");
+
+                await Task.WhenAll(requestTasks);
+
+                Assert.True(requestTasks.All(t => t.Result.StatusCode == HttpStatusCode.OK));
+            }
+        }
+
         private class InfiniteTimerStandbyManager : StandbyManager
         {
             public InfiniteTimerStandbyManager(IScriptHostManager scriptHostManager, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager,
@@ -167,7 +260,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 : base(scriptHostManager, languageWorkerChannelManager, configuration, webHostEnvironment, environment, options,
                       logger, hostNameProvider, TimeSpan.FromMilliseconds(-1))
             {
-            }         
+            }
+        }
+
+        private class PausingScriptHostBuilder : IScriptHostBuilder
+        {
+            private readonly DefaultScriptHostBuilder _inner;
+
+            public PausingScriptHostBuilder(IOptionsMonitor<ScriptApplicationHostOptions> options, IServiceProvider root, IServiceScopeFactory scope)
+            {
+                _inner = new DefaultScriptHostBuilder(options, root, scope);
+            }
+
+            public IHost BuildHost(bool skipHostStartup, bool skipHostConfigurationParsing)
+            {
+                _pause.WaitAsync().GetAwaiter().GetResult();
+
+                IHost host = _inner.BuildHost(skipHostStartup, skipHostConfigurationParsing);
+
+                _pause.Release();
+
+                return host;
+            }
         }
     }
 }

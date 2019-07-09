@@ -49,6 +49,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _eventManager.Publish(new InboundEvent(_workerId, responseMessage));
         }
 
+        public void PublishFunctionEnvironmentReloadResponseEvent()
+        {
+            FunctionEnvironmentReloadResponse relaodEnvResponse = GetTestFunctionEnvReloadResponse();
+            StreamingMessage responseMessage = new StreamingMessage()
+            {
+                FunctionEnvironmentReloadResponse = relaodEnvResponse
+            };
+            _eventManager.Publish(new InboundEvent(_workerId, responseMessage));
+        }
+
+        public void PublishWorkerInitResponseEvent()
+        {
+            StatusResult statusResult = new StatusResult()
+            {
+                Status = StatusResult.Types.Status.Success
+            };
+            WorkerInitResponse initResponse = new WorkerInitResponse()
+            {
+                Result = statusResult
+            };
+            StreamingMessage responseMessage = new StreamingMessage()
+            {
+                WorkerInitResponse = initResponse
+            };
+            _eventManager.Publish(new InboundEvent(_workerId, responseMessage));
+        }
+
+        public static FunctionEnvironmentReloadResponse GetTestFunctionEnvReloadResponse()
+        {
+            StatusResult statusResult = new StatusResult()
+            {
+                Status = StatusResult.Types.Status.Success
+            };
+            FunctionEnvironmentReloadResponse relaodEnvResponse = new FunctionEnvironmentReloadResponse()
+            {
+                Result = statusResult
+            };
+            return relaodEnvResponse;
+        }
+
         public void PublishInvocationResponseEvent()
         {
             StatusResult statusResult = new StatusResult()
@@ -63,6 +103,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             StreamingMessage responseMessage = new StreamingMessage()
             {
                 InvocationResponse = invocationResponse
+            };
+            _eventManager.Publish(new InboundEvent(_workerId, responseMessage));
+        }
+
+        public void PublishStartStreamEvent(string workerId)
+        {
+            StatusResult statusResult = new StatusResult()
+            {
+                Status = StatusResult.Types.Status.Success
+            };
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = workerId
+            };
+            StreamingMessage responseMessage = new StreamingMessage()
+            {
+                StartStream = startStream
             };
             _eventManager.Publish(new InboundEvent(_workerId, responseMessage));
         }

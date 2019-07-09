@@ -466,13 +466,15 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
-            if (string.Equals(_workerRuntime, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            if (_environment.IsPlaceholderModeEnabled()
+                || string.Equals(_workerRuntime, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
+                _logger.AddingDescriptorProviderForLanguage(LanguageWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
             else
             {
+                _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
                 _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
             }
 

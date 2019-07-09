@@ -57,6 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public async Task StartWorkerProcessAsync_Invoked()
         {
             await _workerChannel.StartWorkerProcessAsync();
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
             _mockLanguageWorkerProcess.Verify(m => m.StartProcess(), Times.Once);
         }
 
@@ -73,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             RpcEvent rpcEvent = new RpcEvent(_workerId, startStreamMessage);
             _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
         }
@@ -106,6 +109,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             Assert.True(functionLoadLogs.Count() == 2);
+        }
+
+        [Fact]
+        public void SendSendFunctionEnvironmentReloadRequest_PublishesOutboundEvents()
+        {
+            Environment.SetEnvironmentVariable("TestNull", null);
+            Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
+            Environment.SetEnvironmentVariable("TestValid", "TestValue");
+            _workerChannel.SendFunctionEnvironmentReloadRequest();
+            _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent();
+            var traces = _logger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest"));
+            Assert.True(functionLoadLogs.Count() == 1);
+        }
+
+        [Fact]
+        public void SendSendFunctionEnvironmentReloadRequest_SanitizedEnvironmentVariables()
+        {
+            Environment.SetEnvironmentVariable("TestNull", null);
+            Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
+            Environment.SetEnvironmentVariable("TestValid", "TestValue");
+            FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(Environment.GetEnvironmentVariables());
+            Assert.False(envReloadRequest.EnvironmentVariables.ContainsKey("TestNull"));
+            Assert.False(envReloadRequest.EnvironmentVariables.ContainsKey("TestEmpty"));
+            Assert.True(envReloadRequest.EnvironmentVariables.ContainsKey("TestValid"));
+            Assert.True(envReloadRequest.EnvironmentVariables["TestValid"] == "TestValue");
         }
 
         [Fact]
@@ -148,6 +177,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             var proxyFunctionLoadRequest = _workerChannel.GetFunctionLoadRequest(proxyMetadata);
             Assert.True(proxyFunctionLoadRequest.Metadata.IsProxy);
+        }
+
+        [Fact]
+        public void Multiple_FunctionEnvironmentReloadResponse_Throws()
+        {
+            _workerChannel.SendFunctionEnvironmentReloadRequest();
+            _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent();
+
+            var traces = _logger.GetLogMessages();
+
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionEnvironmentReloadResponse")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest")));
+            var ex = Assert.Throws<InvalidOperationException>(() => _workerChannel.FunctionEnvironmentReloadResponse(TestFunctionRpcService.GetTestFunctionEnvReloadResponse()));
+            Assert.Contains("FunctionEnvironmentReloadResponse received more than once", ex.Message);
         }
 
         private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime)

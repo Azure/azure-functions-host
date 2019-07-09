@@ -94,13 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (_workerRuntime != null && languageWorkerChannel != null)
             {
                 _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntime);
-                IObservable<WorkerProcessReadyEvent> processReadyEvents = _eventManager.OfType<WorkerProcessReadyEvent>()
-                .Where(msg => string.Equals(msg.Language, _workerRuntime, StringComparison.OrdinalIgnoreCase))
-                .Timeout(workerInitTimeout);
-                languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
-
-                // Wait for response from language worker process
-                await processReadyEvents.FirstAsync();
+                await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
             }
             _shutdownStandbyWorkerChannels();
         }

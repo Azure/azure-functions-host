@@ -11,10 +11,14 @@ namespace Microsoft.Azure.WebJobs.Script.Middleware
 {
     internal class DefaultMiddlewarePipeline : IJobHostMiddlewarePipeline
     {
+        private static Lazy<IJobHostMiddlewarePipeline> _emptyPipeline = new Lazy<IJobHostMiddlewarePipeline>(() => new DefaultMiddlewarePipeline(Array.Empty<IJobHostHttpMiddleware>()));
+
         public DefaultMiddlewarePipeline(IEnumerable<IJobHostHttpMiddleware> middleware)
         {
             Pipeline = BuildPipeline(middleware);
         }
+
+        public static IJobHostMiddlewarePipeline Empty => _emptyPipeline.Value;
 
         public RequestDelegate Pipeline { get; }
 

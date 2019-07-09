@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Capabilities _workerCapabilities;
         private ILogger _workerChannelLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
+        private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>();
 
         internal LanguageWorkerChannel(
            string workerId,
@@ -139,15 +140,19 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             });
         }
 
-        internal void PublishWorkerProcessReadyEvent(FunctionEnvironmentReloadResponse res)
+        internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res)
         {
-            if (_disposing)
+            _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse");
+            if (_reloadTask.Task.IsCompleted)
             {
-                // do not publish ready events when disposing
-                return;
+                throw new InvalidOperationException("FunctionEnvironmentReloadResponse received more than once");
             }
-            WorkerProcessReadyEvent wpEvent = new WorkerProcessReadyEvent(_workerId, _runtime);
-            _eventManager.Publish(wpEvent);
+            if (res.Result.IsFailure(out Exception relaodEnvironmentVariablesException))
+            {
+                _workerChannelLogger.LogError(relaodEnvironmentVariablesException, "Failed to reload environment variables");
+                _reloadTask.SetResult(false);
+            }
+            _reloadTask.SetResult(true);
         }
 
         internal void PublishRpcChannelReadyEvent(RpcEvent initEvent)
@@ -206,23 +211,35 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public void SendFunctionEnvironmentReloadRequest()
+        public Task SendFunctionEnvironmentReloadRequest()
         {
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
-      .Subscribe((msg) => PublishWorkerProcessReadyEvent(msg.Message.FunctionEnvironmentReloadResponse)));
+            _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
+            _eventSubscriptions
+                .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
+                .Timeout(workerInitTimeout)
+                .Take(1)
+                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse)));
 
             IDictionary processEnv = Environment.GetEnvironmentVariables();
 
-            FunctionEnvironmentReloadRequest request = new FunctionEnvironmentReloadRequest();
-            foreach (DictionaryEntry entry in processEnv)
-            {
-                request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
-            }
+            FunctionEnvironmentReloadRequest request = GetFunctionEnvironmentReloadRequest(processEnv);
 
             SendStreamingMessage(new StreamingMessage
             {
                 FunctionEnvironmentReloadRequest = request
             });
+
+            return _reloadTask.Task;
+        }
+
+        internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
+        {
+            FunctionEnvironmentReloadRequest request = new FunctionEnvironmentReloadRequest();
+            foreach (DictionaryEntry entry in processEnv)
+            {
+                request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
+            }
+            return request;
         }
 
         internal void SendFunctionLoadRequest(FunctionMetadata metadata)
@@ -247,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     Directory = metadata.FunctionDirectory ?? string.Empty,
                     EntryPoint = metadata.EntryPoint ?? string.Empty,
                     ScriptFile = metadata.ScriptFile ?? string.Empty,
-                    IsProxy = metadata.IsProxy,
+                    IsProxy = metadata.IsProxy
                 }
             };
 

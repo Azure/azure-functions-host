@@ -82,10 +82,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4230")]
+        [Fact]
         public async Task StandbyModeE2E_Java()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
+            await Verify_StandbyModeE2E_Java();
+        }
+
+        [Fact]
+        public async Task StandbyModeE2E_JavaTemplateSite()
+        {
+            _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
+            _settings.Add(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
+            await Verify_StandbyModeE2E_Java();
+        }
+
+        private async Task Verify_StandbyModeE2E_Java()
+        {
             var environment = new TestEnvironment(_settings);
             await InitializeTestHostAsync("Windows_Java", environment);
 
