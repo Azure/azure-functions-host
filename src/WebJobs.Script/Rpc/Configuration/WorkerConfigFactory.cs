@@ -1,4 +1,5 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -10,7 +11,6 @@ using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
@@ -116,7 +116,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             try
             {
-                Dictionary<string, WorkerDescription> descriptionProfiles = new Dictionary<string, WorkerDescription>();
                 string workerConfigPath = Path.Combine(workerDir, LanguageWorkerConstants.WorkerConfigFileName);
                 if (!File.Exists(workerConfigPath))
                 {
@@ -130,14 +129,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 workerDescription.WorkerDirectory = workerDir;
                 var languageSection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
                 workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
-
-                descriptionProfiles = GetWorkerDescriptionProfiles(workerConfig);
-                if (ScriptSettingsManager.Instance.IsAppServiceEnvironment)
-                {
-                    // Overwrite default Description with AppServiceEnv profile
-                    // TODO:pgopa delete after ANT78
-                    workerDescription = GetWorkerDescriptionFromProfiles(LanguageWorkerConstants.WorkerDescriptionAppServiceEnvProfileName, descriptionProfiles, workerDescription);
-                }
 
                 GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
