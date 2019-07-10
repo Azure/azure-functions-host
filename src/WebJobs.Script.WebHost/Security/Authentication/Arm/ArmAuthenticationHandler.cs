@@ -17,8 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
 {
     public class ArmAuthenticationHandler : AuthenticationHandler<ArmAuthenticationOptions>
     {
-        internal const string ArmTokenHeaderName = "x-ms-site-restricted-token";
-
         private readonly ILogger _logger;
 
         public ArmAuthenticationHandler(IOptionsMonitor<ArmAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder, ISystemClock clock)
@@ -37,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
         private AuthenticateResult HandleAuthenticate()
         {
             string token = null;
-            if (!Context.Request.Headers.TryGetValue(ArmTokenHeaderName, out StringValues values))
+            if (!Context.Request.Headers.TryGetValue(ScriptConstants.SiteTokenHeaderName, out StringValues values))
             {
                 return AuthenticateResult.NoResult();
             }

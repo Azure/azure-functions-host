@@ -38,14 +38,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns(_containerName);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteHomeStampName)).Returns(_stampName);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteStampDeploymentId)).Returns(_tenantId);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.NodeIpAddress)).Returns(_testNodeAddress);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.LinuxNodeIpAddress)).Returns(_testNodeAddress);
 
             var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions { InStandbyMode = true });
 
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
             var httpClient = new HttpClient(handlerMock.Object);
 
-            _generator = new LinuxContainerEventGenerator(mockEnvironment.Object, standbyOptions, httpClient, writer);
+            _generator = new LinuxContainerEventGenerator(mockEnvironment.Object, writer);
         }
 
         [Theory]

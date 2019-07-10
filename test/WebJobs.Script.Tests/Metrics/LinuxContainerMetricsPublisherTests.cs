@@ -2,15 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.Azure.WebJobs.Description;
-using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -49,16 +47,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         };
 
         private readonly LinuxContainerMetricsPublisher _metricsPublisher;
-        private readonly Dictionary<LogLevel, string> _events;
+        private readonly TestLoggerProvider _testLoggerProvider;
         private HttpClient _httpClient;
 
         public LinuxContainerMetricsPublisherTests()
         {
-            _events = new Dictionary<LogLevel, string>();
-            Action<LogLevel, string> writer = (loglevel, s) =>
-            {
-                _events[loglevel] = s;
-            };
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
 
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
@@ -74,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns(_containerName);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.NodeIpAddress)).Returns(_testIpAddress);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.LinuxNodeIpAddress)).Returns(_testIpAddress);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns(_testHostName);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteHomeStampName)).Returns(_testStampName);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteStampDeploymentId)).Returns(_testTenant);
@@ -83,9 +76,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             var websiteAuthEncryptionStringKey = TestHelpers.GenerateKeyHexString(websiteAuthEncryptionKey);
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, websiteAuthEncryptionStringKey);
 
+            _testLoggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(_testLoggerProvider);
+
+            ILogger<LinuxContainerMetricsPublisher> logger = loggerFactory.CreateLogger<LinuxContainerMetricsPublisher>();
+            var hostNameProvider = new HostNameProvider(mockEnvironment.Object, new Mock<ILogger<HostNameProvider>>().Object);
             var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions { InStandbyMode = true });
-            _metricsPublisher = new LinuxContainerMetricsPublisher(mockEnvironment.Object, standbyOptions, writer, _httpClient);
-            Assert.Empty(_events);
+            _metricsPublisher = new LinuxContainerMetricsPublisher(mockEnvironment.Object, standbyOptions, logger, _httpClient, hostNameProvider);
+            _testLoggerProvider.ClearAllLogMessages();
         }
 
         private void ValidateRequest(HttpRequestMessage request)
@@ -93,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.ContainerNameHeader).Single(), _containerName);
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.HostNameHeader).Single(), _testHostName);
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.StampNameHeader).Single(), _testStampName);
-            Assert.NotEmpty(request.Headers.GetValues(LinuxContainerMetricsPublisher.SiteTokenHeader));
+            Assert.NotEmpty(request.Headers.GetValues(ScriptConstants.SiteTokenHeaderName));
 
             Assert.Equal(request.RequestUri.Host, _testIpAddress);
 
@@ -114,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 Assert.Equal(activitesPayload.Single().Tenant, _testTenant);
                 Assert.Equal(activitesPayload.Single().EventTimeStamp, _testFunctionActivity.EventTimeStamp);
             }
-            else
+            else if (requestPath.Contains(LinuxContainerMetricsPublisher.PublishMemoryActivityPath))
             {
                 ObjectContent requestContent = (ObjectContent)request.Content;
                 Assert.Equal(requestContent.Value.GetType(), typeof(MemoryActivity[]));
@@ -129,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         [Fact]
         public void PublishFunctionActivity_SendsRequestHeaders()
         {
-            _metricsPublisher.InitializeRequestHeaders();
+            _metricsPublisher.Initialize();
             _metricsPublisher.AddFunctionExecutionActivity(
                 _testFunctionActivity.FunctionName,
                 _testFunctionActivity.InvocationId,
@@ -138,61 +137,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 _testFunctionActivity.IsSucceeded,
                 _testFunctionActivity.ExecutionTimeSpanInMs,
                 _testFunctionActivity.EventTimeStamp);
-            Assert.Matches("Added function activity", _events[LogLevel.Information]);
-            _events.Clear();
+
+            Assert.Matches("Added function activity", _testLoggerProvider.GetAllLogMessages().Single().FormattedMessage);
+            Assert.Equal(LogLevel.Information, _testLoggerProvider.GetAllLogMessages().Single().Level);
+
+            _testLoggerProvider.ClearAllLogMessages();
 
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
-            Assert.Empty(_events);
+            Assert.Empty(_testLoggerProvider.GetAllLogMessages());
         }
 
         [Fact]
         public void PublishMemoryActivity_SendsRequestHeaders()
         {
-            _metricsPublisher.InitializeRequestHeaders();
+            _metricsPublisher.Initialize();
             DateTime currentTime = DateTime.UtcNow;
             _metricsPublisher.AddMemoryActivity(_testMemoryActivity.EventTimeStamp, _testMemoryActivity.CommitSizeInBytes);
-            Assert.Empty(_events);
+            Assert.Empty(_testLoggerProvider.GetLog());
 
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
-            Assert.Empty(_events);
+            Assert.Empty(_testLoggerProvider.GetLog());
         }
 
         [Fact]
-        public void PublishMemoryActivity_FailsWithoutRequestHeaders()
+        public void SendRequest_FailsWithNullQueue()
         {
-            DateTime currentTime = DateTime.UtcNow;
-            _metricsPublisher.AddMemoryActivity(_testMemoryActivity.EventTimeStamp, _testMemoryActivity.CommitSizeInBytes);
-            Assert.Empty(_events);
-
-            _metricsPublisher.OnFunctionMetricsPublishTimer(null);
-            _metricsPublisher.OnFunctionMetricsPublishTimer(null);
-            Assert.Single(_events);
-            Assert.Matches("Error", _events[LogLevel.Warning]);
+            ConcurrentQueue<string> testQueue = null;
+            Assert.Throws<NullReferenceException>(() => _metricsPublisher.SendRequest(testQueue, "testPath").GetAwaiter().GetResult());
         }
 
         [Fact]
-        public void PublishFunctionActivity_FailsWithoutRequestHeaders()
+        public void SendRequest_SucceedsWithEmptyQueue()
         {
-            DateTime currentTime = DateTime.UtcNow;
-            _metricsPublisher.AddFunctionExecutionActivity(
-            _testFunctionActivity.FunctionName,
-            _testFunctionActivity.InvocationId,
-            _testFunctionActivity.Concurrency,
-            _testFunctionActivity.ExecutionStage,
-            _testFunctionActivity.IsSucceeded,
-            _testFunctionActivity.ExecutionTimeSpanInMs,
-            _testFunctionActivity.EventTimeStamp);
-
-            Assert.Single(_events);
-            Assert.Matches("Added function activity", _events[LogLevel.Information]);
-            _events.Clear();
-
-            _metricsPublisher.OnFunctionMetricsPublishTimer(null);
-            _metricsPublisher.OnFunctionMetricsPublishTimer(null);
-            Assert.Single(_events);
-            Assert.Matches("Error", _events[LogLevel.Warning]);
+            ConcurrentQueue<string> testQueue = new ConcurrentQueue<string>();
+            _metricsPublisher.Initialize();
+            _metricsPublisher.SendRequest(testQueue, "testPath").GetAwaiter().GetResult();
         }
     }
 }

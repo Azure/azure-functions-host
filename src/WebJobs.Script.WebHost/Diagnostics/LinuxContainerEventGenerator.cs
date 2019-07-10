@@ -14,12 +14,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly Action<string> _writeEvent;
         private readonly bool _consoleEnabled = true;
         private readonly IEnvironment _environment;
-        private readonly LinuxContainerMetricsPublisher _metricsPublisher;
         private string _containerName;
         private string _stampName;
         private string _tenantId;
 
-        public LinuxContainerEventGenerator(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, HttpClient httpClient, Action<string> writeEvent = null)
+        public LinuxContainerEventGenerator(IEnvironment environment, Action<string> writeEvent = null)
         {
             _writeEvent = writeEvent ?? ConsoleWriter;
             _environment = environment;
@@ -28,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 _consoleEnabled = false;
             }
             _containerName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)?.ToUpperInvariant();
-            _metricsPublisher = new LinuxContainerMetricsPublisher(environment, standbyOptions, LogMetricsPublishEvent, httpClient);
         }
 
         // Note: the strange escaping of backslashes in these expressions for string literals (e.g. '\\\\\"') is because
@@ -90,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
-            _metricsPublisher.AddFunctionExecutionActivity(functionName, invocationId, concurrency, executionStage, success, executionTimeSpan, DateTime.UtcNow);
+          //  _metricsPublisher.AddFunctionExecutionActivity(functionName, invocationId, concurrency, executionStage, success, executionTimeSpan, DateTime.UtcNow);
         }
 
         private void ConsoleWriter(string evt)

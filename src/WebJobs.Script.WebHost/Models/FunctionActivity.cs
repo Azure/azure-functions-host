@@ -5,7 +5,7 @@ using System;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
-    public class FunctionActivity
+    public class FunctionActivity : ActivityBase
     {
         public string FunctionName { get; set; }
 
@@ -20,9 +20,5 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public bool IsSucceeded { get; set; }
 
         public long ExecutionTimeSpanInMs { get; set; }
-
-        public DateTime EventTimeStamp { get; set; }
-
-        public string Tenant { get; set; }
     }
 }

@@ -2,11 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
-    public class MemoryActivity : ActivityBase
+    public class ActivityBase
     {
-        public long CommitSizeInBytes { get; set; }
+        public DateTime EventTimeStamp { get; set; }
+
+        public string Tenant { get; set; }
     }
 }

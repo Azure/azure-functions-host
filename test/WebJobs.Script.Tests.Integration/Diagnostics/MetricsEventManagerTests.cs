@@ -381,7 +381,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             int flushInterval = 10;
             Mock<IEventGenerator> mockGenerator = new Mock<IEventGenerator>();
-            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(new TestEnvironment(), mockGenerator.Object, flushInterval, flushInterval) { CallBase = true };
+            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(new TestEnvironment(), mockGenerator.Object, flushInterval, null, flushInterval) { CallBase = true };
             MetricsEventManager eventManager = mockEventManager.Object;
 
             int numFlushes = 0;

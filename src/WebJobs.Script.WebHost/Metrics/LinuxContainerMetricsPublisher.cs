@@ -16,14 +16,13 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
-    public class LinuxContainerMetricsPublisher
+    public class LinuxContainerMetricsPublisher : IMetricsPublisher
     {
         public const string PublishMemoryActivityPath = "/memoryactivity";
         public const string PublishFunctionActivityPath = "/functionactivity";
 
         public const string ContainerNameHeader = "x-ms-functions-container-name";
         public const string HostNameHeader = "x-ms-functions-host-name";
-        public const string SiteTokenHeader = "x-ms-site-restricted-token";
         public const string StampNameHeader = "x-ms-site-home-stamp";
 
         private const string _requestUriFormat = "https://{0}:31002/api/metrics";
@@ -37,35 +36,43 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly string _requestUri;
         private readonly IEnvironment _environment;
 
-        private string _containerName;
-        private Timer _metricsPublisherTimer;
+        // Buffer for all memory activities for this container.
         private BlockingCollection<MemoryActivity> _memoryActivities;
+
+        // Buffer for all function activities for this container.
         private BlockingCollection<FunctionActivity> _functionActivities;
 
+        // The current batch of memory activities we are trying to publish.
         private ConcurrentQueue<MemoryActivity> _currentMemoryActivities;
+
+        // The current batch of function activities we are trying to publish.
         private ConcurrentQueue<FunctionActivity> _currentFunctionActivities;
 
         private HttpClient _httpClient;
-        private Action<LogLevel, string> _logTraceEvent;
+        private ILogger _logger;
+        private HostNameProvider _hostNameProvider;
+        private string _tenant;
         private Process _process;
         private Timer _processMonitorTimer;
+        private string _containerName;
+        private Timer _metricsPublisherTimer;
         private int _errorCount = 0;
-        private string _hostName;
         private string _stampName;
 
-        public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, Action<LogLevel, string> logMetricsPublishEvent, HttpClient httpClient)
+        public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerMetricsPublisher> logger, HttpClient httpClient, HostNameProvider hostNameProvider)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _logTraceEvent = logMetricsPublishEvent ?? throw new ArgumentNullException(nameof(logMetricsPublishEvent));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _memoryActivities = new BlockingCollection<MemoryActivity>(new ConcurrentQueue<MemoryActivity>(), boundedCapacity: _maxBufferSize);
             _functionActivities = new BlockingCollection<FunctionActivity>(new ConcurrentQueue<FunctionActivity>(), boundedCapacity: _maxBufferSize);
 
             _currentMemoryActivities = new ConcurrentQueue<MemoryActivity>();
             _currentFunctionActivities = new ConcurrentQueue<FunctionActivity>();
 
-            var nodeIpAddress = _environment.GetEnvironmentVariable(EnvironmentSettingNames.NodeIpAddress);
+            var nodeIpAddress = _environment.GetEnvironmentVariable(EnvironmentSettingNames.LinuxNodeIpAddress);
             _requestUri = string.Format(_requestUriFormat, nodeIpAddress);
 
             _containerName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName);
@@ -76,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             }
             else
             {
-                StartMetricsPublisher();
+                Start();
             }
         }
 
@@ -84,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         {
             if (!_standbyOptions.CurrentValue.InStandbyMode)
             {
-                StartMetricsPublisher();
+                Start();
             }
         }
 
@@ -99,16 +106,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 IsSucceeded = success,
                 ExecutionTimeSpanInMs = executionTimeSpan,
                 EventTimeStamp = eventTimeStamp,
-                Tenant = _environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteStampDeploymentId)?.ToLowerInvariant()
+                Tenant = _tenant
             };
 
             if (!_functionActivities.TryAdd(activity))
             {
-                _logTraceEvent(LogLevel.Warning, string.Format("LinuxContainerMetricsPublisher: Buffer full. Dropping current batch of function activities"));
+                _logger.LogWarning("Buffer full.Dropping current batch of function activities");
                 DrainActivities(_currentFunctionActivities, _functionActivities);
             }
 
-            _logTraceEvent(LogLevel.Information, string.Format("LinuxContainerMetricsPublisher: Added function activity : {0} {1} {2} {3} {4} {5}", functionName, invocationId, concurrency, executionStage, success, executionTimeSpan));
+            _logger.LogInformation($"Added function activity : {functionName} {invocationId} {concurrency} {executionStage} {success} {executionTimeSpan}");
         }
 
         public void AddMemoryActivity(DateTime timeStampUtc, long data)
@@ -117,12 +124,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             {
                 CommitSizeInBytes = data,
                 EventTimeStamp = timeStampUtc,
-                Tenant = _environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteStampDeploymentId)?.ToLowerInvariant()
+                Tenant = _tenant
             };
 
             if (!_memoryActivities.TryAdd(memoryActivity))
             {
-                _logTraceEvent(LogLevel.Warning, string.Format("LinuxContainerMetricsPublisher: Buffer full. Dropping current batch of memory activities"));
+                _logger.LogWarning("Buffer full.Dropping current batch of memory activities");
                 DrainActivities(_currentMemoryActivities, _memoryActivities);
             }
         }
@@ -140,60 +147,61 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             }
         }
 
-        internal void OnFunctionMetricsPublishTimer(object state)
+        internal async void OnFunctionMetricsPublishTimer(object state)
         {
-            PublishActivity(_currentMemoryActivities, _memoryActivities, PublishMemoryActivityPath);
-            PublishActivity(_currentFunctionActivities, _functionActivities, PublishFunctionActivityPath);
+            await PublishActivity(_currentMemoryActivities, _memoryActivities, PublishMemoryActivityPath);
+            await PublishActivity(_currentFunctionActivities, _functionActivities, PublishFunctionActivityPath);
         }
 
-        private void PublishActivity<T>(ConcurrentQueue<T> currentActivities, BlockingCollection<T> activitiesToProcess, string publishPath)
+        private async Task PublishActivity<T>(ConcurrentQueue<T> currentActivities, BlockingCollection<T> activitiesToProcess, string publishPath)
         {
             try
             {
                 if (currentActivities.Any())
                 {
-                    SendRequest(currentActivities, publishPath);
+                    await SendRequest(currentActivities, publishPath);
                 }
                 DrainActivities(currentActivities, activitiesToProcess);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ex.IsFatal())
             {
                 _errorCount++;
-                _logTraceEvent(LogLevel.Warning, string.Format("LinuxContainerMetricsPublisher : Error publishing activites. Exception : {0}", ex.ToString()));
+                _logger.LogError(ex, "Error publishing activites");
+
                 if (_errorCount < _maxErrorLimit)
                 {
-                    _logTraceEvent(LogLevel.Warning, string.Format("LinuxContainerMetricsPublisher : Error count {0} within threshold. will retry later.", _errorCount));
+                    _logger.LogWarning(ex, string.Format("Error count {0} within threshold. Will retry this batch later.", _errorCount));
                 }
                 else
                 {
-                    _logTraceEvent(LogLevel.Error, string.Format("LinuxContainerMetricsPublisher : Max error limit reached. Draining activities for {0}", _containerName));
+                    _logger.LogError(string.Format("LinuxContainerMetricsPublisher : Max error limit reached. Draining current activities for {0}", _containerName));
                     DrainActivities(currentActivities, activitiesToProcess);
                     _errorCount = 0;
                 }
             }
         }
 
-        private void SendRequest<T>(ConcurrentQueue<T> activitiesToPublish, string publishPath)
+        internal async Task SendRequest<T>(ConcurrentQueue<T> activitiesToPublish, string publishPath)
         {
             var request = BuildRequest(HttpMethod.Post, publishPath, activitiesToPublish.ToArray());
-            HttpResponseMessage response = _httpClient.SendAsync(request).GetAwaiter().GetResult();
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
         }
 
-        public void InitializeRequestHeaders()
+        public void Initialize()
         {
-            _hostName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName);
             _stampName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteHomeStampName);
+            _tenant = _environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteStampDeploymentId)?.ToLowerInvariant();
             _process = Process.GetCurrentProcess();
         }
 
-        public void StartMetricsPublisher()
+        public void Start()
         {
-            InitializeRequestHeaders();
+            Initialize();
             _processMonitorTimer = new Timer(OnProcessMonitorTimer, null, TimeSpan.Zero, _memorySnapshotInterval);
             _metricsPublisherTimer = new Timer(OnFunctionMetricsPublishTimer, null, TimeSpan.Zero, _metricPublishInterval);
 
-            _logTraceEvent(LogLevel.Information, string.Format("LinuxContainerMetricsPublisher: Starting metrics publisher for container : {0}", _containerName));
+            _logger.LogInformation(string.Format("Starting metrics publisher for container : {0}", _containerName));
         }
 
         private void OnProcessMonitorTimer(object state)
@@ -217,8 +225,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             // add the required authentication headers
             request.Headers.Add(ContainerNameHeader, _containerName);
-            request.Headers.Add(HostNameHeader, _hostName);
-            request.Headers.Add(SiteTokenHeader, token);
+            request.Headers.Add(HostNameHeader, _hostNameProvider.Value);
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
             request.Headers.Add(StampNameHeader, _stampName);
 
             return request;

@@ -8,8 +8,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
     public interface IMetricsPublisher
     {
-        void PublishFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan);
-
-        void Start(string containerName, Action<LogLevel, string, string> logMetricsPublishEvent);
+        void AddFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan, DateTime utcNow);
     }
 }
