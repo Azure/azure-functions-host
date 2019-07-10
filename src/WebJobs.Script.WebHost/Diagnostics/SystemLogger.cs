@@ -3,10 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -17,13 +19,39 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly string _categoryName;
         private readonly string _functionName;
         private readonly bool _isUserFunction;
+        private readonly bool _isAllowedCategory;
         private readonly string _hostInstanceId;
         private readonly IEnvironment _environment;
         private readonly LogLevel _logLevel;
         private readonly IDebugStateProvider _debugStateProvider;
         private readonly IScriptEventManager _eventManager;
+        private readonly IExternalScopeProvider _scopeProvider;
 
-        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider, IScriptEventManager eventManager)
+        private static readonly string[] _allowedSystemCategories = new string[]
+        {
+            LogCategories.Startup,
+            LogCategories.Singleton,
+            LogCategories.Executor,
+            LogCategories.Bindings,
+            ScriptConstants.LogCategoryFunctionsController,
+            ScriptConstants.LogCategoryHostController,
+            ScriptConstants.LogCategoryHostGeneral,
+            ScriptConstants.LogCategoryHostMetrics,
+            ScriptConstants.LogCategoryInstanceController,
+            ScriptConstants.LogCategoryKeysController,
+            ScriptConstants.LogCategoryFileWatcher,
+            ScriptConstants.LogCategoryLanguageWorkerConfig,
+            ScriptConstants.LogCategoryHttpThrottleMiddleware,
+            LogCategories.CreateTriggerCategory("CosmosDB"),
+            LogCategories.CreateTriggerCategory("DurableTask"),
+            LogCategories.CreateTriggerCategory("EventGrid"),
+            LogCategories.CreateTriggerCategory("EventHub"),
+            LogCategories.CreateTriggerCategory("Queue"),
+            LogCategories.CreateTriggerCategory("Timer")
+    };
+
+        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment,
+            IDebugStateProvider debugStateProvider, IScriptEventManager eventManager, IExternalScopeProvider scopeProvider)
         {
             _environment = environment;
             _eventGenerator = eventGenerator;
@@ -34,17 +62,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _hostInstanceId = hostInstanceId;
             _debugStateProvider = debugStateProvider;
             _eventManager = eventManager;
+            _isAllowedCategory = IsAllowedCategory(_categoryName);
+            _scopeProvider = scopeProvider ?? throw new ArgumentNullException(nameof(scopeProvider));
         }
 
-        public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope.Push(state);
+        public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
 
+        // All of the pre-created log categories are accounted for here. Loggers created with Logger<T>
+        // will be handled in the call to Log()
+        internal static bool IsAllowedCategory(string category)
+        {
+            return _allowedSystemCategories.Contains(category) ||
+                LogCategories.IsFunctionCategory(category) ||
+                LanguageWorkerConstants.IsLanguageWorkerLogCategory(category);
+        }
+
+        // All of this logic could be done in a logging filter, but we do it here to prevent any manipulation
         public bool IsEnabled(LogLevel logLevel)
         {
+            if (!_isAllowedCategory && !IsSystemLog())
+            {
+                return false;
+            }
+
             if (_debugStateProvider.InDiagnosticMode)
             {
                 // when in diagnostic mode, we log everything
                 return true;
             }
+
             return logLevel >= _logLevel;
         }
 
@@ -60,6 +106,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 Utility.GetStateBoolValue(stateDict, ScriptConstants.LogPropertyIsUserLogKey) == true);
         }
 
+        private bool IsSystemLog()
+        {
+            bool isSystemLog = false;
+
+            // If we find the key anywhere in the scope, return true
+            _scopeProvider.ForEachScope<object>((scope, _) =>
+            {
+                if (scope is IEnumerable<KeyValuePair<string, object>> kvps &&
+                    kvps.Any(p => p.Key == ScriptConstants.LogPropertyIsSystemLogKey))
+                {
+                    isSystemLog = true;
+                }
+            }, null);
+
+            return isSystemLog;
+        }
+
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
             // propagate special exceptions through the EventManager
@@ -69,7 +132,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 _eventManager.Publish(new FunctionIndexingEvent("FunctionIndexingException", source, exception));
             }
 
-            // User logs are not logged to system logs.
             if (!IsEnabled(logLevel) || IsUserLog(state))
             {
                 return;
@@ -83,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            IDictionary<string, object> scopeProps = DictionaryLoggerScope.GetMergedStateDictionary() ?? new Dictionary<string, object>();
+            IDictionary<string, object> scopeProps = _scopeProvider.GetScopeDictionary() ?? new Dictionary<string, object>();
 
             // Apply standard event properties
             // Note: we must be sure to default any null values to empty string

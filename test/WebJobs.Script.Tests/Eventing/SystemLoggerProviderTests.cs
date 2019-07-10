@@ -3,6 +3,7 @@
 
 using System.IO;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -32,20 +33,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
 
             _provider = new SystemLoggerProvider(_options, null, _environment, debugStateProvider.Object, null);
+            _provider.SetScopeProvider(new LoggerExternalScopeProvider());
         }
 
         [Fact]
-        public void CreateLogger_ReturnsSystemLogger_ForNonUserCategories()
+        public void CreateLogger_ReturnsSystemLogger_ForSystemCategories()
         {
             Assert.IsType<SystemLogger>(_provider.CreateLogger(LogCategories.CreateFunctionCategory("TestFunction")));
             Assert.IsType<SystemLogger>(_provider.CreateLogger(ScriptConstants.LogCategoryHostGeneral));
-            Assert.IsType<SystemLogger>(_provider.CreateLogger("NotAFunction.TestFunction.User"));
+            Assert.IsType<SystemLogger>(_provider.CreateLogger(LanguageWorkerConstants.CreateLanguageWorkerChannelLogCategory("dotnet", "123")));
+            Assert.IsType<SystemLogger>(_provider.CreateLogger(LanguageWorkerConstants.CreateLanguageWorkerProcessLogCategory("dotnet", "123")));
+            Assert.IsType<SystemLogger>(_provider.CreateLogger(typeof(ScriptHost).FullName));
         }
 
         [Fact]
-        public void CreateLogger_ReturnsNullLogger_ForUserCategory()
+        public void CreateLogger_ReturnsNullLogger_ForNonSystemCategories()
         {
             Assert.IsType<NullLogger>(_provider.CreateLogger(LogCategories.CreateFunctionUserCategory("TestFunction")));
+            Assert.IsType<NullLogger>(_provider.CreateLogger(LogCategories.CreateFunctionUserCategory("TestFunction") + ".SomeExtra"));
+            Assert.IsType<NullLogger>(_provider.CreateLogger("Worker.LanguageWorker.Abc.123"));
+            Assert.IsType<NullLogger>(_provider.CreateLogger("FunctionApp1.Mine"));
+            Assert.IsType<NullLogger>(_provider.CreateLogger("Host.General.Other"));
         }
 
         [Fact]

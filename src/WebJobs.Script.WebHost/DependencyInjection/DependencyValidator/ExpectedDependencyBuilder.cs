@@ -13,10 +13,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         private void AddNewMatch<T>(ServiceMatch match)
         {
-            if (!_serviceMatches.TryAdd(typeof(T), match))
+            AddNewMatch(typeof(T), match);
+        }
+
+        private void AddNewMatch(Type serviceType, ServiceMatch match)
+        {
+            if (!_serviceMatches.TryAdd(serviceType, match))
             {
-                throw new InvalidOperationException($"Type {typeof(T)} has already been registered as expected.");
+                throw new InvalidOperationException($"Type {serviceType} has already been registered as expected.");
             }
+        }
+
+        public void Expect(Type serviceType, Type implementationType, ServiceLifetime lifetime = ServiceLifetime.Singleton)
+        {
+            ServiceMatch match = ServiceMatch.CreateMatch(serviceType);
+            AddNewMatch(serviceType, match);
+            match.Add(implementationType, lifetime);
         }
 
         public void Expect<TService, TImplementation>(ServiceLifetime lifetime = ServiceLifetime.Singleton)

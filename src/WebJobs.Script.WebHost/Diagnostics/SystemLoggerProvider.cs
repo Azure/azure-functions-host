@@ -2,22 +2,23 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.WebJobs.Logging;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class SystemLoggerProvider : ILoggerProvider
+    public class SystemLoggerProvider : ILoggerProvider, ISupportExternalScope
     {
         private readonly string _hostInstanceId;
         private readonly IEventGenerator _eventGenerator;
         private readonly IEnvironment _environment;
         private readonly IDebugStateProvider _debugStateProvider;
         private readonly IScriptEventManager _eventManager;
+        private IExternalScopeProvider _scopeProvider;
+        private string[] _categoryPrefixes = new[] { "Host", "Function", "Worker" };
 
         public SystemLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider, IScriptEventManager eventManager)
             : this(scriptOptions.Value.InstanceId, eventGenerator, environment, debugStateProvider, eventManager)
@@ -35,17 +36,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public ILogger CreateLogger(string categoryName)
         {
-            if (IsUserLogCategory(categoryName))
+            // The SystemLogger is only for internal logs.
+            if (_categoryPrefixes.Any(p => categoryName.StartsWith(p)) && !SystemLogger.IsAllowedCategory(categoryName))
             {
-                // The SystemLogger is not used for user logs.
                 return NullLogger.Instance;
             }
-            return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment, _debugStateProvider, _eventManager);
+
+            return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment, _debugStateProvider, _eventManager, _scopeProvider);
         }
 
-        private bool IsUserLogCategory(string categoryName)
+        public void SetScopeProvider(IExternalScopeProvider scopeProvider)
         {
-            return LogCategories.IsFunctionUserCategory(categoryName) || categoryName.Equals(LanguageWorkerConstants.FunctionConsoleLogCategoryName, StringComparison.OrdinalIgnoreCase);
+            _scopeProvider = scopeProvider;
         }
 
         public void Dispose()

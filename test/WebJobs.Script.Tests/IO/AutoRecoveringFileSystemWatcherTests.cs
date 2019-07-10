@@ -146,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
                     Assert.Contains("File watcher recovered.", loggerProvider.GetAllLogMessages().Last().FormattedMessage);
                 }
 
-                Assert.Equal($"Host.{ScriptConstants.TraceSourceFileWatcher}", loggerProvider.GetAllLogMessages().Last().Category);
+                Assert.Equal($"{ScriptConstants.LogCategoryFileWatcher}", loggerProvider.GetAllLogMessages().Last().Category);
             }
         }
 

@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -13,22 +12,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
     public class TestLogger : ILogger
     {
+        private readonly IExternalScopeProvider _scopeProvider;
         private readonly object _syncLock = new object();
         private IList<LogMessage> _logMessages = new List<LogMessage>();
 
         public TestLogger(string category)
+            : this(category, new LoggerExternalScopeProvider())
+        {
+        }
+
+        public TestLogger(string category, IExternalScopeProvider scopeProvider)
         {
             Category = category;
+            _scopeProvider = scopeProvider;
         }
 
         public string Category { get; private set; }
 
         private string DebuggerDisplay => $"Category: {Category}, Count: {_logMessages.Count}";
 
-        public IDisposable BeginScope<TState>(TState state)
-        {
-            return DictionaryLoggerScope.Push(state);
-        }
+        public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
 
         public bool IsEnabled(LogLevel logLevel)
         {
@@ -58,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Level = logLevel,
                 EventId = eventId,
                 State = state as IEnumerable<KeyValuePair<string, object>>,
-                Scope = DictionaryLoggerScope.GetMergedStateDictionary(),
+                Scope = _scopeProvider.GetScopeDictionary(),
                 Exception = exception,
                 FormattedMessage = formatter(state, exception),
                 Category = Category,

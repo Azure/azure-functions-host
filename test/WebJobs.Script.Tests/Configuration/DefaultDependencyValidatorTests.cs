@@ -39,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 s.AddSingleton<IHostedService, MyHostedService>();
                 s.AddSingleton<IScriptEventManager, MyScriptEventManager>();
+                s.Add(new ServiceDescriptor(typeof(ILogger<>), typeof(Logger<>), ServiceLifetime.Singleton));
 
                 // Try removing system logger
                 var descriptor = s.Single(p => p.ImplementationType == typeof(SystemLoggerProvider));
@@ -48,10 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.NotNull(invalidServicesMessage);
 
             IEnumerable<string> messageLines = invalidServicesMessage.Exception.Message.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim());
-            Assert.Equal(4, messageLines.Count());
+            Assert.Equal(5, messageLines.Count());
             Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(nameof(MyHostedService)));
             Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(nameof(MyScriptEventManager)));
             Assert.Contains(messageLines, p => p.StartsWith("[Missing]") && p.EndsWith(nameof(SystemLoggerProvider)));
+            Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith($"{typeof(Logger<>).Name}[T]"));
         }
 
         [Fact]

@@ -110,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Logging and diagnostics
             services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
+            services.AddSingleton<ISystemAssemblyManager, SystemAssemblyManager>();
 
             // Secret management
             services.TryAddSingleton<ISecretManagerProvider, DefaultSecretManagerProvider>();

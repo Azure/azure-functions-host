@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.IO
             _handleFileError = new Action<ErrorEventArgs>(OnFileWatcherError).Debounce();
 
             loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
-            _logger = loggerFactory.CreateLogger("Host." + ScriptConstants.TraceSourceFileWatcher);
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryFileWatcher);
 
             InitializeWatcher();
         }

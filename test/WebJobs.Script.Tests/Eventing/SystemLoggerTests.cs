@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -21,6 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly string _category;
         private readonly string _functionName = "TestFunction";
         private readonly string _hostInstanceId;
+        private readonly IExternalScopeProvider _scopeProvider = new LoggerExternalScopeProvider();
+        private readonly IReadOnlyDictionary<string, object> _systemLogScope = ScriptLogger<object>.SystemLogScope;
         private readonly Mock<IDebugStateProvider> _debugStateProvider;
         private bool _inDiagnosticMode;
 
@@ -42,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _category = LogCategories.CreateFunctionCategory(_functionName);
             _debugStateProvider = new Mock<IDebugStateProvider>(MockBehavior.Strict);
             _debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
-            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, environment, _debugStateProvider.Object, null);
+            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, environment, _debugStateProvider.Object, null, _scopeProvider);
         }
 
         [Fact]
@@ -58,7 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _inDiagnosticMode = true;
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Trace, _subscriptionId, _websiteName, _functionName, eventName, _category, details, summary, string.Empty, string.Empty, functionInvocationId, _hostInstanceId, activityId));
-            _logger.LogTrace(summary);
+
+            using (_logger.BeginScope(_systemLogScope))
+            {
+                _logger.LogTrace(summary);
+            }
 
             _mockEventGenerator.VerifyAll();
         }
@@ -74,7 +80,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, _subscriptionId, _websiteName, _functionName, eventName, _category, details, summary, string.Empty, string.Empty, functionInvocationId, _hostInstanceId, activityId));
 
-            _logger.LogDebug(summary);
+            using (_logger.BeginScope(_systemLogScope))
+            {
+                _logger.LogDebug(summary);
+            }
 
             _mockEventGenerator.VerifyAll();
         }
@@ -99,9 +108,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 [ScriptConstants.LogPropertyActivityIdKey] = activityId
             };
 
-            using (_logger.BeginScope(scopeState))
+            using (_logger.BeginScope(_systemLogScope))
             {
-                _logger.Log(LogLevel.Debug, 0, logData, null, (state, ex) => message);
+                using (_logger.BeginScope(scopeState))
+                {
+                    _logger.Log(LogLevel.Debug, 0, logData, null, (state, ex) => message);
+                }
             }
 
             _mockEventGenerator.VerifyAll();
@@ -119,7 +131,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, ex.ToFormattedString(), message, ex.GetType().ToString(), ex.Message, functionInvocationId, _hostInstanceId, activityId));
 
-            _logger.LogError(ex, message);
+            using (_logger.BeginScope(_systemLogScope))
+            {
+                _logger.LogError(ex, message);
+            }
 
             _mockEventGenerator.VerifyAll();
         }
@@ -143,7 +158,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, sanitizedDetails, sanitizedString, ex.GetType().ToString(), sanitizedExceptionMessage, functionInvocationId, _hostInstanceId, activityId));
 
-            _logger.LogError(ex, secretString);
+            using (_logger.BeginScope(_systemLogScope))
+            {
+                _logger.LogError(ex, secretString);
+            }
 
             _mockEventGenerator.VerifyAll();
         }
@@ -152,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Log_Ignores_FunctionUserCategory()
         {
             // Create a logger with the Function.{FunctionName}.User category, which is what determines user logs.
-            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment(), _debugStateProvider.Object, null);
+            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment(), _debugStateProvider.Object, null, _scopeProvider);
             logger.LogDebug("TestMessage");
 
             // Make sure it's never been called.

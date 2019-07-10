@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -16,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public LanguageWorkerOptionsSetup(IConfiguration configuration, ILoggerFactory loggerFactory)
         {
             _configuration = configuration;
-            _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryLanguageWorkerConfig);
         }
 
         public void Configure(LanguageWorkerOptions options)

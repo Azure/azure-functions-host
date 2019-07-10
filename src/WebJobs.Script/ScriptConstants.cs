@@ -35,9 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string TraceSourceSecretManagement = "SecretManagement";
         public const string TraceSourceHostAdmin = "HostAdmin";
-        public const string TraceSourceFileWatcher = "FileWatcher";
         public const string TraceSourceHttpHandler = "HttpRequestTraceHandler";
-        public const string TraceSourceHttpThrottleMiddleware = "HttpThrottleMiddleware";
 
         public const string LoggerHttpRequest = "MS_HttpRequest";
 
@@ -47,9 +45,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategoryKeysController = "Host.Controllers.Keys";
         public const string LogCategoryHostGeneral = "Host.General";
         public const string LogCategoryHostMetrics = "Host.Metrics";
-        public const string LogCategoryHost = "Host";
-        public const string LogCategoryFunction = "Function";
-        public const string LogCategoryWorker = "Worker";
+        public const string LogCategoryFileWatcher = "Host.FileWatcher";
+        public const string LogCategoryLanguageWorkerConfig = "Host.LanguageWorkerConfig";
+        public const string LogCategoryHttpThrottleMiddleware = "Host.HttpThrottleMiddleware";
 
         public const string SkipHostJsonConfigurationKey = "MS_SkipHostJsonConfiguration";
         public const string SkipHostInitializationKey = "MS_SkipHostInitialization";

@@ -25,12 +25,6 @@ namespace Microsoft.Extensions.Logging
             builder.AddFilter((c, l) => Filter(c, l, LogLevel.Information));
         }
 
-        public static void AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level) where T : ILoggerProvider
-        {
-            builder.AddFilter<T>(null, LogLevel.None);
-            builder.AddFilter<T>((c, l) => Filter(c, l, LogLevel.Trace));
-        }
-
         private static bool Filter(string category, LogLevel actualLevel, LogLevel minLevel)
         {
             return actualLevel >= minLevel && AllowedCategoryPrefixes.Where(p => category.StartsWith(p)).Any();

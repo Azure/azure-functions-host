@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             _next = next;
             _performanceCheckInterval = performanceCheckInterval ?? TimeSpan.FromSeconds(15);
-            _logger = loggerFactory?.CreateLogger("Host." + ScriptConstants.TraceSourceHttpThrottleMiddleware);
+            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHttpThrottleMiddleware);
         }
 
         public async Task Invoke(HttpContext httpContext, IOptions<HttpOptions> httpOptions, HttpRequestQueue requestQueue, HostPerformanceManager performanceManager, IMetricsLogger metricsLogger)

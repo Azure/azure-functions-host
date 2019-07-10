@@ -43,6 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         /// <summary>
         /// Indicates that the expected service must be the last one registered for this ServiceType.
         /// </summary>
+        public static ServiceMatch CreateMatch(Type serviceType)
+        {
+            return new ServiceMatch(serviceType, MatchType.Single);
+        }
+
+        /// <summary>
+        /// Indicates that the expected service must be the last one registered for this ServiceType.
+        /// </summary>
         public static ServiceMatch CreateMatch<T>()
         {
             return new ServiceMatch(typeof(T), MatchType.Single);
@@ -62,6 +70,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         public static ServiceMatch CreateSubcollectionMatch<T>()
         {
             return new ServiceMatch(typeof(T), MatchType.Subcollection);
+        }
+
+        public void Add(Type implementationType, ServiceLifetime lifetime)
+        {
+            ServiceDescriptor desc = new ServiceDescriptor(ServiceType, implementationType, lifetime);
+            Add(desc);
         }
 
         public void Add<TImplementation>(ServiceLifetime lifetime)
@@ -147,6 +161,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 case MatchType.Single:
                     ServiceDescriptor expected = _requiredDescriptors.Single();
                     ServiceDescriptor lastMatch = registered.LastOrDefault();
+
+                    if (lastMatch == null)
+                    {
+                        return new[] { new InvalidServiceDescriptor(expected, InvalidServiceDescriptorReason.Missing) };
+                    }
 
                     if (!IsMatch(expected, lastMatch))
                     {

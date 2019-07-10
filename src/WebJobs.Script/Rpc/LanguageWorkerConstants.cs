@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
@@ -50,5 +50,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         // Capabilites
         public const string RawHttpBodyBytes = "RawHttpBodyBytes";
+
+        private static readonly Regex _workerCategoryRegex = new Regex(@"^Worker\.LanguageWorker(Channel|Process)\.[^\s\.]+\.[^\s\.]+$");
+
+        public static string CreateLanguageWorkerChannelLogCategory(string runtime, string workerId) => $"Worker.LanguageWorkerChannel.{runtime}.{workerId}";
+
+        public static string CreateLanguageWorkerProcessLogCategory(string runtime, string workerId) => $"Worker.LanguageWorkerProcess.{runtime}.{workerId}";
+
+        internal static bool IsLanguageWorkerLogCategory(string category) => _workerCategoryRegex.IsMatch(category);
     }
 }

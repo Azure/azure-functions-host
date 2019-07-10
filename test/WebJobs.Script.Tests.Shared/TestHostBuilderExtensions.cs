@@ -5,7 +5,6 @@ using System;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
-using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Tests;
@@ -48,6 +47,7 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<IFunctionDispatcher>(services);
             AddMockedSingleton<AspNetCore.Hosting.IApplicationLifetime>(services);
             AddMockedSingleton<IDependencyValidator>(services);
+            services.AddSingleton<ISystemAssemblyManager, SystemAssemblyManager>();
             services.AddSingleton<HostNameProvider>();
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
