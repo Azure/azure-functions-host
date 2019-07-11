@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.ServiceManagers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -121,6 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Core script host services
             services.AddSingleton<WebJobsScriptHostService>();
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
+            services.AddSingleton<IHostedService, HostedServiceManager>();
 
             // Configuration
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();

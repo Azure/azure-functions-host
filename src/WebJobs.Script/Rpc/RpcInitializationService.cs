@@ -4,31 +4,27 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
-using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.ServiceManagers;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public class RpcInitializationService : IHostedService, IDisposable
+    public class RpcInitializationService : IHostedService, IManagedHostedService
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IEnvironment _environment;
         private readonly IWebHostLanguageWorkerChannelManager _languageWorkerChannelManager;
         private readonly IRpcServer _rpcServer;
         private readonly ILogger _logger;
-        private readonly IScriptEventManager _eventManager;
-        private readonly IDisposable _subscription;
 
         private readonly string _workerRuntime;
         private readonly int _rpcServerShutdownTimeoutInMilliseconds;
-        private bool _disposed;
 
         private Dictionary<OSPlatform, List<string>> _hostingOSToWhitelistedRuntimes = new Dictionary<OSPlatform, List<string>>()
         {
@@ -48,18 +44,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             LanguageWorkerConstants.JavaLanguageWorkerName
         };
 
-        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, IScriptEventManager eventManager, ILogger<RpcInitializationService> logger)
+        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, ILogger<RpcInitializationService> logger)
         {
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _logger = logger;
             _rpcServer = rpcServer;
             _environment = environment;
-            _eventManager = eventManager;
             _rpcServerShutdownTimeoutInMilliseconds = 5000;
             _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-
-            _subscription = _eventManager.OfType<ScriptHostStateChangedEvent>().Where(a => a.OldState.Equals(ScriptHostState.Stopping) && a.NewState.Equals(ScriptHostState.Stopped)).Subscribe(ShutdownRpcServer);
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -79,6 +72,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger.LogDebug("Shuttingdown Rpc Channels Manager");
             _languageWorkerChannelManager.ShutdownChannels();
             return Task.CompletedTask;
+        }
+
+        public async Task StopServicesAsync(CancellationToken cancellationToken)
+        {
+            await ShutdownRpcServerAsync();
         }
 
         internal async Task InitializeRpcServerAsync()
@@ -105,20 +103,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return InitializeWebHostRuntimeChannelsAsync();
         }
 
-        private void ShutdownRpcServer(ScriptHostStateChangedEvent scriptHostShutdownEvent)
+        private async Task ShutdownRpcServerAsync()
         {
-            _logger.LogDebug($"Shutting down RPC server due to ScriptHostState change from {scriptHostShutdownEvent.OldState} to {scriptHostShutdownEvent.NewState}");
-
             Task shutDownRpcServer = _rpcServer.ShutdownAsync();
-            shutDownRpcServer.ContinueWith(t => { _logger.LogError($"Shutting down RPC server encountered an exception '{t.Exception?.InnerException}'"); }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
-            Task shutDownWithTimeout = Task.WhenAny(shutDownRpcServer, Task.Delay(_rpcServerShutdownTimeoutInMilliseconds)).Result;
+            _ = shutDownRpcServer.ContinueWith(t => { _logger.LogError($"Shutting down RPC server encountered an exception '{t.Exception?.InnerException}'"); }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+            Task shutDownWithTimeout = await Task.WhenAny(shutDownRpcServer, Task.Delay(_rpcServerShutdownTimeoutInMilliseconds));
 
             if (!shutDownWithTimeout.Equals(shutDownRpcServer) || shutDownRpcServer.IsFaulted)
             {
                 _logger.LogDebug($"Killing RPC server");
                 Task killRpcServer = _rpcServer.KillAsync();
-                killRpcServer.ContinueWith(t => { _logger.LogError($"Killing RPC server encountered an exception '{t.Exception?.InnerException}'"); }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
-                killRpcServer.Wait();
+                _ = killRpcServer.ContinueWith(t => { _logger.LogError($"Killing RPC server encountered an exception '{t.Exception?.InnerException}'"); }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+                await killRpcServer;
             }
         }
 
@@ -155,19 +151,5 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         // To help with unit tests
         internal void AddSupportedWebHostLevelRuntime(string language) => _webHostLevelWhitelistedRuntimes.Add(language);
-
-        private void Dispose(bool disposing)
-        {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-                    _subscription.Dispose();
-                }
-                _disposed = true;
-            }
-        }
-
-        public void Dispose() => Dispose(true);
     }
 }

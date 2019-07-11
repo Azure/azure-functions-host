@@ -10,7 +10,6 @@ using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IServiceProvider _rootServiceProvider;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
-        private readonly IScriptEventManager _eventManager;
         private readonly HostPerformanceManager _performanceManager;
         private readonly IOptions<HostHealthMonitorOptions> _healthMonitorOptions;
         private readonly SlidingWindow<bool> _healthCheckWindow;
@@ -36,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly SemaphoreSlim _hostRestartSemaphore = new SemaphoreSlim(1, 1);
 
         private IHost _host;
-        private ScriptHostState _state;
         private CancellationTokenSource _startupLoopTokenSource;
         private int _hostStartCount;
         private bool _disposed = false;
@@ -45,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory, IServiceProvider rootServiceProvider,
             IServiceScopeFactory rootScopeFactory, IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
-            HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions, IScriptEventManager eventManager)
+            HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions)
         {
             if (loggerFactory == null)
             {
@@ -63,7 +60,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _performanceManager = hostPerformanceManager ?? throw new ArgumentNullException(nameof(hostPerformanceManager));
             _healthMonitorOptions = healthMonitorOptions ?? throw new ArgumentNullException(nameof(healthMonitorOptions));
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
-            _eventManager = eventManager;
 
             State = ScriptHostState.Default;
 
@@ -87,24 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public IServiceProvider Services => _host?.Services;
 
-        public ScriptHostState State
-        {
-            get
-            {
-                return _state;
-            }
-
-            private set
-            {
-                ScriptHostState oldState = _state;
-                _state = value;
-                if (!oldState.Equals(value))
-                {
-                    _logger.ScriptHostStateChanged(oldState, value);
-                    _eventManager.Publish(new ScriptHostStateChangedEvent(oldState, value));
-                }
-            }
-        }
+        public ScriptHostState State { get; private set; }
 
         public Exception LastError { get; private set; }
 
