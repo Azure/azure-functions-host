@@ -110,10 +110,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             languageWorkerChannel.StartWorkerProcessAsync()
                  .ContinueWith(workerInitTask =>
                  {
-                     _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
-                     languageWorkerChannel.SendFunctionLoadRequests();
-                     State = FunctionDispatcherState.Initialized;
-                 }, TaskContinuationOptions.OnlyOnRanToCompletion);
+                     if (workerInitTask.IsCompleted)
+                     {
+                         _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
+                         languageWorkerChannel.SendFunctionLoadRequests();
+                         State = FunctionDispatcherState.Initialized;
+                     }
+                     else
+                     {
+                         _logger.LogWarning("Failed to start language worker process jobhost for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
+                     }
+                 });
             return Task.CompletedTask;
         }
 
@@ -226,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             IEnumerable<ILanguageWorkerChannel> webhostChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
             IEnumerable<ILanguageWorkerChannel> workerChannels = webhostChannels == null ? _jobHostLanguageWorkerChannelManager.GetChannels() : webhostChannels.Union(_jobHostLanguageWorkerChannelManager.GetChannels());
-            IEnumerable<ILanguageWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.State == LanguageWorkerChannelState.Initialized || ch.State == LanguageWorkerChannelState.Specialized);
+            IEnumerable<ILanguageWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.State == LanguageWorkerChannelState.Initialized);
             if (initializedWorkers.Count() > _maxProcessCount)
             {
                 throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {_maxProcessCount}");

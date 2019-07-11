@@ -142,17 +142,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res)
         {
             _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse");
-            if (_state == LanguageWorkerChannelState.Specialized)
-            {
-                _workerChannelLogger.LogError("LanguageWorkerChannel already specialized");
-                throw new InvalidOperationException("FunctionEnvironmentReloadResponse received more than once");
-            }
             if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
             {
                 _workerChannelLogger.LogError(reloadEnvironmentVariablesException, "Failed to reload environment variables");
                 _reloadTask.SetResult(false);
             }
-            _state = LanguageWorkerChannelState.Specialized;
             _reloadTask.SetResult(true);
         }
 
@@ -197,10 +191,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public Task SendFunctionEnvironmentReloadRequest()
         {
-            if (_state == LanguageWorkerChannelState.Specialized)
-            {
-                throw new InvalidOperationException("LanguageWorkerChannel already specialized");
-            }
             _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
             _eventSubscriptions
                 .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
