@@ -31,13 +31,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly string _rootPath;
         private string _copiedRootPath;
         private string _functionsWorkerRuntime;
+        private int _workerProcessCount;
 
-        protected EndToEndTestFixture(string rootPath, string testId, string functionsWorkerRuntime)
+        protected EndToEndTestFixture(string rootPath, string testId, string functionsWorkerRuntime, int workerProcessesCount = 1)
         {
             FixtureId = testId;
 
             _rootPath = rootPath;
             _functionsWorkerRuntime = functionsWorkerRuntime;
+            _workerProcessCount = workerProcessesCount;
+
         }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
@@ -91,6 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if (!string.IsNullOrEmpty(_functionsWorkerRuntime))
             {
                 Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime);
+                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName, _workerProcessCount.ToString());
             }
 
             FunctionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
@@ -214,6 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
             }
             Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
+            Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName, string.Empty);
             return Task.CompletedTask;
         }
 

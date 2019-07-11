@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _restart = _restart.Debounce(500);
 
             _shutdown = Shutdown;
-            _shutdown = _shutdown.Debounce(500);
+            _shutdown = _shutdown.Debounce(milliseconds: 500);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
