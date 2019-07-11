@@ -163,10 +163,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return NullHostedService.Instance;
             });
 
-            if (SystemEnvironment.Instance.IsLinuxContainerEnvironment())
+            services.AddSingleton<IMetricsPublisher>(s =>
             {
-                services.AddSingleton<IMetricsPublisher, LinuxContainerMetricsPublisher>();
-            }
+                var environment = s.GetService<IEnvironment>();
+                if (environment.IsLinuxContainerEnvironment())
+                {
+                    var logger = s.GetService<ILogger<LinuxContainerMetricsPublisher>>();
+                    var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
+                    var httpClient = s.GetService<HttpClient>();
+                    var hostNameProvider = s.GetService<HostNameProvider>();
+                    return new LinuxContainerMetricsPublisher(environment, standbyOptions, logger, httpClient, hostNameProvider);
+                }
+
+                return NullMetricsPublisher.Instance;
+            });
         }
     }
 }
