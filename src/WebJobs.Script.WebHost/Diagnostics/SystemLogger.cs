@@ -137,6 +137,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
+            IDictionary<string, object> scopeProps = _scopeProvider.GetScopeDictionary() ?? new Dictionary<string, object>();
+
+            // If the _functionName does not match the scope, skip it.
+            if (!string.IsNullOrEmpty(_functionName) &&
+                scopeProps.TryGetValue(ScopeKeys.FunctionName, out object functionNameFromScope) &&
+                string.Compare(functionNameFromScope?.ToString(), _functionName, ignoreCase: false) != 0)
+            {
+                return;
+            }
+
             string formattedMessage = formatter?.Invoke(state, exception);
 
             // If we don't have a message, there's nothing to log.
@@ -144,8 +154,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 return;
             }
-
-            IDictionary<string, object> scopeProps = _scopeProvider.GetScopeDictionary() ?? new Dictionary<string, object>();
 
             // Apply standard event properties
             // Note: we must be sure to default any null values to empty string

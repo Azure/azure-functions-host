@@ -192,5 +192,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Make sure it's never been called.
             _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), string.Empty, string.Empty, string.Empty, string.Empty, string.Empty), Times.Never);
         }
+
+        [Fact]
+        public void Log_Ignores_IfFunctionNameMismatch()
+        {
+            var logState = new Dictionary<string, object>
+            {
+                [ScopeKeys.FunctionName] = "TheRealFunction"
+            };
+
+            using (_logger.BeginScope(logState))
+            {
+                _logger.LogInformation("Ignore this.");
+            }
+
+            // Make sure it's never been called.
+            _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), string.Empty, string.Empty, string.Empty, string.Empty, string.Empty), Times.Never);
+        }
     }
 }

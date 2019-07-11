@@ -26,7 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 AssemblySearchPattern.ExactMatch("Microsoft.Azure.WebJobs.Script"),
                 AssemblySearchPattern.StartsWith("Microsoft.Azure.WebJobs", "31bf3856ad364e35"),
-                AssemblySearchPattern.StartsWith("Microsoft.Azure.Functions.Extensions", "f655f4c90a0eae19")
+                AssemblySearchPattern.StartsWith("Microsoft.Azure.Functions.Extensions", "f655f4c90a0eae19"),
+                AssemblySearchPattern.ExactMatch("Microsoft.Azure.WebJobs.Extensions.DurableTask", "014045d636e89289")
             };
         }
 

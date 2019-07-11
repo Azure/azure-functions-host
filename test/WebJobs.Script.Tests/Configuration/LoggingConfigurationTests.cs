@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             LoggerFilterOptions filterOptions = host.Services.GetService<IOptions<LoggerFilterOptions>>().Value;
 
-            Assert.Equal(6, filterOptions.Rules.Count);
+            Assert.Equal(5, filterOptions.Rules.Count);
 
             var rules = filterOptions.Rules.ToArray();
 
@@ -94,14 +94,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             rule = rules[4];
             Assert.Equal(typeof(SystemLoggerProvider).FullName, rule.ProviderName);
             Assert.Null(rule.CategoryName);
-            Assert.Equal(LogLevel.None, rule.LogLevel);
+            Assert.Equal(LogLevel.Trace, rule.LogLevel);
             Assert.Null(rule.Filter);
-
-            rule = rules[5];
-            Assert.Equal(typeof(SystemLoggerProvider).FullName, rule.ProviderName);
-            Assert.Null(rule.CategoryName);
-            Assert.Null(rule.LogLevel);
-            Assert.NotNull(rule.Filter); // The system-specific "allowed category" filter
         }
 
         [Fact]
@@ -116,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(LogLevel.None, filterOptions.MinLevel);
 
             var rules = filterOptions.Rules.ToArray();
-            Assert.Equal(3, rules.Length);
+            Assert.Equal(2, rules.Length);
 
             var rule = rules[0];
             Assert.Null(rule.ProviderName);
@@ -127,14 +121,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             rule = rules[1];
             Assert.Equal(typeof(SystemLoggerProvider).FullName, rule.ProviderName);
             Assert.Null(rule.CategoryName);
-            Assert.Equal(LogLevel.None, rule.LogLevel);
+            Assert.Equal(LogLevel.Trace, rule.LogLevel);
             Assert.Null(rule.Filter);
-
-            rule = rules[2];
-            Assert.Equal(typeof(SystemLoggerProvider).FullName, rule.ProviderName);
-            Assert.Null(rule.CategoryName);
-            Assert.Null(rule.LogLevel);
-            Assert.NotNull(rule.Filter); // The system-specific "allowed category" filter
         }
 
         [Fact]
