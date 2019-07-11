@@ -17,8 +17,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IWorkerProcessFactory _processFactory;
         private readonly IProcessRegistry _processRegistry;
         private readonly ILogger _workerProcessLogger;
-        private readonly ILanguageWorkerConsoleLogSource _consoleLogSource;
         private readonly IScriptEventManager _eventManager;
+        private readonly ILogger _consoleLogger;
 
         private Process _process;
         private string _runtime;
@@ -35,15 +35,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                                        IWorkerProcessFactory processFactory,
                                        IProcessRegistry processRegistry,
                                        ILogger workerProcessLogger,
-                                       ILanguageWorkerConsoleLogSource consoleLogSource)
+                                       ILoggerFactory loggerFactory)
         {
             _runtime = runtime;
             _workerId = workerId;
             _processFactory = processFactory;
             _processRegistry = processRegistry;
             _workerProcessLogger = workerProcessLogger;
-            _consoleLogSource = consoleLogSource;
             _eventManager = eventManager;
+            _consoleLogger = loggerFactory.CreateLogger(LanguageWorkerConstants.FunctionConsoleLogCategoryName);
 
             var workerContext = new WorkerContext()
             {
@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                     else
                     {
-                        _consoleLogSource?.Log(msg);
+                        _consoleLogger.LogInformation(msg);
                     }
                 }
                 else if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                     else
                     {
-                        _consoleLogSource?.Log(msg);
+                        _consoleLogger.LogInformation(msg);
                     }
                     _processStdErrDataQueue = LanguageWorkerChannelUtilities.AddStdErrMessage(_processStdErrDataQueue, Sanitizer.Sanitize(msg));
                 }
@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                     else
                     {
-                        _consoleLogSource?.Log(msg);
+                        _consoleLogger.LogInformation(msg);
                     }
                 }
             }
@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
                 else
                 {
-                    _consoleLogSource?.Log(msg);
+                    _consoleLogger.LogInformation(msg);
                 }
             }
         }

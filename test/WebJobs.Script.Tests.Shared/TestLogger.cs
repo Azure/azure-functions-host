@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -14,11 +13,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class TestLogger : ILogger
     {
         private readonly object _syncLock = new object();
+        private readonly IExternalScopeProvider _scopeProvider;
         private IList<LogMessage> _logMessages = new List<LogMessage>();
 
         public TestLogger(string category)
+            : this(category, new LoggerExternalScopeProvider())
+        {
+        }
+
+        public TestLogger(string category, IExternalScopeProvider scopeProvider)
         {
             Category = category;
+            _scopeProvider = scopeProvider;
         }
 
         public string Category { get; private set; }
@@ -27,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public IDisposable BeginScope<TState>(TState state)
         {
-            return DictionaryLoggerScope.Push(state);
+            return _scopeProvider.Push(state);
         }
 
         public bool IsEnabled(LogLevel logLevel)
@@ -53,12 +59,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
+            var scopes = _scopeProvider.GetScopeDictionary();
+
             LogMessage logMessage = new LogMessage
             {
                 Level = logLevel,
                 EventId = eventId,
                 State = state as IEnumerable<KeyValuePair<string, object>>,
-                Scope = DictionaryLoggerScope.GetMergedStateDictionary(),
+                Scope = scopes,
                 Exception = exception,
                 FormattedMessage = formatter(state, exception),
                 Category = Category,
@@ -92,7 +100,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public override string ToString()
         {
-            return $"[{Timestamp.ToString("HH:mm:ss.fff")}] [{Category}] {FormattedMessage}";
+            string s = $"[{Timestamp.ToString("HH:mm:ss.fff")}] [{Category}] {FormattedMessage}";
+
+            if (Exception != null)
+            {
+                s += " | " + Exception.Message;
+            }
+
+            return s;
         }
     }
 }

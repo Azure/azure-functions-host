@@ -34,6 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // must happen before the script host is added below
                     services.ConfigureOptions<HttpOptionsSetup>();
                     services.ConfigureOptions<HostHstsOptionsSetup>();
+
+                    // Add logging service early.
+                    services.AddSingleton<IHostedService, DeferredLoggerService>();
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, webJobsBuilder =>
                 {

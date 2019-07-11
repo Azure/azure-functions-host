@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             // validate executing trace
             var log = logs[0];
             Assert.Equal(typeof(SystemTraceMiddleware).FullName, log.Category);
-            Assert.Equal(LogLevel.Information, log.Level);
+            Assert.Equal(LogLevel.Debug, log.Level);
             var idx = log.FormattedMessage.IndexOf(':');
             var message = log.FormattedMessage.Substring(0, idx).Trim();
             Assert.Equal("Executing HTTP request", message);
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             // validate executed trace
             log = logs[1];
             Assert.Equal(typeof(SystemTraceMiddleware).FullName, log.Category);
-            Assert.Equal(LogLevel.Information, log.Level);
+            Assert.Equal(LogLevel.Debug, log.Level);
             idx = log.FormattedMessage.IndexOf(':');
             message = log.FormattedMessage.Substring(0, idx).Trim();
             Assert.Equal("Executed HTTP request", message);
