@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TraceSourceHttpThrottleMiddleware = "HttpThrottleMiddleware";
 
         public const string LoggerHttpRequest = "MS_HttpRequest";
+        public const string LoggerDeferredLog = "MS_DeferredLog";
 
         public const string LogCategoryHostController = "Host.Controllers.Host";
         public const string LogCategoryFunctionsController = "Host.Controllers.Functions";

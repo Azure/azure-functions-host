@@ -77,10 +77,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     }
                     c.AddTestSettings();
                 })
-                .ConfigureLogging(c =>
-                {
-                    c.AddProvider(_loggerProvider);
-                })
                 .ConfigureServices(c =>
                 {
                     c.ConfigureAll<ScriptApplicationHostOptions>(o =>
