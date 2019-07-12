@@ -32,7 +32,7 @@ namespace Microsoft.WebJobs.Script.Tests
         /// <returns>The log message.</returns>
         public string GetLog()
         {
-            return string.Join(Environment.NewLine, GetAllLogMessages().Select(p => p.FormattedMessage));
+            return string.Join(Environment.NewLine, GetAllLogMessages());
         }
 
         public void ClearAllLogMessages()

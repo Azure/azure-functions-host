@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
@@ -37,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _applicationHostOptions = applicationHostOptions;
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
-            _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(5000);
+            _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
         }
 
         public Task<ILanguageWorkerChannel> InitializeChannelAsync(string runtime)

@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -45,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Action _shutdownStandbyWorkerChannels;
         private IEnumerable<FunctionMetadata> _functions;
         private ConcurrentBag<Exception> _languageWorkerErrors = new ConcurrentBag<Exception>();
+        private CancellationTokenSource _processStartCancellationToken = new CancellationTokenSource();
 
         public FunctionDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -87,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Subscribe(AddOrUpdateWorkerChannels);
 
             _shutdownStandbyWorkerChannels = ShutdownWebhostLanguageWorkerChannels;
-            _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(5000);
+            _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
         }
 
         public FunctionDispatcherState State { get; private set; }
@@ -131,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             for (var count = startIndex; count < _maxProcessCount; count++)
             {
-                startAction = startAction.Debounce(count * _debounceSeconds * 1000);
+                startAction = startAction.Debounce(_processStartCancellationToken.Token, count * _debounceSeconds * 1000);
                 startAction();
             }
         }
@@ -280,6 +282,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 _workerErrorSubscription.Dispose();
                 _rpcChannelReadySubscriptions.Dispose();
+                _processStartCancellationToken.Cancel();
+                _processStartCancellationToken.Dispose();
                 _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannels();
                 _disposed = true;
             }

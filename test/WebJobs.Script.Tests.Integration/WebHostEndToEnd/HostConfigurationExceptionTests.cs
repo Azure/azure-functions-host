@@ -43,6 +43,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             Assert.Equal("Error", status.State);
             Assert.Equal("Microsoft.Azure.WebJobs.Script: The host.json file is missing the required 'version' property. See https://aka.ms/functions-hostjson for steps to migrate the configuration file.", status.Errors.Single());
 
+            // Due to https://github.com/Azure/azure-functions-host/issues/1351, slow this down to ensure
+            // we have a host running and watching for file changes.
+            await TestHelpers.Await(() =>
+            {
+                return _host.GetLog().Contains("[Microsoft.Extensions.Hosting.Internal.Host] Hosting started");
+            });
+
             // Now update the file and make sure it auto-restarts.
             hostConfig["version"] = "2.0";
             await File.WriteAllTextAsync(hostJsonPath, hostConfig.ToString());
@@ -51,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             {
                 status = await _host.GetHostStatusAsync();
                 return status.State == $"{ScriptHostState.Running}";
-            });
+            }, userMessageCallback: _host.GetLog);
 
             Assert.Null(status.Errors);
         }
@@ -63,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 _host.Dispose();
                 Directory.Delete(_hostPath, true);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }

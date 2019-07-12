@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var hostStatus = response.Content.ReadAsAsync<HostStatus>();
 
             // verify functions can be invoked
-            await InvokeAndValidateHttpTrigger(functionName);
+            await SamplesTestHelpers.InvokeAndValidateHttpTrigger(_fixture, functionName);
 
             // verify function status is ok
             response = await GetFunctionStatusAsync(functionName);
@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Null(functionStatus.Errors);
 
             // verify that when offline function requests return 503
-            response = await InvokeHttpTrigger(functionName);
+            response = await SamplesTestHelpers.InvokeHttpTrigger(_fixture, functionName);
             await VerifyOfflineResponse(response);
 
             // verify that the root returns 503 immediately when offline
@@ -331,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await _fixture.InitializeAsync();
 
             // verify functions can be invoked
-            await InvokeAndValidateHttpTrigger(functionName);
+            await SamplesTestHelpers.InvokeAndValidateHttpTrigger(_fixture, functionName);
 
             // verify the same thing via admin api
             response = await AdminInvokeFunction(functionName);
@@ -535,26 +535,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
-        private async Task InvokeAndValidateHttpTrigger(string functionName)
-        {
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync($"{functionName}");
-            string uri = $"api/{functionName}?code={functionKey}&name=Mathew";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string body = await response.Content.ReadAsStringAsync();
-            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("Hello, Mathew", body);
-
-            // verify request also succeeds with master key
-            string masterKey = await _fixture.Host.GetMasterKeyAsync();
-            uri = $"api/{functionName}?code={masterKey}&name=Mathew";
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        }
-
         // invoke a function via the admin invoke api
         private async Task<HttpResponseMessage> AdminInvokeFunction(string functionName, string input = null)
         {
@@ -567,16 +547,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             };
             request.Content = new StringContent(jo.ToString());
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            return await _fixture.Host.HttpClient.SendAsync(request);
-        }
-
-        private async Task<HttpResponseMessage> InvokeHttpTrigger(string functionName)
-        {
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync($"{functionName}");
-            string uri = $"api/{functionName}?code={functionKey}&name=Mathew";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-
             return await _fixture.Host.HttpClient.SendAsync(request);
         }
 
@@ -599,7 +569,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
                 string body = await response.Content.ReadAsStringAsync();
                 Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-                Assert.Equal("Hello, Mathew,Amy", body);
+                Assert.Equal("Hello Mathew,Amy", body);
             }
         }
 

@@ -30,7 +30,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class SpecializationE2ETests
     {
-        private static SemaphoreSlim _pause = new SemaphoreSlim(1, 1);
+        private static SemaphoreSlim _pauseBeforeHostBuild;
+        private static SemaphoreSlim _pauseAfterStandbyHostBuild;
+        private static SemaphoreSlim _buildCount;
+
+        private static readonly string _standbyPath = Path.Combine(Path.GetTempPath(), "functions", "standby", "wwwroot");
+        private const string _specializedScriptRoot = @"TestScripts\CSharp";
+
+        private readonly TestEnvironment _environment;
+        private readonly TestLoggerProvider _loggerProvider;
+
+        public SpecializationE2ETests()
+        {
+            StandbyManager.ResetChangeToken();
+
+            var settings = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
+                { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
+             };
+
+            _environment = new TestEnvironment(settings);
+            _loggerProvider = new TestLoggerProvider();
+
+            _pauseBeforeHostBuild = new SemaphoreSlim(1, 1);
+            _pauseAfterStandbyHostBuild = new SemaphoreSlim(1, 1);
+            _buildCount = new SemaphoreSlim(2, 2);
+        }
 
         [Fact]
         public async Task ApplicationInsights_InvocationsContainDifferentOperationIds()
@@ -39,44 +65,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // of that request. Application Insights uses this context to correlate telemetry
             // so it had a confusing effect. Previously all TimerTrigger traces would have the
             // operation id of this request and all host logs would as well.
-
-            // Start a host in standby mode.
-            StandbyManager.ResetChangeToken();
-
-            string standbyPath = Path.Combine(Path.GetTempPath(), "functions", "standby", "wwwroot");
-            string specializedScriptRoot = @"TestScripts\CSharp";
-            string scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
-
-            var settings = new Dictionary<string, string>()
-            {
-                { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
-                { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
-             };
-
-            var environment = new TestEnvironment(settings);
-            var loggerProvider = new TestLoggerProvider();
             var channel = new TestTelemetryChannel();
 
-            var builder = Program.CreateWebHostBuilder()
-                .ConfigureLogging(b =>
-                {
-                    b.AddProvider(loggerProvider);
-                })
-                .ConfigureAppConfiguration(c =>
-                {
-                    c.AddInMemoryCollection(new Dictionary<string, string>
-                    {
-                        { scriptRootConfigPath, specializedScriptRoot }
-                    });
-                })
-                .ConfigureServices((bc, s) =>
-                {
-                    s.AddSingleton<IEnvironment>(environment);
-
-                    // Ensure that we don't have a race between the timer and the 
-                    // request for triggering specialization.
-                    s.AddSingleton<IStandbyManager, InfiniteTimerStandbyManager>();
-                })
+            var builder = CreateStandbyHostBuilder("OneSecondTimer", "FunctionExecutionContext")
                 .AddScriptHostBuilder(webJobsBuilder =>
                 {
                     webJobsBuilder.Services.AddSingleton<ITelemetryChannel>(_ => channel);
@@ -89,19 +80,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     webJobsBuilder.Services.PostConfigure<ApplicationInsightsLoggerOptions>(o =>
                     {
                         o.SamplingSettings = null;
-                    });
-
-                    webJobsBuilder.Services.PostConfigure<ScriptJobHostOptions>(o =>
-                    {
-                        // Only load the function we care about, but not during standby
-                        if (o.RootScriptPath != standbyPath)
-                        {
-                            o.Functions = new[]
-                            {
-                                "OneSecondTimer",
-                                "FunctionExecutionContext"
-                            };
-                        }
                     });
                 })
                 .ConfigureScriptHostAppConfiguration(c =>
@@ -117,15 +95,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var client = testServer.CreateClient();
 
                 HttpResponseMessage response = await client.GetAsync("api/warmup");
-                Assert.True(response.IsSuccessStatusCode, loggerProvider.GetLog());
+                Assert.True(response.IsSuccessStatusCode, _loggerProvider.GetLog());
 
                 // Now that standby mode is warmed up, set the specialization properties...
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
                 // ...and issue a request which will force specialization.
                 response = await client.GetAsync("api/functionexecutioncontext");
-                Assert.True(response.IsSuccessStatusCode, loggerProvider.GetLog());
+                Assert.True(response.IsSuccessStatusCode, _loggerProvider.GetLog());
 
                 // Wait until we have a few logs from the timer trigger.
                 IEnumerable<TraceTelemetry> timerLogs = null;
@@ -166,37 +144,102 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_ThreadUtilization()
         {
-            // Start a host in standby mode.
-            StandbyManager.ResetChangeToken();
+            var builder = CreateStandbyHostBuilder("FunctionExecutionContext");
 
-            string standbyPath = Path.Combine(Path.GetTempPath(), "functions", "standby", "wwwroot");
-            string specializedScriptRoot = @"TestScripts\CSharp";
-            string scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
-
-            var settings = new Dictionary<string, string>()
+            using (var testServer = new TestServer(builder))
             {
-                { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
-                { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
-             };
+                var client = testServer.CreateClient();
 
-            var environment = new TestEnvironment(settings);
-            var loggerProvider = new TestLoggerProvider();
+                var response = await client.GetAsync("api/warmup");
+                response.EnsureSuccessStatusCode();
+
+                List<Task<HttpResponseMessage>> requestTasks = new List<Task<HttpResponseMessage>>();
+
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+                await _pauseBeforeHostBuild.WaitAsync();
+
+                ThreadPool.GetAvailableThreads(out int originalWorkerThreads, out int originalcompletionThreads);
+
+                for (int i = 0; i < 100; i++)
+                {
+                    requestTasks.Add(client.GetAsync("api/functionexecutioncontext"));
+                }
+
+                Thread.Sleep(5000);
+                ThreadPool.GetAvailableThreads(out int workerThreads, out int completionThreads);
+
+                _pauseBeforeHostBuild.Release();
+
+                // Before the fix, when we issued the 100 requests, they would all enter the ThreadPool queue and
+                // a new thread would be taken from the thread pool every 500ms, resulting in thread starvation.
+                // After the fix, we should only be losing one.
+                int precision = 1;
+                Assert.True(workerThreads >= originalWorkerThreads - precision, $"Available ThreadPool threads should not have decreased by more than {precision}. Actual: {workerThreads}. Original: {originalWorkerThreads}.");
+
+                await Task.WhenAll(requestTasks);
+
+                void ValidateStatusCode(HttpStatusCode statusCode) => Assert.Equal(HttpStatusCode.OK, statusCode);
+                var validateStatusCodes = Enumerable.Repeat<Action<HttpStatusCode>>(ValidateStatusCode, 100).ToArray();
+                var actualStatusCodes = requestTasks.Select(t => t.Result.StatusCode);
+                Assert.Collection(actualStatusCodes, validateStatusCodes);
+            }
+        }
+
+        [Fact]
+        public async Task StartAsync_SetsCorrectActiveHost()
+        {
+            var builder = CreateStandbyHostBuilder();
+
+            await _pauseAfterStandbyHostBuild.WaitAsync();
+
+            // We want it to start first, but finish last, so unstick it in a couple seconds.
+            Task ignore = Task.Delay(3000).ContinueWith(_ => _pauseAfterStandbyHostBuild.Release());
+
+            IWebHost host = builder.Build();
+            var manager = host.Services.GetService<WebJobsScriptHostService>();
+
+            // TestServer will block in the constructor so pull out the StandbyManager and use it
+            // directly for this test.
+            var standbyManager = host.Services.GetService<IStandbyManager>();
+
+            var standbyStart = Task.Run(async () => await manager.StartAsync(CancellationToken.None));
+
+            // Wait until we've completed the build once. The standby host is built and now waiting for
+            // _pauseAfterHostBuild to release it.
+            await TestHelpers.Await(() => _buildCount.CurrentCount == 1);
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            var specializeTask = Task.Run(async () => await standbyManager.SpecializeHostAsync());
+
+            await Task.WhenAll(standbyStart, specializeTask);
+
+            var options = manager.Services.GetService<IOptions<ScriptJobHostOptions>>();
+            Assert.Equal(_specializedScriptRoot, options.Value.RootScriptPath);
+        }
+
+        private IWebHostBuilder CreateStandbyHostBuilder(params string[] functions)
+        {
+            string scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
 
             var builder = Program.CreateWebHostBuilder()
                 .ConfigureLogging(b =>
                 {
-                    b.AddProvider(loggerProvider);
+                    b.AddProvider(_loggerProvider);
                 })
                 .ConfigureAppConfiguration(c =>
                 {
                     c.AddInMemoryCollection(new Dictionary<string, string>
                     {
-                        { scriptRootConfigPath, specializedScriptRoot }
+                        { scriptRootConfigPath, _specializedScriptRoot }
                     });
                 })
                 .ConfigureServices((bc, s) =>
                 {
-                    s.AddSingleton<IEnvironment>(environment);
+                    s.AddSingleton<IEnvironment>(_environment);
 
                     // Ensure that we don't have a race between the timer and the 
                     // request for triggering specialization.
@@ -209,47 +252,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     webJobsBuilder.Services.PostConfigure<ScriptJobHostOptions>(o =>
                     {
                         // Only load the function we care about, but not during standby
-                        if (o.RootScriptPath != standbyPath)
+                        if (o.RootScriptPath != _standbyPath)
                         {
-                            o.Functions = new[]
-                            {
-                                "FunctionExecutionContext"
-                            };
+                            o.Functions = functions;
                         }
                     });
                 });
 
-            using (var testServer = new TestServer(builder))
-            {
-                var client = testServer.CreateClient();
-
-                var response = await client.GetAsync("api/warmup");
-                response.EnsureSuccessStatusCode();
-
-                await _pause.WaitAsync();
-
-                List<Task<HttpResponseMessage>> requestTasks = new List<Task<HttpResponseMessage>>();
-
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-
-                for (int i = 0; i < 100; i++)
-                {
-                    requestTasks.Add(client.GetAsync("api/functionexecutioncontext"));
-                }
-
-                ThreadPool.GetAvailableThreads(out int originalWorkerThreads, out int originalcompletionThreads);
-                Thread.Sleep(5000);
-                ThreadPool.GetAvailableThreads(out int workerThreads, out int completionThreads);
-
-                _pause.Release();
-
-                Assert.True(workerThreads >= originalWorkerThreads, $"Available ThreadPool threads should not have decreased. Actual: {workerThreads}. Original: {originalWorkerThreads}.");
-
-                await Task.WhenAll(requestTasks);
-
-                Assert.True(requestTasks.All(t => t.Result.StatusCode == HttpStatusCode.OK));
-            }
+            return builder;
         }
 
         private class InfiniteTimerStandbyManager : StandbyManager
@@ -266,19 +276,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private class PausingScriptHostBuilder : IScriptHostBuilder
         {
             private readonly DefaultScriptHostBuilder _inner;
+            private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
 
             public PausingScriptHostBuilder(IOptionsMonitor<ScriptApplicationHostOptions> options, IServiceProvider root, IServiceScopeFactory scope)
             {
                 _inner = new DefaultScriptHostBuilder(options, root, scope);
+                _options = options;
             }
 
             public IHost BuildHost(bool skipHostStartup, bool skipHostConfigurationParsing)
             {
-                _pause.WaitAsync().GetAwaiter().GetResult();
+                bool isStandby = _options.CurrentValue.ScriptPath == _standbyPath;
+
+                _pauseBeforeHostBuild.WaitAsync().GetAwaiter().GetResult();
+                _pauseBeforeHostBuild.Release();
 
                 IHost host = _inner.BuildHost(skipHostStartup, skipHostConfigurationParsing);
 
-                _pause.Release();
+                _buildCount.Wait();
+
+                if (isStandby)
+                {
+                    _pauseAfterStandbyHostBuild.WaitAsync().GetAwaiter().GetResult();
+                    _pauseAfterStandbyHostBuild.Release();
+                }
+
+                _buildCount.Release();
 
                 return host;
             }

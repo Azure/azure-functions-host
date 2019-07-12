@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class ActionExtensions
     {
-        public static Action<T> Debounce<T>(this Action<T> func, int milliseconds = 300)
+        public static Action<T> Debounce<T>(this Action<T> func, CancellationToken cancellationToken = default, int milliseconds = 300)
         {
             var last = 0;
 
@@ -24,17 +24,20 @@ namespace Microsoft.Azure.WebJobs.Script
                         // Only proceeed with the operation if there have been no
                         // more events within the specified time window (i.e. there
                         // is a quiet period)
-                        func(arg);
+                        if (!cancellationToken.IsCancellationRequested)
+                        {
+                            func(arg);
+                        }
                     }
                     t.Dispose();
                 });
             };
         }
 
-        public static Action Debounce(this Action targetAction, int milliseconds = 300)
+        public static Action Debounce(this Action targetAction, CancellationToken cancellationToken = default, int milliseconds = 300)
         {
             Action<object> action = _ => targetAction();
-            action = action.Debounce(milliseconds);
+            action = action.Debounce(cancellationToken, milliseconds);
 
             return () => action(null);
         }
