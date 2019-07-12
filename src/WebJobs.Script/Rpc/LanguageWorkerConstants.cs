@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         // Profiles
         public const string WorkerDescriptionProfiles = "profiles";
+        public const string WorkerDescriptionAppServiceEnvProfileName = "appServiceEnvironment";
 
         public const int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
 
