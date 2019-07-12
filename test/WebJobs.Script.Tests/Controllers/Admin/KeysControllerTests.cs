@@ -64,7 +64,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _functionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
             _functionsSyncManagerMock.Setup(p => p.TrySyncTriggersAsync(false)).ReturnsAsync(new SyncTriggersResult { Success = true });
-            _testController = new KeysController(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new TestSecretManagerProvider(_secretsManagerMock.Object), new LoggerFactory(), fileSystem.Object, _functionsSyncManagerMock.Object);
+            var hostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            hostManagerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
+            _testController = new KeysController(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new TestSecretManagerProvider(_secretsManagerMock.Object), new LoggerFactory(), fileSystem.Object, _functionsSyncManagerMock.Object, hostManagerMock.Object);
 
             var keys = new Dictionary<string, string>
             {
