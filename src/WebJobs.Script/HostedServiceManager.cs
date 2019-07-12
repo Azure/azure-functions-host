@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
@@ -11,11 +10,11 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal class HostedServiceManager : IHostedService
     {
-        private readonly IEnumerable<IHostedService> _hostedServices;
+        private readonly IEnumerable<IManagedHostedService> _managedHostedServices;
 
-        public HostedServiceManager(IEnumerable<IHostedService> hostedServices)
+        public HostedServiceManager(IEnumerable<IManagedHostedService> managedHostedServices)
         {
-            _hostedServices = hostedServices;
+            _managedHostedServices = managedHostedServices;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -25,12 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            foreach (IHostedService hostedService in _hostedServices.Reverse())
+            foreach (IManagedHostedService managedHostedService in _managedHostedServices)
             {
-                if (hostedService is IManagedHostedService managedHostedService)
-                {
-                    await managedHostedService.StopServicesAsync(cancellationToken);
-                }
+                await managedHostedService.StopAsync(cancellationToken);
             }
         }
     }

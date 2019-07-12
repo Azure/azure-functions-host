@@ -3,14 +3,15 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    /**
-     * Handles shutdown of services that need to happen after StopAsync() of all services of type IHostedService are complete.
-     */
-    public interface IManagedHostedService
+    /// <summary>
+    /// Handles stopping of services that need to happen after StopAsync() of all IHostedService are complete.
+    /// </summary>
+    public interface IManagedHostedService : IHostedService
     {
-        Task StopServicesAsync(CancellationToken cancellationToken);
+        new Task StopAsync(CancellationToken cancellationToken);
     }
 }

@@ -14,7 +14,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public class RpcInitializationService : IHostedService, IManagedHostedService
+    public class RpcInitializationService : IManagedHostedService
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IEnvironment _environment;
@@ -66,16 +66,36 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger.LogDebug("Rpc Initialization Service started.");
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        Task IHostedService.StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogDebug("Shuttingdown Rpc Channels Manager");
             _webHostlanguageWorkerChannelManager.ShutdownChannels();
             return Task.CompletedTask;
         }
 
-        public async Task StopServicesAsync(CancellationToken cancellationToken)
+        async Task IManagedHostedService.StopAsync(CancellationToken cancellationToken)
         {
-            await ShutdownRpcServerAsync();
+            _logger.LogDebug($"Shutting down RPC server");
+
+            try
+            {
+                Task shutDownRpcServer = _rpcServer.ShutdownAsync();
+                Task shutdownResult = await Task.WhenAny(shutDownRpcServer, Task.Delay(_rpcServerShutdownTimeoutInMilliseconds));
+
+                if (!shutdownResult.Equals(shutDownRpcServer) || shutDownRpcServer.IsFaulted)
+                {
+                    _logger.LogDebug($"Killing RPC server");
+                    await _rpcServer.KillAsync();
+                }
+            }
+            catch (AggregateException ae)
+            {
+                ae.Handle(e =>
+                {
+                    _logger.LogError($"Shutting down RPC server encountered EXCEPTION:'{e}' INNEREXCEPTION:'{e.InnerException}'");
+                    return true;
+                });
+            }
         }
 
         internal async Task InitializeRpcServerAsync()
@@ -100,36 +120,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
 
             return InitializeWebHostRuntimeChannelsAsync();
-        }
-
-        private async Task ShutdownRpcServerAsync()
-        {
-            _logger.LogDebug($"Shutting down RPC server");
-
-            Task shutDownRpcServer = _rpcServer.ShutdownAsync();
-            Task shutDownRpcServerWithContinuation = shutDownRpcServer
-                                                        .ContinueWith(t => HandleFaultedShutdownOrKillOfRpcServer(t, "Shutting down"), TaskContinuationOptions.ExecuteSynchronously);
-
-            Task shutDownWithTimeout = await Task.WhenAny(shutDownRpcServerWithContinuation, Task.Delay(_rpcServerShutdownTimeoutInMilliseconds));
-
-            if (!shutDownWithTimeout.Equals(shutDownRpcServerWithContinuation) || shutDownRpcServer.IsFaulted)
-            {
-                _logger.LogDebug($"Killing RPC server");
-                await _rpcServer.KillAsync()
-                          .ContinueWith(t => HandleFaultedShutdownOrKillOfRpcServer(t, "Killing"), TaskContinuationOptions.ExecuteSynchronously);
-            }
-        }
-
-        private void HandleFaultedShutdownOrKillOfRpcServer(Task t, string operation)
-        {
-            if (t.IsFaulted)
-            {
-                t.Exception.Handle(e =>
-                {
-                    _logger.LogError($"{operation} RPC server encountered EXCEPTION:'{e}' INNEREXCEPTION:'{e.InnerException}'");
-                    return true;
-                });
-            }
         }
 
         private Task InitializePlaceholderChannelsAsync()

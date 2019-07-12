@@ -14,15 +14,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServiceManagers
 {
     public class HostedServiceManagerTests
     {
-        private readonly IEnumerable<IHostedService> hostedServices;
+        private readonly IEnumerable<IManagedHostedService> managedHostedServices;
         private readonly IHostedService hostedServiceManager;
         private readonly Mock<IRpcServer> mockRpcServer;
 
         public HostedServiceManagerTests()
         {
             mockRpcServer = new Mock<IRpcServer>();
-            hostedServices = new List<IHostedService> { new RandomHostedService(mockRpcServer.Object) };
-            hostedServiceManager = new HostedServiceManager(hostedServices);
+            managedHostedServices = new List<IManagedHostedService> { new RandomHostedService(mockRpcServer.Object) };
+            hostedServiceManager = new HostedServiceManager(managedHostedServices);
         }
 
         [Fact]
