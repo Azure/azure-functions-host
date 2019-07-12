@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IEnvironment _environment;
-        private readonly IWebHostLanguageWorkerChannelManager _languageWorkerChannelManager;
+        private readonly IWebHostLanguageWorkerChannelManager _webHostlanguageWorkerChannelManager;
         private readonly IRpcServer _rpcServer;
         private readonly ILogger _logger;
 
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _rpcServer = rpcServer;
             _environment = environment;
             _rpcServerShutdownTimeoutInMilliseconds = 5000;
-            _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
+            _webHostlanguageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
         }
 
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogDebug("Shuttingdown Rpc Channels Manager");
-            _languageWorkerChannelManager.ShutdownChannels();
+            _webHostlanguageWorkerChannelManager.ShutdownChannels();
             return Task.CompletedTask;
         }
 
@@ -145,14 +145,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Task InitializePlaceholderChannelsAsync(OSPlatform os)
         {
             return Task.WhenAll(_hostingOSToWhitelistedRuntimes[os].Select(runtime =>
-                _languageWorkerChannelManager.InitializeChannelAsync(runtime)));
+                _webHostlanguageWorkerChannelManager.InitializeChannelAsync(runtime)));
         }
 
         private Task InitializeWebHostRuntimeChannelsAsync()
         {
             if (_webHostLevelWhitelistedRuntimes.Contains(_workerRuntime))
             {
-                return _languageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
+                return _webHostlanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             }
 
             return Task.CompletedTask;
