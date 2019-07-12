@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
-        public Process StartProcess()
+        public void StartProcess()
         {
             try
             {
@@ -84,8 +84,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 throw new HostInitializationException($"Failed to start Language Worker Channel for language :{_runtime}", ex);
             }
-
-            return _process;
         }
 
         private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
