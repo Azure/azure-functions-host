@@ -9,6 +9,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public interface ILanguageWorkerChannelFactory
     {
-        ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false, IOptions<ManagedDependencyOptions> managedDependencyOptions = null);
+        ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, IOptions<ManagedDependencyOptions> managedDependencyOptions = null);
     }
 }

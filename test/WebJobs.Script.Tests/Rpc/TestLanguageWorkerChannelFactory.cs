@@ -27,9 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _scriptRootPath = scriptRootPath;
         }
 
-        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, bool isWebhostChannel = false, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
+        public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
-            return new TestLanguageWorkerChannel(Guid.NewGuid().ToString(), language, _eventManager, _testLogger, isWebhostChannel);
+            return new TestLanguageWorkerChannel(Guid.NewGuid().ToString(), language, _eventManager, _testLogger);
         }
     }
 }
