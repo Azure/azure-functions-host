@@ -8,7 +8,6 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
-using Microsoft.Azure.WebJobs.Script.ServiceManagers;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -105,16 +104,31 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private async Task ShutdownRpcServerAsync()
         {
-            Task shutDownRpcServer = _rpcServer.ShutdownAsync();
-            _ = shutDownRpcServer.ContinueWith(t => { _logger.LogError($"Shutting down RPC server encountered an exception '{t.Exception?.InnerException}'"); }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
-            Task shutDownWithTimeout = await Task.WhenAny(shutDownRpcServer, Task.Delay(_rpcServerShutdownTimeoutInMilliseconds));
+            _logger.LogDebug($"Shutting down RPC server");
 
-            if (!shutDownWithTimeout.Equals(shutDownRpcServer) || shutDownRpcServer.IsFaulted)
+            Task shutDownRpcServer = _rpcServer.ShutdownAsync();
+            Task shutDownRpcServerWithContinuation = shutDownRpcServer
+                                                        .ContinueWith(t => HandleFaultedShutdownOrKillOfRpcServer(t, "Shutting down"), TaskContinuationOptions.ExecuteSynchronously);
+
+            Task shutDownWithTimeout = await Task.WhenAny(shutDownRpcServerWithContinuation, Task.Delay(_rpcServerShutdownTimeoutInMilliseconds));
+
+            if (!shutDownWithTimeout.Equals(shutDownRpcServerWithContinuation) || shutDownRpcServer.IsFaulted)
             {
                 _logger.LogDebug($"Killing RPC server");
-                Task killRpcServer = _rpcServer.KillAsync();
-                _ = killRpcServer.ContinueWith(t => { _logger.LogError($"Killing RPC server encountered an exception '{t.Exception?.InnerException}'"); }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
-                await killRpcServer;
+                await _rpcServer.KillAsync()
+                          .ContinueWith(t => HandleFaultedShutdownOrKillOfRpcServer(t, "Killing"), TaskContinuationOptions.ExecuteSynchronously);
+            }
+        }
+
+        private void HandleFaultedShutdownOrKillOfRpcServer(Task t, string operation)
+        {
+            if (t.IsFaulted)
+            {
+                t.Exception.Handle(e =>
+                {
+                    _logger.LogError($"{operation} RPC server encountered EXCEPTION:'{e}' INNEREXCEPTION:'{e.InnerException}'");
+                    return true;
+                });
             }
         }
 
