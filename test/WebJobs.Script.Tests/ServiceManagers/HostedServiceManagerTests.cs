@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServiceManagers
     }
 }
 
-internal class RandomHostedService : IHostedService, IManagedHostedService
+internal class RandomHostedService : IManagedHostedService
 {
     private readonly IRpcServer rpcServer;
 
@@ -54,7 +54,7 @@ internal class RandomHostedService : IHostedService, IManagedHostedService
         return Task.CompletedTask;
     }
 
-    public async Task StopServicesAsync(CancellationToken cancellationToken)
+    async Task IManagedHostedService.StopAsync(CancellationToken cancellationToken)
     {
         await rpcServer.ShutdownAsync();
     }
