@@ -192,6 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (scriptHost != null)
                 {
                     scriptHost.HostInitializing += OnHostInitializing;
+                    scriptHost.HostInitialized += OnHostInitialized;
                 }
 
                 LogInitialization(localHost, isOffline, attemptCount, ++_hostStartCount);
@@ -391,6 +392,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IsHostHealthy(throwWhenUnhealthy: true);
         }
 
+        /// <summary>
+        /// Called after the host has been fully initialized, but before it
+        /// has been started.
+        /// </summary>
+        private void OnHostInitialized(object sender, EventArgs e)
+        {
+            State = ScriptHostState.Initialized;
+        }
+
         private IHost BuildHost(bool skipHostStartup, bool skipHostJsonConfiguration)
         {
             _logger.Building(skipHostStartup.ToString(), skipHostJsonConfiguration.ToString());
@@ -517,6 +527,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (scriptHost != null)
                 {
                     scriptHost.HostInitializing -= OnHostInitializing;
+                    scriptHost.HostInitialized -= OnHostInitialized;
                 }
             }
             catch (ObjectDisposedException)

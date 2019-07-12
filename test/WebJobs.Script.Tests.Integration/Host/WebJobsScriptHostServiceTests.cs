@@ -6,15 +6,21 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
@@ -52,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 
             var mockEnvironment = new Mock<IEnvironment>();
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns("testapp");
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns("testapp");
 
             var mockHostPerformanceManager = new Mock<HostPerformanceManager>(mockEnvironment.Object, wrappedHealthMonitorOptions);
 
@@ -81,9 +88,63 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                         b.UseHostId("1234");
                         b.Services.Configure<ScriptJobHostOptions>(o => o.Functions = new[] { "ManualTrigger", "Scenarios" });
                     }));
+                },
+                configureScriptHostWebJobsBuilder: builder =>
+                {
+                    builder.AddExtension<TestWebHookExtension>();
                 });
 
             _scriptHostService = _testHost.JobHostServices.GetService<IScriptHostManager>() as WebJobsScriptHostService;
+        }
+
+        [Fact]
+        public async Task GetHostKeys_DelaysUntilHostInitialized()
+        {
+            TestWebHookExtension.Initializing = false;
+            TestWebHookExtension.Delay = 2000;
+
+            try
+            {
+                // reset secrets to ensure the extension secret is not yet added
+                var testSecretManager = (TestSecretManager)_testHost.JobHostServices.GetService<ISecretManagerProvider>().Current;
+                testSecretManager.Reset();
+
+                // initiate a restart and a keys request concurrently
+                var keysRequest = new HttpRequestMessage(HttpMethod.Get, "http://localhost/admin/host/systemkeys");
+                keysRequest.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, TestSecretManager.TestMasterKey);
+                JObject keysContent = null;
+                var keysTask = Task.Run(async () =>
+                {
+                    // wait until the test extension has begun initialization - this way we know
+                    // host initialization is in progress
+                    await TestHelpers.Await(() =>
+                    {
+                        return !TestWebHookExtension.Initializing;
+                    });
+
+                    // make the keys request while during initialization BEFORE the extension
+                    // has had a chance to create the extension system key
+                    var response = await _testHost.HttpClient.SendAsync(keysRequest);
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    keysContent = await response.Content.ReadAsAsync<JObject>();
+                });
+
+                var restartTask = _testHost.RestartAsync(CancellationToken.None);
+
+                await Task.WhenAll(restartTask, keysTask);
+
+                // verify the extension system key is present
+                JArray keys = (JArray)keysContent["keys"];
+                var extensionKey = (JObject)keys.Cast<JObject>().SingleOrDefault(p => (string)p["name"] == "testwebhook_extension");
+                Assert.NotNull(extensionKey);
+                string extensionKeyValue = (string)extensionKey["value"];
+                Assert.False(string.IsNullOrEmpty(extensionKeyValue));
+            }
+            finally
+            {
+                TestWebHookExtension.Initializing = false;
+                TestWebHookExtension.Delay = 0;
+            }
         }
 
         [Fact]
@@ -214,6 +275,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 
             _healthMonitorOptions.Enabled = false;
             Assert.True(_scriptHostService.IsHostHealthy());
+        }
+
+        [Extension("TestWebHook", "TestWebHook")]
+        private class TestWebHookExtension : IExtensionConfigProvider, IAsyncConverter<HttpRequestMessage, HttpResponseMessage>
+        {
+            public static bool Initializing;
+            public static int Delay = 0;
+
+            public Task<HttpResponseMessage> ConvertAsync(HttpRequestMessage input, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void Initialize(ExtensionConfigContext context)
+            {
+                Initializing = true;
+
+                Task.Delay(Delay).GetAwaiter().GetResult();
+
+                Uri url = context.GetWebhookHandler();
+            }
         }
     }
 }

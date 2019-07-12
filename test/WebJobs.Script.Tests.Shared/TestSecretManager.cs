@@ -12,6 +12,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class TestSecretManager : ISecretManager
     {
+        internal const string TestMasterKey = "1234";
+        private Dictionary<string, string> _hostSystemKeys;
+        private Dictionary<string, string> _hostFunctionKeys;
+
+        public TestSecretManager()
+        {
+            Reset();
+        }
+
         public virtual Task PurgeOldSecretsAsync(string rootScriptPath, ILogger logger)
         {
             throw new NotImplementedException();
@@ -35,23 +44,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             return Task.FromResult(new HostSecretsInfo
             {
-                MasterKey = "1234",
-                FunctionKeys = new Dictionary<string, string>
-                {
-                    { "HostKey1", "HostValue1" },
-                    { "HostKey2", "HostValue2" },
-                },
-                SystemKeys = new Dictionary<string, string>
-                {
-                    { "SystemKey1", "SystemValue1" },
-                    { "SystemKey2", "SystemValue2" },
-                    { "Test_Extension", "SystemValue3" },
-                }
+                MasterKey = TestMasterKey,
+                FunctionKeys = _hostFunctionKeys,
+                SystemKeys = _hostSystemKeys
             });
         }
 
         public virtual Task<KeyOperationResult> AddOrUpdateFunctionSecretAsync(string secretName, string secret, string keyScope, ScriptSecretsType secretsType)
         {
+            if (secretsType == ScriptSecretsType.Host)
+            {
+                if (keyScope == HostKeyScopes.SystemKeys)
+                {
+                    _hostSystemKeys[secretName] = secret;
+                }
+                else if (keyScope == HostKeyScopes.FunctionKeys)
+                {
+                    _hostFunctionKeys[secretName] = secret;
+                }
+            }
+
             string resultSecret = secret ?? "generated";
             return Task.FromResult(new KeyOperationResult(resultSecret, OperationResult.Created));
         }
@@ -59,6 +71,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public virtual Task<KeyOperationResult> SetMasterKeyAsync(string value)
         {
             throw new NotImplementedException();
+        }
+
+        public void Reset()
+        {
+            _hostFunctionKeys = new Dictionary<string, string>
+                {
+                    { "HostKey1", "HostValue1" },
+                    { "HostKey2", "HostValue2" },
+                };
+
+            _hostSystemKeys = new Dictionary<string, string>
+                {
+                    { "SystemKey1", "SystemValue1" },
+                    { "SystemKey2", "SystemValue2" },
+                    { "Test_Extension", "SystemValue3" },
+                };
         }
     }
 }

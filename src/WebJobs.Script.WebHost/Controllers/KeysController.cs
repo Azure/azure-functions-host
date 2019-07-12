@@ -30,14 +30,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IOptions<ScriptApplicationHostOptions> _applicationOptions;
         private readonly IFileSystem _fileSystem;
         private readonly IFunctionsSyncManager _functionsSyncManager;
+        private readonly IScriptHostManager _hostManager;
 
-        public KeysController(IOptions<ScriptApplicationHostOptions> applicationOptions, ISecretManagerProvider secretManagerProvider, ILoggerFactory loggerFactory, IFileSystem fileSystem, IFunctionsSyncManager functionsSyncManager)
+        public KeysController(IOptions<ScriptApplicationHostOptions> applicationOptions, ISecretManagerProvider secretManagerProvider, ILoggerFactory loggerFactory, IFileSystem fileSystem, IFunctionsSyncManager functionsSyncManager, IScriptHostManager hostManager)
         {
             _applicationOptions = applicationOptions;
             _secretManagerProvider = secretManagerProvider;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryKeysController);
             _fileSystem = fileSystem;
             _functionsSyncManager = functionsSyncManager;
+            _hostManager = hostManager;
         }
 
         [HttpGet]
@@ -59,6 +61,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public async Task<IActionResult> Get()
         {
             string hostKeyScope = GetHostKeyScopeForRequest();
+
+            if (string.Equals(hostKeyScope, HostKeyScopes.SystemKeys, StringComparison.OrdinalIgnoreCase) &&
+                _hostManager.State != ScriptHostState.Offline)
+            {
+                // Extensions that are webhook providers create their default system keys
+                // as part of host initialization (when those keys aren't already present).
+                // So we must delay key retrieval until host initialization is complete.
+                await _hostManager.DelayUntilHostReady();
+            }
 
             Dictionary<string, string> keys = await GetHostSecretsByScope(hostKeyScope);
             return GetKeysResult(keys);
