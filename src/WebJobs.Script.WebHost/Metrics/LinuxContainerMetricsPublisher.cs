@@ -111,11 +111,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             if (!_functionActivities.TryAdd(activity))
             {
-                _logger.LogWarning("Buffer full.Dropping current batch of function activities");
+                _logger.LogWarning($"Buffer for function activities is full with {_functionActivities.Count} elements. Dropping current batch of function activities");
                 DrainActivities(_currentFunctionActivities, _functionActivities);
             }
 
-            _logger.LogInformation($"Added function activity : {functionName} {invocationId} {concurrency} {executionStage} {success} {executionTimeSpan}");
+            _logger.LogDebug($"Added function activity : {functionName} {invocationId} {concurrency} {executionStage} {success} {executionTimeSpan}");
         }
 
         public void AddMemoryActivity(DateTime timeStampUtc, long data)
@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             if (!_memoryActivities.TryAdd(memoryActivity))
             {
-                _logger.LogWarning("Buffer full.Dropping current batch of memory activities");
+                _logger.LogWarning($"Buffer for holding memory activities is full with {_memoryActivities.Count} elements.Dropping current batch of memory activities");
                 DrainActivities(_currentMemoryActivities, _memoryActivities);
             }
         }

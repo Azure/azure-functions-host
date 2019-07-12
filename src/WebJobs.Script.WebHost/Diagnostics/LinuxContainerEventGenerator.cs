@@ -88,7 +88,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
-          //  _metricsPublisher.AddFunctionExecutionActivity(functionName, invocationId, concurrency, executionStage, success, executionTimeSpan, DateTime.UtcNow);
         }
 
         private void ConsoleWriter(string evt)
@@ -97,11 +96,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 Console.WriteLine(evt);
             }
-        }
-
-        private void LogMetricsPublishEvent(LogLevel level, string message)
-        {
-            this.LogFunctionTraceEvent(level, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, message, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty);
         }
 
         public override void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)

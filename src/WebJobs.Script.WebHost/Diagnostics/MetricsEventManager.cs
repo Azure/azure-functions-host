@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private bool _disposed;
         private IMetricsPublisher _metricsPublisher;
 
-        public MetricsEventManager(IEnvironment environment, IEventGenerator generator, int functionActivityFlushIntervalSeconds, IMetricsPublisher metricsPublisher = null, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
+        public MetricsEventManager(IEnvironment environment, IEventGenerator generator, int functionActivityFlushIntervalSeconds, IMetricsPublisher metricsPublisher, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
         {
             // we read these in the ctor (not static ctor) since it can change on the fly
             appName = GetNormalizedString(environment.GetAzureWebsiteUniqueSlotName());

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Moq;
 using Moq.Protected;
@@ -73,7 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     _events.Add(evt);
                 });
 
-            _metricsEventManager = new MetricsEventManager(new TestEnvironment(), mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000);
+            var mockMetricsPublisher = new Mock<IMetricsPublisher>();
+            _metricsEventManager = new MetricsEventManager(new TestEnvironment(), mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000, mockMetricsPublisher.Object);
             _metricsLogger = new WebHostMetricsLogger(_metricsEventManager);
         }
 
