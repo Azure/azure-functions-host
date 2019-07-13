@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 _testFunctionActivity.EventTimeStamp);
 
             Assert.Matches("Added function activity", _testLoggerProvider.GetAllLogMessages().Single().FormattedMessage);
-            Assert.Equal(LogLevel.Information, _testLoggerProvider.GetAllLogMessages().Single().Level);
+            Assert.Equal(LogLevel.Debug, _testLoggerProvider.GetAllLogMessages().Single().Level);
 
             _testLoggerProvider.ClearAllLogMessages();
 
