@@ -12,6 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script
     /// </summary>
     public interface IManagedHostedService : IHostedService
     {
-        new Task StopAsync(CancellationToken cancellationToken);
+        Task OuterStopAsync(CancellationToken cancellationToken);
     }
 }

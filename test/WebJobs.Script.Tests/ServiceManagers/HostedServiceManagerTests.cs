@@ -54,7 +54,7 @@ internal class RandomHostedService : IManagedHostedService
         return Task.CompletedTask;
     }
 
-    async Task IManagedHostedService.StopAsync(CancellationToken cancellationToken)
+    public async Task OuterStopAsync(CancellationToken cancellationToken)
     {
         await rpcServer.ShutdownAsync();
     }

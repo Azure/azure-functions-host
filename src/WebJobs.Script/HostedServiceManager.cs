@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             foreach (IManagedHostedService managedHostedService in _managedHostedServices)
             {
-                await managedHostedService.StopAsync(cancellationToken);
+                await managedHostedService.OuterStopAsync(cancellationToken);
             }
         }
     }
