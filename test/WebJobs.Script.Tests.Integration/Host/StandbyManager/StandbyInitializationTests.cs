@@ -66,9 +66,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             Specialize(e);
                         });
                 })
-                .AddScriptHostBuilder(webJobsBuilder =>
+                .ConfigureScriptHostServices(s =>
                 {
-                    webJobsBuilder.Services.PostConfigure<ScriptJobHostOptions>(o =>
+                    s.PostConfigure<ScriptJobHostOptions>(o =>
                     {
                         // Only load the function we care about, but not during standby
                         if (o.RootScriptPath != standbyPath)

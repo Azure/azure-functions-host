@@ -68,16 +68,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var channel = new TestTelemetryChannel();
 
             var builder = CreateStandbyHostBuilder("OneSecondTimer", "FunctionExecutionContext")
-                .AddScriptHostBuilder(webJobsBuilder =>
+                .ConfigureScriptHostServices(s =>
                 {
-                    webJobsBuilder.Services.AddSingleton<ITelemetryChannel>(_ => channel);
+                    s.AddSingleton<ITelemetryChannel>(_ => channel);
 
-                    webJobsBuilder.Services.Configure<FunctionResultAggregatorOptions>(o =>
+                    s.Configure<FunctionResultAggregatorOptions>(o =>
                     {
                         o.IsEnabled = false;
                     });
 
-                    webJobsBuilder.Services.PostConfigure<ApplicationInsightsLoggerOptions>(o =>
+                    s.PostConfigure<ApplicationInsightsLoggerOptions>(o =>
                     {
                         o.SamplingSettings = null;
                     });
@@ -247,9 +247,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                     s.AddSingleton<IScriptHostBuilder, PausingScriptHostBuilder>();
                 })
-                .AddScriptHostBuilder(webJobsBuilder =>
+                .ConfigureScriptHostServices(s =>
                 {
-                    webJobsBuilder.Services.PostConfigure<ScriptJobHostOptions>(o =>
+                    s.PostConfigure<ScriptJobHostOptions>(o =>
                     {
                         // Only load the function we care about, but not during standby
                         if (o.RootScriptPath != _standbyPath)

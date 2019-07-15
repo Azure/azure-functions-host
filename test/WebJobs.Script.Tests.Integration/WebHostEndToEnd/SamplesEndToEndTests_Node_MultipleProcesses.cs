@@ -68,9 +68,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 _nodeProcessesBeforeTestStarted = _nodeProcessesBeforeTestStarted ?? new List<int>();
             }
 
-            public override void ConfigureJobHost(IWebJobsBuilder webJobsBuilder)
+            public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {
-                base.ConfigureJobHost(webJobsBuilder);
+                base.ConfigureScriptHost(webJobsBuilder);
 
                 webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                 {
