@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public interface IScriptHostManager
     {
-        ScriptHostState State { get;  }
+        ScriptHostState State { get; }
 
         /// <summary>
         /// Gets the last host <see cref="Exception"/> that has occurred.

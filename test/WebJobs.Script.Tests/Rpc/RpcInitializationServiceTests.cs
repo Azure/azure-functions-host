@@ -3,7 +3,6 @@
 
 using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
@@ -17,8 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
     public class RpcInitializationServiceTests
     {
-        private RpcInitializationService _rpcInitializationService;
         private IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
+        private RpcInitializationService _rpcInitializationService;
         private Mock<IWebHostLanguageWorkerChannelManager> _mockLanguageWorkerChannelManager;
         private LoggerFactory _loggerFactory;
         private ILogger<RpcInitializationService> _logger;
@@ -239,6 +238,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.PythonLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
             await testRpcServer.ShutdownAsync();
+        }
+
+        [Fact]
+        public async Task RpcInitializationService_Stops_DoesNotStopRpcServer()
+        {
+            var testRpcServer = new Mock<IRpcServer>();
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, new Mock<IEnvironment>().Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _logger);
+            await _rpcInitializationService.StopAsync(CancellationToken.None);
+            testRpcServer.Verify(a => a.KillAsync(), Times.Never);
+            testRpcServer.Verify(a => a.ShutdownAsync(), Times.Never);
+        }
+
+        [Fact]
+        public async Task RpcInitializationService_TriggerShutdown()
+        {
+            Mock<IRpcServer> testRpcServer = new Mock<IRpcServer>();
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, new Mock<IEnvironment>().Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _logger);
+            await _rpcInitializationService.OuterStopAsync(CancellationToken.None);
+            testRpcServer.Verify(a => a.ShutdownAsync(), Times.Once);
+            testRpcServer.Verify(a => a.KillAsync(), Times.Never);
+        }
+
+        [Fact]
+        public async Task RpcInitializationService_TriggerShutdown_KillGetsCalledWhenShutdownTimesout()
+        {
+            Mock<IRpcServer> testRpcServer = new Mock<IRpcServer>();
+            testRpcServer.Setup(a => a.ShutdownAsync()).Returns(Task.Delay(6000));
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, new Mock<IEnvironment>().Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _logger);
+            await _rpcInitializationService.OuterStopAsync(CancellationToken.None);
+            testRpcServer.Verify(a => a.ShutdownAsync(), Times.Once);
+            testRpcServer.Verify(a => a.KillAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task RpcInitializationService_TriggerShutdown_KillGetsCalledWhenShutdownThrowsException()
+        {
+            Mock<IRpcServer> testRpcServer = new Mock<IRpcServer>();
+            testRpcServer.Setup(a => a.ShutdownAsync()).ThrowsAsync(new Exception("Random Exception"));
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, new Mock<IEnvironment>().Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _logger);
+            await _rpcInitializationService.OuterStopAsync(CancellationToken.None);
+            testRpcServer.Verify(a => a.ShutdownAsync(), Times.Once);
+            testRpcServer.Verify(a => a.KillAsync(), Times.Once);
         }
     }
 }
