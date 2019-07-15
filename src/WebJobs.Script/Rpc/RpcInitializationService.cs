@@ -8,20 +8,21 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public class RpcInitializationService : IHostedService
+    public class RpcInitializationService : IManagedHostedService
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IEnvironment _environment;
-        private readonly IWebHostLanguageWorkerChannelManager _languageWorkerChannelManager;
+        private readonly IWebHostLanguageWorkerChannelManager _webHostlanguageWorkerChannelManager;
         private readonly IRpcServer _rpcServer;
         private readonly ILogger _logger;
+
         private readonly string _workerRuntime;
+        private readonly int _rpcServerShutdownTimeoutInMilliseconds;
 
         private Dictionary<OSPlatform, List<string>> _hostingOSToWhitelistedRuntimes = new Dictionary<OSPlatform, List<string>>()
         {
@@ -47,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger = logger;
             _rpcServer = rpcServer;
             _environment = environment;
-            _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
+            _rpcServerShutdownTimeoutInMilliseconds = 5000;
+            _webHostlanguageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
         }
 
@@ -63,11 +65,36 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger.LogDebug("Rpc Initialization Service started.");
         }
 
-        public async Task StopAsync(CancellationToken cancellationToken)
+        public Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogDebug("Shuttingdown Rpc Channels Manager");
-            _languageWorkerChannelManager.ShutdownChannels();
-            await _rpcServer.KillAsync();
+            _webHostlanguageWorkerChannelManager.ShutdownChannels();
+            return Task.CompletedTask;
+        }
+
+        public async Task OuterStopAsync(CancellationToken cancellationToken)
+        {
+            _logger.LogDebug("Shutting down RPC server");
+
+            try
+            {
+                Task shutDownRpcServer = _rpcServer.ShutdownAsync();
+                Task shutdownResult = await Task.WhenAny(shutDownRpcServer, Task.Delay(_rpcServerShutdownTimeoutInMilliseconds));
+
+                if (!shutdownResult.Equals(shutDownRpcServer) || shutDownRpcServer.IsFaulted)
+                {
+                    _logger.LogDebug("Killing RPC server");
+                    await _rpcServer.KillAsync();
+                }
+            }
+            catch (AggregateException ae)
+            {
+                ae.Handle(e =>
+                {
+                    _logger.LogError(e, "Shutting down RPC server encountered exception: '{message}'", e.Message);
+                    return true;
+                });
+            }
         }
 
         internal async Task InitializeRpcServerAsync()
@@ -107,14 +134,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Task InitializePlaceholderChannelsAsync(OSPlatform os)
         {
             return Task.WhenAll(_hostingOSToWhitelistedRuntimes[os].Select(runtime =>
-                _languageWorkerChannelManager.InitializeChannelAsync(runtime)));
+                _webHostlanguageWorkerChannelManager.InitializeChannelAsync(runtime)));
         }
 
         private Task InitializeWebHostRuntimeChannelsAsync()
         {
             if (_webHostLevelWhitelistedRuntimes.Contains(_workerRuntime))
             {
-                return _languageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
+                return _webHostlanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             }
 
             return Task.CompletedTask;

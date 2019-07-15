@@ -122,6 +122,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<WebJobsScriptHostService>();
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
 
+            // Handles shutdown of services that need to happen after StopAsync() of all services of type IHostedService are complete.
+            // Order is important.
+            // All other IHostedService injections need to go before this.
+            services.AddSingleton<IHostedService, HostedServiceManager>();
+
             // Configuration
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
             services.ConfigureOptions<StandbyOptionsSetup>();
