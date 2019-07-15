@@ -32,12 +32,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             };
 
             TestHost = new TestFunctionHost(scriptPath, logPath,
-                jobHostBuilder =>
+                configureScriptHostServices: s =>
                 {
-                    jobHostBuilder.Services.AddSingleton<ITelemetryChannel>(_ => Channel);
-                    jobHostBuilder.Services.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
-
-                    jobHostBuilder.Services.Configure<ScriptJobHostOptions>(o =>
+                    s.AddSingleton<ITelemetryChannel>(_ => Channel);
+                    s.Configure<ScriptJobHostOptions>(o =>
                     {
                         o.Functions = new[]
                         {
@@ -45,8 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                             "HttpTrigger-Scenarios"
                         };
                     });
+                    s.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
                 },
-                configurationBuilder =>
+                configureScriptHostAppConfiguration: configurationBuilder =>
                 {
                     configurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
                     {

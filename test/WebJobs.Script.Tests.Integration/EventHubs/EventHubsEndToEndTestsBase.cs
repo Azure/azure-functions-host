@@ -4,11 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.EventHubs;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -72,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
                 };
             }
 
-            public override void ConfigureJobHost(IWebJobsBuilder webJobsBuilder)
+            public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {
                 webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                 {

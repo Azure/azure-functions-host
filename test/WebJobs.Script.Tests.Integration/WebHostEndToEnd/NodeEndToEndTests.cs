@@ -226,13 +226,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // verify the console log
             Assert.Equal("console log", consoleLog);
 
-            // TODO: Re-enable once we can override IMetricsLogger
             // We only expect 9 user log metrics to be counted, since
             // verbose logs are filtered by default (the TestLogger explicitly
             // allows all levels for testing purposes)
             var key = MetricsEventManager.GetAggregateKey(MetricEventNames.FunctionUserLog, "Scenarios");
-            //Assert.Equal(9, Fixture.MetricsLogger.LoggedEvents.Where(p => p == key).Count());
-            //Assert.Contains($"{MetricEventNames.HostStartupRuntimeLanguage}.node", Fixture.MetricsLogger.LoggedEvents);
+            Assert.Equal(9, Fixture.MetricsLogger.LoggedEvents.Where(p => p == key).Count());
+
+            // Make sure that no user logs made it to the EventGenerator (which the SystemLogger writes to)
+            IEnumerable<FunctionTraceEvent> allLogs = Fixture.EventGenerator.GetFunctionTraceEvents();
+            Assert.False(allLogs.Any(l => l.Summary.Contains("loglevel")));
+            Assert.False(allLogs.Any(l => l.Summary.Contains("after done")));
+            Assert.False(allLogs.Any(l => l.Source.EndsWith(".User")));
+            Assert.False(allLogs.Any(l => l.Source == LanguageWorkerConstants.FunctionConsoleLogCategoryName));
+            Assert.NotEmpty(allLogs);
         }
 
         [Fact]
@@ -891,9 +897,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
             }
 
-            public override void ConfigureJobHost(IWebJobsBuilder webJobsBuilder)
+            public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {
-                base.ConfigureJobHost(webJobsBuilder);
+                base.ConfigureScriptHost(webJobsBuilder);
 
                 webJobsBuilder.AddAzureStorage()
                     .Services.Configure<ScriptJobHostOptions>(o =>

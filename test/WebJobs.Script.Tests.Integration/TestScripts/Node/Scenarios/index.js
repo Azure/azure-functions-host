@@ -44,6 +44,8 @@ module.exports = function (context, input) {
         console.log('console log');
 
         context.done();
+
+        context.log('after done');
     }
     else if (scenario === 'bindingData') {
         var bindingData = context.bindingData;
