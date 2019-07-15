@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
@@ -167,6 +168,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 return NullHostedService.Instance;
+            });
+
+            services.AddSingleton<IMetricsPublisher>(s =>
+            {
+                var environment = s.GetService<IEnvironment>();
+                if (environment.IsLinuxContainerEnvironment())
+                {
+                    var logger = s.GetService<ILogger<LinuxContainerMetricsPublisher>>();
+                    var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
+                    var httpClient = s.GetService<HttpClient>();
+                    var hostNameProvider = s.GetService<HostNameProvider>();
+                    return new LinuxContainerMetricsPublisher(environment, standbyOptions, logger, httpClient, hostNameProvider);
+                }
+
+                return NullMetricsPublisher.Instance;
             });
         }
     }

@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using System.Linq;
+using System.Net.Http;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -22,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         private readonly string _containerName = "test-container";
         private readonly string _stampName = "test-stamp";
         private readonly string _tenantId = "test-tenant";
+        private readonly string _testNodeAddress = "test-address";
 
         public LinuxContainerEventGeneratorTests()
         {
@@ -35,6 +38,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns(_containerName);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteHomeStampName)).Returns(_stampName);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteStampDeploymentId)).Returns(_tenantId);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.LinuxNodeIpAddress)).Returns(_testNodeAddress);
+
+            var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions { InStandbyMode = true });
+
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+            var httpClient = new HttpClient(handlerMock.Object);
 
             _generator = new LinuxContainerEventGenerator(mockEnvironment.Object, writer);
         }

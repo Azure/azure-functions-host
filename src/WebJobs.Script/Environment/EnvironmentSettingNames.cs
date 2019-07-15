@@ -64,6 +64,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string RunningInContainer = "DOTNET_RUNNING_IN_CONTAINER";
 
         public const string ExtensionBundleSourceUri = "FUNCTIONS_EXTENSIONBUNDLE_SOURCE_URI";
+
+        public const string LinuxNodeIpAddress = "Fabric_NodeIPOrFQDN";
         public const string AzureWebJobsKubernetesSecretName = "AzureWebJobsKubernetesSecretName";
 
         public const string KubernetesServiceHost = "KUBERNETES_SERVICE_HOST";

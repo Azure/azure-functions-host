@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -26,8 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private static string appName;
         private static string subscriptionId;
         private bool _disposed;
+        private IMetricsPublisher _metricsPublisher;
 
-        public MetricsEventManager(IEnvironment environment, IEventGenerator generator, int functionActivityFlushIntervalSeconds, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
+        public MetricsEventManager(IEnvironment environment, IEventGenerator generator, int functionActivityFlushIntervalSeconds, IMetricsPublisher metricsPublisher, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
         {
             // we read these in the ctor (not static ctor) since it can change on the fly
             appName = GetNormalizedString(environment.GetAzureWebsiteUniqueSlotName());
@@ -39,6 +41,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             // Initialize the periodic log flush timer
             _metricsFlushTimer = new Timer(TimerFlush, null, metricsFlushIntervalMS, metricsFlushIntervalMS);
+
+            _metricsPublisher = metricsPublisher;
         }
 
         /// <summary>
@@ -147,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 if (instance == null)
                 {
-                    instance = new FunctionActivityTracker(_eventGenerator, _functionActivityFlushIntervalSeconds);
+                    instance = new FunctionActivityTracker(_eventGenerator, _metricsPublisher, _functionActivityFlushIntervalSeconds);
                 }
                 instance.FunctionStarted(startedEvent);
             }
@@ -313,11 +317,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             private ConcurrentQueue<FunctionMetrics> _functionMetricsQueue = new ConcurrentQueue<FunctionMetrics>();
             private Dictionary<string, RunningFunctionInfo> _runningFunctions = new Dictionary<string, RunningFunctionInfo>();
             private bool _disposed = false;
+            private IMetricsPublisher _metricsPublisher;
 
-            internal FunctionActivityTracker(IEventGenerator generator, int functionActivityFlushInterval)
+            internal FunctionActivityTracker(IEventGenerator generator, IMetricsPublisher metricsPublisher, int functionActivityFlushInterval)
             {
                 MetricsEventGenerator = generator;
                 _functionActivityFlushInterval = functionActivityFlushInterval;
+                _metricsPublisher = metricsPublisher;
                 Task.Run(
                     async () =>
                     {
@@ -465,6 +471,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     runningFunctionInfo.ExecutionStage.ToString(),
                     (long)executionTimespan,
                     runningFunctionInfo.Success);
+
+                if (_metricsPublisher != null)
+                {
+                    _metricsPublisher.AddFunctionExecutionActivity(
+                        runningFunctionInfo.Name,
+                        runningFunctionInfo.InvocationId.ToString(),
+                        concurrency,
+                        runningFunctionInfo.ExecutionStage.ToString(),
+                        runningFunctionInfo.Success,
+                        (long)executionTimespan,
+                        currentTime);
+                }
             }
 
             private static string GetDictionaryKey(string name, Guid invocationId)
