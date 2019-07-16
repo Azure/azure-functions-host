@@ -92,8 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     return result;
                 }
 
-                var payload = await GetSyncTriggersPayload();
-                string json = JsonConvert.SerializeObject(payload);
+                string json = await GetSyncTriggersPayload();
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
@@ -229,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return _hashBlob;
         }
 
-        public async Task<JToken> GetSyncTriggersPayload()
+        public async Task<string> GetSyncTriggersPayload()
         {
             var functionsMetadata = WebFunctionsManager.GetFunctionsMetadata(_hostConfig, _logger);
 
@@ -240,7 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             if (!ArmCacheEnabled)
             {
                 // extended format is disabled - just return triggers
-                return triggersArray;
+                return JsonConvert.SerializeObject(triggersArray);
             }
 
             // Add triggers to the payload
@@ -293,7 +292,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // like KeyVault when the feature comes online
             }
 
-            return result;
+            string json = JsonConvert.SerializeObject(result);
+            if (json.Length > ScriptConstants.MaxTriggersStringLength)
+            {
+                // The settriggers call to the FE enforces a max request size
+                // limit. If we're over limit, revert to the minimal triggers
+                // format.
+                _logger.LogWarning($"SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Reverting to minimal format.");
+                return JsonConvert.SerializeObject(triggersArray);
+            }
+
+            return json;
         }
 
         private async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata)
@@ -403,9 +412,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             if (ArmCacheEnabled)
             {
                 // sanitize the content before logging
-                var sanitizedContent = JObject.Parse(content);
-                sanitizedContent.Remove("secrets");
-                sanitizedContentString = sanitizedContent.ToString();
+                var sanitizedContent = JToken.Parse(content);
+                if (sanitizedContent.Type == JTokenType.Object)
+                {
+                    ((JObject)sanitizedContent).Remove("secrets");
+                    sanitizedContentString = sanitizedContent.ToString();
+                }
             }
 
             using (var request = BuildSetTriggersRequest())

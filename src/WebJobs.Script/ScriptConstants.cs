@@ -100,5 +100,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const int MaximumSecretBackupCount = 10;
 
         public const string AzureWebJobsHostsContainerName = "azure-webjobs-hosts";
+
+        /// <summary>
+        /// This constant is also defined in Antares, where the limit is ultimately enforced
+        /// for settriggers calls. If we raise that limit there, we should raise here as well.
+        /// </summary>
+        public const int MaxTriggersStringLength = 102400;
     }
 }
