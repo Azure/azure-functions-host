@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly HostNameProvider _hostNameProvider;
+        private string _function1;
 
         public FunctionsSyncManagerTests()
         {
@@ -136,6 +137,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.False(result.Success);
                 var expectedMessage = "Invalid environment for SyncTriggers operation.";
                 Assert.Equal(expectedMessage, result.Error);
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_MaxSyncTriggersPayloadSize_Succeeds()
+        {
+            // create a dummy file that pushes us over size
+            string maxString = new string('x', ScriptConstants.MaxTriggersStringLength + 1);
+            _function1 = $"{{ bindings: [], test: '{maxString}'}}";
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                Assert.True(_functionsSyncManager.ArmCacheEnabled);
+
+                var result = await _functionsSyncManager.TrySyncTriggersAsync();
+                Assert.True(result.Success);
+
+                string syncString = _contentBuilder.ToString();
+                Assert.True(syncString.Length < ScriptConstants.MaxTriggersStringLength);
+                var syncContent = JToken.Parse(syncString);
+                Assert.Equal(JTokenType.Array, syncContent.Type);
             }
         }
 
@@ -370,9 +392,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
         }
 
-        private static IFileSystem CreateFileSystem(ScriptApplicationHostOptions hostOptions, string hostJsonContent = null)
+        private IFileSystem CreateFileSystem(ScriptApplicationHostOptions hostOptions, string hostJsonContent = null)
         {
-            string rootPath = hostOptions.ScriptPath;
+            var rootPath = hostOptions.ScriptPath;
             string testDataPath = hostOptions.TestDataPath;
 
             var fullFileSystem = new FileSystem();
@@ -412,7 +434,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     Path.Combine(rootPath, "function3")
                 });
 
-            var function1 = @"{
+            _function1 = @"{
   ""scriptFile"": ""main.py"",
   ""disabled"": false,
   ""bindings"": [
@@ -459,14 +481,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\function.json"))).Returns(true);
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\main.py"))).Returns(true);
-            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function1\function.json"))).Returns(function1);
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function1\function.json"))).Returns(_function1);
             fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function1\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
-                return new MemoryStream(Encoding.UTF8.GetBytes(function1));
+                return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
             });
             fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function1.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
-                return new MemoryStream(Encoding.UTF8.GetBytes(function1));
+                return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
             });
 
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2\function.json"))).Returns(true);
@@ -478,7 +500,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             });
             fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function2.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
-                return new MemoryStream(Encoding.UTF8.GetBytes(function1));
+                return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
             });
 
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3\function.json"))).Returns(true);
@@ -490,7 +512,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             });
             fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function3.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
-                return new MemoryStream(Encoding.UTF8.GetBytes(function1));
+                return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
             });
 
             return fileSystem.Object;
