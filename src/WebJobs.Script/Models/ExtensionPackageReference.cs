@@ -1,17 +1,18 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+
 namespace Microsoft.Azure.WebJobs.Script.Models
 {
-    /// <summary>
-    /// Represents a binding extension package reference.
-    /// </summary>
-    public class ExtensionPackageReference : ExtensionPackageRetrieve
+    [Flags]
+    public enum ExtensionPostInstallActions
     {
-        public bool DeferAppActivationToServer { get; set; } = false;
+        None = 0,
+        BringAppOnline = 1 << 0,
     }
 
-    public class ExtensionPackageRetrieve
+    public class ExtensionPackageReference
     {
         /// <summary>
         /// Gets or sets the referenced package ID.
@@ -25,5 +26,13 @@ namespace Microsoft.Azure.WebJobs.Script.Models
         /// This may also contain a floating version string.
         /// </summary>
         public string Version { get; set; }
+    }
+
+    /// <summary>
+    /// Represents a binding extension package reference.
+    /// </summary>
+    public class ExtensionPackageReferenceWithActions : ExtensionPackageReference
+    {
+        public string PostInstallActions { get; set; }
     }
 }

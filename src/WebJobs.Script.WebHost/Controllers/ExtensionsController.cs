@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/extensions")]
         public async Task<IActionResult> Get()
         {
-            IEnumerable<ExtensionPackageRetrieve> extensions = await _extensionsManager.GetExtensions();
+            IEnumerable<ExtensionPackageReference> extensions = await _extensionsManager.GetExtensions();
 
             var extensionsContent = new
             {
@@ -57,11 +57,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/host/extensions")]
-        public Task<IActionResult> Post([FromBody]ExtensionPackageReference package) => InstallExtension(package);
+        public Task<IActionResult> Post([FromBody]ExtensionPackageReferenceWithActions package) => InstallExtension(package);
 
         [HttpPut("{id}")]
         [Route("admin/host/extensions")]
-        public Task<IActionResult> Put(int id, [FromBody]ExtensionPackageReference package) => InstallExtension(package);
+        public Task<IActionResult> Put(int id, [FromBody]ExtensionPackageReferenceWithActions package) => InstallExtension(package);
 
         [HttpDelete]
         [Route("admin/host/extensions/{id}")]
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Ok(result);
         }
 
-        public async Task<IActionResult> InstallExtension(ExtensionPackageReference package, bool verifyConflict = true)
+        public async Task<IActionResult> InstallExtension(ExtensionPackageReferenceWithActions package, bool verifyConflict = true)
         {
             if (package == null)
             {
@@ -145,15 +145,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             ExtensionsRestoreJob job = await CreateJob(package);
 
             string jobId = job.Id;
+            Enum.TryParse(package.PostInstallActions, true, out ExtensionPostInstallActions postInstallActions);
             var addTask = _extensionsManager.AddExtensions(package)
-                .ContinueWith(t => ProcessJobTaskResult(t, jobId, package.DeferAppActivationToServer));
+                .ContinueWith(t => ProcessJobTaskResult(t, jobId, postInstallActions));
 
             var apiModel = ApiModelUtility.CreateApiModel(job, Request, $"jobs/{job.Id}");
             string action = $"{Request.Scheme}://{Request.Host.ToUriComponent()}{Url.Action(nameof(GetJobs), "Extensions", new { id = job.Id })}{Request.QueryString}";
             return Accepted(action, apiModel);
         }
 
-        private async Task ProcessJobTaskResult(Task jobTask, string jobId, bool deferAppActivationToServer = false)
+        private async Task ProcessJobTaskResult(Task jobTask, string jobId, ExtensionPostInstallActions postInstallActions = ExtensionPostInstallActions.None)
         {
             ExtensionsRestoreJob job = await GetJob(jobId);
             if (job == null)
@@ -173,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             job.EndTime = DateTimeOffset.Now;
 
-            if (deferAppActivationToServer)
+            if (postInstallActions.HasFlag(ExtensionPostInstallActions.BringAppOnline))
             {
                 await FileMonitoringService.SetAppOfflineState(_applicationHostOptions.Value.ScriptPath, false);
             }

@@ -95,19 +95,19 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             await SaveAndProcessProjectAsync(project);
         }
 
-        public async Task<IEnumerable<ExtensionPackageRetrieve>> GetExtensions()
+        public async Task<IEnumerable<ExtensionPackageReference>> GetExtensions()
         {
             string extensionsProjectPath = _extensionBundleManager.IsExtensionBundleConfigured() ? await GetBundleProjectPath() : DefaultExtensionsProjectPath;
             if (string.IsNullOrEmpty(extensionsProjectPath))
             {
-                return Enumerable.Empty<ExtensionPackageRetrieve>();
+                return Enumerable.Empty<ExtensionPackageReference>();
             }
 
             var project = await GetOrCreateProjectAsync(extensionsProjectPath);
 
             return project.Items
                 .Where(i => PackageReferenceElementName.Equals(i.ItemType, StringComparison.Ordinal) && !MetadataGeneratorPackageId.Equals(i.Include, StringComparison.Ordinal))
-                .Select(i => new ExtensionPackageRetrieve
+                .Select(i => new ExtensionPackageReference
                 {
                     Id = i.Include,
                     Version = i.Metadata.FirstOrDefault(m => PackageReferenceVersionElementName.Equals(m.Name, StringComparison.Ordinal))?.Value
