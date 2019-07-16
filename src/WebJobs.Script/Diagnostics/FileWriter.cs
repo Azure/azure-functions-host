@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             lock (_syncLock)
             {
-                var fs = fileInfo.Open(FileMode.Open, FileAccess.Write);
+                var fs = fileInfo.Open(FileMode.Open, FileAccess.Write, FileShare.Read);
                 fs.Seek(0, SeekOrigin.End);
 
                 using (var sw = new StreamWriter(fs))
