@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IWebFunctionsManager _functionsManager;
         private readonly IWebJobsRouter _webJobsRouter;
         private readonly ILogger _logger;
-        private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         public FunctionsController(IWebFunctionsManager functionsManager, IWebJobsRouter webJobsRouter, ILoggerFactory loggerFactory)
         {
