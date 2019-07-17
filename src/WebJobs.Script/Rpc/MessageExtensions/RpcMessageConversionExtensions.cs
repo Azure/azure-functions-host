@@ -15,10 +15,6 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RpcDataType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedData.DataOneofCase;
-using TypedDataCollectionBytes = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedDataCollectionBytes;
-using TypedDataCollectionDouble = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedDataCollectionDouble;
-using TypedDataCollectionSInt64 = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedDataCollectionSInt64;
-using TypedDataCollectionString = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedDataCollectionString;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
@@ -265,8 +261,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private static bool IsTypeDataCollectionSupported(Capabilities capabilities)
         {
-            string typeDataCollectionSupported = capabilities.GetCapabilityState(LanguageWorkerConstants.TypeDataCollectionSupported);
-            if (!string.IsNullOrEmpty(typeDataCollectionSupported) && typeDataCollectionSupported == "TRUE")
+            string typeDataCollectionSupported = capabilities.GetCapabilityState(LanguageWorkerConstants.TypedDataCollectionSupported);
+            if (!string.IsNullOrEmpty(typeDataCollectionSupported))
             {
                 return true;
             }

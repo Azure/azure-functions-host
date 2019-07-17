@@ -315,7 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { "TYPED_DATA_COLLECTION_SUPPORTED", "TRUE" }
+                { LanguageWorkerConstants.TypedDataCollectionSupported, LanguageWorkerConstants.TypedDataCollectionSupported }
             };
 
             capabilities.UpdateCapabilities(addedCapabilities);
@@ -358,7 +358,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { "TYPED_DATA_COLLECTION_SUPPORTED", "TRUE" }
+                { LanguageWorkerConstants.TypedDataCollectionSupported, LanguageWorkerConstants.TypedDataCollectionSupported }
             };
 
             capabilities.UpdateCapabilities(addedCapabilities);
@@ -398,7 +398,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { "TYPED_DATA_COLLECTION_SUPPORTED", "TRUE" }
+                { LanguageWorkerConstants.TypedDataCollectionSupported, LanguageWorkerConstants.TypedDataCollectionSupported }
             };
 
             capabilities.UpdateCapabilities(addedCapabilities);
@@ -438,7 +438,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { "TYPED_DATA_COLLECTION_SUPPORTED", "TRUE" }
+                { LanguageWorkerConstants.TypedDataCollectionSupported, LanguageWorkerConstants.TypedDataCollectionSupported }
             };
 
             capabilities.UpdateCapabilities(addedCapabilities);
