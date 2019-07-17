@@ -289,9 +289,33 @@ message TypedData {
     bytes bytes = 3;
     bytes stream = 4;
     RpcHttp http = 5;
-	  sint64 int = 6;
+    sint64 int = 6;
     double double = 7;
+    CollectionBytes collection_bytes = 8;
+    CollectionString collection_string = 9;
+    CollectionDouble collection_double = 10;
+    CollectionSInt64 collection_sint64 = 11;
   }
+}
+
+// Used to encapsulate collection string
+message CollectionString {
+  repeated string string = 1;
+}
+
+// Used to encapsulate collection bytes
+message CollectionBytes {
+  repeated bytes bytes = 1;
+}
+
+// Used to encapsulate collection double
+message CollectionDouble {
+  repeated double double = 1;
+}
+
+// Used to encapsulate collection sint64
+message CollectionSInt64 {
+  repeated sint64 sint64 = 1;
 }
 
 // Used to describe a given binding on invocation
