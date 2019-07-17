@@ -15,6 +15,10 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RpcDataType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedData.DataOneofCase;
+using TypedDataCollectionBytes = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedDataCollectionBytes;
+using TypedDataCollectionDouble = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedDataCollectionDouble;
+using TypedDataCollectionSInt64 = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedDataCollectionSInt64;
+using TypedDataCollectionString = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedDataCollectionString;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
@@ -67,6 +71,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             else if (value is string str)
             {
                 typedData.String = str;
+            }
+            else if (value is long lng)
+            {
+                typedData.Int = lng;
+            }
+            else if (value is double dbl)
+            {
+                typedData.Double = dbl;
             }
             else if (value is HttpRequest request)
             {
@@ -189,6 +201,48 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 }
             }
+            else if (IsTypeDataCollectionSupported(capabilities) && value is byte[][] arrBytes)
+            {
+                TypedDataCollectionBytes collectionBytes = new TypedDataCollectionBytes();
+                foreach (byte[] element in arrBytes)
+                {
+                    if (element != null)
+                    {
+                        collectionBytes.Bytes.Add(ByteString.CopyFrom(element));
+                    }
+                }
+                typedData.CollectionBytes = collectionBytes;
+            }
+            else if (IsTypeDataCollectionSupported(capabilities) && value is string[] arrString)
+            {
+                TypedDataCollectionString collectionString = new TypedDataCollectionString();
+                foreach (string element in arrString)
+                {
+                    if (!string.IsNullOrEmpty(element))
+                    {
+                        collectionString.String.Add(element);
+                    }
+                }
+                typedData.CollectionString = collectionString;
+            }
+            else if (IsTypeDataCollectionSupported(capabilities) && value is double[] arrDouble)
+            {
+                TypedDataCollectionDouble collectionDouble = new TypedDataCollectionDouble();
+                foreach (double element in arrDouble)
+                {
+                    collectionDouble.Double.Add(element);
+                }
+                typedData.CollectionDouble = collectionDouble;
+            }
+            else if (IsTypeDataCollectionSupported(capabilities) && value is long[] arrLong)
+            {
+                TypedDataCollectionSInt64 collectionLong = new TypedDataCollectionSInt64();
+                foreach (long element in arrLong)
+                {
+                    collectionLong.Sint64.Add(element);
+                }
+                typedData.CollectionSint64 = collectionLong;
+            }
             else
             {
                 // attempt POCO / array of pocos
@@ -207,6 +261,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private static bool IsRawBodyBytesRequested(Capabilities capabilities)
         {
             return capabilities.GetCapabilityState(LanguageWorkerConstants.RawHttpBodyBytes) != null;
+        }
+
+        private static bool IsTypeDataCollectionSupported(Capabilities capabilities)
+        {
+            string typeDataCollectionSupported = capabilities.GetCapabilityState(LanguageWorkerConstants.TypeDataCollectionSupported);
+            if (!string.IsNullOrEmpty(typeDataCollectionSupported) && typeDataCollectionSupported == "TRUE")
+            {
+                return true;
+            }
+            return false;
         }
 
         internal static byte[] RequestBodyToBytes(HttpRequest request)

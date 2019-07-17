@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.WebJobs.Script.Tests;
+using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
@@ -304,6 +305,129 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 file.CopyTo(memoryStream);
                 return memoryStream.ToArray();
             }
+        }
+
+        [Fact]
+        public void ToRpc_Collection_String_With_Capabilities_Value()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+            MapField<string, string> addedCapabilities = new MapField<string, string>
+            {
+                { "TYPED_DATA_COLLECTION_SUPPORTED", "TRUE" }
+            };
+
+            capabilities.UpdateCapabilities(addedCapabilities);
+            string[] arrString = { "element1", "element_2" };
+            TypedData returned_typedata = arrString.ToRpc(logger, capabilities);
+
+            TypedData typedData = new TypedData();
+            TypedDataCollectionString collectionString = new TypedDataCollectionString();
+            foreach (string element in arrString)
+            {
+                if (!string.IsNullOrEmpty(element))
+                {
+                    collectionString.String.Add(element);
+                }
+            }
+            typedData.CollectionString = collectionString;
+
+            Assert.Equal(typedData.CollectionString, returned_typedata.CollectionString);
+        }
+
+        [Fact]
+        public void ToRpc_Collection_String_Without_Capabilities_Value()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+
+            string[] arrString = { "element1", "element_2" };
+            TypedData returned_typedata = arrString.ToRpc(logger, capabilities);
+
+            TypedData typedData = new TypedData();
+            typedData.Json = JsonConvert.SerializeObject(arrString);
+
+            Assert.Equal(typedData.Json, returned_typedata.Json);
+        }
+
+        [Fact]
+        public void ToRpc_Collection_Long_With_Capabilities_Value()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+            MapField<string, string> addedCapabilities = new MapField<string, string>
+            {
+                { "TYPED_DATA_COLLECTION_SUPPORTED", "TRUE" }
+            };
+
+            capabilities.UpdateCapabilities(addedCapabilities);
+            long[] arrLong = { 1L, 2L };
+            TypedData returned_typedata = arrLong.ToRpc(logger, capabilities);
+
+            TypedData typedData = new TypedData();
+            TypedDataCollectionSInt64 collectionLong = new TypedDataCollectionSInt64();
+            foreach (long element in arrLong)
+            {
+                collectionLong.Sint64.Add(element);
+            }
+            typedData.CollectionSint64 = collectionLong;
+
+            Assert.Equal(typedData.CollectionSint64, returned_typedata.CollectionSint64);
+        }
+
+        [Fact]
+        public void ToRpc_Collection_Long_Without_Capabilities_Value()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+
+            long[] arrLong = { 1L, 2L };
+            TypedData returned_typedata = arrLong.ToRpc(logger, capabilities);
+
+            TypedData typedData = new TypedData();
+            typedData.Json = JsonConvert.SerializeObject(arrLong);
+
+            Assert.Equal(typedData.Json, returned_typedata.Json);
+        }
+
+        [Fact]
+        public void ToRpc_Collection_Double_With_Capabilities_Value()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+            MapField<string, string> addedCapabilities = new MapField<string, string>
+            {
+                { "TYPED_DATA_COLLECTION_SUPPORTED", "TRUE" }
+            };
+
+            capabilities.UpdateCapabilities(addedCapabilities);
+            double[] arrDouble = { 1.1, 2.2 };
+            TypedData returned_typedata = arrDouble.ToRpc(logger, capabilities);
+            TypedData typedData = new TypedData();
+
+            TypedDataCollectionDouble collectionDouble = new TypedDataCollectionDouble();
+            foreach (double element in arrDouble)
+            {
+                collectionDouble.Double.Add(element);
+            }
+            typedData.CollectionDouble = collectionDouble;
+
+            Assert.Equal(typedData.CollectionSint64, returned_typedata.CollectionSint64);
+        }
+
+        [Fact]
+        public void ToRpc_Collection_Double_Without_Capabilities_Value()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+
+            double[] arrDouble = { 1.1, 2.2 };
+            TypedData returned_typedata = arrDouble.ToRpc(logger, capabilities);
+
+            TypedData typedData = new TypedData();
+            typedData.Json = JsonConvert.SerializeObject(arrDouble);
+
+            Assert.Equal(typedData.Json, returned_typedata.Json);
         }
     }
 }

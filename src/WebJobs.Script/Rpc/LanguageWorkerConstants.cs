@@ -50,5 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         // Capabilites
         public const string RawHttpBodyBytes = "RawHttpBodyBytes";
+        public const string TypeDataCollectionSupported = "TYPED_DATA_COLLECTION_SUPPORTED";
     }
 }
