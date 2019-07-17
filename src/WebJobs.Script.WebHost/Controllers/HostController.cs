@@ -15,7 +15,9 @@ using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -121,6 +123,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _logger.Log(LogLevel.Debug, new EventId(0, "PingStatus"), message);
 
             return Ok();
+        }
+
+        [HttpPost]
+        [Route("admin/host/scale/status")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        [RequiresRunningHost]
+        public async Task<IActionResult> GetScaleStatus([FromBody] ScaleStatusContext context, [FromServices] FunctionsScaleManager scaleManager)
+        {
+            // if runtime scale isn't enabled return error
+            if (!_environment.IsRuntimeScaleMonitoringEnabled())
+            {
+                return BadRequest("Runtime scale monitoring is not enabled.");
+            }
+
+            var scaleStatus = await scaleManager.GetScaleStatusAsync(context);
+
+            return new ObjectResult(scaleStatus);
         }
 
         [HttpPost]

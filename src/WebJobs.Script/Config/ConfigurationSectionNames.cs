@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public const string JobHost = "AzureFunctionsJobHost";
         public const string Logging = "logging";
         public const string Aggregator = "aggregator";
+        public const string Scale = "scale";
         public const string HealthMonitor = "healthMonitor";
         public const string HostIdPath = WebHost + ":hostid";
         public const string ExtensionBundle = "extensionBundle";

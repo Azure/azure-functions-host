@@ -7,7 +7,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
@@ -134,6 +136,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Assert
                 Assert.Equal(HttpStatusCode.BadRequest, resultStatus);
             }
+        }
+
+        [Fact]
+        public async Task GetScaleStatus_RuntimeScaleModeEnabled_Succeeds()
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeScaleMonitoringEnabled)).Returns("1");
+
+            var context = new ScaleStatusContext
+            {
+                WorkerCount = 5
+            };
+            var scaleManagerMock = new Mock<FunctionsScaleManager>(MockBehavior.Strict);
+            var scaleStatusResult = new ScaleStatusResult { Vote = ScaleVote.ScaleOut };
+            scaleManagerMock.Setup(p => p.GetScaleStatusAsync(context)).ReturnsAsync(scaleStatusResult);
+            var result = (ObjectResult)(await _hostController.GetScaleStatus(context, scaleManagerMock.Object));
+            Assert.Same(result.Value, scaleStatusResult);
+        }
+
+        [Fact]
+        public async Task GetScaleStatus_RuntimeScaleModeNotEnabled_ReturnsBadRequest()
+        {
+            var context = new ScaleStatusContext
+            {
+                WorkerCount = 5
+            };
+            var scaleManagerMock = new Mock<FunctionsScaleManager>(MockBehavior.Strict);
+            var result = (BadRequestObjectResult)(await _hostController.GetScaleStatus(context, scaleManagerMock.Object));
+            Assert.Equal(HttpStatusCode.BadRequest, (HttpStatusCode)result.StatusCode);
+            Assert.Equal("Runtime scale monitoring is not enabled.", result.Value);
         }
     }
 }

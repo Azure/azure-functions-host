@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string sanitizedMachineName = Environment.MachineName
                     .Where(char.IsLetterOrDigit)
                     .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString();
-                hostId = $"{sanitizedMachineName}-{Math.Abs(GetStableHash(scriptOptions.ScriptPath))}";
+                hostId = $"{sanitizedMachineName}-{Math.Abs(Utility.GetStableHash(scriptOptions.ScriptPath))}";
             }
 
             if (!string.IsNullOrEmpty(hostId))
@@ -71,29 +71,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // Lowercase and trim any trailing '-' as they can cause problems with queue names
             return hostId?.ToLowerInvariant().TrimEnd('-');
-        }
-
-        /// <summary>
-        /// Computes a stable non-cryptographic hash
-        /// </summary>
-        /// <param name="value">The string to use for computation</param>
-        /// <returns>A stable, non-cryptographic, hash</returns>
-        internal static int GetStableHash(string value)
-        {
-            if (value == null)
-            {
-                throw new ArgumentNullException(nameof(value));
-            }
-
-            unchecked
-            {
-                int hash = 23;
-                foreach (char c in value)
-                {
-                    hash = (hash * 31) + c;
-                }
-                return hash;
-            }
         }
     }
 }
