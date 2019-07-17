@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Claims;
 using System.Text;
+using Google.Protobuf;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Http;
@@ -412,7 +413,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             }
             typedData.CollectionDouble = collectionDouble;
 
-            Assert.Equal(typedData.CollectionSint64, returned_typedata.CollectionSint64);
+            Assert.Equal(typedData.CollectionDouble, returned_typedata.CollectionDouble);
         }
 
         [Fact]
@@ -426,6 +427,56 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             TypedData typedData = new TypedData();
             typedData.Json = JsonConvert.SerializeObject(arrDouble);
+
+            Assert.Equal(typedData.Json, returned_typedata.Json);
+        }
+
+        [Fact]
+        public void ToRpc_Collection_Byte_With_Capabilities_Value()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+            MapField<string, string> addedCapabilities = new MapField<string, string>
+            {
+                { "TYPED_DATA_COLLECTION_SUPPORTED", "TRUE" }
+            };
+
+            capabilities.UpdateCapabilities(addedCapabilities);
+
+            byte[][] arrBytes = new byte[2][];
+            arrBytes[0] = new byte[] { 22 };
+            arrBytes[1] = new byte[] { 11 };
+
+            TypedData returned_typedata = arrBytes.ToRpc(logger, capabilities);
+            TypedData typedData = new TypedData();
+
+            TypedDataCollectionBytes collectionBytes = new TypedDataCollectionBytes();
+            foreach (byte[] element in arrBytes)
+            {
+                if (element != null)
+                {
+                    collectionBytes.Bytes.Add(ByteString.CopyFrom(element));
+                }
+            }
+            typedData.CollectionBytes = collectionBytes;
+
+            Assert.Equal(typedData.CollectionBytes, returned_typedata.CollectionBytes);
+        }
+
+        [Fact]
+        public void ToRpc_Collection_Byte_Without_Capabilities_Value()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+
+            byte[][] arrByte = new byte[2][];
+            arrByte[0] = new byte[] { 22 };
+            arrByte[1] = new byte[] { 11 };
+
+            TypedData returned_typedata = arrByte.ToRpc(logger, capabilities);
+
+            TypedData typedData = new TypedData();
+            typedData.Json = JsonConvert.SerializeObject(arrByte);
 
             Assert.Equal(typedData.Json, returned_typedata.Json);
         }
