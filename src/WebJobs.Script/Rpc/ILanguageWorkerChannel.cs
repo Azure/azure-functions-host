@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         LanguageWorkerChannelState State { get; }
 
-        void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions);
+        void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions, bool managedDependenciesEnabled);
 
         void SendFunctionLoadRequests();
 

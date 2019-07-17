@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IDisposable _startLatencyMetric;
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
         private IEnumerable<FunctionMetadata> _functions;
+        private bool _managedDependenciesEnabled;
         private Capabilities _workerCapabilities;
         private ILogger _workerChannelLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
@@ -168,9 +169,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerInitTask.SetResult(true);
         }
 
-        public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
+        public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions, bool managedDependenciesEnabled)
         {
             _functions = functions;
+            _managedDependenciesEnabled = managedDependenciesEnabled;
             foreach (FunctionMetadata metadata in functions)
             {
                 _workerChannelLogger.LogDebug("Setting up FunctionInvocationBuffer for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
@@ -246,10 +248,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
             };
 
-            if (_managedDependencyOptions?.Value != null && _managedDependencyOptions.Value.Enabled)
+            // if (_managedDependencyOptions?.Value != null && _managedDependencyOptions.Value.Enabled)
+            if (_managedDependenciesEnabled)
             {
                 _workerChannelLogger?.LogDebug($"Adding dependency download request to {_workerConfig.Language} language worker");
-                request.ManagedDependencyEnabled = _managedDependencyOptions.Value.Enabled;
+                request.ManagedDependencyEnabled = _managedDependenciesEnabled;
             }
 
             foreach (var binding in metadata.Bindings)

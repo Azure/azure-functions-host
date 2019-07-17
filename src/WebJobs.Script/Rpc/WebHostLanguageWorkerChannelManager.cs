@@ -23,7 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
-        private string _workerRuntime;
+        private string _workerRuntimeFromEnvironment;
+        private string _workerRuntimeFromFunctions;
         private Action _shutdownStandbyWorkerChannels;
 
         private ConcurrentDictionary<string, List<ILanguageWorkerChannel>> _workerChannels = new ConcurrentDictionary<string, List<ILanguageWorkerChannel>>();
@@ -39,6 +40,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
+
+            _workerRuntimeFromEnvironment = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
+        }
+
+        public void SetWorkerRuntimeFromFunctions(string workerRuntime)
+        {
+            _workerRuntimeFromFunctions = workerRuntime;
         }
 
         public Task<ILanguageWorkerChannel> InitializeChannelAsync(string runtime)
@@ -86,11 +94,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public async Task SpecializeAsync()
         {
             _logger.LogInformation("Starting language worker channel specialization");
-            _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-            ILanguageWorkerChannel languageWorkerChannel = GetChannel(_workerRuntime);
-            if (_workerRuntime != null && languageWorkerChannel != null)
+            _workerRuntimeFromEnvironment = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
+            ILanguageWorkerChannel languageWorkerChannel = GetChannel(_workerRuntimeFromEnvironment);
+            if (_workerRuntimeFromEnvironment != null && languageWorkerChannel != null)
             {
-                _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntime);
+                _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntimeFromEnvironment);
                 await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
             }
             _shutdownStandbyWorkerChannels();
@@ -117,15 +125,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void ScheduleShutdownStandbyChannels()
         {
-            _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-            if (!string.IsNullOrEmpty(_workerRuntime))
+            var runtime = _workerRuntimeFromFunctions ?? _workerRuntimeFromEnvironment;
+            if (!string.IsNullOrEmpty(runtime))
             {
-                var standbyWorkerChannels = _workerChannels.Where(ch => !ch.Key.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase));
-                foreach (var runtime in standbyWorkerChannels)
+                var standbyWorkerChannels = _workerChannels.Where(ch => !ch.Key.Equals(runtime, StringComparison.InvariantCultureIgnoreCase));
+                foreach (var standby in standbyWorkerChannels)
                 {
-                    _logger.LogInformation("Disposing standby channel for runtime:{language}", runtime.Key);
+                    _logger.LogInformation("Disposing standby channel for runtime:{language}", standby.Key);
 
-                    if (_workerChannels.TryRemove(runtime.Key, out List<ILanguageWorkerChannel> standbyChannels))
+                    if (_workerChannels.TryRemove(standby.Key, out List<ILanguageWorkerChannel> standbyChannels))
                     {
                         foreach (var channel in standbyChannels)
                         {
