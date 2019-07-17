@@ -47,37 +47,95 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public static TypedData ToRpc(this object value, ILogger logger, Capabilities capabilities)
+        internal static TypedData ToRpcCollection(this object value)
         {
-            TypedData typedData = new TypedData();
-
-            if (value == null)
+            TypedData typedData = null;
+            if (value is byte[][] arrBytes)
             {
-                return typedData;
+                typedData = new TypedData();
+                CollectionBytes collectionBytes = new CollectionBytes();
+                foreach (byte[] element in arrBytes)
+                {
+                    if (element != null)
+                    {
+                        collectionBytes.Bytes.Add(ByteString.CopyFrom(element));
+                    }
+                }
+                typedData.CollectionBytes = collectionBytes;
             }
+            else if (value is string[] arrString)
+            {
+                typedData = new TypedData();
+                CollectionString collectionString = new CollectionString();
+                foreach (string element in arrString)
+                {
+                    if (!string.IsNullOrEmpty(element))
+                    {
+                        collectionString.String.Add(element);
+                    }
+                }
+                typedData.CollectionString = collectionString;
+            }
+            else if (value is double[] arrDouble)
+            {
+                typedData = new TypedData();
+                CollectionDouble collectionDouble = new CollectionDouble();
+                foreach (double element in arrDouble)
+                {
+                    collectionDouble.Double.Add(element);
+                }
+                typedData.CollectionDouble = collectionDouble;
+            }
+            else if (value is long[] arrLong)
+            {
+                typedData = new TypedData();
+                CollectionSInt64 collectionLong = new CollectionSInt64();
+                foreach (long element in arrLong)
+                {
+                    collectionLong.Sint64.Add(element);
+                }
+                typedData.CollectionSint64 = collectionLong;
+            }
+            return typedData;
+        }
 
+        internal static TypedData ToRpcPrimitive(this object value)
+        {
+            TypedData typedData = null;
             if (value is byte[] arr)
             {
+                typedData = new TypedData();
                 typedData.Bytes = ByteString.CopyFrom(arr);
             }
             else if (value is JObject jobj)
             {
+                typedData = new TypedData();
                 typedData.Json = jobj.ToString();
             }
             else if (value is string str)
             {
+                typedData = new TypedData();
                 typedData.String = str;
             }
             else if (value is long lng)
             {
+                typedData = new TypedData();
                 typedData.Int = lng;
             }
             else if (value is double dbl)
             {
+                typedData = new TypedData();
                 typedData.Double = dbl;
             }
-            else if (value is HttpRequest request)
+            return typedData;
+        }
+
+        internal static TypedData ToRpcHttp(this object value, ILogger logger, Capabilities capabilities)
+        {
+            TypedData typedData = null;
+            if (value is HttpRequest request)
             {
+                typedData = new TypedData();
                 var http = new RpcHttp()
                 {
                     Url = $"{(request.IsHttps ? "https" : "http")}://{request.Host.ToString()}{request.Path.ToString()}{request.QueryString.ToString()}", // [http|https]://{url}{path}{query}
@@ -197,51 +255,34 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 }
             }
-            else if (IsTypeDataCollectionSupported(capabilities) && value is byte[][] arrBytes)
+            return typedData;
+        }
+
+        public static TypedData ToRpc(this object value, ILogger logger, Capabilities capabilities)
+        {
+            TypedData typedData = null;
+            if (value == null)
             {
-                TypedDataCollectionBytes collectionBytes = new TypedDataCollectionBytes();
-                foreach (byte[] element in arrBytes)
-                {
-                    if (element != null)
-                    {
-                        collectionBytes.Bytes.Add(ByteString.CopyFrom(element));
-                    }
-                }
-                typedData.CollectionBytes = collectionBytes;
+                typedData = new TypedData();
+                return typedData;
             }
-            else if (IsTypeDataCollectionSupported(capabilities) && value is string[] arrString)
+            typedData = value.ToRpcPrimitive();
+            if (typedData == null)
             {
-                TypedDataCollectionString collectionString = new TypedDataCollectionString();
-                foreach (string element in arrString)
-                {
-                    if (!string.IsNullOrEmpty(element))
-                    {
-                        collectionString.String.Add(element);
-                    }
-                }
-                typedData.CollectionString = collectionString;
+                typedData = value.ToRpcPrimitive();
             }
-            else if (IsTypeDataCollectionSupported(capabilities) && value is double[] arrDouble)
+            if (typedData == null)
             {
-                TypedDataCollectionDouble collectionDouble = new TypedDataCollectionDouble();
-                foreach (double element in arrDouble)
-                {
-                    collectionDouble.Double.Add(element);
-                }
-                typedData.CollectionDouble = collectionDouble;
+                typedData = value.ToRpcHttp(logger, capabilities);
             }
-            else if (IsTypeDataCollectionSupported(capabilities) && value is long[] arrLong)
+            if (typedData == null && IsTypeDataCollectionSupported(capabilities))
             {
-                TypedDataCollectionSInt64 collectionLong = new TypedDataCollectionSInt64();
-                foreach (long element in arrLong)
-                {
-                    collectionLong.Sint64.Add(element);
-                }
-                typedData.CollectionSint64 = collectionLong;
+                typedData = value.ToRpcCollection();
             }
-            else
+            if (typedData == null)
             {
                 // attempt POCO / array of pocos
+                typedData = new TypedData();
                 try
                 {
                     typedData.Json = JsonConvert.SerializeObject(value);

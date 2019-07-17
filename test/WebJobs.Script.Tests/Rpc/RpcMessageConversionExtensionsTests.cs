@@ -323,7 +323,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             TypedData returned_typedata = arrString.ToRpc(logger, capabilities);
 
             TypedData typedData = new TypedData();
-            TypedDataCollectionString collectionString = new TypedDataCollectionString();
+            CollectionString collectionString = new CollectionString();
             foreach (string element in arrString)
             {
                 if (!string.IsNullOrEmpty(element))
@@ -366,7 +366,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             TypedData returned_typedata = arrLong.ToRpc(logger, capabilities);
 
             TypedData typedData = new TypedData();
-            TypedDataCollectionSInt64 collectionLong = new TypedDataCollectionSInt64();
+            CollectionSInt64 collectionLong = new CollectionSInt64();
             foreach (long element in arrLong)
             {
                 collectionLong.Sint64.Add(element);
@@ -406,7 +406,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             TypedData returned_typedata = arrDouble.ToRpc(logger, capabilities);
             TypedData typedData = new TypedData();
 
-            TypedDataCollectionDouble collectionDouble = new TypedDataCollectionDouble();
+            CollectionDouble collectionDouble = new CollectionDouble();
             foreach (double element in arrDouble)
             {
                 collectionDouble.Double.Add(element);
@@ -450,7 +450,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             TypedData returned_typedata = arrBytes.ToRpc(logger, capabilities);
             TypedData typedData = new TypedData();
 
-            TypedDataCollectionBytes collectionBytes = new TypedDataCollectionBytes();
+            CollectionBytes collectionBytes = new CollectionBytes();
             foreach (byte[] element in arrBytes)
             {
                 if (element != null)
