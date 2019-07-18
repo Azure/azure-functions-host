@@ -12,6 +12,9 @@ namespace Microsoft.Azure.WebJobs.Script.Models
         BringAppOnline = 1 << 0,
     }
 
+    /// <summary>
+    /// Represents a binding extension package reference.
+    /// </summary>
     public class ExtensionPackageReference
     {
         /// <summary>
@@ -29,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Models
     }
 
     /// <summary>
-    /// Represents a binding extension package reference.
+    /// Represents a binding extension package reference with additional flags that are applicable post installation.
     /// </summary>
     public class ExtensionPackageReferenceWithActions : ExtensionPackageReference
     {
