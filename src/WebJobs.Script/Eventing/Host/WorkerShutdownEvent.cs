@@ -3,10 +3,10 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
-    public class WorkerRestartEvent : ScriptEvent
+    public class WorkerShutdownEvent : ScriptEvent
     {
-        public WorkerRestartEvent()
-            : base(nameof(WorkerRestartEvent), EventSources.FileMonitoring)
+        public WorkerShutdownEvent()
+            : base(nameof(WorkerShutdownEvent), EventSources.FileMonitoring)
         {
         }
     }

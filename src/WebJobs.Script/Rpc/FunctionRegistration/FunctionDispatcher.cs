@@ -237,14 +237,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public void WorkerRestart(WorkerRestartEvent restartEvent)
-        {
-            // todo: actually restart or rename this event
-            _webHostLanguageWorkerChannelManager.ShutdownChannels();
-            // await InitializeWebhostLanguageWorkerChannel(0);
-            // StartWorkerProcesses(1, InitializeWebhostLanguageWorkerChannel);
-        }
-
         private async Task RestartWorkerChannel(string runtime, string workerId)
         {
             // StartWorkerProcesses(initializedChannels.Count(), InitializeWebhostLanguageWorkerChannel);

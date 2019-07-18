@@ -248,7 +248,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
             };
 
-            // if (_managedDependencyOptions?.Value != null && _managedDependencyOptions.Value.Enabled)
             if (_managedDependenciesEnabled)
             {
                 _workerChannelLogger?.LogDebug($"Adding dependency download request to {_workerConfig.Language} language worker");

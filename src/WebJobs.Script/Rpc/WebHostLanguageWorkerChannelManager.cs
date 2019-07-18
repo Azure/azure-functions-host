@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private string _workerRuntimeValue;
         private IDisposable _workerRestartSubscription;
         private Action _shutdownStandbyWorkerChannels;
+        private bool _disposingChannels = false;
 
         private ConcurrentDictionary<string, List<ILanguageWorkerChannel>> _workerChannels = new ConcurrentDictionary<string, List<ILanguageWorkerChannel>>();
 
@@ -38,8 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger = loggerFactory.CreateLogger<WebHostLanguageWorkerChannelManager>();
             _applicationHostOptions = applicationHostOptions;
 
-            _workerRestartSubscription = _eventManager.OfType<WorkerRestartEvent>()
-                .Subscribe(WorkerRestart);
+            _workerRestartSubscription = _eventManager.OfType<WorkerShutdownEvent>()
+                .Subscribe(ShutdownWorkers);
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
@@ -82,7 +83,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public IEnumerable<ILanguageWorkerChannel> GetChannels(string language)
         {
-            if (!string.IsNullOrEmpty(language) && _workerChannels.TryGetValue(language, out List<ILanguageWorkerChannel> workerChannels))
+            if (!_disposingChannels
+                && !string.IsNullOrEmpty(language)
+                && _workerChannels.TryGetValue(language, out List<ILanguageWorkerChannel> workerChannels))
             {
                 return workerChannels;
             }
@@ -145,16 +148,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public void WorkerRestart(WorkerRestartEvent restartEvent)
+        public void ShutdownWorkers(WorkerShutdownEvent restartEvent)
         {
             if (!_environment.IsPlaceholderModeEnabled())
             {
+                // TODO: consider restarting? probably minimal perf gain for scripting scenario though,
                 ShutdownChannels();
             }
         }
 
         public void ShutdownChannels()
         {
+            // GetChannels should not return any channels
+            _disposingChannels = true;
+
             foreach (string runtime in _workerChannels.Keys)
             {
                 _logger.LogInformation("Shutting down language worker channels for runtime:{runtime}", runtime);
@@ -169,6 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 }
             }
+            _disposingChannels = false;
         }
 
         internal void AddOrUpdateWorkerChannels(string initializedRuntime, ILanguageWorkerChannel initializedLanguageWorkerChannel)
