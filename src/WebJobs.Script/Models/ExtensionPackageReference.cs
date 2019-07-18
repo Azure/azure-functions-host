@@ -2,14 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.Models
 {
-    /// <summary>
-    /// Represents a binding extension package reference.
-    /// </summary>
+    [Flags]
+    public enum ExtensionPostInstallActions
+    {
+        None = 0,
+        BringAppOnline = 1 << 0,
+    }
+
     public class ExtensionPackageReference
     {
         /// <summary>
@@ -24,5 +26,13 @@ namespace Microsoft.Azure.WebJobs.Script.Models
         /// This may also contain a floating version string.
         /// </summary>
         public string Version { get; set; }
+    }
+
+    /// <summary>
+    /// Represents a binding extension package reference.
+    /// </summary>
+    public class ExtensionPackageReferenceWithActions : ExtensionPackageReference
+    {
+        public string PostInstallActions { get; set; }
     }
 }

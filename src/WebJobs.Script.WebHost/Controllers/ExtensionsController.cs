@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
@@ -27,12 +28,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly ScriptSettingsManager _settingsManager;
         private readonly IExtensionBundleManager _extensionBundleManager;
         private readonly IEnvironment _environment;
+        private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
 
-        public ExtensionsController(IExtensionsManager extensionsManager, ScriptSettingsManager settingsManager, IExtensionBundleManager extensionBundleManager, IEnvironment environment)
+        public ExtensionsController(IExtensionsManager extensionsManager, ScriptSettingsManager settingsManager, IExtensionBundleManager extensionBundleManager, IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
         {
             _extensionsManager = extensionsManager ?? throw new ArgumentNullException(nameof(extensionsManager));
             _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
+            _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _environment = environment;
         }
 
@@ -54,11 +57,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/host/extensions")]
-        public Task<IActionResult> Post([FromBody]ExtensionPackageReference package) => InstallExtension(package);
+        public Task<IActionResult> Post([FromBody]ExtensionPackageReferenceWithActions package) => InstallExtension(package);
 
         [HttpPut("{id}")]
         [Route("admin/host/extensions")]
-        public Task<IActionResult> Put(int id, [FromBody]ExtensionPackageReference package) => InstallExtension(package);
+        public Task<IActionResult> Put(int id, [FromBody]ExtensionPackageReferenceWithActions package) => InstallExtension(package);
 
         [HttpDelete]
         [Route("admin/host/extensions/{id}")]
@@ -112,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Ok(result);
         }
 
-        public async Task<IActionResult> InstallExtension(ExtensionPackageReference package, bool verifyConflict = true)
+        public async Task<IActionResult> InstallExtension(ExtensionPackageReferenceWithActions package, bool verifyConflict = true)
         {
             if (package == null)
             {
@@ -142,15 +145,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             ExtensionsRestoreJob job = await CreateJob(package);
 
             string jobId = job.Id;
+            Enum.TryParse(package.PostInstallActions, true, out ExtensionPostInstallActions postInstallActions);
             var addTask = _extensionsManager.AddExtensions(package)
-                .ContinueWith(t => ProcessJobTaskResult(t, jobId));
+                .ContinueWith(t => ProcessJobTaskResult(t, jobId, postInstallActions));
 
             var apiModel = ApiModelUtility.CreateApiModel(job, Request, $"jobs/{job.Id}");
             string action = $"{Request.Scheme}://{Request.Host.ToUriComponent()}{Url.Action(nameof(GetJobs), "Extensions", new { id = job.Id })}{Request.QueryString}";
             return Accepted(action, apiModel);
         }
 
-        private async Task ProcessJobTaskResult(Task jobTask, string jobId)
+        private async Task ProcessJobTaskResult(Task jobTask, string jobId, ExtensionPostInstallActions postInstallActions = ExtensionPostInstallActions.None)
         {
             ExtensionsRestoreJob job = await GetJob(jobId);
             if (job == null)
@@ -169,6 +173,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             job.EndTime = DateTimeOffset.Now;
+
+            if (postInstallActions.HasFlag(ExtensionPostInstallActions.BringAppOnline))
+            {
+                await FileMonitoringService.SetAppOfflineState(_applicationHostOptions.Value.ScriptPath, false);
+            }
 
             await SaveJob(job);
         }
