@@ -71,6 +71,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     Arguments = string.Format(CultureInfo.InvariantCulture, "restore \"{0}\" --packages \"{1}\"", restoreProjectPath, nugetHome)
                 };
 
+                startInfo.Environment.Add(EnvironmentSettingNames.DotnetSkipFirstTimeExperience, "true");
+
                 var process = new Process { StartInfo = startInfo };
                 process.ErrorDataReceived += ProcessDataReceived;
                 process.OutputDataReceived += ProcessDataReceived;

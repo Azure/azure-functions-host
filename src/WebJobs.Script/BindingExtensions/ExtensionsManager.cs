@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
         private void SetupProcessEnvironment(ProcessStartInfo startInfo)
         {
-            TryAdd(startInfo.Environment, "DOTNET_SKIP_FIRST_TIME_EXPERIENCE", "true");
+            TryAdd(startInfo.Environment, EnvironmentSettingNames.DotnetSkipFirstTimeExperience, "true");
             TryAdd(startInfo.Environment, NugetXmlDocModeSettingName, NugetXmlDocSkipMode);
         }
 
