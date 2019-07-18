@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                      }
                      else
                      {
-                         _logger.LogWarning("Failed to start language worker process jobhost for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
+                         _logger.LogWarning("Failed to start language worker process for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
                      }
                  });
             return Task.CompletedTask;
