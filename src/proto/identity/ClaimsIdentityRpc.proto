@@ -1,6 +1,8 @@
 syntax = "proto3";
 // protobuf vscode extension: https://marketplace.visualstudio.com/items?itemName=zxh404.vscode-proto3
 
+option java_package = "com.microsoft.azure.functions.rpc.messages";
+
 import "shared/NullableTypes.proto";
 
 // Light-weight representation of a .NET System.Security.Claims.ClaimsIdentity object.
