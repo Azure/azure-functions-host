@@ -113,6 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (startIndex == 0)
             {
                 await InitializeLanguageWorkerChannel(0);
+                startIndex = 1;
             }
 
             // Offset start of others by _debounceSeconds
