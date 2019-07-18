@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IEnumerable<WorkerConfig> _workerConfigs;
         private IWebHostLanguageWorkerChannelManager _webHostLanguageWorkerChannelManager;
         private IDisposable _workerErrorSubscription;
+        // private IDisposable _workerRestartSubscription;
         private ScriptJobHostOptions _scriptOptions;
         private int _maxProcessCount;
         private IFunctionDispatcherLoadBalancer _functionDispatcherLoadBalancer;
@@ -79,6 +80,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);
+
+            //_workerRestartSubscription = _eventManager.OfType<WorkerRestartEvent>()
+            //   .Subscribe(WorkerRestart);
 
             _shutdownStandbyWorkerChannels = ShutdownWebhostLanguageWorkerChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
@@ -205,6 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     await InitializeWebhostLanguageWorkerChannel(0);
                     StartWorkerProcesses(1, InitializeWebhostLanguageWorkerChannel);
+                    State = FunctionDispatcherState.Initialized;
                 }
             }
         }
@@ -264,6 +269,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
+        public void WorkerRestart(WorkerRestartEvent restartEvent)
+        {
+            // todo: actually restart, don't just shut down
+            _webHostLanguageWorkerChannelManager.ShutdownChannels();
+            // await InitializeWebhostLanguageWorkerChannel(0);
+            // StartWorkerProcesses(1, InitializeWebhostLanguageWorkerChannel);
+        }
+
         private async Task RestartWorkerChannel(string runtime, string workerId)
         {
             // StartWorkerProcesses(initializedChannels.Count(), InitializeWebhostLanguageWorkerChannel);
@@ -284,6 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (!_disposed && disposing)
             {
                 _workerErrorSubscription.Dispose();
+                // _workerRestartSubscription.Dispose();
                 _processStartCancellationToken.Cancel();
                 _processStartCancellationToken.Dispose();
                 // _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannels();

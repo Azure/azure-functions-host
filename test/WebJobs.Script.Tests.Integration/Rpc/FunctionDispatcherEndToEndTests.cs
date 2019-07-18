@@ -68,7 +68,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private LanguageWorkerChannel GetCurrentJobHostWorkerChannel()
         {
             FunctionDispatcher fd = Fixture.JobHost.FunctionDispatcher as FunctionDispatcher;
-            return (LanguageWorkerChannel)fd.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
+            // return (LanguageWorkerChannel)fd.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
+            return null;
         }
 
         public class TestFixture : ScriptHostEndToEndTestFixture

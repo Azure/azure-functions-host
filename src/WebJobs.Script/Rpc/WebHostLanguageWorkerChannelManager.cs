@@ -14,7 +14,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
-    public class WebHostLanguageWorkerChannelManager : IWebHostLanguageWorkerChannelManager
+    public class WebHostLanguageWorkerChannelManager : IWebHostLanguageWorkerChannelManager, IDisposable
     {
         private readonly ILogger _logger = null;
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
+        private IDisposable _workerRestartSubscription;
         private string _workerRuntimeFromEnvironment;
         private string _workerRuntimeFromFunctions;
         private Action _shutdownStandbyWorkerChannels;
@@ -37,6 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _languageWorkerChannelFactory = languageWorkerChannelFactory;
             _logger = loggerFactory.CreateLogger<WebHostLanguageWorkerChannelManager>();
             _applicationHostOptions = applicationHostOptions;
+
+            _workerRestartSubscription = _eventManager.OfType<WorkerRestartEvent>()
+                .Subscribe(WorkerRestart);
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
@@ -147,6 +151,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
+        public void WorkerRestart(WorkerRestartEvent restartEvent)
+        {
+            if (!_environment.IsPlaceholderModeEnabled())
+            {
+                ShutdownChannels();
+            }
+        }
+
         public void ShutdownChannels()
         {
             foreach (string runtime in _workerChannels.Keys)
@@ -180,6 +192,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         existingLanguageWorkerChannels.Add(initializedLanguageWorkerChannel);
                         return existingLanguageWorkerChannels;
                     });
+        }
+
+        public void Dispose()
+        {
+            _workerRestartSubscription.Dispose();
         }
     }
 }
