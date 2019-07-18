@@ -23,9 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
+        private string _workerRuntimeValue;
         private IDisposable _workerRestartSubscription;
-        private string _workerRuntimeFromEnvironment;
-        private string _workerRuntimeFromFunctions;
         private Action _shutdownStandbyWorkerChannels;
 
         private ConcurrentDictionary<string, List<ILanguageWorkerChannel>> _workerChannels = new ConcurrentDictionary<string, List<ILanguageWorkerChannel>>();
@@ -45,12 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
 
-            _workerRuntimeFromEnvironment = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-        }
-
-        public void SetWorkerRuntimeFromFunctions(string workerRuntime)
-        {
-            _workerRuntimeFromFunctions = workerRuntime;
+            _workerRuntimeValue = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
         }
 
         public Task<ILanguageWorkerChannel> InitializeChannelAsync(string runtime)
@@ -98,11 +92,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public async Task SpecializeAsync()
         {
             _logger.LogInformation("Starting language worker channel specialization");
-            _workerRuntimeFromEnvironment = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-            ILanguageWorkerChannel languageWorkerChannel = GetChannel(_workerRuntimeFromEnvironment);
-            if (_workerRuntimeFromEnvironment != null && languageWorkerChannel != null)
+            _workerRuntimeValue = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
+            ILanguageWorkerChannel languageWorkerChannel = GetChannel(_workerRuntimeValue);
+            if (_workerRuntimeValue != null && languageWorkerChannel != null)
             {
-                _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntimeFromEnvironment);
+                _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntimeValue);
                 await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
             }
             _shutdownStandbyWorkerChannels();
@@ -129,15 +123,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void ScheduleShutdownStandbyChannels()
         {
-            var runtime = _workerRuntimeFromFunctions ?? _workerRuntimeFromEnvironment;
-            if (!string.IsNullOrEmpty(runtime))
+            _workerRuntimeValue = _workerRuntimeValue ?? _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
+            if (!string.IsNullOrEmpty(_workerRuntimeValue))
             {
-                var standbyWorkerChannels = _workerChannels.Where(ch => !ch.Key.Equals(runtime, StringComparison.InvariantCultureIgnoreCase));
-                foreach (var standby in standbyWorkerChannels)
+                var standbyWorkerChannels = _workerChannels.Where(ch => !ch.Key.Equals(_workerRuntimeValue, StringComparison.InvariantCultureIgnoreCase));
+                foreach (var runtime in standbyWorkerChannels)
                 {
-                    _logger.LogInformation("Disposing standby channel for runtime:{language}", standby.Key);
+                    _logger.LogInformation("Disposing standby channel for runtime:{language}", runtime.Key);
 
-                    if (_workerChannels.TryRemove(standby.Key, out List<ILanguageWorkerChannel> standbyChannels))
+                    if (_workerChannels.TryRemove(runtime.Key, out List<ILanguageWorkerChannel> standbyChannels))
                     {
                         foreach (var channel in standbyChannels)
                         {
