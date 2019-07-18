@@ -226,7 +226,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (!_shutdownScheduled)
             {
-                _eventManager.Publish(new WorkerRestartEvent());
+                _eventManager.Publish(new WorkerShutdownEvent());
                 _scriptEnvironment.RestartHost();
             }
 
