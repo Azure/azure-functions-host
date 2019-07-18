@@ -275,7 +275,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 typedData = value.ToRpcHttp(logger, capabilities);
             }
-            if (typedData == null && IsTypeDataCollectionSupported(capabilities))
+            if (typedData == null && IsTypedDataCollectionSupported(capabilities))
             {
                 typedData = value.ToRpcCollection();
             }
@@ -300,14 +300,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return capabilities.GetCapabilityState(LanguageWorkerConstants.RawHttpBodyBytes) != null;
         }
 
-        private static bool IsTypeDataCollectionSupported(Capabilities capabilities)
+        private static bool IsTypedDataCollectionSupported(Capabilities capabilities)
         {
-            string typeDataCollectionSupported = capabilities.GetCapabilityState(LanguageWorkerConstants.TypedDataCollectionSupported);
-            if (!string.IsNullOrEmpty(typeDataCollectionSupported))
-            {
-                return true;
-            }
-            return false;
+            return !string.IsNullOrEmpty(capabilities.GetCapabilityState(LanguageWorkerConstants.TypedDataCollection));
         }
 
         internal static byte[] RequestBodyToBytes(HttpRequest request)

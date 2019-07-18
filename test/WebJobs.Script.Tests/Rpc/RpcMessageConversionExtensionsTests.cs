@@ -315,7 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { LanguageWorkerConstants.TypedDataCollectionSupported, LanguageWorkerConstants.TypedDataCollectionSupported }
+                { LanguageWorkerConstants.TypedDataCollection, LanguageWorkerConstants.TypedDataCollection }
             };
 
             capabilities.UpdateCapabilities(addedCapabilities);
@@ -334,6 +334,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             typedData.CollectionString = collectionString;
 
             Assert.Equal(typedData.CollectionString, returned_typedata.CollectionString);
+            Assert.Equal(typedData.CollectionString.String[0], returned_typedata.CollectionString.String[0]);
         }
 
         [Fact]
@@ -358,7 +359,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { LanguageWorkerConstants.TypedDataCollectionSupported, LanguageWorkerConstants.TypedDataCollectionSupported }
+                { LanguageWorkerConstants.TypedDataCollection, LanguageWorkerConstants.TypedDataCollection }
             };
 
             capabilities.UpdateCapabilities(addedCapabilities);
@@ -374,6 +375,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             typedData.CollectionSint64 = collectionLong;
 
             Assert.Equal(typedData.CollectionSint64, returned_typedata.CollectionSint64);
+            Assert.Equal(typedData.CollectionSint64.Sint64[0], returned_typedata.CollectionSint64.Sint64[0]);
         }
 
         [Fact]
@@ -398,7 +400,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { LanguageWorkerConstants.TypedDataCollectionSupported, LanguageWorkerConstants.TypedDataCollectionSupported }
+                { LanguageWorkerConstants.TypedDataCollection, LanguageWorkerConstants.TypedDataCollection }
             };
 
             capabilities.UpdateCapabilities(addedCapabilities);
@@ -414,6 +416,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             typedData.CollectionDouble = collectionDouble;
 
             Assert.Equal(typedData.CollectionDouble, returned_typedata.CollectionDouble);
+            Assert.Equal(typedData.CollectionDouble.Double[0], returned_typedata.CollectionDouble.Double[0]);
         }
 
         [Fact]
@@ -438,7 +441,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { LanguageWorkerConstants.TypedDataCollectionSupported, LanguageWorkerConstants.TypedDataCollectionSupported }
+                { LanguageWorkerConstants.TypedDataCollection, LanguageWorkerConstants.TypedDataCollection }
             };
 
             capabilities.UpdateCapabilities(addedCapabilities);
@@ -461,6 +464,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             typedData.CollectionBytes = collectionBytes;
 
             Assert.Equal(typedData.CollectionBytes, returned_typedata.CollectionBytes);
+            Assert.Equal(typedData.CollectionBytes.Bytes[0], returned_typedata.CollectionBytes.Bytes[0]);
         }
 
         [Fact]
