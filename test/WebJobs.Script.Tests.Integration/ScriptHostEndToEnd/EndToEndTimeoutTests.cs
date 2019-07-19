@@ -125,8 +125,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                        o.FunctionTimeout = timeout;
                        o.Functions = new List<string> { functionName };
                    });
-
-                   b.Services.AddSingleton<IWebJobsExceptionHandler, MockExceptionHandler>();
                },
                options =>
                {
@@ -135,6 +133,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                .ConfigureLogging(b =>
                {
                    b.AddProvider(_loggerProvider);
+               })
+               .ConfigureServices(s =>
+               {
+                   s.AddSingleton<IWebJobsExceptionHandler, MockExceptionHandler>();
                });
 
             return builder;
