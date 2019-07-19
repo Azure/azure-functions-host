@@ -366,6 +366,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void IsValidFunctionNameTests(string functionName, bool expectedResult)
         {
             CultureInfo defaultCulture = Thread.CurrentThread.CurrentCulture;
+            // In Turkish-Turkey, "I" is not the uppercase equivalent of "i"
             Thread.CurrentThread.CurrentCulture = new CultureInfo("tr-TR");
             Assert.Equal(expectedResult, Utility.IsValidFunctionName(functionName));
             Thread.CurrentThread.CurrentCulture = defaultCulture;
