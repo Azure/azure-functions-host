@@ -3,6 +3,7 @@
 
 using System.Text;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -29,6 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             expected.Expect<ILoggerFactory, ScriptLoggerFactory>();
 
             expected.Expect<IMetricsLogger, WebHostMetricsLogger>();
+
+            expected.Expect<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
 
             expected.Expect<IEventCollectorFactory>("Microsoft.Azure.WebJobs.Logging.EventCollectorFactory");
 
