@@ -484,5 +484,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             Assert.Equal(typedData.Json, returned_typedata.Json);
         }
+
+        [Fact]
+        public void ToRpc_Bytes_Without_Capabilities_Value()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+
+            byte[] arrByte = Encoding.Default.GetBytes("HellowWorld");
+
+            TypedData returned_typedata = arrByte.ToRpc(logger, capabilities);
+
+            TypedData typedData = new TypedData();
+            typedData.Bytes = ByteString.CopyFrom(arrByte);
+
+            Assert.Equal(typedData.Bytes, returned_typedata.Bytes);
+        }
+
+        [Fact]
+        public void ToRpc_Bytes_With_Capabilities_Value()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+            MapField<string, string> addedCapabilities = new MapField<string, string>
+            {
+                { LanguageWorkerConstants.TypedDataCollection, LanguageWorkerConstants.TypedDataCollection }
+            };
+            capabilities.UpdateCapabilities(addedCapabilities);
+            byte[] arrByte = Encoding.Default.GetBytes("HellowWorld");
+
+            TypedData returned_typedata = arrByte.ToRpc(logger, capabilities);
+
+            TypedData typedData = new TypedData();
+            typedData.Bytes = ByteString.CopyFrom(arrByte);
+
+            Assert.Equal(typedData.Bytes, returned_typedata.Bytes);
+        }
     }
 }
