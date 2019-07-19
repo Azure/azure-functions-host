@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Dynamic;
+using System.Globalization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -352,6 +353,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void IsHttporManualTriggerTests(string triggerType, bool expectedResult)
         {
             Assert.Equal(expectedResult, Utility.IsHttporManualTrigger(triggerType));
+        }
+
+        [Theory]
+        [InlineData("createIsolationEnvironment", true)]
+        [InlineData("HttpTrigger2", true)]
+        [InlineData("HttptRIGGER", true)]
+        [InlineData("MANUALtRIGGER", true)]
+        [InlineData("Function-200", true)]
+        [InlineData("hello!", false)]
+        [InlineData("🙅", false)]
+        public void IsValidFunctionNameTests(string functionName, bool expectedResult)
+        {
+            CultureInfo defaultCulture = Thread.CurrentThread.CurrentCulture;
+            Thread.CurrentThread.CurrentCulture = new CultureInfo("tr-TR");
+            Assert.Equal(expectedResult, Utility.IsValidFunctionName(functionName));
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
         }
     }
 }
