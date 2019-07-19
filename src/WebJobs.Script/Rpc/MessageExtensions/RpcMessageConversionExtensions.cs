@@ -71,10 +71,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 typedData.Double = dbl;
             }
-            else if (value is long lng)
-            {
-                typedData.Int = lng;
-            }
             else if (value.GetType().IsArray && IsTypedDataCollectionSupported(capabilities))
             {
                 typedData = value.ToRpcCollection();
