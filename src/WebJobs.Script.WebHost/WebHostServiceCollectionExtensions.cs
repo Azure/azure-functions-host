@@ -64,7 +64,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             services.AddHttpContextAccessor();
             services.AddWebJobsScriptHostRouting();
-            services.AddMvc()
+            services.AddMvc(o => o.EnableEndpointRouting = false)
+                .AddNewtonsoftJson()
                 .AddXmlDataContractSerializerFormatters();
 
             // Standby services

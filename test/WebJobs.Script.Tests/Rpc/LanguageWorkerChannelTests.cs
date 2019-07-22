@@ -20,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
     public class LanguageWorkerChannelTests
     {
+        private readonly TestLoggerProvider _testLoggerProvider = new TestLoggerProvider();
+
         private static string _expectedLogMsg = "Outbound event subscribe event handler invoked";
         private static string _expectedSystemLogMessage = "Random system log message";
 
@@ -28,10 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private string _scriptRootPath = "c:\testdir";
         private IScriptEventManager _eventManager = new ScriptEventManager();
         private Mock<IMetricsLogger> _mockMetricsLogger = new Mock<IMetricsLogger>();
-        private Mock<ILanguageWorkerConsoleLogSource> _mockConsoleLogger = new Mock<ILanguageWorkerConsoleLogSource>();
         private Mock<FunctionRpc.FunctionRpcBase> _mockFunctionRpcService = new Mock<FunctionRpc.FunctionRpcBase>();
         private TestRpcServer _testRpcServer = new TestRpcServer();
-        private ILoggerFactory _loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
         private TestFunctionRpcService _testFunctionRpcService;
         private TestLogger _logger;
         private LanguageWorkerChannel _workerChannel;
