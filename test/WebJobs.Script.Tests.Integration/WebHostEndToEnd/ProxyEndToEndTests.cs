@@ -24,7 +24,7 @@ using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
-{
+{    
     public class ProxyEndToEndTests : IClassFixture<ProxyEndToEndTests.TestFixture>
     {
         private readonly ScriptSettingsManager _settingsManager;
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _settingsManager = ScriptSettingsManager.Instance;
         }
 
-        [Fact]
+        [Fact(Skip = "Skipping proxy tests")]
         public async Task ListFunctions_Proxies_Succeeds()
         {
             // get functions including proxies
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(3, metadata.Length);
         }
 
-        [Fact]
+        [Fact(Skip = "Skipping proxy tests")]
         public async Task Proxy_Invoke_Succeeds()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"/mymockhttp");
@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(response.Headers.GetValues("myversion").ToArray()[0], "123");
         }
 
-        [Theory]
+        [Theory(Skip = "Skipping proxy tests")]
         [InlineData("test.txt")]
         [InlineData("test.asp")]
         [InlineData("test.aspx")]
@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("test", content);
         }
 
-        [Fact]
+        [Fact(Skip = "Skipping proxy tests")]
         public async Task RootCheck()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync("/");
@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Root", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionCall()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"myhttptrigger");
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionCallWithAuth()
         {
             string functionKey = await _fixture.GetFunctionSecretAsync("PingAuth");
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionInfiniteRedirectTest()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/myloop");
@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(content.Contains("Infinite loop"));
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionCallWithoutProxy()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/Ping");
@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionRouteCallWithoutProxy()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/myroute/mysubroute");
@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionCallForNonAlphanumericProxyName()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"MyHttpWithNonAlphanumericProxyName");
@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task CatchAllApis()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/proxy/blahblah");
@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task ColdStartRequest()
         {
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "api/proxy/blahblah");
@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         //backend set as constant - no trailing slash should be added
         public async Task TrailingSlashRemoved()
         {
@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"http://localhost/api/myroute/mysubroute?a=1", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         //backend ended with simple param - no trailing slash should be added
         public async Task TrailingSlashRemoved2()
         {
@@ -210,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"http://localhost/api/myroute/mysubroute?a=1", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         //backend path ended with wildcard param - slash should be kept
         public async Task TrailingSlashKept()
         {
@@ -222,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"http://localhost/api/myroute/mysubroute/?a=1", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         //backend path ended with wildcard param - slash should be kept
         public async Task TrailingSlashKept2()
         {
@@ -234,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"http://localhost/api/myroute/mysubroute?a=1", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task CatchAllWithCustomRoutes()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"proxy/api/myroute/mysubroute");
@@ -244,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "Skipping proxy tests")]
         public async Task CatchAllWithCustomRoutesWithInvalidVerb()
         {
             HttpResponseMessage response = await _fixture.HttpClient.PutAsync($"proxy/api/myroute/mysubroute", null);
@@ -252,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("404", response.StatusCode.ToString("D"));
         }
 
-        [Fact]
+        [Fact(Skip = "Skipping proxy tests")]
         public async Task LongQueryString()
         {
             var longRoute = "/?q=test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234";
@@ -265,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("200", response.StatusCode.ToString("D"));
         }
 
-        [Fact]
+        [Fact(Skip = "Skipping proxy tests")]
         public async Task LongRoute()
         {
             var longRoute = "test123412341234123412341234123412341234123412341234123412341234123412341234123421341234123423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234213423141234123412341234123412341234123412341234123412341234123412341234123412341234123412341234";
@@ -278,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("200", response.StatusCode.ToString("D"));
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task ProxyCallingLocalProxy()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"/pr1/api/Ping");
@@ -288,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionCallBodyOverride()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"/mylocalhttpoverride");
@@ -299,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("{\"test\":\"{}{123}\"}", content);
         }
 
-        [Fact]
+        [Fact(Skip = "Skipping proxy tests")]
         public async Task ExternalCallBodyOverride()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"/myexternalhttpoverride");
@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("{\"test\":\"123\"}", content);
         }
 
-        [Fact]
+        [Fact(Skip = "Skipping proxy tests")]
         //"HEAD" request to proxy. backend returns 304 with no body but content-type shouldn't be null
         public async Task EmptyHeadReturnsContentType()
         {
@@ -324,7 +324,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(response.Headers.Contains("Test"));
         }
 
-        [Fact]
+        [Fact(Skip = "Skipping proxy tests")]
         //"GET" request to proxy. backend returns 304 with no body so content-type should be null
         public async Task EmptyGetDoesntReturnsContentType()
         {
@@ -383,7 +383,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                        services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataProvider), provider));
                    });
 
-                _testServer = new TestServer(builder);
+                // TODO: https://github.com/Azure/azure-functions-host/issues/4876
+                _testServer = new TestServer(builder) { AllowSynchronousIO = true };
                 HostOptions.RootServiceProvider = _testServer.Host.Services;
                 var scriptConfig = _testServer.Host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value;
 

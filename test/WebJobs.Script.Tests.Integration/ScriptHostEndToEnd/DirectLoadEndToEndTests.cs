@@ -5,8 +5,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Internal;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Rpc;
@@ -32,14 +32,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task Invoke_Succeeds()
         {
             var context = new DefaultHttpContext();
-            var request = new DefaultHttpRequest(context)
-            {
-                Method = "GET",
-                Scheme = "http",
-                Host = new HostString("functions.com", 80),
-                Path = "/api/functions/function1",
-                QueryString = new QueryString("?name=Mathew")
-            };
+            var request = context.Request;
+            request.Method = "GET";
+            request.Scheme = "http";
+            request.Host = new HostString("functions.com", 80);
+            request.Path = "/api/functions/function1";
+            request.QueryString = new QueryString("?name=Mathew");
+
             var arguments = new Dictionary<string, object>()
             {
                 { "req", request }
@@ -63,14 +62,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task Invoke_ExceptionThrown_DetailsLogged()
         {
             var context = new DefaultHttpContext();
-            var request = new DefaultHttpRequest(context)
-            {
-                Method = "GET",
-                Scheme = "http",
-                Host = new HostString("functions.com", 80),
-                Path = "/api/functions/function1",
-                QueryString = new QueryString("?action=throw")
-            };
+
+            var request = context.Request;
+            request.Method = "GET";
+            request.Scheme = "http";
+            request.Host = new HostString("functions.com", 80);
+            request.Path = "/api/functions/function1";
+            request.QueryString = new QueryString("?action=throw");
+            
             var arguments = new Dictionary<string, object>()
             {
                 { "req", request }

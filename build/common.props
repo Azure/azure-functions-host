@@ -5,7 +5,7 @@
     <LangVersion>7.2</LangVersion>
     <RuntimeReleaseSuffix></RuntimeReleaseSuffix>
     <BuildNumber Condition=" '$(BuildNumber)' == '' ">1</BuildNumber>
-    <MajorMinorProductVersion>2.0</MajorMinorProductVersion>
+    <MajorMinorProductVersion>3.0</MajorMinorProductVersion>
     <Version>$(MajorMinorProductVersion).0$(RuntimeReleaseSuffix)$(VersionSuffix)</Version>
     <AssemblyVersion>$(MajorMinorProductVersion).0.0</AssemblyVersion>
     <FileVersion>$(MajorMinorProductVersion).$(BuildNumber).0</FileVersion>

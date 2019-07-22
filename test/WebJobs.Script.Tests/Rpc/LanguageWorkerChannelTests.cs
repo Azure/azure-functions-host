@@ -12,7 +12,6 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Rpc;
-using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -28,10 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private string _scriptRootPath = "c:\testdir";
         private IScriptEventManager _eventManager = new ScriptEventManager();
         private Mock<IMetricsLogger> _mockMetricsLogger = new Mock<IMetricsLogger>();
-        private Mock<ILanguageWorkerConsoleLogSource> _mockConsoleLogger = new Mock<ILanguageWorkerConsoleLogSource>();
         private Mock<FunctionRpc.FunctionRpcBase> _mockFunctionRpcService = new Mock<FunctionRpc.FunctionRpcBase>();
         private TestRpcServer _testRpcServer = new TestRpcServer();
-        private ILoggerFactory _loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
         private TestFunctionRpcService _testFunctionRpcService;
         private TestLogger _logger;
         private LanguageWorkerChannel _workerChannel;

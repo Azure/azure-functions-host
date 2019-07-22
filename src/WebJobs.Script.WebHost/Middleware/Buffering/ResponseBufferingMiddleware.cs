@@ -16,44 +16,45 @@ namespace Microsoft.AspNetCore.Buffering
             _next = next;
         }
 
-        public async Task Invoke(HttpContext httpContext)
-        {
-            var originalResponseBody = httpContext.Response.Body;
+        // Removing due to API changes. https://github.com/Azure/azure-functions-host/issues/4865
+        //public async Task Invoke(HttpContext httpContext)
+        //{
+        //    var originalResponseBody = httpContext.Response.Body;
 
-            // no-op if buffering is already available.
-            if (originalResponseBody.CanSeek)
-            {
-                await _next(httpContext);
-                return;
-            }
+        //    // no-op if buffering is already available.
+        //    if (originalResponseBody.CanSeek)
+        //    {
+        //        await _next(httpContext);
+        //        return;
+        //    }
 
-            var originalBufferingFeature = httpContext.Features.Get<IHttpBufferingFeature>();
-            try
-            {
-                // Shim the response stream
-                var bufferStream = new BufferingWriteStream(originalResponseBody);
-                httpContext.Response.Body = bufferStream;
-                httpContext.Features.Set<IHttpBufferingFeature>(new HttpBufferingFeature(bufferStream, originalBufferingFeature));
+        //    var originalBufferingFeature = httpContext.Features.Get<IHttpBufferingFeature>();
+        //    try
+        //    {
+        //        // Shim the response stream
+        //        var bufferStream = new BufferingWriteStream(originalResponseBody);
+        //        httpContext.Response.Body = bufferStream;
+        //        httpContext.Features.Set<IHttpBufferingFeature>(new HttpBufferingFeature(bufferStream, originalBufferingFeature));
 
-                await _next(httpContext);
+        //        await _next(httpContext);
 
-                // If we're still buffered, set the content-length header and flush the buffer.
-                // Only if the content-length header is not already set, and some content was buffered.
-                if (!httpContext.Response.HasStarted && bufferStream.CanSeek && bufferStream.Length > 0)
-                {
-                    if (!httpContext.Response.ContentLength.HasValue)
-                    {
-                        httpContext.Response.ContentLength = bufferStream.Length;
-                    }
-                    await bufferStream.FlushAsync();
-                }
-            }
-            finally
-            {
-                // undo everything
-                httpContext.Features.Set(originalBufferingFeature);
-                httpContext.Response.Body = originalResponseBody;
-            }
-        }
+        //        // If we're still buffered, set the content-length header and flush the buffer.
+        //        // Only if the content-length header is not already set, and some content was buffered.
+        //        if (!httpContext.Response.HasStarted && bufferStream.CanSeek && bufferStream.Length > 0)
+        //        {
+        //            if (!httpContext.Response.ContentLength.HasValue)
+        //            {
+        //                httpContext.Response.ContentLength = bufferStream.Length;
+        //            }
+        //            await bufferStream.FlushAsync();
+        //        }
+        //    }
+        //    finally
+        //    {
+        //        // undo everything
+        //        httpContext.Features.Set(originalBufferingFeature);
+        //        httpContext.Response.Body = originalResponseBody;
+        //    }
+        //}
     }
 }
