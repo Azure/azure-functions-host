@@ -6,21 +6,19 @@ using System.Net.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -66,11 +64,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             services.AddHttpContextAccessor();
             services.AddWebJobsScriptHostRouting();
-            services.AddMvc(options =>
-            {
-                options.Filters.Add(new ArmExtensionResourceFilter());
-            })
-            .AddXmlDataContractSerializerFormatters();
+            services.AddMvc(o => o.EnableEndpointRouting = false)
+                .AddNewtonsoftJson()
+                .AddXmlDataContractSerializerFormatters();
 
             // Standby services
             services.AddStandbyServices();
@@ -79,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
             services.TryAddSingleton<IStandbyManager, StandbyManager>();
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
+            services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
 
             // Linux container services
             services.AddLinuxContainerServices();
@@ -89,14 +86,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IEventGenerator>(p =>
             {
                 var environment = p.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                if (environment.IsLinuxContainerEnvironment())
                 {
                     return new LinuxContainerEventGenerator(environment);
                 }
-                else if (SystemEnvironment.Instance.IsLinuxAppService())
+                else if (SystemEnvironment.Instance.IsLinuxAppServiceEnvironment())
                 {
-                    var hostNameProvider = p.GetService<HostNameProvider>();
-                    return new LinuxAppServiceEventGenerator(new LinuxAppServiceFileLoggerFactory(), hostNameProvider);
+                    return new LinuxAppServiceEventGenerator(new LinuxAppServiceFileLoggerFactory());
                 }
                 else
                 {
@@ -110,7 +106,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
             services.AddSingleton(_ => new HttpClient());
-            services.AddSingleton<StartupContextProvider>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
@@ -139,7 +134,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
             services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
-            services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
@@ -168,12 +162,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                if (environment.IsLinuxContainerEnvironment())
                 {
                     var instanceManager = s.GetService<IInstanceManager>();
                     var logger = s.GetService<ILogger<LinuxContainerInitializationHostService>>();
-                    var startupContextProvider = s.GetService<StartupContextProvider>();
-                    return new LinuxContainerInitializationHostService(environment, instanceManager, logger, startupContextProvider);
+                    return new LinuxContainerInitializationHostService(environment, instanceManager, logger);
                 }
 
                 return NullHostedService.Instance;
@@ -193,68 +186,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var nullMetricsLogger = s.GetService<ILogger<NullMetricsPublisher>>();
                 return new NullMetricsPublisher(nullMetricsLogger);
             });
-
-            services.AddSingleton<IMeshServiceClient>(s =>
-            {
-                var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
-                {
-                    var httpClient = s.GetService<HttpClient>();
-                    var logger = s.GetService<ILogger<MeshServiceClient>>();
-                    return new MeshServiceClient(httpClient, environment, logger);
-                }
-
-                var nullLogger = s.GetService<ILogger<NullMeshServiceClient>>();
-                return new NullMeshServiceClient(nullLogger);
-            });
-
-            services.AddSingleton<LinuxContainerActivityPublisher>(s =>
-            {
-                var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
-                {
-                    var logger = s.GetService<ILogger<LinuxContainerActivityPublisher>>();
-                    var meshInitServiceClient = s.GetService<IMeshServiceClient>();
-                    var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
-                    return new LinuxContainerActivityPublisher(standbyOptions, meshInitServiceClient, environment, logger);
-                }
-
-                return null;
-            });
-
-            services.AddSingleton<IHostedService>(s =>
-            {
-                var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
-                {
-                    return s.GetRequiredService<LinuxContainerActivityPublisher>();
-                }
-
-                return NullHostedService.Instance;
-            });
-
-            services.AddSingleton<ILinuxContainerActivityPublisher>(s =>
-            {
-                var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
-                {
-                    return s.GetRequiredService<LinuxContainerActivityPublisher>();
-                }
-
-                var nullLogger = s.GetService<ILogger<NullLinuxContainerActivityPublisher>>();
-                return new NullLinuxContainerActivityPublisher(nullLogger);
-            });
-        }
-
-        private static IServiceCollection ConfigureOptionsWithChangeTokenSource<TOptions, TOptionsSetup, TOptionsChangeTokenSource>(this IServiceCollection services)
-            where TOptions : class
-            where TOptionsSetup : class, IConfigureOptions<TOptions>
-            where TOptionsChangeTokenSource : class, IOptionsChangeTokenSource<TOptions>
-        {
-            services.ConfigureOptions<TOptionsSetup>();
-            services.AddSingleton<IOptionsChangeTokenSource<TOptions>, TOptionsChangeTokenSource>();
-
-            return services;
         }
     }
 }

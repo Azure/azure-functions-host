@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Root", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionCall()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"myhttptrigger");
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionCallWithAuth()
         {
             string functionKey = await _fixture.GetFunctionSecretAsync("PingAuth");
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionInfiniteRedirectTest()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/myloop");
@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(content.Contains("Infinite loop"));
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionCallWithoutProxy()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/Ping");
@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionRouteCallWithoutProxy()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/myroute/mysubroute");
@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionCallForNonAlphanumericProxyName()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"MyHttpWithNonAlphanumericProxyName");
@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task CatchAllApis()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"api/proxy/blahblah");
@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task ColdStartRequest()
         {
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "api/proxy/blahblah");
@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         //backend set as constant - no trailing slash should be added
         public async Task TrailingSlashRemoved()
         {
@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"http://localhost/api/myroute/mysubroute?a=1", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         //backend ended with simple param - no trailing slash should be added
         public async Task TrailingSlashRemoved2()
         {
@@ -210,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"http://localhost/api/myroute/mysubroute?a=1", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         //backend path ended with wildcard param - slash should be kept
         public async Task TrailingSlashKept()
         {
@@ -222,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"http://localhost/api/myroute/mysubroute/?a=1", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         //backend path ended with wildcard param - slash should be kept
         public async Task TrailingSlashKept2()
         {
@@ -234,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"http://localhost/api/myroute/mysubroute?a=1", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task CatchAllWithCustomRoutes()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"proxy/api/myroute/mysubroute");
@@ -278,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("200", response.StatusCode.ToString("D"));
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task ProxyCallingLocalProxy()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"/pr1/api/Ping");
@@ -288,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4770")]
         public async Task LocalFunctionCallBodyOverride()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"/mylocalhttpoverride");

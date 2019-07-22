@@ -1,19 +1,13 @@
 ﻿param (
   [string]$buildNumber = "0",
-  [string]$extensionVersion = "2.0.$buildNumber",
-  [bool]$includeSuffix = $true,
-  [bool]$bypassPackaging = $true,
-  [bool]$signOutput = $true
+  [string]$extensionVersion = "3.0.$buildNumber",
+  [bool]$includeSuffix = $true
 )
 
 if ($includeSuffix)
 {
     $extensionVersion += "-prerelease"
 }
-$sourceBranch = $env:BUILD_SOURCEBRANCH
-Write-Host "Bypass packaging: $bypassPackaging"
-Write-Host "IncludeSuffix: $includeSuffix"
-Write-Host "SourceBranch: $sourceBranch"
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $buildOutput = Join-Path $currentDir "buildoutput"
@@ -49,7 +43,7 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
     dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -r $runtime -o "$selfContained" -v q /p:BuildNumber=$buildNumber    
 
     # Modify web.config for inproc
-    dotnet tool install -g dotnet-xdt --version 2.1.0 | Out-Null
+    dotnet tool install -g dotnet-xdt --version 2.1.0 2> $null
     dotnet-xdt -s "$privateSiteExtensionPath\web.config" -t "$privateSiteExtensionPath\web.InProcess.$runtime.xdt" -o "$privateSiteExtensionPath\web.config"
 
     $successfullDlls =@()
@@ -107,18 +101,7 @@ function AddDiaSymReaderToPath()
             $_ -replace '\s+Base Path:',''
         }
 
-    $parent = Split-Path -Path $sdkBasePath.Trim()
-    $maxValue = 0
-    Get-ChildItem $parent\2.2.* | 
-        ForEach-Object {
-            $newVal = $_.Extension -replace '\.',''
-            if($newVal -gt $maxValue) {
-                $maxValue = $newVal
-            }
-        }
-        
-    $finalPath = $parent + "\2.2.$maxValue"
-    $diaSymPath = Join-Path $finalPath.Trim() "Roslyn\bincore\runtimes\win\native"
+    $diaSymPath = Join-Path $sdkBasePath.Trim() "Roslyn\bincore\runtimes\win\native"
 
     Write-Host "Adding DiaSymReader location to path ($diaSymPath)" -ForegroundColor Yellow
     $env:Path = "$diaSymPath;$env:Path"
@@ -204,7 +187,7 @@ function CreateZips([string] $runtimeSuffix) {
         # Project cleanup (trim some project files - this should be revisited)
         cleanExtension ""
 
-        deleteDuplicateWorkers
+
 
         # Make the zip
         ZipContent $publishTarget "$buildOutput\Functions.Private.$extensionVersion$runtimeSuffix.zip"
@@ -213,8 +196,6 @@ function CreateZips([string] $runtimeSuffix) {
         # Project cleanup (trim some project files - this should be revisited)
         cleanExtension "32bit"
         cleanExtension "64bit"
-
-        deleteDuplicateWorkers
 
         # Create private extension for internal usage. To minimize size remove 64bit folder.
         $tempPath = "$buildOutput\win-x32.inproc.temp\SiteExtensions"
@@ -245,30 +226,13 @@ function CreateZips([string] $runtimeSuffix) {
     Rename-Item "$privateSiteExtensionPath" "$siteExtensionPath\$extensionVersion"
     Copy-Item .\src\WebJobs.Script.WebHost\extension.xml "$siteExtensionPath"
     ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
-}
 
-function deleteDuplicateWorkers() {
-    if(Test-Path "$privateSiteExtensionPath\64bit\workers") {
-        Write-Host "Moving workers directory:$privateSiteExtensionPath\64bit\workers to" $privateSiteExtensionPath 
-        Move-Item -Path "$privateSiteExtensionPath\64bit\workers"  -Destination "$privateSiteExtensionPath\workers" 
-
-        Write-Host "Silently removing $privateSiteExtensionPath\32bit\workers if exists"
-        Remove-Item -Recurse -Force "$privateSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
-    }
-    elseif(Test-Path "$privateSiteExtensionPath\32bit\workers") {
-        Write-Host "Moving workers directory:$privateSiteExtensionPath\32bit\workers to" $privateSiteExtensionPath 
-        Move-Item -Path "$privateSiteExtensionPath\32bit\workers"  -Destination "$privateSiteExtensionPath\workers" 
-
-        Write-Host "Silently removing $privateSiteExtensionPath\64bit\workers if exists"
-        Remove-Item -Recurse -Force "$privateSiteExtensionPath\64bit\workers" -ErrorAction SilentlyContinue
-    }
 }
 
 function cleanExtension([string] $bitness) {
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\publish" -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\linux" -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\osx" -ErrorAction SilentlyContinue
-    Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\workers\python" -ErrorAction SilentlyContinue
 
     Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\node\grpc\src\node\extension_binary" -ErrorAction SilentlyContinue | 
     Foreach-Object {
@@ -277,17 +241,13 @@ function cleanExtension([string] $bitness) {
         }
     }
 
-    $keepRuntimes = @('win', 'win-x86', 'win10-x86', 'win-x64', 'win10-x64')
+    $keepRuntimes = @('win', 'win-x86', 'win10-x86')
     Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes" -Exclude $keepRuntimes -ErrorAction SilentlyContinue |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 }
   
 dotnet --version
 dotnet build .\WebJobs.Script.sln -v q /p:BuildNumber="$buildNumber"
-
-if($LASTEXITCODE -ne 0) {
-	throw "Build failed"
-}
 
 $projects = 
   "WebJobs.Script",
@@ -308,6 +268,8 @@ $cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\
 $cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "..\..\..\..\buildoutput", "-c", "Release"
 & dotnet $cmd
 
+$bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
+
 if ($bypassPackaging){
     Write-Host "Bypassing artifact packaging and CrossGen for pull request." -ForegroundColor Yellow
 } else {
@@ -319,8 +281,6 @@ if ($bypassPackaging){
     #build win-x86 and win-x64 extension
     BuildPackages 0
 
-    if($signOutput) {
-        & ".\tools\RunSigningJob.ps1" 
-	}
+    & ".\tools\RunSigningJob.ps1" 
     if (-not $?) { exit 1 }
 }
