@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\build\common.props" />
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
 
     <IsPackable>false</IsPackable>
 
@@ -34,7 +34,7 @@
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.6">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
-    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="2.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="3.0.0-preview6.19307.2" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="2.3.0" />
     <PackageReference Include="Microsoft.Azure.EventHubs" Version="2.1.0" />
     <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="1.1.1" />
