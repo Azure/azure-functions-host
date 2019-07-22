@@ -23,12 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static bool IsEncryptionSupported()
         {
-            if (SystemEnvironment.Instance.IsLinuxContainerEnvironment())
-            {
-                // TEMP: https://github.com/Azure/azure-functions-host/issues/3035
-                return false;
-            }
-
+            // In Linux Containers AzureWebsiteLocalEncryptionKey will be set, enabling encryption
             return SystemEnvironment.Instance.IsAppServiceEnvironment() ||
                 SystemEnvironment.Instance.GetEnvironmentVariable(AzureWebsiteLocalEncryptionKey) != null;
         }
