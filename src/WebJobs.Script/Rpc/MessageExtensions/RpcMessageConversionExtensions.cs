@@ -183,56 +183,94 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             // parse request body as content-type
             if (request.Body != null && request.ContentLength > 0)
             {
-                object body = null;
-                string rawBodyString = null;
-                byte[] bytes = RequestBodyToBytes(request);
-
-                MediaTypeHeaderValue mediaType = null;
-                if (MediaTypeHeaderValue.TryParse(request.ContentType, out mediaType))
+                if (IsBodyOnlySupported(capabilities))
                 {
-                    if (string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var jsonReader = new StreamReader(request.Body, Encoding.UTF8);
-                        rawBodyString = jsonReader.ReadToEnd();
-                        try
-                        {
-                            body = JsonConvert.DeserializeObject(rawBodyString);
-                        }
-                        catch (JsonException)
-                        {
-                            body = rawBodyString;
-                        }
-                    }
-                    else if (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
-                        mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        body = bytes;
-                        if (!IsRawBodyBytesRequested(capabilities))
-                        {
-                            rawBodyString = Encoding.UTF8.GetString(bytes);
-                        }
-                    }
-                }
-                // default if content-tye not found or recognized
-                if (body == null && rawBodyString == null)
-                {
-                    var reader = new StreamReader(request.Body, Encoding.UTF8);
-                    body = rawBodyString = reader.ReadToEnd();
-                }
-
-                request.Body.Position = 0;
-                http.Body = body.ToRpc(logger, capabilities);
-                if (IsRawBodyBytesRequested(capabilities))
-                {
-                    http.RawBody = bytes.ToRpc(logger, capabilities);
+                    PopulateBody(request, http, capabilities, logger);
                 }
                 else
                 {
-                    http.RawBody = rawBodyString.ToRpc(logger, capabilities);
+                    PopulateBodyAndRawBody(request, http, capabilities, logger);
                 }
             }
 
             return typedData;
+        }
+
+        private static void PopulateBody(HttpRequest request, RpcHttp http, Capabilities capabilities, ILogger logger)
+        {
+            object body = null;
+            if ((MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType) && IsMediaTypeOctetOrMultipart(mediaType)) || IsRawBodyBytesRequested(capabilities))
+            {
+                body = RequestBodyToBytes(request);
+            }
+            else
+            {
+                body = GetStringRepresentationOfBody(request);
+            }
+            http.Body = body.ToRpc(logger, capabilities);
+        }
+
+        private static string GetStringRepresentationOfBody(HttpRequest request)
+        {
+            string result;
+            using (StreamReader reader = new StreamReader(request.Body, encoding: Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true))
+            {
+                result = reader.ReadToEnd();
+            }
+            request.Body.Position = 0;
+            return result;
+        }
+
+        private static void PopulateBodyAndRawBody(HttpRequest request, RpcHttp http, Capabilities capabilities, ILogger logger)
+        {
+            object body = null;
+            string rawBodyString = null;
+            byte[] bytes = RequestBodyToBytes(request);
+
+            if (MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType))
+            {
+                if (string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
+                {
+                    rawBodyString = GetStringRepresentationOfBody(request);
+                    try
+                    {
+                        body = JsonConvert.DeserializeObject(rawBodyString);
+                    }
+                    catch (JsonException)
+                    {
+                        body = rawBodyString;
+                    }
+                }
+                else if (IsMediaTypeOctetOrMultipart(mediaType))
+                {
+                    body = bytes;
+                    if (!IsRawBodyBytesRequested(capabilities))
+                    {
+                        rawBodyString = Encoding.UTF8.GetString(bytes);
+                    }
+                }
+            }
+            // default if content-tye not found or recognized
+            if (body == null && rawBodyString == null)
+            {
+                body = rawBodyString = GetStringRepresentationOfBody(request);
+            }
+
+            http.Body = body.ToRpc(logger, capabilities);
+            if (IsRawBodyBytesRequested(capabilities))
+            {
+                http.RawBody = bytes.ToRpc(logger, capabilities);
+            }
+            else
+            {
+                http.RawBody = rawBodyString.ToRpc(logger, capabilities);
+            }
+        }
+
+        private static bool IsMediaTypeOctetOrMultipart(MediaTypeHeaderValue mediaType)
+        {
+            return mediaType != null && (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
+                            mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         internal static TypedData ToRpcDefault(this object value)
@@ -312,6 +350,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private static bool IsRawBodyBytesRequested(Capabilities capabilities)
         {
             return !string.IsNullOrEmpty(capabilities.GetCapabilityState(LanguageWorkerConstants.RawHttpBodyBytes));
+        }
+
+        private static bool IsBodyOnlySupported(Capabilities capabilities)
+        {
+            return !string.IsNullOrEmpty(capabilities.GetCapabilityState(LanguageWorkerConstants.RpcHttpBodyOnly));
         }
 
         private static bool IsTypedDataCollectionSupported(Capabilities capabilities)

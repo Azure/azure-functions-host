@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using Google.Protobuf;
@@ -26,11 +25,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private static readonly string TestImageLocation = "Rpc\\Resources\\functions.png";
 
         [Theory]
-        [InlineData("application/x-www-form-urlencoded’", "say=Hi&to=Mom")]
-        public void HttpObjects_StringBody(string expectedContentType, object body)
+        [InlineData("application/x-www-form-urlencoded’", "say=Hi&to=Mom", true)]
+        [InlineData("application/x-www-form-urlencoded’", "say=Hi&to=Mom", false)]
+        public void HttpObjects_StringBody(string expectedContentType, object body, bool rcpHttpBodyOnly)
         {
             var logger = MockNullLoggerFactory.CreateLogger();
             var capabilities = new Capabilities(logger);
+            if (rcpHttpBodyOnly)
+            {
+                capabilities.UpdateCapabilities(new MapField<string, string>
+                {
+                    { LanguageWorkerConstants.RpcHttpBodyOnly, rcpHttpBodyOnly.ToString() }
+                });
+            }
 
             var headers = new HeaderDictionary();
             headers.Add("content-type", expectedContentType);
@@ -38,6 +45,92 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             var rpcRequestObject = request.ToRpc(logger, capabilities);
             Assert.Equal(body.ToString(), rpcRequestObject.Http.Body.String);
+            if (rcpHttpBodyOnly)
+            {
+                Assert.Equal(null, rpcRequestObject.Http.RawBody);
+                Assert.Equal(body.ToString(), rpcRequestObject.Http.Body.String);
+            }
+            else
+            {
+                Assert.Equal(body.ToString(), rpcRequestObject.Http.RawBody.String);
+                Assert.Equal(body.ToString(), rpcRequestObject.Http.Body.String);
+            }
+
+            string contentType;
+            rpcRequestObject.Http.Headers.TryGetValue("content-type", out contentType);
+            Assert.Equal(expectedContentType, contentType);
+        }
+
+        [Theory]
+        [InlineData("application/json", "{\"name\":\"John\"}", true)]
+        [InlineData("application/json", "{\"name\":\"John\"}", false)]
+        public void HttpObjects_JsonBody(string expectedContentType, string body, bool rcpHttpBodyOnly)
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+            if (rcpHttpBodyOnly)
+            {
+                capabilities.UpdateCapabilities(new MapField<string, string>
+                {
+                    { LanguageWorkerConstants.RpcHttpBodyOnly, rcpHttpBodyOnly.ToString() }
+                });
+            }
+
+            var headers = new HeaderDictionary();
+            headers.Add("content-type", expectedContentType);
+            HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", "http://localhost/api/httptrigger-scenarios", headers, body);
+
+            var rpcRequestObject = request.ToRpc(logger, capabilities);
+            if (rcpHttpBodyOnly)
+            {
+                Assert.Equal(null, rpcRequestObject.Http.RawBody);
+                Assert.Equal(body.ToString(), rpcRequestObject.Http.Body.String);
+            }
+            else
+            {
+                Assert.Equal(body.ToString(), rpcRequestObject.Http.RawBody.String);
+                Assert.Equal(JsonConvert.DeserializeObject(body), JsonConvert.DeserializeObject(rpcRequestObject.Http.Body.Json));
+            }
+
+            string contentType;
+            rpcRequestObject.Http.Headers.TryGetValue("content-type", out contentType);
+            Assert.Equal(expectedContentType, contentType);
+        }
+
+        [Theory]
+        [InlineData("application/octet-stream", true)]
+        [InlineData("application/octet-stream", false)]
+        [InlineData("multipart/form-data; boundary=----WebKitFormBoundaryTYtz7wze2XXrH26B", true)]
+        [InlineData("multipart/form-data; boundary=----WebKitFormBoundaryTYtz7wze2XXrH26B", false)]
+        public void HttpTrigger_Post_ByteArray(string expectedContentType, bool rcpHttpBodyOnly)
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+            if (rcpHttpBodyOnly)
+            {
+                capabilities.UpdateCapabilities(new MapField<string, string>
+                {
+                    { LanguageWorkerConstants.RpcHttpBodyOnly, rcpHttpBodyOnly.ToString() }
+                });
+            }
+
+            var headers = new HeaderDictionary();
+            headers.Add("content-type", expectedContentType);
+            byte[] body = new byte[] { 1, 2, 3, 4, 5 };
+
+            HttpRequest request = HttpTestHelpers.CreateHttpRequest("POST", "http://localhost/api/httptrigger-scenarios", headers, body);
+
+            var rpcRequestObject = request.ToRpc(logger, capabilities);
+            if (rcpHttpBodyOnly)
+            {
+                Assert.Equal(null, rpcRequestObject.Http.RawBody);
+                Assert.Equal(body, rpcRequestObject.Http.Body.Bytes);
+            }
+            else
+            {
+                Assert.Equal(body, rpcRequestObject.Http.Body.Bytes);
+                Assert.Equal(Encoding.UTF8.GetString(body), rpcRequestObject.Http.RawBody.String);
+            }
 
             string contentType;
             rpcRequestObject.Http.Headers.TryGetValue("content-type", out contentType);

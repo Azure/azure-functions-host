@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             ScriptInvocationContext invocationContext = new ScriptInvocationContext()
             {
                 FunctionMetadata = Metadata,
-                BindingData = context.Binder.BindingData,
+                BindingData = context.Binder.BindingData,   // This has duplicates too (of type DefaultHttpRequest). Needs to be removed after verifying this can indeed be constructed by the workers from the rest of the data being passed (https://github.com/Azure/azure-functions-host/issues/4735).
                 ExecutionContext = context.ExecutionContext,
                 Inputs = inputs,
                 ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
