@@ -1,14 +1,13 @@
-version: 2.0.{build}
+version: 3.0.{build}
 pull_requests:
   do_not_increment_build_number: true
 branches:
   only:
-  - dev
-  - master
-  
+  - v3.x
+
 image:
 - Ubuntu
-- Visual Studio 2017
+- Visual Studio 2019 Preview
 
 max_jobs: 1
 
@@ -30,14 +29,14 @@ for:
 -
   matrix:
     only:
-      - image: Visual Studio 2017
+      - image: Visual Studio 2019 Preview
   init:
   - ps: |
       if ($env:FUNCTIONS_NIGHTLY -eq "1") {
         $version = Get-Date -Format "yyyyMMdd-HHmm"
         Update-AppveyorBuild -Version $version -Message "Functions Scheduled Build"
       }  
-  clone_folder: c:\azure-webjobs-sdk-script
+  clone_folder: c:\azure-functions-host
   install:
   - ps: >-
       $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
@@ -48,11 +47,6 @@ for:
       $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
       $isbuildFromMasterBranch = $env:APPVEYOR_REPO_BRANCH -eq "master"
       $includeSuffix = (-Not ($hasTag -OR $isBuildFromMasterBranch))
-      
-      if (-Not $includeSuffix) {
-        $env:Configuration = "Release"
-      }
-
       .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeSuffix $includeSuffix
   after_build:
   - ps: >
