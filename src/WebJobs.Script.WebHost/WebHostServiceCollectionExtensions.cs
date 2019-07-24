@@ -173,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IMetricsPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxContainerEnvironment())
+                if (environment.IsLinuxMetricsPublishingEnabled())
                 {
                     var logger = s.GetService<ILogger<LinuxContainerMetricsPublisher>>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
@@ -182,7 +182,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     return new LinuxContainerMetricsPublisher(environment, standbyOptions, logger, httpClient, hostNameProvider);
                 }
 
-                return NullMetricsPublisher.Instance;
+                var nullMetricsLogger = s.GetService<ILogger<NullMetricsPublisher>>();
+                return new NullMetricsPublisher(nullMetricsLogger);
             });
         }
     }
