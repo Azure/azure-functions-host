@@ -283,6 +283,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(logLine.EndsWith("[Info] test trace"));
         }
 
+        [Fact]
+        public void Trace_LogFileOpened_WritesSuccessfully()
+        {
+            var traceWriter = new TestFileTraceWriter(_logFilePath, TraceLevel.Info, LogType.Host, true);
+
+            traceWriter.Info("test trace");
+            traceWriter.Flush();
+
+            var directory = new DirectoryInfo(_logFilePath);
+            var logFile = directory.EnumerateFiles().Single();
+
+            // open the log file with ReadWrite to make sure logging
+            // is still possible
+            var logFileStream = logFile.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
+            traceWriter.Info("test trace 2");
+            traceWriter.Flush();
+
+            logFileStream.Close();
+
+            // verify that both lines were written successfully
+            var fileLines = File.ReadAllLines(logFile.FullName);
+            Assert.Equal(2, fileLines.Length);
+            Assert.Collection(fileLines,
+                t => Assert.EndsWith("test trace", t),
+                t => Assert.EndsWith("test trace 2", t));
+        }
+
         private void WriteLogs(string logFilePath, int numLogs, Action<bool, object> flushCallback = null, bool disableTimers = true, object state = null)
         {
             FileTraceWriter traceWriter = new TestFileTraceWriter(logFilePath, TraceLevel.Verbose, LogType.Host, disableTimers, flushCallback, state);
