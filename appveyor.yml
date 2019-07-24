@@ -5,8 +5,7 @@ branches:
   only:
   - dev
   - master
-  - core
-
+  
 image:
 - Ubuntu
 - Visual Studio 2017
@@ -49,6 +48,11 @@ for:
       $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
       $isbuildFromMasterBranch = $env:APPVEYOR_REPO_BRANCH -eq "master"
       $includeSuffix = (-Not ($hasTag -OR $isBuildFromMasterBranch))
+      
+      if (-Not $includeSuffix) {
+        $env:Configuration = "Release"
+      }
+
       .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeSuffix $includeSuffix
   after_build:
   - ps: >
