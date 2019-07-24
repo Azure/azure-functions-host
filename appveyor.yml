@@ -6,67 +6,54 @@ branches:
   - v3.x
 
 image:
-- Ubuntu
 - Visual Studio 2019 Preview
 
 max_jobs: 1
 
-for:
--
-  matrix:
-    only:
-      - image: Ubuntu
-  install:
-  - sh: >-
-      mkdir .dotnet && 
-      chmod +x dotnet-install.sh && 
-      ./dotnet-install.sh --version 2.2.202 --install-dir .dotnet && 
-      PATH=".dotnet:"$PATH && dotnet --info 
-  build_script:
-  - sh: dotnet build WebJobs.Script.sln
-  test: off
+init:
+- ps: |
+    if ($env:FUNCTIONS_NIGHTLY -eq "1") {
+      $version = Get-Date -Format "yyyyMMdd-HHmm"
+      Update-AppveyorBuild -Version $version -Message "Functions Scheduled Build"
+    }
+    
+clone_folder: c:\azure-functions-host
 
--
-  matrix:
-    only:
-      - image: Visual Studio 2019 Preview
-  init:
-  - ps: |
-      if ($env:FUNCTIONS_NIGHTLY -eq "1") {
-        $version = Get-Date -Format "yyyyMMdd-HHmm"
-        Update-AppveyorBuild -Version $version -Message "Functions Scheduled Build"
-      }  
-  clone_folder: c:\azure-functions-host
-  install:
-  - ps: >-
-      $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
+install:
+- ps: |
+    $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
+    Install-Product node 10.0.0 x86      
+    Invoke-WebRequest -Uri 'https://dot.net/v1/dotnet-install.ps1' -UseBasicParsing -OutFile "$env:temp\dotnet-install.ps1"      
+    & $env:temp\dotnet-install.ps1 -Architecture x64 -Version '3.0.100-preview6-012264' -InstallDir "$env:ProgramFiles\dotnet"
 
-      Install-Product node 10.0.0 x86
-  build_script:
-  - ps: |
-      $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
-      $isbuildFromMasterBranch = $env:APPVEYOR_REPO_BRANCH -eq "master"
-      $includeSuffix = (-Not ($hasTag -OR $isBuildFromMasterBranch))
-      .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeSuffix $includeSuffix
-  after_build:
-  - ps: >
-      $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
+build_script:
+- ps: |
+    $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
+    $isbuildFromMasterBranch = $env:APPVEYOR_REPO_BRANCH -eq "master"
+    $includeSuffix = (-Not ($hasTag -OR $isBuildFromMasterBranch))
+    .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeSuffix $includeSuffix
 
-      if ($bypassPackaging) {
-        Write-Host "Bypassing artifact publishing and signing for pull request." -ForegroundColor Yellow
-      } else {
-        Get-ChildItem buildoutput\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
+after_build:
+- ps: >
+    $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
 
-        Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
-      }
-  test_script:
-  - ps: > 
-      .\run-tests.ps1
-  on_finish:
-  - ps: >
-      $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
+    if ($bypassPackaging) {
+      Write-Host "Bypassing artifact publishing and signing for pull request." -ForegroundColor Yellow
+    } else {
+      Get-ChildItem buildoutput\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
+
+      Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
+    }
+
+test_script:
+- ps: > 
+    .\run-tests.ps1
+
+on_finish:
+- ps: >
+    $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
       
-      if (-not $bypassPackaging) {
-        & .\tools\PollSigningResults.ps1
-        if (-not $?) { exit 1 }        
-      }
+    if (-not $bypassPackaging) {
+      & .\tools\PollSigningResults.ps1
+      if (-not $?) { exit 1 }        
+    }
