@@ -276,7 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static void AppendToFile(FileInfo fileInfo, string content)
         {
-            var fs = fileInfo.Open(FileMode.Open, FileAccess.Write, FileShare.Write);
+            var fs = fileInfo.Open(FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
             fs.Seek(0, SeekOrigin.End);
 
             using (var sw = new StreamWriter(fs))
