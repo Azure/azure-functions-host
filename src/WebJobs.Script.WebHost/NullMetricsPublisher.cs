@@ -3,17 +3,23 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class NullMetricsPublisher : IMetricsPublisher
     {
-        private static readonly Lazy<NullMetricsPublisher> _instance = new Lazy<NullMetricsPublisher>(new NullMetricsPublisher());
+        private readonly ILogger _logger;
 
-        public static NullMetricsPublisher Instance => _instance.Value;
+        public NullMetricsPublisher(ILogger<NullMetricsPublisher> logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _logger.LogDebug("Initializing null metrics publisher");
+        }
 
         public void AddFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan, DateTime utcNow)
         {
+            _logger.LogDebug("Ignoring function activity metric: {functionName} {invocationId} {concurrency} {executionStage} {success} {executionTimeSpan}", functionName, invocationId, concurrency, executionStage, success, executionTimeSpan);
         }
     }
 }

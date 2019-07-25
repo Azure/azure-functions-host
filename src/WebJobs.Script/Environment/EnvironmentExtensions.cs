@@ -28,6 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return !environment.IsAppServiceEnvironment() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName));
         }
 
+        public static bool IsLinuxMetricsPublishingEnabled(this IEnvironment environment)
+        {
+            return environment.IsLinuxContainerEnvironment() && string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerStartContext));
+        }
+
         public static bool IsLinuxAppServiceEnvironment(this IEnvironment environment)
         {
             return environment.IsAppServiceEnvironment() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(FunctionsLogsMountPath));
