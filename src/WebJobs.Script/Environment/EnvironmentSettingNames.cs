@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TypeScriptCompilerPath = "AzureWebJobs_TypeScriptPath";
         public const string AzureWebsiteAppCountersName = "WEBSITE_COUNTERS_APP";
         public const string AzureWebJobsSecretStorageType = "AzureWebJobsSecretStorageType";
+        public const string AzureWebJobsSecretStorageSas = "AzureWebJobsSecretStorageSas";
         public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
         public const string AppInsightsQuickPulseAuthApiKey = "APPINSIGHTS_QUICKPULSEAUTHAPIKEY";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";

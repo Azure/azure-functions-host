@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     /// <summary>
     /// An <see cref="ISecretsRepository"/> implementation that uses Azure blob storage as the backing store.
     /// </summary>
-    public sealed class BlobStorageSecretsRepository : BaseSecretsRepository
+    public class BlobStorageSecretsRepository : BaseSecretsRepository
     {
         private readonly string _secretsBlobPath;
         private readonly string _hostSecretsBlobPath;
@@ -44,13 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _hostSecretsBlobPath = string.Format("{0}/{1}", _secretsBlobPath, ScriptConstants.HostMetadataFileName);
 
             _accountConnectionString = accountConnectionString;
-            CloudStorageAccount account = CloudStorageAccount.Parse(_accountConnectionString);
-            CloudBlobClient client = account.CreateCloudBlobClient();
-
-            _blobContainer = client.GetContainerReference(_secretsContainerName);
-
-            // TODO: Remove this (it is already slated to be removed)
-            _blobContainer.CreateIfNotExistsAsync().GetAwaiter().GetResult();
+            _blobContainer = CreateBlobContainer(_accountConnectionString);
         }
 
         public override bool IsEncryptionSupported
@@ -59,6 +53,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 return false;
             }
+        }
+
+        protected virtual CloudBlobContainer CreateBlobContainer(string connectionString)
+        {
+            CloudStorageAccount account = CloudStorageAccount.Parse(_accountConnectionString);
+            CloudBlobClient client = account.CreateCloudBlobClient();
+            CloudBlobContainer container = client.GetContainerReference(_secretsContainerName);
+
+            // TODO: Remove this (it is already slated to be removed)
+            container.CreateIfNotExistsAsync().GetAwaiter().GetResult();
+
+            return container;
         }
 
         public override async Task<ScriptSecrets> ReadAsync(ScriptSecretsType type, string functionName)
