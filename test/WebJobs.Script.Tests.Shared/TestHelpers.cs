@@ -350,5 +350,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             return sasUri;
         }
+
+        public static async Task<Uri> CreateBlobContainerSas(string connectionString, string blobContainer)
+        {
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+            var blobClient = storageAccount.CreateCloudBlobClient();
+            var container = blobClient.GetContainerReference(blobContainer);
+            await container.CreateIfNotExistsAsync();
+
+            var policy = new SharedAccessBlobPolicy
+            {
+                SharedAccessStartTime = DateTime.UtcNow,
+                SharedAccessExpiryTime = DateTime.UtcNow.AddHours(1),
+                Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.Write | SharedAccessBlobPermissions.List | SharedAccessBlobPermissions.Delete
+            };
+            var sas = container.GetSharedAccessSignature(policy);
+
+            return new Uri(container.StorageUri.PrimaryUri, sas);
+        }
     }
 }

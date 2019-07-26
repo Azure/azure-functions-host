@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public sealed class DefaultSecretManagerProvider : ISecretManagerProvider
     {
         private const string FileStorage = "Files";
+        private const string BlobStorage = "Blob";
         private readonly ILogger _logger;
         private readonly IMetricsLogger _metricsLogger;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
@@ -56,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             string secretStorageType = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType);
             string storageString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+            string secretStorageSas = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageSas);
             if (secretStorageType != null && secretStorageType.Equals(FileStorage, StringComparison.OrdinalIgnoreCase))
             {
                 return new FileSystemSecretsRepository(_options.CurrentValue.SecretsPath);
@@ -70,15 +72,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 return new KubernetesSecretsRepository(_environment, new SimpleKubernetesClient(_environment));
             }
-            else if (storageString == null)
+            else if (secretStorageSas != null)
             {
-                throw new InvalidOperationException($"Secret initialization from Blob storage failed due to a missing Azure Storage connection string. If you intend to use files for secrets, add an App Setting key '{EnvironmentSettingNames.AzureWebJobsSecretStorageType}' with value '{FileStorage}'.");
+                string siteSlotName = _environment.GetAzureWebsiteUniqueSlotName() ?? _hostIdProvider.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult();
+                return new BlobStorageSasSecretsRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), secretStorageSas, siteSlotName);
+            }
+            else if (storageString != null)
+            {
+                string siteSlotName = _environment.GetAzureWebsiteUniqueSlotName() ?? _hostIdProvider.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult();
+                return new BlobStorageSecretsRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), storageString, siteSlotName);
             }
             else
             {
-                string siteSlotName = _environment.GetAzureWebsiteUniqueSlotName() ?? _hostIdProvider.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult();
-
-                return new BlobStorageSecretsRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), storageString, siteSlotName);
+                throw new InvalidOperationException($"Secret initialization from Blob storage failed due to missing both an Azure Storage connection string and a SAS connection uri. " +
+                    $"For Blob Storage, please provide at least one of these. If you intend to use files for secrets, add an App Setting key '{EnvironmentSettingNames.AzureWebJobsSecretStorageType}' with value '{FileStorage}'.");
             }
         }
     }
