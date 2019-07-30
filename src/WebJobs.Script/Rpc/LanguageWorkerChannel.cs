@@ -7,10 +7,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.AspNetCore.Http.Internal;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -311,6 +311,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     {
                         if (pair.Value != null)
                         {
+                            if ((pair.Value is DefaultHttpRequest) && IsTriggerMetadataPopulatedByWorker())
+                            {
+                                continue;
+                            }
                             invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc(_workerChannelLogger, _workerCapabilities));
                         }
                     }
@@ -428,6 +432,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _disposing = true;
             Dispose(true);
+        }
+
+        private bool IsTriggerMetadataPopulatedByWorker()
+        {
+            return !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(LanguageWorkerConstants.RpcHttpTriggerMetadataRemoved));
         }
     }
 }
