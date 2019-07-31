@@ -231,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string content = await response.Content.ReadAsStringAsync();
             JObject jsonContent = JObject.Parse(content);
 
-            Assert.Equal(4, jsonContent.Properties().Count());
+            Assert.Equal(5, jsonContent.Properties().Count());
             AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             Assert.True(((string)jsonContent["id"]).Length > 0);
             string expectedVersion = fileVersionAttr.Version;
@@ -637,7 +637,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
             }
         }
-        
+
         [Fact]
         public async Task HttpTriggerWithObject_Post_Succeeds()
         {
