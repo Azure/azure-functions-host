@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.ObjectModel;
 using Newtonsoft.Json;
 
@@ -37,5 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         /// </summary>
         [JsonProperty(PropertyName = "errors", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public Collection<string> Errors { get; set; }
+
+        /// <summary>
+        /// Gets or sets the uptime of the process
+        /// </summary>
+        [JsonProperty(PropertyName = "processUptime", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public long ProcessUptime { get; set; }
     }
 }

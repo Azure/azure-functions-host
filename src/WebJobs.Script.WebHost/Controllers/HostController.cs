@@ -75,7 +75,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 State = scriptHostManager.State.ToString(),
                 Version = ScriptHost.Version,
                 VersionDetails = Utility.GetInformationalVersion(typeof(ScriptHost)),
-                Id = await hostIdProvider.GetHostIdAsync(CancellationToken.None)
+                Id = await hostIdProvider.GetHostIdAsync(CancellationToken.None),
+                ProcessUptime = (long)(DateTime.UtcNow - Process.GetCurrentProcess().StartTime).TotalMilliseconds
             };
 
             var lastError = scriptHostManager.LastError;
