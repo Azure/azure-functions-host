@@ -8,6 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.IO;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -25,7 +27,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly string _secretsContainerName = "azure-webjobs-secrets";
         private readonly string _accountConnectionString;
 
-        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnectionString, string siteSlotName) : base(secretSentinelDirectoryPath)
+        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnectionString, string siteSlotName)
+            : this(secretSentinelDirectoryPath, accountConnectionString, siteSlotName, null)
+        {
+        }
+
+        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnectionString, string siteSlotName, ILogger logger)
+            : base(secretSentinelDirectoryPath, logger)
         {
             if (secretSentinelDirectoryPath == null)
             {
@@ -71,11 +79,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             string secretsContent = null;
             string blobPath = GetSecretsBlobPath(type, functionName);
-            CloudBlockBlob secretBlob = _blobContainer.GetBlockBlobReference(blobPath);
-
-            if (await secretBlob.ExistsAsync())
+            try
             {
-                secretsContent = await secretBlob.DownloadTextAsync();
+                CloudBlockBlob secretBlob = _blobContainer.GetBlockBlobReference(blobPath);
+                if (await secretBlob.ExistsAsync())
+                {
+                    secretsContent = await secretBlob.DownloadTextAsync();
+                }
+            }
+            catch (Exception e)
+            {
+                LogErrorMessage("read");
+                throw e;
             }
 
             return string.IsNullOrEmpty(secretsContent) ? null : ScriptSecretSerializer.DeserializeSecrets(type, secretsContent);
@@ -89,7 +104,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             string blobPath = GetSecretsBlobPath(type, functionName);
-            await WriteToBlobAsync(blobPath, ScriptSecretSerializer.SerializeSecrets(secrets));
+            try
+            {
+                await WriteToBlobAsync(blobPath, ScriptSecretSerializer.SerializeSecrets(secrets));
+            }
+            catch (Exception e)
+            {
+                LogErrorMessage("write");
+                throw e;
+            }
 
             string filePath = GetSecretsSentinelFilePath(type, functionName);
             await FileUtility.WriteAsync(filePath, DateTime.UtcNow.ToString());
@@ -104,7 +127,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             string blobPath = GetSecretsBlobPath(type, functionName);
             blobPath = SecretsUtility.GetNonDecryptableName(blobPath);
-            await WriteToBlobAsync(blobPath, ScriptSecretSerializer.SerializeSecrets(secrets));
+
+            try
+            {
+                await WriteToBlobAsync(blobPath, ScriptSecretSerializer.SerializeSecrets(secrets));
+            }
+            catch (Exception e)
+            {
+                LogErrorMessage("write");
+                throw e;
+            }
         }
 
         public override async Task PurgeOldSecretsAsync(IList<string> currentFunctions, ILogger logger)
@@ -118,7 +150,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Prefix is secret blob path without extension
             string prefix = Path.GetFileNameWithoutExtension(GetSecretsBlobPath(type, functionName)) + $".{ScriptConstants.Snapshot}";
 
-            BlobResultSegment segmentResult = await _blobContainer.ListBlobsSegmentedAsync(string.Format("{0}/{1}", _secretsBlobPath, prefix.ToLowerInvariant()), null);
+            BlobResultSegment segmentResult;
+            try
+            {
+                segmentResult = await _blobContainer.ListBlobsSegmentedAsync(string.Format("{0}/{1}", _secretsBlobPath, prefix.ToLowerInvariant()), null);
+            }
+            catch (Exception e)
+            {
+                LogErrorMessage("list");
+                throw e;
+            }
             return segmentResult.Results.Select(x => x.Uri.ToString()).ToArray();
         }
 
@@ -136,6 +177,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 await writer.WriteAsync(secretsContent);
             }
+        }
+
+        protected virtual void LogErrorMessage(string operation)
+        {
+            Logger?.BlobStorageSecretRepoError(operation, "AzureWebJobsStorage");
         }
     }
 }
