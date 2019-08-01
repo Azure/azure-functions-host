@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         internal async Task SendRequest<T>(ConcurrentQueue<T> activitiesToPublish, string publishPath)
         {
             var request = BuildRequest(HttpMethod.Post, publishPath, activitiesToPublish.ToArray());
-            _logger.LogDebug($"Publishing {activitiesToPublish.ToArray().Count()} activities to {publishPath}.");
+            _logger.LogDebug($"Publishing {activitiesToPublish.Count()} activities to {publishPath}.");
             HttpResponseMessage response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
         }
