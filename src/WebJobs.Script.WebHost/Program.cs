@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Threading;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -93,6 +94,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 SystemEnvironment.Instance.SetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey, authEncryptionKey);
             }
+
+            ConfigureMinimumThreads(SystemEnvironment.Instance.IsDynamic());
+        }
+
+        private static void ConfigureMinimumThreads(bool isDynamicSku)
+        {
+            // For information on MinThreads, see:
+            // https://docs.microsoft.com/en-us/dotnet/api/system.threading.threadpool.setminthreads?view=netcore-2.2
+            // https://docs.microsoft.com/en-us/azure/redis-cache/cache-faq#important-details-about-threadpool-growth
+            // https://blogs.msdn.microsoft.com/perfworld/2010/01/13/how-can-i-improve-the-performance-of-asp-net-by-adjusting-the-clr-thread-throttling-properties/
+            //
+            // This behavior can be overridden by using the "ComPlus_ThreadPool_ForceMinWorkerThreads" environment variable (honored by the .NET threadpool).
+
+            // The dynamic plan has some limits that mean that a given instance is using effectively a single core, so we should not use Environment.Processor count in this case.
+            var effectiveCores = isDynamicSku ? 1 : Environment.ProcessorCount;
+
+            // This value was derived by looking at the thread count for several function apps running load on a multicore machine and dividing by the number of cores.
+            const int minThreadsPerLogicalProcessor = 6;
+
+            int minThreadCount = effectiveCores * minThreadsPerLogicalProcessor;
+            ThreadPool.SetMinThreads(minThreadCount, minThreadCount);
         }
     }
 }
