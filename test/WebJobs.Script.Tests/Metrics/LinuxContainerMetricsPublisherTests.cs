@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             FunctionName = string.Empty,
             InvocationId = string.Empty,
             Concurrency = 1,
-            ExecutionStage = string.Empty,
+            ExecutionStage = FunctionExecutionStage.InProgress,
             IsSucceeded = true,
             ExecutionTimeSpanInMs = 1,
             EventTimeStamp = DateTime.UtcNow,
@@ -133,10 +133,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 _testFunctionActivity.FunctionName,
                 _testFunctionActivity.InvocationId,
                 _testFunctionActivity.Concurrency,
-                _testFunctionActivity.ExecutionStage,
+                _testFunctionActivity.ExecutionStage.ToString(),
                 _testFunctionActivity.IsSucceeded,
                 _testFunctionActivity.ExecutionTimeSpanInMs,
-                _testFunctionActivity.EventTimeStamp);
+                _testFunctionActivity.ExecutionId,
+                _testFunctionActivity.EventTimeStamp,
+                _testFunctionActivity.StartTime);
 
             Assert.Matches("Added function activity", _testLoggerProvider.GetAllLogMessages().Single().FormattedMessage);
             Assert.Equal(LogLevel.Debug, _testLoggerProvider.GetAllLogMessages().Single().Level);
@@ -145,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
-            Assert.Empty(_testLoggerProvider.GetAllLogMessages());
+            Assert.Matches("Publishing", _testLoggerProvider.GetAllLogMessages().Single().FormattedMessage);
         }
 
         [Fact]
@@ -158,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
-            Assert.Empty(_testLoggerProvider.GetLog());
+            Assert.Matches("Publishing", _testLoggerProvider.GetAllLogMessages().Single().FormattedMessage);
         }
 
         [Fact]

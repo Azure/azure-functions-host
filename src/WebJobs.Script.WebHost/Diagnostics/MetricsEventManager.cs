@@ -481,7 +481,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         runningFunctionInfo.ExecutionStage.ToString(),
                         runningFunctionInfo.Success,
                         (long)executionTimespan,
-                        currentTime);
+                        _executionId,
+                        currentTime,
+                        runningFunctionInfo.StartTime);
                 }
             }
 

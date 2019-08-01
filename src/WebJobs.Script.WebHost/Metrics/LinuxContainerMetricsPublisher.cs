@@ -95,17 +95,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             }
         }
 
-        public void AddFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan, DateTime eventTimeStamp)
+        public void AddFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan, string executionId, DateTime eventTimeStamp, DateTime functionStartTime)
         {
+            Enum.TryParse(executionStage, out FunctionExecutionStage functionExecutionStage);
+
             FunctionActivity activity = new FunctionActivity
             {
                 FunctionName = functionName,
                 InvocationId = invocationId,
                 Concurrency = concurrency,
-                ExecutionStage = executionStage,
+                ExecutionStage = functionExecutionStage,
+                ExecutionId = executionId,
                 IsSucceeded = success,
                 ExecutionTimeSpanInMs = executionTimeSpan,
                 EventTimeStamp = eventTimeStamp,
+                StartTime = functionStartTime,
                 Tenant = _tenant
             };
 
@@ -166,7 +170,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             catch (Exception ex) when (!ex.IsFatal())
             {
                 _errorCount++;
-                _logger.LogError(ex, "Error publishing activites");
 
                 if (_errorCount < _maxErrorLimit)
                 {
@@ -174,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 }
                 else
                 {
-                    _logger.LogError(string.Format("LinuxContainerMetricsPublisher : Max error limit reached. Draining current activities for {0}", _containerName));
+                    _logger.LogError(ex, string.Format("LinuxContainerMetricsPublisher : Max error limit reached. Draining current activities for {0} for publish path: {1}", _containerName, publishPath));
                     DrainActivities(currentActivities, activitiesToProcess);
                     _errorCount = 0;
                 }
@@ -184,6 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         internal async Task SendRequest<T>(ConcurrentQueue<T> activitiesToPublish, string publishPath)
         {
             var request = BuildRequest(HttpMethod.Post, publishPath, activitiesToPublish.ToArray());
+            _logger.LogDebug($"Publishing {activitiesToPublish.Count()} activities to {publishPath}.");
             HttpResponseMessage response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
         }
@@ -201,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _processMonitorTimer = new Timer(OnProcessMonitorTimer, null, TimeSpan.Zero, _memorySnapshotInterval);
             _metricsPublisherTimer = new Timer(OnFunctionMetricsPublishTimer, null, TimeSpan.Zero, _metricPublishInterval);
 
-            _logger.LogInformation(string.Format("Starting metrics publisher for container : {0}", _containerName));
+            _logger.LogInformation(string.Format("Starting metrics publisher for container : {0}. Publishing endpoint is {1}", _containerName, _requestUri));
         }
 
         private void OnProcessMonitorTimer(object state)
