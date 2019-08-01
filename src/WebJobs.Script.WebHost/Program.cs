@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static void ConfigureMinimumThreads(bool isDynamicSku)
         {
             // For information on MinThreads, see:
-            // https://docs.microsoft.com/en-us/dotnet/api/system.threading.threadpool.setminthreads?view=netframework-4.7
+            // https://docs.microsoft.com/en-us/dotnet/api/system.threading.threadpool.setminthreads?view=netcore-2.2
             // https://docs.microsoft.com/en-us/azure/redis-cache/cache-faq#important-details-about-threadpool-growth
             // https://blogs.msdn.microsoft.com/perfworld/2010/01/13/how-can-i-improve-the-performance-of-asp-net-by-adjusting-the-clr-thread-throttling-properties/
             //
