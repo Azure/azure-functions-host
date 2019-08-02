@@ -32,12 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
-        public ScriptStartupTypeLocator(string rootScriptPath, IExtensionBundleManager extensionBundleManager)
-            : this(rootScriptPath, NullLogger.Instance, extensionBundleManager)
-        {
-        }
-
-        public ScriptStartupTypeLocator(string rootScriptPath, ILogger logger, IExtensionBundleManager extensionBundleManager)
+        public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
@@ -124,6 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                     },
                     (assembly, typeName, ignoreCase) =>
                     {
+                        _logger.ScriptStartUpLoadedExtension(startupExtensionName, assembly.GetName().Version.ToString());
                         return assembly?.GetType(typeName, false, ignoreCase);
                     }, false, true);
 

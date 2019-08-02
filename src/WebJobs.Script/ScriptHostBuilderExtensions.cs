@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // Only set our external startup if we're not suppressing host initialization
                     // as we don't want to load user assemblies otherwise.
-                    webJobsBuilder.UseScriptExternalStartup(applicationHostOptions.ScriptPath, bundleManager);
+                    webJobsBuilder.UseScriptExternalStartup(applicationHostOptions.ScriptPath, loggerFactory, bundleManager);
                 }
                 webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
 
@@ -200,9 +200,10 @@ namespace Microsoft.Azure.WebJobs.Script
             AddProcessRegistry(services);
         }
 
-        public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, string rootScriptPath, IExtensionBundleManager extensionBundleManager)
+        public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, string rootScriptPath, ILoggerFactory loggerFactory, IExtensionBundleManager extensionBundleManager)
         {
-            return builder.UseExternalStartup(new ScriptStartupTypeLocator(rootScriptPath, extensionBundleManager));
+            var logger = loggerFactory.CreateLogger<ScriptStartupTypeLocator>() ?? throw new ArgumentNullException(nameof(loggerFactory));
+            return builder.UseExternalStartup(new ScriptStartupTypeLocator(rootScriptPath, logger, extensionBundleManager));
         }
 
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)

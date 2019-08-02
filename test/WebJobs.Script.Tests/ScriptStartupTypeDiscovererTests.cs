@@ -1,11 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -13,6 +10,8 @@ using Microsoft.Azure.WebJobs.Extensions.Storage;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
@@ -56,12 +55,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
 
-                var testLogger = new TestLogger("test");
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
                 var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
-                var traces = testLogger.GetLogMessages();
+                var traces = testLoggerProvider.GetAllLogMessages();
 
                 // Assert
                 Assert.Single(types);
@@ -80,12 +82,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             using (var directory = new TempDirectory())
             {
-                var testLogger = new TestLogger("test");
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
                 var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
-                var traces = testLogger.GetLogMessages();
+                var traces = testLoggerProvider.GetAllLogMessages();
 
                 // Assert
                 Assert.Null(types);
@@ -128,12 +133,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
 
-                var testLogger = new TestLogger("test");
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
                 var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
-                var traces = testLogger.GetLogMessages();
+                var traces = testLoggerProvider.GetAllLogMessages();
 
                 // Assert
                 Assert.Single(types);
@@ -149,12 +157,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
             mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).ReturnsAsync(string.Empty);
-            var testLogger = new TestLogger("test");
+
+            TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+            LoggerFactory factory = new LoggerFactory();
+            factory.AddProvider(testLoggerProvider);
+            var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
             var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object);
 
             // Act
             var types = await discoverer.GetExtensionsStartupTypesAsync();
-            var traces = testLogger.GetLogMessages();
+            var traces = testLoggerProvider.GetAllLogMessages();
 
             // Assert
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Unable to find or download extension bundle")));
