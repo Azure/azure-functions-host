@@ -160,6 +160,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(324, nameof(AutoRecoveringFileSystemWatcherUnableToRecover)),
             "Unable to recover (path: '{path}')");
 
+        private static readonly Action<ILogger, string, string, Exception> _scriptStartUpLoadedExtension =
+            LoggerMessage.Define<string, string>(
+            LogLevel.Information,
+            new EventId(325, nameof(ScriptStartUpLoadedExtension)),
+            "Loaded extension '{startupExtensionName}' ({startupExtensionVersion})");
+
         public static void ExtensionsManagerRestoring(this ILogger logger)
         {
             _extensionsManagerRestoring(logger, null);
@@ -183,6 +189,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         public static void ScriptStartUpLoadingStartUpExtension(this ILogger logger, string startupExtensionName)
         {
             _scriptStartUpLoadingStartUpExtension(logger, startupExtensionName, null);
+        }
+
+        public static void ScriptStartUpLoadedExtension(this ILogger logger, string startupExtensionName, string startupExtensionVersion)
+        {
+            _scriptStartUpLoadedExtension(logger, startupExtensionName, startupExtensionVersion, null);
         }
 
         public static void ScriptStartUpBelongExtension(this ILogger logger, string typeName)
