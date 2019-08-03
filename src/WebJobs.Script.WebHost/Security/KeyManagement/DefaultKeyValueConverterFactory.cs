@@ -1,12 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Config;
 using static Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -23,12 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static bool IsEncryptionSupported()
         {
-            if (SystemEnvironment.Instance.IsLinuxContainerEnvironment())
-            {
-                // TEMP: https://github.com/Azure/azure-functions-host/issues/3035
-                return false;
-            }
-
             return SystemEnvironment.Instance.IsAppServiceEnvironment() ||
                 SystemEnvironment.Instance.GetEnvironmentVariable(AzureWebsiteLocalEncryptionKey) != null;
         }
