@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptApplicationHostOptions _hostOptions;
         private readonly TestServer _testServer;
         private readonly string _appRoot;
+        private readonly TestLoggerProvider _webHostLoggerProvider = new TestLoggerProvider();
         private readonly TestLoggerProvider _scriptHostLoggerProvider = new TestLoggerProvider();
         private readonly WebJobsScriptHostService _hostService;
 
@@ -55,21 +56,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_hostOptions);
             var builder = new WebHostBuilder()
-                .ConfigureServices(services =>
-                {
-                    services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
-                    services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
-                    services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions)));
-                    services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
-
-                    // Allows us to configure services as the last step, thereby overriding anything
-                    services.AddSingleton(new PostConfigureServices(configureWebHostServices));
-                })
                 .ConfigureLogging(b =>
                 {
-                    b.AddDefaultWebJobsFilters();
-                    b.AddDeferred();
+                    b.AddProvider(_webHostLoggerProvider);
                 })
+                .ConfigureServices(services =>
+                  {
+                      services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
+                      services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
+                      services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions)));
+                      services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
+
+                      // Allows us to configure services as the last step, thereby overriding anything
+                      services.AddSingleton(new PostConfigureServices(configureWebHostServices));
+                  })
                 .ConfigureScriptHostWebJobsBuilder(scriptHostWebJobsBuilder =>
                 {
                     scriptHostWebJobsBuilder.AddAzureStorage();
@@ -180,6 +180,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         /// <returns>The messages from the ScriptHost LoggerProvider</returns>
         public IList<LogMessage> GetScriptHostLogMessages() => _scriptHostLoggerProvider.GetAllLogMessages();
         public IEnumerable<LogMessage> GetScriptHostLogMessages(string category) => GetScriptHostLogMessages().Where(p => p.Category == category);
+
+        /// <summary>
+        /// The functions host has two logger providers -- one at the WebHost level and one at the ScriptHost level. 
+        /// These providers use different LoggerProviders, so it's important to know which one is receiving the logs.
+        /// </summary>
+        /// <returns>The messages from the WebHost LoggerProvider</returns>
+        public IList<LogMessage> GetWebHostLogMessages() => _webHostLoggerProvider.GetAllLogMessages();
 
         public string GetLog() => string.Join(Environment.NewLine, GetScriptHostLogMessages());
 

@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             {
                 [ScriptConstants.LogPropertyActivityIdKey] = request.GetRequestId()
             };
-            _logger.Log(LogLevel.Debug, 0, logData, null, (s, e) => $"Executing HTTP request: {details}");
+            _logger.Log(LogLevel.Information, 0, logData, null, (s, e) => $"Executing HTTP request: {details}");
 
             await _next.Invoke(context);
 
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             details["identities"] = GetIdentities(context);
             details["status"] = context.Response.StatusCode;
             details["duration"] = sw.ElapsedMilliseconds;
-            _logger.Log(LogLevel.Debug, 0, logData, null, (s, e) => $"Executed HTTP request: {details}");
+            _logger.Log(LogLevel.Information, 0, logData, null, (s, e) => $"Executed HTTP request: {details}");
         }
 
         internal static void SetRequestId(HttpRequest request)

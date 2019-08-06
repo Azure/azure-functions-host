@@ -11,7 +11,6 @@ using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -33,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IScriptEventManager _eventManager;
         private readonly WorkerConfig _workerConfig;
         private readonly string _runtime;
-        private readonly ILoggerFactory _loggerFactory;
+
         private bool _disposed;
         private bool _disposing;
         private WorkerInitResponse _initMessage;
@@ -63,7 +62,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            WorkerConfig workerConfig,
            ILanguageWorkerProcess languageWorkerProcess,
            ILogger logger,
-           ILoggerFactory loggerFactory,
            IMetricsLogger metricsLogger,
            int attemptCount,
            IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
@@ -75,7 +73,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _runtime = workerConfig.Language;
             _languageWorkerProcess = languageWorkerProcess;
             _workerChannelLogger = logger;
-            _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(LoggerFactory));
 
             _workerCapabilities = new Capabilities(_workerChannelLogger);
 
@@ -271,17 +268,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 //Cache function load errors to replay error messages on invoking failed functions
                 _functionLoadErrors[loadResponse.FunctionId] = ex;
-
-                FunctionMetadata metadata = _functions.SingleOrDefault(p => p.FunctionId == loadResponse.FunctionId);
-                if (metadata?.Name != null)
-                {
-                    _loggerFactory.CreateLogger(LogCategories.CreateFunctionCategory(metadata.Name)).LogError(ex, "Function load error.");
-                }
-                else
-                {
-                    // If we cannot find the function name for some reason, make sure we log the error anyway.
-                    _workerChannelLogger.LogError(ex, "Function load error.");
-                }
             }
 
             if (loadResponse.IsDependencyDownloaded)

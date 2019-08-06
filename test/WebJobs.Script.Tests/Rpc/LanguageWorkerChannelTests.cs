@@ -12,7 +12,6 @@ using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
-using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
@@ -20,8 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
     public class LanguageWorkerChannelTests
     {
-        private readonly TestLoggerProvider _testLoggerProvider = new TestLoggerProvider();
-
         private static string _expectedLogMsg = "Outbound event subscribe event handler invoked";
 
         private Mock<ILanguageWorkerProcess> _mockLanguageWorkerProcess = new Mock<ILanguageWorkerProcess>();
@@ -29,8 +26,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private string _scriptRootPath = "c:\testdir";
         private IScriptEventManager _eventManager = new ScriptEventManager();
         private Mock<IMetricsLogger> _mockMetricsLogger = new Mock<IMetricsLogger>();
+        private Mock<ILanguageWorkerConsoleLogSource> _mockConsoleLogger = new Mock<ILanguageWorkerConsoleLogSource>();
         private Mock<FunctionRpc.FunctionRpcBase> _mockFunctionRpcService = new Mock<FunctionRpc.FunctionRpcBase>();
         private TestRpcServer _testRpcServer = new TestRpcServer();
+        private ILoggerFactory _loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
         private TestFunctionRpcService _testFunctionRpcService;
         private TestLogger _logger;
         private LanguageWorkerChannel _workerChannel;
@@ -43,9 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
             _mockLanguageWorkerProcess.Setup(m => m.StartProcess());
 
-            LoggerFactory loggerFactory = new LoggerFactory();
-            loggerFactory.AddProvider(_testLoggerProvider);
-
             _workerChannel = new LanguageWorkerChannel(
                _workerId,
                _scriptRootPath,
@@ -53,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                testWorkerConfig,
                _mockLanguageWorkerProcess.Object,
                _logger,
-               loggerFactory,
                _mockMetricsLogger.Object,
                0);
         }
@@ -183,28 +178,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             var proxyFunctionLoadRequest = _workerChannel.GetFunctionLoadRequest(proxyMetadata);
             Assert.True(proxyFunctionLoadRequest.Metadata.IsProxy);
-        }
-
-        [Fact]
-        public void FunctionLoadResuest_ErrorIsLogged()
-        {
-            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
-
-            var response = new FunctionLoadResponse
-            {
-                FunctionId = "TestFunctionId1",
-                Result = new StatusResult
-                {
-                    Exception = new Grpc.Messages.RpcException { Message = "boom!" }
-                }
-            };
-
-            _workerChannel.LoadResponse(response);
-
-            LogMessage log = _testLoggerProvider.GetAllLogMessages().Single(p => p.Category == "Function.js1");
-            Assert.Equal("Function load error.", log.FormattedMessage);
-            Assert.IsType<Script.Rpc.RpcException>(log.Exception);
-            Assert.Contains("boom!", log.Exception.Message);
         }
 
         private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime)

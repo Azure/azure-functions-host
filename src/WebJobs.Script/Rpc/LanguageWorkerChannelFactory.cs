@@ -47,7 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                          languageWorkerConfig,
                          languageWorkerProcess,
                          workerLogger,
-                         _loggerFactory,
                          metricsLogger,
                          attemptCount,
                          managedDependencyOptions);
