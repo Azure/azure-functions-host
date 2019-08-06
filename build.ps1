@@ -1,6 +1,6 @@
 ﻿param (
   [string]$buildNumber = "0",
-  [string]$extensionVersion = "2.0.$buildNumber",
+  [string]$extensionVersion = "3.0.$buildNumber",
   [bool]$includeSuffix = $true
 )
 
