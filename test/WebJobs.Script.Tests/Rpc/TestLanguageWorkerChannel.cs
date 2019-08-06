@@ -83,5 +83,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             _eventManager.Publish(new WorkerRestartEvent(_runtime, Id));
         }
+
+        public void RaiseWorkerErrorWithCustomTimestamp(DateTime timestamp)
+        {
+            Exception testEx = new Exception("Test Worker Error");
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, testEx, timestamp));
+        }
     }
 }

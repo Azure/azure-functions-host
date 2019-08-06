@@ -5,7 +5,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,6 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
         private readonly int _debounceSeconds = 10;
         private readonly int _maxAllowedProcessCount = 10;
+        private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(LanguageWorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
+
         private IScriptEventManager _eventManager;
         private IEnumerable<WorkerConfig> _workerConfigs;
         private IWebHostLanguageWorkerChannelManager _webHostLanguageWorkerChannelManager;
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
         private IEnumerable<FunctionMetadata> _functions;
-        private ConcurrentBag<Exception> _languageWorkerErrors = new ConcurrentBag<Exception>();
+        private ConcurrentStack<WorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<WorkerErrorEvent>();
         private CancellationTokenSource _processStartCancellationToken = new CancellationTokenSource();
 
         public FunctionDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
@@ -94,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public IJobHostLanguageWorkerChannelManager JobHostLanguageWorkerChannelManager => _jobHostLanguageWorkerChannelManager;
 
-        internal ConcurrentBag<Exception> LanguageWorkerErrors => _languageWorkerErrors;
+        internal ConcurrentStack<WorkerErrorEvent> LanguageWorkerErrors => _languageWorkerErrors;
 
         internal int MaxProcessCount => _maxProcessCount;
 
@@ -249,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (!_disposing)
             {
                 _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
-                _languageWorkerErrors.Add(workerError.Exception);
+                AddOrUpdateErrorBucket(workerError);
                 await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId);
             }
         }
@@ -291,6 +292,22 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _logger.LogError("Exceeded language worker restart retry count for runtime:{runtime}. Shutting down Functions Host", runtime);
                 _scriptJobHostEnvironment.Shutdown();
             }
+        }
+
+        private void AddOrUpdateErrorBucket(WorkerErrorEvent currentErrorEvent)
+        {
+            if (_languageWorkerErrors.TryPeek(out WorkerErrorEvent top))
+            {
+                if ((currentErrorEvent.CreatedAt - top.CreatedAt) > thresholdBetweenRestarts)
+                {
+                    while (!_languageWorkerErrors.IsEmpty)
+                    {
+                        _languageWorkerErrors.TryPop(out WorkerErrorEvent popped);
+                        _logger.LogDebug($"Popping out errorEvent createdAt:{popped.CreatedAt} workerId:{popped.WorkerId}");
+                    }
+                }
+            }
+            _languageWorkerErrors.Push(currentErrorEvent);
         }
 
         protected virtual void Dispose(bool disposing)
