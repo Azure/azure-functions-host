@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                             break;
                         default:
                             FunctionBinding binding = null;
-                            if (TryParseFunctionBinding(config, bindingProviders, bindingMetadata.Raw, out binding))
+                            if (TryParseFunctionBinding(config, bindingProviders, bindingMetadata.Raw, fileAccess, out binding))
                             {
                                 bindings.Add(binding);
                             }
@@ -70,11 +70,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return bindings;
         }
 
-        private static bool TryParseFunctionBinding(ScriptJobHostOptions config, IEnumerable<IScriptBindingProvider> bindingProviders, JObject metadata, out FunctionBinding functionBinding)
+        private static bool TryParseFunctionBinding(ScriptJobHostOptions config, IEnumerable<IScriptBindingProvider> bindingProviders, JObject metadata, FileAccess fileAccess, out FunctionBinding functionBinding)
         {
             functionBinding = null;
 
-            ScriptBindingContext bindingContext = new ScriptBindingContext(metadata);
+            ScriptBindingContext bindingContext = new ScriptBindingContext(metadata, fileAccess);
             ScriptBinding scriptBinding = null;
             foreach (var provider in bindingProviders)
             {

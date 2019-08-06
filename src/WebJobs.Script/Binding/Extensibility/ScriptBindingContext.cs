@@ -35,11 +35,14 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
                     break;
             }
 
-            Name = GetMetadataValue<string>("name");
-            Type = GetMetadataValue<string>("type");
-            DataType = GetMetadataValue<string>("datatype");
-            Cardinality = GetMetadataValue<string>("cardinality");
-            IsTrigger = Type.EndsWith("trigger", StringComparison.OrdinalIgnoreCase);
+            SetOtherMembers();
+        }
+
+        public ScriptBindingContext(JObject bindingMetadata, FileAccess fileAccess)
+        {
+            Metadata = bindingMetadata;
+            Access = fileAccess;
+            SetOtherMembers();
         }
 
         /// <summary>
@@ -138,6 +141,15 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
             }
 
             return t.Name;
+        }
+
+        private void SetOtherMembers()
+        {
+            Name = GetMetadataValue<string>("name");
+            Type = GetMetadataValue<string>("type");
+            DataType = GetMetadataValue<string>("datatype");
+            Cardinality = GetMetadataValue<string>("cardinality");
+            IsTrigger = Type.EndsWith("trigger", StringComparison.OrdinalIgnoreCase);
         }
     }
 }
