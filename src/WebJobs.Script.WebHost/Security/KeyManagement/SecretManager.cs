@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
+using DataProtectionCostants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -459,14 +460,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ScriptSecretsType secretsType = secrets.SecretsType;
             if (isNonDecryptable)
             {
-                string decryptionKey = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey);
-                if (!string.IsNullOrEmpty(decryptionKey))
-                {
-                    SHA256Managed hash = new SHA256Managed();
-                    byte[] hashBytes = hash.ComputeHash(Encoding.UTF8.GetBytes(decryptionKey));
-                    secrets.DecryptionKeyId = Convert.ToBase64String(hashBytes);
-                }
-
                 string[] secretBackups = await _repository.GetSecretSnapshots(secrets.SecretsType, keyScope);
 
                 if (secretBackups.Length >= ScriptConstants.MaximumSecretBackupCount)
@@ -479,6 +472,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             else
             {
+                // We want to store encryption keys hashes to investigate sudden regenerations
+                string hashes = GetEncryptionKeysHashes();
+                secrets.DecryptionKeyId = hashes;
+                _logger?.LogInformation("Encription keys hashes: {0}", hashes);
+
                 await _repository.WriteAsync(secretsType, keyScope, secrets);
             }
         }
@@ -593,6 +591,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private string GetFunctionName(string keyScope, ScriptSecretsType secretsType)
         {
             return (secretsType == ScriptSecretsType.Function) ? keyScope : null;
+        }
+
+        private string GetEncryptionKeysHashes()
+        {
+            string result = string.Empty;
+            string azureWebsiteLocalEncryptionKey = SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteLocalEncryptionKey) ?? string.Empty;
+            SHA256Managed hash = new SHA256Managed();
+
+            if (!string.IsNullOrEmpty(azureWebsiteLocalEncryptionKey))
+            {
+                byte[] hashBytes = hash.ComputeHash(Encoding.UTF8.GetBytes(azureWebsiteLocalEncryptionKey));
+                string azureWebsiteLocalEncryptionKeyHash = Convert.ToBase64String(hashBytes);
+                result += $"{DataProtectionCostants.AzureWebsiteLocalEncryptionKey}={azureWebsiteLocalEncryptionKeyHash};";
+            }
+
+            string azureWebsiteEnvironmentMachineKey = SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey) ?? string.Empty;
+            if (!string.IsNullOrEmpty(azureWebsiteEnvironmentMachineKey))
+            {
+                byte[] hashBytes = hash.ComputeHash(Encoding.UTF8.GetBytes(azureWebsiteEnvironmentMachineKey));
+                string azureWebsiteEnvironmentMachineKeyHash = Convert.ToBase64String(hashBytes);
+                result += $"{DataProtectionCostants.AzureWebsiteEnvironmentMachineKey}={azureWebsiteEnvironmentMachineKeyHash};";
+            }
+
+            return result;
         }
     }
 }
