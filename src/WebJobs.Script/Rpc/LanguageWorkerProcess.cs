@@ -184,8 +184,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
             if (langExc != null && langExc.ExitCode != -1)
             {
-                _workerProcessLogger.LogDebug(langExc, $"Language Worker Process exited.", _process.StartInfo.FileName);
-                _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, langExc));
+                _workerProcessLogger.LogDebug(langExc, $"Language Worker Process exited (exit code: {langExc.ExitCode}).", _process.StartInfo.FileName);
+                var isIntentionalExit = langExc.ExitCode == 200;
+                _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, isIntentionalExit ? null : langExc));
             }
         }
 

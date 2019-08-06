@@ -246,7 +246,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (!_disposing)
             {
                 _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
-                _languageWorkerErrors.Add(workerError.Exception);
+
+                if (workerError.Exception == null)
+                {
+                    _logger.LogDebug("No exception in WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
+                }
+                else
+                {
+                    _languageWorkerErrors.Add(workerError.Exception);
+                }
+
                 bool isPreInitializedChannel = _webHostLanguageWorkerChannelManager.ShutdownChannelIfExists(workerError.Language, workerError.WorkerId);
                 if (!isPreInitializedChannel)
                 {
