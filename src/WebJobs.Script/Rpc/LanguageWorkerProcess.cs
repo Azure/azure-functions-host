@@ -14,6 +14,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal class LanguageWorkerProcess : ILanguageWorkerProcess, IDisposable
     {
+        // When a language worker process exits with this code, this indicates
+        // that the worker decided to exit intentionally and not because of any error.
+        // For example, this is how the worker can express the desire to be restarted
+        // in order to pick up updated dependencies.
+        private const int NonErrorExitCode = 200;
+
         private readonly IWorkerProcessFactory _processFactory;
         private readonly IProcessRegistry _processRegistry;
         private readonly ILogger _workerProcessLogger;
@@ -185,7 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (langExc != null && langExc.ExitCode != -1)
             {
                 _workerProcessLogger.LogDebug(langExc, $"Language Worker Process exited (exit code: {langExc.ExitCode}).", _process.StartInfo.FileName);
-                var isIntentionalExit = langExc.ExitCode == 200;
+                var isIntentionalExit = langExc.ExitCode == NonErrorExitCode;
                 _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, isIntentionalExit ? null : langExc));
             }
         }
