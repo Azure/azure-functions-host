@@ -10,17 +10,15 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.WebJobs.Script.Tests
 {
-    public class TestLoggerProvider : ILoggerProvider, ISupportExternalScope
+    public class TestLoggerProvider : ILoggerProvider
     {
-        private IExternalScopeProvider _scopeProvider;
-
         private ConcurrentDictionary<string, TestLogger> LoggerCache { get; } = new ConcurrentDictionary<string, TestLogger>();
 
         public IEnumerable<TestLogger> CreatedLoggers => LoggerCache.Values;
 
         public ILogger CreateLogger(string categoryName)
         {
-            return LoggerCache.GetOrAdd(categoryName, (key) => new TestLogger(key, _scopeProvider));
+            return LoggerCache.GetOrAdd(categoryName, (key) => new TestLogger(key));
         }
 
         public IList<LogMessage> GetAllLogMessages()
@@ -43,11 +41,6 @@ namespace Microsoft.WebJobs.Script.Tests
             {
                 logger.ClearLogMessages();
             }
-        }
-
-        public void SetScopeProvider(IExternalScopeProvider scopeProvider)
-        {
-            _scopeProvider = scopeProvider;
         }
 
         public void Dispose()

@@ -106,41 +106,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("TimerTrigger");
             TestHelpers.ClearFunctionLogs("ListenerStartupException");
 
-            Host = new HostBuilder()
-               .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
-               {
-                   webjobsBuilder.AddAzureStorage();
-               },
-               o =>
-               {
-                   o.ScriptPath = _rootPath;
-                   o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
-               },
-               runStartupHostedServices: true)
-               .ConfigureServices(services =>
-               {
-                   services.Configure<ScriptJobHostOptions>(o =>
-                   {
-                       o.FileLoggingMode = FileLoggingMode.Always;
+             Host = new HostBuilder()
+                .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
+                {
+                    webjobsBuilder.AddAzureStorage();
+                },                
+                o =>
+                {
+                    o.ScriptPath = _rootPath;
+                    o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
+                },
+                runStartupHostedServices: true)
+                .ConfigureServices(services =>
+                {
+                    services.Configure<ScriptJobHostOptions>(o =>
+                    {
+                        o.FileLoggingMode = FileLoggingMode.Always;
 
-                       if (_functions != null)
-                       {
-                           o.Functions = _functions;
-                       }
-                   });
+                        if (_functions != null)
+                        {
+                            o.Functions = _functions;
+                        }
+                    });
 
-                   if (_proxyClient != null)
-                   {
-                       services.AddSingleton<ProxyClientExecutor>(_proxyClient);
-                   }
+                    if (_proxyClient != null)
+                    {
+                        services.AddSingleton<ProxyClientExecutor>(_proxyClient);
+                    }
 
-                   ConfigureServices(services);
-               })
-               .ConfigureLogging(b =>
-               {
-                   b.AddProvider(LoggerProvider);
-               })
-               .Build();
+                    ConfigureServices(services);
+                })
+                .ConfigureLogging(b =>
+                {
+                    b.AddProvider(LoggerProvider);
+                })
+                .Build();
 
             JobHost = Host.GetScriptHost();
 

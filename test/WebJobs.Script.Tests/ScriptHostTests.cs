@@ -1274,11 +1274,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 runStartupHostedServices: true,
                 rootServices =>
                 {
-                    rootServices.AddLogging(b =>
-                    {
-                        b.Services.AddSingleton<ILoggerFactory>(loggerFactory);
-                        b.AddDeferred();
-                    });
+                    rootServices.AddSingleton<ILoggerFactory>(loggerFactory);
                 })
                 .ConfigureServices(s =>
                 {

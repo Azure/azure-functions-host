@@ -4,7 +4,6 @@
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -20,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var workerProcessFactory = new Mock<IWorkerProcessFactory>();
             var processRegistry = new Mock<IProcessRegistry>();
             var rpcServer = new TestRpcServer();
+            var languageWorkerConsoleLogSource = new Mock<ILanguageWorkerConsoleLogSource>();
             var scriptJobHostEnvironment = new Mock<IScriptJobHostEnvironment>();
             var testEnv = new TestEnvironment();
             _languageWorkerProcess = new LanguageWorkerProcess("node",
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 workerProcessFactory.Object,
                 processRegistry.Object,
                 new TestLogger("test"),
-                NullLoggerFactory.Instance);
+                languageWorkerConsoleLogSource.Object);
         }
 
         [Fact]

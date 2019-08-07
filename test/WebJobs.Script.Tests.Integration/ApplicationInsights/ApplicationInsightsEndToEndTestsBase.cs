@@ -274,16 +274,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 !t.Message.StartsWith("Host Status")
             ).ToArray();
 
-            int expectedCount = 15;
+            int expectedCount = 12;
             Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
             int idx = 0;
             ValidateTrace(traces[idx++], "2 functions loaded", LogCategories.Startup);
             ValidateTrace(traces[idx++], "A function whitelist has been specified", LogCategories.Startup);
-            ValidateTrace(traces[idx++], "Building host: startup suppressed:False, configuration suppressed: False", ScriptConstants.LogCategoryHostGeneral);
             ValidateTrace(traces[idx++], "Found the following functions:\r\n", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Generating 2 job function(s)", LogCategories.Startup);
-            ValidateTrace(traces[idx++], "Host configuration file read:", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Host initialization: ConsecutiveErrors=0, StartupCount=1", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Host initialized (", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
@@ -291,7 +289,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTrace(traces[idx++], "Initializing Host", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Job host started", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Loading functions metadata", LogCategories.Startup);
-            ValidateTrace(traces[idx++], "Reading host configuration file ", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Starting Host (HostId=", LogCategories.Startup);
         }
 
