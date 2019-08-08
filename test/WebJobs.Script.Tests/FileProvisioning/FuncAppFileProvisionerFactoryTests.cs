@@ -4,6 +4,7 @@
 using System;
 using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
@@ -14,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
 
         public FuncAppFileProvisionerFactoryTests()
         {
-            _funcAppFileProvisionerFactory = new FuncAppFileProvisionerFactory();
+            _funcAppFileProvisionerFactory = new FuncAppFileProvisionerFactory(NullLogger<FuncAppFileProvisionerFactory>.Instance);
         }
 
         [Theory]

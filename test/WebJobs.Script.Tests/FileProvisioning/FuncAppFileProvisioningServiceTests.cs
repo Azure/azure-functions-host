@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
 
@@ -30,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
 
             _optionsMonitor = TestHelpers.CreateOptionsMonitor(applicationHostOptions);
             _environment = new TestEnvironment();
-            _funcAppFileProvisionerFactory = new FuncAppFileProvisionerFactory();
+            _funcAppFileProvisionerFactory = new FuncAppFileProvisionerFactory(NullLogger<FuncAppFileProvisionerFactory>.Instance);
         }
 
         [Fact]
