@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
@@ -15,17 +14,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     {
         private LanguageWorkerProcess _languageWorkerProcess;
 
-        private Mock<IWorkerProcessFactory> _workerProcessFactory;
-
         private Mock<IScriptEventManager> _eventManager;
 
         public LanguageWorkerProcessTests()
         {
-            _workerProcessFactory = new Mock<IWorkerProcessFactory>();
-            _workerProcessFactory.Setup(_ => _.CreateWorkerProcess(It.IsAny<WorkerContext>()))
-                .Returns(new Process { StartInfo = new ProcessStartInfo { FileName = "file name" } });
-
             _eventManager = new Mock<IScriptEventManager>();
+            var workerProcessFactory = new Mock<IWorkerProcessFactory>();
             var processRegistry = new Mock<IProcessRegistry>();
             var rpcServer = new TestRpcServer();
             var scriptJobHostEnvironment = new Mock<IScriptJobHostEnvironment>();
@@ -36,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 rpcServer.Uri,
                 null,
                 _eventManager.Object,
-                _workerProcessFactory.Object,
+                workerProcessFactory.Object,
                 processRegistry.Object,
                 new TestLogger("test"),
                 NullLoggerFactory.Instance);
@@ -90,47 +84,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.False(LanguageWorkerChannelUtilities.IsLanguageWorkerConsoleLog(msg));
         }
 
-        [Theory]
-        [InlineData(0)]
-        [InlineData(1)]
-        [InlineData(1000)]
-        [InlineData(-1000)]
-        public void HandleWorkerProcessExitError_PublishesWorkerErrorEventWithException(int exitCode)
+        [Fact]
+        public void HandleWorkerProcessExitError_PublishesWorkerRestartEvent_OnIntentionalRestartExitCode()
         {
-            var exception = new LanguageWorkerProcessExitException("Test exception") { ExitCode = exitCode };
-            _languageWorkerProcess.HandleWorkerProcessExitError(exception);
+            _languageWorkerProcess.HandleWorkerProcessRestart();
 
-            _eventManager.Verify(_ => _.Publish(It.Is<ScriptEvent>(scriptEvent => IsWorkerErrorEvent(scriptEvent, exception))));
-        }
-
-        [Theory]
-        [InlineData(200)]
-        public void HandleWorkerProcessExitError_PublishesWorkerErrorEventWithoutException_OnIntentionalExitCode(int exitCode)
-        {
-            var exception = new LanguageWorkerProcessExitException("Test exception") { ExitCode = exitCode };
-            _languageWorkerProcess.HandleWorkerProcessExitError(exception);
-
-            _eventManager.Verify(_ => _.Publish(It.Is<ScriptEvent>(scriptEvent => IsWorkerErrorEvent(scriptEvent, null))));
-        }
-
-        [Theory]
-        [InlineData(-1)]
-        public void HandleWorkerProcessExitError_DoesNotPublishWorkerErrorEvent_OnMinusOneExitCode(int exitCode)
-        {
-            var exception = new LanguageWorkerProcessExitException("Test exception") { ExitCode = exitCode };
-            _languageWorkerProcess.HandleWorkerProcessExitError(exception);
-
-            _eventManager.Verify(_ => _.Publish(It.IsAny<ScriptEvent>()), Times.Never);
-        }
-
-        private static bool IsWorkerErrorEvent(ScriptEvent actualScriptEvent, LanguageWorkerProcessExitException expectedException)
-        {
-            if (actualScriptEvent is WorkerErrorEvent workerErrorEvent)
-            {
-                return ReferenceEquals(workerErrorEvent.Exception, expectedException);
-            }
-
-            return false;
+            _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerRestartEvent>()), Times.Once());
+            _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerErrorEvent>()), Times.Never());
         }
     }
 }

@@ -52,5 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string RawHttpBodyBytes = "RawHttpBodyBytes";
         public const string TypedDataCollection = "TypedDataCollection";
         public const string RpcHttpBodyOnly = "RpcHttpBodyOnly";
+
+        // Language Worker process exit codes
+        public const int SuccessExitCode = 0;
+        public const int IntentionalRestartExitCode = 200;
     }
 }

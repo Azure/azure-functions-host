@@ -73,20 +73,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _state = LanguageWorkerChannelState.Initialized;
         }
 
-        public void RaiseWorkerErrorWithException()
+        public void RaiseWorkerError()
         {
             Exception testEx = new Exception("Test Worker Error");
-            RaiseWorkerError(testEx);
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, testEx));
         }
 
-        public void RaiseWorkerErrorWithoutException()
+        public void RaiseWorkerRestart()
         {
-            RaiseWorkerError(null);
-        }
-
-        private void RaiseWorkerError(Exception exception)
-        {
-            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exception));
+            _eventManager.Publish(new WorkerRestartEvent(_runtime, Id));
         }
     }
 }
