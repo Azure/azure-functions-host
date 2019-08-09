@@ -248,32 +248,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             }
         }
 
-        [Fact]
-        public async void FunctionDispatcher_Restart_ErroredChannels_OnMixOfWorkerRestartAndErrorEvents()
-        {
-            int expectedProcessCount = 1;
-            FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(expectedProcessCount.ToString());
-            await functionDispatcher.InitializeAsync(GetTestFunctionsList(LanguageWorkerConstants.NodeLanguageWorkerName));
-
-            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
-
-            // Don't exceed the error limit...
-            for (int errorCount = 0; errorCount < 2; errorCount++)
-            {
-                TestLanguageWorkerChannel testWorkerChannel = (TestLanguageWorkerChannel)functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
-                testWorkerChannel.RaiseWorkerError();
-                await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
-            }
-
-            // ...but the number of *intentional* restarts is not limited
-            for (int restartCount = 0; restartCount < (expectedProcessCount * 3) + 1; restartCount++)
-            {
-                TestLanguageWorkerChannel testWorkerChannel = (TestLanguageWorkerChannel)functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
-                testWorkerChannel.RaiseWorkerRestart();
-                await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
-            }
-        }
-
         private static FunctionDispatcher GetTestFunctionDispatcher(string maxProcessCountValue = null, bool addWebhostChannel = false, Mock<IWebHostLanguageWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null)
         {
             var eventManager = new ScriptEventManager();

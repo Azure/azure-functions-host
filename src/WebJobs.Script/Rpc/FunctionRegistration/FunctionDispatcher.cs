@@ -268,11 +268,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             bool isPreInitializedChannel = _webHostLanguageWorkerChannelManager.ShutdownChannelIfExists(runtime, workerId);
             if (!isPreInitializedChannel)
             {
-                _logger.LogDebug("Disposing errored channel for workerId: {channelId}, for runtime:{language}", workerId, runtime);
-                var erroredChannel = _jobHostLanguageWorkerChannelManager.GetChannels().Where(ch => ch.Id == workerId).FirstOrDefault();
-                if (erroredChannel != null)
+                _logger.LogDebug("Disposing channel for workerId: {channelId}, for runtime:{language}", workerId, runtime);
+                var channel = _jobHostLanguageWorkerChannelManager.GetChannels().Where(ch => ch.Id == workerId).FirstOrDefault();
+                if (channel != null)
                 {
-                    _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannel(erroredChannel);
+                    _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannel(channel);
                 }
             }
 
