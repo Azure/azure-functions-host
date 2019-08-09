@@ -209,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
-        public async void FunctionDispatcher_Restart_ErroredChannels_ExcceedsLimit()
+        public async void FunctionDispatcher_Restart_ErroredChannels_ExceedsLimit()
         {
             int expectedProcessCount = 2;
             FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(expectedProcessCount.ToString());
@@ -225,6 +225,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 }
             }
             Assert.Equal(0, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());
+        }
+
+        [Fact]
+        public async void FunctionDispatcher_Restart_ErroredChannels_OnWorkerRestart_NotAffectedByLimit()
+        {
+            int expectedProcessCount = 2;
+            FunctionDispatcher functionDispatcher = (FunctionDispatcher)GetTestFunctionDispatcher(expectedProcessCount.ToString());
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(LanguageWorkerConstants.NodeLanguageWorkerName));
+
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+            for (int restartCount = 0; restartCount < expectedProcessCount * 3; restartCount++)
+            {
+                foreach (var channel in functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels())
+                {
+                    TestLanguageWorkerChannel testWorkerChannel = channel as TestLanguageWorkerChannel;
+                    testWorkerChannel.RaiseWorkerRestart();
+                }
+
+                var finalChannelCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+                Assert.Equal(expectedProcessCount, finalChannelCount);
+            }
         }
 
         private static FunctionDispatcher GetTestFunctionDispatcher(string maxProcessCountValue = null, bool addWebhostChannel = false, Mock<IWebHostLanguageWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null)

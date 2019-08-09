@@ -144,16 +144,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             string exceptionMessage = string.Join(",", _processStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
             try
             {
-                if (_process.ExitCode != 0)
+                if (_process.ExitCode == LanguageWorkerConstants.SuccessExitCode)
+                {
+                    _process.WaitForExit();
+                    _process.Close();
+                }
+                else if (_process.ExitCode == LanguageWorkerConstants.IntentionalRestartExitCode)
+                {
+                    HandleWorkerProcessRestart();
+                }
+                else
                 {
                     var processExitEx = new LanguageWorkerProcessExitException($"{_process.StartInfo.FileName} exited with code {_process.ExitCode}\n {exceptionMessage}");
                     processExitEx.ExitCode = _process.ExitCode;
                     HandleWorkerProcessExitError(processExitEx);
-                }
-                else
-                {
-                    _process.WaitForExit();
-                    _process.Close();
                 }
             }
             catch (Exception)
@@ -187,6 +191,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _workerProcessLogger.LogDebug(langExc, $"Language Worker Process exited.", _process.StartInfo.FileName);
                 _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, langExc));
             }
+        }
+
+        internal void HandleWorkerProcessRestart()
+        {
+            _workerProcessLogger?.LogInformation("Language Worker Process exited and needs to be restarted.");
+            _eventManager.Publish(new WorkerRestartEvent(_runtime, _workerId));
         }
 
         public void Dispose()

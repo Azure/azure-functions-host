@@ -13,9 +13,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     {
         private LanguageWorkerProcess _languageWorkerProcess;
 
+        private Mock<IScriptEventManager> _eventManager;
+
         public LanguageWorkerProcessTests()
         {
-            var eventManager = new Mock<IScriptEventManager>();
+            _eventManager = new Mock<IScriptEventManager>();
             var workerProcessFactory = new Mock<IWorkerProcessFactory>();
             var processRegistry = new Mock<IProcessRegistry>();
             var rpcServer = new TestRpcServer();
@@ -27,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 "testrootPath",
                 rpcServer.Uri,
                 null,
-                eventManager.Object,
+                _eventManager.Object,
                 workerProcessFactory.Object,
                 processRegistry.Object,
                 new TestLogger("test"),
@@ -80,6 +82,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void IsLanguageWorkerConsoleLog_Returns_False(string msg)
         {
             Assert.False(LanguageWorkerChannelUtilities.IsLanguageWorkerConsoleLog(msg));
+        }
+
+        [Fact]
+        public void HandleWorkerProcessExitError_PublishesWorkerRestartEvent_OnIntentionalRestartExitCode()
+        {
+            _languageWorkerProcess.HandleWorkerProcessRestart();
+
+            _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerRestartEvent>()), Times.Once());
+            _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerErrorEvent>()), Times.Never());
         }
     }
 }
