@@ -368,6 +368,12 @@ message RpcLog {
     None = 6;
   }
 
+  // Category of the log. Defaults to User if not specified.
+  enum RpcLogCategory {
+	User = 0;
+	System = 1;
+  }
+
   // Unique id for invocation (if exists)
   string invocation_id = 1;
 
@@ -389,6 +395,9 @@ message RpcLog {
 
   // json serialized property bag, or could use a type scheme like map<string, TypedData>
   string properties = 7;
+
+  // Category of the log. Either user(default) or system.
+  RpcLogCategory log_category = 8;
 }
 
 // Encapsulates an Exception 
@@ -399,7 +408,7 @@ message RpcException {
   // Stack trace for the exception
   string stack_trace = 1;
 
-  // Textual message describing hte exception
+  // Textual message describing the exception
   string message = 2;
 }
 
