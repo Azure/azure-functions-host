@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     public class LanguageWorkerChannelTests
     {
         private static string _expectedLogMsg = "Outbound event subscribe event handler invoked";
+        private static string _expectedSystemLogMessage = "Random system log message";
 
         private Mock<ILanguageWorkerProcess> _mockLanguageWorkerProcess = new Mock<ILanguageWorkerProcess>();
         private string _workerId = "testWorkerId";
@@ -106,6 +107,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+        }
+
+        [Theory]
+        [InlineData(RpcLog.Types.Level.Information, RpcLog.Types.Level.Information)]
+        [InlineData(RpcLog.Types.Level.Error, RpcLog.Types.Level.Error)]
+        [InlineData(RpcLog.Types.Level.Warning, RpcLog.Types.Level.Warning)]
+        [InlineData(RpcLog.Types.Level.Trace, RpcLog.Types.Level.Information)]
+        public void SendSystemLogMessage_PublishesSystemLogMessage(RpcLog.Types.Level levelToTest, RpcLog.Types.Level expectedLogLevel)
+        {
+            _testFunctionRpcService.PublishSystemLogEvent(levelToTest);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedSystemLogMessage) && m.Level.ToString().Equals(expectedLogLevel.ToString())));
         }
 
         [Fact]
