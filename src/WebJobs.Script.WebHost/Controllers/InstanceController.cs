@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> Assign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext)
         {
-            _logger.LogDebug($"Starting container assignment for host : {Request.Host}");
+            _logger.LogDebug($"Starting container assignment for host : {Request.Host}. ContextLength is: {encryptedAssignmentContext.EncryptedContext?.Length}");
             var containerKey = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey);
             var assignmentContext = encryptedAssignmentContext.Decrypt(containerKey);
 
