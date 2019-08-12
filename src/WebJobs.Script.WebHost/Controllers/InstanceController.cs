@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
@@ -20,11 +21,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     {
         private readonly IEnvironment _environment;
         private readonly IInstanceManager _instanceManager;
+        private readonly ILogger _logger;
 
-        public InstanceController(IEnvironment environment, IInstanceManager instanceManager)
+        public InstanceController(IEnvironment environment, IInstanceManager instanceManager, ILoggerFactory loggerFactory)
         {
             _environment = environment;
             _instanceManager = instanceManager;
+            _logger = loggerFactory.CreateLogger<InstanceController>();
         }
 
         [HttpPost]
@@ -32,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> Assign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext)
         {
+            _logger.LogDebug($"Starting container assignment for host : {Request?.Host}. ContextLength is: {encryptedAssignmentContext.EncryptedContext?.Length}");
             var containerKey = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey);
             var assignmentContext = encryptedAssignmentContext.Decrypt(containerKey);
 
