@@ -10,11 +10,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         Task<ILanguageWorkerChannel> InitializeChannelAsync(string language);
 
-        IEnumerable<ILanguageWorkerChannel> GetChannels(string language);
+        Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> GetChannels(string language);
 
         Task SpecializeAsync();
 
-        bool ShutdownChannelIfExists(string language, string workerId);
+        Task<bool> ShutdownChannelIfExists(string language, string workerId);
 
         void ShutdownChannels();
     }

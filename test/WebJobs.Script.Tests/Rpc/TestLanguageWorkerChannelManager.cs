@@ -86,5 +86,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             throw new System.NotImplementedException();
         }
+
+        Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> IWebHostLanguageWorkerChannelManager.GetChannels(string language)
+        {
+            throw new NotImplementedException();
+        }
+
+        Task<bool> IWebHostLanguageWorkerChannelManager.ShutdownChannelIfExists(string language, string workerId)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
