@@ -132,10 +132,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             workerChannel.SendFunctionLoadRequests();
         }
 
-        internal void ShutdownWebhostLanguageWorkerChannels()
+        internal async void ShutdownWebhostLanguageWorkerChannels()
         {
             _logger.LogDebug("{workerRuntimeConstant}={value}. Will shutdown all the worker channels that started in placeholder mode", LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _workerRuntime);
-            _webHostLanguageWorkerChannelManager.ShutdownChannelsAsync();
+            await _webHostLanguageWorkerChannelManager.ShutdownChannelsAsync();
         }
 
         private void StartWorkerProcesses(int startIndex, Action startAction)
