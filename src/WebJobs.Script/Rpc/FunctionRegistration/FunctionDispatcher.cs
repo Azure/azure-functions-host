@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void ShutdownWebhostLanguageWorkerChannels()
         {
             _logger.LogDebug("{workerRuntimeConstant}={value}. Will shutdown all the worker channels that started in placeholder mode", LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _workerRuntime);
-            _webHostLanguageWorkerChannelManager.ShutdownChannels();
+            _webHostLanguageWorkerChannelManager.ShutdownChannelsAsync();
         }
 
         private void StartWorkerProcesses(int startIndex, Action startAction)
@@ -208,11 +208,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public async Task Invoke(ScriptInvocationContext invocationContext)
+        public async Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
             try
             {
-                IEnumerable<ILanguageWorkerChannel> workerChannels = await GetInitializedWorkerChannels();
+                IEnumerable<ILanguageWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync();
                 var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels, _maxProcessCount);
                 if (languageWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out BufferBlock<ScriptInvocationContext> bufferBlock))
                 {
@@ -230,13 +230,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        internal async Task<IEnumerable<ILanguageWorkerChannel>> GetInitializedWorkerChannels()
+        internal async Task<IEnumerable<ILanguageWorkerChannel>> GetInitializedWorkerChannelsAsync()
         {
             Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> webhostChannelDictionary = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
-            List<ILanguageWorkerChannel> webhostChannels = new List<ILanguageWorkerChannel>();
-            foreach (string workerId in webhostChannelDictionary.Keys)
+            List<ILanguageWorkerChannel> webhostChannels = null;
+            if (webhostChannelDictionary != null)
             {
-                webhostChannels.Add(await webhostChannelDictionary[workerId].Task);
+                webhostChannels = new List<ILanguageWorkerChannel>();
+                foreach (string workerId in webhostChannelDictionary?.Keys)
+                {
+                    webhostChannels.Add(await webhostChannelDictionary[workerId].Task);
+                }
             }
             IEnumerable<ILanguageWorkerChannel> workerChannels = webhostChannels == null ? _jobHostLanguageWorkerChannelManager.GetChannels() : webhostChannels.Union(_jobHostLanguageWorkerChannelManager.GetChannels());
             IEnumerable<ILanguageWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.State == LanguageWorkerChannelState.Initialized);

@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void InitializeAsync_DoNotInitialize_JavaWorker_ProxiesOnly()
         {
             var channelManager = _languageWorkerChannelManager as WebHostLanguageWorkerChannelManager;
-            var javaChannel = channelManager.GetChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
+            var javaChannel = channelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(javaChannel);
         }
 

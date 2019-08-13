@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(scriptRootPath, runtime, null, 0);
                 AddOrUpdateWorkerChannels(runtime, languageWorkerChannel);
                 await languageWorkerChannel.StartWorkerProcessAsync();
-                SetWorkerChannelState(runtime, languageWorkerChannel);
+                SetInitializedWorkerChannel(runtime, languageWorkerChannel);
             }
             catch (Exception ex)
             {
@@ -66,13 +66,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return languageWorkerChannel;
         }
 
-        internal Task<ILanguageWorkerChannel> GetChannel(string language)
+        internal Task<ILanguageWorkerChannel> GetChannelAsync(string language)
         {
             if (!string.IsNullOrEmpty(language) && _workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> workerChannels))
             {
                 return workerChannels.FirstOrDefault().Value?.Task;
             }
-            return null;
+            return Task.FromResult<ILanguageWorkerChannel>(null);
         }
 
         public Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> GetChannels(string language)
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _logger.LogInformation("Starting language worker channel specialization");
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
-            ILanguageWorkerChannel languageWorkerChannel = await GetChannel(_workerRuntime);
+            ILanguageWorkerChannel languageWorkerChannel = await GetChannelAsync(_workerRuntime);
             if (_workerRuntime != null && languageWorkerChannel != null)
             {
                 _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntime);
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 if (languageWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<ILanguageWorkerChannel> value))
                 {
-                    ILanguageWorkerChannel channel = await value.Task;
+                    ILanguageWorkerChannel channel = await value?.Task;
                     if (channel != null)
                     {
                         (channel as IDisposable)?.Dispose();
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     {
                         foreach (string workerId in standbyChannels.Keys)
                         {
-                            ILanguageWorkerChannel channel = await standbyChannels[workerId].Task;
+                            ILanguageWorkerChannel channel = await standbyChannels[workerId]?.Task;
                             if (channel != null)
                             {
                                 (channel as IDisposable)?.Dispose();
@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public async void ShutdownChannels()
+        public async Task ShutdownChannelsAsync()
         {
             foreach (string runtime in _workerChannels.Keys)
             {
@@ -180,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     });
         }
 
-        internal void SetWorkerChannelState(string initializedRuntime, ILanguageWorkerChannel initializedLanguageWorkerChannel)
+        internal void SetInitializedWorkerChannel(string initializedRuntime, ILanguageWorkerChannel initializedLanguageWorkerChannel)
         {
             _logger.LogDebug("Adding webhost language worker channel for runtime: {language}. workerId:{id}", initializedRuntime, initializedLanguageWorkerChannel.Id);
             if (_workerChannels.TryGetValue(initializedRuntime, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> channel))
