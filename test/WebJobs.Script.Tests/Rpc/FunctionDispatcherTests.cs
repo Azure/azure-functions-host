@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public async void ShutdownChannels_NoFunctions()
         {
             var mockLanguageWorkerChannelManager = new Mock<IWebHostLanguageWorkerChannelManager>();
-            mockLanguageWorkerChannelManager.Setup(m => m.ShutdownChannelsAsync());
+            mockLanguageWorkerChannelManager.Setup(m => m.ShutdownChannelsAsync()).Returns(Task.CompletedTask);
             FunctionDispatcher functionDispatcher = GetTestFunctionDispatcher(mockwebHostLanguageWorkerChannelManager: mockLanguageWorkerChannelManager);
             Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
             await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
