@@ -282,21 +282,29 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId)
         {
-            bool isPreInitializedChannel = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId);
-            if (!isPreInitializedChannel)
+            bool shouldRestartChannel = _workerRuntime.Equals(runtime, StringComparison.InvariantCultureIgnoreCase);
+            bool isWebHostChannel = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId);
+            bool isJobHostChannel = false;
+            if (!isWebHostChannel)
             {
                 _logger.LogDebug("Disposing channel for workerId: {channelId}, for runtime:{language}", workerId, runtime);
                 var channel = _jobHostLanguageWorkerChannelManager.GetChannels().Where(ch => ch.Id == workerId).FirstOrDefault();
                 if (channel != null)
                 {
+                    isJobHostChannel = true;
                     _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannel(channel);
                 }
             }
-            if (_workerRuntime.Equals(runtime, StringComparison.InvariantCultureIgnoreCase))
+            if (ShouldRestartWorkerChannel(runtime, isWebHostChannel, isJobHostChannel))
             {
                 _logger.LogDebug("Restarting worker channel for runtime:{runtime}", runtime);
                 await RestartWorkerChannel(runtime, workerId);
             }
+        }
+
+        internal bool ShouldRestartWorkerChannel(string runtime, bool isWebHostChannel, bool isJobHostChannel)
+        {
+            return _workerRuntime.Equals(runtime, StringComparison.InvariantCultureIgnoreCase) && (isWebHostChannel || isJobHostChannel);
         }
 
         private async Task RestartWorkerChannel(string runtime, string workerId)
