@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             ScriptInvocationResult result;
             _logger.LogDebug($"Sending invocation id:{invocationId}");
-            _functionDispatcher.Invoke(invocationContext);
+            await _functionDispatcher.InvokeAsync(invocationContext);
             result = await invocationContext.ResultSource.Task;
 
             await BindOutputsAsync(triggerValue, context.Binder, result);

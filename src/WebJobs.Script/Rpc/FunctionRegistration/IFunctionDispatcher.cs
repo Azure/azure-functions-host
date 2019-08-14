@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         // Tests if the function metadata is supported by a known language worker
         bool IsSupported(FunctionMetadata metadata, string language);
 
-        void Invoke(ScriptInvocationContext invocationContext);
+        Task InvokeAsync(ScriptInvocationContext invocationContext);
 
         Task InitializeAsync(IEnumerable<FunctionMetadata> functions);
     }
