@@ -133,13 +133,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void InitializeAsync_WorkerRuntime_Node_DoNotInitialize_JavaWorker()
+        public async Task InitializeAsync_WorkerRuntime_Node_DoNotInitialize_JavaWorker()
         {
             var channelManager = _languageWorkerChannelManager as WebHostLanguageWorkerChannelManager;
 
-            var javaChannel = channelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
+            ILanguageWorkerChannel javaChannel = await channelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(javaChannel);
-            var nodeChannel = channelManager.GetChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName);
+            ILanguageWorkerChannel nodeChannel = await channelManager.GetChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName);
             Assert.Null(nodeChannel);
         }
 
