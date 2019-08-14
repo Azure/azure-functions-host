@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
-        public void ShutdownStandyChannels_WorkerRuntime_Node_Set()
+        public async Task ShutdownStandyChannels_WorkerRuntime_Node_Set()
         {
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
             _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             _languageWorkerChannelManager.ScheduleShutdownStandbyChannels();
 
-            var initializedChannel = _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
+            var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
         }
 
