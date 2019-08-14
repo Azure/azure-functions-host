@@ -168,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             Assert.Empty(_languageWorkerChannelManager.GetChannels(LanguageWorkerConstants.JavaLanguageWorkerName));
 
-            var initializedChannel = _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
+            var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
         }
 
