@@ -282,7 +282,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId)
         {
-            bool shouldRestartChannel = _workerRuntime.Equals(runtime, StringComparison.InvariantCultureIgnoreCase);
             bool isWebHostChannel = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId);
             bool isJobHostChannel = false;
             if (!isWebHostChannel)
