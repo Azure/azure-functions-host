@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
         }
 
-        public async Task<bool> ShutdownChannelIfExists(string language, string workerId)
+        public async Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId)
         {
             if (string.IsNullOrEmpty(language))
             {
