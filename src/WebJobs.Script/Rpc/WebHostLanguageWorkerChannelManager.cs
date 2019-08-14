@@ -70,7 +70,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (!string.IsNullOrEmpty(language) && _workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> workerChannels))
             {
-                return workerChannels.FirstOrDefault().Value?.Task;
+                if (workerChannels.Count > 0 && workerChannels.TryGetValue(workerChannels.Keys.First(), out TaskCompletionSource<ILanguageWorkerChannel> valueTask))
+                {
+                    return valueTask.Task;
+                }
             }
             return Task.FromResult<ILanguageWorkerChannel>(null);
         }
