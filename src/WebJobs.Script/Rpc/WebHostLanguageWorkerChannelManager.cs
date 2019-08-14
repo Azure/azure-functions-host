@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _shutdownStandbyWorkerChannels();
         }
 
-        public async Task<bool> ShutdownChannelIfExists(string language, string workerId)
+        public async Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId)
         {
             if (string.IsNullOrEmpty(language))
             {

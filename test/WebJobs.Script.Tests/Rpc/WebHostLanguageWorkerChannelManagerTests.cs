@@ -163,8 +163,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             ILanguageWorkerChannel javaWorkerChannel1 = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             ILanguageWorkerChannel javaWorkerChannel2 = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
 
-            await _languageWorkerChannelManager.ShutdownChannelIfExists(LanguageWorkerConstants.JavaLanguageWorkerName, javaWorkerChannel1.Id);
-            await _languageWorkerChannelManager.ShutdownChannelIfExists(LanguageWorkerConstants.JavaLanguageWorkerName, javaWorkerChannel2.Id);
+            await _languageWorkerChannelManager.ShutdownChannelIfExistsAsync(LanguageWorkerConstants.JavaLanguageWorkerName, javaWorkerChannel1.Id);
+            await _languageWorkerChannelManager.ShutdownChannelIfExistsAsync(LanguageWorkerConstants.JavaLanguageWorkerName, javaWorkerChannel2.Id);
 
             Assert.Empty(_languageWorkerChannelManager.GetChannels(LanguageWorkerConstants.JavaLanguageWorkerName));
 

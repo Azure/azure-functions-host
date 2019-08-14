@@ -257,7 +257,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
                 _languageWorkerErrors.Add(workerError.Exception);
-                bool isPreInitializedChannel = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExists(workerError.Language, workerError.WorkerId);
+                bool isPreInitializedChannel = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(workerError.Language, workerError.WorkerId);
                 if (!isPreInitializedChannel)
                 {
                     _logger.LogDebug("Disposing errored channel for workerId: {channelId}, for runtime:{language}", workerError.WorkerId, workerError.Language);
