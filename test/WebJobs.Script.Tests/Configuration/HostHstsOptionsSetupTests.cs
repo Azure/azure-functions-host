@@ -55,10 +55,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     'version': '2.0',
                     }")]
         [InlineData(@"{
-                    'version': '2.0',
-                    'http' : {
-                        'hsts' : {
-                            'isEnabled' : true
+                        'version': '2.0',
+                        'extensions': {
+                            'http': {
+                                'hsts': {
+                                    'isEnabled': true,
+                                    'maxAge': '10'
+                                }
                             }
                         }
                     }")]
@@ -77,14 +80,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void ValidHstsConfig_BindsToOptions()
         {
             string hostJsonContent = @"{
-                                         'version': '2.0',
-                                         'http': {
-                                             'hsts': {
-                                                 'isEnabled': true,
-                                                 'maxAge': '10'
-                                             }
-                                         }
-                                     }";
+                                        'version': '2.0',
+                                        'extensions': {
+                                            'http': {
+                                                'hsts': {
+                                                    'isEnabled': true,
+                                                    'maxAge': '10'
+                                                }
+                                            }
+                                        }
+                                    }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
 
