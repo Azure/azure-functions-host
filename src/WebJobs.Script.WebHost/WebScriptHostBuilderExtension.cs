@@ -77,8 +77,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.AddSingleton<DefaultScriptWebHookProvider>();
                     services.TryAddSingleton<IScriptWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
-                    services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
-                    services.TryAddSingleton<IJobHostHttpMiddleware, CustomHttpHeadersMiddleware>();
+                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>());
+                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, CustomHttpHeadersMiddleware>());
                     services.TryAddSingleton<IJobHostHttpMiddleware, HstsConfigurationMiddleware>();
 
                     // Make sure the registered IHostIdProvider is used

@@ -50,9 +50,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }")]
         [InlineData(@"{
                     'version': '2.0',
-                    'http': {
-                        'customHeaders': {
-                            'X-Content-Type-Options': 'nosniff'
+                    'extensions': {
+                            'http': {
+                                'customHeaders': {
+                                    'X-Content-Type-Options': 'nosniff'
+                                }
                             }
                         }
                     }")]
@@ -71,13 +73,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void ValidCustomHttpHeadersConfig_BindsToOptions()
         {
             string hostJsonContent = @"{
-                                         'version': '2.0',
-                                         'http': {
-                                             'customHeaders': {
-                                                 'X-Content-Type-Options': 'nosniff'
-                                             }
-                                         }
-                                     }";
+                                        'version': '2.0',
+                                        'extensions': {
+                                                'http': {
+                                                    'customHeaders': {
+                                                        'X-Content-Type-Options': 'nosniff'
+                                                    }
+                                                }
+                                            }
+                                        }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
 
