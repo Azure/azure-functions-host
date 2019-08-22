@@ -19,8 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public void AddFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan, string executionId, DateTime eventTimeStamp, DateTime functionStartTime)
         {
-            _logger.LogDebug("Ignoring function activity metric: {functionName} {invocationId} {concurrency} {executionStage} {success} {executionTimeSpan} {executionId} {eventTimeStamp} {functionStartTime}",
-                functionName, invocationId, concurrency, executionStage, success, executionTimeSpan, executionId, eventTimeStamp, functionStartTime);
         }
     }
 }
