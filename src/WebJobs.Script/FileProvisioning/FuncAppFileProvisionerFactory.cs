@@ -11,9 +11,14 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
     {
         private readonly ILogger _logger;
 
-        public FuncAppFileProvisionerFactory(ILogger logger)
+        public FuncAppFileProvisionerFactory(ILoggerFactory loggerFactory)
         {
-            _logger = logger;
+            if (loggerFactory == null)
+            {
+                throw new ArgumentNullException(nameof(loggerFactory));
+            }
+
+            _logger = loggerFactory.CreateLogger<FuncAppFileProvisionerFactory>();
         }
 
         public IFuncAppFileProvisioner CreatFileProvisioner(string runtime)

@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml;
 using Microsoft.Extensions.Logging;
@@ -56,8 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
                 {
                     string majorVersion = GetLatestAzModuleMajorVersion();
 
-                    requirementsContent = requirementsContent.Replace("# 'Az'", "'Az'");
-                    requirementsContent = requirementsContent.Replace("MAJOR_VERSION", majorVersion);
+                    requirementsContent = Regex.Replace(requirementsContent, @"#(\s?)'Az'", "'Az'");
+                    requirementsContent = Regex.Replace(requirementsContent, "MAJOR_VERSION", majorVersion);
                 }
                 catch
                 {
@@ -90,8 +91,10 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
         protected virtual string GetLatestAzModuleMajorVersion()
         {
             Uri address = new Uri($"{PowerShellGalleryFindPackagesByIdUri}'{AzModuleName}'");
-            string latestMajorVersion = null;
+
             Stream stream = null;
+            bool throwException = false;
+            string latestMajorVersion = null;
 
             var retryCount = 3;
             while (true)
@@ -120,49 +123,64 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
                 }
             }
 
-            if (stream != null)
+            if (stream == null)
             {
-                // Load up the XML response
-                XmlDocument doc = new XmlDocument();
-                using (XmlReader reader = XmlReader.Create(stream))
-                {
-                    doc.Load(reader);
-                }
-
-                // Add the namespaces for the gallery xml content
-                XmlNamespaceManager nsmgr = new XmlNamespaceManager(doc.NameTable);
-                nsmgr.AddNamespace("ps", "http://www.w3.org/2005/Atom");
-                nsmgr.AddNamespace("d", "http://schemas.microsoft.com/ado/2007/08/dataservices");
-                nsmgr.AddNamespace("m", "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata");
-
-                // Find the version information
-                XmlNode root = doc.DocumentElement;
-                var props = root.SelectNodes("//m:properties[d:IsPrerelease = \"false\"]/d:Version", nsmgr);
-                var latestVersion = new Version("0.0");
-
-                if (props != null && props.Count > 0)
-                {
-                    foreach (XmlNode prop in props)
-                    {
-                        var currentVersion = new Version(prop.FirstChild.Value);
-
-                        var result = currentVersion.CompareTo(latestVersion);
-                        if (result > 0)
-                        {
-                            latestVersion = currentVersion;
-                        }
-                    }
-                }
-
-                latestMajorVersion = latestVersion.ToString().Split('.')[0];
+                throwException = true;
+            }
+            else
+            {
+                latestMajorVersion = GetModuleMajorVersion(stream);
             }
 
-            if (string.IsNullOrEmpty(latestMajorVersion))
+            // If we could not find the latest module version, error out.
+            if (throwException || string.IsNullOrEmpty(latestMajorVersion))
             {
                 throw new Exception($@"Fail to get module version for {AzModuleName}.");
             }
 
             return latestMajorVersion;
+        }
+
+        protected internal string GetModuleMajorVersion(Stream stream)
+        {
+            if (stream == null)
+            {
+                throw new ArgumentNullException(nameof(stream));
+            }
+
+            // Load up the XML response
+            XmlDocument doc = new XmlDocument();
+            using (XmlReader reader = XmlReader.Create(stream))
+            {
+                doc.Load(reader);
+            }
+
+            // Add the namespaces for the gallery xml content
+            XmlNamespaceManager nsmgr = new XmlNamespaceManager(doc.NameTable);
+            nsmgr.AddNamespace("ps", "http://www.w3.org/2005/Atom");
+            nsmgr.AddNamespace("d", "http://schemas.microsoft.com/ado/2007/08/dataservices");
+            nsmgr.AddNamespace("m", "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata");
+
+            // Find the version information
+            XmlNode root = doc.DocumentElement;
+            var props = root.SelectNodes("//m:properties[d:IsPrerelease = \"false\"]/d:Version", nsmgr);
+
+            Version latestVersion = null;
+
+            if (props != null && props.Count > 0)
+            {
+                foreach (XmlNode prop in props)
+                {
+                    Version.TryParse(prop.FirstChild.Value, out var currentVersion);
+
+                    if (latestVersion == null || currentVersion > latestVersion)
+                    {
+                        latestVersion = currentVersion;
+                    }
+                }
+            }
+
+            return latestVersion?.ToString().Split('.')[0];
         }
     }
 }

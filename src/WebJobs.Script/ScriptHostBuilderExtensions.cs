@@ -286,8 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (string.Equals(Environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell"))
             {
-                var logger = loggerFactory.CreateLogger<FuncAppFileProvisionerFactory>() ?? throw new ArgumentNullException(nameof(loggerFactory));
-                var funcAppFileProvisionerFactory = new FuncAppFileProvisionerFactory(logger);
+                var funcAppFileProvisionerFactory = new FuncAppFileProvisionerFactory(loggerFactory);
                 builder.ConfigureServices(services =>
                 {
                     services.AddSingleton<IFuncAppFileProvisionerFactory>(_ => funcAppFileProvisionerFactory);

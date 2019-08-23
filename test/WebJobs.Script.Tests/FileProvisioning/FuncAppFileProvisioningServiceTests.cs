@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -17,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
         private readonly IFuncAppFileProvisionerFactory _funcAppFileProvisionerFactory;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly IEnvironment _environment;
         private readonly string _scriptRootPath;
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
@@ -31,7 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
 
             _optionsMonitor = TestHelpers.CreateOptionsMonitor(applicationHostOptions);
             _environment = new TestEnvironment();
-            _funcAppFileProvisionerFactory = new FuncAppFileProvisionerFactory(NullLogger<FuncAppFileProvisionerFactory>.Instance);
+            _loggerFactory = new LoggerFactory();
+            _funcAppFileProvisionerFactory = new FuncAppFileProvisionerFactory(_loggerFactory);
         }
 
         [Fact]
