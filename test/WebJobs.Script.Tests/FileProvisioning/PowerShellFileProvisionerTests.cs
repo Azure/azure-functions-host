@@ -48,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
 @{
     # For latest supported version, go to 'https://www.powershellgallery.com/packages/Az'. 
     'Az' = '2.*'
-}";
+}
+";
             Assert.Equal(ExpectedContent, requirementsContent, StringComparer.OrdinalIgnoreCase);
 
             ValidateLogs(_logger);
@@ -74,7 +75,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
 @{
     # For latest supported version, go to 'https://www.powershellgallery.com/packages/Az'. Uncomment the next line and replace the MAJOR_VERSION, e.g., 'Az' = '2.*'
     # 'Az' = 'MAJOR_VERSION.*'
-}";
+}
+";
             Assert.Equal(ExpectedContent, requirementsContent, StringComparer.OrdinalIgnoreCase);
 
             ValidateLogs(_logger, unableToReachPSGallery: true);

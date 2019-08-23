@@ -63,10 +63,10 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
                 catch
                 {
                     guidance = "Uncomment the next line and replace the MAJOR_VERSION, e.g., 'Az' = '2.*'";
-                    _logger.LogWarning("Failed to get Az module version. Edit the requirements.psd1 file when the powershellgallery.com is accessible.");
+                    _logger.LogWarning($"Failed to get Az module version. Edit the {RequirementsPsd1FileName} file when the powershellgallery.com is accessible.");
                 }
 
-                requirementsContent = requirementsContent.Replace("[GUIDANCE]", guidance ?? string.Empty);
+                requirementsContent = Regex.Replace(requirementsContent, "GUIDANCE", guidance ?? string.Empty);
                 File.WriteAllText(requirementsFilePath, requirementsContent);
 
                 _logger.LogInformation($"{RequirementsPsd1FileName} created sucessfully.");
