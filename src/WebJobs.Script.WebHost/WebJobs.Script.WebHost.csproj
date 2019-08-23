@@ -54,8 +54,8 @@
     <PackageReference Include="Microsoft.AspNetCore.App" Version="2.2.6" />
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.0.8100001-0126c21e" />
     <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.0.3" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="3.0.12" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.12" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="3.0.13" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="3.0.13" />
 	  <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.3" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
     <PackageReference Include="System.Net.Primitives" Version="4.3.0" />
