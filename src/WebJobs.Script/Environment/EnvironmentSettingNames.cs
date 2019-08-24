@@ -77,5 +77,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionsLogPath = "FUNCTIONS_LOG_PATH";
         public const string FunctionsSecretsPath = "FUNCTIONS_SECRETS_PATH";
         public const string FunctionsTestDataPath = "FUNCTIONS_TEST_DATA_PATH";
+        public const string MeshInitURI = "MESH_INIT_URI";
     }
 }

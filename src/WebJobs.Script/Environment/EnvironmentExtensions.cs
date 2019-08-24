@@ -208,9 +208,11 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         public static bool IsMountEnabled(this IEnvironment environment)
-            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "1");
+            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "1") &&
+            !string.IsNullOrEmpty(environment.GetEnvironmentVariable(MeshInitURI));
 
         public static bool IsMountDisabled(this IEnvironment environment)
-            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "0");
+            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "0") ||
+            string.IsNullOrEmpty(environment.GetEnvironmentVariable(MeshInitURI));
     }
 }
