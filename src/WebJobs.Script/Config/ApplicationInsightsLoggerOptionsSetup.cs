@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             // IConfiguration will cause the SnapshotConfiguration to be created and the TelemetryProcessor to be applied.
             _configuration.Bind(options);
 
-            ApplySamplingIsEnabled(options);
+            ApplySamplingSettings(options);
 
             string quickPulseKey = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsQuickPulseAuthApiKey);
             if (!string.IsNullOrEmpty(quickPulseKey))
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             }
         }
 
-        private void ApplySamplingIsEnabled(ApplicationInsightsLoggerOptions options)
+        private void ApplySamplingSettings(ApplicationInsightsLoggerOptions options)
         {
             // Sampling settings do not have a built-in "IsEnabled" value, so we are making our own.
             string samplingPath = nameof(ApplicationInsightsLoggerOptions.SamplingSettings);
@@ -51,7 +51,12 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             if (!samplingEnabled)
             {
                 options.SamplingSettings = null;
+                return;
             }
+
+            // Excluded/Included types must be moved from SamplingSettings to their respective properties in logger options
+            options.SamplingExcludedTypes = _configuration.GetSection(samplingPath).GetValue<string>("ExcludedTypes", null);
+            options.SamplingIncludedTypes = _configuration.GetSection(samplingPath).GetValue<string>("IncludedTypes", null);
         }
     }
 }

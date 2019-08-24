@@ -52,6 +52,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             setup.Configure(options);
 
             Assert.Null(options.SamplingSettings);
+            Assert.Null(options.SamplingExcludedTypes);
+            Assert.Null(options.SamplingIncludedTypes);
+        }
+
+        [Fact]
+        public void Configure_SamplingExcludedIncludedTypes_AppliesSettings()
+        {
+            string excludedTypes = "Dependency;Event";
+            string includedTypes = "PageView;Trace";
+
+            IConfiguration config = new ConfigurationBuilder()
+               .AddInMemoryCollection(new Dictionary<string, string>
+               {
+                   { $"{SamplingSettings}:MaxTelemetryItemsPerSecond", "25" },
+                   { $"{SamplingSettings}:IsEnabled", "true" },
+                   { $"{SamplingSettings}:ExcludedTypes", excludedTypes },
+                   { $"{SamplingSettings}:IncludedTypes", includedTypes },
+               })
+               .Build();
+
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
+
+            ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
+            setup.Configure(options);
+
+            Assert.Equal(excludedTypes, options.SamplingExcludedTypes);
+            Assert.Equal(includedTypes, options.SamplingIncludedTypes);
         }
 
         [Fact]
