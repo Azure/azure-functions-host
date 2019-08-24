@@ -188,12 +188,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteContainerReady));
         }
 
-        public static bool IsMountEnabled(this IEnvironment environment)
-        {
-            var mountEnabled = environment.GetEnvironmentVariable(MountEnabled);
-            return !string.IsNullOrEmpty(mountEnabled) && string.Equals(mountEnabled, "1");
-        }
-
         public static string GetKubernetesApiServerUrl(this IEnvironment environment)
         {
             string host = environment.GetEnvironmentVariable(KubernetesServiceHost);
@@ -206,5 +200,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
             return $"https://{host}:{port}";
         }
+
+        public static bool IsMountEnabled(this IEnvironment environment)
+            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "1");
+
+        public static bool IsMountDisabled(this IEnvironment environment)
+            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "0");
     }
 }

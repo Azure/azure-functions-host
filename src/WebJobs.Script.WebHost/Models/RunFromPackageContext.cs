@@ -10,15 +10,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
     public class RunFromPackageContext
     {
-        public RunFromPackageContext(string envVarName, string url)
+        public RunFromPackageContext(string envVarName, string url, long? packageContentLength)
         {
             EnvironmentVariableName = envVarName;
             Url = url;
+            PackageContentLength = packageContentLength;
         }
 
         public string EnvironmentVariableName { get; set; }
 
         public string Url { get; set; }
+
+        public long? PackageContentLength { get; set; }
 
         public bool IsScmRunFromPackage()
         {

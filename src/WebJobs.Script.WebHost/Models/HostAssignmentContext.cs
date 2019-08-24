@@ -24,31 +24,48 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("MSISpecializationPayload")]
         public MSIContext MSIContext { get; set; }
 
+        public long? PackageContentLength { get; set; }
+
+        public string AzureFilesConnectionString
+            => Environment.ContainsKey(EnvironmentSettingNames.AzureFilesConnectionString)
+                ? Environment[EnvironmentSettingNames.AzureFilesConnectionString]
+                : string.Empty;
+
+        public string AzureFilesContentShare
+            => Environment.ContainsKey(EnvironmentSettingNames.AzureFilesContentShare)
+                && !string.IsNullOrEmpty(Environment[EnvironmentSettingNames.AzureFilesContentShare])
+                ? Environment[EnvironmentSettingNames.AzureFilesContentShare]
+                : SiteName;
+
         public RunFromPackageContext GetRunFromPkgContext()
         {
             if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteRunFromPackage))
             {
                 return new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
-                    Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage]);
+                    Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage],
+                    PackageContentLength);
             }
             else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteAltZipDeployment))
             {
                 return new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteAltZipDeployment,
-                    Environment[EnvironmentSettingNames.AzureWebsiteAltZipDeployment]);
+                    Environment[EnvironmentSettingNames.AzureWebsiteAltZipDeployment],
+                    PackageContentLength);
             }
             else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteZipDeployment))
             {
                 return new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteZipDeployment,
-                    Environment[EnvironmentSettingNames.AzureWebsiteZipDeployment]);
+                    Environment[EnvironmentSettingNames.AzureWebsiteZipDeployment],
+                    PackageContentLength);
             }
             else if (Environment.ContainsKey(EnvironmentSettingNames.ScmRunFromPackage))
             {
                 return new RunFromPackageContext(EnvironmentSettingNames.ScmRunFromPackage,
-                    Environment[EnvironmentSettingNames.ScmRunFromPackage]);
+                    Environment[EnvironmentSettingNames.ScmRunFromPackage],
+                    PackageContentLength);
             }
             else
             {
-                return new RunFromPackageContext(string.Empty, string.Empty);
+                return new RunFromPackageContext(string.Empty, string.Empty, PackageContentLength);
             }
         }
 
