@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : ScriptHostEndToEndTestFixture
         {
-            private const string ScriptRoot = @"TestScripts\DotNet";
+            private static readonly string ScriptRoot = Path.Combine(@"TestScripts", "DotNet");
             private static readonly string Function1Path;
             private static readonly string Function2Path;
             private static readonly string Function3Path;

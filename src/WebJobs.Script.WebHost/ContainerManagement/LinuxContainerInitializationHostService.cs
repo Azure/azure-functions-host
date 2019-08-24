@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 var encryptedAssignmentContext = JsonConvert.DeserializeObject<EncryptedHostAssignmentContext>(startContext);
                 var containerKey = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey);
                 var assignmentContext = encryptedAssignmentContext.Decrypt(containerKey);
-                if (_instanceManager.StartAssignment(assignmentContext))
+                if (_instanceManager.StartAssignment(assignmentContext, false))
                 {
                     _logger.LogInformation("Start assign HostAssignmentContext success");
                 }

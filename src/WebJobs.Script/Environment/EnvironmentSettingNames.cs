@@ -40,6 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string MsiEndpoint = "MSI_ENDPOINT";
         public const string MsiSecret = "MSI_SECRET";
         public const string DotnetSkipFirstTimeExperience = "DOTNET_SKIP_FIRST_TIME_EXPERIENCE";
+        public const string AzureFilesConnectionString = "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING";
+        public const string AzureFilesContentShare = "WEBSITE_CONTENTSHARE";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
