@@ -130,6 +130,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(519, nameof(EnteringRestart)),
                 "Restart requested. Cancelling any active host startup.");
 
+        private static readonly Action<ILogger, Exception> _restartBeforeStart =
+            LoggerMessage.Define(
+                LogLevel.Debug,
+                new EventId(520, nameof(RestartBeforeStart)),
+                "RestartAsync was called before StartAsync. Delaying restart until StartAsync has been called.");
+
         public static void ScriptHostServiceInitCanceledByRuntime(this ILogger logger)
         {
             _scriptHostServiceInitCanceledByRuntime(logger, null);
@@ -228,6 +234,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
         public static void EnteringRestart(this ILogger logger)
         {
             _enteringRestart(logger, null);
+        }
+
+        public static void RestartBeforeStart(this ILogger logger)
+        {
+            _restartBeforeStart(logger, null);
         }
     }
 }
