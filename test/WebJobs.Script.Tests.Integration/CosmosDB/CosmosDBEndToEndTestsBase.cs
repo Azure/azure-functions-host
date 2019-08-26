@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
                     new ExtensionPackageReference
                     {
                         Id = "Microsoft.Azure.WebJobs.Extensions.CosmosDB",
-                        Version = "3.0.2"
+                        Version = "3.0.4"
                     }
             };
         }
