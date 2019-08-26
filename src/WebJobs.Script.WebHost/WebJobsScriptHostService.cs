@@ -32,6 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly SlidingWindow<bool> _healthCheckWindow;
         private readonly Timer _hostHealthCheckTimer;
         private readonly SemaphoreSlim _hostStartSemaphore = new SemaphoreSlim(1, 1);
+        private readonly TaskCompletionSource<bool> _hostStartedSource = new TaskCompletionSource<bool>();
+        private readonly Task _hostStarted;
 
         private IHost _host;
         private CancellationTokenSource _startupLoopTokenSource;
@@ -60,6 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _performanceManager = hostPerformanceManager ?? throw new ArgumentNullException(nameof(hostPerformanceManager));
             _healthMonitorOptions = healthMonitorOptions ?? throw new ArgumentNullException(nameof(healthMonitorOptions));
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+
+            _hostStarted = _hostStartedSource.Task;
 
             State = ScriptHostState.Default;
 
@@ -140,6 +144,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             try
             {
                 await _hostStartSemaphore.WaitAsync();
+
+                // Now that we're inside the semaphore, set this task as completed. This prevents
+                // restarts from being invoked (via the PlaceholderSpecializationMiddleware) before
+                // the IHostedService has ever started.
+                _hostStartedSource.TrySetResult(true);
+
                 await UnsynchronizedStartHostAsync(cancellationToken, attemptCount, startupMode);
             }
             finally
@@ -155,11 +165,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private async Task UnsynchronizedStartHostAsync(CancellationToken cancellationToken, int attemptCount = 0, JobHostStartupMode startupMode = JobHostStartupMode.Normal)
         {
-            cancellationToken.ThrowIfCancellationRequested();
             IHost localHost = null;
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 // if we were in an error state retain that,
                 // otherwise move to default
                 if (State != ScriptHostState.Error)
@@ -332,6 +343,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task RestartHostAsync(CancellationToken cancellationToken)
         {
+            // Do not invoke a restart if the host has not yet been started. This can lead
+            // to invalid state.
+            if (!_hostStarted.IsCompleted)
+            {
+                _logger.RestartBeforeStart();
+                await _hostStarted;
+            }
+
             _logger.EnteringRestart();
 
             // If anything is mid-startup, cancel it.
