@@ -3,7 +3,7 @@ syntax = "proto3";
 
 option java_package = "com.microsoft.azure.functions.rpc.messages";
 
-import "shared/NullableTypes.proto";
+import "azure_functions_worker/protos/NullableTypes.proto";
 
 // Light-weight representation of a .NET System.Security.Claims.ClaimsIdentity object.
 // This is the same serialization as found in EasyAuth, and needs to be kept in sync with
