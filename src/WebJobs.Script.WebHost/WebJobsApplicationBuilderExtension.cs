@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.AspNetCore.Buffering;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -52,7 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             builder.UseMiddleware<ExceptionMiddleware>();
-            builder.UseMiddleware<ResponseBufferingMiddleware>();
             builder.UseMiddleware<HomepageMiddleware>();
             builder.UseWhen(context => !context.Request.IsAdminRequest(), config =>
             {
