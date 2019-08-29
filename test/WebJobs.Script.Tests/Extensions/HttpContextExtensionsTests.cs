@@ -18,50 +18,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
 {
     public class HttpContextExtensionsTests
     {
-        [Fact]
-        public async Task SetOfflineResponseAsync_ReturnsCorrectResponse()
-        {
-            string offlineFilePath = null;
-            try
-            {
-                // create a test offline file
-                var rootPath = Path.GetTempPath();
-                offlineFilePath = TestHelpers.CreateOfflineFile();
+        //TODO: Re-enable if needed for 3.0: https://github.com/Azure/azure-functions-host/issues/4865
+        //[Fact]
+        //public async Task SetOfflineResponseAsync_ReturnsCorrectResponse()
+        //{
+        //    string offlineFilePath = null;
+        //    try
+        //    {
+        //        // create a test offline file
+        //        var rootPath = Path.GetTempPath();
+        //        offlineFilePath = TestHelpers.CreateOfflineFile();
 
-                var sendFileFeatureMock = new Mock<IHttpSendFileFeature>();
-                sendFileFeatureMock.Setup(s => s.SendFileAsync(offlineFilePath, 0, null, CancellationToken.None)).Returns(Task.FromResult<int>(0));
+        //        var sendFileFeatureMock = new Mock<IHttpSendFileFeature>();
+        //        sendFileFeatureMock.Setup(s => s.SendFileAsync(offlineFilePath, 0, null, CancellationToken.None)).Returns(Task.FromResult<int>(0));
 
-                // simulate an App Service request
-                var vars = new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" }
-            };
-                using (var env = new TestScopedEnvironmentVariable(vars))
-                {
-                    // without header (thus an internal request)
-                    var context = new DefaultHttpContext();
-                    context.Features.Set(sendFileFeatureMock.Object);
-                    Assert.True(context.Request.IsAppServiceInternalRequest());
-                    await context.SetOfflineResponseAsync(rootPath);
-                    Assert.Equal(StatusCodes.Status503ServiceUnavailable, context.Response.StatusCode);
-                    Assert.Equal(0, context.Response.Body.Length);
-                    sendFileFeatureMock.Verify(p => p.SendFileAsync(offlineFilePath, 0, null, CancellationToken.None), Times.Never);
+        //        // simulate an App Service request
+        //        var vars = new Dictionary<string, string>
+        //    {
+        //        { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" }
+        //    };
+        //        using (var env = new TestScopedEnvironmentVariable(vars))
+        //        {
+        //            // without header (thus an internal request)
+        //            var context = new DefaultHttpContext();
+        //            context.Features.Set(sendFileFeatureMock.Object);
+        //            Assert.True(context.Request.IsAppServiceInternalRequest());
+        //            await context.SetOfflineResponseAsync(rootPath);
+        //            Assert.Equal(StatusCodes.Status503ServiceUnavailable, context.Response.StatusCode);
+        //            Assert.Equal(0, context.Response.Body.Length);
+        //            sendFileFeatureMock.Verify(p => p.SendFileAsync(offlineFilePath, 0, null, CancellationToken.None), Times.Never);
 
-                    // with header (thus an external request)
-                    context = new DefaultHttpContext();
-                    context.Features.Set(sendFileFeatureMock.Object);
-                    context.Request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, new StringValues("456"));
-                    Assert.False(context.Request.IsAppServiceInternalRequest());
-                    await context.SetOfflineResponseAsync(rootPath);
-                    Assert.Equal(StatusCodes.Status503ServiceUnavailable, context.Response.StatusCode);
-                    Assert.Equal("text/html", context.Response.Headers["Content-Type"]);
-                    sendFileFeatureMock.Verify(p => p.SendFileAsync(offlineFilePath, 0, null, CancellationToken.None), Times.Once);
-                }
-            }
-            finally
-            {
-                TestHelpers.DeleteTestFile(offlineFilePath);
-            }
-        }
+        //            // with header (thus an external request)
+        //            context = new DefaultHttpContext();
+        //            context.Features.Set(sendFileFeatureMock.Object);
+        //            context.Request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, new StringValues("456"));
+        //            Assert.False(context.Request.IsAppServiceInternalRequest());
+        //            await context.SetOfflineResponseAsync(rootPath);
+        //            Assert.Equal(StatusCodes.Status503ServiceUnavailable, context.Response.StatusCode);
+        //            Assert.Equal("text/html", context.Response.Headers["Content-Type"]);
+        //            sendFileFeatureMock.Verify(p => p.SendFileAsync(offlineFilePath, 0, null, CancellationToken.None), Times.Once);
+        //        }
+        //    }
+        //    finally
+        //    {
+        //        TestHelpers.DeleteTestFile(offlineFilePath);
+        //    }
+        //}
     }
 }
