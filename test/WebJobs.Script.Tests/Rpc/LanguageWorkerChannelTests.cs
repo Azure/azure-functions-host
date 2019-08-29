@@ -12,7 +12,6 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Rpc;
-using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -20,8 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
     public class LanguageWorkerChannelTests
     {
-        private readonly TestLoggerProvider _testLoggerProvider = new TestLoggerProvider();
-
         private static string _expectedLogMsg = "Outbound event subscribe event handler invoked";
         private static string _expectedSystemLogMessage = "Random system log message";
 
