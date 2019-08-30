@@ -136,10 +136,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             workerChannel.SendFunctionLoadRequests();
         }
 
-        internal async void ShutdownWebhostLanguageWorkerChannels()
+        internal void ShutdownWebhostLanguageWorkerChannels()
         {
             _logger.LogDebug("{workerRuntimeConstant}={value}. Will shutdown all the worker channels that started in placeholder mode", LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _workerRuntime);
-            await _webHostLanguageWorkerChannelManager?.ShutdownChannelsAsync();
+            _webHostLanguageWorkerChannelManager.ShutdownChannels();
         }
 
         private void StartWorkerProcesses(int startIndex, Action startAction)
@@ -191,20 +191,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
             {
                 State = FunctionDispatcherState.Initializing;
-                Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> webhostLanguageWorkerChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
-                if (webhostLanguageWorkerChannels != null)
+                IEnumerable<ILanguageWorkerChannel> initializedChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
+                if (initializedChannels != null)
                 {
-                    foreach (string workerId in webhostLanguageWorkerChannels.Keys)
+                    foreach (var initializedChannel in initializedChannels)
                     {
-                        if (webhostLanguageWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<ILanguageWorkerChannel> initializedLanguageWorkerChannelTask))
-                        {
-                            _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
-                            ILanguageWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
-                            initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-                            initializedLanguageWorkerChannel.SendFunctionLoadRequests();
-                        }
+                        _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, initializedChannel.Id);
+                        initializedChannel.SetupFunctionInvocationBuffers(_functions);
+                        initializedChannel.SendFunctionLoadRequests();
                     }
-                    StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
+                    StartWorkerProcesses(initializedChannels.Count(), InitializeWebhostLanguageWorkerChannel);
                     State = FunctionDispatcherState.Initialized;
                 }
                 else
@@ -215,11 +211,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public async Task InvokeAsync(ScriptInvocationContext invocationContext)
+        public void Invoke(ScriptInvocationContext invocationContext)
         {
             try
             {
-                IEnumerable<ILanguageWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync();
+                IEnumerable<ILanguageWorkerChannel> workerChannels = GetInitializedWorkerChannels();
                 var languageWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels, _maxProcessCount);
                 if (languageWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out BufferBlock<ScriptInvocationContext> bufferBlock))
                 {
@@ -237,21 +233,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        internal async Task<IEnumerable<ILanguageWorkerChannel>> GetInitializedWorkerChannelsAsync()
+        internal IEnumerable<ILanguageWorkerChannel> GetInitializedWorkerChannels()
         {
-            Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> webhostChannelDictionary = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
-            List<ILanguageWorkerChannel> webhostChannels = null;
-            if (webhostChannelDictionary != null)
-            {
-                webhostChannels = new List<ILanguageWorkerChannel>();
-                foreach (string workerId in webhostChannelDictionary.Keys)
-                {
-                    if (webhostChannelDictionary.TryGetValue(workerId, out TaskCompletionSource<ILanguageWorkerChannel> initializedLanguageWorkerChannelTask))
-                    {
-                        webhostChannels.Add(await initializedLanguageWorkerChannelTask.Task);
-                    }
-                }
-            }
+            IEnumerable<ILanguageWorkerChannel> webhostChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
             IEnumerable<ILanguageWorkerChannel> workerChannels = webhostChannels == null ? _jobHostLanguageWorkerChannelManager.GetChannels() : webhostChannels.Union(_jobHostLanguageWorkerChannelManager.GetChannels());
             IEnumerable<ILanguageWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.State == LanguageWorkerChannelState.Initialized);
             if (initializedWorkers.Count() > _maxProcessCount)
@@ -282,7 +266,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId)
         {
-            bool isWebHostChannel = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId);
+            bool isWebHostChannel = _webHostLanguageWorkerChannelManager.ShutdownChannelIfExists(runtime, workerId);
             bool isJobHostChannel = false;
             if (!isWebHostChannel)
             {
@@ -339,7 +323,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (!_disposed && disposing)
             {
-                _logger.LogDebug("Disposing FunctionDispatcher");
                 _workerErrorSubscription.Dispose();
                 _workerRestartSubscription.Dispose();
                 _processStartCancellationToken.Cancel();

@@ -15,7 +15,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class WebHostLanguageWorkerChannelManagerTests
+    public class LanguageWorkerChannelManagerTests
     {
         private WebHostLanguageWorkerChannelManager _languageWorkerChannelManager;
         private IScriptEventManager _eventManager;
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 { "StandbyModeEnabled", "true" }
             };
 
-        public WebHostLanguageWorkerChannelManagerTests()
+        public LanguageWorkerChannelManagerTests()
         {
             _eventManager = new ScriptEventManager();
             _rpcServer = new TestRpcServer();

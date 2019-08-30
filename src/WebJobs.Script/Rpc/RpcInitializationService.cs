@@ -65,10 +65,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger.LogDebug("Rpc Initialization Service started.");
         }
 
-        public async Task StopAsync(CancellationToken cancellationToken)
+        public Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogDebug("Shuttingdown Rpc Channels Manager");
-            await _webHostlanguageWorkerChannelManager.ShutdownChannelsAsync();
+            _webHostlanguageWorkerChannelManager.ShutdownChannels();
+            return Task.CompletedTask;
         }
 
         public async Task OuterStopAsync(CancellationToken cancellationToken)

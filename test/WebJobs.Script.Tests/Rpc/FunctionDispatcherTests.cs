@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -18,9 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
     public class FunctionDispatcherTests
     {
-        private static TestLanguageWorkerChannel _javaTestChannel;
-        private static TestLogger _testLogger = new TestLogger("FunctionDispatcherTests");
-
         [Theory]
         [InlineData("node", "node")]
         [InlineData("java", "java")]
@@ -142,13 +138,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public async Task ShutdownChannels_NoFunctions()
         {
             var mockLanguageWorkerChannelManager = new Mock<IWebHostLanguageWorkerChannelManager>();
-            mockLanguageWorkerChannelManager.Setup(m => m.ShutdownChannelsAsync()).Returns(Task.CompletedTask);
+            mockLanguageWorkerChannelManager.Setup(m => m.ShutdownChannels());
             FunctionDispatcher functionDispatcher = GetTestFunctionDispatcher(mockwebHostLanguageWorkerChannelManager: mockLanguageWorkerChannelManager);
             Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
             await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
             // Wait longer than debouce action.
             await Task.Delay(6000);
-            mockLanguageWorkerChannelManager.Verify(m => m.ShutdownChannelsAsync(), Times.Once);
+            mockLanguageWorkerChannelManager.Verify(m => m.ShutdownChannels(), Times.Once);
         }
 
         [Fact]
@@ -169,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             await functionDispatcher.InitializeAsync(functions);
             // Wait longer than debouce action.
             await Task.Delay(6000);
-            mockLanguageWorkerChannelManager.Verify(m => m.ShutdownChannelsAsync(), Times.Once);
+            mockLanguageWorkerChannelManager.Verify(m => m.ShutdownChannels(), Times.Once);
         }
 
         [Fact]
@@ -326,6 +322,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             }
 
             var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+            var testLogger = new TestLogger("FunctionDispatcherTests");
 
             var options = new ScriptJobHostOptions
             {
@@ -338,9 +335,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
-            IWebHostLanguageWorkerChannelManager testWebHostLanguageWorkerChannelManager = new TestLanguageWorkerChannelManager(eventManager, _testLogger, scriptOptions.Value.RootScriptPath);
-            ILanguageWorkerChannelFactory testLanguageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(eventManager, _testLogger, scriptOptions.Value.RootScriptPath);
-            IJobHostLanguageWorkerChannelManager jobHostLanguageWorkerChannelManager = new JobHostLanguageWorkerChannelManager(loggerFactory);
+            IWebHostLanguageWorkerChannelManager testWebHostLanguageWorkerChannelManager = new TestLanguageWorkerChannelManager(eventManager, testLogger, scriptOptions.Value.RootScriptPath);
+            ILanguageWorkerChannelFactory testLanguageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(eventManager, testLogger, scriptOptions.Value.RootScriptPath);
+            IJobHostLanguageWorkerChannelManager jobHostLanguageWorkerChannelManager = new JobHostLanguageWorkerChannelManager();
             if (addWebhostChannel)
             {
                 testWebHostLanguageWorkerChannelManager.InitializeChannelAsync("java");
@@ -350,9 +347,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 testWebHostLanguageWorkerChannelManager = mockwebHostLanguageWorkerChannelManager.Object;
             }
             var mockFunctionDispatcherLoadBalancer = new Mock<IFunctionDispatcherLoadBalancer>();
-
-            _javaTestChannel = new TestLanguageWorkerChannel(Guid.NewGuid().ToString(), "java", eventManager, _testLogger, false);
-
             return new FunctionDispatcher(scriptOptions,
                 metricsLogger.Object,
                 testEnv,
