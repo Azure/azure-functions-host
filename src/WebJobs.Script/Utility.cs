@@ -36,6 +36,18 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
         private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.DotNetAssembly };
 
+        internal static async Task RunWithTimeoutAsync(Func<Task> action, TimeSpan timeout)
+        {
+            Task timeoutTask = Task.Delay(timeout);
+            Task actionTask = action();
+            Task completedTask = await Task.WhenAny(actionTask, timeoutTask);
+
+            if (completedTask == timeoutTask)
+            {
+                throw new Exception($"Task did not complete within timeout interval {timeout}.");
+            }
+        }
+
         internal static async Task InvokeWithRetriesAsync(Action action, int maxRetries, TimeSpan retryInterval)
         {
             await InvokeWithRetriesAsync(() =>

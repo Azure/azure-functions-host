@@ -90,6 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public async Task SpecializeAsync()
         {
             _logger.LogInformation("Starting language worker channel specialization");
+
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
             ILanguageWorkerChannel languageWorkerChannel = await GetChannelAsync(_workerRuntime);
             if (_workerRuntime != null && languageWorkerChannel != null)
@@ -98,6 +99,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
             }
             _shutdownStandbyWorkerChannels();
+
+            _logger.LogInformation("Language worker channel specialization complete");
         }
 
         public async Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId)

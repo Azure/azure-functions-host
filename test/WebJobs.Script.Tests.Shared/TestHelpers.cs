@@ -39,18 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static async Task RunWithTimeoutAsync(Func<Task> action, TimeSpan timeout)
-        {
-            Task timeoutTask = Task.Delay(timeout);
-            Task actionTask = action();
-            Task completedTask = await Task.WhenAny(actionTask, timeoutTask);
-
-            if (completedTask == timeoutTask)
-            {
-                throw new Exception($"Task did not complete within timeout interval {timeout}.");
-            }
-        }
-
         public static byte[] GenerateKeyBytes()
         {
             using (var aes = new AesManaged())

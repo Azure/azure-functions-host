@@ -185,12 +185,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void HandleWorkerProcessExitError(LanguageWorkerProcessExitException langExc)
         {
-            // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
-            if (langExc != null && langExc.ExitCode != -1)
+            if (langExc == null)
             {
-                _workerProcessLogger.LogDebug(langExc, $"Language Worker Process exited.", _process.StartInfo.FileName);
-                _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, langExc));
+                throw new ArgumentNullException(nameof(langExc));
             }
+
+            // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
+            _workerProcessLogger.LogDebug(langExc, $"Language Worker Process exited.", _process.StartInfo.FileName);
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, langExc));
         }
 
         internal void HandleWorkerProcessRestart()

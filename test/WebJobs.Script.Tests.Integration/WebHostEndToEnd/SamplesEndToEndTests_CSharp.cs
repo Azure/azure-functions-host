@@ -302,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await AwaitHostStateAsync(ScriptHostState.Offline);
 
             // verify function status returns 503 immediately
-            await TestHelpers.RunWithTimeoutAsync(async () =>
+            await Utility.RunWithTimeoutAsync(async () =>
             {
                 response = await GetFunctionStatusAsync(functionName);
             }, TimeSpan.FromSeconds(1));
