@@ -55,8 +55,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             try
             {
                 languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(scriptRootPath, runtime, null, 0);
-                await languageWorkerChannel.StartWorkerProcessAsync();
+                // Keep track of language worker channel as soon as we might start it
+                // TODO: we should not make this something that we just need to do.
                 AddOrUpdateWorkerChannels(runtime, languageWorkerChannel);
+                await languageWorkerChannel.StartWorkerProcessAsync();
             }
             catch (Exception ex)
             {
@@ -157,19 +159,19 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        internal void AddOrUpdateWorkerChannels(string initializedRuntime, ILanguageWorkerChannel initializedLanguageWorkerChannel)
+        internal void AddOrUpdateWorkerChannels(string initializedRuntime, ILanguageWorkerChannel newLanguageWorkerChannel)
         {
-            _logger.LogDebug("Adding webhost language worker channel for runtime: {language}. workerId:{id}", initializedRuntime, initializedLanguageWorkerChannel.Id);
+            _logger.LogDebug("Adding webhost language worker channel for runtime: {language}. workerId:{id}", initializedRuntime, newLanguageWorkerChannel.Id);
             _workerChannels.AddOrUpdate(initializedRuntime,
                     (runtime) =>
                     {
                         List<ILanguageWorkerChannel> newLanguageWorkerChannels = new List<ILanguageWorkerChannel>();
-                        newLanguageWorkerChannels.Add(initializedLanguageWorkerChannel);
+                        newLanguageWorkerChannels.Add(newLanguageWorkerChannel);
                         return newLanguageWorkerChannels;
                     },
                     (runtime, existingLanguageWorkerChannels) =>
                     {
-                        existingLanguageWorkerChannels.Add(initializedLanguageWorkerChannel);
+                        existingLanguageWorkerChannels.Add(newLanguageWorkerChannel);
                         return existingLanguageWorkerChannels;
                     });
         }

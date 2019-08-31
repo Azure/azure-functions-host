@@ -45,15 +45,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testLogger.LogInformation("SetupFunctionInvocationBuffers called");
         }
 
-        public void SendFunctionLoadRequests()
+        public Task SendFunctionLoadRequests()
         {
             _testLogger.LogInformation("RegisterFunctions called");
+            return Task.CompletedTask;
         }
 
-        public Task SendFunctionEnvironmentReloadRequest()
+        public Task<bool> SendFunctionEnvironmentReloadRequest()
         {
             _testLogger.LogInformation("SendFunctionEnvironmentReloadRequest called");
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
         public void SendInvocationRequest(ScriptInvocationContext context)

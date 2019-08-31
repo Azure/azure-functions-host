@@ -111,20 +111,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _managedDependencyOptions);
             languageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
             _jobHostLanguageWorkerChannelManager.AddChannel(languageWorkerChannel);
-            languageWorkerChannel.StartWorkerProcessAsync()
-                 .ContinueWith(workerInitTask =>
-                 {
-                     if (workerInitTask.IsCompleted)
-                     {
-                         _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
-                         languageWorkerChannel.SendFunctionLoadRequests();
-                         State = FunctionDispatcherState.Initialized;
-                     }
-                     else
-                     {
-                         _logger.LogWarning("Failed to start language worker process for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
-                     }
-                 });
+            _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
+            // Not awaiting
+            languageWorkerChannel.StartWorkerProcessAsync();
+            languageWorkerChannel.SendFunctionLoadRequests().ContinueWith(functionLoadTask =>
+                {
+                    if (functionLoadTask.IsCompleted)
+                    {
+                        State = FunctionDispatcherState.Initialized;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed to start language worker process for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
+                    }
+                });
             return Task.CompletedTask;
         }
 
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}.", _workerRuntime);
             ILanguageWorkerChannel workerChannel = await _webHostLanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             workerChannel.SetupFunctionInvocationBuffers(_functions);
-            workerChannel.SendFunctionLoadRequests();
+            await workerChannel.SendFunctionLoadRequests();
         }
 
         internal void ShutdownWebhostLanguageWorkerChannels()
@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     {
                         _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, initializedChannel.Id);
                         initializedChannel.SetupFunctionInvocationBuffers(_functions);
-                        initializedChannel.SendFunctionLoadRequests();
+                        await initializedChannel.SendFunctionLoadRequests();
                     }
                     StartWorkerProcesses(initializedChannels.Count(), InitializeWebhostLanguageWorkerChannel);
                     State = FunctionDispatcherState.Initialized;
@@ -282,6 +282,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 _logger.LogDebug("Restarting worker channel for runtime:{runtime}", runtime);
                 await RestartWorkerChannel(runtime, workerId);
+            }
+            else
+            {
+                if (!isWebHostChannel && !isJobHostChannel)
+                {
+                    _logger.LogDebug("Not restarting worker channel for runtime:{runtime}. Could not find worker with id {workerId} to dispose.", runtime, workerId);
+                }
+                else
+                {
+                    _logger.LogDebug("Not restarting worker channel for runtime:{runtime}. Does not match current worker runtime {workerRuntime}.", runtime, _workerRuntime);
+                }
             }
         }
 

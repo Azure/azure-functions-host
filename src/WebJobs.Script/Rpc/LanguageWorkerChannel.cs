@@ -178,36 +178,60 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public void SendFunctionLoadRequests()
+        public async Task SendFunctionLoadRequests()
         {
-            if (_functions != null)
+            var initialized = await _workerInitTask.Task;
+
+            if (_functions != null && initialized)
             {
                 foreach (FunctionMetadata metadata in _functions)
                 {
                     SendFunctionLoadRequest(metadata);
                 }
             }
+            else
+            {
+                if (_functions == null)
+                {
+                    _workerChannelLogger.LogDebug("Not sending function load requests. No functions found.");
+                }
+                else if (!initialized)
+                {
+                    _workerChannelLogger.LogDebug("Not sending function load requests. Worker was able to initialize");
+                }
+            }
         }
 
-        public Task SendFunctionEnvironmentReloadRequest()
+        public async Task<bool> SendFunctionEnvironmentReloadRequest()
         {
-            _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
-            _eventSubscriptions
-                .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
-                .Timeout(workerInitTimeout)
-                .Take(1)
-                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse)));
+            var initialized = await _workerInitTask.Task;
 
-            IDictionary processEnv = Environment.GetEnvironmentVariables();
-
-            FunctionEnvironmentReloadRequest request = GetFunctionEnvironmentReloadRequest(processEnv);
-
-            SendStreamingMessage(new StreamingMessage
+            if (initialized)
             {
-                FunctionEnvironmentReloadRequest = request
-            });
+                _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
+                _eventSubscriptions
+                    .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
+                    .Timeout(workerInitTimeout)
+                    .Take(1)
+                    .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse)));
 
-            return _reloadTask.Task;
+                IDictionary processEnv = Environment.GetEnvironmentVariables();
+
+                FunctionEnvironmentReloadRequest request = GetFunctionEnvironmentReloadRequest(processEnv);
+
+                SendStreamingMessage(new StreamingMessage
+                {
+                    FunctionEnvironmentReloadRequest = request
+                });
+
+                return await _reloadTask.Task;
+            }
+            else
+            {
+                _workerChannelLogger.LogDebug("Worker failed initialization. Not sending FunctionEnvironmentReloadRequest.");
+                _reloadTask.SetResult(false);
+                return false;
+            }
         }
 
         internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
@@ -386,6 +410,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void HandleWorkerChannelError(Exception exc)
         {
+            _workerInitTask.SetResult(false);
             if (_disposing)
             {
                 return;
@@ -413,6 +438,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         link.Dispose();
                     }
 
+                    _workerInitTask.SetResult(false);
                     (_languageWorkerProcess as IDisposable)?.Dispose();
 
                     foreach (var sub in _eventSubscriptions)

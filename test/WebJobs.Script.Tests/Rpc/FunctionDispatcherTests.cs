@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,6 +18,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
     public class FunctionDispatcherTests
     {
+        private static TestLanguageWorkerChannel _javaTestChannel;
+        private static TestLogger _testLogger = new TestLogger("FunctionDispatcherTests");
+
         [Theory]
         [InlineData("node", "node")]
         [InlineData("java", "java")]
@@ -347,6 +351,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 testWebHostLanguageWorkerChannelManager = mockwebHostLanguageWorkerChannelManager.Object;
             }
             var mockFunctionDispatcherLoadBalancer = new Mock<IFunctionDispatcherLoadBalancer>();
+
+            _javaTestChannel = new TestLanguageWorkerChannel(Guid.NewGuid().ToString(), "java", eventManager, _testLogger, false);
+
             return new FunctionDispatcher(scriptOptions,
                 metricsLogger.Object,
                 testEnv,

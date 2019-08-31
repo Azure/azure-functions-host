@@ -19,9 +19,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions);
 
-        void SendFunctionLoadRequests();
+        Task SendFunctionLoadRequests();
 
-        Task SendFunctionEnvironmentReloadRequest();
+        Task<bool> SendFunctionEnvironmentReloadRequest();
 
         Task StartWorkerProcessAsync();
     }

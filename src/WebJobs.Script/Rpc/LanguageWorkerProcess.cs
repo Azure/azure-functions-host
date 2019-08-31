@@ -82,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             catch (Exception ex)
             {
+                _workerProcessLogger.LogError("Failed to start Language Worker Channel for language :{runtime}. {ex}", _runtime, ex);
                 throw new HostInitializationException($"Failed to start Language Worker Channel for language :{_runtime}", ex);
             }
         }
