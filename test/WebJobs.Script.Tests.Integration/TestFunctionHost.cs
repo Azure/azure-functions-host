@@ -104,7 +104,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .UseStartup<TestStartup>();
 
-            _testServer = new TestServer(builder);
+            // TODO: https://github.com/Azure/azure-functions-host/issues/4876
+            _testServer = new TestServer(builder) { AllowSynchronousIO = true };
 
             HttpClient = new HttpClient(new UpdateContentLengthHandler(_testServer.CreateHandler()))
             {

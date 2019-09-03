@@ -81,7 +81,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     });
                 });
 
-            var server = new TestServer(builder);
+            // TODO: https://github.com/Azure/azure-functions-host/issues/4876
+            var server = new TestServer(builder) { AllowSynchronousIO = true };
             var client = server.CreateClient();
 
             // Force the specialization middleware to run       
