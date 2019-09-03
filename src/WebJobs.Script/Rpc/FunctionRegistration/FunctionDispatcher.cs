@@ -334,6 +334,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (!_disposed && disposing)
             {
+                _logger.LogDebug("Disposing FunctionDispatcher");
                 _workerErrorSubscription.Dispose();
                 _workerRestartSubscription.Dispose();
                 _processStartCancellationToken.Cancel();

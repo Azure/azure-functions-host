@@ -180,6 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public async Task SendFunctionLoadRequests()
         {
+            // Wait for worker to be initialized before sending any function load requests
             var initialized = await _workerInitTask.Task;
 
             if (_functions != null && initialized)
