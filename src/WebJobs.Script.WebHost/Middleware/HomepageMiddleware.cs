@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     };
                 }
 
-                if (!context.Response.HasStarted())
+                if (!context.Response.HasStarted)
                 {
                     var actionContext = new ActionContext
                     {
