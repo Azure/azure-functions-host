@@ -2,14 +2,17 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IScriptWebHostEnvironment _scriptWebHostEnvironment;
         private readonly IScriptHostBuilder _scriptHostBuilder;
         private readonly IServiceProvider _rootServiceProvider;
+        private readonly IScriptEventManager _eventManager;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly HostPerformanceManager _performanceManager;
@@ -36,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly Task _hostStarted;
 
         private IHost _host;
+        private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private CancellationTokenSource _startupLoopTokenSource;
         private int _hostStartCount;
         private bool _disposed = false;
@@ -44,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory, IServiceProvider rootServiceProvider,
             IServiceScopeFactory rootScopeFactory, IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
-            HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions)
+            HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions, IScriptEventManager eventManager)
         {
             if (loggerFactory == null)
             {
@@ -61,7 +66,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _performanceManager = hostPerformanceManager ?? throw new ArgumentNullException(nameof(hostPerformanceManager));
             _healthMonitorOptions = healthMonitorOptions ?? throw new ArgumentNullException(nameof(healthMonitorOptions));
+            _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+
+            // Subscribing to the Restart and Shutdown events that will be emitted by watchers.
+            // By default, we add a debounce (throttle)
+            // This allows us to deal with a large set of file change events that might
+            // result from a bulk copy/unzip operation. In such cases, we only want to
+            // restart after ALL the operations are complete and there is a quiet period.
+            _eventSubscriptions.Add(_eventManager.OfType<HostRestartEvent>()
+                .Throttle(TimeSpan.FromMilliseconds(500))
+                .Subscribe(msg => RestartHostAsync(CancellationToken.None)
+                .ContinueWith(t => _logger.LogCritical(t.Exception.Message),
+                        TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously)));
+
+            _eventSubscriptions.Add(_eventManager.OfType<HostShutdownEvent>()
+                .Where(e => !e.ShouldDebounce)
+                .Subscribe(msg => ShutdownHost()));
+
+            _eventSubscriptions.Add(_eventManager.OfType<HostShutdownEvent>()
+                .Where(e => e.ShouldDebounce)
+                .Throttle(TimeSpan.FromMilliseconds(500))
+                .Subscribe(msg => ShutdownHost()));
 
             _hostStarted = _hostStartedSource.Task;
 
@@ -384,6 +410,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        public void ShutdownHost()
+        {
+            _logger.LogDebug("Shutting down ScriptHost.");
+            var environment = _rootServiceProvider.GetService<IScriptJobHostEnvironment>();
+            environment?.Shutdown();
+        }
+
         private void OnHostInitializing(object sender, EventArgs e)
         {
             // we check host health before starting to avoid starting
@@ -579,6 +612,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _startupLoopTokenSource?.Dispose();
                     _hostStartSemaphore.Dispose();
                     DisposeRequestTrackingModule();
+
+                    foreach (var subscription in _eventSubscriptions)
+                    {
+                        subscription.Dispose();
+                    }
                 }
                 _disposed = true;
             }

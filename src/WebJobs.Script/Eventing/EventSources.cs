@@ -15,5 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
         public const string Rpc = "Rpc";
         public const string Worker = "Worker";
         public const string WorkerProcess = "WorkerProcess";
+        public const string AppMonitoring = "AppMonitoring";
+        public const string FileMonitoring = "FileMonitoring";
     }
 }

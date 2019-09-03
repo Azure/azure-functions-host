@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Eventing.File;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Properties;
@@ -176,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             if (postInstallActions.HasFlag(ExtensionPostInstallActions.BringAppOnline))
             {
-                await FileMonitoringService.SetAppOfflineState(_applicationHostOptions.Value.ScriptPath, false);
+                await FileChangeHelper.SetAppOfflineState(_applicationHostOptions.Value.ScriptPath, false);
             }
 
             await SaveJob(job);

@@ -108,6 +108,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public ScriptJobHostOptions ScriptOptions => JobHostServices.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
+        public IOptionsMonitor<ScriptJobHostOptions> ScriptOptionsMonitor => JobHostServices.GetService<IOptionsMonitor<ScriptJobHostOptions>>();
+
         public ISecretManager SecretManager => _testServer.Host.Services.GetService<ISecretManagerProvider>().Current;
 
         public string LogPath => _hostOptions.LogPath;
@@ -240,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private async Task<bool> IsHostStarted(HttpClient client)
         {
             HostStatus status = await GetHostStatusAsync();
-            return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}";
+            return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}" || status.State == $"{ScriptHostState.Offline}";
         }
 
         private class UpdateContentLengthHandler : DelegatingHandler

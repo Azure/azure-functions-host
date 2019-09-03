@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Script.Eventing.File;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -211,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 }
 
                 // we're currently offline and the request is to bring the host back online
-                await FileMonitoringService.SetAppOfflineState(_applicationHostOptions.Value.ScriptPath, false);
+                await FileChangeHelper.SetAppOfflineState(_applicationHostOptions.Value.ScriptPath, false);
             }
             else if (desiredState == ScriptHostState.Offline && currentState != ScriptHostState.Offline)
             {
@@ -221,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 }
 
                 // we're currently online and the request is to take the host offline
-                await FileMonitoringService.SetAppOfflineState(_applicationHostOptions.Value.ScriptPath, true);
+                await FileChangeHelper.SetAppOfflineState(_applicationHostOptions.Value.ScriptPath, true);
             }
             else
             {

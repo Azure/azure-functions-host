@@ -24,36 +24,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly ScriptJobHostOptions _scriptOptions;
         private readonly IScriptEventManager _eventManager;
-        private readonly IScriptJobHostEnvironment _scriptEnvironment;
         private readonly string _hostLogPath;
         private readonly ILogger _logger;
         private readonly IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
-        private readonly Func<Task> _restart;
-        private readonly Action _shutdown;
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
         private AutoRecoveringFileSystemWatcher _diagnosticModeFileWatcher;
         private FileWatcherEventSource _fileEventSource;
-        private bool _shutdownScheduled;
         private bool _disposed = false;
 
-        public FileMonitoringService(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager, IScriptJobHostEnvironment scriptEnvironment)
+        public FileMonitoringService(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager)
         {
             _scriptOptions = scriptOptions.Value;
             _eventManager = eventManager;
-            _scriptEnvironment = scriptEnvironment;
             _hostLogPath = Path.Combine(_scriptOptions.RootLogPath, "Host");
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
-
-            // If a file change should result in a restart, we debounce the event to
-            // ensure that only a single restart is triggered within a specific time window.
-            // This allows us to deal with a large set of file change events that might
-            // result from a bulk copy/unzip operation. In such cases, we only want to
-            // restart after ALL the operations are complete and there is a quiet period.
-            _restart = RestartAsync;
-            _restart = _restart.Debounce(500);
-
-            _shutdown = Shutdown;
-            _shutdown = _shutdown.Debounce(milliseconds: 500);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -72,15 +56,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private void InitializeFileWatchers()
         {
-            _debugModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DebugSentinelFileName,
-                   includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
-            _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
-            _logger.LogDebug("Debug file watch initialized.");
+            if (!string.IsNullOrEmpty(_hostLogPath))
+            {
+                _debugModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DebugSentinelFileName,
+                        includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
+                _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
+                _logger.LogDebug("Debug file watch initialized.");
 
-            _diagnosticModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DiagnosticSentinelFileName,
-                   includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
-            _diagnosticModeFileWatcher.Changed += OnDiagnosticModeFileChanged;
-            _logger.LogDebug("Diagnostic file watch initialized.");
+                _diagnosticModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DiagnosticSentinelFileName,
+                       includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
+                _diagnosticModeFileWatcher.Changed += OnDiagnosticModeFileChanged;
+                _logger.LogDebug("Diagnostic file watch initialized.");
+            }
 
             if (_scriptOptions.FileWatchingEnabled)
             {
@@ -88,15 +75,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
                         .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal))
+                        .Where(f => !string.Equals(f.FileChangeArguments.Name, ScriptConstants.AppOfflineFileName, StringComparison.OrdinalIgnoreCase))
                         .Subscribe(e => OnFileChanged(e.FileChangeArguments)));
 
                 _logger.LogDebug("File event source initialized.");
             }
-
-            _eventSubscriptions.Add(_eventManager.OfType<HostRestartEvent>()
-                    .Subscribe((msg) => ScheduleRestartAsync(false)
-                    .ContinueWith(t => _logger.LogCritical(t.Exception.Message),
-                        TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously)));
         }
 
         /// <summary>
@@ -140,21 +123,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 changeDescription = "Watched directory";
             }
-            else if (string.Compare(fileName, ScriptConstants.AppOfflineFileName, StringComparison.OrdinalIgnoreCase) == 0)
-            {
-                // app_offline.htm has changed
-                // when app_offline.htm is created, we trigger
-                // a shutdown right away so when the host
-                // starts back up it will be offline
-                // when app_offline.htm is deleted, we trigger
-                // a restart to bring the host back online
-                changeDescription = "File";
-                if (File.Exists(e.FullPath))
-                {
-                    TraceFileChangeRestart(changeDescription, e.ChangeType.ToString(), e.FullPath, isShutdown: true);
-                    Shutdown();
-                }
-            }
             else if (string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
                 string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
                 string.Compare(fileName, ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0)
@@ -176,20 +144,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     shutdown = true;
                 }
 
-                TraceFileChangeRestart(changeDescription, e.ChangeType.ToString(), e.FullPath, shutdown);
-                ScheduleRestartAsync(shutdown).ContinueWith(t => _logger.LogError($"Error restarting host (full shutdown: {shutdown})", t.Exception),
-                    TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+                FileChangeHelper.TraceFileChangeRestart(_logger, changeDescription, e.ChangeType.ToString(), e.FullPath, shutdown);
+                ScheduleRestartAsync(shutdown);
             }
-        }
-
-        private void TraceFileChangeRestart(string changeDescription, string changeType, string path, bool isShutdown)
-        {
-            string fileChangeMsg = string.Format(CultureInfo.InvariantCulture, "{0} change of type '{1}' detected for '{2}'", changeDescription, changeType, path);
-            _logger.LogInformation(fileChangeMsg);
-
-            string action = isShutdown ? "shutdown" : "restart";
-            string signalMessage = $"Host configuration has changed. Signaling {action}";
-            _logger.LogInformation(signalMessage);
         }
 
         internal static string GetRelativeDirectory(string path, string scriptRoot)
@@ -209,32 +166,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return string.Empty;
         }
 
-        private async Task ScheduleRestartAsync(bool shutdown)
+        private void ScheduleRestartAsync(bool shutdown)
         {
             if (shutdown)
             {
-                _shutdownScheduled = true;
-                _shutdown();
+                FileChangeHelper.SignalShutdown(_eventManager, EventSources.FileMonitoring);
             }
             else
             {
-                await _restart();
+                FileChangeHelper.SignalRestart(_eventManager, EventSources.AppMonitoring);
             }
-        }
-
-        private Task RestartAsync()
-        {
-            if (!_shutdownScheduled)
-            {
-                _scriptEnvironment.RestartHost();
-            }
-
-            return Task.CompletedTask;
-        }
-
-        private void Shutdown()
-        {
-            _scriptEnvironment.Shutdown();
         }
 
         protected virtual void Dispose(bool disposing)
@@ -264,36 +205,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 _disposed = true;
+                _logger.LogDebug("File monitoring service is disposed.");
             }
         }
 
         public void Dispose()
         {
             Dispose(true);
-        }
-
-        internal static async Task SetAppOfflineState(string rootPath, bool offline)
-        {
-            string path = Path.Combine(rootPath, ScriptConstants.AppOfflineFileName);
-            bool offlineFileExists = File.Exists(path);
-
-            if (offline && !offlineFileExists)
-            {
-                // create the app_offline.htm file in the root script directory
-                string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.{ScriptConstants.AppOfflineFileName}");
-                await FileUtility.WriteAsync(path, content);
-            }
-            else if (!offline && offlineFileExists)
-            {
-                // delete the app_offline.htm file
-                await Utility.InvokeWithRetriesAsync(() =>
-                {
-                    if (File.Exists(path))
-                    {
-                        File.Delete(path);
-                    }
-                }, maxRetries: 3, retryInterval: TimeSpan.FromSeconds(1));
-            }
         }
     }
 }

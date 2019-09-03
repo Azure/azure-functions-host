@@ -4,9 +4,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Eventing.File;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -28,12 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("app_offline.htm", 150, true, false)]
-        [InlineData("app_offline.htm", 10, true, false)]
-        [InlineData("host.json", 0, false, false)]
-        [InlineData("host.json", 200, false, false)]
-        [InlineData("host.json", 1000, false, true)]
-        public static async Task TestAppOfflineDebounceTime(string fileName, int delayInMs, bool expectShutdown, bool expectRestart)
+        [InlineData("host.json", "add", false, true)]
+        [InlineData("host.json", "delete", false, true)]
+        [InlineData("app_offline.htm", "add", false, false)]
+        [InlineData("app_offline.htm", "delete", false, false)]
+        [InlineData("App_offline.htm", "add", false, false)]
+        [InlineData("App_offline.htm", "delete", false, false)]
+        public static async Task TestFileChange_RestartsHost(string fileName, string action, bool expectShutdown, bool expectRestart)
         {
             using (var directory = new TempDirectory())
             {
@@ -50,40 +53,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 };
                 var loggerFactory = new LoggerFactory();
                 var mockWebHostEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Loose);
-                var mockEventManager = new ScriptEventManager();
+                var eventManager = new ScriptEventManager();
+
+                var sourceSet = new HashSet<string>();
+                int shutdownCount = 0;
+                int restartCount = 0;
+
+                eventManager.OfType<HostShutdownEvent>().Subscribe(e =>
+                {
+                    shutdownCount++;
+                    sourceSet.Add(e.Source);
+                });
+
+                eventManager.OfType<HostRestartEvent>().Subscribe(e =>
+                {
+                    restartCount++;
+                    sourceSet.Add(e.Source);
+                });
 
                 // Act
                 FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
-                    loggerFactory, mockEventManager, mockWebHostEnvironment.Object);
+                    loggerFactory, eventManager);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
-                var offlineEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, fileName);
-                FileEvent offlinefileEvent = new FileEvent("ScriptFiles", offlineEventArgs);
-
-                var randomFileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, "random.txt");
+                var changeType = action == "add" ? WatcherChangeTypes.Created : WatcherChangeTypes.Deleted;
+                var randomFileEventArgs = new FileSystemEventArgs(changeType, tempDir, fileName);
                 FileEvent randomFileEvent = new FileEvent("ScriptFiles", randomFileEventArgs);
 
-                mockEventManager.Publish(offlinefileEvent);
-                await Task.Delay(delayInMs);
-                mockEventManager.Publish(randomFileEvent);
+                eventManager.Publish(randomFileEvent);
 
                 // Test
                 if (expectShutdown)
                 {
-                    mockWebHostEnvironment.Verify(m => m.Shutdown());
+                    Assert.Equal(1, shutdownCount);
                 }
                 else
                 {
-                    mockWebHostEnvironment.Verify(m => m.Shutdown(), Times.Never);
+                    Assert.Equal(0, shutdownCount);
                 }
 
                 if (expectRestart)
                 {
-                    mockWebHostEnvironment.Verify(m => m.RestartHost());
+                    Assert.Equal(1, restartCount);
                 }
                 else
                 {
-                    mockWebHostEnvironment.Verify(m => m.RestartHost(), Times.Never);
+                    Assert.Equal(0, restartCount);
                 }
             }
         }

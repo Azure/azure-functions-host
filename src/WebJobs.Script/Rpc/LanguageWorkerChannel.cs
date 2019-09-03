@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
                 .Where(msg => _workerConfig.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
-                .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
+                .Subscribe(msg => _eventManager.Publish(new HostRestartEvent(EventSources.Worker))));
 
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
                 .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));

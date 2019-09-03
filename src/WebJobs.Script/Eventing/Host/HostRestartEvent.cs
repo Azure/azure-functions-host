@@ -5,8 +5,8 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
     public class HostRestartEvent : ScriptEvent
     {
-        public HostRestartEvent()
-            : base(nameof(HostRestartEvent), EventSources.Worker)
+        public HostRestartEvent(string source)
+            : base(nameof(HostRestartEvent), source)
         {
         }
     }
