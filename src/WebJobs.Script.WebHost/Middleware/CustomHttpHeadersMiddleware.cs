@@ -21,17 +21,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public async Task Invoke(HttpContext context, RequestDelegate next)
         {
-            context.Response.OnStarting(() =>
-            {
-                foreach (var header in _hostOptions)
-                {
-                    context.Response.Headers.TryAdd(header.Key, header.Value);
-                }
-
-                return Task.CompletedTask;
-            });
-
             await next(context);
+
+            foreach (var header in _hostOptions)
+            {
+                context.Response.Headers.TryAdd(header.Key, header.Value);
+            }
         }
     }
 }

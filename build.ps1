@@ -165,9 +165,10 @@ function BuildOutput([string] $runtime) {
     dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false -c Release
 
     # replace IL dlls with crossgen dlls
-    if (![string]::IsNullOrEmpty($runtime)) {
-        CrossGen $runtime $publishTarget $privateSiteExtensionPath
-    }
+    # TODO: Re-add this.
+    #if (![string]::IsNullOrEmpty($runtime)) {
+    #    CrossGen $runtime $publishTarget $privateSiteExtensionPath
+    #}
 }
 
 
