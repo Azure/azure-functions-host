@@ -240,7 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private async Task<bool> IsHostStarted(HttpClient client)
         {
             HostStatus status = await GetHostStatusAsync();
-            return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}";
+            return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}" || status.State == $"{ScriptHostState.Offline}";
         }
 
         private class UpdateContentLengthHandler : DelegatingHandler

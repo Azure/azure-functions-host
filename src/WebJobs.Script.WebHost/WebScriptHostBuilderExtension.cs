@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     // Hosted services
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HttpInitializationService>());
-                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
+                    // services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
 
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
                 });

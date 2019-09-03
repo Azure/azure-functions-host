@@ -197,6 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
             services.TryAddSingleton<HostPerformanceManager>();
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
             AddProcessRegistry(services);
