@@ -18,6 +18,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         /// <summary>
         /// LanguageWorkerChannel is created. Worker process is Initialized. Rpc Channel is established.
         /// </summary>
-        Initialized
+        Initialized,
+
+        /// <summary>
+        /// LanguageWorkerChannel is created. Worker process Initialization failed.
+        /// </summary>
+        Faulted
     }
 }

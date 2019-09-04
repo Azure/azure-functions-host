@@ -89,6 +89,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return Task.FromResult<ILanguageWorkerChannel>(null);
         }
 
+        internal Task<ILanguageWorkerChannel> RemoveErroredChannelAsync(string language)
+        {
+            if (!string.IsNullOrEmpty(language) && _workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> workerChannels))
+            {
+                if (workerChannels.Count > 0 && workerChannels.TryGetValue(workerChannels.Keys.First(), out TaskCompletionSource<ILanguageWorkerChannel> valueTask))
+                {
+                    return valueTask.Task;
+                }
+            }
+            return Task.FromResult<ILanguageWorkerChannel>(null);
+        }
+
         public Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> GetChannels(string language)
         {
             if (!string.IsNullOrEmpty(language) && _workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> workerChannels))
@@ -122,10 +134,19 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 if (languageWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<ILanguageWorkerChannel> value))
                 {
-                    ILanguageWorkerChannel channel = await value?.Task;
-                    if (channel != null)
+                    try
                     {
-                        (channel as IDisposable)?.Dispose();
+                        ILanguageWorkerChannel channel = await value?.Task;
+                        if (channel != null)
+                        {
+                            (channel as IDisposable)?.Dispose();
+                            languageWorkerChannels.Remove(workerId);
+                            return true;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Removing errored worker channel");
                         languageWorkerChannels.Remove(workerId);
                         return true;
                     }
