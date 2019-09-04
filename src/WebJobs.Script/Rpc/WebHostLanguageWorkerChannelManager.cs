@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (_workerRuntime != null && languageWorkerChannel != null)
             {
                 _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntime);
-                await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
+                await languageWorkerChannel.ReloadEnvironmentAsync();
             }
             _shutdownStandbyWorkerChannels();
         }

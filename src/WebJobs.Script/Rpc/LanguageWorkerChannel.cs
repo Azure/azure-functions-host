@@ -185,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public async Task SendFunctionLoadRequests()
+        public async Task LoadFunctionsAsync()
         {
             // Wait for worker to be initialized before sending any function load requests
             var initialized = await _workerInitTask.Task;
@@ -216,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public async Task<bool> SendFunctionEnvironmentReloadRequest()
+        public async Task<bool> ReloadEnvironmentAsync()
         {
             // Wait for worker to be initialized before sending environment variables
             var initialized = await _workerInitTask.Task;

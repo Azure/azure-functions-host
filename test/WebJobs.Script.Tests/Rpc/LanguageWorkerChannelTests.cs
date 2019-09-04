@@ -107,19 +107,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public async Task SendLoadRequests_PublishesOutboundEvents()
         {
             _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
-            await _workerChannel.SendFunctionLoadRequests();
+            await _workerChannel.LoadFunctionsAsync();
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             Assert.True(functionLoadLogs.Count() == 2);
         }
 
         [Fact]
-        public async Task SendSendFunctionEnvironmentReloadRequest_PublishesOutboundEvents()
+        public async Task ReloadEnvironmentAsync_PublishesOutboundEvents()
         {
             Environment.SetEnvironmentVariable("TestNull", null);
             Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
             Environment.SetEnvironmentVariable("TestValid", "TestValue");
-            await _workerChannel.SendFunctionEnvironmentReloadRequest();
+            await _workerChannel.ReloadEnvironmentAsync();
             _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent();
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest"));
@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
-        public void SendSendFunctionEnvironmentReloadRequest_SanitizedEnvironmentVariables()
+        public void ReloadEnvironmentAsync_SanitizedEnvironmentVariables()
         {
             Environment.SetEnvironmentVariable("TestNull", null);
             Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
