@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(response.Headers.GetValues("myversion").ToArray()[0], "123");
         }
 
-        [Theory]
+        [Theory(Skip = "Skipping proxy tests")]
         [InlineData("test.txt")]
         [InlineData("test.asp")]
         [InlineData("test.aspx")]
@@ -373,7 +373,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                        services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
                    });
 
-                _testServer = new TestServer(builder);
+                // TODO: https://github.com/Azure/azure-functions-host/issues/4876
+                _testServer = new TestServer(builder) { AllowSynchronousIO = true };
 
                 var scriptConfig = _testServer.Host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
