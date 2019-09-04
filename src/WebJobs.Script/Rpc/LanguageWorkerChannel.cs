@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IScriptEventManager _eventManager;
         private readonly WorkerConfig _workerConfig;
         private readonly string _runtime;
+        private readonly IEnvironment _environment;
 
         private bool _disposed;
         private bool _disposing;
@@ -64,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount,
+           IEnvironment environment,
            IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
             _workerId = workerId;
@@ -73,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _runtime = workerConfig.Language;
             _languageWorkerProcess = languageWorkerProcess;
             _workerChannelLogger = logger;
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
 
             _workerCapabilities = new Capabilities(_workerChannelLogger);
 
@@ -98,6 +101,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _managedDependencyOptions = managedDependencyOptions;
 
             _state = LanguageWorkerChannelState.Default;
+
+            if (!_environment.IsPlaceholderModeEnabled())
+            {
+                _workerChannelLogger.LogDebug("Initializing without placeholders. Skipping environment reload.");
+                _reloadTask.SetResult(true);
+            }
         }
 
         public string Id => _workerId;
@@ -108,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal ILanguageWorkerProcess WorkerProcess => _languageWorkerProcess;
 
-        public Task StartWorkerProcessAsync()
+        public void StartWorkerProcess()
         {
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(TimeSpan.FromSeconds(LanguageWorkerConstants.ProcessStartTimeoutSeconds))
@@ -118,8 +127,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _languageWorkerProcess.StartProcess();
 
             _state = LanguageWorkerChannelState.Initializing;
-
-            return _workerInitTask.Task;
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
@@ -182,8 +189,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             // Wait for worker to be initialized before sending any function load requests
             var initialized = await _workerInitTask.Task;
+            // Wait for environment language process to be specialized
+            var environmentLoaded = await _reloadTask.Task;
 
-            if (_functions != null && initialized)
+            if (_functions != null && initialized && environmentLoaded)
             {
                 foreach (FunctionMetadata metadata in _functions)
                 {
@@ -198,13 +207,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
                 else if (!initialized)
                 {
-                    _workerChannelLogger.LogDebug("Not sending function load requests. Worker was able to initialize");
+                    _workerChannelLogger.LogDebug("Not sending function load requests. Worker was able to initialize.");
+                }
+                else if (!environmentLoaded)
+                {
+                    _workerChannelLogger.LogDebug("Not sending function load requests. Worker was unable to reload environment variables.");
                 }
             }
         }
 
         public async Task<bool> SendFunctionEnvironmentReloadRequest()
         {
+            // Wait for worker to be initialized before sending environment variables
             var initialized = await _workerInitTask.Task;
 
             if (initialized)
@@ -412,10 +426,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void HandleWorkerChannelError(Exception exc)
         {
             _workerInitTask.SetResult(false);
+            _reloadTask.SetResult(false);
+
             if (_disposing)
             {
                 return;
             }
+
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
         }
 
@@ -439,7 +456,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         link.Dispose();
                     }
 
+                    // Stop awaiting on _workerInitTask if it doing so
                     _workerInitTask.SetResult(false);
+                    _reloadTask.SetResult(false);
                     (_languageWorkerProcess as IDisposable)?.Dispose();
 
                     foreach (var sub in _eventSubscriptions)

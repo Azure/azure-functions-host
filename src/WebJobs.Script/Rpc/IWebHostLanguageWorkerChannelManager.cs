@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     public interface IWebHostLanguageWorkerChannelManager
     {
-        Task<ILanguageWorkerChannel> InitializeChannelAsync(string language);
+        ILanguageWorkerChannel CreateChannel(string language);
 
         IEnumerable<ILanguageWorkerChannel> GetChannels(string language);
 

@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly ILanguageWorkerProcessFactory _languageWorkerProcessManager = null;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnumerable<WorkerConfig> _workerConfigs = null;
+        private readonly IEnvironment _environment;
 
         public LanguageWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILanguageWorkerProcessFactory languageWorkerProcessManager)
@@ -28,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _loggerFactory = loggerFactory;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _languageWorkerProcessManager = languageWorkerProcessManager;
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
         public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
@@ -49,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                          workerLogger,
                          metricsLogger,
                          attemptCount,
+                         _environment,
                          managedDependencyOptions);
         }
     }

@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
             _logger.LogDebug("Starting Rpc Initialization Service.");
             await InitializeRpcServerAsync();
-            await InitializeChannelsAsync();
+            InitializeChannels();
             _logger.LogDebug("Rpc Initialization Service started.");
         }
 
@@ -111,40 +111,38 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        internal Task InitializeChannelsAsync()
+        internal void InitializeChannels()
         {
             if (ShouldStartInPlaceholderMode())
             {
-                return InitializePlaceholderChannelsAsync();
+                InitializePlaceholderChannels();
             }
 
-            return InitializeWebHostRuntimeChannelsAsync();
+            InitializeWebHostRuntimeChannels();
         }
 
-        private Task InitializePlaceholderChannelsAsync()
+        private void InitializePlaceholderChannels()
         {
             if (_environment.IsLinuxHostingEnvironment())
             {
-                return InitializePlaceholderChannelsAsync(OSPlatform.Linux);
+                InitializePlaceholderChannels(OSPlatform.Linux);
             }
 
-            return InitializePlaceholderChannelsAsync(OSPlatform.Windows);
+            InitializePlaceholderChannels(OSPlatform.Windows);
         }
 
-        private Task InitializePlaceholderChannelsAsync(OSPlatform os)
+        private void InitializePlaceholderChannels(OSPlatform os)
         {
-            return Task.WhenAll(_hostingOSToWhitelistedRuntimes[os].Select(runtime =>
-                _webHostlanguageWorkerChannelManager.InitializeChannelAsync(runtime)));
+            _hostingOSToWhitelistedRuntimes[os].Select(runtime =>
+                _webHostlanguageWorkerChannelManager.CreateChannel(runtime));
         }
 
-        private Task InitializeWebHostRuntimeChannelsAsync()
+        private void InitializeWebHostRuntimeChannels()
         {
             if (_webHostLevelWhitelistedRuntimes.Contains(_workerRuntime))
             {
-                return _webHostlanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
+                _webHostlanguageWorkerChannelManager.CreateChannel(_workerRuntime);
             }
-
-            return Task.CompletedTask;
         }
 
         private bool ShouldStartInPlaceholderMode()

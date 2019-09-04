@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private TestLogger _logger;
         private LanguageWorkerChannel _workerChannel;
         private IEnumerable<FunctionMetadata> _functions = new List<FunctionMetadata>();
+        private IEnvironment _environment = new TestEnvironment();
 
         public LanguageWorkerChannelTests()
         {
@@ -50,16 +51,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                _mockLanguageWorkerProcess.Object,
                _logger,
                _mockMetricsLogger.Object,
-               0);
+               0,
+               _environment);
         }
 
         [Fact]
-        public async Task StartWorkerProcessAsync_Invoked()
+        public void StartWorkerProcess_Invoked()
         {
-            var initTask = _workerChannel.StartWorkerProcessAsync();
+            _workerChannel.StartWorkerProcess();
             _testFunctionRpcService.PublishStartStreamEvent(_workerId);
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
-            await initTask;
             _mockLanguageWorkerProcess.Verify(m => m.StartProcess(), Times.Once);
         }
 
@@ -103,22 +104,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
-        public void SendLoadRequests_PublishesOutboundEvents()
+        public async Task SendLoadRequests_PublishesOutboundEvents()
         {
             _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
-            _workerChannel.SendFunctionLoadRequests();
+            await _workerChannel.SendFunctionLoadRequests();
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             Assert.True(functionLoadLogs.Count() == 2);
         }
 
         [Fact]
-        public void SendSendFunctionEnvironmentReloadRequest_PublishesOutboundEvents()
+        public async Task SendSendFunctionEnvironmentReloadRequest_PublishesOutboundEvents()
         {
             Environment.SetEnvironmentVariable("TestNull", null);
             Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
             Environment.SetEnvironmentVariable("TestValid", "TestValue");
-            _workerChannel.SendFunctionEnvironmentReloadRequest();
+            await _workerChannel.SendFunctionEnvironmentReloadRequest();
             _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent();
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest"));

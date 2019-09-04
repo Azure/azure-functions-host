@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             return null;
         }
 
-        public Task<ILanguageWorkerChannel> InitializeChannelAsync(string language)
+        public ILanguageWorkerChannel CreateChannel(string language)
         {
             ILanguageWorkerChannel workerChannel = new TestLanguageWorkerChannel(Guid.NewGuid().ToString(), language, _eventManager, _testLogger, true);
             if (_workerChannels.TryGetValue(language, out List<ILanguageWorkerChannel> workerChannels))
@@ -53,8 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 _workerChannels.TryAdd(language, new List<ILanguageWorkerChannel>());
                 _workerChannels[language].Add(workerChannel);
             }
-            workerChannel.StartWorkerProcessAsync();
-            return Task.FromResult(workerChannel);
+            workerChannel.StartWorkerProcess();
+            return workerChannel;
         }
 
         public void ShutdownChannels()

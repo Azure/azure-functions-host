@@ -9,7 +9,9 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -339,12 +341,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
+
+            var testLoggerProvider = new TestLoggerProvider();
+            var testLoggerFactory = new LoggerFactory();
+            testLoggerFactory.AddProvider(testLoggerProvider);
+
             IWebHostLanguageWorkerChannelManager testWebHostLanguageWorkerChannelManager = new TestLanguageWorkerChannelManager(eventManager, testLogger, scriptOptions.Value.RootScriptPath);
             ILanguageWorkerChannelFactory testLanguageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(eventManager, testLogger, scriptOptions.Value.RootScriptPath);
-            IJobHostLanguageWorkerChannelManager jobHostLanguageWorkerChannelManager = new JobHostLanguageWorkerChannelManager();
+            IJobHostLanguageWorkerChannelManager jobHostLanguageWorkerChannelManager = new JobHostLanguageWorkerChannelManager(testLoggerFactory);
             if (addWebhostChannel)
             {
-                testWebHostLanguageWorkerChannelManager.InitializeChannelAsync("java");
+                testWebHostLanguageWorkerChannelManager.CreateChannel("java");
             }
             if (mockwebHostLanguageWorkerChannelManager != null)
             {

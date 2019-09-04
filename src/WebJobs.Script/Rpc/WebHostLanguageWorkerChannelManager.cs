@@ -41,13 +41,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
         }
 
-        public Task<ILanguageWorkerChannel> InitializeChannelAsync(string runtime)
+        public ILanguageWorkerChannel CreateChannel(string runtime)
         {
             _logger?.LogDebug("Initializing language worker channel for runtime:{runtime}", runtime);
-            return InitializeLanguageWorkerChannel(runtime, _applicationHostOptions.CurrentValue.ScriptPath);
+            return CreateLanguageWorkerChannel(runtime, _applicationHostOptions.CurrentValue.ScriptPath);
         }
 
-        private async Task<ILanguageWorkerChannel> InitializeLanguageWorkerChannel(string runtime, string scriptRootPath)
+        private ILanguageWorkerChannel CreateLanguageWorkerChannel(string runtime, string scriptRootPath)
         {
             ILanguageWorkerChannel languageWorkerChannel = null;
             string workerId = Guid.NewGuid().ToString();
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 // Keep track of language worker channel as soon as we might start it
                 // TODO: we should not make this something that we just need to do.
                 AddOrUpdateWorkerChannels(runtime, languageWorkerChannel);
-                await languageWorkerChannel.StartWorkerProcessAsync();
+                languageWorkerChannel.StartWorkerProcess();
             }
             catch (Exception ex)
             {

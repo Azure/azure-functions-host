@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _jobHostLanguageWorkerChannelManager.AddChannel(languageWorkerChannel);
             _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
             // Not awaiting
-            languageWorkerChannel.StartWorkerProcessAsync();
+            languageWorkerChannel.StartWorkerProcess();
             languageWorkerChannel.SendFunctionLoadRequests().ContinueWith(functionLoadTask =>
                 {
                     if (functionLoadTask.IsCompleted)
@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal async void InitializeWebhostLanguageWorkerChannel()
         {
             _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}.", _workerRuntime);
-            ILanguageWorkerChannel workerChannel = await _webHostLanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
+            ILanguageWorkerChannel workerChannel = _webHostLanguageWorkerChannelManager.CreateChannel(_workerRuntime);
             workerChannel.SetupFunctionInvocationBuffers(_functions);
             await workerChannel.SendFunctionLoadRequests();
         }
