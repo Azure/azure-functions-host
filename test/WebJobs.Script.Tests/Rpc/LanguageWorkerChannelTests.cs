@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _logger = new TestLogger("FunctionDispatcherTests");
             _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
-            _mockLanguageWorkerProcess.Setup(m => m.StartProcess());
+            _mockLanguageWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
 
             _workerChannel = new LanguageWorkerChannel(
                _workerId,
@@ -62,21 +62,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testFunctionRpcService.PublishStartStreamEvent(_workerId);
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             await initTask;
-            _mockLanguageWorkerProcess.Verify(m => m.StartProcess(), Times.Once);
+            _mockLanguageWorkerProcess.Verify(m => m.StartProcessAsync(), Times.Once);
         }
 
         [Fact]
         public async Task StartWorkerProcessAsync_TimesOut()
         {
             var initTask = _workerChannel.StartWorkerProcessAsync();
-            await Assert.ThrowsAsync<TimeoutException>(async () => await initTask);
+            await Assert.ThrowsAsync<TimeoutException>(async () => await initTask.Result);
         }
 
         [Fact]
         public async Task StartWorkerProcessAsync_WorkerProcess_Throws()
         {
             Mock<ILanguageWorkerProcess> mockLanguageWorkerProcessThatThrows = new Mock<ILanguageWorkerProcess>();
-            mockLanguageWorkerProcessThatThrows.Setup(m => m.StartProcess()).Throws<FileNotFoundException>();
+            mockLanguageWorkerProcessThatThrows.Setup(m => m.StartProcessAsync()).Throws<FileNotFoundException>();
 
             _workerChannel = new LanguageWorkerChannel(
                _workerId,

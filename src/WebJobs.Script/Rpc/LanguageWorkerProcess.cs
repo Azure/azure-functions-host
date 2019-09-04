@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
-        public Task StartProcess()
+        public Task StartProcessAsync()
         {
             try
             {

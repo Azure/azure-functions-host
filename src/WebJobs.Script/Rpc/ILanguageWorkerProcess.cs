@@ -9,6 +9,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         int Id { get; }
 
-        Task StartProcess();
+        Task StartProcessAsync();
     }
 }

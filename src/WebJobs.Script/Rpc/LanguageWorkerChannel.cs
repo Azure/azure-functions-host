@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
 
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
-            await _languageWorkerProcess.StartProcess();
+            await _languageWorkerProcess.StartProcessAsync();
             _state = LanguageWorkerChannelState.Initializing;
             return _workerInitTask.Task;
         }
