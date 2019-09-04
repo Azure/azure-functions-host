@@ -64,6 +64,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
+        public async Task StartWorkerProcessAsync_TimesOut()
+        {
+            var initTask = _workerChannel.StartWorkerProcessAsync();
+            await Assert.ThrowsAsync<TimeoutException>(async () => await initTask);
+        }
+
+        [Fact]
         public void SendWorkerInitRequest_PublishesOutboundEvent()
         {
             StartStream startStream = new StartStream()
@@ -123,6 +130,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest"));
             Assert.True(functionLoadLogs.Count() == 1);
+        }
+
+        [Fact]
+        public async Task SendSendFunctionEnvironmentReloadRequest_ThrowsTimeout()
+        {
+            var reloadTask = _workerChannel.SendFunctionEnvironmentReloadRequest();
+            await Assert.ThrowsAsync<TimeoutException>(async () => await reloadTask);
         }
 
         [Fact]

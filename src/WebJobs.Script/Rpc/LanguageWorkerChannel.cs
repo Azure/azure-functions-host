@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Http;
@@ -113,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(TimeSpan.FromSeconds(LanguageWorkerConstants.ProcessStartTimeoutSeconds))
                 .Take(1)
-                .Subscribe(SendWorkerInitRequest, HandleWorkerChannelError);
+                .Subscribe(SendWorkerInitRequest, HandleWorkerInitError);
 
             _languageWorkerProcess.StartProcess();
 
@@ -196,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
-                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse)));
+                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse), HandleWorkerEnvReloadError));
 
             IDictionary processEnv = Environment.GetEnvironmentVariables();
 
@@ -386,6 +387,21 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 }, null);
             }
+        }
+
+        internal void HandleWorkerInitError(Exception exc)
+        {
+            _workerInitTask.SetException(exc);
+            if (_disposing)
+            {
+                return;
+            }
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
+        }
+
+        internal void HandleWorkerEnvReloadError(Exception exc)
+        {
+            _reloadTask.SetException(exc);
         }
 
         internal void HandleWorkerChannelError(Exception exc)

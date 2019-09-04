@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return InitializeLanguageWorkerChannel(runtime, _applicationHostOptions.CurrentValue.ScriptPath);
         }
 
-        private async Task<ILanguageWorkerChannel> InitializeLanguageWorkerChannel(string runtime, string scriptRootPath)
+        internal async Task<ILanguageWorkerChannel> InitializeLanguageWorkerChannel(string runtime, string scriptRootPath)
         {
             ILanguageWorkerChannel languageWorkerChannel = null;
             string workerId = Guid.NewGuid().ToString();
@@ -56,8 +56,19 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(scriptRootPath, runtime, null, 0);
                 AddOrUpdateWorkerChannels(runtime, languageWorkerChannel);
-                await languageWorkerChannel.StartWorkerProcessAsync();
-                SetInitializedWorkerChannel(runtime, languageWorkerChannel);
+                await languageWorkerChannel.StartWorkerProcessAsync().ContinueWith(processStartTask =>
+                {
+                    if (processStartTask.Status == TaskStatus.RanToCompletion)
+                    {
+                        _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
+                        SetInitializedWorkerChannel(runtime, languageWorkerChannel);
+                    }
+                    else if (processStartTask.Status == TaskStatus.Faulted)
+                    {
+                        _logger.LogError("Failed to start language worker process for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
+                        SetExceptionOnInitializedWorkerChannel(runtime, languageWorkerChannel, processStartTask.Exception);
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -98,6 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
             }
             _shutdownStandbyWorkerChannels();
+            _logger.LogDebug("Completed language worker channel specialization");
         }
 
         public async Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId)
@@ -191,6 +203,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (channel.TryGetValue(initializedLanguageWorkerChannel.Id, out TaskCompletionSource<ILanguageWorkerChannel> value))
                 {
                     value.SetResult(initializedLanguageWorkerChannel);
+                }
+            }
+        }
+
+        internal void SetExceptionOnInitializedWorkerChannel(string initializedRuntime, ILanguageWorkerChannel initializedLanguageWorkerChannel, Exception exception)
+        {
+            _logger.LogDebug("Failed to initialize webhost language worker channel for runtime: {language}. workerId:{id}", initializedRuntime, initializedLanguageWorkerChannel.Id);
+            if (_workerChannels.TryGetValue(initializedRuntime, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> channel))
+            {
+                if (channel.TryGetValue(initializedLanguageWorkerChannel.Id, out TaskCompletionSource<ILanguageWorkerChannel> value))
+                {
+                    value.SetException(exception);
                 }
             }
         }

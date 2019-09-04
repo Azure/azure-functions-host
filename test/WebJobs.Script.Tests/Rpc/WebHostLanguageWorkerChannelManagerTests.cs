@@ -172,6 +172,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Null(initializedChannel);
         }
 
+        [Fact]
+        public async Task InitializeLanguageWorkerChannel_ThrowsOnProcessStartup()
+        {
+            var languageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, null, _scriptRootPath, throwOnProcessStartUp: true);
+            var languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, languageWorkerChannelFactory, _optionsMonitor);
+            var languageWorkerChannel = await languageWorkerChannelManager.InitializeLanguageWorkerChannel("test", _scriptRootPath);
+            var ex = await Assert.ThrowsAsync<AggregateException>(async () => await languageWorkerChannelManager.GetChannelAsync("test"));
+            Assert.Contains("Process startup failed", ex.InnerException.Message);
+        }
+
         private ILanguageWorkerChannel CreateTestChannel(string language)
         {
             var testChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptRootPath, language, null, 0, null);
