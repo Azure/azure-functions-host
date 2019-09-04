@@ -89,18 +89,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return Task.FromResult<ILanguageWorkerChannel>(null);
         }
 
-        internal Task<ILanguageWorkerChannel> RemoveErroredChannelAsync(string language)
-        {
-            if (!string.IsNullOrEmpty(language) && _workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> workerChannels))
-            {
-                if (workerChannels.Count > 0 && workerChannels.TryGetValue(workerChannels.Keys.First(), out TaskCompletionSource<ILanguageWorkerChannel> valueTask))
-                {
-                    return valueTask.Task;
-                }
-            }
-            return Task.FromResult<ILanguageWorkerChannel>(null);
-        }
-
         public Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> GetChannels(string language)
         {
             if (!string.IsNullOrEmpty(language) && _workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> workerChannels))

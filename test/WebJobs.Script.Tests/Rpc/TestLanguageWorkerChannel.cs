@@ -65,12 +65,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         public async Task<Task> StartWorkerProcessAsync()
         {
+            // To verify FunctionDispatcher transistions
+            await Task.Delay(TimeSpan.FromMilliseconds(100));
+
             if (_throwOnProcessStartUp)
             {
                 throw new ArgumentException("Process startup failed");
             }
-            // To verify FunctionDispatcher transistions
-            await Task.Delay(TimeSpan.FromMilliseconds(100));
             string workerVersion = Guid.NewGuid().ToString();
             IDictionary<string, string> workerCapabilities = new Dictionary<string, string>()
             {

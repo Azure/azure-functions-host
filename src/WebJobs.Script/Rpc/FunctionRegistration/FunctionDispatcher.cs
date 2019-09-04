@@ -207,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogWarning(ex, "Removing errored language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
+                                _logger.LogWarning(ex, "Removing errored webhost language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
                                 await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(_workerRuntime, workerId);
                                 InitializeWebhostLanguageWorkerChannel();
                             }
