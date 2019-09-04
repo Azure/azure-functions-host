@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _managedDependencyOptions);
             languageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
             _jobHostLanguageWorkerChannelManager.AddChannel(languageWorkerChannel);
-            languageWorkerChannel.StartWorkerProcessAsync().Result.ContinueWith(workerInitTask =>
+            languageWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
                  {
                      if (workerInitTask.IsCompleted)
                      {

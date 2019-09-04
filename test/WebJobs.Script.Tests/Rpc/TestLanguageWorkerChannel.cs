@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testLogger.LogInformation("SendInvocationRequest called");
         }
 
-        public async Task<Task> StartWorkerProcessAsync()
+        public async Task StartWorkerProcessAsync()
         {
             // To verify FunctionDispatcher transistions
             await Task.Delay(TimeSpan.FromMilliseconds(100));
@@ -78,7 +78,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 { "test", "testSupported" }
             };
             _state = LanguageWorkerChannelState.Initialized;
-            return Task.CompletedTask;
         }
 
         public void RaiseWorkerError()

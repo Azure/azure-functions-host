@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal ILanguageWorkerProcess WorkerProcess => _languageWorkerProcess;
 
-        public async Task<Task> StartWorkerProcessAsync()
+        public async Task StartWorkerProcessAsync()
         {
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(TimeSpan.FromSeconds(LanguageWorkerConstants.ProcessStartTimeoutSeconds))
@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
             await _languageWorkerProcess.StartProcessAsync();
             _state = LanguageWorkerChannelState.Initializing;
-            return _workerInitTask.Task;
+            await _workerInitTask.Task;
         }
 
         // send capabilities to worker, wait for WorkerInitResponse

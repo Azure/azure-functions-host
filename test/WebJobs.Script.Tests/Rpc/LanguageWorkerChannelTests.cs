@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public async Task StartWorkerProcessAsync_TimesOut()
         {
             var initTask = _workerChannel.StartWorkerProcessAsync();
-            await Assert.ThrowsAsync<TimeoutException>(async () => await initTask.Result);
+            await Assert.ThrowsAsync<TimeoutException>(async () => await initTask);
         }
 
         [Fact]
