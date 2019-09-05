@@ -287,5 +287,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             testRpcServer.Verify(a => a.ShutdownAsync(), Times.Once);
             testRpcServer.Verify(a => a.KillAsync(), Times.Once);
         }
+
+        [Theory]
+        [InlineData("1", "functionsPlaceholderTemplateSite", "1234", true)]
+        [InlineData("0", "functionsPlaceholderTemplateSite", "1234", false)]
+        [InlineData("1", "functionsPlaceholderTemplateSitejava", "1234", false)]
+        [InlineData("1", "functionsPlaceholderTemplateSite", "", true)]
+        public void ShouldStartInPlaceholderMode_Returns_ExpectedValue(string placeholderMode, string siteName, string siteInstanaceId, bool expectedResult)
+        {
+            Mock<IRpcServer> testRpcServer = new Mock<IRpcServer>();
+            var mockEnvironment = new Mock<IEnvironment>();
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode)).Returns(placeholderMode);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns(siteName);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns(siteInstanaceId);
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _logger);
+            Assert.Equal(_rpcInitializationService.ShouldStartInPlaceholderMode(), expectedResult);
+        }
     }
 }

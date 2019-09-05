@@ -150,9 +150,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return Task.CompletedTask;
         }
 
-        private bool ShouldStartInPlaceholderMode()
+        internal bool ShouldStartInPlaceholderMode()
         {
-            return string.IsNullOrEmpty(_workerRuntime) && _environment.IsPlaceholderModeEnabled();
+            if (string.IsNullOrEmpty(_workerRuntime) && _environment.IsPlaceholderModeEnabled())
+            {
+                if (_environment.IsAppServiceWindowsEnvironment())
+                {
+                    string siteName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
+                    return siteName.Equals(ScriptConstants.PlaceholderTemplateSiteName, StringComparison.InvariantCultureIgnoreCase);
+                }
+                return true;
+            }
+            return false;
         }
 
         // To help with unit tests
