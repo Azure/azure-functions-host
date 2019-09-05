@@ -8,13 +8,10 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
-using Microsoft.Azure.WebJobs.Script.Properties;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using NuGet.Versioning;
 
@@ -26,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         private readonly ExtensionBundleOptions _options;
         private readonly ILogger _logger;
         private readonly string _cdnUri;
+        private string _extensionBundleVersion;
 
         public ExtensionBundleManager(ExtensionBundleOptions options, IEnvironment environment, ILoggerFactory loggerFactory)
         {
@@ -33,6 +31,35 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             _logger = loggerFactory.CreateLogger<ExtensionBundleManager>() ?? throw new ArgumentNullException(nameof(loggerFactory));
             _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ExtensionBundleSourceUri) ?? ScriptConstants.ExtensionBundleDefaultSourceUri;
             _options = options ?? throw new ArgumentNullException(nameof(options));
+        }
+
+        public async Task<ExtensionBundleInfo> GetExtensionBundleInfo()
+        {
+            if (IsExtensionBundleConfigured())
+            {
+                if (_extensionBundleVersion == null && TryLocateExtensionBundle(out string path))
+                {
+                    _extensionBundleVersion = Path.GetFileName(path);
+                }
+
+                if (_extensionBundleVersion == null)
+                {
+                    using (var httpClient = new HttpClient())
+                    {
+                        _extensionBundleVersion = await GetLatestMatchingBundleVersion(httpClient);
+                    }
+                }
+
+                return new ExtensionBundleInfo()
+                {
+                    Id = _options.Id,
+                    Version = _extensionBundleVersion
+                };
+            }
+            else
+            {
+                return null;
+            }
         }
 
         public bool IsExtensionBundleConfigured()
@@ -78,8 +105,10 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                     return null;
                 }
 
+                _extensionBundleVersion = latestBundleVersion;
                 bundlePath = await DownloadExtensionBundleAsync(latestBundleVersion, httpClient);
             }
+
             return bundlePath;
         }
 
@@ -117,6 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                     }
                 }
             }
+
             return bundlePath != null;
         }
 

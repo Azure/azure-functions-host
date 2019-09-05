@@ -8,6 +8,7 @@ using System.IO.Compression;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -139,6 +140,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
                 _bundlePath = bundlePath;
                 _isExtensionBundleConfigured = isExtensionBundleConfigured;
             }
+
+            public Task<ExtensionBundleInfo> GetExtensionBundleInfo() => null;
 
             public Task<string> GetExtensionBundlePath(HttpClient httpClient) => Task.FromResult(_bundlePath);
 
