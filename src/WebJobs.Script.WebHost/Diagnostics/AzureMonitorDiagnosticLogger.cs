@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class AzureMonitorDiagnosticLogger : ILogger
     {
-        internal const string AzureMonitorCategoryName = "FunctionExecutionLogs";
+        internal const string AzureMonitorCategoryName = "FunctionAppLogs";
         internal const string AzureMonitorOperationName = "Microsoft.Web/sites/functions/execution";
 
         private readonly string _hostVersion = ScriptHost.Version;
