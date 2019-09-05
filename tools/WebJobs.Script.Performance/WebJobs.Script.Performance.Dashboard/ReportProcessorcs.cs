@@ -16,10 +16,10 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
         private static Dictionary<string, double> RPSThreshold = new Dictionary<string, double>()
         {
             { "C# Ping (VS)", 130},
-            { "Java Ping", 40},
+            { "Java Ping", 60},
             { "JS Ping", 80},
             { "C# Ping", 130},
-            { "PS Ping", 20}
+            { "PS Ping", 60}
         };
 
         public static async Task<string> GetLastDaysHtmlReport(int days, bool onlyWarnings)
