@@ -51,10 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         public Type[] GetStartupTypes()
         {
             IEnumerable<Type> startupTypes = GetExtensionsStartupTypesAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-
-            return startupTypes
-                .Distinct(new TypeNameEqualityComparer())
-                .ToArray();
+            return startupTypes?.Distinct(new TypeNameEqualityComparer()).ToArray() ?? new Type[0];
         }
 
         public async Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()

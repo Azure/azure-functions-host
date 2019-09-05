@@ -191,6 +191,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _isExtensionBundleConfigured = isExtensionBundleConfigured;
             }
 
+            public Task<ExtensionBundleInfo> GetExtensionBundleInfo() => null;
+
             public Task<string> GetExtensionBundlePath(HttpClient httpClient) => Task.FromResult(_bundlePath);
 
             public Task<string> GetExtensionBundlePath() => Task.FromResult(_bundlePath);
