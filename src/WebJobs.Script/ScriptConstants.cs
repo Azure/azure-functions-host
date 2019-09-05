@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string JobHostMiddlewarePipelineRequestDelegate = "MS_JobHostMiddlewarePipelineRequestDelegate";
         public const string HstsMiddlewareRequestDelegate = "MS_HstsMiddlewareRequestDelegate";
 
-        public const string PlaceholderTemplateSiteName = "FunctionsPlaceholderTemplateSite";
+        public const string LegacyPlaceholderTemplateSiteName = "FunctionsPlaceholderTemplateSite";
 
         public const string LogPropertyPrimaryHostKey = "MS_PrimaryHost";
         public const string LogPropertySourceKey = "MS_Source";

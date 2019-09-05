@@ -159,8 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     return true;
                 }
                 // On Windows AppService Env, only start worker processes for legacy template site: FunctionsPlaceholderTemplateSite
-                string siteName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
-                return string.IsNullOrEmpty(siteName) ? false : siteName.Equals(ScriptConstants.PlaceholderTemplateSiteName, StringComparison.InvariantCultureIgnoreCase);
+                return _environment.IsLegacyPlaceholderTemplateSite();
             }
             return false;
         }

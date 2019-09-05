@@ -48,6 +48,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.GetEnvironmentVariable(AzureWebsitePlaceholderMode) == "1";
         }
 
+        public static bool IsLegacyPlaceholderTemplateSite(this IEnvironment environment)
+        {
+            string siteName = environment.GetEnvironmentVariable(AzureWebsiteName);
+            return string.IsNullOrEmpty(siteName) ? false : siteName.Equals(ScriptConstants.LegacyPlaceholderTemplateSiteName, StringComparison.InvariantCultureIgnoreCase);
+        }
+
         public static bool IsEasyAuthEnabled(this IEnvironment environment)
         {
             bool.TryParse(environment.GetEnvironmentVariable(EnvironmentSettingNames.EasyAuthEnabled), out bool isEasyAuthEnabled);
