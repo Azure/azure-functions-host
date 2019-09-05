@@ -258,15 +258,15 @@ $projects =
 foreach ($project in $projects)
 {
 
-  $cmd = "pack", "src\$project\$project.csproj", "-o", "..\..\buildoutput", "--no-build" , "-p:PackageVersion=$extensionVersion"
+  $cmd = "pack", "src\$project\$project.csproj", "-o", "$buildOutput", "--no-build" , "-p:PackageVersion=$extensionVersion"
   
   & dotnet $cmd  
 }
 
-$cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\WebJobs.Script.Performance.App.csproj", "-o", "..\..\..\buildoutput"
+$cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\WebJobs.Script.Performance.App.csproj", "-o", "$buildOutput"
 & dotnet $cmd
 
-$cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "..\..\..\..\buildoutput", "-c", "Release"
+$cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "$buildOutput", "-c", "Release"
 & dotnet $cmd
 
 $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
