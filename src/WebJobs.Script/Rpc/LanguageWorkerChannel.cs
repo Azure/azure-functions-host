@@ -392,12 +392,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void HandleWorkerStartStreamError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "Starting worker process failed");
-            _workerInitTask.SetException(exc);
-            if (_disposing)
-            {
-                return;
-            }
-            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
+            PublishWorkerErrorEvent(exc);
         }
 
         internal void HandleWorkerEnvReloadError(Exception exc)
@@ -409,6 +404,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void HandleWorkerInitError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "Initializing worker process failed");
+            PublishWorkerErrorEvent(exc);
+        }
+
+        private void PublishWorkerErrorEvent(Exception exc)
+        {
+            _workerInitTask.SetException(exc);
             if (_disposing)
             {
                 return;
