@@ -10,7 +10,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Microsoft.AspNetCore.Http.Internal;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -311,7 +311,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     {
                         if (pair.Value != null)
                         {
-                            if ((pair.Value is DefaultHttpRequest) && IsTriggerMetadataPopulatedByWorker())
+                            if ((pair.Value is HttpRequest) && IsTriggerMetadataPopulatedByWorker())
                             {
                                 continue;
                             }
