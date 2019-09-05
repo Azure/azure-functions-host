@@ -154,12 +154,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (string.IsNullOrEmpty(_workerRuntime) && _environment.IsPlaceholderModeEnabled())
             {
-                if (_environment.IsAppServiceWindowsEnvironment())
+                if (_environment.IsLinuxHostingEnvironment())
                 {
-                    string siteName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
-                    return siteName.Equals(ScriptConstants.PlaceholderTemplateSiteName, StringComparison.InvariantCultureIgnoreCase);
+                    return true;
                 }
-                return true;
+                // On Windows AppService Env, only start worker processes for legacy template site: FunctionsPlaceholderTemplateSite
+                string siteName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
+                return string.IsNullOrEmpty(siteName) ? false : siteName.Equals(ScriptConstants.PlaceholderTemplateSiteName, StringComparison.InvariantCultureIgnoreCase);
             }
             return false;
         }
