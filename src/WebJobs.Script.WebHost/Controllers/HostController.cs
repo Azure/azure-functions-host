@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 ProcessUptime = (long)(DateTime.UtcNow - Process.GetCurrentProcess().StartTime).TotalMilliseconds
             };
 
-            var bundleInfo = await _extensionBundleManager.GetExtensionBundleInfo();
+            var bundleInfo = await _extensionBundleManager.GetExtensionBundleDetails();
             if (bundleInfo != null)
             {
                 status.ExtensionBundle = new Models.ExtensionBundle()

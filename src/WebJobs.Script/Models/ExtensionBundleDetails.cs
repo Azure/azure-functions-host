@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Models
 {
-    public class ExtensionBundleInfo
+    public class ExtensionBundleDetails
     {
         public string Id { get; set; }
 

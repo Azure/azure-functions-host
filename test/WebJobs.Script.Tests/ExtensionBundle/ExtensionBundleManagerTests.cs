@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         }
 
         [Fact]
-        public async Task GetExtensionBundleInfo_InvalidBundle_ReturnsVersionAsNull()
+        public async Task GetExtensionBundleDetails_InvalidBundle_ReturnsVersionAsNull()
         {
             var options = GetTestExtensionBundleOptions("InvalidBundleId", "[1.*, 2.0.0)");
             var fileSystemTuple = CreateFileSystem();
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
-            var bundleInfo = await manager.GetExtensionBundleInfo();
+            var bundleInfo = await manager.GetExtensionBundleDetails();
             Assert.Equal(bundleInfo.Id, "InvalidBundleId");
             Assert.Null(bundleInfo.Version);
         }
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Theory]
         [InlineData("[2.*, 3.0.0)")]
         [InlineData("[2.0.0, 3.0.0)")]
-        public async Task GetExtensionBundleInfo_BundlePresentAtProbingLocation_ReturnsTrue(string versionRange)
+        public async Task GetExtensionBundleDetails_BundlePresentAtProbingLocation_ExpectedValue(string versionRange)
         {
             var options = GetTestExtensionBundleOptions(BundleId, versionRange);
             var fileSystemTuple = CreateFileSystem();
@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
-            var bundleInfo = await manager.GetExtensionBundleInfo();
+            var bundleInfo = await manager.GetExtensionBundleDetails();
             Assert.Equal(bundleInfo.Id, BundleId);
             Assert.Equal(bundleInfo.Version, "2.0.2");
         }
@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         }
 
         [Fact]
-        public async Task GetExtensionBundleInfo_BundlePresentAtDownloadLocation_ReturnsCorrectPathAync()
+        public async Task GetExtensionBundleDetails_BundlePresentAtDownloadLocation_ReturnsCorrectPathAync()
         {
             var options = GetTestExtensionBundleOptions(BundleId, "[1.*, 2.0.0)");
             var fileSystemTuple = CreateFileSystem();
@@ -175,17 +175,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
-            var bundleInfo = await manager.GetExtensionBundleInfo();
+            var bundleInfo = await manager.GetExtensionBundleDetails();
             Assert.Equal(bundleInfo.Id, BundleId);
             Assert.Equal(bundleInfo.Version, "1.0.2");
         }
 
         [Fact]
-        public async Task GetExtensionBundleInfo_BundleNotConfigured_ReturnsNull()
+        public async Task GetExtensionBundleDetails_BundleNotConfigured_ReturnsNull()
         {
             ExtensionBundleOptions options = new ExtensionBundleOptions() { Id = null, Version = null };
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
-            var bundleInfo = await manager.GetExtensionBundleInfo();
+            var bundleInfo = await manager.GetExtensionBundleDetails();
             Assert.Null(bundleInfo);
         }
 
