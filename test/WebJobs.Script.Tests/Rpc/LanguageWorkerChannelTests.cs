@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -34,19 +35,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private TestLogger _logger;
         private LanguageWorkerChannel _workerChannel;
         private IEnumerable<FunctionMetadata> _functions = new List<FunctionMetadata>();
+        private WorkerConfig _testWorkerConfig;
 
         public LanguageWorkerChannelTests()
         {
             _logger = new TestLogger("FunctionDispatcherTests");
             _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
-            var testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
-            _mockLanguageWorkerProcess.Setup(m => m.StartProcess());
+            _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
+            _mockLanguageWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
 
             _workerChannel = new LanguageWorkerChannel(
                _workerId,
                _scriptRootPath,
                _eventManager,
-               testWorkerConfig,
+               _testWorkerConfig,
                _mockLanguageWorkerProcess.Object,
                _logger,
                _mockMetricsLogger.Object,
@@ -60,7 +62,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testFunctionRpcService.PublishStartStreamEvent(_workerId);
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             await initTask;
-            _mockLanguageWorkerProcess.Verify(m => m.StartProcess(), Times.Once);
+            _mockLanguageWorkerProcess.Verify(m => m.StartProcessAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task StartWorkerProcessAsync_TimesOut()
+        {
+            var initTask = _workerChannel.StartWorkerProcessAsync();
+            await Assert.ThrowsAsync<TimeoutException>(async () => await initTask);
+        }
+
+        [Fact]
+        public async Task StartWorkerProcessAsync_WorkerProcess_Throws()
+        {
+            Mock<ILanguageWorkerProcess> mockLanguageWorkerProcessThatThrows = new Mock<ILanguageWorkerProcess>();
+            mockLanguageWorkerProcessThatThrows.Setup(m => m.StartProcessAsync()).Throws<FileNotFoundException>();
+
+            _workerChannel = new LanguageWorkerChannel(
+               _workerId,
+               _scriptRootPath,
+               _eventManager,
+               _testWorkerConfig,
+               mockLanguageWorkerProcessThatThrows.Object,
+               _logger,
+               _mockMetricsLogger.Object,
+               0);
+            await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync());
         }
 
         [Fact]
@@ -123,6 +150,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest"));
             Assert.True(functionLoadLogs.Count() == 1);
+        }
+
+        [Fact]
+        public async Task SendSendFunctionEnvironmentReloadRequest_ThrowsTimeout()
+        {
+            var reloadTask = _workerChannel.SendFunctionEnvironmentReloadRequest();
+            await Assert.ThrowsAsync<TimeoutException>(async () => await reloadTask);
         }
 
         [Fact]

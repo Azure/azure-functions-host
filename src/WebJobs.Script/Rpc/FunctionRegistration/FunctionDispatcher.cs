@@ -111,8 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _managedDependencyOptions);
             languageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
             _jobHostLanguageWorkerChannelManager.AddChannel(languageWorkerChannel);
-            languageWorkerChannel.StartWorkerProcessAsync()
-                 .ContinueWith(workerInitTask =>
+            languageWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
                  {
                      if (workerInitTask.IsCompleted)
                      {
@@ -194,14 +193,23 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> webhostLanguageWorkerChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
                 if (webhostLanguageWorkerChannels != null)
                 {
-                    foreach (string workerId in webhostLanguageWorkerChannels.Keys)
+                    foreach (string workerId in webhostLanguageWorkerChannels.Keys.ToList())
                     {
                         if (webhostLanguageWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<ILanguageWorkerChannel> initializedLanguageWorkerChannelTask))
                         {
                             _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
-                            ILanguageWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
-                            initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-                            initializedLanguageWorkerChannel.SendFunctionLoadRequests();
+                            try
+                            {
+                                ILanguageWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
+                                initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
+                                initializedLanguageWorkerChannel.SendFunctionLoadRequests();
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Removing errored webhost language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
+                                await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(_workerRuntime, workerId);
+                                InitializeWebhostLanguageWorkerChannel();
+                            }
                         }
                     }
                     StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);

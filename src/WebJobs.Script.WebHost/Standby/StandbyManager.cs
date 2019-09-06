@@ -6,6 +6,7 @@ using System.IO;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Configuration;
@@ -32,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly HostNameProvider _hostNameProvider;
         private readonly IDisposable _changeTokenCallbackSubscription;
         private readonly TimeSpan _specializationTimerInterval;
+        private readonly IApplicationLifetime _applicationLifetime;
 
         private Timer _specializationTimer;
         private static CancellationTokenSource _standbyCancellationTokenSource = new CancellationTokenSource();
@@ -39,13 +41,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         public StandbyManager(IScriptHostManager scriptHostManager, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider)
-            : this(scriptHostManager, languageWorkerChannelManager, configuration, webHostEnvironment, environment, options, logger, hostNameProvider, TimeSpan.FromMilliseconds(500))
+            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IApplicationLifetime applicationLifetime)
+            : this(scriptHostManager, languageWorkerChannelManager, configuration, webHostEnvironment, environment, options, logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(500))
         {
         }
 
         public StandbyManager(IScriptHostManager scriptHostManager, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, TimeSpan specializationTimerInterval)
+            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IApplicationLifetime applicationLifetime, TimeSpan specializationTimerInterval)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -58,13 +60,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _changeTokenCallbackSubscription = ChangeToken.RegisterChangeCallback(_ => _logger.LogDebug($"{nameof(StandbyManager)}.{nameof(ChangeToken)} callback has fired."), null);
             _specializationTimerInterval = specializationTimerInterval;
+            _applicationLifetime = applicationLifetime;
         }
 
         public static IChangeToken ChangeToken => _standbyChangeToken;
 
         public Task SpecializeHostAsync()
         {
-            return _specializationTask.Value;
+            return _specializationTask.Value.ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                {
+                    // if we fail during specialization for whatever reason
+                    // this is fatal, so we shutdown
+                    _logger.LogError(t.Exception, $"Specialization failed. Shutting down.");
+                    _applicationLifetime.StopApplication();
+                }
+            });
         }
 
         public async Task SpecializeHostCoreAsync()
@@ -86,6 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _hostNameProvider.Reset();
 
             await _languageWorkerChannelManager.SpecializeAsync();
+
             NotifyChange();
             await _scriptHostManager.RestartHostAsync();
             await _scriptHostManager.DelayUntilHostReady();
@@ -165,15 +178,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.LogInformation($"StandbyMode placeholder function directory created");
         }
 
-        private void OnSpecializationTimerTick(object state)
+        private async void OnSpecializationTimerTick(object state)
         {
             if (!_webHostEnvironment.InStandbyMode && _environment.IsContainerReady())
             {
                 _specializationTimer?.Dispose();
                 _specializationTimer = null;
 
-                SpecializeHostAsync().ContinueWith(t => _logger.LogError(t.Exception, "Error specializing host."),
-                    TaskContinuationOptions.OnlyOnFaulted);
+                await SpecializeHostAsync();
             }
         }
 
