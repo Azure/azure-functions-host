@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
-        public async Task<ExtensionBundleInfo> GetExtensionBundleInfo()
+        public async Task<ExtensionBundleDetails> GetExtensionBundleDetails()
         {
             if (IsExtensionBundleConfigured())
             {
@@ -42,24 +42,16 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                     _extensionBundleVersion = Path.GetFileName(path);
                 }
 
-                if (_extensionBundleVersion == null)
-                {
-                    using (var httpClient = new HttpClient())
-                    {
-                        _extensionBundleVersion = await GetLatestMatchingBundleVersion(httpClient);
-                    }
-                }
+                _extensionBundleVersion = _extensionBundleVersion ?? await GetLatestMatchingBundleVersion();
 
-                return new ExtensionBundleInfo()
+                return new ExtensionBundleDetails()
                 {
                     Id = _options.Id,
                     Version = _extensionBundleVersion
                 };
             }
-            else
-            {
-                return null;
-            }
+
+            return null;
         }
 
         public bool IsExtensionBundleConfigured()
@@ -195,6 +187,15 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
             _logger.DownloadComplete(zipUri, filePath);
             return true;
+        }
+
+        private async Task<string> GetLatestMatchingBundleVersion()
+        {
+            using (var httpClient = new HttpClient())
+            {
+                _extensionBundleVersion = await GetLatestMatchingBundleVersion(httpClient);
+                return _extensionBundleVersion;
+            }
         }
 
         private async Task<string> GetLatestMatchingBundleVersion(HttpClient httpClient)
