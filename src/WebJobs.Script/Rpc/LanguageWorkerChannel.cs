@@ -5,10 +5,10 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Http;
@@ -300,34 +300,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         context.ResultSource.SetCanceled();
                         return;
                     }
-
-                    var functionMetadata = context.FunctionMetadata;
-
-                    InvocationRequest invocationRequest = new InvocationRequest()
-                    {
-                        FunctionId = functionMetadata.FunctionId,
-                        InvocationId = context.ExecutionContext.InvocationId.ToString(),
-                    };
-                    foreach (var pair in context.BindingData)
-                    {
-                        if (pair.Value != null)
-                        {
-                            if ((pair.Value is HttpRequest) && IsTriggerMetadataPopulatedByWorker())
-                            {
-                                continue;
-                            }
-                            invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc(_workerChannelLogger, _workerCapabilities));
-                        }
-                    }
-                    foreach (var input in context.Inputs)
-                    {
-                        invocationRequest.InputData.Add(new ParameterBinding()
-                        {
-                            Name = input.name,
-                            Data = input.val.ToRpc(_workerChannelLogger, _workerCapabilities)
-                        });
-                    }
-
+                    InvocationRequest invocationRequest = context.ToRpcInvocationRequest(IsTriggerMetadataPopulatedByWorker(), _workerChannelLogger, _workerCapabilities);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                     SendStreamingMessage(new StreamingMessage

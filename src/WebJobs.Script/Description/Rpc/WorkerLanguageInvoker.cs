@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
@@ -67,6 +68,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Inputs = inputs,
                 ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
                 AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+                Traceparent = Activity.Current?.Id,
+                Attributes = Activity.Current?.Tags,
 
                 // TODO: link up cancellation token to parameter descriptors
                 CancellationToken = CancellationToken.None,
