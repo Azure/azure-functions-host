@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private ILogger _workerChannelLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
         private TaskCompletionSource<bool> _environmentReloadTask;
-        private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>();
+        private TaskCompletionSource<bool> _workerInitTask;
 
         internal LanguageWorkerChannel(
            string workerId,
@@ -111,6 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public async Task StartWorkerProcessAsync()
         {
+            _workerInitTask = new TaskCompletionSource<bool>();
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(TimeSpan.FromSeconds(LanguageWorkerConstants.ProcessStartTimeoutSeconds))
                 .Take(1)
