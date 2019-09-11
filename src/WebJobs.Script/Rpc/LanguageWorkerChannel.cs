@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Capabilities _workerCapabilities;
         private ILogger _workerChannelLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
-        private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>();
+        private TaskCompletionSource<bool> _environmentReloadTask;
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>();
 
         internal LanguageWorkerChannel(
@@ -119,10 +119,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
             await _languageWorkerProcess.StartProcessAsync();
             _state = LanguageWorkerChannelState.Initializing;
-            await _workerInitTask.Task;
         }
 
-        // send capabilities to worker, wait for WorkerInitResponse
+        // Send capabilities to worker, wait for WorkerInitResponse. Happens after "StartStream" message received.
         internal void SendWorkerInitRequest(RpcEvent startEvent)
         {
             _workerChannelLogger.LogDebug("Worker Process started. Received StartStream message");
@@ -146,9 +145,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
             {
                 _workerChannelLogger.LogError(reloadEnvironmentVariablesException, "Failed to reload environment variables");
-                _reloadTask.SetResult(false);
+                _environmentReloadTask?.SetResult(false);
             }
-            _reloadTask.SetResult(true);
+            _environmentReloadTask?.SetResult(true);
         }
 
         internal void WorkerInitResponse(RpcEvent initEvent)
@@ -169,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerInitTask.SetResult(true);
         }
 
-        public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
+        internal void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
         {
             _functions = functions;
             foreach (FunctionMetadata metadata in functions)
@@ -179,9 +178,20 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public void SendFunctionLoadRequests()
+        public async Task LoadFunctionsAsync(IEnumerable<FunctionMetadata> functions)
         {
-            if (_functions != null)
+            SetupFunctionInvocationBuffers(functions);
+
+            // Wait for worker to be initialized before sending environment variables
+            var initialized = await _workerInitTask.Task;
+            var environmentLoaded = true;
+            // Wait for environment language process to be specialized
+            if (_environmentReloadTask != null)
+            {
+                environmentLoaded = await _environmentReloadTask?.Task;
+            }
+
+            if (_functions != null && initialized && environmentLoaded)
             {
                 foreach (FunctionMetadata metadata in _functions)
                 {
@@ -190,25 +200,40 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public Task SendFunctionEnvironmentReloadRequest()
+        /**
+         * This method is called only on placeholder specialization to specialize the worker process.
+         */
+        public async Task ReloadEnvironmentAsync()
         {
-            _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
-            _eventSubscriptions
-                .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
-                .Timeout(workerInitTimeout)
-                .Take(1)
-                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse), HandleWorkerEnvReloadError));
+            // We only want to await on environment reload when it is called during specialization.
+            // Otherwise, this task is null
+            _environmentReloadTask = new TaskCompletionSource<bool>();
+            // Wait for worker to be initialized before sending environment variables
+            var initialized = await _workerInitTask.Task;
 
-            IDictionary processEnv = Environment.GetEnvironmentVariables();
-
-            FunctionEnvironmentReloadRequest request = GetFunctionEnvironmentReloadRequest(processEnv);
-
-            SendStreamingMessage(new StreamingMessage
+            if (initialized)
             {
-                FunctionEnvironmentReloadRequest = request
-            });
+                // Reload environment variables
+                _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
+                _eventSubscriptions
+                    .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
+                    .Timeout(workerInitTimeout)
+                    .Take(1)
+                    .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse), HandleWorkerEnvReloadError));
 
-            return _reloadTask.Task;
+                IDictionary processEnv = Environment.GetEnvironmentVariables();
+                FunctionEnvironmentReloadRequest request = GetFunctionEnvironmentReloadRequest(processEnv);
+
+                SendStreamingMessage(new StreamingMessage
+                {
+                    FunctionEnvironmentReloadRequest = request
+                });
+            }
+            else
+            {
+                _workerChannelLogger.LogDebug("Worker failed initialization. Not sending FunctionEnvironmentReloadRequest.");
+                _environmentReloadTask?.SetResult(false);
+            }
         }
 
         internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
@@ -398,7 +423,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal void HandleWorkerEnvReloadError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "Reloading environment variables failed");
-            _reloadTask.SetException(exc);
+            _environmentReloadTask?.SetException(exc);
         }
 
         internal void HandleWorkerInitError(Exception exc)

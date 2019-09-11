@@ -106,7 +106,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (_workerRuntime != null && languageWorkerChannel != null)
             {
                 _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntime);
-                await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
+                // Send environment reload
+                await languageWorkerChannel.ReloadEnvironmentAsync();
             }
             _shutdownStandbyWorkerChannels();
             _logger.LogDebug("Completed language worker channel specialization");

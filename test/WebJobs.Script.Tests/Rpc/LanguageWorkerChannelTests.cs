@@ -130,22 +130,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
-        public void SendLoadRequests_PublishesOutboundEvents()
+        public async Task SendLoadRequests_PublishesOutboundEvents()
         {
-            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
-            _workerChannel.SendFunctionLoadRequests();
+            // Worker should be initialized and ready to load requests
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
+
+            await _workerChannel.LoadFunctionsAsync(GetTestFunctionsList("node"));
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             Assert.True(functionLoadLogs.Count() == 2);
         }
 
         [Fact]
-        public void SendSendFunctionEnvironmentReloadRequest_PublishesOutboundEvents()
+        public async Task SendSendFunctionEnvironmentReloadRequest_PublishesOutboundEvents()
         {
+            // Worker should be initialized and ready to load requests
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
+
             Environment.SetEnvironmentVariable("TestNull", null);
             Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
             Environment.SetEnvironmentVariable("TestValid", "TestValue");
-            _workerChannel.SendFunctionEnvironmentReloadRequest();
+            await _workerChannel.ReloadEnvironmentAsync();
             _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent();
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest"));
@@ -155,8 +160,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task SendSendFunctionEnvironmentReloadRequest_ThrowsTimeout()
         {
-            var reloadTask = _workerChannel.SendFunctionEnvironmentReloadRequest();
+            var reloadTask = _workerChannel.ReloadEnvironmentAsync();
             await Assert.ThrowsAsync<TimeoutException>(async () => await reloadTask);
+        }
+
+        [Fact]
+        public async Task FunctionLoadRequest_ThrowsTimeout()
+        {
+            var loadTask = _workerChannel.LoadFunctionsAsync(GetTestFunctionsList("node"));
+            // Worker is not initialized, this should timeout
+            await Assert.ThrowsAsync<TimeoutException>(async () => await loadTask);
         }
 
         [Fact]

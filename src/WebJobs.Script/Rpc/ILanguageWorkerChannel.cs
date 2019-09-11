@@ -17,11 +17,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         LanguageWorkerChannelState State { get; }
 
-        void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions);
+        Task LoadFunctionsAsync(IEnumerable<FunctionMetadata> functions);
 
-        void SendFunctionLoadRequests();
-
-        Task SendFunctionEnvironmentReloadRequest();
+        Task ReloadEnvironmentAsync();
 
         Task StartWorkerProcessAsync();
     }
