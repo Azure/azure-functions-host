@@ -110,9 +110,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         // RaiseFunctionsEventVerbose/Info/Warning
         [NonEvent]
         [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
-        protected void WriteEvent(int eventNum, string a, string b, string c, string d, string e, string f, string g, string h, string i, string j, string k)
+        protected void WriteEvent(int eventNum, string a, string b, string c, string d, string e, string f, string g, string h, string i, string j, string k, string l)
         {
-            int count = 11;
+            int count = 12;
             fixed (char* aPtr = a,
                 bPtr = b,
                 cPtr = c,
@@ -123,7 +123,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 hPtr = h,
                 iPtr = i,
                 jPtr = j,
-                kPtr = k)
+                kPtr = k,
+                lPtr = l)
             {
                 EventData* data = stackalloc EventData[count];
                 data[0].DataPointer = (IntPtr)aPtr;
@@ -148,6 +149,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 data[9].Size = (j.Length + 1) * sizeof(char);
                 data[10].DataPointer = (IntPtr)kPtr;
                 data[10].Size = (k.Length + 1) * sizeof(char);
+                data[11].DataPointer = (IntPtr)lPtr;
+                data[11].Size = (l.Length + 1) * sizeof(char);
                 WriteEventCore(eventNum, count, data);
             }
         }
@@ -155,9 +158,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         // RaiseFunctionsEventError
         [NonEvent]
         [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
-        protected void WriteEvent(int eventNum, string a, string b, string c, string d, string e, string f, string g, string h, string i, string j, string k, string l, string m)
+        protected void WriteEvent(int eventNum, string a, string b, string c, string d, string e, string f, string g, string h, string i, string j, string k, string l, string m, string n)
         {
-            int count = 13;
+            int count = 14;
             fixed (char* aPtr = a,
                 bPtr = b,
                 cPtr = c,
@@ -170,7 +173,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 jPtr = j,
                 kPtr = k,
                 lPtr = l,
-                mPtr = m)
+                mPtr = m,
+                nPtr = n)
             {
                 EventData* data = stackalloc EventData[count];
                 data[0].DataPointer = (IntPtr)aPtr;
@@ -199,6 +203,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 data[11].Size = (l.Length + 1) * sizeof(char);
                 data[12].DataPointer = (IntPtr)mPtr;
                 data[12].Size = (m.Length + 1) * sizeof(char);
+                data[13].DataPointer = (IntPtr)nPtr;
+                data[13].Size = (n.Length + 1) * sizeof(char);
                 WriteEventCore(eventNum, count, data);
             }
         }
@@ -206,16 +212,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         // LogFunctionMetricEvent
         [NonEvent]
         [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly")]
-        protected void WriteEvent(int eventNum, string a, string b, string c, string d, long e, long f, long g, long h, string i, string j, string k)
+        protected void WriteEvent(int eventNum, string a, string b, string c, string d, long e, long f, long g, long h, string i, string j, string k, string l)
         {
-            int count = 11;
+            int count = 12;
             fixed (char* aPtr = a,
                 bPtr = b,
                 cPtr = c,
                 dPtr = d,
                 iPtr = i,
                 jPtr = j,
-                kPtr = k)
+                kPtr = k,
+                lPtr = l)
             {
                 EventData* data = stackalloc EventData[count];
                 data[0].DataPointer = (IntPtr)aPtr;
@@ -240,6 +247,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 data[9].Size = (j.Length + 1) * sizeof(char);
                 data[10].DataPointer = (IntPtr)kPtr;
                 data[10].Size = (k.Length + 1) * sizeof(char);
+                data[11].DataPointer = (IntPtr)lPtr;
+                data[11].Size = (l.Length + 1) * sizeof(char);
 
                 WriteEventCore(eventNum, count, data);
             }

@@ -14,5 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public TimeSpan Duration { get; set; }
 
         public string Data { get; set; }
+
+        public string RuntimeSiteName { get; set; }
     }
 }

@@ -194,6 +194,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return null;
         }
 
+        public static string GetRuntimeSiteName(this IEnvironment environment)
+        {
+            string runtimeSiteName = environment.GetEnvironmentVariable(AzureWebsiteRuntimeSiteName);
+            return runtimeSiteName?.ToLowerInvariant();
+        }
+
         public static bool IsContainerReady(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteContainerReady));
