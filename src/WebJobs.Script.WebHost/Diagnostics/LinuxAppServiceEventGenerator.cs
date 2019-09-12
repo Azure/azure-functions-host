@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName,
             string source, string details, string summary, string exceptionType, string exceptionMessage,
-            string functionInvocationId, string hostInstanceId, string activityId)
+            string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName)
         {
             var eventTimestamp = DateTime.UtcNow.ToString(EventTimestampFormat);
             var hostVersion = ScriptHost.Version;
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         }
 
         public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average,
-            long minimum, long maximum, long count, DateTime eventTimestamp, string data)
+            long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName)
         {
             var hostVersion = ScriptHost.Version;
             var logger = _loggerFactory.GetOrCreate(FunctionsMetricsCategory);

@@ -42,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DotnetSkipFirstTimeExperience = "DOTNET_SKIP_FIRST_TIME_EXPERIENCE";
         public const string AzureFilesConnectionString = "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING";
         public const string AzureFilesContentShare = "WEBSITE_CONTENTSHARE";
+        public const string AzureWebsiteRuntimeSiteName = "WEBSITE_DEPLOYMENT_ID";
         public const string FunctionsRuntimeScaleMonitoringEnabled = "FUNCTIONS_RUNTIME_SCALE_MONITORING_ENABLED";
 
         /// <summary>
