@@ -111,7 +111,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _managedDependencyOptions);
             languageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
             _jobHostLanguageWorkerChannelManager.AddChannel(languageWorkerChannel);
-            languageWorkerChannel.LoadFunctionsAsync();
 
             // Start worker process without awaiting
             languageWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
@@ -127,6 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 });
             // Call LoadFunctionsAsync, which will guarantee ordering internally
+            languageWorkerChannel.LoadFunctionsAsync();
             return Task.CompletedTask;
         }
 
@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}.", _workerRuntime);
             ILanguageWorkerChannel workerChannel = await _webHostLanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
-            await workerChannel.LoadFunctionsAsync(_functions);
+            var loadTask = workerChannel.LoadFunctionsAsync(_functions);
         }
 
         internal async void ShutdownWebhostLanguageWorkerChannels()
@@ -203,8 +203,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                             try
                             {
                                 ILanguageWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
-                                // Does this need to be awaited?
-                                await initializedLanguageWorkerChannel.LoadFunctionsAsync(_functions);
+                                // Not awaiting the load because FunctionInvocationBuffers are not set up then
+                                var loadTask = initializedLanguageWorkerChannel.LoadFunctionsAsync(_functions);
                             }
                             catch (Exception ex)
                             {
@@ -262,8 +262,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 }
             }
-            IEnumerable<ILanguageWorkerChannel> workerChannels = webhostChannels == null ? _jobHostLanguageWorkerChannelManager.GetChannels() : webhostChannels.Union(_jobHostLanguageWorkerChannelManager.GetChannels());
-            IEnumerable<ILanguageWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.State == LanguageWorkerChannelState.Initialized);
+            // TODO: optimize so that if there are multiple language worker channels, prioritize initialized.
+            IEnumerable<ILanguageWorkerChannel> initializedWorkers = webhostChannels == null ? _jobHostLanguageWorkerChannelManager.GetChannels() : webhostChannels.Union(_jobHostLanguageWorkerChannelManager.GetChannels());
             if (initializedWorkers.Count() > _maxProcessCount)
             {
                 throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {_maxProcessCount}");
