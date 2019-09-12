@@ -109,6 +109,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         internal Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {
             var languageWorkerChannel = _languageWorkerChannelFactory.CreateLanguageWorkerChannel(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _managedDependencyOptions);
+            languageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
+            _jobHostLanguageWorkerChannelManager.AddChannel(languageWorkerChannel);
+            languageWorkerChannel.LoadFunctionsAsync();
+
             // Start worker process without awaiting
             languageWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
                 {
@@ -123,8 +127,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     }
                 });
             // Call LoadFunctionsAsync, which will guarantee ordering internally
-            languageWorkerChannel.LoadFunctionsAsync(_functions);
-            _jobHostLanguageWorkerChannelManager.AddChannel(languageWorkerChannel);
             return Task.CompletedTask;
         }
 

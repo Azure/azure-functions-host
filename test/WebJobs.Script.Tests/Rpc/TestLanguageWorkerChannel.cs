@@ -42,9 +42,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
         }
 
-        public Task LoadFunctionsAsync(IEnumerable<FunctionMetadata> functions)
+        public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
         {
             _testLogger.LogInformation("SetupFunctionInvocationBuffers called");
+        }
+
+        public Task LoadFunctionsAsync(IEnumerable<FunctionMetadata> functions = null)
+        {
+            if (functions != null)
+            {
+                SetupFunctionInvocationBuffers(functions);
+            }
             _testLogger.LogInformation("RegisterFunctions called");
             return Task.CompletedTask;
         }

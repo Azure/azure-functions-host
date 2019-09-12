@@ -169,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerInitTask.SetResult(true);
         }
 
-        internal void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
+        public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
         {
             _functions = functions;
             foreach (FunctionMetadata metadata in functions)
@@ -179,9 +179,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public async Task LoadFunctionsAsync(IEnumerable<FunctionMetadata> functions)
+        public async Task LoadFunctionsAsync(IEnumerable<FunctionMetadata> functions = null)
         {
-            SetupFunctionInvocationBuffers(functions);
+            if (functions != null)
+            {
+                SetupFunctionInvocationBuffers(functions);
+            }
 
             // Wait for worker to be initialized before sending environment variables
             var initialized = await _workerInitTask.Task;
