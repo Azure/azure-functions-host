@@ -19,11 +19,19 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
         private const string ProfilePs1FileName = "profile.ps1";
         private const string RequirementsPsd1FileName = "requirements.psd1";
 
+        private const string RequirementsPsd1ResourceFileName = "Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell.requirements.psd1";
+        private const string ProfilePs1ResourceFileName = "Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell.profile.ps1";
+
         private readonly ILogger _logger;
 
-        public PowerShellFileProvisioner(ILogger logger)
+        public PowerShellFileProvisioner(ILoggerFactory loggerFactory)
         {
-            _logger = logger;
+            if (loggerFactory == null)
+            {
+                throw new ArgumentNullException(nameof(loggerFactory));
+            }
+
+            _logger = loggerFactory.CreateLogger<FuncAppFileProvisionerFactory>();
         }
 
         /// <summary>
@@ -45,12 +53,13 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
 
         private void AddRequirementsFile(string scriptRootPath)
         {
-            _logger.LogInformation($"Creating {RequirementsPsd1FileName}.");
             string requirementsFilePath = Path.Combine(scriptRootPath, RequirementsPsd1FileName);
 
             if (!File.Exists(requirementsFilePath))
             {
-                string requirementsContent = FileUtility.ReadResourceString($"Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell.requirements.psd1");
+                _logger.LogDebug($"Creating {RequirementsPsd1FileName} at {scriptRootPath}");
+
+                string requirementsContent = FileUtility.ReadResourceString(RequirementsPsd1ResourceFileName);
                 string guidance = null;
 
                 try
@@ -63,29 +72,29 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
                 catch
                 {
                     guidance = "Uncomment the next line and replace the MAJOR_VERSION, e.g., 'Az' = '2.*'";
-                    _logger.LogWarning($"Failed to get Az module version. Edit the {RequirementsPsd1FileName} file when the powershellgallery.com is accessible.");
+                    _logger.LogDebug($"Failed to get Az module version. Edit the {RequirementsPsd1FileName} file when the powershellgallery.com is accessible.");
                 }
 
                 requirementsContent = Regex.Replace(requirementsContent, "GUIDANCE", guidance ?? string.Empty);
                 File.WriteAllText(requirementsFilePath, requirementsContent);
 
-                _logger.LogInformation($"{RequirementsPsd1FileName} created sucessfully.");
+                _logger.LogDebug($"{RequirementsPsd1FileName} created sucessfully.");
             }
         }
 
         private void AddProfileFile(string scriptRootPath)
         {
-            _logger.LogInformation($"Creating {ProfilePs1FileName}.");
-
             string profileFilePath = Path.Combine(scriptRootPath, ProfilePs1FileName);
 
             if (!File.Exists(profileFilePath))
             {
-                string content = FileUtility.ReadResourceString($"Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell.profile.ps1");
-                File.WriteAllText(profileFilePath, content);
-            }
+                _logger.LogDebug($"Creating {ProfilePs1FileName} at {scriptRootPath}");
 
-            _logger.LogInformation($"{ProfilePs1FileName} created sucessfully.");
+                string content = FileUtility.ReadResourceString(ProfilePs1ResourceFileName);
+                File.WriteAllText(profileFilePath, content);
+
+                _logger.LogDebug($"{ProfilePs1FileName} created sucessfully.");
+            }
         }
 
         protected virtual string GetLatestAzModuleMajorVersion()
@@ -135,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
             // If we could not find the latest module version, error out.
             if (throwException || string.IsNullOrEmpty(latestMajorVersion))
             {
-                throw new Exception($@"Fail to get module version for {AzModuleName}.");
+                throw new Exception($@"Failed to get module version for {AzModuleName}.");
             }
 
             return latestMajorVersion;
@@ -155,15 +164,23 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
                 doc.Load(reader);
             }
 
+            const string AtomPrefix = "ps";
+            const string AtomUri = "http://www.w3.org/2005/Atom";
+            const string DataServicePrefix = "d";
+            const string DataServiceUri = "http://schemas.microsoft.com/ado/2007/08/dataservices";
+            const string MetadaPrefix = "m";
+            const string MetadataUri = "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata";
+            const string XPathExpression = "//m:properties[d:IsPrerelease = \"false\"]/d:Version";
+
             // Add the namespaces for the gallery xml content
             XmlNamespaceManager nsmgr = new XmlNamespaceManager(doc.NameTable);
-            nsmgr.AddNamespace("ps", "http://www.w3.org/2005/Atom");
-            nsmgr.AddNamespace("d", "http://schemas.microsoft.com/ado/2007/08/dataservices");
-            nsmgr.AddNamespace("m", "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata");
+            nsmgr.AddNamespace(AtomPrefix, AtomUri);
+            nsmgr.AddNamespace(DataServicePrefix, DataServiceUri);
+            nsmgr.AddNamespace(MetadaPrefix, MetadataUri);
 
             // Find the version information
             XmlNode root = doc.DocumentElement;
-            var props = root.SelectNodes("//m:properties[d:IsPrerelease = \"false\"]/d:Version", nsmgr);
+            var props = root.SelectNodes(XPathExpression, nsmgr);
 
             Version latestVersion = null;
 

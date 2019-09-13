@@ -7,10 +7,10 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.AppService.Proxy.Common.Constants;
 using Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
@@ -21,12 +21,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         private const string RequirementsPsd1FileName = "requirements.psd1";
 
         private readonly string _scriptRootPath;
-        private TestLogger _logger;
+
+        private readonly ILoggerFactory _loggerFactory = new LoggerFactory();
+        private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
 
         public PowerShellFileProvisionerTests()
         {
-            _logger = new TestLogger("PowerShellFileProvisionerTests");
             _scriptRootPath = Path.GetTempPath();
+            _loggerFactory = new LoggerFactory();
+            _loggerFactory.AddProvider(_loggerProvider);
         }
 
         [Fact]
@@ -34,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         {
             EnsurePowerShellFilesDoNotExist(_scriptRootPath);
 
-            var powerShellFileProvisioner = new TestPowerShellFileProvisioner(_logger);
+            var powerShellFileProvisioner = new TestPowerShellFileProvisioner(_loggerFactory);
             await powerShellFileProvisioner.ProvisionFiles(_scriptRootPath);
 
             File.Exists(Path.Combine(_scriptRootPath, RequirementsPsd1FileName));
@@ -52,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
 ";
             Assert.Equal(ExpectedContent, requirementsContent, StringComparer.OrdinalIgnoreCase);
 
-            ValidateLogs(_logger);
+            ValidateLogs(_loggerProvider, _scriptRootPath);
         }
 
         [Fact]
@@ -60,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         {
             EnsurePowerShellFilesDoNotExist(_scriptRootPath);
 
-            var powerShellFileProvisioner = new TestPowerShellFileProvisioner(_logger);
+            var powerShellFileProvisioner = new TestPowerShellFileProvisioner(_loggerFactory);
             powerShellFileProvisioner.GetLatestAzModuleMajorVersionThrowsException = true;
             await powerShellFileProvisioner.ProvisionFiles(_scriptRootPath);
 
@@ -79,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
 ";
             Assert.Equal(ExpectedContent, requirementsContent, StringComparer.OrdinalIgnoreCase);
 
-            ValidateLogs(_logger, unableToReachPSGallery: true);
+            ValidateLogs(_loggerProvider, _scriptRootPath, unableToReachPSGallery: true);
         }
 
         [Theory]
@@ -87,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         [InlineData("")]
         public async Task AugmentFiles_EmptyScriptRootPath_Test(string scriptRootPath)
         {
-            var powerShellFileProvisioner = new PowerShellFileProvisioner(_logger);
+            var powerShellFileProvisioner = new PowerShellFileProvisioner(_loggerFactory);
             Exception ex = await Assert.ThrowsAsync<ArgumentException>(async () => await powerShellFileProvisioner.ProvisionFiles(scriptRootPath));
             Assert.True(ex is ArgumentException);
         }
@@ -128,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
   </entry>
 </feed>";
 
-            var powerShellFileProvisioner = new PowerShellFileProvisioner(_logger);
+            var powerShellFileProvisioner = new PowerShellFileProvisioner(_loggerFactory);
 
             using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(StreamContent)))
             {
@@ -149,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
   <link rel=""self"" href=""https://www.powershellgallery.com/api/v2/Packages"" />
 </feed>";
 
-            var powerShellFileProvisioner = new PowerShellFileProvisioner(_logger);
+            var powerShellFileProvisioner = new PowerShellFileProvisioner(_loggerFactory);
 
             using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(StreamContent)))
             {
@@ -164,12 +167,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
             File.Delete(Path.Combine(functionAppRootPath, ProfilePs1FileName));
         }
 
-        private void ValidateLogs(TestLogger logger, bool unableToReachPSGallery = false)
+        private void ValidateLogs(TestLoggerProvider loggerProvider, string functionAppRoot, bool unableToReachPSGallery = false)
         {
             List<string> expectedLogs = new List<string>();
-            expectedLogs.Add($"Creating {RequirementsPsd1FileName}.");
+            expectedLogs.Add($"Creating {RequirementsPsd1FileName} at {functionAppRoot}");
             expectedLogs.Add($"{RequirementsPsd1FileName} created sucessfully.");
-            expectedLogs.Add($"Creating {ProfilePs1FileName}.");
+            expectedLogs.Add($"Creating {ProfilePs1FileName} at {functionAppRoot}");
             expectedLogs.Add($"{ProfilePs1FileName} created sucessfully.");
 
             if (unableToReachPSGallery)
@@ -177,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
                 expectedLogs.Add("Failed to get Az module version. Edit the requirements.psd1 file when the powershellgallery.com is accessible.");
             }
 
-            var logs = logger.GetLogMessages();
+            var logs = loggerProvider.GetAllLogMessages();
             foreach (string log in expectedLogs)
             {
                 Assert.True(logs.Any(l => string.Equals(l.FormattedMessage, log)));

@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
 {
     internal class TestPowerShellFileProvisioner : PowerShellFileProvisioner
     {
-        internal TestPowerShellFileProvisioner(ILogger logger) : base(logger) { }
+        internal TestPowerShellFileProvisioner(ILoggerFactory loggerFactory) : base(loggerFactory) { }
 
         public bool GetLatestAzModuleMajorVersionThrowsException { get; set; }
 
@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         {
             if (GetLatestAzModuleMajorVersionThrowsException)
             {
-                throw new Exception($@"Fail to get module version for 'Az'.");
+                throw new Exception($@"Failed to get module version for 'Az'.");
             }
 
             return "2";

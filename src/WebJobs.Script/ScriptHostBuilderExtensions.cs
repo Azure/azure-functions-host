@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
             });
 
-            RegisterFileProvisioningService(builder, loggerFactory);
+            RegisterFileProvisioningService(builder);
             return builder;
         }
 
@@ -282,14 +282,13 @@ namespace Microsoft.Azure.WebJobs.Script
             return options;
         }
 
-        private static void RegisterFileProvisioningService(IHostBuilder builder, ILoggerFactory loggerFactory)
+        private static void RegisterFileProvisioningService(IHostBuilder builder)
         {
             if (string.Equals(Environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell"))
             {
-                var funcAppFileProvisionerFactory = new FuncAppFileProvisionerFactory(loggerFactory);
                 builder.ConfigureServices(services =>
                 {
-                    services.AddSingleton<IFuncAppFileProvisionerFactory>(_ => funcAppFileProvisionerFactory);
+                    services.AddSingleton<IFuncAppFileProvisionerFactory, FuncAppFileProvisionerFactory>();
                     services.AddSingleton<IHostedService, FuncAppFileProvisioningService>();
                 });
             }

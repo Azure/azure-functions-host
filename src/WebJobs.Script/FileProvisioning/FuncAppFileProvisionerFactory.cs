@@ -9,16 +9,11 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
 {
     internal class FuncAppFileProvisionerFactory : IFuncAppFileProvisionerFactory
     {
-        private readonly ILogger _logger;
+        private readonly ILoggerFactory _loggerFactory;
 
         public FuncAppFileProvisionerFactory(ILoggerFactory loggerFactory)
         {
-            if (loggerFactory == null)
-            {
-                throw new ArgumentNullException(nameof(loggerFactory));
-            }
-
-            _logger = loggerFactory.CreateLogger<FuncAppFileProvisionerFactory>();
+            _loggerFactory = loggerFactory;
         }
 
         public IFuncAppFileProvisioner CreatFileProvisioner(string runtime)
@@ -31,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
             switch (runtime.ToLowerInvariant())
             {
                 case "powershell":
-                    return new PowerShellFileProvisioner(_logger);
+                    return new PowerShellFileProvisioner(_loggerFactory);
                 default:
                     return null;
             }
