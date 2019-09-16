@@ -213,5 +213,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             Dispose(true);
         }
+
+        internal static async Task SetAppOfflineState(string rootPath, bool offline)
+        {
+            string path = Path.Combine(rootPath, ScriptConstants.AppOfflineFileName);
+            bool offlineFileExists = System.IO.File.Exists(path);
+
+            if (offline && !offlineFileExists)
+            {
+                // create the app_offline.htm file in the root script directory
+                string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.{ScriptConstants.AppOfflineFileName}");
+                await FileUtility.WriteAsync(path, content);
+            }
+            else if (!offline && offlineFileExists)
+            {
+                // delete the app_offline.htm file
+                await Utility.InvokeWithRetriesAsync(() =>
+                {
+                    if (System.IO.File.Exists(path))
+                    {
+                        System.IO.File.Delete(path);
+                    }
+                }, maxRetries: 3, retryInterval: TimeSpan.FromSeconds(1));
+            }
+        }
     }
 }
