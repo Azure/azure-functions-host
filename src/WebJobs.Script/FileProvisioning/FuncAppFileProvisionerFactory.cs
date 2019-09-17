@@ -3,11 +3,19 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
 {
     internal class FuncAppFileProvisionerFactory : IFuncAppFileProvisionerFactory
     {
+        private readonly ILoggerFactory _loggerFactory;
+
+        public FuncAppFileProvisionerFactory(ILoggerFactory loggerFactory)
+        {
+            _loggerFactory = loggerFactory;
+        }
+
         public IFuncAppFileProvisioner CreatFileProvisioner(string runtime)
         {
             if (string.IsNullOrWhiteSpace(runtime))
@@ -18,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
             switch (runtime.ToLowerInvariant())
             {
                 case "powershell":
-                    return new PowerShellFileProvisioner();
+                    return new PowerShellFileProvisioner(_loggerFactory);
                 default:
                     return null;
             }
