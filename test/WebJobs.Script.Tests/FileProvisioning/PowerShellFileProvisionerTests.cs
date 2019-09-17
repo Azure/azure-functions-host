@@ -21,16 +21,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         private const string RequirementsPsd1FileName = "requirements.psd1";
 
         private const string RequirementsPsd1PSGalleryOnlineResourceFileName =
-            "Microsoft.Azure.WebJobs.Script.Tests.FileProvisioning.PowerShell.requirements_PSGalleryOnline.psd1";
+            "Microsoft.Azure.WebJobs.Script.Tests.Resources.FileProvisioning.PowerShell.requirements_PSGalleryOnline.psd1";
 
         private const string RequirementsPsd1PSGalleryOfflineResourceFileName =
-            "Microsoft.Azure.WebJobs.Script.Tests.FileProvisioning.PowerShell.requirements_PSGalleryOffline.psd1";
+            "Microsoft.Azure.WebJobs.Script.Tests.Resources.FileProvisioning.PowerShell.requirements_PSGalleryOffline.psd1";
 
         private const string PSGallerySampleFeedResourceFileName =
-            "Microsoft.Azure.WebJobs.Script.Tests.FileProvisioning.PowerShell.PSGallerySampleFeed.xml";
+            "Microsoft.Azure.WebJobs.Script.Tests.Resources.FileProvisioning.PowerShell.PSGallerySampleFeed.xml";
 
         private const string PSGalleryEmptyFeedResourceFileName =
-            "Microsoft.Azure.WebJobs.Script.Tests.FileProvisioning.PowerShell.PSGalleryEmptyFeed.xml";
+            "Microsoft.Azure.WebJobs.Script.Tests.Resources.FileProvisioning.PowerShell.PSGalleryEmptyFeed.xml";
 
         private readonly string _scriptRootPath;
         private readonly ILoggerFactory _loggerFactory = new LoggerFactory();
