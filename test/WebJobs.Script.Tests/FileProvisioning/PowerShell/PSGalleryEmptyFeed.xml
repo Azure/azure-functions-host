@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<feed
+    xml:base="https://www.powershellgallery.com/api/v2"
+    xmlns="http://www.w3.org/2005/Atom"
+    xmlns:d="http://schemas.microsoft.com/ado/2007/08/dataservices"
+    xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata">
+  <link rel="self" href="https://www.powershellgallery.com/api/v2/Packages" />
+</feed>

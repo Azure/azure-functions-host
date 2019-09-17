@@ -20,8 +20,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         private const string ProfilePs1FileName = "profile.ps1";
         private const string RequirementsPsd1FileName = "requirements.psd1";
 
-        private readonly string _scriptRootPath;
+        private const string RequirementsPsd1PSGalleryOnlineResourceFileName =
+            "Microsoft.Azure.WebJobs.Script.Tests.FileProvisioning.PowerShell.requirements_PSGalleryOnline.psd1";
 
+        private const string RequirementsPsd1PSGalleryOfflineResourceFileName =
+            "Microsoft.Azure.WebJobs.Script.Tests.FileProvisioning.PowerShell.requirements_PSGalleryOffline.psd1";
+
+        private const string PSGallerySampleFeedResourceFileName =
+            "Microsoft.Azure.WebJobs.Script.Tests.FileProvisioning.PowerShell.PSGallerySampleFeed.xml";
+
+        private const string PSGalleryEmptyFeedResourceFileName =
+            "Microsoft.Azure.WebJobs.Script.Tests.FileProvisioning.PowerShell.PSGalleryEmptyFeed.xml";
+
+        private readonly string _scriptRootPath;
         private readonly ILoggerFactory _loggerFactory = new LoggerFactory();
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
 
@@ -44,16 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
             File.Exists(Path.Combine(_scriptRootPath, ProfilePs1FileName));
 
             string requirementsContent = File.ReadAllText(Path.Combine(_scriptRootPath, RequirementsPsd1FileName));
-
-            const string ExpectedContent = @"# This file enables modules to be automatically managed by the Functions service.
-# See https://aka.ms/functionsmanageddependency for additional information.
-#
-@{
-    # For latest supported version, go to 'https://www.powershellgallery.com/packages/Az'. 
-    'Az' = '2.*'
-}
-";
-            Assert.Equal(ExpectedContent, requirementsContent, StringComparer.OrdinalIgnoreCase);
+            string expectedContent = FileUtility.ReadResourceString(RequirementsPsd1PSGalleryOnlineResourceFileName);
+            Assert.Equal(expectedContent, requirementsContent, StringComparer.OrdinalIgnoreCase);
 
             ValidateLogs(_loggerProvider, _scriptRootPath);
         }
@@ -63,24 +66,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         {
             EnsurePowerShellFilesDoNotExist(_scriptRootPath);
 
-            var powerShellFileProvisioner = new TestPowerShellFileProvisioner(_loggerFactory);
-            powerShellFileProvisioner.GetLatestAzModuleMajorVersionThrowsException = true;
+            var powerShellFileProvisioner = new TestPowerShellFileProvisioner(_loggerFactory)
+            {
+                GetLatestAzModuleMajorVersionThrowsException = true
+            };
             await powerShellFileProvisioner.ProvisionFiles(_scriptRootPath);
 
             File.Exists(Path.Combine(_scriptRootPath, RequirementsPsd1FileName));
             File.Exists(Path.Combine(_scriptRootPath, ProfilePs1FileName));
 
             string requirementsContent = File.ReadAllText(Path.Combine(_scriptRootPath, RequirementsPsd1FileName));
-
-            const string ExpectedContent = @"# This file enables modules to be automatically managed by the Functions service.
-# See https://aka.ms/functionsmanageddependency for additional information.
-#
-@{
-    # For latest supported version, go to 'https://www.powershellgallery.com/packages/Az'. Uncomment the next line and replace the MAJOR_VERSION, e.g., 'Az' = '2.*'
-    # 'Az' = 'MAJOR_VERSION.*'
-}
-";
-            Assert.Equal(ExpectedContent, requirementsContent, StringComparer.OrdinalIgnoreCase);
+            string expectedContent = FileUtility.ReadResourceString(RequirementsPsd1PSGalleryOfflineResourceFileName);
+            Assert.Equal(expectedContent, requirementsContent, StringComparer.OrdinalIgnoreCase);
 
             ValidateLogs(_loggerProvider, _scriptRootPath, unableToReachPSGallery: true);
         }
@@ -98,42 +95,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         [Fact]
         public void FindLatestMajorVersionTest()
         {
-            const string StreamContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
-<feed
-    xml:base=""https://www.powershellgallery.com/api/v2""
-    xmlns=""http://www.w3.org/2005/Atom""
-    xmlns:d=""http://schemas.microsoft.com/ado/2007/08/dataservices""
-    xmlns:m=""http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"">
-  <link rel=""self"" href=""https://www.powershellgallery.com/api/v2/Packages"" />
-  <entry>
-    <m:properties>
-      <d:Version>5.1.2.3</d:Version>
-      <d:IsPrerelease m:type=""Edm.Boolean"">false</d:IsPrerelease>
-    </m:properties>
-  </entry>
-  <entry>
-    <m:properties>
-      <d:Version>7.1.2.6</d:Version>
-      <d:IsPrerelease m:type=""Edm.Boolean"">false</d:IsPrerelease>
-    </m:properties>
-  </entry>
-  <entry>
-    <m:properties>
-      <d:Version>3.1.3.5</d:Version>
-      <d:IsPrerelease m:type=""Edm.Boolean"">false</d:IsPrerelease>
-    </m:properties>
-  </entry>
-<entry>
-    <m:properties>
-      <d:Version>1.2.3.5</d:Version>
-      <d:IsPrerelease m:type=""Edm.Boolean"">false</d:IsPrerelease>
-    </m:properties>
-  </entry>
-</feed>";
-
             var powerShellFileProvisioner = new PowerShellFileProvisioner(_loggerFactory);
 
-            using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(StreamContent)))
+            string streamContent = FileUtility.ReadResourceString(PSGallerySampleFeedResourceFileName);
+            using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(streamContent)))
             {
                 string version = powerShellFileProvisioner.GetModuleMajorVersion(stream);
                 Assert.Equal("7", version);
@@ -143,18 +108,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         [Fact]
         public void ReturnNullIfVersionNotFoundTest()
         {
-            const string StreamContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
-<feed
-    xml:base=""https://www.powershellgallery.com/api/v2""
-    xmlns=""http://www.w3.org/2005/Atom""
-    xmlns:d=""http://schemas.microsoft.com/ado/2007/08/dataservices""
-    xmlns:m=""http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"">
-  <link rel=""self"" href=""https://www.powershellgallery.com/api/v2/Packages"" />
-</feed>";
-
             var powerShellFileProvisioner = new PowerShellFileProvisioner(_loggerFactory);
 
-            using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(StreamContent)))
+            string streamContent = FileUtility.ReadResourceString(PSGalleryEmptyFeedResourceFileName);
+            using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(streamContent)))
             {
                 string version = powerShellFileProvisioner.GetModuleMajorVersion(stream);
                 Assert.Equal(null, version);
