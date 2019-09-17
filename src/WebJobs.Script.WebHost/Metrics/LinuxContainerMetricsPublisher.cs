@@ -7,6 +7,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Formatting;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -59,9 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private int _errorCount = 0;
         private string _stampName;
 
-        public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerMetricsPublisher> logger, HttpClient httpClient, HostNameProvider hostNameProvider)
+        public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerMetricsPublisher> logger, HostNameProvider hostNameProvider, HttpClient httpClient = null)
         {
-            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -77,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             _containerName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName);
 
+            _httpClient = (httpClient != null) ? httpClient : CreateMetricsPublisherHttpClient();
             if (_standbyOptions.CurrentValue.InStandbyMode)
             {
                 _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => OnStandbyOptionsChange());
@@ -93,6 +95,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             {
                 Start();
             }
+        }
+
+        private HttpClient CreateMetricsPublisherHttpClient()
+        {
+            var clientHandler = new HttpClientHandler();
+            clientHandler.ServerCertificateCustomValidationCallback = ValidateRemoteCertificate;
+            return new HttpClient(clientHandler);
+        }
+
+        private bool ValidateRemoteCertificate(HttpRequestMessage httpRequestMessage, X509Certificate2 certificate, X509Chain certificateChain, SslPolicyErrors sslPolicyErrors)
+        {
+            if (sslPolicyErrors == SslPolicyErrors.None)
+            {
+                return true;
+            }
+
+            bool validateCertificateResult = (sslPolicyErrors == SslPolicyErrors.RemoteCertificateNameMismatch) && certificateChain.Build(certificate);
+
+            if (!validateCertificateResult)
+            {
+                if (certificateChain.ChainStatus.Any(s => s.Status != X509ChainStatusFlags.NoError))
+                {
+                    _logger.LogError($"Failed to build remote certificate chain for {httpRequestMessage.RequestUri} with error {certificateChain.ChainStatus.First(chain => chain.Status != X509ChainStatusFlags.NoError).Status}");
+                }
+                else
+                {
+                    _logger.LogError($"Failed to validate certificate for {httpRequestMessage.RequestUri} with error {sslPolicyErrors}");
+                }
+            }
+            return validateCertificateResult;
         }
 
         public void AddFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan, string executionId, DateTime eventTimeStamp, DateTime functionStartTime)
