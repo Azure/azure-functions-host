@@ -46,6 +46,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             LanguageWorkerConstants.JavaLanguageWorkerName
         };
 
+        private List<string> _placeholderPoolWhitelistedRuntimes = new List<string>()
+        {
+            LanguageWorkerConstants.JavaLanguageWorkerName,
+            LanguageWorkerConstants.NodeLanguageWorkerName
+        };
+
         public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, ILogger<RpcInitializationService> logger)
         {
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
@@ -116,12 +122,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal Task InitializeChannelsAsync()
         {
-            if (ShouldStartInPlaceholderMode())
+            if (ShouldStartAsPlaceholderPool())
+            {
+                return _webHostlanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
+            }
+            else if (ShouldStartInPlaceholderMode())
             {
                 return InitializePlaceholderChannelsAsync();
             }
-
-            return InitializeWebHostRuntimeChannelsAsync();
+            else
+            {
+                return InitializeWebHostRuntimeChannelsAsync();
+            }
         }
 
         private Task InitializePlaceholderChannelsAsync()
@@ -162,6 +174,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 return _environment.IsLegacyPlaceholderTemplateSite();
             }
             return false;
+        }
+
+        internal bool ShouldStartAsPlaceholderPool()
+        {
+            // We are in placeholder mode but a worker runtime IS set
+            return _environment.IsPlaceholderModeEnabled() && _placeholderPoolWhitelistedRuntimes.Contains(_workerRuntime);
         }
 
         // To help with unit tests

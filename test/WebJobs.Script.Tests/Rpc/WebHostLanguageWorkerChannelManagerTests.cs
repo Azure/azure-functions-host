@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _languageWorkerProcessFactory = new Mock<ILanguageWorkerProcessFactory>();
             _languageWorkerProcessFactory.Setup(m => m.CreateLanguageWorkerProcess(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(_languageWorkerProcess.Object);
 
-            _languageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, null, _scriptRootPath);
+            _languageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, new TestLogger("WebHostLanguageWorkerChannelManagerTests"), _scriptRootPath);
             _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
         }
 
@@ -143,6 +143,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _languageWorkerChannelManager.ScheduleShutdownStandbyChannels();
 
             var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
+            Assert.Null(initializedChannel);
+        }
+
+        [Fact]
+        public async Task SpecializeAsync_Node_ReadOnly_KeepsProcessAlive()
+        {
+            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
+
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
+
+            ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
+
+            await _languageWorkerChannelManager.SpecializeAsync();
+
+            var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName);
+            Assert.Equal(nodeWorkerChannel, initializedChannel);
+        }
+
+        [Fact]
+        public async Task SpecializeAsync_Node_NotReadOnly_KillsProcess()
+        {
+            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
+            // This is an invalid setting configuration, but just to show that run from zip is NOT set
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "0");
+
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
+
+            ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
+
+            await _languageWorkerChannelManager.SpecializeAsync();
+
+            var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName);
             Assert.Null(initializedChannel);
         }
 

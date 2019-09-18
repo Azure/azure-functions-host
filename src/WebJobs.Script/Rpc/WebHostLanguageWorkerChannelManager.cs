@@ -102,11 +102,22 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _logger.LogInformation("Starting language worker channel specialization");
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
+
             ILanguageWorkerChannel languageWorkerChannel = await GetChannelAsync(_workerRuntime);
             if (_workerRuntime != null && languageWorkerChannel != null)
             {
-                _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntime);
-                await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
+                // TODO: remove this if/else once RFZ is supported. Only support sending function environment reload requests
+                if (_environment.FileSystemIsReadOnly())
+                {
+                    _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntime);
+                    await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
+                }
+                else
+                {
+                    // If we need to allow file edits, we should shutdown the webhost channel on specialization.
+                    _workerChannels.TryRemove(_workerRuntime, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> languageWorkerChannels);
+                    await ShutdownChannelIfExistsAsync(_workerRuntime, languageWorkerChannel.Id);
+                }
             }
             _shutdownStandbyWorkerChannels();
             _logger.LogDebug("Completed language worker channel specialization");
