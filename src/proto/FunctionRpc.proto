@@ -255,6 +255,21 @@ message InvocationRequest {
 
   // binding metadata from trigger
   map<string, TypedData> trigger_metadata = 4;
+
+  // Populates activityId, tracestate and tags from host
+  RpcTraceContext trace_context = 5;
+}
+
+// Host sends ActivityId, traceStateString and Tags from host
+message RpcTraceContext {
+	// This corresponds to Activity.Current?.Id
+	string trace_parent = 1;
+
+	// This corresponds to Activity.Current?.TraceStateString
+	string trace_state = 2;
+
+	// This corresponds to Activity.Current?.Tags
+	map<string, string> attributes = 3;
 }
 
 // Host requests worker to cancel invocation
