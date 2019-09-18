@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal Task InitializeChannelsAsync()
         {
-            if (ShouldStartAsPlaceholderPool())
+            if (StartAsPlaceholderPool())
             {
                 return _webHostlanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             }
@@ -176,10 +176,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return false;
         }
 
-        internal bool ShouldStartAsPlaceholderPool()
+        internal bool StartAsPlaceholderPool()
         {
             // We are in placeholder mode but a worker runtime IS set
-            return _environment.IsPlaceholderModeEnabled() && _placeholderPoolWhitelistedRuntimes.Contains(_workerRuntime);
+            return _environment.IsPlaceholderModeEnabled()
+                && !string.IsNullOrEmpty(_workerRuntime)
+                && _placeholderPoolWhitelistedRuntimes.Contains(_workerRuntime);
         }
 
         // To help with unit tests

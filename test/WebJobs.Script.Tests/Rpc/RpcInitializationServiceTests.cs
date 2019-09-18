@@ -302,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns(siteName);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns(siteInstanaceId);
             _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _logger);
-            Assert.Equal(_rpcInitializationService.ShouldStartInPlaceholderMode(), expectedResult);
+            Assert.Equal(expectedResult, _rpcInitializationService.ShouldStartInPlaceholderMode());
         }
 
         [Theory]
@@ -323,7 +323,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName)).Returns(workerRuntime);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns(siteInstanaceId);
             _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _logger);
-            Assert.Equal(_rpcInitializationService.ShouldStartInPlaceholderMode(), expectedResult);
+            Assert.Equal(expectedResult, _rpcInitializationService.StartAsPlaceholderPool());
         }
     }
 }
