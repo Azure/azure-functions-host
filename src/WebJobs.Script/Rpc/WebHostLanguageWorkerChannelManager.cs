@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             ILanguageWorkerChannel languageWorkerChannel = await GetChannelAsync(_workerRuntime);
             if (_workerRuntime != null && languageWorkerChannel != null)
             {
-                // TODO: remove this if/else once RFZ is supported. Only support sending function environment reload requests
+                // TODO: https://github.com/Azure/azure-functions-host/issues/4534 Don't kill non read-only processes once linked issue is resolved
                 if (_environment.FileSystemIsReadOnly())
                 {
                     _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntime);
