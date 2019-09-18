@@ -101,6 +101,8 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (disposing)
                 {
+                    _fileEventSource?.Dispose();
+
                     foreach (var subscription in _eventSubscriptions)
                     {
                         subscription.Dispose();
