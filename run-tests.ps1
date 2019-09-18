@@ -10,6 +10,8 @@ function RunTest([string] $project, [string] $description,[bool] $skipBuild = $f
        $cmdargs += "--filter", "$filter"
     }
 
+    $cmdargs += "--blame"
+
 # We'll always rebuild for now.
 #    if ($skipBuild){
 #        $cmdargs += "--no-build"
