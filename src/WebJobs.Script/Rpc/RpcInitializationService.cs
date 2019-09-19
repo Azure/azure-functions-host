@@ -28,7 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             {
                 OSPlatform.Windows,
-                new List<string>() { LanguageWorkerConstants.JavaLanguageWorkerName }
+                new List<string>()
+                {
+                    LanguageWorkerConstants.JavaLanguageWorkerName,
+                    LanguageWorkerConstants.NodeLanguageWorkerName
+                }
             },
             {
                 OSPlatform.Linux,
@@ -46,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             LanguageWorkerConstants.JavaLanguageWorkerName
         };
 
+        // TODO: This will not be needed when we resolve placeholder workers without run from zip: https://github.com/Azure/azure-functions-host/issues/4534
         private List<string> _placeholderPoolWhitelistedRuntimes = new List<string>()
         {
             LanguageWorkerConstants.JavaLanguageWorkerName,
