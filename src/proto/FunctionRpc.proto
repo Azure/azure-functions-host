@@ -10,8 +10,8 @@ option go_package ="github.com/Azure/azure-functions-go-worker/internal/rpc";
 package AzureFunctionsRpcMessages;
 
 import "google/protobuf/duration.proto";
-import "azure_functions_worker/protos/ClaimsIdentityRpc.proto";
-import "azure_functions_worker/protos/NullableTypes.proto";
+import "identity/ClaimsIdentityRpc.proto";
+import "shared/NullableTypes.proto";
 
 // Interface exported by the server.
 service FunctionRpc {
