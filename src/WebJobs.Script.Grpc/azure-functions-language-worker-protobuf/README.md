@@ -1,6 +1,6 @@
 # Azure Functions Languge Worker Protobuf
 
-This repository contains the protobuf definition file which defines the gRPC service which is used between the Azure WebJobs Script host and the Azure Functions language workers. This repo is shared across many repos in many languages (for each worker) by using git commands.
+This repository contains the protobuf definition file which defines the gRPC service which is used between the [Azure Functions Host](https://github.com/Azure/azure-functions-host) and the Azure Functions language workers. This repo is shared across many repos in many languages (for each worker) by using git commands.
 
 To use this repo in Azure Functions language workers, follow steps below to add this repo as a subtree (*Adding This Repo*). If this repo is already embedded in a language worker repo, follow the steps to update the consumed file (*Pulling Updates*).
 
