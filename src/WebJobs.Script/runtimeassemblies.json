@@ -3,6 +3,14 @@
 {
   "runtimeAssemblies": [
     {
+      "name": "Microsoft.AI.PerfCounterCollector",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.ApplicationInsights",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "Microsoft.AspNetCore",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -392,6 +400,10 @@
     },
     {
       "name": "Microsoft.Azure.WebJobs.Host",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.Host.Storage",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
