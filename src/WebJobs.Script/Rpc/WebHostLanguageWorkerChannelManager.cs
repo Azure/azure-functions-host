@@ -109,13 +109,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 // TODO: https://github.com/Azure/azure-functions-host/issues/4534 Don't kill non read-only processes once linked issue is resolved
                 if (_environment.FileSystemIsReadOnly())
                 {
-                    _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntime);
+                    _logger.LogDebug("Loading environment variables for runtime: {runtime}", _workerRuntime);
                     await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
                 }
                 else
                 {
+                    _logger.LogDebug("Shutting down placeholder worker. Worker is not compatible for runtime: {runtime}", _workerRuntime);
                     // If we need to allow file edits, we should shutdown the webhost channel on specialization.
-                    _workerChannels.TryRemove(_workerRuntime, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> languageWorkerChannels);
+                    _workerChannels.TryRemove(_workerRuntime, out _);
                     await ShutdownChannelIfExistsAsync(_workerRuntime, languageWorkerChannel.Id);
                 }
             }
