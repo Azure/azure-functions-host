@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
         private IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
         private Mock<ILanguageWorkerProcess> _languageWorkerProcess;
+        private TestLogger _testLogger;
 
         private string _scriptRootPath = @"c:\testing\FUNCTIONS-TEST";
         private IDictionary<string, string> _capabilities = new Dictionary<string, string>()
@@ -59,7 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _languageWorkerProcessFactory = new Mock<ILanguageWorkerProcessFactory>();
             _languageWorkerProcessFactory.Setup(m => m.CreateLanguageWorkerProcess(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(_languageWorkerProcess.Object);
 
-            _languageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, new TestLogger("WebHostLanguageWorkerChannelManagerTests"), _scriptRootPath);
+            _testLogger = new TestLogger("WebHostLanguageWorkerChannelManagerTests");
+            _languageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, _testLogger, _scriptRootPath);
             _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
         }
 
@@ -158,6 +160,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             await _languageWorkerChannelManager.SpecializeAsync();
 
+            // Verify logs
+            var traces = _testLogger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "SendFunctionEnvironmentReloadRequest called"));
+            Assert.True(functionLoadLogs.Count() == 1);
+
+            // Verify channel
             var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName);
             Assert.Equal(nodeWorkerChannel, initializedChannel);
         }
@@ -175,6 +183,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             await _languageWorkerChannelManager.SpecializeAsync();
 
+            // Verify logs
+            var traces = _testLogger.GetLogMessages();
+            Assert.True(traces.Count() == 0);
+
+            // Verify channel
             var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName);
             Assert.Null(initializedChannel);
         }
