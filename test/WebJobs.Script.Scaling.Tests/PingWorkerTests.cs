@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scaling.Tests
 
                 // assert
                 scaleManager.VerifyAll();
-                scaleManager.MockScaleHandler.Verify(h => h.PingWorker(activityId, workerInfo), Times.Between(2, loop - 1, Range.Inclusive));
+                scaleManager.MockScaleHandler.Verify(h => h.PingWorker(activityId, workerInfo), Times.Between(2, loop - 1, Moq.Range.Inclusive));
                 scaleManager.MockWorkerTable.Verify(t => t.AddOrUpdate(workerInfo), Times.Exactly(loop));
                 scaleManager.MockScaleTracer.Verify(t => t.TraceUpdateWorker(activityId, workerInfo, It.Is<string>(s => s.Contains("updated"))), Times.Exactly(loop));
             }
