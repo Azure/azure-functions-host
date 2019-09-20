@@ -116,7 +116,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     _logger.LogDebug("Shutting down placeholder worker. Worker is not compatible for runtime: {runtime}", _workerRuntime);
                     // If we need to allow file edits, we should shutdown the webhost channel on specialization.
-                    _workerChannels.TryRemove(_workerRuntime, out _);
                     await ShutdownChannelIfExistsAsync(_workerRuntime, languageWorkerChannel.Id);
                 }
             }
