@@ -51,7 +51,10 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         public Type[] GetStartupTypes()
         {
             IEnumerable<Type> startupTypes = GetExtensionsStartupTypesAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-            return startupTypes?.Distinct(new TypeNameEqualityComparer()).ToArray() ?? new Type[0];
+
+            return startupTypes
+                .Distinct(new TypeNameEqualityComparer())
+                .ToArray();
         }
 
         public async Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()
@@ -63,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 if (string.IsNullOrEmpty(extensionBundlePath))
                 {
                     _logger.ScriptStartUpErrorLoadingExtensionBundle();
-                    return null;
+                    return new Type[0];
                 }
                 _logger.ScriptStartUpLoadingExtensionBundle(extensionBundlePath);
                 binPath = Path.Combine(extensionBundlePath, "bin");

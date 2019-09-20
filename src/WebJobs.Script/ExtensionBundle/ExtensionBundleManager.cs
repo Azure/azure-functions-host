@@ -100,7 +100,6 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 _extensionBundleVersion = latestBundleVersion;
                 bundlePath = await DownloadExtensionBundleAsync(latestBundleVersion, httpClient);
             }
-
             return bundlePath;
         }
 
@@ -138,7 +137,6 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                     }
                 }
             }
-
             return bundlePath != null;
         }
 
@@ -193,8 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         {
             using (var httpClient = new HttpClient())
             {
-                _extensionBundleVersion = await GetLatestMatchingBundleVersion(httpClient);
-                return _extensionBundleVersion;
+                return await GetLatestMatchingBundleVersion(httpClient);
             }
         }
 
