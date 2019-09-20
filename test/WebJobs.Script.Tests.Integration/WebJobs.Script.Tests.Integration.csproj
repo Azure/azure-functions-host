@@ -34,7 +34,7 @@
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.6">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
-    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="3.0.0-preview9.19424.4" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="3.0.0-rc1.19457.4" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="2.3.0" />
     <PackageReference Include="Microsoft.Azure.EventHubs" Version="2.1.0" />
     <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="1.1.1" />
