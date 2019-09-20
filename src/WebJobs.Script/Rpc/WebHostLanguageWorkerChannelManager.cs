@@ -104,25 +104,28 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
 
             ILanguageWorkerChannel languageWorkerChannel = await GetChannelAsync(_workerRuntime);
-            if (UsePlaceholderChannel(_workerRuntime, languageWorkerChannel != null))
+            if (languageWorkerChannel != null)
             {
-                _logger.LogDebug("Loading environment variables for runtime: {runtime}", _workerRuntime);
-                await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
-            }
-            else
-            {
-                _logger.LogDebug("Shutting down placeholder worker. Worker is not compatible for runtime: {runtime}", _workerRuntime);
-                // If we need to allow file edits, we should shutdown the webhost channel on specialization.
-                await ShutdownChannelIfExistsAsync(_workerRuntime, languageWorkerChannel.Id);
+                if (UsePlaceholderChannel(_workerRuntime))
+                {
+                    _logger.LogDebug("Loading environment variables for runtime: {runtime}", _workerRuntime);
+                    await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
+                }
+                else
+                {
+                    _logger.LogDebug("Shutting down placeholder worker. Worker is not compatible for runtime: {runtime}", _workerRuntime);
+                    // If we need to allow file edits, we should shutdown the webhost channel on specialization.
+                    await ShutdownChannelIfExistsAsync(_workerRuntime, languageWorkerChannel.Id);
+                }
             }
 
             _shutdownStandbyWorkerChannels();
             _logger.LogDebug("Completed language worker channel specialization");
         }
 
-        internal bool UsePlaceholderChannel(string workerRuntime, bool channelExists)
+        internal bool UsePlaceholderChannel(string workerRuntime)
         {
-            if (!string.IsNullOrEmpty(workerRuntime) && channelExists)
+            if (!string.IsNullOrEmpty(workerRuntime))
             {
                 // Special case: node apps must be read-only to use the placeholder mode channel
                 // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534

@@ -215,17 +215,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Theory]
-        [InlineData("node", "1", true, true)]
-        [InlineData("node", "0", true, false)]
-        [InlineData("node", "1", false, false)]
-        [InlineData("java", "1", true, true)]
-        [InlineData("java", "0", true, true)]
-        [InlineData("java", "1", false, false)]
-        public void TryParseStatusCode_ReturnsExpectedResult(string workerRuntime, string runFromZip, bool channelExists, bool expectedReturn)
+        [InlineData("node", "1", true)]
+        [InlineData("node", "0", false)]
+        [InlineData("java", "1", true)]
+        [InlineData("java", "0", true)]
+        public void TryParseStatusCode_ReturnsExpectedResult(string workerRuntime, string runFromZip, bool expectedReturn)
         {
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, runFromZip);
             _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
-            Assert.Equal(_languageWorkerChannelManager.UsePlaceholderChannel(workerRuntime, channelExists), expectedReturn);
+            Assert.Equal(_languageWorkerChannelManager.UsePlaceholderChannel(workerRuntime), expectedReturn);
         }
 
         [Fact]
