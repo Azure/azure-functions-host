@@ -27,8 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private Action _shutdownStandbyWorkerChannels;
 
         private ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>>> _workerChannels = new ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>>>();
-        // Keeps environment config from placeholder mode that must be consistent for placeholders to run correctly
-        private Dictionary<string, Dictionary<string, string>> _initialEnvironmentConfig = new Dictionary<string, Dictionary<string, string>>();
 
         public WebHostLanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, ILanguageWorkerChannelFactory languageWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
         {
@@ -41,11 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
-
-            _initialEnvironmentConfig.Add(LanguageWorkerConstants.NodeLanguageWorkerName, new Dictionary<string, string>
-                    {
-                        { LanguageWorkerConstants.FunctionsNodeVersionSetting, _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionsNodeVersionSetting) }
-                    });
         }
 
         public Task<ILanguageWorkerChannel> InitializeChannelAsync(string runtime)
@@ -113,48 +106,21 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             ILanguageWorkerChannel languageWorkerChannel = await GetChannelAsync(_workerRuntime);
             if (_workerRuntime != null && languageWorkerChannel != null)
             {
-                // Don't use placeholder process if app is not read-only or important environment config has changed
-                // TODO: Allow non read-only apps to use placeholder process - https://github.com/Azure/azure-functions-host/issues/4534
-                if (UsePlaceholderProcess(_workerRuntime))
+                // TODO: https://github.com/Azure/azure-functions-host/issues/4534 Don't kill non read-only processes once linked issue is resolved
+                if (_environment.FileSystemIsReadOnly())
                 {
                     _logger.LogInformation("Loading environment variables for runtime: {runtime}", _workerRuntime);
                     await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
                 }
                 else
                 {
-                    // The process spun up in placeholder mode is incompatible and we should shut it down
+                    // If we need to allow file edits, we should shutdown the webhost channel on specialization.
                     _workerChannels.TryRemove(_workerRuntime, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> languageWorkerChannels);
                     await ShutdownChannelIfExistsAsync(_workerRuntime, languageWorkerChannel.Id);
                 }
             }
             _shutdownStandbyWorkerChannels();
             _logger.LogDebug("Completed language worker channel specialization");
-        }
-
-        internal bool UsePlaceholderProcess(string selectedRuntime)
-        {
-            // App must be readonly
-            if (!_environment.FileSystemIsReadOnly())
-            {
-                return false;
-            }
-
-            // App must have specific environment configurations match
-            if (_initialEnvironmentConfig.TryGetValue(selectedRuntime, out Dictionary<string, string> environmentConfig))
-            {
-                foreach (string settingKey in environmentConfig.Keys)
-                {
-                    var currentValue = _environment.GetEnvironmentVariable(settingKey);
-                    environmentConfig.TryGetValue(settingKey, out string cachedValue);
-                    if (!string.Equals(currentValue, cachedValue, StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        // We found an environment setting that does not match the initial environment.
-                        return false;
-                    }
-                }
-            }
-            // App is readonly with matching environment
-            return true;
         }
 
         public Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId)

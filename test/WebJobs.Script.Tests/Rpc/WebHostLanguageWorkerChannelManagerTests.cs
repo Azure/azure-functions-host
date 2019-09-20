@@ -163,25 +163,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
-        public async Task SpecializeAsync_Node_DifferentVersion_KillsProcess()
-        {
-            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
-            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionsNodeVersionSetting, "8.11.1");
-            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
-
-            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
-
-            ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
-            // Change version of node just before specialization and after initialization
-            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionsNodeVersionSetting, "10.15.2");
-
-            await _languageWorkerChannelManager.SpecializeAsync();
-
-            var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName);
-            Assert.Null(initializedChannel);
-        }
-
-        [Fact]
         public async Task SpecializeAsync_Node_NotReadOnly_KillsProcess()
         {
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
@@ -232,28 +213,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var languageWorkerChannel = await languageWorkerChannelManager.InitializeLanguageWorkerChannel("test", _scriptRootPath);
             var ex = await Assert.ThrowsAsync<AggregateException>(async () => await languageWorkerChannelManager.GetChannelAsync("test"));
             Assert.Contains("Process startup failed", ex.InnerException.Message);
-        }
-
-        [Theory]
-        [InlineData("1", "node", "10.15.2", true)]
-        [InlineData("0", "node", "10.15.2", false)]
-        [InlineData("1", "node", "8.11.1", false)]
-        [InlineData("1", "java", "10.15.2", true)]
-        [InlineData("0", "java", "10.15.2", false)]
-        [InlineData("1", "java", "8.11.1", true)]
-        [InlineData("1", "python", "8.11.1", true)]
-        [InlineData("0", "python", "8.11.1", false)]
-        public void UsePlaceholderProcess_Returns_ExpectedValue(string readOnly, string workerRuntime, string nodeVersion, bool expectedResult)
-        {
-            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionsNodeVersionSetting, "10.15.2");
-            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage, readOnly);
-
-            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
-            // Change node version
-            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionsNodeVersionSetting, nodeVersion);
-
-            var shouldUsePlaceholder = _languageWorkerChannelManager.UsePlaceholderProcess(workerRuntime);
-            Assert.Equal(expectedResult, shouldUsePlaceholder);
         }
 
         private ILanguageWorkerChannel CreateTestChannel(string language)
