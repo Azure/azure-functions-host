@@ -95,6 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 // Make sure the change in the new location was picked up and Host's status was changed
                 Assert.True(await EnsureHostState("Running"), $"Expected Host status Running. Found : {(await _testHost.GetHostStatusAsync()).State}");
 
+                _testHost.Dispose();
             }
         }
 
@@ -158,6 +159,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                         $"Instead found '{(await _testHost.GetHostStatusAsync()).State}'.");
                 }
                 Assert.Equal("Running", (await _testHost.GetHostStatusAsync()).State);
+
+                _testHost.Dispose();
             }
         }
 

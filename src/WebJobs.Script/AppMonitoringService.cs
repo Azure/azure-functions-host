@@ -69,11 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void ReinitializeFileWatchers()
         {
-            // dispose all subscriptions individually
-            foreach (var subscription in _eventSubscriptions)
-            {
-                subscription.Dispose();
-            }
+            DisposeSubscriptions();
             _eventSubscriptions.Clear();
 
             InitializeFileWatchers();
@@ -101,12 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (disposing)
                 {
-                    _fileEventSource?.Dispose();
-
-                    foreach (var subscription in _eventSubscriptions)
-                    {
-                        subscription.Dispose();
-                    }
+                    DisposeSubscriptions();
                 }
 
                 _disposed = true;
@@ -115,5 +106,15 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         public void Dispose() => Dispose(true);
+
+        private void DisposeSubscriptions()
+        {
+            _fileEventSource?.Dispose();
+
+            foreach (var subscription in _eventSubscriptions)
+            {
+                subscription.Dispose();
+            }
+        }
     }
 }
