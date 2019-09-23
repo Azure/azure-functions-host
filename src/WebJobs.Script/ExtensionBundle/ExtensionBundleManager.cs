@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                     _extensionBundleVersion = Path.GetFileName(path);
                 }
 
-                _extensionBundleVersion = _extensionBundleVersion ?? await GetLatestMatchingBundleVersion();
+                _extensionBundleVersion = _extensionBundleVersion ?? await GetLatestMatchingBundleVersionAsync();
 
                 return new ExtensionBundleDetails()
                 {
@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 || _environment.IsContainerEnvironment())
                 && (!bundleFound || _options.EnsureLatest))
             {
-                string latestBundleVersion = await GetLatestMatchingBundleVersion(httpClient);
+                string latestBundleVersion = await GetLatestMatchingBundleVersionAsync(httpClient);
                 if (string.IsNullOrEmpty(latestBundleVersion))
                 {
                     return null;
@@ -187,15 +187,15 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return true;
         }
 
-        private async Task<string> GetLatestMatchingBundleVersion()
+        private async Task<string> GetLatestMatchingBundleVersionAsync()
         {
             using (var httpClient = new HttpClient())
             {
-                return await GetLatestMatchingBundleVersion(httpClient);
+                return await GetLatestMatchingBundleVersionAsync(httpClient);
             }
         }
 
-        private async Task<string> GetLatestMatchingBundleVersion(HttpClient httpClient)
+        private async Task<string> GetLatestMatchingBundleVersionAsync(HttpClient httpClient)
         {
             var uri = new Uri($"{_cdnUri}/{ScriptConstants.ExtensionBundleDirectory}/{_options.Id}/{ScriptConstants.ExtensionBundleVersionIndexFile}");
             _logger.FetchingVersionInfo(_options.Id, uri);
