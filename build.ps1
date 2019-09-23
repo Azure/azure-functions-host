@@ -35,13 +35,11 @@ function BuildPackages([bool] $isNoRuntime) {
         BuildOutput "win-x86" 1
         BuildOutput "win-x64" 1
         BuildOutput "win-x86" 0
-        BuildOutput "win-x64" 0
-                
-        # Use self-contained as the site extension until Antares has .NET Core 3 deployed.
-        # Ignore 64bit folder
+        BuildOutput "win-x64" 0               
+
         New-Item -Itemtype directory -path $buildOutput\publish.runtime\SiteExtensions\Functions
-        Copy-Item -Path $buildOutput\publish.win-x86.self-contained\SiteExtensions\Functions -Destination $buildOutput\publish.runtime\SiteExtensions\Functions\32bit -Recurse -Force
-        # Move-Item -Path $buildOutput\publish.win-x64\SiteExtensions\Functions -Destination $buildOutput\publish.runtime\SiteExtensions\Functions\64bit -Force
+        Move-Item -Path $buildOutput\publish.win-x86\SiteExtensions\Functions -Destination $buildOutput\publish.runtime\SiteExtensions\Functions\32bit -Force
+        Move-Item -Path $buildOutput\publish.win-x64\SiteExtensions\Functions -Destination $buildOutput\publish.runtime\SiteExtensions\Functions\64bit -Force
         Copy-Item -Path $buildOutput\publish.runtime\SiteExtensions\Functions\32bit\applicationHost.xdt -Destination $buildOutput\publish.runtime\SiteExtensions\Functions -Force
 
         # To minimize size skip 64bit folder.
