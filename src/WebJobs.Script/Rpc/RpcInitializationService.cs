@@ -122,18 +122,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal Task InitializeChannelsAsync()
         {
-            if (StartAsPlaceholderPool())
+            // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534
+            if (ShouldStartAsPlaceholderPool())
             {
                 return _webHostlanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             }
-            else if (ShouldStartInPlaceholderMode())
+            else if (ShouldStartStandbyPlaceholderChannels())
             {
                 return InitializePlaceholderChannelsAsync();
             }
-            else
-            {
-                return InitializeWebHostRuntimeChannelsAsync();
-            }
+
+            return InitializeWebHostRuntimeChannelsAsync();
         }
 
         private Task InitializePlaceholderChannelsAsync()
@@ -162,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return Task.CompletedTask;
         }
 
-        internal bool ShouldStartInPlaceholderMode()
+        internal bool ShouldStartStandbyPlaceholderChannels()
         {
             if (string.IsNullOrEmpty(_workerRuntime) && _environment.IsPlaceholderModeEnabled())
             {
@@ -176,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             return false;
         }
 
-        internal bool StartAsPlaceholderPool()
+        internal bool ShouldStartAsPlaceholderPool()
         {
             // We are in placeholder mode but a worker runtime IS set
             return _environment.IsPlaceholderModeEnabled()

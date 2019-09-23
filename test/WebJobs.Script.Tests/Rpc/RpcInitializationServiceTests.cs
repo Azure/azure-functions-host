@@ -294,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData("0", "functionsPlaceholderTemplateSite", "1234", false)]
         [InlineData("1", "functionsPlaceholderTemplateSitejava", "1234", false)]
         [InlineData("1", "functionsPlaceholderTemplateSite", "", true)]
-        public void ShouldStartInPlaceholderMode_Returns_ExpectedValue(string placeholderMode, string siteName, string siteInstanaceId, bool expectedResult)
+        public void ShouldStartStandbyPlaceholderChannels_Returns_ExpectedValue(string placeholderMode, string siteName, string siteInstanaceId, bool expectedResult)
         {
             Mock<IRpcServer> testRpcServer = new Mock<IRpcServer>();
             var mockEnvironment = new Mock<IEnvironment>();
@@ -302,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns(siteName);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns(siteInstanaceId);
             _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _logger);
-            Assert.Equal(expectedResult, _rpcInitializationService.ShouldStartInPlaceholderMode());
+            Assert.Equal(expectedResult, _rpcInitializationService.ShouldStartStandbyPlaceholderChannels());
         }
 
         [Theory]
@@ -323,7 +323,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName)).Returns(workerRuntime);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns(siteInstanaceId);
             _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _logger);
-            Assert.Equal(expectedResult, _rpcInitializationService.StartAsPlaceholderPool());
+            Assert.Equal(expectedResult, _rpcInitializationService.ShouldStartAsPlaceholderPool());
         }
     }
 }

@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
 
             ILanguageWorkerChannel languageWorkerChannel = await GetChannelAsync(_workerRuntime);
-            if (languageWorkerChannel != null)
+            if (_workerRuntime != null && languageWorkerChannel != null)
             {
                 if (UsePlaceholderChannel(_workerRuntime))
                 {
