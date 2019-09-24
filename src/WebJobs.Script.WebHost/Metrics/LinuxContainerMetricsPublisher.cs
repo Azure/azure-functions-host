@@ -60,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private Timer _metricsPublisherTimer;
         private int _errorCount = 0;
         private string _stampName;
+        private bool _initialized = false;
 
         public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerMetricsPublisher> logger, HostNameProvider hostNameProvider, HttpClient httpClient = null)
         {
@@ -129,6 +130,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         public void AddFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan, string executionId, DateTime eventTimeStamp, DateTime functionStartTime)
         {
+            if (!_initialized)
+            {
+                return;
+            }
+
             Enum.TryParse(executionStage, out FunctionExecutionStage functionExecutionStage);
 
             FunctionActivity activity = new FunctionActivity
@@ -156,6 +162,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         public void AddMemoryActivity(DateTime timeStampUtc, long data)
         {
+            if (!_initialized)
+            {
+                return;
+            }
+
             var memoryActivity = new MemoryActivity
             {
                 CommitSizeInBytes = data,
@@ -229,6 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _stampName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteHomeStampName);
             _tenant = _environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteStampDeploymentId)?.ToLowerInvariant();
             _process = Process.GetCurrentProcess();
+            _initialized = true;
         }
 
         public void Start()
