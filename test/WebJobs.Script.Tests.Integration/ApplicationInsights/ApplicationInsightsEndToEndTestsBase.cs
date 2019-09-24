@@ -208,15 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             },
             userMessageCallback: () =>
             {
-                foreach (var tel in _fixture.Channel.Telemetries.OfType<RequestTelemetry>())
-                {
-                    TelemetryDebugWriter.WriteTelemetry(tel);
-                }
-                foreach (var tel in _fixture.Channel.Telemetries)
-                {
-                    TelemetryDebugWriter.WriteTelemetry(tel);
-                }
-                return "</ERROR>";
+                return _fixture.TestHost.GetLog();
             });
 
             ValidateRequest(requestTelemetry, invocationId, functionName, "req", functionSuccess);
