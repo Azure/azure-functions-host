@@ -208,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             },
             userMessageCallback: () =>
             {
-                return _fixture.TestHost.GetLog();
+                return string.Join(Environment.NewLine, _fixture.TestHost.GetScriptHostLogMessages().Where(m => m.Level != LogLevel.Debug));
             });
 
             ValidateRequest(requestTelemetry, invocationId, functionName, "req", functionSuccess);
