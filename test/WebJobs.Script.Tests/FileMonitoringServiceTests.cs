@@ -28,6 +28,63 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData(@"NonExistentPath")]
+        [InlineData(null)]
+        public void InitializesEmptyOrMissingDirectorySnapshot(string rootScriptPath)
+        {
+            using (var directory = new TempDirectory())
+            {
+                // Setup
+                string tempDir = directory.Path;
+                Directory.CreateDirectory(Path.Combine(tempDir, "Host"));
+                File.Create(Path.Combine(tempDir, "host.json"));
+
+                var jobHostOptions = new ScriptJobHostOptions
+                {
+                    RootLogPath = tempDir,
+                    RootScriptPath = rootScriptPath,
+                    FileWatchingEnabled = true
+                };
+                var loggerFactory = new LoggerFactory();
+                var mockWebHostEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Loose);
+                var mockEventManager = new ScriptEventManager();
+
+                // Act
+                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                    loggerFactory, mockEventManager, mockWebHostEnvironment.Object);
+                Assert.False(fileMonitoringService.GetDirectorySnapshot().IsDefault);
+                Assert.True(fileMonitoringService.GetDirectorySnapshot().IsEmpty);
+            }
+        }
+
+        [Fact]
+        public void InitializesGetDirectorySnapshot()
+        {
+            using (var directory = new TempDirectory())
+            {
+                string tempDir = directory.Path;
+                Directory.CreateDirectory(Path.Combine(tempDir, "Host"));
+                File.Create(Path.Combine(tempDir, "host.json"));
+
+                var jobHostOptions = new ScriptJobHostOptions
+                {
+                    RootLogPath = tempDir,
+                    RootScriptPath = tempDir,
+                    FileWatchingEnabled = true
+                };
+                var loggerFactory = new LoggerFactory();
+                var mockWebHostEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Loose);
+                var mockEventManager = new ScriptEventManager();
+
+                // Act
+                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                    loggerFactory, mockEventManager, mockWebHostEnvironment.Object);
+                Assert.Equal(fileMonitoringService.GetDirectorySnapshot().Length, 1);
+                Assert.Equal(fileMonitoringService.GetDirectorySnapshot()[0], tempDir + "\\Host");
+            }
+        }
+
+        [Theory]
         [InlineData("app_offline.htm", 150, true, false)]
         [InlineData("app_offline.htm", 10, true, false)]
         [InlineData("host.json", 0, false, false)]

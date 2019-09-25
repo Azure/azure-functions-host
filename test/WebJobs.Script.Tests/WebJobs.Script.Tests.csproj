@@ -33,6 +33,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Managment\FunctionsSyncManagerTests.cs" />
+    <Compile Remove="Managment\WebFunctionsManagerTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithLockMatch\function.proj">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

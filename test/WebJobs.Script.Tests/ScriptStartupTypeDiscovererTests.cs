@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -10,6 +11,7 @@ using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.Storage;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Logging;
@@ -61,7 +63,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 LoggerFactory factory = new LoggerFactory();
                 factory.AddProvider(testLoggerProvider);
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object);
+
+                var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+                functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(ImmutableArray<FunctionMetadata>.Empty);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, functionMetadataProvider.Object);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -88,7 +93,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 LoggerFactory factory = new LoggerFactory();
                 factory.AddProvider(testLoggerProvider);
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
-                var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object);
+
+                var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+                functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(ImmutableArray<FunctionMetadata>.Empty);
+                var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, functionMetadataProvider.Object);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -140,7 +148,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 LoggerFactory factory = new LoggerFactory();
                 factory.AddProvider(testLoggerProvider);
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object);
+
+                var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+                functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(ImmutableArray<FunctionMetadata>.Empty);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, functionMetadataProvider.Object);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -165,7 +176,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             LoggerFactory factory = new LoggerFactory();
             factory.AddProvider(testLoggerProvider);
             var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
-            var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object);
+
+            var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(ImmutableArray<FunctionMetadata>.Empty);
+            var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, functionMetadataProvider.Object);
 
             // Act
             var types = await discoverer.GetExtensionsStartupTypesAsync();

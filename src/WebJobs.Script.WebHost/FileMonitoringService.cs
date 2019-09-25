@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _rootDirectorySnapshot = GetDirectorySnapshot();
         }
 
-        private ImmutableArray<string> GetDirectorySnapshot()
+        internal ImmutableArray<string> GetDirectorySnapshot()
         {
             if (_scriptOptions.RootScriptPath != null)
             {
