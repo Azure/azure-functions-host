@@ -9,6 +9,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -61,6 +62,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         }
 
         [Fact]
+        public async Task GetExtensionBundleDetails_InvalidBundle_ReturnsVersionAsNull()
+        {
+            var options = GetTestExtensionBundleOptions("InvalidBundleId", "[1.*, 2.0.0)");
+            var fileSystemTuple = CreateFileSystem();
+            var directoryBase = fileSystemTuple.Item2;
+
+            string firstDefaultProbingPath = options.ProbingPaths.ElementAt(0);
+            directoryBase.Setup(d => d.Exists(firstDefaultProbingPath)).Returns(true);
+            directoryBase.Setup(d => d.EnumerateDirectories(firstDefaultProbingPath)).Returns(new[] { Path.Combine(firstDefaultProbingPath, "3.0.2") });
+
+            FileUtility.Instance = fileSystemTuple.Item1.Object;
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            var bundleInfo = await manager.GetExtensionBundleDetails();
+            Assert.Equal(bundleInfo.Id, "InvalidBundleId");
+            Assert.Null(bundleInfo.Version);
+        }
+
+        [Fact]
         public void TryLocateExtensionBundle_BundleNotPersent_ReturnsFalse()
         {
             var options = GetTestExtensionBundleOptions(BundleId, "[1.*, 2.0.0)");
@@ -69,6 +88,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
             Assert.False(manager.TryLocateExtensionBundle(out string path));
             Assert.Null(path);
+        }
+
+        [Theory]
+        [InlineData("[2.*, 3.0.0)")]
+        [InlineData("[2.0.0, 3.0.0)")]
+        public async Task GetExtensionBundleDetails_BundlePresentAtProbingLocation_ExpectedValue(string versionRange)
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, versionRange);
+            var fileSystemTuple = CreateFileSystem();
+            var directoryBase = fileSystemTuple.Item2;
+            var fileBase = fileSystemTuple.Item3;
+
+            string firstDefaultProbingPath = options.ProbingPaths.ElementAt(0);
+            directoryBase.Setup(d => d.Exists(firstDefaultProbingPath)).Returns(true);
+            directoryBase.Setup(d => d.EnumerateDirectories(firstDefaultProbingPath)).Returns(
+            new[]
+            {
+                    Path.Combine(firstDefaultProbingPath, "1.0.0"),
+                    Path.Combine(firstDefaultProbingPath, "2.0.0"),
+                    Path.Combine(firstDefaultProbingPath, "2.0.1"),
+                    Path.Combine(firstDefaultProbingPath, "2.0.2"),
+                    Path.Combine(firstDefaultProbingPath, "3.0.2"),
+                    Path.Combine(firstDefaultProbingPath, "invalidVersion")
+            });
+
+            string defaultPath = Path.Combine(firstDefaultProbingPath, "2.0.2");
+            fileBase.Setup(f => f.Exists(Path.Combine(defaultPath, "bundle.json"))).Returns(true);
+
+            FileUtility.Instance = fileSystemTuple.Item1.Object;
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            var bundleInfo = await manager.GetExtensionBundleDetails();
+            Assert.Equal(bundleInfo.Id, BundleId);
+            Assert.Equal(bundleInfo.Version, "2.0.2");
         }
 
         [Theory]
@@ -101,8 +153,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
             string path = await manager.GetExtensionBundlePath();
             Assert.NotNull(path);
-
             Assert.Equal(defaultPath, path);
+        }
+
+        [Fact]
+        public async Task GetExtensionBundleDetails_BundlePresentAtDownloadLocation_ReturnsCorrectPathAync()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[1.*, 2.0.0)");
+            var fileSystemTuple = CreateFileSystem();
+            var directoryBase = fileSystemTuple.Item2;
+            var fileBase = fileSystemTuple.Item3;
+
+            string firstDefaultProbingPath = options.ProbingPaths.ElementAt(0);
+            directoryBase.Setup(d => d.Exists(firstDefaultProbingPath)).Returns(true);
+            directoryBase.Setup(d => d.EnumerateDirectories(firstDefaultProbingPath)).Returns(new List<string>());
+
+            string downloadPath = Path.Combine(options.DownloadPath, "1.0.2");
+            directoryBase.Setup(d => d.Exists(options.DownloadPath)).Returns(true);
+            directoryBase.Setup(d => d.EnumerateDirectories(options.DownloadPath)).Returns(new[] { downloadPath });
+            fileBase.Setup(f => f.Exists(Path.Combine(downloadPath, "bundle.json"))).Returns(true);
+
+            FileUtility.Instance = fileSystemTuple.Item1.Object;
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            var bundleInfo = await manager.GetExtensionBundleDetails();
+            Assert.Equal(bundleInfo.Id, BundleId);
+            Assert.Equal(bundleInfo.Version, "1.0.2");
+        }
+
+        [Fact]
+        public async Task GetExtensionBundleDetails_BundleNotConfigured_ReturnsNull()
+        {
+            ExtensionBundleOptions options = new ExtensionBundleOptions() { Id = null, Version = null };
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            var bundleInfo = await manager.GetExtensionBundleDetails();
+            Assert.Null(bundleInfo);
         }
 
         [Fact]

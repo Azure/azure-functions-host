@@ -5,12 +5,13 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -19,7 +20,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-
+using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 
@@ -80,8 +81,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Where(msg => msg.WorkerId == _workerId);
 
             _eventSubscriptions.Add(_inboundWorkerEvents
-                .Where(msg => msg.MessageType == MsgType.RpcLog)
+                .Where(msg => msg.IsMessageOfType(MsgType.RpcLog) && !msg.IsLogOfCategory(RpcLogCategory.System))
                 .Subscribe(Log));
+
+            _eventSubscriptions.Add(_inboundWorkerEvents
+                .Where(msg => msg.IsMessageOfType(MsgType.RpcLog) && msg.IsLogOfCategory(RpcLogCategory.System))
+                .Subscribe(SystemLog));
 
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
                 .Where(msg => _workerConfig.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
@@ -108,27 +113,27 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal ILanguageWorkerProcess WorkerProcess => _languageWorkerProcess;
 
-        public Task StartWorkerProcessAsync()
+        public async Task StartWorkerProcessAsync()
         {
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(TimeSpan.FromSeconds(LanguageWorkerConstants.ProcessStartTimeoutSeconds))
                 .Take(1)
-                .Subscribe(SendWorkerInitRequest, HandleWorkerChannelError);
+                .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
 
-            _languageWorkerProcess.StartProcess();
-
+            _workerChannelLogger.LogDebug("Initiating Worker Process start up");
+            await _languageWorkerProcess.StartProcessAsync();
             _state = LanguageWorkerChannelState.Initializing;
-
-            return _workerInitTask.Task;
+            await _workerInitTask.Task;
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
         internal void SendWorkerInitRequest(RpcEvent startEvent)
         {
+            _workerChannelLogger.LogDebug("Worker Process started. Received StartStream message");
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
-                .Subscribe(WorkerInitResponse, HandleWorkerChannelError);
+                .Subscribe(WorkerInitResponse, HandleWorkerInitError);
 
             SendStreamingMessage(new StreamingMessage
             {
@@ -155,11 +160,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _startLatencyMetric?.Dispose();
             _startLatencyMetric = null;
 
-            _workerChannelLogger.LogDebug("Received WorkerInitResponse");
+            _workerChannelLogger.LogDebug("Received WorkerInitResponse. Worker process initialized");
             _initMessage = initEvent.Message.WorkerInitResponse;
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
-                HandleWorkerChannelError(exc);
+                HandleWorkerInitError(exc);
                 _workerInitTask.SetResult(false);
                 return;
             }
@@ -196,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
-                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse)));
+                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse), HandleWorkerEnvReloadError));
 
             IDictionary processEnv = Environment.GetEnvironmentVariables();
 
@@ -299,30 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         context.ResultSource.SetCanceled();
                         return;
                     }
-
-                    var functionMetadata = context.FunctionMetadata;
-
-                    InvocationRequest invocationRequest = new InvocationRequest()
-                    {
-                        FunctionId = functionMetadata.FunctionId,
-                        InvocationId = context.ExecutionContext.InvocationId.ToString(),
-                    };
-                    foreach (var pair in context.BindingData)
-                    {
-                        if (pair.Value != null)
-                        {
-                            invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc(_workerChannelLogger, _workerCapabilities));
-                        }
-                    }
-                    foreach (var input in context.Inputs)
-                    {
-                        invocationRequest.InputData.Add(new ParameterBinding()
-                        {
-                            Name = input.name,
-                            Data = input.val.ToRpc(_workerChannelLogger, _workerCapabilities)
-                        });
-                    }
-
+                    InvocationRequest invocationRequest = context.ToRpcInvocationRequest(IsTriggerMetadataPopulatedByWorker(), _workerChannelLogger, _workerCapabilities);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                     SendStreamingMessage(new StreamingMessage
@@ -384,8 +366,61 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        internal void HandleWorkerChannelError(Exception exc)
+        internal void SystemLog(RpcEvent msg)
         {
+            RpcLog systemLog = msg.Message.RpcLog;
+            LogLevel logLevel = (LogLevel)systemLog.Level;
+            switch (logLevel)
+            {
+                case LogLevel.Warning:
+                    _workerChannelLogger.LogWarning(systemLog.Message);
+                    break;
+
+                case LogLevel.Information:
+                    _workerChannelLogger.LogInformation(systemLog.Message);
+                    break;
+
+                case LogLevel.Error:
+                    {
+                        if (systemLog.Exception != null)
+                        {
+                            RpcException exception = new RpcException(systemLog.Message, systemLog.Exception.Message, systemLog.Exception.StackTrace);
+                            _workerChannelLogger.LogError(exception, systemLog.Message);
+                        }
+                        else
+                        {
+                            _workerChannelLogger.LogError(systemLog.Message);
+                        }
+                    }
+                    break;
+
+                default:
+                    _workerChannelLogger.LogInformation(systemLog.Message);
+                    break;
+            }
+        }
+
+        internal void HandleWorkerStartStreamError(Exception exc)
+        {
+            _workerChannelLogger.LogError(exc, "Starting worker process failed");
+            PublishWorkerErrorEvent(exc);
+        }
+
+        internal void HandleWorkerEnvReloadError(Exception exc)
+        {
+            _workerChannelLogger.LogError(exc, "Reloading environment variables failed");
+            _reloadTask.SetException(exc);
+        }
+
+        internal void HandleWorkerInitError(Exception exc)
+        {
+            _workerChannelLogger.LogError(exc, "Initializing worker process failed");
+            PublishWorkerErrorEvent(exc);
+        }
+
+        private void PublishWorkerErrorEvent(Exception exc)
+        {
+            _workerInitTask.SetException(exc);
             if (_disposing)
             {
                 return;
@@ -428,6 +463,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _disposing = true;
             Dispose(true);
+        }
+
+        private bool IsTriggerMetadataPopulatedByWorker()
+        {
+            return !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(LanguageWorkerConstants.RpcHttpTriggerMetadataRemoved));
         }
     }
 }

@@ -19,17 +19,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private ILogger _testLogger;
         private ConcurrentDictionary<string, List<ILanguageWorkerChannel>> _workerChannels = new ConcurrentDictionary<string, List<ILanguageWorkerChannel>>();
         private string _scriptRootPath;
+        private bool _throwOnProcessStartUp;
 
-        public TestLanguageWorkerChannelFactory(IScriptEventManager eventManager, ILogger testLogger, string scriptRootPath)
+        public TestLanguageWorkerChannelFactory(IScriptEventManager eventManager, ILogger testLogger, string scriptRootPath, bool throwOnProcessStartUp = false)
         {
             _eventManager = eventManager;
             _testLogger = testLogger;
             _scriptRootPath = scriptRootPath;
-        }
+            _throwOnProcessStartUp = throwOnProcessStartUp;
+    }
 
         public ILanguageWorkerChannel CreateLanguageWorkerChannel(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
-            return new TestLanguageWorkerChannel(Guid.NewGuid().ToString(), language, _eventManager, _testLogger);
+            return new TestLanguageWorkerChannel(Guid.NewGuid().ToString(), language, _eventManager, _testLogger, throwOnProcessStartUp: _throwOnProcessStartUp);
         }
     }
 }

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -20,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     public class LanguageWorkerChannelTests
     {
         private static string _expectedLogMsg = "Outbound event subscribe event handler invoked";
+        private static string _expectedSystemLogMessage = "Random system log message";
 
         private Mock<ILanguageWorkerProcess> _mockLanguageWorkerProcess = new Mock<ILanguageWorkerProcess>();
         private string _workerId = "testWorkerId";
@@ -34,19 +36,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private TestLogger _logger;
         private LanguageWorkerChannel _workerChannel;
         private IEnumerable<FunctionMetadata> _functions = new List<FunctionMetadata>();
+        private WorkerConfig _testWorkerConfig;
 
         public LanguageWorkerChannelTests()
         {
             _logger = new TestLogger("FunctionDispatcherTests");
             _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
-            var testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
-            _mockLanguageWorkerProcess.Setup(m => m.StartProcess());
+            _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
+            _mockLanguageWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
 
             _workerChannel = new LanguageWorkerChannel(
                _workerId,
                _scriptRootPath,
                _eventManager,
-               testWorkerConfig,
+               _testWorkerConfig,
                _mockLanguageWorkerProcess.Object,
                _logger,
                _mockMetricsLogger.Object,
@@ -60,7 +63,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testFunctionRpcService.PublishStartStreamEvent(_workerId);
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             await initTask;
-            _mockLanguageWorkerProcess.Verify(m => m.StartProcess(), Times.Once);
+            _mockLanguageWorkerProcess.Verify(m => m.StartProcessAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task StartWorkerProcessAsync_TimesOut()
+        {
+            var initTask = _workerChannel.StartWorkerProcessAsync();
+            await Assert.ThrowsAsync<TimeoutException>(async () => await initTask);
+        }
+
+        [Fact]
+        public async Task StartWorkerProcessAsync_WorkerProcess_Throws()
+        {
+            Mock<ILanguageWorkerProcess> mockLanguageWorkerProcessThatThrows = new Mock<ILanguageWorkerProcess>();
+            mockLanguageWorkerProcessThatThrows.Setup(m => m.StartProcessAsync()).Throws<FileNotFoundException>();
+
+            _workerChannel = new LanguageWorkerChannel(
+               _workerId,
+               _scriptRootPath,
+               _eventManager,
+               _testWorkerConfig,
+               mockLanguageWorkerProcessThatThrows.Object,
+               _logger,
+               _mockMetricsLogger.Object,
+               0);
+            await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync());
         }
 
         [Fact]
@@ -79,6 +107,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+        }
+
+        [Theory]
+        [InlineData(RpcLog.Types.Level.Information, RpcLog.Types.Level.Information)]
+        [InlineData(RpcLog.Types.Level.Error, RpcLog.Types.Level.Error)]
+        [InlineData(RpcLog.Types.Level.Warning, RpcLog.Types.Level.Warning)]
+        [InlineData(RpcLog.Types.Level.Trace, RpcLog.Types.Level.Information)]
+        public void SendSystemLogMessage_PublishesSystemLogMessage(RpcLog.Types.Level levelToTest, RpcLog.Types.Level expectedLogLevel)
+        {
+            _testFunctionRpcService.PublishSystemLogEvent(levelToTest);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedSystemLogMessage) && m.Level.ToString().Equals(expectedLogLevel.ToString())));
         }
 
         [Fact]
@@ -123,6 +163,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest"));
             Assert.True(functionLoadLogs.Count() == 1);
+        }
+
+        [Fact]
+        public async Task SendSendFunctionEnvironmentReloadRequest_ThrowsTimeout()
+        {
+            var reloadTask = _workerChannel.SendFunctionEnvironmentReloadRequest();
+            await Assert.ThrowsAsync<TimeoutException>(async () => await reloadTask);
         }
 
         [Fact]

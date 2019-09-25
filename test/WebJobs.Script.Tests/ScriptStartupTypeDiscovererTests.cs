@@ -3,7 +3,9 @@
 
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.Storage;
@@ -93,7 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var traces = testLoggerProvider.GetAllLogMessages();
 
                 // Assert
-                Assert.Null(types);
+                Assert.NotNull(types);
+                Assert.Equal(types.Count(), 0);
                 Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Unable to find or download extension bundle")));
             }
         }
@@ -170,7 +173,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Assert
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Unable to find or download extension bundle")));
-            Assert.Null(types);
+            Assert.NotNull(types);
+            Assert.Equal(types.Count(), 0);
         }
     }
 }

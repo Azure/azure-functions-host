@@ -12,6 +12,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("encryptedContext")]
         public string EncryptedContext { get; set; }
 
+        [JsonProperty("isWarmup")]
+        public bool IsWarmup { get; set; }
+
         public static EncryptedHostAssignmentContext Create(HostAssignmentContext context, string key)
         {
             string json = JsonConvert.SerializeObject(context);

@@ -40,6 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string MsiEndpoint = "MSI_ENDPOINT";
         public const string MsiSecret = "MSI_SECRET";
         public const string DotnetSkipFirstTimeExperience = "DOTNET_SKIP_FIRST_TIME_EXPERIENCE";
+        public const string AzureFilesConnectionString = "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING";
+        public const string AzureFilesContentShare = "WEBSITE_CONTENTSHARE";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
@@ -72,5 +74,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string KubernetesServiceHost = "KUBERNETES_SERVICE_HOST";
         public const string KubernetesServiceHttpsPort = "KUBERNETES_SERVICE_PORT_HTTPS";
+        public const string FunctionsLogPath = "FUNCTIONS_LOG_PATH";
+        public const string FunctionsSecretsPath = "FUNCTIONS_SECRETS_PATH";
+        public const string FunctionsTestDataPath = "FUNCTIONS_TEST_DATA_PATH";
+        public const string MeshInitURI = "MESH_INIT_URI";
     }
 }

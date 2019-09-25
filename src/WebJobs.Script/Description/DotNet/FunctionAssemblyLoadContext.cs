@@ -9,6 +9,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyModel;
@@ -24,7 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly Lazy<Dictionary<string, ScriptRuntimeAssembly>> _runtimeAssemblies = new Lazy<Dictionary<string, ScriptRuntimeAssembly>>(DependencyHelper.GetRuntimeAssemblies);
         private static readonly Lazy<Dictionary<string, ResolutionPolicyEvaluator>> _resolutionPolicyEvaluators = new Lazy<Dictionary<string, ResolutionPolicyEvaluator>>(InitializeLoadPolicyEvaluators);
         private static readonly ConcurrentDictionary<string, object> _sharedContextAssembliesInFallbackLoad = new ConcurrentDictionary<string, object>();
-        private static readonly Lazy<FunctionAssemblyLoadContext> _defaultContext = new Lazy<FunctionAssemblyLoadContext>(CreateSharedContext, true);
+
+        private static Lazy<FunctionAssemblyLoadContext> _defaultContext = new Lazy<FunctionAssemblyLoadContext>(CreateSharedContext, true);
 
         private readonly List<string> _probingPaths = new List<string>();
         private readonly IDictionary<string, string> _depsAssemblies;
@@ -42,6 +44,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         public static FunctionAssemblyLoadContext Shared => _defaultContext.Value;
+
+        internal static void ResetSharedContext()
+        {
+            _defaultContext = new Lazy<FunctionAssemblyLoadContext>(CreateSharedContext, true);
+        }
 
         internal static IDictionary<string, string> InitializeDeps(string basePath)
         {

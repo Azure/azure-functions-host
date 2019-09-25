@@ -97,6 +97,22 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="Resources\FileProvisioning\PowerShell\PSGalleryEmptyFeed.xml" />
+    <None Remove="Resources\FileProvisioning\PowerShell\PSGallerySampleFeed.xml" />
+    <None Remove="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOffline.psd1" />
+    <None Remove="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOnline.psd1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\PSGallerySampleFeed.xml" />
+    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\PSGalleryEmptyFeed.xml" />
+    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOffline.psd1" />
+    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOnline.psd1">
+    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Description\DotNet\TestFiles\DepsFiles\" />
   </ItemGroup>
 

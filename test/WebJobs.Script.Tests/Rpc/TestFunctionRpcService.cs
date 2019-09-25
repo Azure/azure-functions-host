@@ -76,6 +76,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _eventManager.Publish(new InboundEvent(_workerId, responseMessage));
         }
 
+        public void PublishSystemLogEvent(RpcLog.Types.Level inputLevel)
+        {
+            RpcLog rpcLog = new RpcLog()
+            {
+                LogCategory = RpcLog.Types.RpcLogCategory.System,
+                Level = inputLevel,
+                Message = "Random system log message",
+            };
+
+            StreamingMessage logMessage = new StreamingMessage()
+            {
+                RpcLog = rpcLog
+            };
+            _eventManager.Publish(new InboundEvent(_workerId, logMessage));
+        }
+
         public static FunctionEnvironmentReloadResponse GetTestFunctionEnvReloadResponse()
         {
             StatusResult statusResult = new StatusResult()

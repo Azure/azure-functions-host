@@ -166,10 +166,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             await _languageWorkerChannelManager.ShutdownChannelIfExistsAsync(LanguageWorkerConstants.JavaLanguageWorkerName, javaWorkerChannel1.Id);
             await _languageWorkerChannelManager.ShutdownChannelIfExistsAsync(LanguageWorkerConstants.JavaLanguageWorkerName, javaWorkerChannel2.Id);
 
-            Assert.Empty(_languageWorkerChannelManager.GetChannels(LanguageWorkerConstants.JavaLanguageWorkerName));
+            Assert.Null(_languageWorkerChannelManager.GetChannels(LanguageWorkerConstants.JavaLanguageWorkerName));
 
             var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
+        }
+
+        [Fact]
+        public async Task InitializeLanguageWorkerChannel_ThrowsOnProcessStartup()
+        {
+            var languageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, null, _scriptRootPath, throwOnProcessStartUp: true);
+            var languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, languageWorkerChannelFactory, _optionsMonitor);
+            var languageWorkerChannel = await languageWorkerChannelManager.InitializeLanguageWorkerChannel("test", _scriptRootPath);
+            var ex = await Assert.ThrowsAsync<AggregateException>(async () => await languageWorkerChannelManager.GetChannelAsync("test"));
+            Assert.Contains("Process startup failed", ex.InnerException.Message);
         }
 
         private ILanguageWorkerChannel CreateTestChannel(string language)

@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 if (string.IsNullOrEmpty(extensionBundlePath))
                 {
                     _logger.ScriptStartUpErrorLoadingExtensionBundle();
-                    return null;
+                    return new Type[0];
                 }
                 _logger.ScriptStartUpLoadingExtensionBundle(extensionBundlePath);
                 binPath = Path.Combine(extensionBundlePath, "bin");

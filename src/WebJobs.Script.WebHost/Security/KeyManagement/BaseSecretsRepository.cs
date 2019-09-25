@@ -35,7 +35,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _sentinelFileWatcher.Changed += OnChanged;
         }
 
+        public BaseSecretsRepository(string secretsSentinelFilePath, ILogger logger) : this(secretsSentinelFilePath)
+        {
+            Logger = logger;
+        }
+
         public event EventHandler<SecretsChangedEventArgs> SecretsChanged;
+
+        protected ILogger Logger { get; }
 
         public abstract bool IsEncryptionSupported { get; }
 

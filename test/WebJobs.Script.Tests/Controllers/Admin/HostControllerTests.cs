@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IScriptHostManager> _mockScriptHostManager;
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly Mock<IFunctionsSyncManager> _functionsSyncManager;
+        private readonly Mock<IExtensionBundleManager> _extensionBundleManager;
 
         public HostControllerTests()
         {
@@ -43,8 +45,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(It.IsAny<string>())).Returns<string>(null);
             _mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
             _functionsSyncManager = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
+            _extensionBundleManager = new Mock<IExtensionBundleManager>(MockBehavior.Strict);
 
-            _hostController = new HostController(optionsWrapper, hostOptions, loggerFactory, mockAuthorizationService.Object, mockWebFunctionsManager.Object, _mockEnvironment.Object, _mockScriptHostManager.Object, _functionsSyncManager.Object);
+            _hostController = new HostController(optionsWrapper, hostOptions, loggerFactory, mockAuthorizationService.Object, mockWebFunctionsManager.Object, _mockEnvironment.Object, _mockScriptHostManager.Object, _functionsSyncManager.Object, _extensionBundleManager.Object);
 
             _appOfflineFilePath = Path.Combine(_scriptPath, ScriptConstants.AppOfflineFileName);
             if (File.Exists(_appOfflineFilePath))

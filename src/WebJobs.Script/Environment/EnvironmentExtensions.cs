@@ -48,6 +48,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.GetEnvironmentVariable(AzureWebsitePlaceholderMode) == "1";
         }
 
+        public static bool IsLegacyPlaceholderTemplateSite(this IEnvironment environment)
+        {
+            string siteName = environment.GetEnvironmentVariable(AzureWebsiteName);
+            return string.IsNullOrEmpty(siteName) ? false : siteName.Equals(ScriptConstants.LegacyPlaceholderTemplateSiteName, StringComparison.InvariantCultureIgnoreCase);
+        }
+
         public static bool IsEasyAuthEnabled(this IEnvironment environment)
         {
             bool.TryParse(environment.GetEnvironmentVariable(EnvironmentSettingNames.EasyAuthEnabled), out bool isEasyAuthEnabled);
@@ -188,12 +194,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteContainerReady));
         }
 
-        public static bool IsMountEnabled(this IEnvironment environment)
-        {
-            var mountEnabled = environment.GetEnvironmentVariable(MountEnabled);
-            return !string.IsNullOrEmpty(mountEnabled) && string.Equals(mountEnabled, "1");
-        }
-
         public static string GetKubernetesApiServerUrl(this IEnvironment environment)
         {
             string host = environment.GetEnvironmentVariable(KubernetesServiceHost);
@@ -206,5 +206,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
             return $"https://{host}:{port}";
         }
+
+        public static bool IsMountEnabled(this IEnvironment environment)
+            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "1") &&
+            !string.IsNullOrEmpty(environment.GetEnvironmentVariable(MeshInitURI));
+
+        public static bool IsMountDisabled(this IEnvironment environment)
+            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "0") ||
+            string.IsNullOrEmpty(environment.GetEnvironmentVariable(MeshInitURI));
     }
 }

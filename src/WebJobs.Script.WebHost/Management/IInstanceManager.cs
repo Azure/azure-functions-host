@@ -11,10 +11,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
     {
         IDictionary<string, string> GetInstanceInfo();
 
-        Task<string> ValidateContext(HostAssignmentContext assignmentContext);
+        Task<string> ValidateContext(HostAssignmentContext assignmentContext, bool isWarmup);
 
-        bool StartAssignment(HostAssignmentContext assignmentContext);
+        bool StartAssignment(HostAssignmentContext assignmentContext, bool isWarmup);
 
-        Task<string> SpecializeMSISidecar(HostAssignmentContext assignmentContext);
+        Task<string> SpecializeMSISidecar(HostAssignmentContext assignmentContext, bool isWarmup);
     }
 }

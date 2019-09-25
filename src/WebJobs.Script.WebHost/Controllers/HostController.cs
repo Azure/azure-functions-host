@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -44,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IEnvironment _environment;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IFunctionsSyncManager _functionsSyncManager;
+        private readonly IExtensionBundleManager _extensionBundleManager;
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
             IOptions<JobHostOptions> hostOptions,
@@ -52,7 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             IWebFunctionsManager functionsManager,
             IEnvironment environment,
             IScriptHostManager scriptHostManager,
-            IFunctionsSyncManager functionsSyncManager)
+            IFunctionsSyncManager functionsSyncManager,
+            IExtensionBundleManager extensionBundleManager)
         {
             _applicationHostOptions = applicationHostOptions;
             _hostOptions = hostOptions;
@@ -62,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _environment = environment;
             _scriptHostManager = scriptHostManager;
             _functionsSyncManager = functionsSyncManager;
+            _extensionBundleManager = extensionBundleManager;
         }
 
         [HttpGet]
@@ -78,6 +82,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 Id = await hostIdProvider.GetHostIdAsync(CancellationToken.None),
                 ProcessUptime = (long)(DateTime.UtcNow - Process.GetCurrentProcess().StartTime).TotalMilliseconds
             };
+
+            var bundleInfo = await _extensionBundleManager.GetExtensionBundleDetails();
+            if (bundleInfo != null)
+            {
+                status.ExtensionBundle = new Models.ExtensionBundle()
+                {
+                    Id = bundleInfo.Id,
+                    Version = bundleInfo.Version
+                };
+            }
 
             var lastError = scriptHostManager.LastError;
             if (lastError != null)

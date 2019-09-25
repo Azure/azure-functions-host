@@ -3,6 +3,7 @@
 
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Models;
 
 namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 {
@@ -13,5 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         Task<string> GetExtensionBundlePath(HttpClient httpClient = null);
 
         bool IsExtensionBundleConfigured();
+
+        Task<ExtensionBundleDetails> GetExtensionBundleDetails();
     }
 }

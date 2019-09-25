@@ -327,6 +327,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await startTask;
         }
 
+        [Fact]
+        public async Task HostRestart_BeforeStart_WaitsForStartToContinue()
+        {
+            _host = CreateMockHost();
+
+            var hostBuilder = new Mock<IScriptHostBuilder>();
+            hostBuilder.SetupSequence(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
+                .Returns(_host.Object)
+                .Returns(_host.Object);
+
+            _webHostLoggerProvider = new TestLoggerProvider();
+            _loggerFactory = new LoggerFactory();
+            _loggerFactory.AddProvider(_webHostLoggerProvider);
+
+            _hostService = new WebJobsScriptHostService(
+               _monitor, hostBuilder.Object, _loggerFactory, _mockRootServiceProvider.Object, _mockRootScopeFactory.Object,
+               _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions);
+
+            // Simulate a call to specialize coming from the PlaceholderSpecializationMiddleware. This
+            // can happen before we ever start the service, which could create invalid state.
+            Task restartTask = _hostService.RestartHostAsync(CancellationToken.None);
+
+            await _hostService.StartAsync(CancellationToken.None);
+            await restartTask;
+
+            var messages = _webHostLoggerProvider.GetAllLogMessages();
+
+            // The CancellationToken is canceled quick enough that we never build the initial host, so the
+            // only one we start is the restarted/specialized one.
+            Assert.NotNull(messages.Single(p => p.EventId.Id == 513)); // "Building" message
+            Assert.NotNull(messages.Single(p => p.EventId.Id == 514)); // "StartupWasCanceled" message
+            Assert.NotNull(messages.Single(p => p.EventId.Id == 520)); // "RestartBeforeStart" message
+            _host.Verify(p => p.StartAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
         public void RestartHost()
         {
             _hostService.RestartHostAsync(CancellationToken.None).Wait();
@@ -343,7 +378,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
             var hostNameProvider = new HostNameProvider(mockEnvironment.Object, loggerFactory.CreateLogger<HostNameProvider>());
-            var manager = new StandbyManager(_hostService, mockLanguageWorkerChannelManager.Object, mockConfiguration.Object, mockScriptWebHostEnvironment.Object, mockEnvironment.Object, _monitor, testLogger, hostNameProvider);
+            var mockApplicationLifetime = new Mock<Microsoft.AspNetCore.Hosting.IApplicationLifetime>(MockBehavior.Strict);
+            var manager = new StandbyManager(_hostService, mockLanguageWorkerChannelManager.Object, mockConfiguration.Object, mockScriptWebHostEnvironment.Object, mockEnvironment.Object, _monitor, testLogger, hostNameProvider, mockApplicationLifetime.Object);
             manager.SpecializeHostAsync().Wait();
         }
 
