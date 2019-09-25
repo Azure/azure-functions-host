@@ -8,26 +8,11 @@
     <IsPackable Condition="'$(IsPackable)' != ''">true</IsPackable>
     <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>    
   </PropertyGroup>
-  <ItemGroup>    
-    <PublishReadyToRunExclude Include="Microsoft.PackageManagement.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.PackageManagement.ArchiverProviders.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.PackageManagement.CoreProviders.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.PackageManagement.MetaProvider.PowerShell.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.PackageManagement.NuGetProvider.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.Management.Infrastructure.dll" />    
-    <PublishReadyToRunExclude Include="Microsoft.Management.Infrastructure.Native.dll" />    
-    <PublishReadyToRunExclude Include="Microsoft.PowerShell.ConsoleHost.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.PowerShell.PackageManagement.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.PowerShell.Commands.Diagnostics.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.PowerShell.Commands.Utility.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.PowerShell.MarkdownRender.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.PowerShell.Commands.Management.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.PowerShell.Security.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.CodeAnalysis.CSharp.dll" />
-    <PublishReadyToRunExclude Include="System.Management.Automation.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.WSMan.Management.dll" />
-    <PublishReadyToRunExclude Include="System.DirectoryServices.AccountManagement.dll" />
-  </ItemGroup>
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRunEmitSymbols>true</PublishReadyToRunEmitSymbols>
+    <PublishReadyToRunShowWarnings>true</PublishReadyToRunShowWarnings>
+  </PropertyGroup>
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>7.3</LangVersion>
@@ -123,14 +108,30 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-
-  <!--This target copies the contract assemblies we need to reference as part of function compilation-->
-  <!-- Temporarily commented out since we're not using contract assemblies -->
-  <!--<Target Name="CopyCompilationReferenceFiles" AfterTargets="Build">
+  
+  <!-- Remove all worker items from the ReadyToRun publish list -->
+  <Target Name="ExcludeWorkersFromReadyToRun" BeforeTargets="_PrepareForReadyToRunCompilation">
+    <CreateItem
+      Include="@(ResolvedFileToPublish)"
+      Condition="$([System.String]::new('%(ResolvedFileToPublish.TargetPath)').StartsWith('workers'))" >
+      <Output 
+        TaskParameter="Include"
+        ItemName="_ExcludeFromReadyToRun" />
+    </CreateItem>
+  
     <ItemGroup>
-      <RefSourceFiles Include="$(UserProfile)/.nuget/packages/netstandard.library/2.0.0/build/netstandard2.0/ref/*.dll" />
+      <ResolvedFileToPublish Remove="@(_ExcludeFromReadyToRun)" />
     </ItemGroup>
-    <Copy SourceFiles="@(RefSourceFiles)" DestinationFiles="@(RefSourceFiles->'$(OutDir)/compilationrefs/%(RecursiveDir)%(Filename)%(Extension)')" />
-  </Target>-->
+  </Target> 
+  
+  <!-- Add all worker items back to the publish list -->
+  <Target Name="IncludeWorkersInPublish" AfterTargets="CreateReadyToRunImages">
+    <CreateItem
+      Include="@(_ExcludeFromReadyToRun)">      
+      <Output 
+        TaskParameter="Include"
+        ItemName="ResolvedFileToPublish" />
+    </CreateItem>  
+  </Target> 
 
 </Project>
