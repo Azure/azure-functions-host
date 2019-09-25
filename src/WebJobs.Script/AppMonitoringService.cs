@@ -55,7 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void InitializeFileWatchers()
         {
-            _fileEventSource = new FileWatcherEventSource(_eventManager, EventSources.ScriptFiles, _currentAppOptions.ScriptPath);
+            _fileEventSource = new FileWatcherEventSource(_eventManager, EventSources.AppMonitoring,
+                _currentAppOptions.ScriptPath, filter: $"*{ScriptConstants.AppOfflineFileName}");
 
             // Right now, at app (webhost) level, we only care about app_offline.htm
             // This is because the state of the application is affected by this file.
