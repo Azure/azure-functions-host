@@ -204,19 +204,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                    .OfType<RequestTelemetry>()
                    .Where(t => GetInvocationId(t) == invocationId)
                    .SingleOrDefault();
+
                 return requestTelemetry != null;
-            },
-            userMessageCallback: () =>
-            {
-                foreach (var tel in _fixture.Channel.Telemetries.OfType<RequestTelemetry>())
-                {
-                    TelemetryDebugWriter.WriteTelemetry(tel);
-                }
-                foreach (var tel in _fixture.Channel.Telemetries)
-                {
-                    TelemetryDebugWriter.WriteTelemetry(tel);
-                }
-                return "</ERROR>";
             });
 
             ValidateRequest(requestTelemetry, invocationId, functionName, "req", functionSuccess);

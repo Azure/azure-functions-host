@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 FileChangeHelper.TraceFileChangeRestart(_logger, changeDescription, e.ChangeType.ToString(), e.FullPath, shutdown);
-                ScheduleRestartAsync(shutdown);
+                ScheduleRestart(shutdown);
             }
         }
 
@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return string.Empty;
         }
 
-        private void ScheduleRestartAsync(bool shutdown)
+        private void ScheduleRestart(bool shutdown)
         {
             if (shutdown)
             {
@@ -217,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         internal static async Task SetAppOfflineState(string rootPath, bool offline)
         {
             string path = Path.Combine(rootPath, ScriptConstants.AppOfflineFileName);
-            bool offlineFileExists = System.IO.File.Exists(path);
+            bool offlineFileExists = File.Exists(path);
 
             if (offline && !offlineFileExists)
             {
@@ -230,9 +230,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // delete the app_offline.htm file
                 await Utility.InvokeWithRetriesAsync(() =>
                 {
-                    if (System.IO.File.Exists(path))
+                    if (File.Exists(path))
                     {
-                        System.IO.File.Delete(path);
+                        File.Delete(path);
                     }
                 }, maxRetries: 3, retryInterval: TimeSpan.FromSeconds(1));
             }

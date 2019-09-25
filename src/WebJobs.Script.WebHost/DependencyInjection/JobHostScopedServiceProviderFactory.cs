@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             {
                 // Log this to the WebHost's logger so we can track
                 ILogger logger = _rootProvider.GetService<ILogger<DependencyValidator>>();
-                logger.LogError(ex, $"Invalid host services detected. {ex.Message}");
+                logger.LogError(ex, "Invalid host services detected.");
             }
 
             if (_provider == null)
