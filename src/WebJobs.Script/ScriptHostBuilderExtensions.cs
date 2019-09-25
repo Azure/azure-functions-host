@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class ScriptHostBuilderExtensions
     {
-        public static IHostBuilder AddScriptHost(this IHostBuilder builder, Action<ScriptApplicationHostOptions> configureOptions, ILoggerFactory loggerFactory = null)
+        public static IHostBuilder AddScriptHost(this IHostBuilder builder, Action<ScriptApplicationHostOptions> configureOptions, IFunctionMetadataProvider functionMetadataProvider, ILoggerFactory loggerFactory = null)
         {
             if (configureOptions == null)
             {
@@ -49,13 +49,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
             configureOptions(options);
 
-            return builder.AddScriptHost(options, loggerFactory, null);
+            return builder.AddScriptHost(options, functionMetadataProvider, loggerFactory, null);
         }
 
-        public static IHostBuilder AddScriptHost(this IHostBuilder builder, ScriptApplicationHostOptions applicationOptions, Action<IWebJobsBuilder> configureWebJobs = null)
-            => builder.AddScriptHost(applicationOptions, null, configureWebJobs);
+        public static IHostBuilder AddScriptHost(this IHostBuilder builder, ScriptApplicationHostOptions applicationOptions, IFunctionMetadataProvider functionMetadataProvider, Action<IWebJobsBuilder> configureWebJobs = null)
+            => builder.AddScriptHost(applicationOptions, functionMetadataProvider, null, configureWebJobs);
 
-        public static IHostBuilder AddScriptHost(this IHostBuilder builder, ScriptApplicationHostOptions applicationOptions, ILoggerFactory loggerFactory, Action<IWebJobsBuilder> configureWebJobs = null)
+        public static IHostBuilder AddScriptHost(this IHostBuilder builder, ScriptApplicationHostOptions applicationOptions, IFunctionMetadataProvider functionMetadataProvider, ILoggerFactory loggerFactory, Action<IWebJobsBuilder> configureWebJobs = null)
         {
             loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
 
@@ -84,10 +84,10 @@ namespace Microsoft.Azure.WebJobs.Script
             });
 
             // WebJobs configuration
-            return builder.AddScriptHostCore(applicationOptions, configureWebJobs, loggerFactory);
+            return builder.AddScriptHostCore(applicationOptions, functionMetadataProvider, configureWebJobs, loggerFactory);
         }
 
-        public static IHostBuilder AddScriptHostCore(this IHostBuilder builder, ScriptApplicationHostOptions applicationHostOptions, Action<IWebJobsBuilder> configureWebJobs = null, ILoggerFactory loggerFactory = null)
+        public static IHostBuilder AddScriptHostCore(this IHostBuilder builder, ScriptApplicationHostOptions applicationHostOptions, IFunctionMetadataProvider functionMetadataProvider, Action<IWebJobsBuilder> configureWebJobs = null, ILoggerFactory loggerFactory = null)
         {
             var skipHostInitialization = builder.Properties.ContainsKey(ScriptConstants.SkipHostInitializationKey);
             builder.ConfigureWebJobs((context, webJobsBuilder) =>
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // Only set our external startup if we're not suppressing host initialization
                     // as we don't want to load user assemblies otherwise.
-                    webJobsBuilder.UseScriptExternalStartup(applicationHostOptions.ScriptPath, loggerFactory, bundleManager);
+                    webJobsBuilder.UseScriptExternalStartup(applicationHostOptions.ScriptPath, loggerFactory, bundleManager, functionMetadataProvider);
                 }
                 webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
 
@@ -215,11 +215,11 @@ namespace Microsoft.Azure.WebJobs.Script
             AddProcessRegistry(services);
         }
 
-        public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, string rootScriptPath, ILoggerFactory loggerFactory, IExtensionBundleManager extensionBundleManager)
+        public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, string rootScriptPath, ILoggerFactory loggerFactory, IExtensionBundleManager extensionBundleManager, IFunctionMetadataProvider functionMetadataProvider)
         {
             var logger = loggerFactory?.CreateLogger<ScriptStartupTypeLocator>() ?? throw new ArgumentNullException(nameof(loggerFactory));
 
-            return builder.UseExternalStartup(new ScriptStartupTypeLocator(rootScriptPath, logger, extensionBundleManager));
+            return builder.UseExternalStartup(new ScriptStartupTypeLocator(rootScriptPath, logger, extensionBundleManager, functionMetadataProvider));
         }
 
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)

@@ -38,10 +38,10 @@ namespace Microsoft.Azure.WebJobs.Script.Host
                     b.SetMinimumLevel(LogLevel.Information);
                     b.AddConsole();
                 })
-                .AddScriptHost(options, webJobsBuilder =>
-                {
-                    webJobsBuilder.AddAzureStorageCoreServices();
-                })
+                .AddScriptHost(options, null, webJobsBuilder =>
+                 {
+                     webJobsBuilder.AddAzureStorageCoreServices();
+                 })
                 .UseConsoleLifetime()
                 .Build();
 

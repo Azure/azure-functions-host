@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
            IServiceScopeFactory rootScopeFactory, ScriptApplicationHostOptions webHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
         {
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();
+            IFunctionMetadataProvider metadataProvider = rootServiceProvider.GetService<IFunctionMetadataProvider>();
             IDependencyValidator validator = rootServiceProvider.GetService<IDependencyValidator>();
 
             builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory, validator))
@@ -38,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.ConfigureOptions<CustomHttpHeadersOptionsSetup>();
                     services.ConfigureOptions<HostHstsOptionsSetup>();
                 })
-                .AddScriptHost(webHostOptions, configLoggerFactory, webJobsBuilder =>
+                .AddScriptHost(webHostOptions, metadataProvider, configLoggerFactory, webJobsBuilder =>
                 {
                     webJobsBuilder
                         .AddAzureStorageCoreServices();
@@ -74,7 +75,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
                     services.AddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
                     services.AddSingleton<IScriptJobHostEnvironment, WebScriptJobHostEnvironment>();
-
                     services.AddSingleton<DefaultScriptWebHookProvider>();
                     services.TryAddSingleton<IScriptWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());

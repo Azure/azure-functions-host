@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -30,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private readonly Func<Task> _restart;
         private readonly Action _shutdown;
+        private readonly ImmutableArray<string> _rootDirectorySnapshot;
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
         private AutoRecoveringFileSystemWatcher _diagnosticModeFileWatcher;
         private FileWatcherEventSource _fileEventSource;
@@ -54,6 +56,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _shutdown = Shutdown;
             _shutdown = _shutdown.Debounce(milliseconds: 500);
+            _rootDirectorySnapshot = GetDirectorySnapshot();
+        }
+
+        private ImmutableArray<string> GetDirectorySnapshot()
+        {
+            if (_scriptOptions.RootScriptPath != null)
+            {
+                // take a startup time function directory snapshot so we can detect function additions/removals
+                // we'll also use this snapshot when reading function metadata as part of startup
+                // taking this snapshot once and reusing at various points during initialization allows us to
+                // minimize disk operations
+                try
+                {
+                    return Directory.EnumerateDirectories(_scriptOptions.RootScriptPath).ToImmutableArray();
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    return ImmutableArray<string>.Empty;
+                }
+            }
+            return ImmutableArray<string>.Empty;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -162,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 changeDescription = "File";
             }
             else if ((e.ChangeType == WatcherChangeTypes.Deleted || Directory.Exists(e.FullPath))
-                && !_scriptOptions.RootScriptDirectorySnapshot.SequenceEqual(Directory.EnumerateDirectories(_scriptOptions.RootScriptPath)))
+                && _rootDirectorySnapshot.SequenceEqual(Directory.EnumerateDirectories(_scriptOptions.RootScriptPath)))
             {
                 // Check directory snapshot only if "Deleted" change or if directory changed
                 changeDescription = "Directory";
