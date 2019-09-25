@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IEnumerable<FunctionMetadata> _functions;
         private Capabilities _workerCapabilities;
         private ILogger _workerChannelLogger;
+        private IMetricsLogger _metricsLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>();
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>();
@@ -75,6 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _runtime = workerConfig.Description.Language;
             _languageWorkerProcess = languageWorkerProcess;
             _workerChannelLogger = logger;
+            _metricsLogger = metricsLogger;
 
             _workerCapabilities = new Capabilities(_workerChannelLogger);
 
@@ -145,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             });
         }
 
-        internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res)
+        internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res, IDisposable latencyEvent)
         {
             _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse");
             if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
@@ -154,6 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _reloadTask.SetResult(false);
             }
             _reloadTask.SetResult(true);
+            latencyEvent.Dispose();
         }
 
         internal void WorkerInitResponse(RpcEvent initEvent)
@@ -198,11 +201,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public Task SendFunctionEnvironmentReloadRequest()
         {
             _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
+            IDisposable latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.SpecializationEnvironmentReloadRequestResponse);
+
             _eventSubscriptions
                 .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
-                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse), HandleWorkerEnvReloadError));
+                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse, latencyEvent), HandleWorkerEnvReloadError));
 
             IDictionary processEnv = Environment.GetEnvironmentVariables();
 

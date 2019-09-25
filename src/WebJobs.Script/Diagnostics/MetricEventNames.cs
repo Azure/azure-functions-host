@@ -49,5 +49,17 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string LinuxContainerSpecializationFileCommand = "linux.container.specialization.file.command";
         public const string LinuxContainerSpecializationAzureFilesMount = "linux.container.specialization.azure.files.mount";
         public const string LinuxContainerSpecializationGetPackageType = "linux.container.specialization.get.package.type";
+
+        // Specialization events
+        public const string SpecializationInvoke = "Specialization.PlaceholderSpecializationMiddleware.Invoke";
+        public const string SpecializationStandbyManagerInitialize = "Specialization.StandbyManager.Initialize";
+        public const string SpecializationSpecialize = "Specialization.WebHostlanguageWorkerChannelManager.SpecializeAsync";
+        public const string SpecializationSendEnvironmentReloadRequest = "Specialization.webHostLanguageWorkerChannel.SendFunctionEnvironmentReloadRequest";
+        public const string SpecializationEnvironmentReloadRequestResponse = "Specialization.webHostLanguageWorkerChannel.SendFunctionEnvironmentReloadRequest.FunctionEnvironmentReloadResponse";
+        public const string SpecializationShutdownStandbyChannels = "Specialization.ScheduleShutdownStandbyChannels";
+        public const string SpecializationRestartHost = "Specialization.scriptHostManager.RestartHostAsync";
+        public const string SpecializationDelayUntilHostReady = "Specialization.scriptHostManager.DelayUntilHostReady";
+        public const string SpecializationRuntimeShutdown = "Specialization.WebhostLanguageWorkerChannelManager.ScheduleShutdownStandbyChannels.{0}";
+        public const string SpecializationRuntimeShutdownWorker = "Specialization.WebhostLanguageWorkerChannelManager.ScheduleShutdownStandbyChannels.Worker.{0}";
     }
 }

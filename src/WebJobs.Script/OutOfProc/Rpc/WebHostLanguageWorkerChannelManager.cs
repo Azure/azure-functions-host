@@ -6,8 +6,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,16 +23,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IRpcWorkerChannelFactory _languageWorkerChannelFactory;
+        private readonly IMetricsLogger _metricsLogger;
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
 
         private ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>>> _workerChannels = new ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>>>(StringComparer.OrdinalIgnoreCase);
 
-        public WebHostLanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IRpcWorkerChannelFactory languageWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
+        public WebHostLanguageWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IRpcWorkerChannelFactory languageWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IMetricsLogger metricsLogger)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;
             _loggerFactory = loggerFactory;
+            _metricsLogger = metricsLogger;
             _languageWorkerChannelFactory = languageWorkerChannelFactory;
             _logger = loggerFactory.CreateLogger<WebHostLanguageWorkerChannelManager>();
             _applicationHostOptions = applicationHostOptions;
@@ -104,12 +106,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
 
             ILanguageWorkerChannel languageWorkerChannel = await GetChannelAsync(_workerRuntime);
+
             if (_workerRuntime != null && languageWorkerChannel != null)
             {
                 if (UsePlaceholderChannel(_workerRuntime))
                 {
                     _logger.LogDebug("Loading environment variables for runtime: {runtime}", _workerRuntime);
-                    await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
+                    using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationSendEnvironmentReloadRequest))
+                    {
+                        await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
+                    }
                 }
                 else
                 {
@@ -118,8 +124,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     await ShutdownChannelIfExistsAsync(_workerRuntime, languageWorkerChannel.Id);
                 }
             }
-
-            _shutdownStandbyWorkerChannels();
+            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationShutdownStandbyChannels))
+            {
+                _shutdownStandbyWorkerChannels();
+            }
             _logger.LogDebug("Completed language worker channel specialization");
         }
 
@@ -177,27 +185,31 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var standbyWorkerChannels = _workerChannels.Where(ch => !ch.Key.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase));
                 foreach (var runtime in standbyWorkerChannels)
                 {
-                    _logger.LogInformation("Disposing standby channel for runtime:{language}", runtime.Key);
-
-                    if (_workerChannels.TryRemove(runtime.Key, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> standbyChannels))
+                    using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationRuntimeShutdown, runtime.Key)))
                     {
-                        foreach (string workerId in standbyChannels.Keys)
+                        _logger.LogInformation("Disposing standby channel for runtime:{language}", runtime.Key);
+                        if (_workerChannels.TryRemove(runtime.Key, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> standbyChannels))
                         {
-                            standbyChannels[workerId]?.Task.ContinueWith(channelTask =>
+                            foreach (string workerId in standbyChannels.Keys)
                             {
-                                if (channelTask.Status == TaskStatus.Faulted)
+                                IDisposable latencyEvent = _metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationRuntimeShutdownWorker, workerId));
+                                standbyChannels[workerId]?.Task.ContinueWith(channelTask =>
                                 {
-                                    _logger.LogDebug(channelTask.Exception, "Removing errored worker channel");
-                                }
-                                else
-                                {
-                                    ILanguageWorkerChannel workerChannel = channelTask.Result;
-                                    if (workerChannel != null)
+                                    if (channelTask.Status == TaskStatus.Faulted)
                                     {
-                                        (channelTask.Result as IDisposable)?.Dispose();
+                                        _logger.LogDebug(channelTask.Exception, "Removing errored worker channel");
                                     }
-                                }
-                            });
+                                    else
+                                    {
+                                        ILanguageWorkerChannel workerChannel = channelTask.Result;
+                                        if (workerChannel != null)
+                                        {
+                                            (channelTask.Result as IDisposable)?.Dispose();
+                                        }
+                                    }
+                                    latencyEvent.Dispose();
+                                });
+                            }
                         }
                     }
                 }

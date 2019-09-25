@@ -148,8 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var standbyOptions = p.GetService<IOptionsMonitor<StandbyOptions>>();
                 if (standbyOptions.CurrentValue.InStandbyMode)
                 {
-                    var standbyManager = p.GetService<IStandbyManager>();
-                    return new StandbyInitializationService(standbyManager);
+                    return new StandbyInitializationService(p.GetService<IStandbyManager>(), p.GetService<IMetricsLogger>());
                 }
 
                 return NullHostedService.Instance;

@@ -4,6 +4,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 {
@@ -13,22 +14,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IStandbyManager _standbyManager;
         private readonly IEnvironment _environment;
+        private readonly IMetricsLogger _metricsLogger;
         private RequestDelegate _invoke;
         private double _specialized = 0;
 
         public PlaceholderSpecializationMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment,
-            IStandbyManager standbyManager, IEnvironment environment)
+            IStandbyManager standbyManager, IEnvironment environment, IMetricsLogger metricsLogger)
         {
             _next = next;
             _invoke = InvokeSpecializationCheck;
             _webHostEnvironment = webHostEnvironment;
             _standbyManager = standbyManager;
             _environment = environment;
+            _metricsLogger = metricsLogger;
         }
 
         public async Task Invoke(HttpContext httpContext)
         {
-            await _invoke(httpContext);
+            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationInvoke))
+            {
+                await _invoke(httpContext);
+            }
         }
 
         private async Task InvokeSpecializationCheck(HttpContext httpContext)
@@ -38,12 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 // We don't want AsyncLocal context (like Activity.Current) to flow
                 // here as it will contain request details. Suppressing this context
                 // prevents the request context from being captured by the host.
-                Task specializeTask;
                 using (System.Threading.ExecutionContext.SuppressFlow())
                 {
-                    specializeTask = _standbyManager.SpecializeHostAsync();
+                    await _standbyManager.SpecializeHostAsync();
                 }
-                await specializeTask;
 
                 if (Interlocked.CompareExchange(ref _specialized, 1, 0) == 0)
                 {

@@ -379,7 +379,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             loggerFactory.AddProvider(loggerProvider);
             var hostNameProvider = new HostNameProvider(mockEnvironment.Object, loggerFactory.CreateLogger<HostNameProvider>());
             var mockApplicationLifetime = new Mock<Microsoft.AspNetCore.Hosting.IApplicationLifetime>(MockBehavior.Strict);
-            var manager = new StandbyManager(_hostService, mockLanguageWorkerChannelManager.Object, mockConfiguration.Object, mockScriptWebHostEnvironment.Object, mockEnvironment.Object, _monitor, testLogger, hostNameProvider, mockApplicationLifetime.Object);
+            var manager = new StandbyManager(_hostService, mockLanguageWorkerChannelManager.Object, mockConfiguration.Object, mockScriptWebHostEnvironment.Object, mockEnvironment.Object, _monitor, testLogger, hostNameProvider, mockApplicationLifetime.Object, new TestMetricsLogger());
             manager.SpecializeHostAsync().Wait();
         }
 
