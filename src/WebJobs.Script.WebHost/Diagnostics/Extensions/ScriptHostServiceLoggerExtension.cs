@@ -100,13 +100,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(514, nameof(StartupWasCanceled)),
                 "Host startup was canceled.");
 
-        private static readonly Action<ILogger, Exception> _errorOccured = (l, e) =>
-        {
+        private static readonly Action<ILogger, Exception> _errorOccured =
             LoggerMessage.Define(
                 LogLevel.Error,
-                new EventId(515, "ErrorOccured"),
-                $"A host error has occurred {e.Message}");
-        };
+                new EventId(515, nameof(ErrorOccured)),
+                "A host error has occurred");
 
         private static readonly Action<ILogger, Exception> _errorOccuredInactive =
             LoggerMessage.Define(

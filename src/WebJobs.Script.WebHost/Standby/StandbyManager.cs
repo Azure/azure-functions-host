@@ -169,6 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             catch (Exception ex)
             {
                 _logger.LogInformation($"StandbyMode failed ------ {ex.Message}{Environment.NewLine}{ex.StackTrace}");
+                throw ex;
             }
         }
 
