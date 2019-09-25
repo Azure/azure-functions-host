@@ -105,15 +105,29 @@
     </Content>
   </ItemGroup>
   
-  <Target Name="ExcludeWorkersFromReadyToRun" AfterTargets="GetCopyToPublishDirectoryItems">
+  <!-- Remove all worker items from the ReadyToRun publish list -->
+  <Target Name="ExcludeWorkersFromReadyToRun" BeforeTargets="_PrepareForReadyToRunCompilation">
     <CreateItem
-      Include="%(AllPublishItemsFullPathWithTargetPath.Filename)%(AllPublishItemsFullPathWithTargetPath.Extension)"
-      Condition="$([System.String]::new('%(AllPublishItemsFullPathWithTargetPath.TargetPath)').StartsWith('workers'))"
-      PreserveExistingMetadata="false" >
+      Include="@(ResolvedFileToPublish)"
+      Condition="$([System.String]::new('%(ResolvedFileToPublish.TargetPath)').StartsWith('workers'))" >
       <Output 
         TaskParameter="Include"
-        ItemName="PublishReadyToRunExclude" />
+        ItemName="_ExcludeFromReadyToRun" />
     </CreateItem>
+  
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(_ExcludeFromReadyToRun)" />
+    </ItemGroup>
+  </Target> 
+  
+  <!-- Add all worker items back to the publish list -->
+  <Target Name="IncludeWorkersInPublish" AfterTargets="CreateReadyToRunImages">
+    <CreateItem
+      Include="@(_ExcludeFromReadyToRun)">      
+      <Output 
+        TaskParameter="Include"
+        ItemName="ResolvedFileToPublish" />
+    </CreateItem>  
   </Target> 
 
 </Project>
