@@ -44,10 +44,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 // We don't want AsyncLocal context (like Activity.Current) to flow
                 // here as it will contain request details. Suppressing this context
                 // prevents the request context from being captured by the host.
+                Task specializeTask;
                 using (System.Threading.ExecutionContext.SuppressFlow())
                 {
-                    await _standbyManager.SpecializeHostAsync();
+                    specializeTask = _standbyManager.SpecializeHostAsync();
                 }
+                await specializeTask;
 
                 if (Interlocked.CompareExchange(ref _specialized, 1, 0) == 0)
                 {
