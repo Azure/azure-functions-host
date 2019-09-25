@@ -193,6 +193,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
+        public async Task SpecializeAsync_Java_ReadOnly_KeepsProcessAlive()
+        {
+            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
+
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
+
+            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
+
+            await _languageWorkerChannelManager.SpecializeAsync();
+
+            // Verify logs
+            var traces = _testLogger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "SendFunctionEnvironmentReloadRequest called"));
+            Assert.True(functionLoadLogs.Count() == 1);
+
+            // Verify channel
+            var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
+            Assert.Equal(javaWorkerChannel, initializedChannel);
+        }
+
+        [Fact]
         public async Task SpecializeAsync_Node_NotReadOnly_KillsProcess()
         {
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
@@ -212,18 +234,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             // Verify channel
             var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName);
             Assert.Null(initializedChannel);
-        }
-
-        [Theory]
-        [InlineData("node", "1", true)]
-        [InlineData("node", "0", false)]
-        [InlineData("java", "1", true)]
-        [InlineData("java", "0", true)]
-        public void TryParseStatusCode_ReturnsExpectedResult(string workerRuntime, string runFromZip, bool expectedReturn)
-        {
-            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, runFromZip);
-            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
-            Assert.Equal(_languageWorkerChannelManager.UsePlaceholderChannel(workerRuntime), expectedReturn);
         }
 
         [Fact]

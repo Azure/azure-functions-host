@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger.LogDebug("Completed language worker channel specialization");
         }
 
-        internal bool UsePlaceholderChannel(string workerRuntime)
+        private bool UsePlaceholderChannel(string workerRuntime)
         {
             if (!string.IsNullOrEmpty(workerRuntime))
             {
