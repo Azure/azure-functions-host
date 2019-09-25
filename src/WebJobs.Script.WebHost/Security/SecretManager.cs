@@ -8,12 +8,14 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
+using DataProtectionCostants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -483,6 +485,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             else
             {
+                // We want to store encryption keys hashes to investigate sudden regenerations
+                string hashes = GetEncryptionKeysHashes();
+                secrets.DecryptionKeyId = hashes;
+                _logger?.LogInformation("Encription keys hashes: {0}", hashes);
+
                 await _repository.WriteAsync(secretsType, keyScope, secretsContent);
             }
         }
@@ -579,6 +586,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var currentFunctions = Directory.EnumerateDirectories(rootScriptPath).Select(p => Path.GetFileName(p)).ToList();
 
             await _repository.PurgeOldSecretsAsync(currentFunctions, traceWriter, logger);
+        }
+
+        private string GetEncryptionKeysHashes()
+        {
+            string result = string.Empty;
+            string azureWebsiteLocalEncryptionKey = Environment.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteLocalEncryptionKey) ?? string.Empty;
+            SHA256Managed hash = new SHA256Managed();
+
+            if (!string.IsNullOrEmpty(azureWebsiteLocalEncryptionKey))
+            {
+                byte[] hashBytes = hash.ComputeHash(Encoding.UTF8.GetBytes(azureWebsiteLocalEncryptionKey));
+                string azureWebsiteLocalEncryptionKeyHash = Convert.ToBase64String(hashBytes);
+                result += $"{DataProtectionCostants.AzureWebsiteLocalEncryptionKey}={azureWebsiteLocalEncryptionKeyHash};";
+            }
+
+            string azureWebsiteEnvironmentMachineKey = Environment.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey) ?? string.Empty;
+            if (!string.IsNullOrEmpty(azureWebsiteEnvironmentMachineKey))
+            {
+                byte[] hashBytes = hash.ComputeHash(Encoding.UTF8.GetBytes(azureWebsiteEnvironmentMachineKey));
+                string azureWebsiteEnvironmentMachineKeyHash = Convert.ToBase64String(hashBytes);
+                result += $"{DataProtectionCostants.AzureWebsiteEnvironmentMachineKey}={azureWebsiteEnvironmentMachineKeyHash};";
+            }
+
+            return result;
         }
     }
 }

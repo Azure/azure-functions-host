@@ -36,6 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         [JsonProperty(PropertyName = "source")]
         public string Source { get; set; }
 
+        [JsonProperty(PropertyName = "decryptionKeyId")]
+        public string DecryptionKeyId { get; set; }
+
         protected abstract ICollection<Key> GetKeys(string keyScope);
 
         public abstract ScriptSecrets Refresh(IKeyValueConverterFactory factory);
