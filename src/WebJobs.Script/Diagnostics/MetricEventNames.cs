@@ -17,6 +17,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string HostStartupGrpcServerLatency = "host.startup.outofproc.grpcserver.initialize.latency";
         public const string HostStartupRuntimeLanguage = "host.startup.runtime.language.{0}";
 
+        // Script host level events
+        public const string ScriptHostManagerBuildScriptHost = "scripthostmanager.buildscripthost.latency";
+        public const string ScriptHostManagerStartScriptHost = "scripthostmanager.startscripthost.latency";
+        public const string ScriptHostManagerStartService = "scripthostmanager.start.latency";
+        public const string ScriptHostManagerRestartService = "scripthostmanager.restart.latency";
+
         // language worker level events
         public const string WorkerInitializeLatency = "host.startup.outofproc.{0}worker.initialize.attempt{1}.latency";
 
@@ -51,15 +57,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string LinuxContainerSpecializationGetPackageType = "linux.container.specialization.get.package.type";
 
         // Specialization events
-        public const string SpecializationInvoke = "Specialization.PlaceholderSpecializationMiddleware.Invoke";
-        public const string SpecializationStandbyManagerInitialize = "Specialization.StandbyManager.Initialize";
-        public const string SpecializationSpecialize = "Specialization.WebHostlanguageWorkerChannelManager.SpecializeAsync";
-        public const string SpecializationSendEnvironmentReloadRequest = "Specialization.webHostLanguageWorkerChannel.SendFunctionEnvironmentReloadRequest";
-        public const string SpecializationEnvironmentReloadRequestResponse = "Specialization.webHostLanguageWorkerChannel.SendFunctionEnvironmentReloadRequest.FunctionEnvironmentReloadResponse";
-        public const string SpecializationShutdownStandbyChannels = "Specialization.ScheduleShutdownStandbyChannels";
-        public const string SpecializationRestartHost = "Specialization.scriptHostManager.RestartHostAsync";
-        public const string SpecializationDelayUntilHostReady = "Specialization.scriptHostManager.DelayUntilHostReady";
-        public const string SpecializationRuntimeShutdown = "Specialization.WebhostLanguageWorkerChannelManager.ScheduleShutdownStandbyChannels.{0}";
-        public const string SpecializationRuntimeShutdownWorker = "Specialization.WebhostLanguageWorkerChannelManager.ScheduleShutdownStandbyChannels.Worker.{0}";
+        public const string SpecializationSpecializeHost = "specialization.standbymanager.specializehost";
+        public const string SpecializationStandbyManagerInitialize = "specialization.standbymanager.initialize";
+        public const string SpecializationLanguageWorkerChannelManagerSpecialize = "specialization.webhostlanguageworkerchannelmanager.specialize";
+        public const string SpecializationSendEnvironmentReloadRequest = "specialization.webhostlanguageworkerchannel.sendfunctionenvironmentreloadrequest";
+        public const string SpecializationEnvironmentReloadRequestResponse = "specialization.webhostlanguageworkerchannel.sendfunctionenvironmentreloadrequest.functionenvironmentreloadresponse";
+        public const string SpecializationShutdownStandbyChannels = "specialization.scheduleshutdownstandbychannels";
+        public const string SpecializationRestartHost = "specialization.scripthostmanager.restarthost";
+        public const string SpecializationDelayUntilHostReady = "specialization.scripthostmanager.delayuntilhostready";
+        public const string SpecializationRuntimeShutdown = "specialization.webhostlanguageworkerchannelmanager.scheduleshutdownstandbychannels.{0}";
+        public const string SpecializationRuntimeShutdownWorker = "specialization.webhostlanguageworkerchannelmanager.scheduleshutdownstandbychannels.Worker.{0}";
     }
 }

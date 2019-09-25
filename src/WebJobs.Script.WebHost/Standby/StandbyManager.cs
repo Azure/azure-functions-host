@@ -71,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public Task SpecializeHostAsync()
         {
+            IDisposable latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.SpecializationSpecializeHost);
             return _specializationTask.Value.ContinueWith(t =>
             {
                 if (t.IsFaulted)
@@ -80,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _logger.LogError(t.Exception, $"Specialization failed. Shutting down.");
                     _applicationLifetime.StopApplication();
                 }
+                latencyEvent.Dispose();
             });
         }
 
@@ -105,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // user dependencies
             FunctionAssemblyLoadContext.ResetSharedContext();
 
-            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationSpecialize))
+            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationLanguageWorkerChannelManagerSpecialize))
             {
                 await _languageWorkerChannelManager.SpecializeAsync();
             }
