@@ -134,6 +134,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // might not receive a request
                     _specializationTimer = new Timer(OnSpecializationTimerTick, null, _specializationTimerInterval, _specializationTimerInterval);
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Standby initialization error.{Environment.NewLine}{ex.Message}", ex);
+                    throw ex;
+                }
                 finally
                 {
                     _semaphore.Release();
