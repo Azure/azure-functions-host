@@ -8,12 +8,14 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
+using DataProtectionCostants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -466,7 +468,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             ScriptSecretsType secretsType = secrets.SecretsType;
-            string secretsContent = ScriptSecretSerializer.SerializeSecrets<T>(secrets);
             if (isNonDecryptable)
             {
                 string[] secretBackups = await _repository.GetSecretSnapshots(secrets.SecretsType, keyScope);
@@ -479,11 +480,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _logger?.LogInformation(message);
                     throw new InvalidOperationException(message);
                 }
-                await _repository.WriteSnapshotAsync(secretsType, keyScope, secretsContent);
+                await _repository.WriteSnapshotAsync(secretsType, keyScope, ScriptSecretSerializer.SerializeSecrets<T>(secrets));
             }
             else
             {
-                await _repository.WriteAsync(secretsType, keyScope, secretsContent);
+                // We want to store encryption keys hashes to investigate sudden regenerations
+                string hashes = GetEncryptionKeysHashes();
+                secrets.DecryptionKeyId = hashes;
+                string message = $"Encription keys hashes: {hashes}";
+                _traceWriter.Info(message);
+                _logger?.LogInformation(message);
+
+                await _repository.WriteAsync(secretsType, keyScope, ScriptSecretSerializer.SerializeSecrets<T>(secrets));
             }
         }
 
@@ -579,6 +587,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var currentFunctions = Directory.EnumerateDirectories(rootScriptPath).Select(p => Path.GetFileName(p)).ToList();
 
             await _repository.PurgeOldSecretsAsync(currentFunctions, traceWriter, logger);
+        }
+
+        private static string GetEncryptionKeysHashes()
+        {
+            string result = string.Empty;
+            string azureWebsiteLocalEncryptionKey = Environment.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteLocalEncryptionKey) ?? string.Empty;
+            using (SHA256Managed hash = new SHA256Managed())
+            {
+
+                if (!string.IsNullOrEmpty(azureWebsiteLocalEncryptionKey))
+                {
+                    byte[] hashBytes = hash.ComputeHash(Encoding.UTF8.GetBytes(azureWebsiteLocalEncryptionKey));
+                    string azureWebsiteLocalEncryptionKeyHash = Convert.ToBase64String(hashBytes);
+                    result += $"{DataProtectionCostants.AzureWebsiteLocalEncryptionKey}={azureWebsiteLocalEncryptionKeyHash};";
+                }
+
+                string azureWebsiteEnvironmentMachineKey = Environment.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey) ?? string.Empty;
+                if (!string.IsNullOrEmpty(azureWebsiteEnvironmentMachineKey))
+                {
+                    byte[] hashBytes = hash.ComputeHash(Encoding.UTF8.GetBytes(azureWebsiteEnvironmentMachineKey));
+                    string azureWebsiteEnvironmentMachineKeyHash = Convert.ToBase64String(hashBytes);
+                    result += $"{DataProtectionCostants.AzureWebsiteEnvironmentMachineKey}={azureWebsiteEnvironmentMachineKeyHash};";
+                }
+
+                return result;
+            }
         }
     }
 }
