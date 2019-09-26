@@ -133,7 +133,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
                 services.AddSingleton<ScriptSettingsManager>();
                 services.AddTransient<IExtensionsManager, ExtensionsManager>();
+
+                // Fallback option if webhost is not present.
                 services.TryAddSingleton<IMetricsLogger, MetricsLogger>();
+
                 services.TryAddSingleton<IScriptJobHostEnvironment, ConsoleScriptJobHostEnvironment>();
                 services.AddTransient<IExtensionBundleContentProvider, ExtensionBundleContentProvider>();
 

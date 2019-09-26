@@ -109,9 +109,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
 
-            // Logging and diagnostics
-            services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
-
             // Secret management
             services.TryAddSingleton<ISecretManagerProvider, DefaultSecretManagerProvider>();
 
