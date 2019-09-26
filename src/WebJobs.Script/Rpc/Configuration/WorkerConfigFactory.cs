@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -19,12 +20,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IConfiguration _config;
         private readonly ILogger _logger;
+        private readonly ISystemRuntimeInformation _systemRuntimeInformation;
         private Dictionary<string, IWorkerProvider> _workerProviderDictionary = new Dictionary<string, IWorkerProvider>();
 
-        public WorkerConfigFactory(IConfiguration config, ILogger logger)
+        public WorkerConfigFactory(IConfiguration config, ILogger logger, ISystemRuntimeInformation systemRuntimeInfo)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
             WorkersDirPath = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
             var workersDirectorySection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.WorkersDirectorySectionName}");
             if (!string.IsNullOrEmpty(workersDirectorySection.Value))
@@ -50,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = description.DefaultExecutablePath,
-                    WorkerPath = description.GetWorkerPath()
+                    WorkerPath = HydrateWorkerPath(description.GetWorkerPath())
                 };
 
                 if (description.Language.Equals(LanguageWorkerConstants.JavaLanguageWorkerName))
@@ -132,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
 
-                string workerPath = workerDescription.GetWorkerPath();
+                string workerPath = HydrateWorkerPath(workerDescription.GetWorkerPath());
                 if (string.IsNullOrEmpty(workerPath) || File.Exists(workerPath))
                 {
                     _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
@@ -219,6 +222,23 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 return Path.GetFullPath(Path.Combine(javaHome, "bin", defaultExecutablePath));
             }
+        }
+
+        internal string HydrateWorkerPath(string workerPath)
+        {
+            if (string.IsNullOrEmpty(workerPath))
+            {
+                return null;
+            }
+
+            string os = _systemRuntimeInformation.GetOSPlatform().ToString();
+
+            string architecture = _systemRuntimeInformation.GetOSArchitecture().ToString();
+            string version = Environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
+
+            return workerPath.Replace("@os", os)
+                             .Replace("@architecture", architecture)
+                             .Replace($"{{{LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName}}}", version);
         }
     }
 }

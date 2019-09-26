@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         public const int ProcessStartTimeoutSeconds = 60;
         public const string FunctionWorkerRuntimeSettingName = "FUNCTIONS_WORKER_RUNTIME";
+        public const string FunctionWorkerRuntimeVersionSettingName = "FUNCTIONS_WORKER_RUNTIME_VERSION";
         public const string FunctionsWorkerProcessCountSettingName = "FUNCTIONS_WORKER_PROCESS_COUNT";
         public const string DotNetLanguageWorkerName = "dotnet";
         public const string NodeLanguageWorkerName = "node";
