@@ -35,7 +35,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             get
             {
-                return Path.Combine(Path.GetTempPath(), "FunctionsTest");
+                var path = Path.Combine(Path.GetTempPath(), "FunctionsTest");
+                FileUtility.EnsureDirectoryExists(path);
+                return path;
             }
         }
 

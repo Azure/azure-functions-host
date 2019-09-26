@@ -8,6 +8,7 @@ using System.IO.Abstractions;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -39,14 +40,17 @@ namespace Microsoft.Azure.WebJobs.Script
         private ImmutableArray<FunctionMetadata> LoadFunctionMetadata()
         {
             var functionsWhiteList = _scriptOptions.Value.Functions;
+            _logger.FunctionMetadataManagerLoadingFunctionsMetadata();
             var metadata = _functionMetadataProvider.GetFunctionMetadata();
+            Errors = _functionMetadataProvider.FunctionErrors;
+
             if (functionsWhiteList != null)
             {
                 _logger.LogInformation($"A function whitelist has been specified, excluding all but the following functions: [{string.Join(", ", functionsWhiteList)}]");
-                metadata = metadata.Where(f => functionsWhiteList.Contains(f.Name)).ToImmutableArray();
+                metadata = metadata.Where(function => functionsWhiteList.Any(functionName => functionName.Equals(function.Name, StringComparison.CurrentCultureIgnoreCase))).ToImmutableArray();
+                Errors = _functionMetadataProvider.FunctionErrors.Where(kvp => functionsWhiteList.Contains(kvp.Key)).ToImmutableDictionary<string, ImmutableArray<string>>();
             }
-
-            Errors = _functionMetadataProvider.FunctionErrors;
+            _logger.FunctionMetadataManagerFunctionsLoaded(metadata.Length);
             return metadata;
         }
     }

@@ -346,7 +346,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetExtensionsStartupTypes_BundlesNotConfiguredBindingsConfigured_PerformsSelectiveLoading()
+        public async Task GetExtensionsStartupTypes_BundlesNotConfiguredBindingsConfigured_LoadsAllExtensions()
         {
             var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
             storageExtensionReference.Bindings.Add("blob");
@@ -393,8 +393,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
-                Assert.Single(types);
-                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+                Assert.Equal(types.Count(), 2);
+                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.FirstOrDefault().FullName);
             }
         }
     }

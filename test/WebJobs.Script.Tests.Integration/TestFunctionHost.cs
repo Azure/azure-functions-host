@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -23,6 +24,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
@@ -57,6 +59,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_hostOptions);
+            var serviceProvider = new TestServiceProvider(_hostOptions, optionsMonitor);
+            _hostOptions.RootServiceProvider = serviceProvider;
+
             var builder = new WebHostBuilder()
                 .ConfigureLogging(b =>
                 {
@@ -70,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                       services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
                       services.Replace(new ServiceDescriptor(typeof(IExtensionBundleManager), new TestExtensionBundleManager()));
 
-                      
+
                       // Allows us to configure services as the last step, thereby overriding anything
                       services.AddSingleton(new PostConfigureServices(configureWebHostServices));
                   })
@@ -283,9 +288,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _postConfigure?.ConfigureServices(services);
             }
 
-            public void Configure(AspNetCore.Builder.IApplicationBuilder app, AspNetCore.Hosting.IApplicationLifetime applicationLifetime, AspNetCore.Hosting.IHostingEnvironment env, ILoggerFactory loggerFactory)
+            public void Configure(AspNetCore.Builder.IApplicationBuilder app, AspNetCore.Hosting.IApplicationLifetime applicationLifetime, AspNetCore.Hosting.IHostingEnvironment env, Microsoft.Extensions.Logging.ILoggerFactory loggerFactory)
             {
                 _startup.Configure(app, applicationLifetime, env, loggerFactory);
+            }
+        }
+
+        private class TestServiceProvider : IServiceProvider
+        {
+            private readonly ScriptApplicationHostOptions _scriptApplicationHostOptions;
+            private readonly IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
+
+            public TestServiceProvider(ScriptApplicationHostOptions scriptApplicationHostOptions, IOptionsMonitor<ScriptApplicationHostOptions> optionsMonitor)
+            {
+                _scriptApplicationHostOptions = scriptApplicationHostOptions;
+                _optionsMonitor = optionsMonitor;
+            }
+
+            public object GetService(System.Type serviceType)
+            {
+                var workerOptions = new LanguageWorkerOptions
+                {
+                    WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
+                };
+
+                return new FunctionMetadataProvider(_optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance);
             }
         }
 

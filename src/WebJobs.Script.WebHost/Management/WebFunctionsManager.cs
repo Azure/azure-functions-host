@@ -163,8 +163,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <returns>(success, FunctionMetadataResponse)</returns>
         public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request)
         {
-            // TODO: DI (FACAVAL) Follow up with ahmels - Since loading of function metadata is no longer tied to the script host, we
-            // should be able to inject an IFunctionMetadataManager here and bypass this step.
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionMetadata = _functionMetadataProvider.GetFunctionMetadata().First(metadata => metadata.Name == name);
             if (functionMetadata != null)

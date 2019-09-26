@@ -28,6 +28,8 @@ namespace Microsoft.WebJobs.Script.Tests
 {
     public static class TestHostBuilderExtensions
     {
+        private static IFunctionMetadataProvider _metadataProvider;
+
         public static IHostBuilder ConfigureDefaultTestWebScriptHost(this IHostBuilder builder, Action<ScriptApplicationHostOptions> configure = null, bool runStartupHostedServices = false)
         {
             return builder.ConfigureDefaultTestWebScriptHost(null, configure, runStartupHostedServices);
@@ -76,6 +78,7 @@ namespace Microsoft.WebJobs.Script.Tests
                 builder.ConfigureServices(s => s.RemoveAll<IHostedService>());
             }
 
+            webHostOptions.RootServiceProvider = rootProvider;
             return builder;
         }
 
@@ -92,9 +95,34 @@ namespace Microsoft.WebJobs.Script.Tests
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
 
-            var workerOptions = new LanguageWorkerOptions();
+            var workerOptions = new LanguageWorkerOptions
+            {
+                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
+            };
             var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance);
+            _metadataProvider = metadataProvider;
             return services.AddSingleton<IFunctionMetadataProvider>(metadataProvider);
         }
+
+        //private class TestServiceProvider : IServiceProvider
+        //{
+        //    private readonly ScriptApplicationHostOptions _scriptApplicationHostOptions;
+
+        //    public TestServiceProvider(ScriptApplicationHostOptions scriptApplicationHostOptions)
+        //    {
+        //        _scriptApplicationHostOptions = scriptApplicationHostOptions;
+        //    }
+
+        //    public object GetService(Type serviceType)
+        //    {
+        //        var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_scriptApplicationHostOptions);
+        //        var source = new TestChangeTokenSource();
+        //        var changeTokens = new[] { source };
+        //        var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
+
+        //        var workerOptions = new LanguageWorkerOptions();
+        //        return new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance);
+        //    }
+        //}
     }
 }

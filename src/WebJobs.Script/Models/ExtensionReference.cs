@@ -33,6 +33,6 @@ namespace Microsoft.Azure.WebJobs.Script.Models
         /// <summary>
         /// Gets the binding exposed by the extension
         /// </summary>
-        public ICollection<string> Bindings { get; private set; } = new Collection<string>();
+        public ICollection<string> Bindings { get; } = new Collection<string>();
     }
 }

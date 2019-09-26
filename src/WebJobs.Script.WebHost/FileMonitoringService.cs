@@ -185,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 changeDescription = "File";
             }
             else if ((e.ChangeType == WatcherChangeTypes.Deleted || Directory.Exists(e.FullPath))
-                && _rootDirectorySnapshot.SequenceEqual(Directory.EnumerateDirectories(_scriptOptions.RootScriptPath)))
+                && !_rootDirectorySnapshot.SequenceEqual(Directory.EnumerateDirectories(_scriptOptions.RootScriptPath)))
             {
                 // Check directory snapshot only if "Deleted" change or if directory changed
                 changeDescription = "Directory";
