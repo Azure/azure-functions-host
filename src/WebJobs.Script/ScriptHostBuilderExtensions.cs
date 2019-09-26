@@ -102,7 +102,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     o.SetResponse = HttpBinding.SetResponse;
                 })
                 .AddTimers()
-                .AddManualTrigger();
+                .AddManualTrigger()
+                .AddWarmup();
 
                 var extensionBundleOptions = GetExtensionBundleOptions(context);
                 var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory);
