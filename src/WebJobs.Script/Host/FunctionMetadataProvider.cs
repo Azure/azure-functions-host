@@ -50,11 +50,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<WorkerConfig> workerConfigs, Dictionary<string, ICollection<string>> functionErrors = null, IFileSystem fileSystem = null)
         {
+            fileSystem = fileSystem ?? FileUtility.Instance;
             functionErrors = functionErrors ?? new Dictionary<string, ICollection<string>>();
 
             var functions = new Collection<FunctionMetadata>();
 
-            var functionDirectories = Directory.EnumerateDirectories(_applicationHostOptions.CurrentValue.ScriptPath).ToImmutableArray();
+            var functionDirectories = fileSystem.Directory.EnumerateDirectories(_applicationHostOptions.CurrentValue.ScriptPath).ToImmutableArray();
             foreach (var functionDirectory in functionDirectories)
             {
                 var function = ReadFunctionMetadata(functionDirectory, workerConfigs, functionErrors, fileSystem);

@@ -204,17 +204,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        // Rewrite this
-        //[Fact]
-        //public void ReadFunctionMetadata_Succeeds()
-        //{
-        //    string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
-        //    var functionErrors = new Dictionary<string, ICollection<string>>();
-        //    //var metadataProvider = new FunctionMetadataProvider(null, null, null);
-        //    var metadata = FunctionMetadataProvider.ReadFunctionsMetadata(null, TestHelpers.GetTestWorkerConfigs(), functionErrors);
-        //    Assert.Equal(17, metadata.Count);
-        //}
-
         [Theory]
         [InlineData("node", "test.js")]
         [InlineData("java", "test.jar")]
