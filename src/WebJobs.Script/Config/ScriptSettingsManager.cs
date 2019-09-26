@@ -10,6 +10,10 @@ namespace Microsoft.Azure.WebJobs.Script.Config
     {
         private static ScriptSettingsManager _instance = new ScriptSettingsManager();
 
+        public ScriptSettingsManager() : this(null)
+        {
+        }
+
         public ScriptSettingsManager(IConfiguration config = null)
         {
             Configuration = config ?? BuildDefaultConfiguration();
@@ -61,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
              get
              {
                  string instanceId = GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId)
-                     ?? Environment.MachineName.GetHashCode().ToString("X").PadLeft(32, '0');
+                     ?? Utility.GetStableHash(Environment.MachineName).ToString("X").PadLeft(32, '0');
 
                  return instanceId.Substring(0, Math.Min(instanceId.Length, 32));
              }

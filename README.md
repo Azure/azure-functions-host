@@ -19,7 +19,7 @@ While many languages are supported, their level of support differs in important 
 
 In **V1**, the **first class** languages are C#, F#, and Javascript/Node.js. Functions written in these languages are run **in process** and are suitable for any workload. The remaining languages are considered **experimental**. Functions written in these languages are scripts that are run **out of process**. While there are many scenarios where this is acceptable, it won't be acceptable for high load scenarios where the overhead of a new process for each invocation won't scale.
 
-In **V2**, running a language **out of process** is no longer considered experimental. Out of process languages include JavaScript/Node.js (GA), Java (GA), PowerShell (Preview), and Python (Preview). C# and F# are still run **in process**. For more information about Supported Languages, see [this Microsoft Docs page](https://docs.microsoft.com/azure/azure-functions/supported-languages).
+In **V2**, running a language **out of process** is no longer considered experimental. Out of process languages include JavaScript/Node.js (GA), Java (GA), Python (GA), and PowerShell (Preview). C# and F# are still run **in process**. For more information about Supported Languages, see [this Microsoft Docs page](https://docs.microsoft.com/azure/azure-functions/supported-languages).
 
 ### Code Examples
 

@@ -44,5 +44,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         /// </summary>
         [JsonProperty(PropertyName = "processUptime", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public long ProcessUptime { get; set; }
+
+        /// <summary>
+        /// Gets or sets the information related to Extension bundles
+        /// </summary>
+        [JsonProperty(PropertyName = "extensionBundle", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public ExtensionBundle ExtensionBundle { get; set; }
     }
 }

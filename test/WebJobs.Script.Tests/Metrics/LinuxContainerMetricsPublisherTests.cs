@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             ILogger<LinuxContainerMetricsPublisher> logger = loggerFactory.CreateLogger<LinuxContainerMetricsPublisher>();
             var hostNameProvider = new HostNameProvider(mockEnvironment.Object, new Mock<ILogger<HostNameProvider>>().Object);
             var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions { InStandbyMode = true });
-            _metricsPublisher = new LinuxContainerMetricsPublisher(mockEnvironment.Object, standbyOptions, logger, _httpClient, hostNameProvider);
+            _metricsPublisher = new LinuxContainerMetricsPublisher(mockEnvironment.Object, standbyOptions, logger, hostNameProvider, _httpClient);
             _testLoggerProvider.ClearAllLogMessages();
         }
 

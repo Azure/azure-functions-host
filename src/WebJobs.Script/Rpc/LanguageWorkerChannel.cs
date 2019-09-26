@@ -5,10 +5,10 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Http;
@@ -20,7 +20,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-
+using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 
@@ -81,8 +81,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 .Where(msg => msg.WorkerId == _workerId);
 
             _eventSubscriptions.Add(_inboundWorkerEvents
-                .Where(msg => msg.MessageType == MsgType.RpcLog)
+                .Where(msg => msg.IsMessageOfType(MsgType.RpcLog) && !msg.IsLogOfCategory(RpcLogCategory.System))
                 .Subscribe(Log));
+
+            _eventSubscriptions.Add(_inboundWorkerEvents
+                .Where(msg => msg.IsMessageOfType(MsgType.RpcLog) && msg.IsLogOfCategory(RpcLogCategory.System))
+                .Subscribe(SystemLog));
 
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
                 .Where(msg => _workerConfig.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
@@ -300,34 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         context.ResultSource.SetCanceled();
                         return;
                     }
-
-                    var functionMetadata = context.FunctionMetadata;
-
-                    InvocationRequest invocationRequest = new InvocationRequest()
-                    {
-                        FunctionId = functionMetadata.FunctionId,
-                        InvocationId = context.ExecutionContext.InvocationId.ToString(),
-                    };
-                    foreach (var pair in context.BindingData)
-                    {
-                        if (pair.Value != null)
-                        {
-                            if ((pair.Value is HttpRequest) && IsTriggerMetadataPopulatedByWorker())
-                            {
-                                continue;
-                            }
-                            invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc(_workerChannelLogger, _workerCapabilities));
-                        }
-                    }
-                    foreach (var input in context.Inputs)
-                    {
-                        invocationRequest.InputData.Add(new ParameterBinding()
-                        {
-                            Name = input.name,
-                            Data = input.val.ToRpc(_workerChannelLogger, _workerCapabilities)
-                        });
-                    }
-
+                    InvocationRequest invocationRequest = context.ToRpcInvocationRequest(IsTriggerMetadataPopulatedByWorker(), _workerChannelLogger, _workerCapabilities);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                     SendStreamingMessage(new StreamingMessage
@@ -386,6 +363,40 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                         context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
                     }
                 }, null);
+            }
+        }
+
+        internal void SystemLog(RpcEvent msg)
+        {
+            RpcLog systemLog = msg.Message.RpcLog;
+            LogLevel logLevel = (LogLevel)systemLog.Level;
+            switch (logLevel)
+            {
+                case LogLevel.Warning:
+                    _workerChannelLogger.LogWarning(systemLog.Message);
+                    break;
+
+                case LogLevel.Information:
+                    _workerChannelLogger.LogInformation(systemLog.Message);
+                    break;
+
+                case LogLevel.Error:
+                    {
+                        if (systemLog.Exception != null)
+                        {
+                            RpcException exception = new RpcException(systemLog.Message, systemLog.Exception.Message, systemLog.Exception.StackTrace);
+                            _workerChannelLogger.LogError(exception, systemLog.Message);
+                        }
+                        else
+                        {
+                            _workerChannelLogger.LogError(systemLog.Message);
+                        }
+                    }
+                    break;
+
+                default:
+                    _workerChannelLogger.LogInformation(systemLog.Message);
+                    break;
             }
         }
 

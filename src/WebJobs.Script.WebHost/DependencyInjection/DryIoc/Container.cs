@@ -34,7 +34,6 @@ namespace DryIoc
     using System.Text;
     using System.Threading;
     using System.Diagnostics.CodeAnalysis;  // for SuppressMessage
-    using System.Diagnostics;               // for StackTrace
 
     using ImTools;
     using static ImTools.ArrayTools;
@@ -64,6 +63,7 @@ namespace DryIoc
     using NewArrayExpr = System.Linq.Expressions.NewArrayExpression;
     using MemberAssignmentExpr = System.Linq.Expressions.MemberAssignment;
     using FactoryDelegateExpr = System.Linq.Expressions.Expression<FactoryDelegate>;
+    using global::Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection.DryIoc;
 
 #endif
 
@@ -1942,7 +1942,7 @@ namespace DryIoc
             _registry = registry;
 
             _singletonScope = singletonScope;
-            _scopeContext = scopeContext;
+            _scopeContext = scopeContext ?? new AsyncScopeContext();
             _ownCurrentScope = ownCurrentScope;
 
             _disposed = disposed;

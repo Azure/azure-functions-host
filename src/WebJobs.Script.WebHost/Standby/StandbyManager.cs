@@ -7,6 +7,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Configuration;
@@ -97,9 +98,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _hostNameProvider.Reset();
 
+            // Reset the shared load context to ensure we're reloading
+            // user dependencies
+            FunctionAssemblyLoadContext.ResetSharedContext();
+
             await _languageWorkerChannelManager.SpecializeAsync();
 
             NotifyChange();
+
             await _scriptHostManager.RestartHostAsync();
             await _scriptHostManager.DelayUntilHostReady();
         }

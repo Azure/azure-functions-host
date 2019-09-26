@@ -14,6 +14,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public ExecutionContext ExecutionContext { get; set; }
 
+        public string Traceparent { get; set; }
+
+        public string Tracestate { get; set; }
+
+        public IEnumerable<KeyValuePair<string, string>> Attributes { get; set; }
+
         public IEnumerable<(string name, DataType type, object val)> Inputs { get; set; }
 
         public Dictionary<string, object> BindingData { get; set; }

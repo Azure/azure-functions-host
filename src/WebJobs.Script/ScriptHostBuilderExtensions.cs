@@ -157,6 +157,13 @@ namespace Microsoft.Azure.WebJobs.Script
                          .GetSection(ConfigurationSectionNames.Aggregator)
                          .Bind(o);
                     });
+                services.AddOptions<ScaleOptions>()
+                    .Configure<IConfiguration>((o, c) =>
+                    {
+                        c.GetSection(ConfigurationSectionNames.JobHost)
+                         .GetSection(ConfigurationSectionNames.Scale)
+                         .Bind(o);
+                    });
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
                 services.AddSingleton<IPrimaryHostStateProvider, PrimaryHostStateProvider>();
@@ -168,6 +175,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 services.AddSingleton<IHostedService, LanguageWorkerConsoleLogService>();
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
+
+                if (SystemEnvironment.Instance.IsRuntimeScaleMonitoringEnabled())
+                {
+                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionsScaleMonitorService>());
+                }
+                services.TryAddSingleton<FunctionsScaleManager>();
             });
 
             RegisterFileProvisioningService(builder);
@@ -204,7 +217,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, string rootScriptPath, ILoggerFactory loggerFactory, IExtensionBundleManager extensionBundleManager)
         {
-            var logger = loggerFactory.CreateLogger<ScriptStartupTypeLocator>() ?? throw new ArgumentNullException(nameof(loggerFactory));
+            var logger = loggerFactory?.CreateLogger<ScriptStartupTypeLocator>() ?? throw new ArgumentNullException(nameof(loggerFactory));
+
             return builder.UseExternalStartup(new ScriptStartupTypeLocator(rootScriptPath, logger, extensionBundleManager));
         }
 

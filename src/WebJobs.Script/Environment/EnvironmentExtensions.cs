@@ -54,6 +54,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return string.IsNullOrEmpty(siteName) ? false : siteName.Equals(ScriptConstants.LegacyPlaceholderTemplateSiteName, StringComparison.InvariantCultureIgnoreCase);
         }
 
+        public static bool IsRuntimeScaleMonitoringEnabled(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeScaleMonitoringEnabled) == "1";
+        }
+
         public static bool IsEasyAuthEnabled(this IEnvironment environment)
         {
             bool.TryParse(environment.GetEnvironmentVariable(EnvironmentSettingNames.EasyAuthEnabled), out bool isEasyAuthEnabled);
@@ -208,9 +213,11 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         public static bool IsMountEnabled(this IEnvironment environment)
-            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "1");
+            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "1") &&
+            !string.IsNullOrEmpty(environment.GetEnvironmentVariable(MeshInitURI));
 
         public static bool IsMountDisabled(this IEnvironment environment)
-            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "0");
+            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "0") ||
+            string.IsNullOrEmpty(environment.GetEnvironmentVariable(MeshInitURI));
     }
 }

@@ -172,9 +172,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Downloading zip contents from", p),
                 p => Assert.EndsWith(" bytes downloaded", p),
                 p => Assert.EndsWith(" bytes written", p),
-                p => Assert.StartsWith("Running: bash ", p),
+                p => Assert.StartsWith("Running: ", p),
                 p => Assert.StartsWith("Output:", p),
-                p => Assert.StartsWith("error:", p),
+                p => Assert.StartsWith("bash:", p),
                 p => Assert.StartsWith("exitCode:", p),
                 p => Assert.StartsWith("Triggering specialization", p));
         }

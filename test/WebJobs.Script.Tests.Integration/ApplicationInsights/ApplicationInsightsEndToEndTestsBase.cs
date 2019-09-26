@@ -356,20 +356,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 // Every telemetry will have {originalFormat}, Category, Level, but we validate those elsewhere.
                 // We're only interested in the custom properties.
                 Assert.Equal("1", traces[0].Message);
-                Assert.Equal(6, traces[0].Properties.Count);
+                Assert.Equal(7, traces[0].Properties.Count);
                 Assert.Equal("customValue1", traces[0].Properties["prop__customKey1"]);
 
                 Assert.Equal("2", traces[1].Message);
-                Assert.Equal(7, traces[1].Properties.Count);
+                Assert.Equal(8, traces[1].Properties.Count);
                 Assert.Equal("customValue1", traces[1].Properties["prop__customKey1"]);
                 Assert.Equal("customValue2", traces[1].Properties["prop__customKey2"]);
 
                 Assert.Equal("3", traces[2].Message);
-                Assert.Equal(6, traces[2].Properties.Count);
+                Assert.Equal(7, traces[2].Properties.Count);
                 Assert.Equal("customValue1", traces[2].Properties["prop__customKey1"]);
 
                 Assert.Equal("4", traces[3].Message);
-                Assert.Equal(5, traces[3].Properties.Count);
+                Assert.Equal(6, traces[3].Properties.Count);
             }
         }
 
