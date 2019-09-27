@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// This constant is also defined in Antares, where the limit is ultimately enforced
         /// for settriggers calls. If we raise that limit there, we should raise here as well.
         /// </summary>
-        public const int MaxTriggersStringLength = 102400;
+        public const int MaxTriggersStringLength = 204800;
 
         public const string ExtensionsProjectFileName = "extensions.csproj";
         public const string MetadataGeneratorPackageId = "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator";
