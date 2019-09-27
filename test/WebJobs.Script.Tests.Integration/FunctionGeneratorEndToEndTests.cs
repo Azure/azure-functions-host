@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             WebHostSettings webHostSettings = new WebHostSettings();
             webHostSettings.SecretsPath = secretsPath;
             var eventManagerMock = new Mock<IScriptEventManager>();
-            var secretManager = new SecretManager(SettingsManager, repository, NullTraceWriter.Instance, null);
+            var secretManager = new SecretManager(SettingsManager, repository, NullTraceWriter.Instance);
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);

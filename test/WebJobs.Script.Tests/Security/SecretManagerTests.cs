@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 IDictionary<string, string> result;
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance, null))
+                using (var secretManager = new SecretManager(_settingsManager, repository, NullTraceWriter.Instance))
                 {
                     result = await secretManager.GetFunctionSecretsAsync("testfunction", true);
                 }
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 IDictionary<string, string> functionSecrets;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, null))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
                     functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                 }
@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 HostSecretsInfo hostSecrets;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, null))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
                     hostSecrets = await secretManager.GetHostSecretsAsync();
                 }
@@ -200,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 HostSecretsInfo hostSecrets;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, null))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
                     hostSecrets = await secretManager.GetHostSecretsAsync();
                 }
@@ -233,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 IDictionary<string, string> functionSecrets;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, null))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
                     functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                 }
@@ -264,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 KeyOperationResult result;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, null))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
                     result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, null, functionName, ScriptSecretsType.Function);
                 }
@@ -296,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 KeyOperationResult result;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, null))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
                     result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, null, functionName, ScriptSecretsType.Function);
                 }
@@ -327,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 KeyOperationResult result;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, null))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
                     result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, "TestSecretValue", functionName, ScriptSecretsType.Function);
                 }
@@ -390,7 +390,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             KeyOperationResult result;
             var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-            using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, null))
+            using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
             {
                 result = await secretManager.AddOrUpdateFunctionSecretAsync(secretName, "TestSecretValue", scope, ScriptSecretsType.Host);
             }
@@ -423,7 +423,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 KeyOperationResult result;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, null))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
                     result = await secretManager.SetMasterKeyAsync(testSecret);
                 }
@@ -453,7 +453,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 KeyOperationResult result;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, null))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
                     result = await secretManager.SetMasterKeyAsync();
                 }
@@ -486,7 +486,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(secretsPath);
-                var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, null, true);
+                var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, true);
                 bool fileCreated = File.Exists(hostSecretPath);
 
                 Assert.False(preExistingFile);
@@ -521,7 +521,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
 
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, null))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
                     hostSecrets = await secretManager.GetHostSecretsAsync();
                 }
@@ -566,7 +566,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
 
-                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter, null))
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
                 {
                     functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                 }
@@ -611,7 +611,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
 
-                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
+                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter))
                 {
                     InvalidOperationException ioe = null;
                     try
@@ -673,7 +673,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
 
-                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
+                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter))
                 {
                     await Task.WhenAll(
                         Task.Run(async () =>
@@ -693,7 +693,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     Assert.Equal(hostSecrets.MasterKey, "1234");
                 }
 
-                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
+                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter))
                 {
                     await Assert.ThrowsAsync<IOException>(async () =>
                     {
@@ -743,7 +743,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 IDictionary<string, string> functionSecrets = null;
                 var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
                 ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
-                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
+                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter))
                 {
                     await Task.WhenAll(
                         Task.Run(async () =>
@@ -763,7 +763,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     Assert.Equal(functionSecrets["Key1"], "FunctionValue1");
                 }
 
-                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter, null))
+                using (var secretManager = new SecretManager(_settingsManager, repository, traceWriter))
                 {
                     await Assert.ThrowsAsync<IOException>(async () =>
                     {
