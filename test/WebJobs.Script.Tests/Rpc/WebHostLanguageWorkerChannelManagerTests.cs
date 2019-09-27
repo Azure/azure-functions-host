@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private ILanguageWorkerChannelFactory _languageWorkerChannelFactory;
         private IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
         private Mock<ILanguageWorkerProcess> _languageWorkerProcess;
+        private TestLogger _testLogger;
 
         private string _scriptRootPath = @"c:\testing\FUNCTIONS-TEST";
         private IDictionary<string, string> _capabilities = new Dictionary<string, string>()
@@ -59,7 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _languageWorkerProcessFactory = new Mock<ILanguageWorkerProcessFactory>();
             _languageWorkerProcessFactory.Setup(m => m.CreateLanguageWorkerProcess(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(_languageWorkerProcess.Object);
 
-            _languageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, null, _scriptRootPath);
+            _testLogger = new TestLogger("WebHostLanguageWorkerChannelManagerTests");
+            _languageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, _testLogger, _scriptRootPath);
             _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
         }
 
@@ -143,6 +145,94 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _languageWorkerChannelManager.ScheduleShutdownStandbyChannels();
 
             var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
+            Assert.Null(initializedChannel);
+        }
+
+        [Fact]
+        public async Task SpecializeAsync_Node_ReadOnly_KeepsProcessAlive()
+        {
+            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
+
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
+
+            ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
+
+            await _languageWorkerChannelManager.SpecializeAsync();
+
+            // Verify logs
+            var traces = _testLogger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "SendFunctionEnvironmentReloadRequest called"));
+            Assert.True(functionLoadLogs.Count() == 1);
+
+            // Verify channel
+            var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName);
+            Assert.Equal(nodeWorkerChannel, initializedChannel);
+        }
+
+        [Fact]
+        public async Task SpecializeAsync_Java_KeepsProcessAlive()
+        {
+            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "0");
+
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
+
+            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
+
+            await _languageWorkerChannelManager.SpecializeAsync();
+
+            // Verify logs
+            var traces = _testLogger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "SendFunctionEnvironmentReloadRequest called"));
+            Assert.True(functionLoadLogs.Count() == 1);
+
+            // Verify channel
+            var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
+            Assert.Equal(javaWorkerChannel, initializedChannel);
+        }
+
+        [Fact]
+        public async Task SpecializeAsync_Java_ReadOnly_KeepsProcessAlive()
+        {
+            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
+
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
+
+            ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
+
+            await _languageWorkerChannelManager.SpecializeAsync();
+
+            // Verify logs
+            var traces = _testLogger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "SendFunctionEnvironmentReloadRequest called"));
+            Assert.True(functionLoadLogs.Count() == 1);
+
+            // Verify channel
+            var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
+            Assert.Equal(javaWorkerChannel, initializedChannel);
+        }
+
+        [Fact]
+        public async Task SpecializeAsync_Node_NotReadOnly_KillsProcess()
+        {
+            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
+            // This is an invalid setting configuration, but just to show that run from zip is NOT set
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "0");
+
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
+
+            ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
+
+            await _languageWorkerChannelManager.SpecializeAsync();
+
+            // Verify logs
+            var traces = _testLogger.GetLogMessages();
+            Assert.True(traces.Count() == 0);
+
+            // Verify channel
+            var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName);
             Assert.Null(initializedChannel);
         }
 
