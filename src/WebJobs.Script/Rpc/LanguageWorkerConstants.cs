@@ -16,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string JavaLanguageWorkerName = "java";
         public const string PowerShellLanguageWorkerName = "powershell";
         public const string PythonLanguageWorkerName = "python";
+        public const string PythonRuntimeDefaultVersion = "3.6";
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultWorkersDirectoryName = "workers";
 

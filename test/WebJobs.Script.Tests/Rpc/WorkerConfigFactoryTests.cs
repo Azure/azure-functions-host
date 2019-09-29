@@ -221,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData("{FUNCTIONS_WORKER_RUNTIME_VERSION}/@os/@architecture", "3.7/LINUX/X64")]
         [InlineData("{FUNCTIONS_WORKER_RUNTIME_VERSION}/@architecture", "3.7/X64")]
         [InlineData("{FUNCTIONS_WORKER_RUNTIME_VERSION}/@os", "3.7/LINUX")]
-        public void LanguageWorker_HydratedWorkerPath(string defaultWorkerPath, string expectedPath)
+        public void LanguageWorker_HydratedWorkerPath_EnvironmentVersionSet(string defaultWorkerPath, string expectedPath)
         {
             Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
 
@@ -245,7 +245,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var testSysRuntimeInfo = new TestSystemRuntimeInformation();
             var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo);
 
-            Assert.Equal(expectedPath, configFactory.HydrateWorkerPath(workerDescription.GetWorkerPath()));
+            Assert.Equal(expectedPath, configFactory.HydrateWorkerPath(workerDescription.GetWorkerPath(),
+                                                                        workerDescription.Language));
+        }
+
+        [Theory]
+        [InlineData("{FUNCTIONS_WORKER_RUNTIME_VERSION}/@os/@architecture", "3.6/LINUX/X64")]
+        [InlineData("{FUNCTIONS_WORKER_RUNTIME_VERSION}/@architecture", "3.6/X64")]
+        [InlineData("{FUNCTIONS_WORKER_RUNTIME_VERSION}/@os", "3.6/LINUX")]
+        public void LanguageWorker_HydratedWorkerPath_EnvironmentVersionNotSet(string defaultWorkerPath, string expectedPath)
+        {
+            // We fall back to the default version when this is not set
+            // Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
+
+            WorkerDescription workerDescription = new WorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                DefaultWorkerPath = defaultWorkerPath,
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var testSysRuntimeInfo = new TestSystemRuntimeInformation();
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo);
+
+            Assert.Equal(expectedPath, configFactory.HydrateWorkerPath(workerDescription.GetWorkerPath(),
+                                                                        workerDescription.Language));
         }
     }
 }

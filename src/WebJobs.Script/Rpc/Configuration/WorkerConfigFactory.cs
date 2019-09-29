@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = description.DefaultExecutablePath,
-                    WorkerPath = HydrateWorkerPath(description.GetWorkerPath())
+                    WorkerPath = HydrateWorkerPath(description.GetWorkerPath(), description.Language)
                 };
 
                 if (description.Language.Equals(LanguageWorkerConstants.JavaLanguageWorkerName))
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
 
-                string workerPath = HydrateWorkerPath(workerDescription.GetWorkerPath());
+                string workerPath = HydrateWorkerPath(workerDescription.GetWorkerPath(), workerDescription.Language);
                 if (string.IsNullOrEmpty(workerPath) || File.Exists(workerPath))
                 {
                     _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
@@ -224,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        internal string HydrateWorkerPath(string workerPath)
+        internal string HydrateWorkerPath(string workerPath, string language)
         {
             if (string.IsNullOrEmpty(workerPath))
             {
@@ -235,10 +235,25 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
             string architecture = _systemRuntimeInformation.GetOSArchitecture().ToString();
             string version = Environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
+            if (string.IsNullOrEmpty(version))
+            {
+                version = GetWorkerRuntimeDefaultVersion(language);
+            }
 
             return workerPath.Replace("@os", os)
                              .Replace("@architecture", architecture)
                              .Replace($"{{{LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName}}}", version);
+        }
+
+        internal string GetWorkerRuntimeDefaultVersion(string language)
+        {
+            if (string.Equals(language, LanguageWorkerConstants.PythonLanguageWorkerName,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                return LanguageWorkerConstants.PythonRuntimeDefaultVersion;
+            }
+
+            return string.Empty;
         }
     }
 }
