@@ -246,8 +246,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 data[9].DataPointer = (IntPtr)jPtr;
                 data[9].Size = (j.Length + 1) * sizeof(char);
                 data[10].DataPointer = (IntPtr)kPtr;
-                data[10].Size = (l.Length + 1) * sizeof(char);
-                data[11].DataPointer = (IntPtr)kPtr;
+                data[10].Size = (k.Length + 1) * sizeof(char);
+                data[11].DataPointer = (IntPtr)lPtr;
                 data[11].Size = (l.Length + 1) * sizeof(char);
 
                 WriteEventCore(eventNum, count, data);
