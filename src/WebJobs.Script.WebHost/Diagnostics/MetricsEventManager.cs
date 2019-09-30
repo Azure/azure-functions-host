@@ -277,7 +277,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     metricEvent.Maximum,
                     metricEvent.Count,
                     metricEvent.Timestamp,
-                    metricEvent.Data ?? string.Empty);
+                    metricEvent.Data ?? string.Empty,
+                    metricEvent.RuntimeSiteName ?? string.Empty);
             }
         }
 

@@ -58,8 +58,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     It.IsAny<long>(),
                     It.IsAny<long>(),
                     It.IsAny<DateTime>(),
+                    It.IsAny<string>(),
                     It.IsAny<string>()))
-                .Callback((string subscriptionId, string appName, string functionName, string eventName, long average, long min, long max, long count, DateTime eventTimestamp, string data) =>
+                .Callback((string subscriptionId, string appName, string functionName, string eventName, long average, long min, long max, long count, DateTime eventTimestamp, string data, string runtimeSiteName) =>
                 {
                     var evt = new SystemMetricEvent
                     {
@@ -69,7 +70,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         Minimum = min,
                         Maximum = max,
                         Count = count,
-                        Data = data
+                        Data = data,
+                        RuntimeSiteName = runtimeSiteName
                     };
                     _events.Add(evt);
                 });

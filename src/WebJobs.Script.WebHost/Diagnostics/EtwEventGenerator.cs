@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _azureMonitorEventSource = AzureMonitorDiagnosticLogsEventSource.Instance;
         }
 
-        public void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId)
+        public void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName)
         {
             string eventTimestamp = DateTime.UtcNow.ToString(EventTimestamp);
             FunctionsSystemLogsEventSource.Instance.SetActivityId(activityId);
@@ -25,24 +25,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 case LogLevel.Trace:
                 case LogLevel.Debug:
-                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventVerbose(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp, functionInvocationId, hostInstanceId);
+                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventVerbose(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp, functionInvocationId, hostInstanceId, runtimeSiteName);
                     break;
                 case LogLevel.Information:
-                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventInfo(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp, functionInvocationId, hostInstanceId);
+                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventInfo(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp, functionInvocationId, hostInstanceId, runtimeSiteName);
                     break;
                 case LogLevel.Warning:
-                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp, functionInvocationId, hostInstanceId);
+                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventWarning(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp, functionInvocationId, hostInstanceId, runtimeSiteName);
                     break;
                 case LogLevel.Error:
                 case LogLevel.Critical:
-                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp, exceptionType, exceptionMessage, functionInvocationId, hostInstanceId);
+                    FunctionsSystemLogsEventSource.Instance.RaiseFunctionsEventError(subscriptionId, appName, functionName, eventName, source, details, summary, ScriptHost.Version, eventTimestamp, exceptionType, exceptionMessage, functionInvocationId, hostInstanceId, runtimeSiteName);
                     break;
             }
         }
 
-        public void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data)
+        public void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName)
         {
-            FunctionsSystemLogsEventSource.Instance.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, ScriptHost.Version, eventTimestamp.ToString(EventTimestamp), data);
+            FunctionsSystemLogsEventSource.Instance.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, ScriptHost.Version, eventTimestamp.ToString(EventTimestamp), data, runtimeSiteName);
         }
 
         public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
