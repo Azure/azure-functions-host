@@ -8,20 +8,33 @@ using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.VisualStudio.TestPlatform.PlatformAbstractions.Interfaces;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class WorkerConfigFactoryTests
+    public class WorkerConfigFactoryTests : IDisposable
     {
+        private TestSystemRuntimeInformation testSysRuntimeInfo = new TestSystemRuntimeInformation();
+        private TestEnvironment environment;
+
+        public WorkerConfigFactoryTests()
+        {
+            environment = new TestEnvironment();
+        }
+
+        public void Dispose()
+        {
+            environment.Clear();
+        }
+
         [Fact]
         public void DefaultLanguageWorkersDir()
         {
             var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
-            var testSysRuntimeInfo = new TestSystemRuntimeInformation();
-            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
@@ -36,8 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                    })
                    .Build();
             var testLogger = new TestLogger("test");
-            var testSysRuntimeInfo = new TestSystemRuntimeInformation();
-            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
@@ -53,8 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var testSysRuntimeInfo = new TestSystemRuntimeInformation();
-            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
@@ -69,8 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var testSysRuntimeInfo = new TestSystemRuntimeInformation();
-            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
@@ -94,8 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var testSysRuntimeInfo = new TestSystemRuntimeInformation();
-            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
@@ -119,8 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var testSysRuntimeInfo = new TestSystemRuntimeInformation();
-            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51" }
@@ -143,8 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var testSysRuntimeInfo = new TestSystemRuntimeInformation();
-            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51" }
@@ -167,8 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var testSysRuntimeInfo = new TestSystemRuntimeInformation();
-            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { "JAVA_HOME", string.Empty }
@@ -202,8 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var testSysRuntimeInfo = new TestSystemRuntimeInformation();
-            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             var languageSection = config.GetSection("languageWorkers:java");
             var testEnvVariables = new Dictionary<string, string>
             {
@@ -223,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData("{FUNCTIONS_WORKER_RUNTIME_VERSION}/@os", "3.7/LINUX")]
         public void LanguageWorker_HydratedWorkerPath_EnvironmentVersionSet(string defaultWorkerPath, string expectedPath)
         {
-            Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
+            environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
 
             WorkerDescription workerDescription = new WorkerDescription()
             {
@@ -242,8 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var testSysRuntimeInfo = new TestSystemRuntimeInformation();
-            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
 
             Assert.Equal(expectedPath, configFactory.HydrateWorkerPath(workerDescription.GetWorkerPath(),
                                                                         workerDescription.Language));
@@ -275,8 +279,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var testSysRuntimeInfo = new TestSystemRuntimeInformation();
-            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
 
             Assert.Equal(expectedPath, configFactory.HydrateWorkerPath(workerDescription.GetWorkerPath(),
                                                                         workerDescription.Language));
