@@ -108,6 +108,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             Add(desc);
         }
 
+        public void AddInstance<TInstanceType>()
+        {
+            // Hijack the instance property pass in the expected type
+            ServiceDescriptor desc = new ServiceDescriptor(ServiceType, typeof(TInstanceType));
+            Add(desc);
+        }
+
         private void Add(ServiceDescriptor desc)
         {
             if (_match == MatchType.Single && _requiredDescriptors.Any())
@@ -168,7 +175,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         private static bool IsMatch(ServiceDescriptor expected, ServiceDescriptor registered)
         {
-            bool factoryMatches = false;
+            bool factoryMatches = expected.ImplementationFactory == registered.ImplementationFactory;
+            bool instanceMatches = expected.ImplementationInstance == registered.ImplementationInstance;
 
             if (expected.ImplementationFactory != null && registered.ImplementationFactory != null)
             {
@@ -178,13 +186,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 Assembly expectedAssembly = (Assembly)expected.ImplementationFactory(null);
                 factoryMatches = expectedAssembly == registered.ImplementationFactory.GetMethodInfo().DeclaringType.Assembly;
             }
-            else
+            else if (expected.ImplementationInstance != null && registered.ImplementationInstance != null)
             {
-                factoryMatches = expected.ImplementationFactory == registered.ImplementationFactory;
+                // A non-null ImplementationInstance signals we expect this to be an Instance, and we've
+                // stored the type we expect in the expected ServiceDescriptor.
+                Type expectedInstanceType = expected.ImplementationInstance as Type;
+                instanceMatches = expectedInstanceType == registered.ImplementationInstance.GetType();
             }
 
             return factoryMatches &&
-                expected.ImplementationInstance == registered.ImplementationInstance &&
+                instanceMatches &&
                 expected.ImplementationType == registered.ImplementationType &&
                 expected.Lifetime == registered.Lifetime &&
                 expected.ServiceType == registered.ServiceType;
