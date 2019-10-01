@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             await TestHelpers.Await(() =>
             {
                 logs = _loggerProvider.GetAllLogMessages().Where(p => p.Level == LogLevel.Error).ToArray();
-                return logs.Length == 3;
+                return logs.Length >= 3;
             });
 
             Assert.All(logs,
@@ -173,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 
             await TestHelpers.Await(() =>
             {
-                return _metricsRepository.Count == 5;
+                return _metricsRepository.Count >= 5;
             });
 
             var logs = _loggerProvider.GetAllLogMessages().ToArray();
