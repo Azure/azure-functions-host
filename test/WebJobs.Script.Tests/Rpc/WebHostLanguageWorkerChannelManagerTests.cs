@@ -30,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
         private IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
         private Mock<ILanguageWorkerProcess> _languageWorkerProcess;
-        private IMetricsLogger _testMetricsLogger;
         private TestLogger _testLogger;
 
         private string _scriptRootPath = @"c:\testing\FUNCTIONS-TEST";
@@ -160,6 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData("Node")]
         public async Task SpecializeAsync_Node_ReadOnly_KeepsProcessAlive(string runtime)
         {
+            var testMetricsLogger = new TestMetricsLogger();
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, runtime);
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
 
@@ -168,6 +168,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
 
             await _languageWorkerChannelManager.SpecializeAsync();
+            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationSendEnvironmentReloadRequest)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationSendEnvironmentReloadRequest)
+                && testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationShutdownStandbyChannels)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationShutdownStandbyChannels));
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
@@ -182,6 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task SpecializeAsync_Java_KeepsProcessAlive()
         {
+            var testMetricsLogger = new TestMetricsLogger();
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "0");
 
@@ -190,6 +195,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
 
             await _languageWorkerChannelManager.SpecializeAsync();
+
+            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationSendEnvironmentReloadRequest)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationSendEnvironmentReloadRequest)
+                && testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationShutdownStandbyChannels)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationShutdownStandbyChannels));
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
@@ -204,6 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task SpecializeAsync_Java_ReadOnly_KeepsProcessAlive()
         {
+            var testMetricsLogger = new TestMetricsLogger();
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
 
@@ -212,6 +223,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
 
             await _languageWorkerChannelManager.SpecializeAsync();
+
+            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationSendEnvironmentReloadRequest)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationSendEnvironmentReloadRequest)
+                && testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationShutdownStandbyChannels)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationShutdownStandbyChannels));
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
@@ -226,6 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task SpecializeAsync_Node_NotReadOnly_KillsProcess()
         {
+            var testMetricsLogger = new TestMetricsLogger();
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
             // This is an invalid setting configuration, but just to show that run from zip is NOT set
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "0");
