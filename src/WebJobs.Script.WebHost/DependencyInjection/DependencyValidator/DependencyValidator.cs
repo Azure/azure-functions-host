@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             if (descriptor.ImplementationInstance != null)
             {
-                format += $", {nameof(descriptor.ImplementationInstance)}: {descriptor.ImplementationInstance}";
+                format += $", {nameof(descriptor.ImplementationInstance)}: {descriptor.ImplementationInstance.GetType()}";
             }
 
             if (descriptor.ImplementationType != null)

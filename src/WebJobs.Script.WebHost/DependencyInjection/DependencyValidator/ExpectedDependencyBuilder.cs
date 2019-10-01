@@ -68,6 +68,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             AddNewMatch<TService>(match);
         }
 
+        public void ExpectInstance<TService, TExpectedType>()
+        {
+            ServiceMatch match = ServiceMatch.CreateMatch<TService>();
+            AddNewMatch<TService>(match);
+            match.AddInstance<TExpectedType>();
+        }
+
         public ExpectedCollectionBuilder ExpectCollection<TService>()
         {
             ServiceMatch match = ServiceMatch.CreateCollectionMatch<TService>();

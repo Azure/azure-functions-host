@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -39,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 s.AddSingleton<IHostedService, MyHostedService>();
                 s.AddSingleton<IScriptEventManager, MyScriptEventManager>();
+                s.AddSingleton<IMetricsLogger>(new MyMetricsLogger());
 
                 // Try removing system logger
                 var descriptor = s.Single(p => p.ImplementationType == typeof(SystemLoggerProvider));
@@ -48,9 +50,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.NotNull(invalidServicesMessage);
 
             IEnumerable<string> messageLines = invalidServicesMessage.Exception.Message.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim());
-            Assert.Equal(4, messageLines.Count());
+            Assert.Equal(5, messageLines.Count());
             Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(nameof(MyHostedService)));
             Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(nameof(MyScriptEventManager)));
+            Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(nameof(MyMetricsLogger)));
             Assert.Contains(messageLines, p => p.StartsWith("[Missing]") && p.EndsWith(nameof(SystemLoggerProvider)));
         }
 
@@ -79,13 +82,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     })
                     .ConfigureServices(s =>
                     {
-                        s.AddSingleton<IConfigureBuilder<ILoggingBuilder>>(new DelegatedConfigureBuilder<ILoggingBuilder>(b =>
-                        {
-                            b.AddProvider(loggerProvider);
-
-                            configureJobHost?.Invoke(b.Services);
-                        }));
-
                         string uniqueTestRootPath = Path.Combine(Path.GetTempPath(), "FunctionsTest", "DependencyValidatorTests");
 
                         s.PostConfigureAll<ScriptApplicationHostOptions>(o =>
@@ -97,6 +93,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                         });
 
                         configureWebHost?.Invoke(s);
+                    })
+                    .ConfigureScriptHostLogging(b =>
+                    {
+                        b.AddProvider(loggerProvider);
+                    })
+                    .ConfigureScriptHostServices(b =>
+                    {
+                        configureJobHost?.Invoke(b);
                     });
 
             using (var host = builder.Build())
@@ -140,6 +144,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             public IDisposable Subscribe(IObserver<ScriptEvent> observer)
             {
                 return null;
+            }
+        }
+
+        private class MyMetricsLogger : IMetricsLogger
+        {
+            public object BeginEvent(string eventName, string functionName = null, string data = null) => null;
+
+            public void BeginEvent(MetricEvent metricEvent)
+            {
+            }
+
+            public void EndEvent(MetricEvent metricEvent)
+            {
+            }
+
+            public void EndEvent(object eventHandle)
+            {
+            }
+
+            public void LogEvent(MetricEvent metricEvent)
+            {
+            }
+
+            public void LogEvent(string eventName, string functionName = null, string data = null)
+            {
             }
         }
 
