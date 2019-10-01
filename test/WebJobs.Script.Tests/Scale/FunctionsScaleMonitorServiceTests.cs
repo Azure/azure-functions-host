@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             {
                 logs = _loggerProvider.GetAllLogMessages().Where(p => p.Level == LogLevel.Error).ToArray();
                 return logs.Length == 3;
-            });
+            }, userMessageCallback: () => _loggerProvider.GetLog());
 
             Assert.All(logs,
                 p =>
@@ -141,14 +141,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         [Fact]
         public async Task OnTimer_MonitorFailuresAreHandled()
         {
-            var testMetrics1 = new List<TestScaleMetrics1>
-            {
-                new TestScaleMetrics1 { Count = 10 },
-                new TestScaleMetrics1 { Count = 15 },
-                new TestScaleMetrics1 { Count = 45 },
-                new TestScaleMetrics1 { Count = 50 },
-                new TestScaleMetrics1 { Count = 100 }
-            };
             var monitor1 = new TestScaleMonitor1
             {
                 Exception = new Exception("Kaboom!")
@@ -174,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             await TestHelpers.Await(() =>
             {
                 return _metricsRepository.Count == 5;
-            });
+            }, userMessageCallback: () => $"Expected 5, Actual {_metricsRepository.Count}. {string.Join(", ", _metricsRepository.Metrics.Values.SelectMany(p => p.Select(q => q.ToString())))}");
 
             var logs = _loggerProvider.GetAllLogMessages().ToArray();
 

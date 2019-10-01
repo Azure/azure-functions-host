@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Scale;
 
@@ -71,6 +70,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class TestScaleMetrics2 : ScaleMetrics
     {
         public int Num { get; set; }
+
+        public override string ToString()
+        {
+            return $"{nameof(Num)}: {Num}";
+        }
     }
 
     public class TestScaleMonitor3 : TestScaleMonitor<TestScaleMetrics3>
