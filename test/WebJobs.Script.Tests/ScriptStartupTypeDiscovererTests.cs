@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -65,9 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 factory.AddProvider(testLoggerProvider);
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
-                var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
-                functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, functionMetadataProvider.Object);
+                var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(ImmutableArray<FunctionMetadata>.Empty);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -95,9 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 factory.AddProvider(testLoggerProvider);
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
-                var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
-                functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, functionMetadataProvider.Object);
+                var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(ImmutableArray<FunctionMetadata>.Empty);
+                var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -150,9 +149,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 factory.AddProvider(testLoggerProvider);
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
-                var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
-                functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, functionMetadataProvider.Object);
+                var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(ImmutableArray<FunctionMetadata>.Empty);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -178,9 +176,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             factory.AddProvider(testLoggerProvider);
             var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
-            var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
-            functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(ImmutableArray<FunctionMetadata>.Empty);
-            var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, functionMetadataProvider.Object);
+            var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(ImmutableArray<FunctionMetadata>.Empty);
+            var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
 
             // Act
             var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -223,19 +220,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 factory.AddProvider(testLoggerProvider);
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
-                var functionMetdata = new FunctionMetadata();
-                functionMetdata.Bindings.Add(new BindingMetadata() { Type = "blob" });
-                var functionMetadataCollection = new List<FunctionMetadata>() { functionMetdata };
-
-                // mock Function metadata
-                var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
-                functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(functionMetadataCollection.ToImmutableArray());
-
+                var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider();
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).Returns(Task.FromResult(directory.Path));
 
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, functionMetadataProvider.Object);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -280,9 +270,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
                 // mock Function metadata
-                var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
-                functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, functionMetadataProvider.Object);
+                var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(ImmutableArray<FunctionMetadata>.Empty);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -324,19 +313,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 factory.AddProvider(testLoggerProvider);
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
-                var functionMetdata = new FunctionMetadata();
-                functionMetdata.Bindings.Add(new BindingMetadata() { Type = "blob" });
-                var functionMetadataCollection = new List<FunctionMetadata>() { functionMetdata };
-
-                // mock Function metadata
-                var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
-                functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(functionMetadataCollection.ToImmutableArray());
+                var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider();
 
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).Returns(Task.FromResult(directory.Path));
 
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, functionMetadataProvider.Object);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -378,24 +361,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 factory.AddProvider(testLoggerProvider);
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
-                var functionMetdata = new FunctionMetadata();
-                functionMetdata.Bindings.Add(new BindingMetadata() { Type = "blob" });
-                var functionMetadataCollection = new List<FunctionMetadata>() { functionMetdata };
-
-                // mock Function metadata
-                var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
-                functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(functionMetadataCollection.ToImmutableArray());
-
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
 
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, functionMetadataProvider.Object);
+                var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider();
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
                 Assert.Equal(types.Count(), 2);
                 Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.FirstOrDefault().FullName);
             }
+        }
+
+        private IFunctionMetadataProvider GetTestFunctionMetadataProvider(ICollection<FunctionMetadata> metadataColection = null)
+        {
+            var functionMetdata = new FunctionMetadata();
+            functionMetdata.Bindings.Add(new BindingMetadata() { Type = "blob" });
+            var functionMetadataCollection = metadataColection ?? new List<FunctionMetadata>() { functionMetdata };
+
+            var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(functionMetadataCollection.ToImmutableArray());
+            return functionMetadataProvider.Object;
         }
     }
 }

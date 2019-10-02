@@ -337,7 +337,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             try
             {
                 string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                Directory.CreateDirectory(rootPath);
                 var environment = new TestEnvironment();
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion, extensionVersion);

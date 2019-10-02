@@ -85,11 +85,12 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
             var startupTypes = new List<Type>();
 
-            var functionBindings = _functionMetadataProvider.GetFunctionMetadata(true).SelectMany(f => f.Bindings.Select(b => b.Type));
+            var functionBindings = _functionMetadataProvider.GetFunctionMetadata(forceRefresh: true).SelectMany(f => f.Bindings.Select(b => b.Type));
 
+            var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
             foreach (var extensionItem in extensionItems)
             {
-                if (!_extensionBundleManager.IsExtensionBundleConfigured()
+                if (!bundleConfigured
                     || extensionItem.Bindings.Count == 0
                     || extensionItem.Bindings.Intersect(functionBindings, StringComparer.OrdinalIgnoreCase).Any())
                 {
@@ -130,7 +131,6 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                             _logger.ScriptStartUpLoadedExtension(startupExtensionName, assembly.GetName().Version.ToString());
                             return assembly?.GetType(typeName, false, ignoreCase);
                         }, false, true);
-
                     if (extensionType == null)
                     {
                         _logger.ScriptStartUpUnableToLoadExtension(startupExtensionName, extensionItem.TypeName);
@@ -141,7 +141,6 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                         _logger.ScriptStartUpTypeIsNotValid(extensionItem.TypeName, nameof(IWebJobsStartup));
                         continue;
                     }
-
                     startupTypes.Add(extensionType);
                 }
             }

@@ -74,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
                     services.AddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
                     services.AddSingleton<IScriptJobHostEnvironment, WebScriptJobHostEnvironment>();
+
                     services.AddSingleton<DefaultScriptWebHookProvider>();
                     services.TryAddSingleton<IScriptWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());

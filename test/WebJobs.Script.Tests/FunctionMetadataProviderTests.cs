@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -36,6 +37,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string scriptFile = FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\queueTrigger.py", scriptFile, StringComparer.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void ReadFunctionMetadata_Succeeds()
+        {
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
+            var scriptApplicationHostOptions = new ScriptApplicationHostOptions()
+            {
+                ScriptPath = functionsPath
+            };
+
+            var optionsMonitor = TestHelpers.CreateOptionsMonitor(scriptApplicationHostOptions);
+            var workerOptions = new LanguageWorkerOptions
+            {
+                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
+            };
+
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance);
+            Assert.Equal(17, metadataProvider.GetFunctionMetadata(false).Length);
         }
 
         [Fact]

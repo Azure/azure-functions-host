@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
                     loggerFactory, mockEventManager, mockWebHostEnvironment.Object);
                 Assert.Equal(fileMonitoringService.GetDirectorySnapshot().Length, 1);
-                Assert.Equal(fileMonitoringService.GetDirectorySnapshot()[0], tempDir + "\\Host");
+                Assert.Equal(fileMonitoringService.GetDirectorySnapshot()[0], Path.Combine(tempDir, "Host"));
             }
         }
 

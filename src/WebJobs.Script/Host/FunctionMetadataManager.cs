@@ -39,9 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private ImmutableArray<FunctionMetadata> LoadFunctionMetadata()
         {
-            var functionsWhiteList = _scriptOptions.Value.Functions;
+            ICollection<string> functionsWhiteList = _scriptOptions.Value.Functions;
             _logger.FunctionMetadataManagerLoadingFunctionsMetadata();
-            var metadata = _functionMetadataProvider.GetFunctionMetadata();
+            ImmutableArray<FunctionMetadata> metadata = _functionMetadataProvider.GetFunctionMetadata();
             Errors = _functionMetadataProvider.FunctionErrors;
 
             if (functionsWhiteList != null)

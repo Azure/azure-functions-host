@@ -166,13 +166,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(325, nameof(ScriptStartUpLoadedExtension)),
             "Loaded extension '{startupExtensionName}' ({startupExtensionVersion})");
 
-        private static readonly Action<ILogger, Exception> _functionMetadataProviderParsingFunctions =
+        private static readonly Action<ILogger, Exception> _functionMetadataProviderReadingMetadata =
             LoggerMessage.Define(
             LogLevel.Information,
             new EventId(326, nameof(FunctionMetadataManagerLoadingFunctionsMetadata)),
             "Reading functions metadata");
 
-        private static readonly Action<ILogger, int, Exception> _functionMetadataProviderFunctionFound =
+        private static readonly Action<ILogger, int, Exception> _functionMetadataProviderFunctionsFound =
             LoggerMessage.Define<int>(
             LogLevel.Information,
             new EventId(327, nameof(FunctionMetadataManagerFunctionsLoaded)),
@@ -272,12 +272,12 @@ Lock file hash: {currentLockFileHash}";
 
         public static void FunctionMetadataProviderParsingFunctions(this ILogger logger)
         {
-            _functionMetadataProviderParsingFunctions(logger, null);
+            _functionMetadataProviderReadingMetadata(logger, null);
         }
 
         public static void FunctionMetadataProviderFunctionFound(this ILogger logger, int count)
         {
-            _functionMetadataProviderFunctionFound(logger, count, null);
+            _functionMetadataProviderFunctionsFound(logger, count, null);
         }
 
         public static void PrimaryHostCoordinatorLockLeaseAcquired(this ILogger logger, string websiteInstanceId)

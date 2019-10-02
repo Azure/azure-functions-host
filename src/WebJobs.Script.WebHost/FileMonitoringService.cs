@@ -63,10 +63,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (_scriptOptions.RootScriptPath != null)
             {
-                // take a startup time function directory snapshot so we can detect function additions/removals
-                // we'll also use this snapshot when reading function metadata as part of startup
-                // taking this snapshot once and reusing at various points during initialization allows us to
-                // minimize disk operations
                 try
                 {
                     return Directory.EnumerateDirectories(_scriptOptions.RootScriptPath).ToImmutableArray();

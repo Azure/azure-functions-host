@@ -11,7 +11,6 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Castle.Core.Logging;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
@@ -198,6 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             fileSystem.SetupGet(f => f.Directory).Returns(dirBase.Object);
 
+            dirBase.Setup(d => d.Exists(options.ScriptPath)).Returns(true);
             dirBase.Setup(d => d.EnumerateDirectories(rootPath))
                 .Returns(new[]
                 {

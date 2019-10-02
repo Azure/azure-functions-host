@@ -55,6 +55,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
             var functions = new Collection<FunctionMetadata>();
 
+            if (!fileSystem.Directory.Exists(_applicationHostOptions.CurrentValue.ScriptPath))
+            {
+                return functions;
+            }
+
             var functionDirectories = fileSystem.Directory.EnumerateDirectories(_applicationHostOptions.CurrentValue.ScriptPath).ToImmutableArray();
             foreach (var functionDirectory in functionDirectories)
             {
