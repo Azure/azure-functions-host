@@ -296,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 else
                 {
                     logger.LogDebug($"Will start a new host after delay.");
-                    await Utility.DelayWithBackoffAsync(attemptCount, cancellationToken, min: TimeSpan.FromSeconds(1), max: TimeSpan.FromMinutes(2))
+                    await Utility.DelayWithBackoffAsync(attemptCount, cancellationToken, min: TimeSpan.FromSeconds(1), max: TimeSpan.FromMinutes(2), logger: logger)
                         .ContinueWith(t =>
                         {
                             if (cancellationToken.IsCancellationRequested)
