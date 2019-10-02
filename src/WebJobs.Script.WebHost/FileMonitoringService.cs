@@ -264,6 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 _disposed = true;
+                _logger.LogDebug("File monitoring service is disposed.");
             }
         }
 

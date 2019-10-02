@@ -155,6 +155,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             finally
             {
                 _hostStartSemaphore.Release();
+                await RestartIfHostOfflineChanged();
+            }
+        }
+
+        /// <summary>
+        /// If the Host's status is Offline while app_offline.htm does not exist, we need to restart.
+        /// </summary>
+        private async Task RestartIfHostOfflineChanged()
+        {
+            bool isOffline = Utility.CheckAppOffline(_applicationHostOptions.CurrentValue.ScriptPath);
+            if (!isOffline && State == ScriptHostState.Offline)
+            {
+                await RestartHostAsync(CancellationToken.None);
             }
         }
 
@@ -382,6 +395,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             finally
             {
                 _hostStartSemaphore.Release();
+                await RestartIfHostOfflineChanged();
             }
         }
 
