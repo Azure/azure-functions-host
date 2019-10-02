@@ -207,5 +207,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 Assert.Equal(expectedArgument, workerDescription.Arguments[1]);
             }
         }
+
+        [Fact]
+        public void PowerShell_DefaultExecutablePath()
+        {
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
+            var config = configBuilder.Build();
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger);
+
+            var expectedExecutablePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dummyExecutableName");
+
+            var actualExecutablePath = configFactory.GetExecutablePathForPowerShell("dummyExecutableName");
+
+            Assert.Equal(expectedExecutablePath, actualExecutablePath);
+        }
+
+        [Fact]
+        public void PowerShell_RootedExecutablePath()
+        {
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
+            var config = configBuilder.Build();
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger);
+
+            var actualExecutablePath = configFactory.GetExecutablePathForPowerShell(@"D:\CustomExecutableFolder\CustomExecutableName");
+
+            Assert.Equal(@"D:\CustomExecutableFolder\CustomExecutableName", actualExecutablePath);
+        }
     }
 }
