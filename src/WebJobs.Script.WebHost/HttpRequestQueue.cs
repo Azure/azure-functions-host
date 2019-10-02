@@ -43,7 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 HttpContext = httpContext,
                 Next = next,
-                CompletionSource = new TaskCompletionSource<object>()
+                CompletionSource = new TaskCompletionSource<object>(),
+                ExecutionContext = System.Threading.ExecutionContext.Capture()
             };
 
             if (_requestQueue.Post(item))
@@ -69,15 +70,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _requestQueue = new ActionBlock<HttpRequestItem>(async item =>
             {
-                try
+                TaskCompletionSource<object> complete = new TaskCompletionSource<object>();
+
+                System.Threading.ExecutionContext.Run(item.ExecutionContext, async _ =>
                 {
-                    await item.Next.Invoke(item.HttpContext);
-                    item.CompletionSource.SetResult(null);
-                }
-                catch (Exception ex)
-                {
-                    item.CompletionSource.SetException(ex);
-                }
+                    try
+                    {
+                        await item.Next.Invoke(item.HttpContext);
+                        item.CompletionSource.SetResult(null);
+                    }
+                    catch (Exception ex)
+                    {
+                        item.CompletionSource.SetException(ex);
+                    }
+                    finally
+                    {
+                        complete.SetResult(null);
+                    }
+                }, null);
+
+                await complete.Task;
             }, blockOptions);
         }
 
@@ -97,6 +109,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             /// Gets or sets the completion source to use.
             /// </summary>
             public TaskCompletionSource<object> CompletionSource { get; set; }
+
+            public System.Threading.ExecutionContext ExecutionContext { get; set; }
         }
     }
 }
