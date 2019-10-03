@@ -148,10 +148,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Assert.Null(initializedChannel);
         }
 
-        [Fact]
-        public async Task SpecializeAsync_Node_ReadOnly_KeepsProcessAlive()
+        [Theory]
+        [InlineData("nOde")]
+        [InlineData("Node")]
+        public async Task SpecializeAsync_Node_ReadOnly_KeepsProcessAlive(string runtime)
         {
-            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
+            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, runtime);
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
 
             _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _languageWorkerChannelFactory, _optionsMonitor);
