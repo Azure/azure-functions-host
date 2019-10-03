@@ -14,8 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public OSPlatform GetOSPlatform()
         {
-            // Default to Linux
-            OSPlatform os = OSPlatform.Linux;
+            OSPlatform os;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 os = OSPlatform.Windows;
@@ -23,6 +22,10 @@ namespace Microsoft.Azure.WebJobs.Script
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 os = OSPlatform.OSX;
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                os = OSPlatform.Linux;
             }
 
             return os;

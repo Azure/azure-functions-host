@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -52,10 +53,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var description = provider.GetDescription();
                 _logger.LogDebug($"Worker path for language worker {description.Language}: {description.WorkerDirectory}");
 
+                string workerPath = description.GetWorkerPath();
+
+                if (IsHydrationNeeded(workerPath))
+                {
+                    workerPath = GetHydratedWorkerPath(description);
+                }
+
                 var arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = description.DefaultExecutablePath,
-                    WorkerPath = GetHydratedWorkerPath(description)
+                    WorkerPath = workerPath
                 };
 
                 if (description.Language.Equals(LanguageWorkerConstants.JavaLanguageWorkerName))
@@ -137,7 +145,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
 
-                string workerPath = GetHydratedWorkerPath(workerDescription);
+                string workerPath = workerDescription.GetWorkerPath();
+
+                if (IsHydrationNeeded(workerPath))
+                {
+                    workerPath = GetHydratedWorkerPath(workerDescription);
+                }
+
                 if (string.IsNullOrEmpty(workerPath) || File.Exists(workerPath))
                 {
                     _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
@@ -226,6 +240,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
+        internal bool IsHydrationNeeded(string workerPath)
+        {
+            if (string.IsNullOrEmpty(workerPath))
+            {
+                return false;
+            }
+
+            return workerPath.Contains(LanguageWorkerConstants.OSPlaceholder) ||
+                    workerPath.Contains(LanguageWorkerConstants.ArchitecturePlaceholder) ||
+                    workerPath.Contains(LanguageWorkerConstants.RuntimeVersionPlaceholder);
+        }
+
         internal string GetHydratedWorkerPath(WorkerDescription description)
         {
             string workerPath = description.GetWorkerPath();
@@ -234,18 +260,62 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 return null;
             }
 
-            string os = _systemRuntimeInformation.GetOSPlatform().ToString();
+            OSPlatform os = _systemRuntimeInformation.GetOSPlatform();
 
-            string architecture = _systemRuntimeInformation.GetOSArchitecture().ToString();
+            Architecture architecture = _systemRuntimeInformation.GetOSArchitecture();
             string version = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
             if (string.IsNullOrEmpty(version))
             {
-                version = description.DefaultLanguageVersion;
+                version = description.DefaultRuntimeVersion;
             }
 
-            return workerPath.Replace("{os}", os)
-                             .Replace("{architecture}", architecture)
-                             .Replace($"%{LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName}%", version);
+            ValidateWorkerPath(workerPath, description.Language, os, architecture, version);
+
+            return workerPath.Replace(LanguageWorkerConstants.OSPlaceholder, os.ToString())
+                             .Replace(LanguageWorkerConstants.ArchitecturePlaceholder, architecture.ToString())
+                             .Replace(LanguageWorkerConstants.RuntimeVersionPlaceholder, version);
+        }
+
+        internal void ValidateWorkerPath(string workerPath, string language, OSPlatform os, Architecture architecture, string version)
+        {
+            if (workerPath.Contains(LanguageWorkerConstants.OSPlaceholder))
+            {
+                ValidateOSPlatform(language, os);
+            }
+
+            if (workerPath.Contains(LanguageWorkerConstants.ArchitecturePlaceholder))
+            {
+                ValidateArchitecture(language, architecture);
+            }
+
+            if (workerPath.Contains(LanguageWorkerConstants.RuntimeVersionPlaceholder) && !string.IsNullOrEmpty(version))
+            {
+                ValidateRuntimeVersion(language, version);
+            }
+        }
+
+        internal void ValidateOSPlatform(string language, OSPlatform os)
+        {
+            if (!SupportedWorkerPathOptions.Runtime[language].OSPlatforms.Contains(os))
+            {
+                throw new PlatformNotSupportedException($"OS {os.ToString()} is not supported for language {language}");
+            }
+        }
+
+        internal void ValidateArchitecture(string language, Architecture architecture)
+        {
+            if (!SupportedWorkerPathOptions.Runtime[language].Architectures.Contains(architecture))
+            {
+                throw new PlatformNotSupportedException($"Architecture {architecture.ToString()} is not supported for language {language}");
+            }
+        }
+
+        internal void ValidateRuntimeVersion(string language, string version)
+        {
+            if (!SupportedWorkerPathOptions.Runtime[language].Versions.Contains(version))
+            {
+                throw new NotSupportedException($"Version {version} is not supported for language {language}");
+            }
         }
     }
 }

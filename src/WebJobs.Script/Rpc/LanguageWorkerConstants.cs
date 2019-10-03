@@ -16,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string JavaLanguageWorkerName = "java";
         public const string PowerShellLanguageWorkerName = "powershell";
         public const string PythonLanguageWorkerName = "python";
-        public const string PythonRuntimeDefaultVersion = "3.6";
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultWorkersDirectoryName = "workers";
 
@@ -31,6 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string WorkerDescriptionDefaultWorkerPath = "defaultWorkerPath";
         public const string WorkerDescription = "description";
         public const string WorkerDescriptionArguments = "arguments";
+        public const string OSPlaceholder = "{os}";
+        public const string ArchitecturePlaceholder = "{architecture}";
+        public const string RuntimeVersionPlaceholder = "%FUNCTIONS_WORKER_RUNTIME_VERSION%";
 
         // Profiles
         public const string WorkerDescriptionProfiles = "profiles";

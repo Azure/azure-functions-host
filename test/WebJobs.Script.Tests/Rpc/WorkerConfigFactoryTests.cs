@@ -4,11 +4,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestPlatform.PlatformAbstractions.Interfaces;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
@@ -235,6 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
                 DefaultWorkerPath = defaultWorkerPath,
+                DefaultRuntimeVersion = "3.6",
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
                 Language = "python"
@@ -269,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
                 Language = "python",
-                DefaultLanguageVersion = "3.6"
+                DefaultRuntimeVersion = "3.6"
             };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                   .AddInMemoryCollection(new Dictionary<string, string>
@@ -282,6 +286,125 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
 
             Assert.Equal(expectedPath, configFactory.GetHydratedWorkerPath(workerDescription));
+        }
+
+        [Theory]
+        [InlineData(Architecture.Arm)]
+        [InlineData(Architecture.Arm64)]
+        public void LanguageWorker_HydratedWorkerPath_UnsupportedArchitecture(Architecture unsupportedArch)
+        {
+            WorkerDescription workerDescription = new WorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                DefaultWorkerPath = "{architecture}/worker.py",
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.7"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            Mock<ISystemRuntimeInformation> mockRuntimeInfo = new Mock<ISystemRuntimeInformation>();
+            mockRuntimeInfo.Setup(r => r.GetOSArchitecture()).Returns(unsupportedArch);
+            mockRuntimeInfo.Setup(r => r.GetOSPlatform()).Returns(OSPlatform.Linux);
+            var configFactory = new WorkerConfigFactory(config, testLogger, mockRuntimeInfo.Object, environment);
+
+            var ex = Assert.Throws<PlatformNotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
+            Assert.Equal(ex.Message, $"Architecture {unsupportedArch.ToString()} is not supported for language {workerDescription.Language}");
+        }
+
+        [Fact]
+        public void LanguageWorker_HydratedWorkerPath_UnsupportedOS()
+        {
+            WorkerDescription workerDescription = new WorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                DefaultWorkerPath = "{os}/worker.py",
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.7"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            Mock<ISystemRuntimeInformation> mockRuntimeInfo = new Mock<ISystemRuntimeInformation>();
+            mockRuntimeInfo.Setup(r => r.GetOSArchitecture()).Returns(Architecture.X64);
+            OSPlatform bogusOS = OSPlatform.Create("Bogus");
+            mockRuntimeInfo.Setup(r => r.GetOSPlatform()).Returns(bogusOS);
+            var configFactory = new WorkerConfigFactory(config, testLogger, mockRuntimeInfo.Object, environment);
+
+            var ex = Assert.Throws<PlatformNotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
+            Assert.Equal(ex.Message, $"OS Bogus is not supported for language {workerDescription.Language}");
+        }
+
+        [Fact]
+        public void LanguageWorker_HydratedWorkerPath_UnsupportedDefaultRuntimeVersion()
+        {
+            WorkerDescription workerDescription = new WorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                DefaultWorkerPath = $"{LanguageWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.5"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
+
+            var ex = Assert.Throws<NotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
+            Assert.Equal(ex.Message, $"Version {workerDescription.DefaultRuntimeVersion} is not supported for language {workerDescription.Language}");
+        }
+
+        [Fact]
+        public void LanguageWorker_HydratedWorkerPath_UnsupportedEnvironmentRuntimeVersion()
+        {
+            environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.4");
+
+            WorkerDescription workerDescription = new WorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                DefaultWorkerPath = $"{LanguageWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.7" // Ignore this if environment is set
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
+
+            var ex = Assert.Throws<NotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
+            Assert.Equal(ex.Message, $"Version 3.4 is not supported for language {workerDescription.Language}");
         }
     }
 }

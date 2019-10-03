@@ -16,10 +16,10 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
         public string Language { get; set; }
 
         /// <summary>
-        /// Gets or sets the default language version.
+        /// Gets or sets the default runtime version.
         /// </summary>
-        [JsonProperty(PropertyName = "defaultLanguageVersion")]
-        public string DefaultLanguageVersion { get; set; }
+        [JsonProperty(PropertyName = "defaultRuntimeVersion")]
+        public string DefaultRuntimeVersion { get; set; }
 
         /// <summary>
         /// Gets or sets the supported file extension type. Functions are registered with workers based on extension.
