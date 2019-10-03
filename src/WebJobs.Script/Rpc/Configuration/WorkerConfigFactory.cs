@@ -268,57 +268,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 version = description.DefaultRuntimeVersion;
             }
 
-            ValidateWorkerPath(description, workerPath, os, architecture, version);
+            description.ValidateWorkerPath(workerPath, os, architecture, version);
 
             return workerPath.Replace(LanguageWorkerConstants.OSPlaceholder, os.ToString())
                              .Replace(LanguageWorkerConstants.ArchitecturePlaceholder, architecture.ToString())
                              .Replace(LanguageWorkerConstants.RuntimeVersionPlaceholder, version);
-        }
-
-        internal void ValidateWorkerPath(WorkerDescription description, string workerPath, OSPlatform os, Architecture architecture, string version)
-        {
-            string language = description.Language;
-            if (workerPath.Contains(LanguageWorkerConstants.OSPlaceholder))
-            {
-                ValidateOSPlatform(description, os);
-            }
-
-            if (workerPath.Contains(LanguageWorkerConstants.ArchitecturePlaceholder))
-            {
-                ValidateArchitecture(description, architecture);
-            }
-
-            if (workerPath.Contains(LanguageWorkerConstants.RuntimeVersionPlaceholder) && !string.IsNullOrEmpty(version))
-            {
-                ValidateRuntimeVersion(description, version);
-            }
-        }
-
-        internal void ValidateOSPlatform(WorkerDescription description, OSPlatform os)
-        {
-            string language = description.Language;
-            if (!description.SupportedOperatingSystems.Any(s => s.Equals(os.ToString(), StringComparison.OrdinalIgnoreCase)))
-            {
-                throw new PlatformNotSupportedException($"OS {os.ToString()} is not supported for language {language}");
-            }
-        }
-
-        internal void ValidateArchitecture(WorkerDescription description, Architecture architecture)
-        {
-            string language = description.Language;
-            if (!description.SupportedArchitectures.Any(s => s.Equals(architecture.ToString(), StringComparison.OrdinalIgnoreCase)))
-            {
-                throw new PlatformNotSupportedException($"Architecture {architecture.ToString()} is not supported for language {language}");
-            }
-        }
-
-        internal void ValidateRuntimeVersion(WorkerDescription description, string version)
-        {
-            string language = description.Language;
-            if (!description.SupportedRuntimeVersions.Any(s => s.Equals(version, StringComparison.OrdinalIgnoreCase)))
-            {
-                throw new NotSupportedException($"Version {version} is not supported for language {language}");
-            }
         }
     }
 }
