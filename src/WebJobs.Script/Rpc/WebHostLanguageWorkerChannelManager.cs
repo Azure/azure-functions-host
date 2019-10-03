@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 // Special case: node apps must be read-only to use the placeholder mode channel
                 // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534
-                if (string.Equals(workerRuntime, LanguageWorkerConstants.NodeLanguageWorkerName))
+                if (string.Equals(workerRuntime, LanguageWorkerConstants.NodeLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
                     return _environment.FileSystemIsReadOnly();
                 }

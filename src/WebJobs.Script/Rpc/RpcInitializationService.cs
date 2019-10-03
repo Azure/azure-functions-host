@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private Task InitializeWebHostRuntimeChannelsAsync()
         {
-            if (_webHostLevelWhitelistedRuntimes.Contains(_workerRuntime))
+            if (_webHostLevelWhitelistedRuntimes.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase))
             {
                 return _webHostlanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             }
@@ -180,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             // We are in placeholder mode but a worker runtime IS set
             return _environment.IsPlaceholderModeEnabled()
                 && !string.IsNullOrEmpty(_workerRuntime)
-                && _placeholderPoolWhitelistedRuntimes.Contains(_workerRuntime);
+                && _placeholderPoolWhitelistedRuntimes.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase);
         }
 
         // To help with unit tests
