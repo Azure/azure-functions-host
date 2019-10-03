@@ -91,13 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
 
                     // Logging and diagnostics
-                    // Get WebHostMetricsLogger registered at webhost
-                    IMetricsLogger metricsLogger = rootServiceProvider.GetService<IMetricsLogger>();
-                    if (metricsLogger != null)
-                    {
-                        services.AddSingleton(metricsLogger);
-                    }
-
+                    services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
                     services.AddSingleton<IEventCollectorProvider, FunctionInstanceLogCollectorProvider>();
 
                     // Hosted services

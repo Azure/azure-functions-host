@@ -434,6 +434,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             compilationServiceFactory.Setup(f => f.CreateService(DotNetScriptTypes.CSharp, It.IsAny<IFunctionMetadataResolver>()))
                 .Returns(compilationService.Object);
 
+            var metricsLogger = new MetricsLogger();
+
             var hostBuilder = new HostBuilder()
                 .ConfigureDefaultTestWebScriptHost(o =>
                 {
@@ -459,7 +461,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 CompilationServiceFactory = compilationServiceFactory,
                 LoggerProvider = loggerProvider,
                 LoggerFactory = loggerFactory,
-                MetricsLogger = new TestMetricsLogger(),
+                MetricsLogger = metricsLogger
             };
         }
 
@@ -493,7 +495,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public ILoggerFactory LoggerFactory { get; set; }
 
-            public IMetricsLogger MetricsLogger { get; set; }
+            public MetricsLogger MetricsLogger { get; set; }
         }
     }
 }
