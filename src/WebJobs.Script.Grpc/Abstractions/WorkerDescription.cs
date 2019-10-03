@@ -28,6 +28,24 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions
         public List<string> Extensions { get; set; }
 
         /// <summary>
+        /// Gets or sets the supported architectures for this runtime.
+        /// </summary>
+        [JsonProperty(PropertyName = "supportedArchitectures")]
+        public List<string> SupportedArchitectures { get; set; }
+
+        /// <summary>
+        /// Gets or sets the supported operating systems for this runtime.
+        /// </summary>
+        [JsonProperty(PropertyName = "supportedOperatingSystems")]
+        public List<string> SupportedOperatingSystems { get; set; }
+
+        /// <summary>
+        /// Gets or sets the supported versions for this runtime.
+        /// </summary>
+        [JsonProperty(PropertyName = "supportedRuntimeVersions")]
+        public List<string> SupportedRuntimeVersions { get; set; }
+
+        /// <summary>
         /// Gets or sets the default executable path.
         /// </summary>
         [JsonProperty(PropertyName = "defaultExecutablePath")]

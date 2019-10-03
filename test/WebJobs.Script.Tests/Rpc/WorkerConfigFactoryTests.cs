@@ -239,6 +239,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 DefaultExecutablePath = "python",
                 DefaultWorkerPath = defaultWorkerPath,
                 DefaultRuntimeVersion = "3.6",
+                SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedOperatingSystems = new List<string>()
+                    {
+                        OSPlatform.Windows.ToString(),
+                        OSPlatform.OSX.ToString(),
+                        OSPlatform.Linux.ToString()
+                    },
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
                 Language = "python"
@@ -269,6 +277,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
+                SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedOperatingSystems = new List<string>()
+                    {
+                        OSPlatform.Windows.ToString(),
+                        OSPlatform.OSX.ToString(),
+                        OSPlatform.Linux.ToString()
+                    },
                 DefaultWorkerPath = defaultWorkerPath,
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
@@ -299,6 +315,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 DefaultExecutablePath = "python",
                 DefaultWorkerPath = "{architecture}/worker.py",
                 WorkerDirectory = string.Empty,
+                SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedOperatingSystems = new List<string>()
+                    {
+                        OSPlatform.Windows.ToString(),
+                        OSPlatform.OSX.ToString(),
+                        OSPlatform.Linux.ToString()
+                    },
                 Extensions = new List<string>() { ".py" },
                 Language = "python",
                 DefaultRuntimeVersion = "3.7"
@@ -323,11 +347,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void LanguageWorker_HydratedWorkerPath_UnsupportedOS()
         {
+            OSPlatform bogusOS = OSPlatform.Create("BogusOS");
             WorkerDescription workerDescription = new WorkerDescription()
             {
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
                 DefaultWorkerPath = "{os}/worker.py",
+                SupportedOperatingSystems = new List<string>()
+                    {
+                        OSPlatform.Windows.ToString(),
+                        OSPlatform.OSX.ToString(),
+                        OSPlatform.Linux.ToString()
+                    },
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
                 Language = "python",
@@ -343,12 +374,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var testLogger = new TestLogger("test");
             Mock<ISystemRuntimeInformation> mockRuntimeInfo = new Mock<ISystemRuntimeInformation>();
             mockRuntimeInfo.Setup(r => r.GetOSArchitecture()).Returns(Architecture.X64);
-            OSPlatform bogusOS = OSPlatform.Create("Bogus");
             mockRuntimeInfo.Setup(r => r.GetOSPlatform()).Returns(bogusOS);
             var configFactory = new WorkerConfigFactory(config, testLogger, mockRuntimeInfo.Object, environment);
 
             var ex = Assert.Throws<PlatformNotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
-            Assert.Equal(ex.Message, $"OS Bogus is not supported for language {workerDescription.Language}");
+            Assert.Equal(ex.Message, $"OS BogusOS is not supported for language {workerDescription.Language}");
         }
 
         [Fact]
@@ -358,6 +388,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
                 DefaultWorkerPath = $"{LanguageWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
@@ -387,6 +418,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
                 DefaultWorkerPath = $"{LanguageWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },

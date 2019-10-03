@@ -9,7 +9,6 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -269,50 +268,54 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 version = description.DefaultRuntimeVersion;
             }
 
-            ValidateWorkerPath(workerPath, description.Language, os, architecture, version);
+            ValidateWorkerPath(description, workerPath, os, architecture, version);
 
             return workerPath.Replace(LanguageWorkerConstants.OSPlaceholder, os.ToString())
                              .Replace(LanguageWorkerConstants.ArchitecturePlaceholder, architecture.ToString())
                              .Replace(LanguageWorkerConstants.RuntimeVersionPlaceholder, version);
         }
 
-        internal void ValidateWorkerPath(string workerPath, string language, OSPlatform os, Architecture architecture, string version)
+        internal void ValidateWorkerPath(WorkerDescription description, string workerPath, OSPlatform os, Architecture architecture, string version)
         {
+            string language = description.Language;
             if (workerPath.Contains(LanguageWorkerConstants.OSPlaceholder))
             {
-                ValidateOSPlatform(language, os);
+                ValidateOSPlatform(description, os);
             }
 
             if (workerPath.Contains(LanguageWorkerConstants.ArchitecturePlaceholder))
             {
-                ValidateArchitecture(language, architecture);
+                ValidateArchitecture(description, architecture);
             }
 
             if (workerPath.Contains(LanguageWorkerConstants.RuntimeVersionPlaceholder) && !string.IsNullOrEmpty(version))
             {
-                ValidateRuntimeVersion(language, version);
+                ValidateRuntimeVersion(description, version);
             }
         }
 
-        internal void ValidateOSPlatform(string language, OSPlatform os)
+        internal void ValidateOSPlatform(WorkerDescription description, OSPlatform os)
         {
-            if (!SupportedWorkerPathOptions.Runtime[language].OSPlatforms.Contains(os))
+            string language = description.Language;
+            if (!description.SupportedOperatingSystems.Any(s => s.Equals(os.ToString(), StringComparison.OrdinalIgnoreCase)))
             {
                 throw new PlatformNotSupportedException($"OS {os.ToString()} is not supported for language {language}");
             }
         }
 
-        internal void ValidateArchitecture(string language, Architecture architecture)
+        internal void ValidateArchitecture(WorkerDescription description, Architecture architecture)
         {
-            if (!SupportedWorkerPathOptions.Runtime[language].Architectures.Contains(architecture))
+            string language = description.Language;
+            if (!description.SupportedArchitectures.Any(s => s.Equals(architecture.ToString(), StringComparison.OrdinalIgnoreCase)))
             {
                 throw new PlatformNotSupportedException($"Architecture {architecture.ToString()} is not supported for language {language}");
             }
         }
 
-        internal void ValidateRuntimeVersion(string language, string version)
+        internal void ValidateRuntimeVersion(WorkerDescription description, string version)
         {
-            if (!SupportedWorkerPathOptions.Runtime[language].Versions.Contains(version))
+            string language = description.Language;
+            if (!description.SupportedRuntimeVersions.Any(s => s.Equals(version, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new NotSupportedException($"Version {version} is not supported for language {language}");
             }
