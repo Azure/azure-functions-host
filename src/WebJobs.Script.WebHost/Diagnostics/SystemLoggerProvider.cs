@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             return LogCategories.IsFunctionUserCategory(categoryName) || categoryName.Equals(LanguageWorkerConstants.FunctionConsoleLogCategoryName, StringComparison.OrdinalIgnoreCase);
         }
 
-        public void Dispose()
+        public virtual void Dispose()
         {
         }
     }
