@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 catch (DirectoryNotFoundException)
                 {
-                    return ImmutableArray<string>.Empty;
+                    _logger.LogInformation($"Unable to get directory snapshot. No directory present at {_scriptOptions.RootScriptPath}");
                 }
             }
             return ImmutableArray<string>.Empty;

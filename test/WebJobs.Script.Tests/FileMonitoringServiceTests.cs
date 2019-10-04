@@ -37,21 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Setup
                 string tempDir = directory.Path;
                 Directory.CreateDirectory(Path.Combine(tempDir, "Host"));
-                File.Create(Path.Combine(tempDir, "host.json"));
 
-                var jobHostOptions = new ScriptJobHostOptions
-                {
-                    RootLogPath = tempDir,
-                    RootScriptPath = rootScriptPath,
-                    FileWatchingEnabled = true
-                };
-                var loggerFactory = new LoggerFactory();
-                var mockWebHostEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Loose);
-                var mockEventManager = new ScriptEventManager();
-
-                // Act
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
-                    loggerFactory, mockEventManager, mockWebHostEnvironment.Object);
+                var fileMonitoringService = GetFileMonitoringService(tempDir, rootScriptPath);
                 Assert.False(fileMonitoringService.GetDirectorySnapshot().IsDefault);
                 Assert.True(fileMonitoringService.GetDirectorySnapshot().IsEmpty);
             }
@@ -64,21 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 string tempDir = directory.Path;
                 Directory.CreateDirectory(Path.Combine(tempDir, "Host"));
-                File.Create(Path.Combine(tempDir, "host.json"));
-
-                var jobHostOptions = new ScriptJobHostOptions
-                {
-                    RootLogPath = tempDir,
-                    RootScriptPath = tempDir,
-                    FileWatchingEnabled = true
-                };
-                var loggerFactory = new LoggerFactory();
-                var mockWebHostEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Loose);
-                var mockEventManager = new ScriptEventManager();
-
-                // Act
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
-                    loggerFactory, mockEventManager, mockWebHostEnvironment.Object);
+                var fileMonitoringService = GetFileMonitoringService(tempDir, tempDir);
                 Assert.Equal(fileMonitoringService.GetDirectorySnapshot().Length, 1);
                 Assert.Equal(fileMonitoringService.GetDirectorySnapshot()[0], Path.Combine(tempDir, "Host"));
             }
@@ -143,6 +116,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     mockWebHostEnvironment.Verify(m => m.RestartHost(), Times.Never);
                 }
             }
+        }
+
+        public FileMonitoringService GetFileMonitoringService(string tempDir, string rootScriptPath)
+        {
+            File.Create(Path.Combine(tempDir, "host.json"));
+
+            var jobHostOptions = new ScriptJobHostOptions
+            {
+                RootLogPath = tempDir,
+                RootScriptPath = rootScriptPath,
+                FileWatchingEnabled = true
+            };
+            var loggerFactory = new LoggerFactory();
+            var mockWebHostEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Loose);
+            var mockEventManager = new ScriptEventManager();
+
+            // Act
+            return new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), loggerFactory, mockEventManager, mockWebHostEnvironment.Object);
         }
     }
 }
