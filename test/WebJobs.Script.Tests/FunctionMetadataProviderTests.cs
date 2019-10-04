@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -13,7 +14,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class FunctionMetadataManagerTests
+    public class FunctionMetadataProviderTests
     {
         [Theory]
         [InlineData("QUEUETriggER.py")]
@@ -34,26 +35,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
+            string scriptFile = FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\queueTrigger.py", scriptFile, StringComparer.OrdinalIgnoreCase);
         }
 
-        [Theory]
-        [InlineData(@"NonExistentPath")]
-        [InlineData(null)]
-        public void InitializesEmptyOrMissingDirectorySnapshot(string rootScriptPath)
+        [Fact]
+        public void ReadFunctionMetadata_Succeeds()
         {
-            var scriptConfig = new ScriptJobHostOptions()
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
+            var scriptApplicationHostOptions = new ScriptApplicationHostOptions()
             {
-                RootScriptPath = rootScriptPath
+                ScriptPath = functionsPath
             };
 
-            IOptions<ScriptJobHostOptions> scriptOptions = new OptionsManager<ScriptJobHostOptions>(new TestOptionsFactory<ScriptJobHostOptions>(scriptConfig));
-            IOptions<LanguageWorkerOptions> languageWorkerOptions = new OptionsManager<LanguageWorkerOptions>(new TestOptionsFactory<LanguageWorkerOptions>(new LanguageWorkerOptions()));
+            var optionsMonitor = TestHelpers.CreateOptionsMonitor(scriptApplicationHostOptions);
+            var workerOptions = new LanguageWorkerOptions
+            {
+                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
+            };
 
-            var functionMetadataManager = new FunctionMetadataManager(scriptOptions, languageWorkerOptions, NullLoggerFactory.Instance);
-            Assert.False(functionMetadataManager.Functions.IsDefault);
-            Assert.True(functionMetadataManager.Functions.IsEmpty);
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance);
+            Assert.Equal(17, metadataProvider.GetFunctionMetadata(false).Length);
         }
 
         [Fact]
@@ -74,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
+            string scriptFile = FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\shared\queueTrigger.py", scriptFile, StringComparer.OrdinalIgnoreCase);
         }
 
@@ -90,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
-            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
+            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
         }
 
         [Fact]
@@ -101,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fileSystem = new MockFileSystem();
             fileSystem.AddDirectory(@"c:\functions");
 
-            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
+            Assert.Throws<FunctionConfigurationException>(() => FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem));
         }
 
         [Fact]
@@ -116,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
+            string scriptFile = FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\Run.csx", scriptFile);
         }
 
@@ -130,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
+            string scriptFile = FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\Run.csx", scriptFile);
         }
 
@@ -146,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
+            string scriptFile = FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\run.js", scriptFile);
         }
 
@@ -161,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
+            string scriptFile = FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\index.js", scriptFile);
         }
 
@@ -181,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = FunctionMetadataManager.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
+            string scriptFile = FunctionMetadataProvider.DeterminePrimaryScriptFile(functionConfig, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\queueTrigger.py", scriptFile);
         }
 
@@ -198,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                FunctionMetadataManager.ValidateName(functionName);
+                FunctionMetadataProvider.ValidateName(functionName);
             });
 
             Assert.Equal(string.Format("'{0}' is not a valid function name.", functionName), ex.Message);
@@ -214,22 +216,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             try
             {
-                FunctionMetadataManager.ValidateName(functionName);
+                FunctionMetadataProvider.ValidateName(functionName);
             }
             catch (InvalidOperationException)
             {
                 Assert.True(false, $"Valid function name {functionName} failed validation.");
             }
-        }
-
-        [Fact]
-        public void ReadFunctionMetadata_Succeeds()
-        {
-            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
-            var functionErrors = new Dictionary<string, ICollection<string>>();
-            var functionDirectories = Directory.EnumerateDirectories(functionsPath);
-            var metadata = FunctionMetadataManager.ReadFunctionsMetadata(functionDirectories, null, TestHelpers.GetTestWorkerConfigs(), NullLogger.Instance, functionErrors);
-            Assert.Equal(17, metadata.Count);
         }
 
         [Theory]
@@ -241,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null, "test.x")]
         public void ParseLanguage_Returns_ExpectedLanguage(string language, string scriptFile)
         {
-            Assert.Equal(language, FunctionMetadataManager.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigs()));
+            Assert.Equal(language, FunctionMetadataProvider.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigs()));
         }
     }
 }

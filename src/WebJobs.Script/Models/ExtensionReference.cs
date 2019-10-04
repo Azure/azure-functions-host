@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.Models
@@ -27,5 +29,10 @@ namespace Microsoft.Azure.WebJobs.Script.Models
         /// implementation.
         /// </summary>
         public string HintPath { get; set; }
+
+        /// <summary>
+        /// Gets the binding exposed by the extension
+        /// </summary>
+        public ICollection<string> Bindings { get; } = new Collection<string>();
     }
 }

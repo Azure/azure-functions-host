@@ -166,6 +166,18 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(325, nameof(ScriptStartUpLoadedExtension)),
             "Loaded extension '{startupExtensionName}' ({startupExtensionVersion})");
 
+        private static readonly Action<ILogger, Exception> _functionMetadataProviderReadingMetadata =
+            LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(326, nameof(FunctionMetadataManagerLoadingFunctionsMetadata)),
+            "Reading functions metadata");
+
+        private static readonly Action<ILogger, int, Exception> _functionMetadataProviderFunctionsFound =
+            LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(327, nameof(FunctionMetadataManagerFunctionsLoaded)),
+            "{count} functions found");
+
         public static void ExtensionsManagerRestoring(this ILogger logger)
         {
             _extensionsManagerRestoring(logger, null);
@@ -213,12 +225,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
 
         public static void ScriptStartUpUnableParseMetadataMissingProperty(this ILogger logger, string metadataFilePath)
         {
-             _scriptStartUpUnableParseMetadataMissingProperty(logger, metadataFilePath, null);
+            _scriptStartUpUnableParseMetadataMissingProperty(logger, metadataFilePath, null);
         }
 
         public static void ScriptStartUpUnableParseMetadata(this ILogger logger, Exception ex, string metadataFilePath)
         {
-             _scriptStartUpUnableParseMetadata(logger, metadataFilePath, null);
+            _scriptStartUpUnableParseMetadata(logger, metadataFilePath, null);
         }
 
         public static void PackageManagerStartingPackagesRestore(this ILogger logger)
@@ -245,7 +257,7 @@ Lock file hash: {currentLockFileHash}";
 
         public static void DebugManagerUnableToUpdateSentinelFile(this ILogger logger, Exception ex)
         {
-             _debugManagerUnableToUpdateSentinelFile(logger, ex);
+            _debugManagerUnableToUpdateSentinelFile(logger, ex);
         }
 
         public static void FunctionMetadataManagerLoadingFunctionsMetadata(this ILogger logger)
@@ -256,6 +268,16 @@ Lock file hash: {currentLockFileHash}";
         public static void FunctionMetadataManagerFunctionsLoaded(this ILogger logger, int count)
         {
             _functionMetadataManagerFunctionsLoaded(logger, count, null);
+        }
+
+        public static void FunctionMetadataProviderParsingFunctions(this ILogger logger)
+        {
+            _functionMetadataProviderReadingMetadata(logger, null);
+        }
+
+        public static void FunctionMetadataProviderFunctionFound(this ILogger logger, int count)
+        {
+            _functionMetadataProviderFunctionsFound(logger, count, null);
         }
 
         public static void PrimaryHostCoordinatorLockLeaseAcquired(this ILogger logger, string websiteInstanceId)
@@ -275,7 +297,7 @@ Lock file hash: {currentLockFileHash}";
 
         public static void PrimaryHostCoordinatorReleasedLocklLease(this ILogger logger, string websiteInstanceId)
         {
-           _primaryHostCoordinatorReleasedLocklLease(logger, websiteInstanceId, null);
+            _primaryHostCoordinatorReleasedLocklLease(logger, websiteInstanceId, null);
         }
 
         public static void AutoRecoveringFileSystemWatcherFailureDetected(this ILogger logger, string errorMessage, string path)
@@ -285,7 +307,7 @@ Lock file hash: {currentLockFileHash}";
 
         public static void AutoRecoveringFileSystemWatcherRecoveryAborted(this ILogger logger, string path)
         {
-             _autoRecoveringFileSystemWatcherRecoveryAborted(logger, path, null);
+            _autoRecoveringFileSystemWatcherRecoveryAborted(logger, path, null);
         }
 
         public static void AutoRecoveringFileSystemWatcherRecovered(this ILogger logger, string path)
@@ -300,7 +322,7 @@ Lock file hash: {currentLockFileHash}";
 
         public static void AutoRecoveringFileSystemWatcherUnableToRecover(this ILogger logger, Exception ex, string path)
         {
-             _autoRecoveringFileSystemWatcherUnableToRecover(logger, path, ex);
+            _autoRecoveringFileSystemWatcherUnableToRecover(logger, path, ex);
         }
     }
 }

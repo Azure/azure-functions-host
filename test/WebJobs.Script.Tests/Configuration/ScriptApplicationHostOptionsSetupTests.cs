@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -34,8 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions { InStandbyMode = inStandbyMode });
             var mockCache = new Mock<IOptionsMonitorCache<ScriptApplicationHostOptions>>();
-
-            return new ScriptApplicationHostOptionsSetup(configuration, standbyOptions, mockCache.Object);
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            return new ScriptApplicationHostOptionsSetup(configuration, standbyOptions, mockCache.Object, mockServiceProvider.Object);
         }
     }
 }
