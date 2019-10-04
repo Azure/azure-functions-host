@@ -145,6 +145,7 @@ function cleanExtension([string] $bitness) {
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\publish" -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\linux" -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\osx" -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\workers\python" -ErrorAction SilentlyContinue
 
     Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\node\grpc\src\node\extension_binary" -ErrorAction SilentlyContinue | 
     Foreach-Object {

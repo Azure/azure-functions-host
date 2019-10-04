@@ -10,14 +10,23 @@ image:
 
 max_jobs: 1
 
-init:
-- ps: |
-    if ($env:FUNCTIONS_NIGHTLY -eq "1") {
-      $version = Get-Date -Format "yyyyMMdd-HHmm"
-      Update-AppveyorBuild -Version $version -Message "Functions Scheduled Build"
-    }
-    
-clone_folder: c:\azure-functions-host
+environment:
+  PythonVersionPath: "C:\\Python37-x64"
+
+for:
+-
+  matrix:
+    only:
+      - image: Ubuntu
+  install:
+  - sh: >-
+      mkdir .dotnet && 
+      chmod +x dotnet-install.sh && 
+      ./dotnet-install.sh --version 2.2.202 --install-dir .dotnet && 
+      PATH=".dotnet:"$PATH && dotnet --info 
+  build_script:
+  - sh: dotnet build WebJobs.Script.sln
+  test: off
 
 install:
 - ps: |
@@ -33,14 +42,18 @@ build_script:
     $includeSuffix = (-Not ($hasTag -OR $isBuildFromMasterBranch))
     .\build.ps1 -buildNumber "$env:APPVEYOR_BUILD_NUMBER" -includeSuffix $includeSuffix
 
-after_build:
-- ps: >
-    $bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
+      $env:Path="$env:PythonVersionPath;$env:Path"
 
-    if ($bypassPackaging) {
-      Write-Host "Bypassing artifact publishing and signing for pull request." -ForegroundColor Yellow
-    } else {
-      Get-ChildItem buildoutput\*.nupkg | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Binaries" }
+      Install-Product node 10.0.0 x86
+  build_script:
+  - ps: |
+      $hasTag = Test-Path env:APPVEYOR_REPO_TAG_NAME
+      $isbuildFromMasterBranch = $env:APPVEYOR_REPO_BRANCH -eq "master"
+      $includeSuffix = (-Not ($hasTag -OR $isBuildFromMasterBranch))
+      
+      if (-Not $includeSuffix) {
+        $env:Configuration = "Release"
+      }
 
       Get-ChildItem buildoutput\*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name -DeploymentName "Runtime" }
     }
