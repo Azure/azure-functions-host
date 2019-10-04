@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         public const int ProcessStartTimeoutSeconds = 60;
         public const string FunctionWorkerRuntimeSettingName = "FUNCTIONS_WORKER_RUNTIME";
+        public const string FunctionWorkerRuntimeVersionSettingName = "FUNCTIONS_WORKER_RUNTIME_VERSION";
         public const string FunctionsWorkerProcessCountSettingName = "FUNCTIONS_WORKER_PROCESS_COUNT";
         public const string DotNetLanguageWorkerName = "dotnet";
         public const string NodeLanguageWorkerName = "node";
@@ -29,6 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string WorkerDescriptionDefaultWorkerPath = "defaultWorkerPath";
         public const string WorkerDescription = "description";
         public const string WorkerDescriptionArguments = "arguments";
+        public const string OSPlaceholder = "{os}";
+        public const string ArchitecturePlaceholder = "{architecture}";
+        public const string RuntimeVersionPlaceholder = "%FUNCTIONS_WORKER_RUNTIME_VERSION%";
 
         // Profiles
         public const string WorkerDescriptionProfiles = "profiles";

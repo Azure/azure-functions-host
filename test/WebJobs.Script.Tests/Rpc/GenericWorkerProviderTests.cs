@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -253,7 +254,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
-                var configFactory = new WorkerConfigFactory(config, testLogger);
+                var testSysRuntimeInfo = new TestSystemRuntimeInformation();
+                var environment = new TestEnvironment();
+                var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
                 if (appSvcEnv)
                 {
                     var testEnvVariables = new Dictionary<string, string>

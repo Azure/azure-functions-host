@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -19,12 +20,16 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IConfiguration _config;
         private readonly ILogger _logger;
+        private readonly ISystemRuntimeInformation _systemRuntimeInformation;
+        private readonly IEnvironment _environment;
         private Dictionary<string, IWorkerProvider> _workerProviderDictionary = new Dictionary<string, IWorkerProvider>();
 
-        public WorkerConfigFactory(IConfiguration config, ILogger logger)
+        public WorkerConfigFactory(IConfiguration config, ILogger logger, ISystemRuntimeInformation systemRuntimeInfo, IEnvironment environment)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             WorkersDirPath = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
             var workersDirectorySection = _config.GetSection($"{LanguageWorkerConstants.LanguageWorkersSectionName}:{LanguageWorkerConstants.WorkersDirectorySectionName}");
             if (!string.IsNullOrEmpty(workersDirectorySection.Value))
@@ -47,10 +52,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var description = provider.GetDescription();
                 _logger.LogDebug($"Worker path for language worker {description.Language}: {description.WorkerDirectory}");
 
+                string workerPath = description.GetWorkerPath();
+
+                if (IsHydrationNeeded(workerPath))
+                {
+                    workerPath = GetHydratedWorkerPath(description);
+                }
+
                 var arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = description.DefaultExecutablePath,
-                    WorkerPath = description.GetWorkerPath()
+                    WorkerPath = workerPath
                 };
 
                 if (description.Language.Equals(LanguageWorkerConstants.JavaLanguageWorkerName))
@@ -133,6 +145,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 AddArgumentsFromAppSettings(workerDescription, languageSection);
 
                 string workerPath = workerDescription.GetWorkerPath();
+
+                if (IsHydrationNeeded(workerPath))
+                {
+                    workerPath = GetHydratedWorkerPath(workerDescription);
+                }
+
                 if (string.IsNullOrEmpty(workerPath) || File.Exists(workerPath))
                 {
                     _logger.LogDebug($"Will load worker provider for language: {workerDescription.Language}");
@@ -219,6 +237,42 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 return Path.GetFullPath(Path.Combine(javaHome, "bin", defaultExecutablePath));
             }
+        }
+
+        internal bool IsHydrationNeeded(string workerPath)
+        {
+            if (string.IsNullOrEmpty(workerPath))
+            {
+                return false;
+            }
+
+            return workerPath.Contains(LanguageWorkerConstants.OSPlaceholder) ||
+                    workerPath.Contains(LanguageWorkerConstants.ArchitecturePlaceholder) ||
+                    workerPath.Contains(LanguageWorkerConstants.RuntimeVersionPlaceholder);
+        }
+
+        internal string GetHydratedWorkerPath(WorkerDescription description)
+        {
+            string workerPath = description.GetWorkerPath();
+            if (string.IsNullOrEmpty(workerPath))
+            {
+                return null;
+            }
+
+            OSPlatform os = _systemRuntimeInformation.GetOSPlatform();
+
+            Architecture architecture = _systemRuntimeInformation.GetOSArchitecture();
+            string version = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
+            if (string.IsNullOrEmpty(version))
+            {
+                version = description.DefaultRuntimeVersion;
+            }
+
+            description.ValidateWorkerPath(workerPath, os, architecture, version);
+
+            return workerPath.Replace(LanguageWorkerConstants.OSPlaceholder, os.ToString())
+                             .Replace(LanguageWorkerConstants.ArchitecturePlaceholder, architecture.ToString())
+                             .Replace(LanguageWorkerConstants.RuntimeVersionPlaceholder, version);
         }
     }
 }

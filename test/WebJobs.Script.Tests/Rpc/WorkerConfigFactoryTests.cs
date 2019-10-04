@@ -4,23 +4,40 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
+using Microsoft.VisualStudio.TestPlatform.PlatformAbstractions.Interfaces;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class WorkerConfigFactoryTests
+    public class WorkerConfigFactoryTests : IDisposable
     {
+        private TestSystemRuntimeInformation testSysRuntimeInfo = new TestSystemRuntimeInformation();
+        private TestEnvironment environment;
+
+        public WorkerConfigFactoryTests()
+        {
+            environment = new TestEnvironment();
+        }
+
+        public void Dispose()
+        {
+            environment.Clear();
+        }
+
         [Fact]
         public void DefaultLanguageWorkersDir()
         {
             var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
@@ -35,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                    })
                    .Build();
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
@@ -51,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
@@ -66,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
@@ -90,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
@@ -114,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51" }
@@ -137,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51" }
@@ -160,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             var testEnvVariables = new Dictionary<string, string>
             {
                 { "JAVA_HOME", string.Empty }
@@ -194,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
             var languageSection = config.GetSection("languageWorkers:java");
             var testEnvVariables = new Dictionary<string, string>
             {
@@ -206,6 +223,220 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 Assert.Equal(2, workerDescription.Arguments.Count);
                 Assert.Equal(expectedArgument, workerDescription.Arguments[1]);
             }
+        }
+
+        [Theory]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", "3.7/LINUX/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", "3.7/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "3.7/LINUX")]
+        public void LanguageWorker_HydratedWorkerPath_EnvironmentVersionSet(string defaultWorkerPath, string expectedPath)
+        {
+            environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
+
+            WorkerDescription workerDescription = new WorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                DefaultWorkerPath = defaultWorkerPath,
+                DefaultRuntimeVersion = "3.6",
+                SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedOperatingSystems = new List<string>()
+                    {
+                        OSPlatform.Windows.ToString(),
+                        OSPlatform.OSX.ToString(),
+                        OSPlatform.Linux.ToString()
+                    },
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
+
+            Assert.Equal(expectedPath, configFactory.GetHydratedWorkerPath(workerDescription));
+        }
+
+        [Theory]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", "3.6/LINUX/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", "3.6/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "3.6/LINUX")]
+        public void LanguageWorker_HydratedWorkerPath_EnvironmentVersionNotSet(string defaultWorkerPath, string expectedPath)
+        {
+            // We fall back to the default version when this is not set
+            // Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
+
+            WorkerDescription workerDescription = new WorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedOperatingSystems = new List<string>()
+                    {
+                        OSPlatform.Windows.ToString(),
+                        OSPlatform.OSX.ToString(),
+                        OSPlatform.Linux.ToString()
+                    },
+                DefaultWorkerPath = defaultWorkerPath,
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.6"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
+
+            Assert.Equal(expectedPath, configFactory.GetHydratedWorkerPath(workerDescription));
+        }
+
+        [Theory]
+        [InlineData(Architecture.Arm)]
+        [InlineData(Architecture.Arm64)]
+        public void LanguageWorker_HydratedWorkerPath_UnsupportedArchitecture(Architecture unsupportedArch)
+        {
+            WorkerDescription workerDescription = new WorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                DefaultWorkerPath = "{architecture}/worker.py",
+                WorkerDirectory = string.Empty,
+                SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedOperatingSystems = new List<string>()
+                    {
+                        OSPlatform.Windows.ToString(),
+                        OSPlatform.OSX.ToString(),
+                        OSPlatform.Linux.ToString()
+                    },
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.7"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            Mock<ISystemRuntimeInformation> mockRuntimeInfo = new Mock<ISystemRuntimeInformation>();
+            mockRuntimeInfo.Setup(r => r.GetOSArchitecture()).Returns(unsupportedArch);
+            mockRuntimeInfo.Setup(r => r.GetOSPlatform()).Returns(OSPlatform.Linux);
+            var configFactory = new WorkerConfigFactory(config, testLogger, mockRuntimeInfo.Object, environment);
+
+            var ex = Assert.Throws<PlatformNotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
+            Assert.Equal(ex.Message, $"Architecture {unsupportedArch.ToString()} is not supported for language {workerDescription.Language}");
+        }
+
+        [Fact]
+        public void LanguageWorker_HydratedWorkerPath_UnsupportedOS()
+        {
+            OSPlatform bogusOS = OSPlatform.Create("BogusOS");
+            WorkerDescription workerDescription = new WorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                DefaultWorkerPath = "{os}/worker.py",
+                SupportedOperatingSystems = new List<string>()
+                    {
+                        OSPlatform.Windows.ToString(),
+                        OSPlatform.OSX.ToString(),
+                        OSPlatform.Linux.ToString()
+                    },
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.7"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            Mock<ISystemRuntimeInformation> mockRuntimeInfo = new Mock<ISystemRuntimeInformation>();
+            mockRuntimeInfo.Setup(r => r.GetOSArchitecture()).Returns(Architecture.X64);
+            mockRuntimeInfo.Setup(r => r.GetOSPlatform()).Returns(bogusOS);
+            var configFactory = new WorkerConfigFactory(config, testLogger, mockRuntimeInfo.Object, environment);
+
+            var ex = Assert.Throws<PlatformNotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
+            Assert.Equal(ex.Message, $"OS BogusOS is not supported for language {workerDescription.Language}");
+        }
+
+        [Fact]
+        public void LanguageWorker_HydratedWorkerPath_UnsupportedDefaultRuntimeVersion()
+        {
+            WorkerDescription workerDescription = new WorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                DefaultWorkerPath = $"{LanguageWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.5"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
+
+            var ex = Assert.Throws<NotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
+            Assert.Equal(ex.Message, $"Version {workerDescription.DefaultRuntimeVersion} is not supported for language {workerDescription.Language}");
+        }
+
+        [Fact]
+        public void LanguageWorker_HydratedWorkerPath_UnsupportedEnvironmentRuntimeVersion()
+        {
+            environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.4");
+
+            WorkerDescription workerDescription = new WorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                DefaultWorkerPath = $"{LanguageWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.7" // Ignore this if environment is set
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var configFactory = new WorkerConfigFactory(config, testLogger, testSysRuntimeInfo, environment);
+
+            var ex = Assert.Throws<NotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
+            Assert.Equal(ex.Message, $"Version 3.4 is not supported for language {workerDescription.Language}");
         }
     }
 }
