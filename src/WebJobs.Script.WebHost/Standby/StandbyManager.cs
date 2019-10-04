@@ -156,21 +156,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task InitializeAsync()
         {
-            if (await _semaphore.WaitAsync(timeout: TimeSpan.FromSeconds(30)))
+            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationStandbyManagerInitialize))
             {
-                try
+                if (await _semaphore.WaitAsync(timeout: TimeSpan.FromSeconds(30)))
                 {
-                    await CreateStandbyWarmupFunctions();
+                    try
+                    {
+                        await CreateStandbyWarmupFunctions();
 
-                    // start a background timer to identify when specialization happens
-                    // specialization usually happens via an http request (e.g. scale controller
-                    // ping) but this timer is started as well to handle cases where we
-                    // might not receive a request
-                    _specializationTimer = new Timer(OnSpecializationTimerTick, null, _specializationTimerInterval, _specializationTimerInterval);
-                }
-                finally
-                {
-                    _semaphore.Release();
+                        // start a background timer to identify when specialization happens
+                        // specialization usually happens via an http request (e.g. scale controller
+                        // ping) but this timer is started as well to handle cases where we
+                        // might not receive a request
+                        _specializationTimer = new Timer(OnSpecializationTimerTick, null, _specializationTimerInterval, _specializationTimerInterval);
+                    }
+                    finally
+                    {
+                        _semaphore.Release();
+                    }
                 }
             }
         }

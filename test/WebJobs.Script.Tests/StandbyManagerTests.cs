@@ -106,6 +106,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(_testSettingValue, _testEnvironment.GetEnvironmentVariable(_testSettingName));
         }
 
+        [Fact]
+        public async Task Specialize_StandbyManagerInitialize_EmitsExpectedMetric()
+        {
+            TestMetricsLogger metricsLogger = new TestMetricsLogger();
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "placeholder.azurewebsites.net");
+
+            var hostNameProvider = new HostNameProvider(_testEnvironment, _testLoggerFactory.CreateLogger<HostNameProvider>());
+            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider, _mockApplicationLifetime.Object, metricsLogger);
+            await manager.InitializeAsync().ContinueWith(t => { }); // Ignore errors.
+
+            // Ensure metric is generated
+            Assert.True(metricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationStandbyManagerInitialize) && metricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationStandbyManagerInitialize));
+        }
+
         private bool AreExpectedMetricsGenerated(TestMetricsLogger metricsLogger)
         {
             return metricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationSpecializeHost) && metricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationSpecializeHost)
