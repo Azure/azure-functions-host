@@ -32,15 +32,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private string _copiedRootPath;
         private string _functionsWorkerRuntime;
         private int _workerProcessCount;
+        private string _functionsWorkerRuntimeVersion;
 
-        protected EndToEndTestFixture(string rootPath, string testId, string functionsWorkerRuntime, int workerProcessesCount = 1)
+        protected EndToEndTestFixture(string rootPath, string testId, string functionsWorkerRuntime, int workerProcessesCount = 1, string functionsWorkerRuntimeVersion = null)
         {
             FixtureId = testId;
 
             _rootPath = rootPath;
             _functionsWorkerRuntime = functionsWorkerRuntime;
             _workerProcessCount = workerProcessesCount;
-
+            _functionsWorkerRuntimeVersion = functionsWorkerRuntimeVersion;
         }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
@@ -97,6 +98,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime);
                 Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName, _workerProcessCount.ToString());
+            }
+            if (!string.IsNullOrEmpty(_functionsWorkerRuntimeVersion))
+            {
+                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, _functionsWorkerRuntimeVersion);
             }
 
             FunctionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
@@ -229,6 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
             Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName, string.Empty);
+            Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, string.Empty);
             return Task.CompletedTask;
         }
 
