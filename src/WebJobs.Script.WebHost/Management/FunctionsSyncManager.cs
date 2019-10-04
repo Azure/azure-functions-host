@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         internal static bool IsSyncTriggersEnvironment(IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)
         {
-            if (environment.IsCoreToolsEnvironment())
+            if (environment.IsCoreTools())
             {
                 // don't sync triggers when running locally or not running in a cloud
                 // hosted environment
@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             // Windows (Dedicated/Consumption)
             // Linux Consumption
-            if ((environment.IsAppServiceWindowsEnvironment() || environment.IsLinuxContainerEnvironment()) &&
+            if ((environment.IsWindowsAzureManagedHosting() || environment.IsLinuxConsumption()) &&
                 !environment.IsContainerReady())
             {
                 // container ready flag not set yet – site not fully specialized/initialized

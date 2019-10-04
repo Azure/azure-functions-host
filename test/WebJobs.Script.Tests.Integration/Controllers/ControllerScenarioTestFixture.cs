@@ -68,8 +68,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 {
                     config.Add(new WebScriptHostConfigurationSource
                     {
-                        IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppServiceEnvironment(),
-                        IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsLinuxContainerEnvironment()
+                        IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppService(),
+                        IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsLinuxConsumption()
                     });
                 })
                 .UseStartup<Startup>()

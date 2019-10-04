@@ -32,8 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     // Get the release mode setting. If set, this will take priority over environment settings.
                     string releaseModeSetting = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.CompilationReleaseMode);
                     if (!bool.TryParse(releaseModeSetting, out bool releaseMode) &&
-                        (SystemEnvironment.Instance.IsAppServiceEnvironment() ||
-                        SystemEnvironment.Instance.IsLinuxContainerEnvironment()) &&
+                        (SystemEnvironment.Instance.IsAppService() ||
+                        SystemEnvironment.Instance.IsLinuxConsumption()) &&
                         !SystemEnvironment.Instance.IsRemoteDebuggingEnabled())
                     {
                         // If the release mode setting is not set, we're running in Azure

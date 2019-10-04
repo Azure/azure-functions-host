@@ -18,29 +18,9 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.GetEnvironmentVariable(name) ?? defaultValue;
         }
 
-        public static bool IsAppServiceEnvironment(this IEnvironment environment)
-        {
-            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteInstanceId));
-        }
-
-        public static bool IsLinuxContainerEnvironment(this IEnvironment environment)
-        {
-            return !environment.IsAppServiceEnvironment() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName));
-        }
-
         public static bool IsLinuxMetricsPublishingEnabled(this IEnvironment environment)
         {
-            return environment.IsLinuxContainerEnvironment() && string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerStartContext));
-        }
-
-        public static bool IsLinuxAppServiceEnvironment(this IEnvironment environment)
-        {
-            return environment.IsAppServiceEnvironment() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(FunctionsLogsMountPath));
-        }
-
-        public static bool IsLinuxHostingEnvironment(this IEnvironment environment)
-        {
-            return environment.IsLinuxContainerEnvironment() || environment.IsLinuxAppServiceEnvironment();
+            return environment.IsLinuxConsumption() && string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerStartContext));
         }
 
         public static bool IsPlaceholderModeEnabled(this IEnvironment environment)
@@ -56,18 +36,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsRuntimeScaleMonitoringEnabled(this IEnvironment environment)
         {
-            return environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeScaleMonitoringEnabled) == "1";
+            return environment.GetEnvironmentVariable(FunctionsRuntimeScaleMonitoringEnabled) == "1";
         }
 
         public static bool IsEasyAuthEnabled(this IEnvironment environment)
         {
-            bool.TryParse(environment.GetEnvironmentVariable(EnvironmentSettingNames.EasyAuthEnabled), out bool isEasyAuthEnabled);
+            bool.TryParse(environment.GetEnvironmentVariable(EasyAuthEnabled), out bool isEasyAuthEnabled);
             return isEasyAuthEnabled;
         }
 
         public static bool IsRunningAsHostedSiteExtension(this IEnvironment environment)
         {
-            if (environment.IsAppServiceEnvironment())
+            if (environment.IsAppService())
             {
                 string siteExtensionsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "SiteExtensions", "Functions");
                 return (BaseDirectory ?? AppContext.BaseDirectory).StartsWith(siteExtensionsPath, StringComparison.OrdinalIgnoreCase);
@@ -84,10 +64,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsZipDeployment(this IEnvironment environment)
         {
             // Run From Package app setting exists
-            return IsValidZipSetting(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment)) ||
-                IsValidZipSetting(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteAltZipDeployment)) ||
-                IsValidZipSetting(environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage)) ||
-                IsValidZipUrl(environment.GetEnvironmentVariable(EnvironmentSettingNames.ScmRunFromPackage));
+            return IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
+                IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
+                IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
+                IsValidZipUrl(environment.GetEnvironmentVariable(ScmRunFromPackage));
         }
 
         public static bool IsValidZipSetting(string appSetting)
@@ -101,17 +81,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return Uri.TryCreate(appSetting, UriKind.Absolute, out Uri result);
         }
 
-        public static bool IsAppServiceWindowsEnvironment(this IEnvironment environment)
-        {
-            return environment.IsAppServiceEnvironment() && RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-        }
-
-        public static bool IsCoreToolsEnvironment(this IEnvironment environment)
+        public static bool IsCoreTools(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));
         }
 
-        public static bool IsContainerEnvironment(this IEnvironment environment)
+        public static bool IsContainer(this IEnvironment environment)
         {
             var runningInContainer = environment.GetEnvironmentVariable(RunningInContainer);
             return !string.IsNullOrEmpty(runningInContainer)
@@ -121,14 +96,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsPersistentFileSystemAvailable(this IEnvironment environment)
         {
-            return environment.IsAppServiceWindowsEnvironment()
-                || environment.IsLinuxAppServiceEnvWithPersistentFileSystem()
-                || environment.IsCoreToolsEnvironment();
+            return environment.IsWindowsAzureManagedHosting()
+                || environment.IsLinuxAppServiceWithPersistentFileSystem()
+                || environment.IsCoreTools();
         }
 
-        public static bool IsLinuxAppServiceEnvWithPersistentFileSystem(this IEnvironment environment)
+        public static bool IsLinuxAppServiceWithPersistentFileSystem(this IEnvironment environment)
         {
-            if (environment.IsLinuxAppServiceEnvironment())
+            if (environment.IsLinuxAppService())
             {
                 string storageConfig = environment.GetEnvironmentVariable(LinuxAzureAppServiceStorage);
 
@@ -142,21 +117,76 @@ namespace Microsoft.Azure.WebJobs.Script
             return false;
         }
 
-        public static bool FileSystemIsReadOnly(this IEnvironment environment)
+        public static bool IsFileSystemReadOnly(this IEnvironment environment)
         {
             return environment.IsZipDeployment();
         }
 
         /// <summary>
-        /// Gets a value indicating whether the application is running in a Dynamic
+        /// Gets a value indicating whether the application is running in a Windows Consumption (dynamic)
         /// App Service environment.
         /// </summary>
         /// <param name="environment">The environment to verify</param>
-        /// <returns><see cref="true"/> if running in a dynamic App Service app; otherwise, false.</returns>
-        public static bool IsDynamic(this IEnvironment environment)
+        /// <returns><see cref="true"/> if running in a Windows Consumption App Service app; otherwise, false.</returns>
+        public static bool IsWindowsConsumption(this IEnvironment environment)
         {
             string value = environment.GetEnvironmentVariable(AzureWebsiteSku);
             return string.Equals(value, ScriptConstants.DynamicSku, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the application is running in an Azure Windows managed hosting environment
+        /// (i.e. Windows Consumption or Windows Dedicated)
+        /// </summary>
+        /// <param name="environment">The environment to verify</param>
+        /// <returns><see cref="true"/> if running in a Windows Azure managed hosting environment; otherwise, false.</returns>
+        public static bool IsWindowsAzureManagedHosting(this IEnvironment environment)
+        {
+            return environment.IsAppService() && RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the application is running in a Linux Consumption (dynamic)
+        /// App Service environment.
+        /// </summary>
+        /// <param name="environment">The environment to verify</param>
+        /// <returns><see cref="true"/> if running in a Linux Consumption App Service app; otherwise, false.</returns>
+        public static bool IsLinuxConsumption(this IEnvironment environment)
+        {
+            return !environment.IsAppService() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName));
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the application is running in a Linux App Service
+        /// environment (Dedicated Linux).
+        /// </summary>
+        /// <param name="environment">The environment to verify</param>
+        /// <returns><see cref="true"/> if running in a Linux Azure App Service; otherwise, false.</returns>
+        public static bool IsLinuxAppService(this IEnvironment environment)
+        {
+            return environment.IsAppService() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(FunctionsLogsMountPath));
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the application is running in an Azure Linux managed hosting environment
+        /// (i.e. Linux Consumption or Linux Dedicated)
+        /// </summary>
+        /// <param name="environment">The environment to verify</param>
+        /// <returns><see cref="true"/> if running in a Linux Azure managed hosting environment; otherwise, false.</returns>
+        public static bool IsLinuxAzureManagedHosting(this IEnvironment environment)
+        {
+            return environment.IsLinuxConsumption() || environment.IsLinuxAppService();
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the application is running in App Service
+        /// (Windows Consumption, Windows Dedicated or Linux Dedicated).
+        /// </summary>
+        /// <param name="environment">The environment to verify</param>
+        /// <returns><see cref="true"/> if running in a Azure App Service; otherwise, false.</returns>
+        public static bool IsAppService(this IEnvironment environment)
+        {
+            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteInstanceId));
         }
 
         /// <summary>
@@ -200,6 +230,9 @@ namespace Microsoft.Azure.WebJobs.Script
             return runtimeSiteName?.ToLowerInvariant();
         }
 
+        /// <summary>
+        /// Gets a value indicating whether it is safe to start specializing the host instance (e.g. file system is ready, etc.)
+        /// </summary>
         public static bool IsContainerReady(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteContainerReady));
@@ -219,11 +252,15 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         public static bool IsMountEnabled(this IEnvironment environment)
-            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "1") &&
-            !string.IsNullOrEmpty(environment.GetEnvironmentVariable(MeshInitURI));
+        {
+            return string.Equals(environment.GetEnvironmentVariable(MountEnabled), "1")
+                && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(MeshInitURI));
+        }
 
         public static bool IsMountDisabled(this IEnvironment environment)
-            => string.Equals(environment.GetEnvironmentVariable(MountEnabled), "0") ||
-            string.IsNullOrEmpty(environment.GetEnvironmentVariable(MeshInitURI));
+        {
+            return string.Equals(environment.GetEnvironmentVariable(MountEnabled), "0")
+                || string.IsNullOrEmpty(environment.GetEnvironmentVariable(MeshInitURI));
+        }
     }
 }

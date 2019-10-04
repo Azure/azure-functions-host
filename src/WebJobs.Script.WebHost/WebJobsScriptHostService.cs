@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             get
             {
-                return _healthMonitorOptions.Value.Enabled && _environment.IsAppServiceEnvironment();
+                return _healthMonitorOptions.Value.Enabled && _environment.IsAppService();
             }
         }
 

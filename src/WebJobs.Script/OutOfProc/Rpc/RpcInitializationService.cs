@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         private Task InitializePlaceholderChannelsAsync()
         {
-            if (_environment.IsLinuxHostingEnvironment())
+            if (_environment.IsLinuxAzureManagedHosting())
             {
                 return InitializePlaceholderChannelsAsync(OSPlatform.Linux);
             }
@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (string.IsNullOrEmpty(_workerRuntime) && _environment.IsPlaceholderModeEnabled())
             {
-                if (_environment.IsLinuxHostingEnvironment())
+                if (_environment.IsLinuxAzureManagedHosting())
                 {
                     return true;
                 }

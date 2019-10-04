@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 string schedule = Context.GetMetadataValue<string>("schedule");
                 bool runOnStartup = Context.GetMetadataValue<bool>("runOnStartup");
                 bool useMonitor = Context.GetMetadataValue<bool>("useMonitor", true);
-                if (_environment.IsDynamic())
+                if (_environment.IsWindowsConsumption())
                 {
                     // pre-resolve app setting specifiers
                     schedule = _nameResolver.ResolveWholeString(schedule);
