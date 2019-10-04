@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
     public class LanguageWorkerProcessTests
     {
-        private LanguageWorkerProcess _languageWorkerProcess;
+        private RpcWorkerProcess _languageWorkerProcess;
 
         private Mock<IScriptEventManager> _eventManager;
 
@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var languageWorkerConsoleLogSource = new Mock<ILanguageWorkerConsoleLogSource>();
             var scriptJobHostEnvironment = new Mock<IScriptJobHostEnvironment>();
             var testEnv = new TestEnvironment();
-            _languageWorkerProcess = new LanguageWorkerProcess("node",
+            _languageWorkerProcess = new RpcWorkerProcess("node",
                 "testworkerId",
                 "testrootPath",
                 rpcServer.Uri,

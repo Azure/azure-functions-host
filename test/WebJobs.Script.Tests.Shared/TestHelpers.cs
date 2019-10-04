@@ -13,6 +13,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
+using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
@@ -263,6 +264,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
         }
 
+        public static IList<WorkerConfig> GetTestWorkerConfigsNoLanguage()
+        {
+            var workerDesc = new RpcWorkerDescription();
+
+            return new List<WorkerConfig>()
+            {
+                new WorkerConfig() { Description = workerDesc }
+            };
+        }
+
         public static string CreateOfflineFile()
         {
             // create a test offline file
@@ -287,9 +298,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static WorkerDescription GetTestWorkerDescription(string language, string extension)
+        public static RpcWorkerDescription GetTestWorkerDescription(string language, string extension)
         {
-            return new WorkerDescription()
+            return new RpcWorkerDescription()
             {
                 Extensions = new List<string>()
                  {
