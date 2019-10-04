@@ -193,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             {
                 var hostJsonJObj = JObject.Parse("{'version': '2.0'}");
                 if (string.Equals(_configurationSource.Environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell", StringComparison.InvariantCultureIgnoreCase)
-                    && !_configurationSource.Environment.FileSystemIsReadOnly())
+                    && !_configurationSource.Environment.IsFileSystemReadOnly())
                 {
                     hostJsonJObj.Add("managedDependency", JToken.Parse("{'Enabled': true}"));
                 }
@@ -203,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             private void TryWriteHostJson(string filePath, JObject content)
             {
-                if (!_configurationSource.Environment.FileSystemIsReadOnly())
+                if (!_configurationSource.Environment.IsFileSystemReadOnly())
                 {
                     try
                     {

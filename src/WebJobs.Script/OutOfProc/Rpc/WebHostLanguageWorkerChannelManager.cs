@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534
                 if (string.Equals(workerRuntime, LanguageWorkerConstants.NodeLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
-                    return _environment.FileSystemIsReadOnly();
+                    return _environment.IsFileSystemReadOnly();
                 }
                 return true;
             }

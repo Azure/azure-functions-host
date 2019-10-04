@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerProvider = new TestLoggerProvider();
             _metricsLogger = new TestMetricsLogger();
 
-            if (environment.IsAppServiceEnvironment())
+            if (environment.IsAppService())
             {
                 // if the test is mocking App Service environment, we need
                 // to also set the HOME and WEBSITE_SITE_NAME variables
