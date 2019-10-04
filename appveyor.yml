@@ -12,6 +12,9 @@ image:
 
 max_jobs: 1
 
+environment:
+  PythonVersionPath: "C:\\Python37-x64"
+
 for:
 -
   matrix:
@@ -41,6 +44,8 @@ for:
   install:
   - ps: >-
       $env:CommitHash = "$env:APPVEYOR_REPO_COMMIT"
+
+      $env:Path="$env:PythonVersionPath;$env:Path"
 
       Install-Product node 10.0.0 x86
   build_script:
