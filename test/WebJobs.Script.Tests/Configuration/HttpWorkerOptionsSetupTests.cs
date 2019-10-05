@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
@@ -23,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         private readonly ScriptApplicationHostOptions _options;
         private ILoggerProvider _testLoggerProvider;
         private ILoggerFactory _testLoggerFactory;
+        private ScriptJobHostOptions _scriptJobHostOptions;
         private static string _currentDirectory = Directory.GetCurrentDirectory();
 
         public HttpWorkerOptionsSetupTests()
@@ -30,6 +32,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             _testLoggerProvider = new TestLoggerProvider();
             _testLoggerFactory = new LoggerFactory();
             _testLoggerFactory.AddProvider(_testLoggerProvider);
+            _scriptJobHostOptions = new ScriptJobHostOptions()
+            {
+                RootScriptPath = $@"TestScripts\CSharp",
+                FileLoggingMode = FileLoggingMode.Always,
+                FunctionTimeout = TimeSpan.FromSeconds(3)
+            };
+
             _rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests");
             Environment.SetEnvironmentVariable(AzureWebJobsScriptRoot, _rootPath);
 
@@ -56,33 +65,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }")]
         [InlineData(@"{
                     'version': '2.0',
-                    'httpInvoker': {
+                    'httpWorker': {
                             'description': {
                                 'defaultExecutablePath': 'testExe'
                             }
                         }
                     }")]
-        public void MissingOrValid_HttpInvokerConfig_DoesNotThrowException(string hostJsonContent)
+        public void MissingOrValid_HttpWorkerConfig_DoesNotThrowException(string hostJsonContent)
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(configuration, _testLoggerFactory);
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
             HttpWorkerOptions options = new HttpWorkerOptions();
             var ex = Record.Exception(() => setup.Configure(options));
             Assert.Null(ex);
             if (options.Description != null && !string.IsNullOrEmpty(options.Description.DefaultExecutablePath))
             {
-                string expectedDefaultExecutablePath = Path.Combine(Directory.GetCurrentDirectory(), "testExe");
+                string expectedDefaultExecutablePath = Path.Combine(_scriptJobHostOptions.RootScriptPath, "testExe");
                 Assert.Equal(expectedDefaultExecutablePath, options.Description.DefaultExecutablePath);
             }
         }
 
         [Fact]
-        public void InValid_HttpInvokerConfig_Throws_HostConfigurationException()
+        public void InValid_HttpWorkerConfig_Throws_HostConfigurationException()
         {
             string hostJsonContent = @"{
                     'version': '2.0',
-                    'httpInvoker': {
+                    'httpWorker': {
                             'invalid': {
                                 'defaultExecutablePath': 'testExe'
                             }
@@ -90,18 +99,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(configuration, _testLoggerFactory);
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
             HttpWorkerOptions options = new HttpWorkerOptions();
             var ex = Assert.Throws<HostConfigurationException>(() => setup.Configure(options));
-            Assert.Contains("Missing WorkerDescription for HttpInvoker", ex.Message);
+            Assert.Contains("Missing WorkerDescription for HttpWorker", ex.Message);
         }
 
         [Fact]
-        public void InValid_HttpInvokerConfig_Throws_ValidationException()
+        public void InValid_HttpWorkerConfig_Throws_ValidationException()
         {
             string hostJsonContent = @"{
                     'version': '2.0',
-                    'httpInvoker': {
+                    'httpWorker': {
                             'description': {
                                 'langauge': 'testExe'
                             }
@@ -109,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(configuration, _testLoggerFactory);
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
             HttpWorkerOptions options = new HttpWorkerOptions();
             var ex = Assert.Throws<ValidationException>(() => setup.Configure(options));
             Assert.Contains("WorkerDescription DefaultExecutablePath cannot be empty", ex.Message);
@@ -118,17 +127,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Theory]
         [InlineData(@"{
                     'version': '2.0',
-                    'httpInvoker': {
+                    'httpWorker': {
                             'description': {
                                 'arguments': ['--xTest1 --xTest2'],
                                 'defaultExecutablePath': 'node',
-                                'defaultWorkerPath': 'httpInvoker.js'
+                                'defaultWorkerPath': 'httpWorker.js'
                             }
                         }
                     }", false, true, true)]
         [InlineData(@"{
                     'version': '2.0',
-                    'httpInvoker': {
+                    'httpWorker': {
                             'description': {
                                 'arguments': ['--xTest1 --xTest2'],
                                 'defaultExecutablePath': 'node'
@@ -137,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }", true, false, false)]
         [InlineData(@"{
                     'version': '2.0',
-                    'httpInvoker': {
+                    'httpWorker': {
                             'description': {
                                 'arguments': ['--xTest1 --xTest2'],
                                 'defaultExecutablePath': 'c:/myruntime/node'
@@ -146,26 +155,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }", false, false, false)]
         [InlineData(@"{
                     'version': '2.0',
-                    'httpInvoker': {
+                    'httpWorker': {
                             'description': {
                                 'arguments': ['--xTest1 --xTest2'],
                                 'defaultExecutablePath': 'c:/myruntime/node',
-                                'defaultWorkerPath': 'c:/myworkerPath/httpInvoker.js'
+                                'defaultWorkerPath': 'c:/myworkerPath/httpWorker.js'
                             }
                         }
                     }", false, false, true)]
-        public void HttpInvoker_Config_ExpectedValues(string hostJsonContent, bool appendCurrentDirectoryToExe, bool appendCurrentDirToWorkerPath, bool workerPathSet)
+        public void HttpWorker_Config_ExpectedValues(string hostJsonContent, bool appendCurrentDirectoryToExe, bool appendCurrentDirToWorkerPath, bool workerPathSet)
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(configuration, _testLoggerFactory);
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
             HttpWorkerOptions options = new HttpWorkerOptions();
             setup.Configure(options);
 
             //Verify worker exe path is expected
             if (appendCurrentDirectoryToExe)
             {
-                Assert.Equal(Path.Combine(Directory.GetCurrentDirectory(), "node"), options.Description.DefaultExecutablePath);
+                Assert.Equal(Path.Combine(_scriptJobHostOptions.RootScriptPath, "node"), options.Description.DefaultExecutablePath);
             }
             else if (Path.IsPathRooted(options.Description.DefaultExecutablePath))
             {
@@ -179,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             //Verify worker path is expected
             if (appendCurrentDirToWorkerPath)
             {
-                Assert.Equal(Path.Combine(Directory.GetCurrentDirectory(), "httpInvoker.js"), options.Description.DefaultWorkerPath);
+                Assert.Equal(Path.Combine(_scriptJobHostOptions.RootScriptPath, "httpWorker.js"), options.Description.DefaultWorkerPath);
             }
             else if (!workerPathSet)
             {
@@ -187,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
             else
             {
-                Assert.Equal(@"c:/myworkerPath/httpInvoker.js", options.Description.DefaultWorkerPath);
+                Assert.Equal(@"c:/myworkerPath/httpWorker.js", options.Description.DefaultWorkerPath);
             }
 
             Assert.Equal(1, options.Description.Arguments.Count);

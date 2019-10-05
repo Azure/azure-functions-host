@@ -2,9 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Net.Http;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
+using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -13,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -45,7 +49,8 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<IEnvironment>(services);
             AddMockedSingleton<IScriptWebHostEnvironment>(services);
             AddMockedSingleton<IEventGenerator>(services);
-            AddMockedSingleton<IFunctionDispatcher>(services);
+            AddMockedSingleton<IFunctionDispatcherFactory>(services);
+            AddMockedSingleton<IHttpWorkerService>(services);
             AddMockedSingleton<AspNetCore.Hosting.IApplicationLifetime>(services);
             AddMockedSingleton<IDependencyValidator>(services);
             services.AddSingleton<HostNameProvider>();
@@ -53,7 +58,6 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
             services.AddFunctionMetadataProvider(webHostOptions, metricsLogger);
-
             configureRootServices?.Invoke(services);
 
             var rootProvider = new WebHostServiceProvider(services);

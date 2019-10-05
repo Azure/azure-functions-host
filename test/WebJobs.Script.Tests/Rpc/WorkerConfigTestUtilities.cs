@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     {
         public const string TestWorkerPathInWorkerConfig = "./src/index";
         public const string TestDefaultWorkerFile = "testWorker.py";
-        public const string HttpInvokerExe = "httpServer.exe";
+        public const string HttpWorkerExe = "httpServer.exe";
         public const string TestDefaultExecutablePath = "testWorkerPath";
 
         public static JObject GetTestWorkerConfig(string language, string[] arguments, bool invalid, string profileName, bool emptyWorkerPath = false)
@@ -69,22 +69,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             }
             RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
-                DefaultExecutablePath = HttpInvokerExe
+                DefaultExecutablePath = HttpWorkerExe
             };
             if (arguments != null)
             {
                 workerDescription.Arguments = arguments.ToList();
             }
             return workerDescription;
-        }
-
-        public static JObject GetTestHttpInvokerConfig(string[] arguments, bool invalid = false)
-        {
-            WorkerDescription description = GetTestHttpInvokerDescription(arguments, invalid);
-
-            JObject config = new JObject();
-            config[OutOfProcConstants.WorkerDescription] = JObject.FromObject(description);
-            return config;
         }
 
         public static void CreateWorkerFolder(string testDir, TestLanguageWorkerConfig workerConfig, bool createTestWorker = true)

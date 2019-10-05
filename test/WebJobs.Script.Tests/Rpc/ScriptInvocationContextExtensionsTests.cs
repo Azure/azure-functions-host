@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 

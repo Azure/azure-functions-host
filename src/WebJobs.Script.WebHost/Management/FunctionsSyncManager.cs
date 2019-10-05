@@ -12,7 +12,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Configuration;
@@ -35,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly ILogger _logger;
-        private readonly IEnumerable<WorkerConfig> _workerConfigs;
         private readonly HttpClient _httpClient;
         private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly IConfiguration _configuration;
@@ -48,11 +46,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private CloudBlockBlob _hashBlob;
 
-        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataProvider functionMetadataProvider)
+        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataProvider functionMetadataProvider)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
-            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _httpClient = httpClient;
             _secretManagerProvider = secretManagerProvider;
             _configuration = configuration;

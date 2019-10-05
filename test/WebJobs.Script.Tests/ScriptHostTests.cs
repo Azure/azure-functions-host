@@ -958,7 +958,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcJS1
             };
 
-            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, LanguageWorkerConstants.DotNetLanguageWorkerName));
+            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, LanguageWorkerConstants.DotNetLanguageWorkerName, false, false));
             Assert.Equal($"Did not find functions with language [{LanguageWorkerConstants.DotNetLanguageWorkerName}].", ex.Message);
         }
 
@@ -981,7 +981,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcJS1, funcCS1
             };
 
-            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, LanguageWorkerConstants.DotNetLanguageWorkerName);
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, LanguageWorkerConstants.DotNetLanguageWorkerName, false, false);
         }
 
         [Fact]
@@ -997,7 +997,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcJS1
             };
 
-            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty);
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, false, false);
+        }
+
+        [Theory]
+        [InlineData(true, true)]
+        [InlineData(true, false)]
+        public void VerifyFunctionsMatchSpecifiedLanguage_NoThrow_For_HttpWorkerOrPlaceholderMode(bool placeholderMode, bool httpWorker)
+        {
+            FunctionMetadata funcJS1 = new FunctionMetadata()
+            {
+                Name = "funcJS1"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJS1
+            };
+
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, placeholderMode, httpWorker);
         }
 
         [Fact]
@@ -1018,7 +1035,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcJS1, funcCS1
             };
 
-            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty));
+            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, false, false));
             Assert.Equal($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting", ex.Message);
         }
 

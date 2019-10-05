@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _process.Exited += (sender, e) => OnProcessExited(sender, e);
                 _process.EnableRaisingEvents = true;
 
-                _workerProcessLogger?.LogInformation($"Starting language worker process:{_process.StartInfo.FileName} {_process.StartInfo.Arguments}");
+                _workerProcessLogger?.LogInformation($"Starting worker process:{_process.StartInfo.FileName} {_process.StartInfo.Arguments}");
                 _process.Start();
                 _workerProcessLogger?.LogInformation($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
 

@@ -44,15 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal override Process CreateWorkerProcess()
         {
-            var workerContext = new RpcWorkerContext()
-            {
-                RequestId = Guid.NewGuid().ToString(),
-                MaxMessageLength = LanguageWorkerConstants.DefaultMaxMessageLengthBytes,
-                WorkerId = _workerId,
-                Arguments = _workerProcessArguments,
-                WorkingDirectory = _scriptRootPath,
-                ServerUri = _serverUri,
-            };
+            var workerContext = new RpcWorkerContext(Guid.NewGuid().ToString(), LanguageWorkerConstants.DefaultMaxMessageLengthBytes, _workerId, _workerProcessArguments, _scriptRootPath, _serverUri);
             return _processFactory.CreateWorkerProcess(workerContext);
         }
 

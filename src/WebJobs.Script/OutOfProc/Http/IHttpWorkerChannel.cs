@@ -12,8 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         Task InvokeFunction(ScriptInvocationContext context);
 
-        Task Status();
-
         Task StartWorkerProcessAsync();
     }
 }

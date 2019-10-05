@@ -7,6 +7,9 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 {
     public static class OutOfProcConstants
     {
+        public const string HostName = "127.0.0.1";
+        public const string HttpScheme = "http";
+
         public const int ProcessStartTimeoutSeconds = 60;
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultWorkersDirectoryName = "workers";

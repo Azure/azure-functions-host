@@ -3,6 +3,7 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
@@ -11,9 +12,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
     {
         private readonly IFunctionDispatcher _functionDispatcher;
 
-        public FunctionDispatcherShutdownManager(IFunctionDispatcher functionDispatcher)
+        public FunctionDispatcherShutdownManager(IFunctionDispatcherFactory functionDispatcherFactory)
         {
-            _functionDispatcher = functionDispatcher;
+            _functionDispatcher = functionDispatcherFactory.GetFunctionDispatcher();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)

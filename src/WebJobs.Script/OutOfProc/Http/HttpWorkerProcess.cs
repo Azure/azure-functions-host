@@ -14,13 +14,14 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
         private readonly IWorkerProcessFactory _processFactory;
         private readonly ILogger _workerProcessLogger;
         private readonly IScriptEventManager _eventManager;
-        private readonly string _workerId;
+        private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly string _scriptRootPath;
+        private readonly string _workerId;
         private readonly WorkerProcessArguments _workerProcessArguments;
 
         internal HttpWorkerProcess(string workerId,
                                        string rootScriptPath,
-                                       WorkerProcessArguments workerProcessArguments,
+                                       HttpWorkerOptions httpWorkerOptions,
                                        IScriptEventManager eventManager,
                                        IWorkerProcessFactory processFactory,
                                        IProcessRegistry processRegistry,
@@ -33,7 +34,8 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             _workerProcessLogger = workerProcessLogger;
             _workerId = workerId;
             _scriptRootPath = rootScriptPath;
-            _workerProcessArguments = workerProcessArguments;
+            _httpWorkerOptions = httpWorkerOptions;
+            _workerProcessArguments = _httpWorkerOptions.Arguments;
         }
 
         internal override Process CreateWorkerProcess()
@@ -44,7 +46,9 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
                 WorkerId = _workerId,
                 Arguments = _workerProcessArguments,
                 WorkingDirectory = _scriptRootPath,
+                Port = _httpWorkerOptions.Port
             };
+            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.PortEnvVarName, _httpWorkerOptions.Port.ToString());
             return _processFactory.CreateWorkerProcess(workerContext);
         }
 
