@@ -497,6 +497,19 @@ namespace Microsoft.Azure.WebJobs.Script
             return null;
         }
 
+        internal static bool IsFunctionMetadataLanguageSupportedByWorkerRuntime(FunctionMetadata functionMetadata, string workerRuntime)
+        {
+            if (string.IsNullOrEmpty(functionMetadata.Language))
+            {
+                return false;
+            }
+            if (string.IsNullOrEmpty(workerRuntime))
+            {
+                return true;
+            }
+            return functionMetadata.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase);
+        }
+
         public static bool IsDotNetLanguageFunction(string functionLanguage)
         {
             return dotNetLanguages.Any(lang => string.Equals(lang, functionLanguage, StringComparison.OrdinalIgnoreCase));
@@ -504,7 +517,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsSupportedRuntime(string workerRuntime, IEnumerable<WorkerConfig> workerConfigs)
         {
-            return workerConfigs.Any(config => string.Equals(config.Language, workerRuntime, StringComparison.OrdinalIgnoreCase));
+            return workerConfigs.Any(config => string.Equals(config.Description.Language, workerRuntime, StringComparison.OrdinalIgnoreCase));
         }
 
         private static bool ContainsFunctionWithWorkerRuntime(IEnumerable<FunctionMetadata> functions, string workerRuntime)

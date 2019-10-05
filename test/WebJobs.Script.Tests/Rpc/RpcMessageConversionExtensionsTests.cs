@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 };
             }
 
-            var appendCookieArguments = Utilities.RpcHttpCookieConverter(rpcCookie);
+            var appendCookieArguments = RpcMessageExtensionUtilities.RpcHttpCookieConverter(rpcCookie);
             Assert.Equal(appendCookieArguments.Item1, name);
             Assert.Equal(appendCookieArguments.Item2, value);
 

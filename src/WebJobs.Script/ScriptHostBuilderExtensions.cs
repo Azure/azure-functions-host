@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
-                services.AddSingleton<IFunctionDispatcher, FunctionDispatcher>();
+                services.AddSingleton<IFunctionDispatcher, RpcFunctionInvocationDispatcher>();
                 services.AddSingleton<IJobHostLanguageWorkerChannelManager, JobHostLanguageWorkerChannelManager>();
                 services.AddSingleton<IFunctionDispatcherLoadBalancer, FunctionDispatcherLoadBalancer>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
@@ -204,8 +204,8 @@ namespace Microsoft.Azure.WebJobs.Script
             services.AddSingleton<IRpcServer, GrpcServer>();
             services.TryAddSingleton<ILanguageWorkerConsoleLogSource, LanguageWorkerConsoleLogSource>();
             services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
-            services.AddSingleton<ILanguageWorkerProcessFactory, LanguageWorkerProcessFactory>();
-            services.AddSingleton<ILanguageWorkerChannelFactory, LanguageWorkerChannelFactory>();
+            services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
+            services.AddSingleton<IRpcWorkerChannelFactory, RpcWorkerChannelFactory>();
             services.TryAddSingleton<IWebHostLanguageWorkerChannelManager, WebHostLanguageWorkerChannelManager>();
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
@@ -242,12 +242,12 @@ namespace Microsoft.Azure.WebJobs.Script
         public static IHostBuilder SetAzureFunctionsConfigurationRoot(this IHostBuilder builder)
         {
             builder.ConfigureAppConfiguration(c =>
-             {
-                 c.AddInMemoryCollection(new Dictionary<string, string>
+            {
+                c.AddInMemoryCollection(new Dictionary<string, string>
                     {
                         { "AzureWebJobsConfigurationSection", ConfigurationSectionNames.JobHost }
                     });
-             });
+            });
 
             return builder;
         }
