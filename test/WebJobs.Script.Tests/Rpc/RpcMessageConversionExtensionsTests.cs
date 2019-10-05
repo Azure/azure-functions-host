@@ -13,7 +13,7 @@ using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Xunit;
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 capabilities.UpdateCapabilities(new MapField<string, string>
                 {
-                    { LanguageWorkerConstants.RpcHttpBodyOnly, rcpHttpBodyOnly.ToString() }
+                    { RpcWorkerConstants.RpcHttpBodyOnly, rcpHttpBodyOnly.ToString() }
                 });
             }
 
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 capabilities.UpdateCapabilities(new MapField<string, string>
                 {
-                    { LanguageWorkerConstants.RpcHttpBodyOnly, rcpHttpBodyOnly.ToString() }
+                    { RpcWorkerConstants.RpcHttpBodyOnly, rcpHttpBodyOnly.ToString() }
                 });
             }
 
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 capabilities.UpdateCapabilities(new MapField<string, string>
                 {
-                    { LanguageWorkerConstants.RpcHttpBodyOnly, rcpHttpBodyOnly.ToString() }
+                    { RpcWorkerConstants.RpcHttpBodyOnly, rcpHttpBodyOnly.ToString() }
                 });
             }
 
@@ -364,7 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 capabilities.UpdateCapabilities(new MapField<string, string>
                 {
-                    { LanguageWorkerConstants.RawHttpBodyBytes, rawBytesEnabled.ToString() }
+                    { RpcWorkerConstants.RawHttpBodyBytes, rawBytesEnabled.ToString() }
                 });
             }
 
@@ -408,7 +408,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { LanguageWorkerConstants.TypedDataCollection, LanguageWorkerConstants.TypedDataCollection }
+                { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
             };
 
             capabilities.UpdateCapabilities(addedCapabilities);
@@ -452,7 +452,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { LanguageWorkerConstants.TypedDataCollection, LanguageWorkerConstants.TypedDataCollection }
+                { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
             };
 
             capabilities.UpdateCapabilities(addedCapabilities);
@@ -493,7 +493,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { LanguageWorkerConstants.TypedDataCollection, LanguageWorkerConstants.TypedDataCollection }
+                { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
             };
 
             capabilities.UpdateCapabilities(addedCapabilities);
@@ -534,7 +534,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { LanguageWorkerConstants.TypedDataCollection, LanguageWorkerConstants.TypedDataCollection }
+                { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
             };
 
             capabilities.UpdateCapabilities(addedCapabilities);
@@ -601,7 +601,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
-                { LanguageWorkerConstants.TypedDataCollection, LanguageWorkerConstants.TypedDataCollection }
+                { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
             };
             capabilities.UpdateCapabilities(addedCapabilities);
             byte[] arrByte = Encoding.Default.GetBytes("HellowWorld");

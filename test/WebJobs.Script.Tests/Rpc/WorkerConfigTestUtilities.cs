@@ -4,8 +4,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Script.OutOfProc;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             WorkerDescription description = GetTestDefaultWorkerDescription(language, arguments);
 
             JObject config = new JObject();
-            config[OutOfProcConstants.WorkerDescription] = JObject.FromObject(description);
+            config[WorkerConstants.WorkerDescription] = JObject.FromObject(description);
 
             if (!string.IsNullOrEmpty(profileName))
             {
@@ -33,17 +33,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
                 JObject profiles = new JObject();
                 profiles[profileName] = JObject.FromObject(appSvcDescription);
-                config[OutOfProcConstants.WorkerDescriptionProfiles] = profiles;
+                config[WorkerConstants.WorkerDescriptionProfiles] = profiles;
             }
 
             if (invalid)
             {
-                config[OutOfProcConstants.WorkerDescription] = "invalidWorkerConfig";
+                config[WorkerConstants.WorkerDescription] = "invalidWorkerConfig";
             }
 
             if (emptyWorkerPath)
             {
-                config[OutOfProcConstants.WorkerDescription][OutOfProcConstants.WorkerDescriptionDefaultWorkerPath] = null;
+                config[WorkerConstants.WorkerDescription][WorkerConstants.WorkerDescriptionDefaultWorkerPath] = null;
             }
 
             return config;
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             string workerPath = string.IsNullOrEmpty(workerConfig.Language) ? testDir : Path.Combine(testDir, workerConfig.Language);
             Directory.CreateDirectory(workerPath);
-            File.WriteAllText(Path.Combine(workerPath, LanguageWorkerConstants.WorkerConfigFileName), workerConfig.Json);
+            File.WriteAllText(Path.Combine(workerPath, RpcWorkerConstants.WorkerConfigFileName), workerConfig.Json);
             if (createTestWorker)
             {
                 Directory.CreateDirectory(Path.Combine(workerPath, $"{TestWorkerPathInWorkerConfig}"));

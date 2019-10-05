@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
@@ -14,10 +14,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public static void LoadBalancer_EqualDistribution_EvenNumberOfChannels()
         {
-            List<ILanguageWorkerChannel> results = new List<ILanguageWorkerChannel>();
+            List<IRpcWorkerChannel> results = new List<IRpcWorkerChannel>();
             int totalInvocations = 100;
 
-            IEnumerable<ILanguageWorkerChannel> workerChannels = new List<ILanguageWorkerChannel>()
+            IEnumerable<IRpcWorkerChannel> workerChannels = new List<IRpcWorkerChannel>()
             {
                 new TestLanguageWorkerChannel("1"),
                 new TestLanguageWorkerChannel("2"),
@@ -44,10 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public static void LoadBalancer_OddNumberOfChannels()
         {
-            List<ILanguageWorkerChannel> results = new List<ILanguageWorkerChannel>();
+            List<IRpcWorkerChannel> results = new List<IRpcWorkerChannel>();
             int totalInvocations = 100;
 
-            IEnumerable<ILanguageWorkerChannel> workerChannels = new List<ILanguageWorkerChannel>()
+            IEnumerable<IRpcWorkerChannel> workerChannels = new List<IRpcWorkerChannel>()
             {
                 new TestLanguageWorkerChannel("1"),
                 new TestLanguageWorkerChannel("2"),
@@ -73,9 +73,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public static void LoadBalancer_SingleProcess_VerifyCounter()
         {
-            List<ILanguageWorkerChannel> results = new List<ILanguageWorkerChannel>();
+            List<IRpcWorkerChannel> results = new List<IRpcWorkerChannel>();
 
-            IEnumerable<ILanguageWorkerChannel> workerChannels = new List<ILanguageWorkerChannel>()
+            IEnumerable<IRpcWorkerChannel> workerChannels = new List<IRpcWorkerChannel>()
             {
                 new TestLanguageWorkerChannel("1"),
             };
@@ -92,8 +92,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public static void LoadBalancer_Throws_InvalidOperationException_NoWorkerChannels()
         {
-            List<ILanguageWorkerChannel> results = new List<ILanguageWorkerChannel>();
-            IEnumerable<ILanguageWorkerChannel> workerChannels = new List<ILanguageWorkerChannel>();
+            List<IRpcWorkerChannel> results = new List<IRpcWorkerChannel>();
+            IEnumerable<IRpcWorkerChannel> workerChannels = new List<IRpcWorkerChannel>();
             IFunctionDispatcherLoadBalancer loadBalancer = new FunctionDispatcherLoadBalancer();
 
             var ex = Assert.Throws<InvalidOperationException>(() =>

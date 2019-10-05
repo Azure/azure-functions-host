@@ -4,12 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.OutOfProc;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using Xunit;
@@ -34,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void DefaultLanguageWorkersDir()
         {
-            var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
+            var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
             var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
@@ -48,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = new ConfigurationBuilder()
                    .AddInMemoryCollection(new Dictionary<string, string>
                    {
-                       [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{OutOfProcConstants.WorkersDirectorySectionName}"] = expectedWorkersDir
+                       [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}"] = expectedWorkersDir
                    })
                    .Build();
             var testLogger = new TestLogger("test");
@@ -59,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void LanguageWorker_WorkersDir_NotSet()
         {
-            var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
+            var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                    .AddInMemoryCollection(new Dictionary<string, string>
                    {
@@ -230,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "3.7/LINUX")]
         public void LanguageWorker_HydratedWorkerPath_EnvironmentVersionSet(string defaultWorkerPath, string expectedPath)
         {
-            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
 
             RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
@@ -388,7 +386,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
                 SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
-                DefaultWorkerPath = $"{LanguageWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
+                DefaultWorkerPath = $"{RpcWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
                 Language = "python",
@@ -411,14 +409,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void LanguageWorker_HydratedWorkerPath_UnsupportedEnvironmentRuntimeVersion()
         {
-            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.4");
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.4");
 
             RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
                 SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
-                DefaultWorkerPath = $"{LanguageWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
+                DefaultWorkerPath = $"{RpcWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
                 Language = "python",

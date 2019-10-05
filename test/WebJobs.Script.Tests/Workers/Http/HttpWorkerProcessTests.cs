@@ -5,9 +5,9 @@ using System;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.OutOfProc;
-using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -20,19 +20,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         private const string _rootScriptPath = "c:\\testDir";
         private const int _workerPort = 8090;
         private readonly ScriptSettingsManager _settingsManager;
-
-        private Mock<IScriptEventManager> _mockEventManager = new Mock<IScriptEventManager>();
-        private IWorkerProcessFactory _defaultWorkerProcessFactory = new DefaultWorkerProcessFactory();
-        private IProcessRegistry _processRegistry = new EmptyProcessRegistry();
-        private Mock<ILanguageWorkerConsoleLogSource> _languageWorkerConsoleLogSource = new Mock<ILanguageWorkerConsoleLogSource>();
-        private ILogger _testLogger = new TestLogger("test");
-        private HttpWorkerOptions _httpWorkerOptions;
+        private readonly Mock<IScriptEventManager> _mockEventManager = new Mock<IScriptEventManager>();
+        private readonly IWorkerProcessFactory _defaultWorkerProcessFactory = new DefaultWorkerProcessFactory();
+        private readonly IProcessRegistry _processRegistry = new EmptyProcessRegistry();
+        private readonly Mock<IWorkerConsoleLogSource> _languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
+        private readonly ILogger _testLogger = new TestLogger("test");
+        private readonly HttpWorkerOptions _httpWorkerOptions;
 
         public HttpWorkerProcessTests()
         {
-            _httpWorkerOptions = new HttpWorkerOptions();
-            _httpWorkerOptions.Port = _workerPort;
-            _httpWorkerOptions.Arguments = new WorkerProcessArguments() { ExecutablePath = "test" };
+            _httpWorkerOptions = new HttpWorkerOptions()
+            {
+                Port = _workerPort,
+                Arguments = new WorkerProcessArguments() { ExecutablePath = "test" }
+            };
             _settingsManager = ScriptSettingsManager.Instance;
         }
 

@@ -9,17 +9,17 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class TestLanguageWorkerChannelManager : IWebHostLanguageWorkerChannelManager
+    public class TestLanguageWorkerChannelManager : IWebHostRpcWorkerChannelManager
     {
         private IScriptEventManager _eventManager;
         private ILogger _testLogger;
-        private ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>>> _workerChannels = new ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>>>();
+        private ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>> _workerChannels = new ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>>();
         private string _scriptRootPath;
         private IRpcWorkerChannelFactory _testLanguageWorkerChannelFactory;
 
@@ -31,32 +31,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testLanguageWorkerChannelFactory = testLanguageWorkerChannelFactory;
         }
 
-        public ILanguageWorkerChannel GetChannel(string language)
+        public IRpcWorkerChannel GetChannel(string language)
         {
             throw new System.NotImplementedException();
         }
 
-        public Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> GetChannels(string language)
+        public Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> GetChannels(string language)
         {
-            if (_workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> workerChannels))
+            if (_workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> workerChannels))
             {
                 return workerChannels;
             }
             return null;
         }
 
-        public async Task<ILanguageWorkerChannel> InitializeChannelAsync(string language)
+        public async Task<IRpcWorkerChannel> InitializeChannelAsync(string language)
         {
             var metricsLogger = new Mock<IMetricsLogger>();
-            ILanguageWorkerChannel workerChannel = _testLanguageWorkerChannelFactory.Create(_scriptRootPath, language, metricsLogger.Object, 0);
-            if (_workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> workerChannels))
+            IRpcWorkerChannel workerChannel = _testLanguageWorkerChannelFactory.Create(_scriptRootPath, language, metricsLogger.Object, 0);
+            if (_workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> workerChannels))
             {
-                workerChannels.Add(workerChannel.Id, new TaskCompletionSource<ILanguageWorkerChannel>());
+                workerChannels.Add(workerChannel.Id, new TaskCompletionSource<IRpcWorkerChannel>());
             }
             else
             {
-                _workerChannels.TryAdd(language, new Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>>());
-                _workerChannels[language].Add(workerChannel.Id, new TaskCompletionSource<ILanguageWorkerChannel>());
+                _workerChannels.TryAdd(language, new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>());
+                _workerChannels[language].Add(workerChannel.Id, new TaskCompletionSource<IRpcWorkerChannel>());
             }
 
             await workerChannel.StartWorkerProcessAsync().ContinueWith(processStartTask =>
@@ -88,13 +88,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 throw new ArgumentNullException(nameof(language));
             }
-            if (_workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> languageWorkerChannels))
+            if (_workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> languageWorkerChannels))
             {
-                if (languageWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<ILanguageWorkerChannel> value))
+                if (languageWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> value))
                 {
                     try
                     {
-                        ILanguageWorkerChannel channel = await value?.Task;
+                        IRpcWorkerChannel channel = await value?.Task;
                         if (channel != null)
                         {
                             (channel as IDisposable)?.Dispose();
@@ -121,22 +121,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             throw new System.NotImplementedException();
         }
 
-        internal void SetInitializedWorkerChannel(string initializedRuntime, ILanguageWorkerChannel initializedLanguageWorkerChannel)
+        internal void SetInitializedWorkerChannel(string initializedRuntime, IRpcWorkerChannel initializedLanguageWorkerChannel)
         {
-            if (_workerChannels.TryGetValue(initializedRuntime, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> channel))
+            if (_workerChannels.TryGetValue(initializedRuntime, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> channel))
             {
-                if (channel.TryGetValue(initializedLanguageWorkerChannel.Id, out TaskCompletionSource<ILanguageWorkerChannel> value))
+                if (channel.TryGetValue(initializedLanguageWorkerChannel.Id, out TaskCompletionSource<IRpcWorkerChannel> value))
                 {
                     value.SetResult(initializedLanguageWorkerChannel);
                 }
             }
         }
 
-        internal void SetExceptionOnInitializedWorkerChannel(string initializedRuntime, ILanguageWorkerChannel initializedLanguageWorkerChannel, Exception exception)
+        internal void SetExceptionOnInitializedWorkerChannel(string initializedRuntime, IRpcWorkerChannel initializedLanguageWorkerChannel, Exception exception)
         {
-            if (_workerChannels.TryGetValue(initializedRuntime, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> channel))
+            if (_workerChannels.TryGetValue(initializedRuntime, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> channel))
             {
-                if (channel.TryGetValue(initializedLanguageWorkerChannel.Id, out TaskCompletionSource<ILanguageWorkerChannel> value))
+                if (channel.TryGetValue(initializedLanguageWorkerChannel.Id, out TaskCompletionSource<IRpcWorkerChannel> value))
                 {
                     value.SetException(exception);
                 }

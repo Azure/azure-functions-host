@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     {
         private IScriptEventManager _eventManager;
         private ILogger _testLogger;
-        private ConcurrentDictionary<string, List<ILanguageWorkerChannel>> _workerChannels = new ConcurrentDictionary<string, List<ILanguageWorkerChannel>>();
+        private ConcurrentDictionary<string, List<IRpcWorkerChannel>> _workerChannels = new ConcurrentDictionary<string, List<IRpcWorkerChannel>>();
         private string _scriptRootPath;
         private bool _throwOnProcessStartUp;
 
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _throwOnProcessStartUp = throwOnProcessStartUp;
     }
 
-        public ILanguageWorkerChannel Create(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
+        public IRpcWorkerChannel Create(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
             return new TestLanguageWorkerChannel(Guid.NewGuid().ToString(), language, _eventManager, _testLogger, throwOnProcessStartUp: _throwOnProcessStartUp);
         }

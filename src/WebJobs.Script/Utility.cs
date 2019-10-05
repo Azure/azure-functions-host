@@ -16,7 +16,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -479,7 +479,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (string.IsNullOrEmpty(workerRuntime))
                 {
-                    throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
+                    throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {RpcWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
                 }
                 else
                 {
@@ -514,7 +514,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string functionLanguage = functionsListWithoutProxies.FirstOrDefault()?.Language;
                 if (IsDotNetLanguageFunction(functionLanguage))
                 {
-                    return LanguageWorkerConstants.DotNetLanguageWorkerName;
+                    return RpcWorkerConstants.DotNetLanguageWorkerName;
                 }
                 return functionLanguage;
             }
@@ -546,7 +546,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static bool ContainsFunctionWithWorkerRuntime(IEnumerable<FunctionMetadata> functions, string workerRuntime)
         {
-            if (string.Equals(workerRuntime, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 return functions.Any(f => dotNetLanguages.Any(l => l.Equals(f.Language, StringComparison.OrdinalIgnoreCase)));
             }

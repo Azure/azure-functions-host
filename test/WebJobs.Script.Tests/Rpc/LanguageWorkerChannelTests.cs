@@ -11,7 +11,8 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -24,20 +25,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private static string _expectedSystemLogMessage = "Random system log message";
         private static string _expectedLoadMsgPartial = "Sending FunctionLoadRequest for ";
 
-        private Mock<ILanguageWorkerProcess> _mockLanguageWorkerProcess = new Mock<ILanguageWorkerProcess>();
-        private string _workerId = "testWorkerId";
-        private string _scriptRootPath = "c:\testdir";
-        private IScriptEventManager _eventManager = new ScriptEventManager();
-        private TestMetricsLogger _metricsLogger = new TestMetricsLogger();
-        private Mock<ILanguageWorkerConsoleLogSource> _mockConsoleLogger = new Mock<ILanguageWorkerConsoleLogSource>();
-        private Mock<FunctionRpc.FunctionRpcBase> _mockFunctionRpcService = new Mock<FunctionRpc.FunctionRpcBase>();
-        private TestRpcServer _testRpcServer = new TestRpcServer();
-        private ILoggerFactory _loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
-        private TestFunctionRpcService _testFunctionRpcService;
-        private TestLogger _logger;
-        private LanguageWorkerChannel _workerChannel;
-        private IEnumerable<FunctionMetadata> _functions = new List<FunctionMetadata>();
-        private WorkerConfig _testWorkerConfig;
+        private readonly Mock<IWorkerProcess> _mockLanguageWorkerProcess = new Mock<IWorkerProcess>();
+        private readonly string _workerId = "testWorkerId";
+        private readonly string _scriptRootPath = "c:\testdir";
+        private readonly IScriptEventManager _eventManager = new ScriptEventManager();
+        private readonly TestMetricsLogger _metricsLogger = new TestMetricsLogger();
+        private readonly Mock<IWorkerConsoleLogSource> _mockConsoleLogger = new Mock<IWorkerConsoleLogSource>();
+        private readonly Mock<FunctionRpc.FunctionRpcBase> _mockFunctionRpcService = new Mock<FunctionRpc.FunctionRpcBase>();
+        private readonly TestRpcServer _testRpcServer = new TestRpcServer();
+        private readonly ILoggerFactory _loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+        private readonly TestFunctionRpcService _testFunctionRpcService;
+        private readonly TestLogger _logger;
+        private readonly IEnumerable<FunctionMetadata> _functions = new List<FunctionMetadata>();
+        private readonly WorkerConfig _testWorkerConfig;
+        private RpcWorkerChannel _workerChannel;
 
         public LanguageWorkerChannelTests()
         {
@@ -46,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
             _mockLanguageWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
 
-            _workerChannel = new LanguageWorkerChannel(
+            _workerChannel = new RpcWorkerChannel(
                _workerId,
                _scriptRootPath,
                _eventManager,
@@ -92,10 +93,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task StartWorkerProcessAsync_WorkerProcess_Throws()
         {
-            Mock<ILanguageWorkerProcess> mockLanguageWorkerProcessThatThrows = new Mock<ILanguageWorkerProcess>();
+            Mock<IWorkerProcess> mockLanguageWorkerProcessThatThrows = new Mock<IWorkerProcess>();
             mockLanguageWorkerProcessThatThrows.Setup(m => m.StartProcessAsync()).Throws<FileNotFoundException>();
 
-            _workerChannel = new LanguageWorkerChannel(
+            _workerChannel = new RpcWorkerChannel(
                _workerId,
                _scriptRootPath,
                _eventManager,
@@ -151,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
             Guid invocationId = Guid.NewGuid();
-            LanguageWorkerChannel channel = new LanguageWorkerChannel(
+            RpcWorkerChannel channel = new RpcWorkerChannel(
                _workerId,
                _scriptRootPath,
                _eventManager,

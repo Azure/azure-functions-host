@@ -7,12 +7,12 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class TestLanguageWorkerChannel : ILanguageWorkerChannel
+    public class TestLanguageWorkerChannel : IRpcWorkerChannel
     {
         private string _workerId;
         private bool _isWebhostChannel;
@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private IScriptEventManager _eventManager;
         private string _runtime;
         private ILogger _testLogger;
-        private LanguageWorkerChannelState _state;
+        private RpcWorkerChannelState _state;
         private List<Task> _executionContexts;
 
         public TestLanguageWorkerChannel(string workerId, string runtime = null, IScriptEventManager eventManager = null, ILogger testLogger = null, bool isWebhostChannel = false, bool throwOnProcessStartUp = false)
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         public List<Task> ExecutionContexts => _executionContexts;
 
-        public LanguageWorkerChannelState State => _state;
+        public RpcWorkerChannelState State => _state;
 
         public void Dispose()
         {
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 { "test", "testSupported" }
             };
-            _state = LanguageWorkerChannelState.Initialized;
+            _state = RpcWorkerChannelState.Initialized;
         }
 
         public void RaiseWorkerError()

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
@@ -17,12 +17,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class NodeContentTests : IClassFixture<NodeContentTests.TestFixture>
     {
-        private IWebHostLanguageWorkerChannelManager _languageWorkerChannelManager;
+        private IWebHostRpcWorkerChannelManager _languageWorkerChannelManager;
 
         public NodeContentTests(TestFixture fixture)
         {
             Fixture = fixture;
-            _languageWorkerChannelManager = (IWebHostLanguageWorkerChannelManager)fixture.Host.Services.GetService(typeof(IWebHostLanguageWorkerChannelManager));
+            _languageWorkerChannelManager = (IWebHostRpcWorkerChannelManager)fixture.Host.Services.GetService(typeof(IWebHostRpcWorkerChannelManager));
         }
 
         public TestFixture Fixture { get; set; }
@@ -135,11 +135,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task InitializeAsync_WorkerRuntime_Node_DoNotInitialize_JavaWorker()
         {
-            var channelManager = _languageWorkerChannelManager as WebHostLanguageWorkerChannelManager;
+            var channelManager = _languageWorkerChannelManager as WebHostRpcWorkerChannelManager;
 
-            ILanguageWorkerChannel javaChannel = await channelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
+            IRpcWorkerChannel javaChannel = await channelManager.GetChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(javaChannel);
-            ILanguageWorkerChannel nodeChannel = await channelManager.GetChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName);
+            IRpcWorkerChannel nodeChannel = await channelManager.GetChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName);
             Assert.Null(nodeChannel);
         }
 
@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : ScriptHostEndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\Node", "node", LanguageWorkerConstants.NodeLanguageWorkerName,
+            public TestFixture() : base(@"TestScripts\Node", "node", RpcWorkerConstants.NodeLanguageWorkerName,
                 startHost: true, functions: new[] { "HttpTrigger", "HttpTrigger-Scenarios" })
             {
             }

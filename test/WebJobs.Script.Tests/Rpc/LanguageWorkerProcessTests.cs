@@ -3,7 +3,8 @@
 
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Moq;
 using Xunit;
 
@@ -21,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var workerProcessFactory = new Mock<IWorkerProcessFactory>();
             var processRegistry = new Mock<IProcessRegistry>();
             var rpcServer = new TestRpcServer();
-            var languageWorkerConsoleLogSource = new Mock<ILanguageWorkerConsoleLogSource>();
+            var languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
             var scriptJobHostEnvironment = new Mock<IScriptJobHostEnvironment>();
             var testEnv = new TestEnvironment();
             _languageWorkerProcess = new RpcWorkerProcess("node",
@@ -45,8 +46,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void ErrorMessageQueue_Enqueue_Success()
         {
-            LanguageWorkerChannelUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error1");
-            LanguageWorkerChannelUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error2");
+            WorkerProcessUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error1");
+            WorkerProcessUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error2");
 
             Assert.True(_languageWorkerProcess.ProcessStdErrDataQueue.Count == 2);
             string exceptionMessage = string.Join(",", _languageWorkerProcess.ProcessStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
@@ -56,10 +57,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void ErrorMessageQueue_Full_Enqueue_Success()
         {
-            LanguageWorkerChannelUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error1");
-            LanguageWorkerChannelUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error2");
-            LanguageWorkerChannelUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error3");
-            LanguageWorkerChannelUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error4");
+            WorkerProcessUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error1");
+            WorkerProcessUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error2");
+            WorkerProcessUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error3");
+            WorkerProcessUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error4");
             Assert.True(_languageWorkerProcess.ProcessStdErrDataQueue.Count == 3);
             string exceptionMessage = string.Join(",", _languageWorkerProcess.ProcessStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
             Assert.Equal("Error2,Error3,Error4", exceptionMessage);
@@ -71,8 +72,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData("LanguageWorkerConsoleLog Connection established")]
         public void IsLanguageWorkerConsoleLog_Returns_True_RemovesLogPrefix(string msg)
         {
-            Assert.True(LanguageWorkerChannelUtilities.IsLanguageWorkerConsoleLog(msg));
-            Assert.Equal(" Connection established", LanguageWorkerChannelUtilities.RemoveLogPrefix(msg));
+            Assert.True(WorkerProcessUtilities.IsConsoleLog(msg));
+            Assert.Equal(" Connection established", WorkerProcessUtilities.RemoveLogPrefix(msg));
         }
 
         [Theory]
@@ -81,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData("Connection established")]
         public void IsLanguageWorkerConsoleLog_Returns_False(string msg)
         {
-            Assert.False(LanguageWorkerChannelUtilities.IsLanguageWorkerConsoleLog(msg));
+            Assert.False(WorkerProcessUtilities.IsConsoleLog(msg));
         }
 
         [Fact]
