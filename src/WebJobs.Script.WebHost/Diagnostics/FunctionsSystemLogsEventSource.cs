@@ -11,11 +11,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     [SuppressMessage("StyleCop.CSharp.NamingRules", "SA1313:ParameterNamesMustBeginWithLowerCaseLetter", Justification = "MDS columns names need to Pascal case", Scope = "member", Target = "~M:Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.EventGenerator.FunctionsSystemLogsEventSource)")]
     public sealed class FunctionsSystemLogsEventSource : ExtendedEventSource
     {
+        // IMPORTANT: Whenever changing schema, increment the EventSource version so that the manifest changes are registered.
+
         internal static readonly FunctionsSystemLogsEventSource Instance = new FunctionsSystemLogsEventSource();
 
         [SuppressMessage("Microsoft.Naming", "CA1709:IdentifiersShouldBeCasedCorrectly", Justification = "MDS columns names are Pascal Cased")]
         [SuppressMessage("Microsoft.Design", "CA1030:UseEventsWhereAppropriate")]
-        [Event(65520, Level = EventLevel.Verbose, Channel = EventChannel.Operational, Version = 4)]
+        [Event(65520, Level = EventLevel.Verbose, Channel = EventChannel.Operational, Version = 5)]
         public void RaiseFunctionsEventVerbose(string SubscriptionId, string AppName, string FunctionName, string EventName, string Source, string Details, string Summary, string HostVersion, string EventTimestamp, string FunctionInvocationId, string HostInstanceId, string RuntimeSiteName)
         {
             if (IsEnabled())
@@ -26,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         [SuppressMessage("Microsoft.Naming", "CA1709:IdentifiersShouldBeCasedCorrectly")]
         [SuppressMessage("Microsoft.Design", "CA1030:UseEventsWhereAppropriate")]
-        [Event(65521, Level = EventLevel.Informational, Channel = EventChannel.Operational, Version = 4)]
+        [Event(65521, Level = EventLevel.Informational, Channel = EventChannel.Operational, Version = 5)]
         public void RaiseFunctionsEventInfo(string SubscriptionId, string AppName, string FunctionName, string EventName, string Source, string Details, string Summary, string HostVersion, string EventTimestamp, string FunctionInvocationId, string HostInstanceId, string RuntimeSiteName)
         {
             if (IsEnabled())
@@ -37,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         [SuppressMessage("Microsoft.Naming", "CA1709:IdentifiersShouldBeCasedCorrectly")]
         [SuppressMessage("Microsoft.Design", "CA1030:UseEventsWhereAppropriate")]
-        [Event(65522, Level = EventLevel.Warning, Channel = EventChannel.Operational, Version = 4)]
+        [Event(65522, Level = EventLevel.Warning, Channel = EventChannel.Operational, Version = 5)]
         public void RaiseFunctionsEventWarning(string SubscriptionId, string AppName, string FunctionName, string EventName, string Source, string Details, string Summary, string HostVersion, string EventTimestamp, string FunctionInvocationId, string HostInstanceId, string RuntimeSiteName)
         {
             if (IsEnabled())
@@ -48,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         [SuppressMessage("Microsoft.Naming", "CA1709:IdentifiersShouldBeCasedCorrectly")]
         [SuppressMessage("Microsoft.Design", "CA1030:UseEventsWhereAppropriate")]
-        [Event(65523, Level = EventLevel.Error, Channel = EventChannel.Operational, Version = 4)]
+        [Event(65523, Level = EventLevel.Error, Channel = EventChannel.Operational, Version = 5)]
         public void RaiseFunctionsEventError(string SubscriptionId, string AppName, string FunctionName, string EventName, string Source, string Details, string Summary, string HostVersion, string EventTimestamp, string InnerExceptionType, string InnerExceptionMessage, string FunctionInvocationId, string HostInstanceId, string RuntimeSiteName)
         {
             if (IsEnabled())
@@ -57,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        [Event(65524, Level = EventLevel.Informational, Channel = EventChannel.Operational, Version = 5)]
+        [Event(65524, Level = EventLevel.Informational, Channel = EventChannel.Operational, Version = 6)]
         [SuppressMessage("Microsoft.Naming", "CA1709:IdentifiersShouldBeCasedCorrectly")]
         [SuppressMessage("Microsoft.Design", "CA1030:UseEventsWhereAppropriate")]
         public void LogFunctionMetricEvent(string SubscriptionId, string AppName, string FunctionName, string EventName, long Average, long Minimum, long Maximum, long Count, string HostVersion, string EventTimestamp, string Data, string RuntimeSiteName)

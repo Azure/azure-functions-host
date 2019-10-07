@@ -35,30 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public ImmutableArray<string> RootScriptDirectorySnapshot
-        {
-            get
-            {
-                if (_rootScriptPath != null && _directorySnapshot.IsDefaultOrEmpty)
-                {
-                    // take a startup time function directory snapshot so we can detect function additions/removals
-                    // we'll also use this snapshot when reading function metadata as part of startup
-                    // taking this snapshot once and reusing at various points during initialization allows us to
-                    // minimize disk operations
-                    try
-                    {
-                        _directorySnapshot = Directory.EnumerateDirectories(_rootScriptPath).ToImmutableArray();
-                    }
-                    catch (DirectoryNotFoundException)
-                    {
-                        _directorySnapshot = ImmutableArray<string>.Empty;
-                    }
-                }
-
-                return _directorySnapshot;
-            }
-        }
-
         /// <summary>
         /// Gets the current ScriptHost instance id.
         /// </summary>

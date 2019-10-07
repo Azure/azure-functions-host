@@ -83,7 +83,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     .ConfigureServices(s =>
                     {
                         string uniqueTestRootPath = Path.Combine(Path.GetTempPath(), "FunctionsTest", "DependencyValidatorTests");
-
                         s.PostConfigureAll<ScriptApplicationHostOptions>(o =>
                         {
                             o.IsSelfHost = true;

@@ -287,6 +287,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Ok(requestHeaderToken);
         }
 
+        [HttpGet]
+        [HttpPost]
+        [Route("admin/warmup")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [RequiresRunningHost]
+        public async Task<IActionResult> Warmup([FromServices] IScriptJobHost scriptHost)
+        {
+            await scriptHost.TryInvokeWarmupAsync();
+            return Ok();
+        }
+
         [AcceptVerbs("GET", "POST", "DELETE")]
         [Authorize(AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
         [Route("runtime/webhooks/{name}/{*extra}")]

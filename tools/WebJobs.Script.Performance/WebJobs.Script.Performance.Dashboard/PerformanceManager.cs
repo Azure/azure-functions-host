@@ -1,40 +1,20 @@
-﻿using Microsoft.Azure.Management.Compute;
+﻿using System.Collections.Generic;
+using System.Security.Authentication;
+using System.Threading.Tasks;
+using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using Microsoft.Rest;
-using System;
-using System.Collections.Generic;
-using System.Security.Authentication;
-using System.Threading.Tasks;
 
 namespace WebJobs.Script.Tests.Perf.Dashboard
 {
     public static class PerformanceManager
     {
-        public static async Task Execute(string testId, ILogger log)
+        public static async Task Execute(string testId, PerformanceRunOptions options, ILogger log)
         {
-            string clientId = Environment.GetEnvironmentVariable("AzureWebJobsTargetSiteApplicationId", EnvironmentVariableTarget.Process);
-            string clientSecret = Environment.GetEnvironmentVariable("AzureWebJobsTargetSiteClientSecret", EnvironmentVariableTarget.Process);
-            string tenantId = Environment.GetEnvironmentVariable("AzureWebJobsTargetSiteTenantId", EnvironmentVariableTarget.Process);
-            string subscriptionId = Environment.GetEnvironmentVariable("AzureWebJobsTargetSiteSubscriptionId", EnvironmentVariableTarget.Process);
-            string siteResourceGroup = Environment.GetEnvironmentVariable("AzureWebJobsTargetSiteResourceGroup", EnvironmentVariableTarget.Process);
-            string vm = Environment.GetEnvironmentVariable("AzureWebJobsVM", EnvironmentVariableTarget.Process);
-            string functionsHostSlug = Environment.GetEnvironmentVariable("FunctionHostProjectSlug", EnvironmentVariableTarget.Process);
-            string performanceMeterSlug = Environment.GetEnvironmentVariable("PerformanceProjectSlug", EnvironmentVariableTarget.Process);
-            string extensionUrl = string.Empty;
-            string appUrl = string.Empty;
-
-            using (var appVeyorClient = new AppVeyorClient(log))
-            {
-                // Get latest private extension url from appvayor build
-                string lastSuccessfulVersion = await appVeyorClient.GetLastSuccessfulBuildVersionAsync("dev", functionsHostSlug);
-                extensionUrl = await appVeyorClient.GetArtifactUrlAsync(lastSuccessfulVersion, functionsHostSlug, "Image: Visual Studio 2017", "inproc");
-                appUrl = await appVeyorClient.GetArtifactUrlAsync(lastSuccessfulVersion, functionsHostSlug, "Image: Visual Studio 2017", "WebJobs.Script.Performance.App");
-            }
-
-            var authenticationContext = new AuthenticationContext($"https://login.windows.net/{tenantId}");
-            var credential = new ClientCredential(clientId, clientSecret);
+            var authenticationContext = new AuthenticationContext($"https://login.windows.net/{options.TenantId}");
+            var credential = new ClientCredential(options.ClientId, options.ClientSecret);
             var result = await authenticationContext.AcquireTokenAsync("https://management.core.windows.net/", credential);
 
             if (result == null)
@@ -45,10 +25,10 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
             var credentials = new TokenCredentials(result.AccessToken);
             using (var client = new ComputeManagementClient(credentials))
             {
-                client.SubscriptionId = subscriptionId;
-                await VirtualMachinesOperationsExtensions.BeginRunCommandAsync(client.VirtualMachines, siteResourceGroup, vm,
+                client.SubscriptionId = options.SubscriptionId;
+                await VirtualMachinesOperationsExtensions.BeginRunCommandAsync(client.VirtualMachines, options.SiteResourceGroup, options.VM,
                     new RunCommandInput("RunPowerShellScript",
-                    new List<string>() { $"& 'C:\\Tools\\ps\\run.ps1' '{appUrl}' '{testId}' '{extensionUrl}'" }));
+                    new List<string>() { $"& 'C:\\Tools\\ps\\run.ps1' '{options.AppUrl}' '{testId}' '{options.ExtensionUrl}'" }));
             }
         }
     }
