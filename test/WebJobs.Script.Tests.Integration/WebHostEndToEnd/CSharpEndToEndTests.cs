@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -126,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             IEnumerable<FunctionTraceEvent> allLogs = Fixture.EventGenerator.GetFunctionTraceEvents();
             Assert.False(allLogs.Any(l => l.Summary.Contains("From ")));
             Assert.False(allLogs.Any(l => l.Source.EndsWith(".User")));
-            Assert.False(allLogs.Any(l => l.Source == LanguageWorkerConstants.FunctionConsoleLogCategoryName));
+            Assert.False(allLogs.Any(l => l.Source == OutOfProcConstants.FunctionConsoleLogCategoryName));
             Assert.NotEmpty(allLogs);
         }
 

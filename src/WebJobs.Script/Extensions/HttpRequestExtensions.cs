@@ -3,9 +3,9 @@
 
 using System;
 using System.Linq;
+using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.Extensions
@@ -72,5 +72,24 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         }
 
         public static Uri GetRequestUri(this HttpRequest request) => new Uri(request.GetDisplayUrl());
+
+        public static byte[] GetRequestBodyAsBytes(this HttpRequest request)
+        {
+            var length = Convert.ToInt32(request.ContentLength);
+            var bytes = new byte[length];
+            request.Body.Read(bytes, 0, length);
+            request.Body.Position = 0;
+            return bytes;
+        }
+
+        public static bool IsMediaTypeOctetOrMultipart(this HttpRequest request)
+        {
+            if (MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType))
+            {
+                return mediaType != null && (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
+                                mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0);
+            }
+            return false;
+        }
     }
 }
