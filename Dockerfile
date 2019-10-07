@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/core/sdk:2.2 AS installer-env
+FROM mcr.microsoft.com/dotnet/core/sdk:3.0 AS installer-env
 
 ENV PublishWithAspNetCoreTargetManifest false
 
@@ -15,7 +15,7 @@ RUN apt-get update && \
     apt-get install -y gnupg && \
     curl -sL https://deb.nodesource.com/setup_8.x | bash - && \
     apt-get update && \
-    apt-get install -y nodejs dotnet-sdk-2.2
+    apt-get install -y nodejs dotnet-sdk-3.0
 
 COPY --from=installer-env ["/azure-functions-host", "/azure-functions-host"]
 
