@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,10 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Properties;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -30,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly ILogger _logger;
         private readonly IExtensionBundleManager _extensionBundleManager;
         private readonly IFunctionMetadataProvider _functionMetadataProvider;
+        private readonly HashSet<string> builtInBindings = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "HttpTrigger", "Http", "TimerTrigger" };
 
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
@@ -59,16 +58,60 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 .ToArray();
         }
 
+        private bool IsHttpOnly(HashSet<string> bindings)
+        {
+            var bindingCount = bindings.Count();
+            // bindings other than http or timer are used
+            if (bindingCount > 3)
+            {
+                return false;
+            }
+            else
+            {
+                bool hasOnlyHttpTriggerType = true;
+                foreach (var binding in bindings)
+                {
+                    hasOnlyHttpTriggerType = hasOnlyHttpTriggerType && builtInBindings.Contains(binding);
+                }
+                return hasOnlyHttpTriggerType;
+            }
+        }
+
         public async Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()
         {
+            var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
+            var functionMetadataCollection = _functionMetadataProvider.GetFunctionMetadata(forceRefresh: true);
+            var startupTypes = new List<Type>();
+            var bindingsSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (bundleConfigured)
+            {
+                // Generate a Hashset of all the binding types used in the function app
+                foreach (var functionMetadata in functionMetadataCollection)
+                {
+                    foreach (var binding in functionMetadata.Bindings)
+                    {
+                        bindingsSet.Add(binding.Type);
+                    }
+                }
+
+                // If extension bundle is configured and the function app is only using http or timer,
+                // then no need to go find bundle or parse through any metadata from bindings.json.
+                // This is would save us a bunch of IO operations
+                if (IsHttpOnly(bindingsSet))
+                {
+                    return startupTypes;
+                }
+            }
+
             string binPath;
-            if (_extensionBundleManager.IsExtensionBundleConfigured())
+            if (bundleConfigured)
             {
                 string extensionBundlePath = await _extensionBundleManager.GetExtensionBundlePath();
                 if (string.IsNullOrEmpty(extensionBundlePath))
                 {
                     _logger.ScriptStartUpErrorLoadingExtensionBundle();
-                    return new Type[0];
+                    return startupTypes;
                 }
                 _logger.ScriptStartUpLoadingExtensionBundle(extensionBundlePath);
                 binPath = Path.Combine(extensionBundlePath, "bin");
@@ -78,21 +121,17 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 binPath = Path.Combine(_rootScriptPath, "bin");
             }
 
-            string metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
 
+
+            string metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
             // parse the extensions file to get declared startup extensions
             ExtensionReference[] extensionItems = ParseExtensions(metadataFilePath);
 
-            var startupTypes = new List<Type>();
-
-            var functionBindings = _functionMetadataProvider.GetFunctionMetadata(forceRefresh: true).SelectMany(f => f.Bindings.Select(b => b.Type));
-
-            var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
             foreach (var extensionItem in extensionItems)
             {
                 if (!bundleConfigured
                     || extensionItem.Bindings.Count == 0
-                    || extensionItem.Bindings.Intersect(functionBindings, StringComparer.OrdinalIgnoreCase).Any())
+                    || extensionItem.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any())
                 {
                     string startupExtensionName = extensionItem.Name ?? extensionItem.TypeName;
                     _logger.ScriptStartUpLoadingStartUpExtension(startupExtensionName);
