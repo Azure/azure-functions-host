@@ -1,0 +1,30 @@
+name: $(Build.SourceBranchName)_$(Build.Reason)_$(Build.BuildId)
+
+pr:
+  branches:
+    include:
+    - v3.x
+
+trigger:
+  branches:
+    include:
+    - v3.x
+
+pool:
+  vmImage: 'windows-2019'
+
+steps:
+- task: PowerShell@2
+  inputs:
+    filePath: '$(Build.Repository.LocalPath)\build.ps1'
+    arguments: '-buildNumber "$(Build.BuildId)" -includeSuffix $true'
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
+    Contents: '*.zip'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
