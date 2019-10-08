@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -42,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ReadFunctionMetadata_Succeeds()
         {
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
             var scriptApplicationHostOptions = new ScriptApplicationHostOptions()
             {
@@ -54,8 +57,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
 
-            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance);
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance, testMetricsLogger);
             Assert.Equal(17, metadataProvider.GetFunctionMetadata(false).Length);
+            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.ReadFunctionsMetadata)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.ReadFunctionsMetadata)
+                && testMetricsLogger.EventsBegan.Contains(MetricEventNames.ReadFunctionMetadata)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.ReadFunctionMetadata));
         }
 
         [Fact]

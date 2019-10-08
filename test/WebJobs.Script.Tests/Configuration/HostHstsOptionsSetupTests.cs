@@ -2,19 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
-using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
-using Moq;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -105,8 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
-
-            var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory);
+            var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory, new TestMetricsLogger());
 
             var configurationBuilder = new ConfigurationBuilder()
                 .Add(configSource);

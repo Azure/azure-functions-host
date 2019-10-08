@@ -26,6 +26,26 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         // language worker level events
         public const string WorkerInitializeLatency = "host.startup.outofproc.{0}worker.initialize.attempt{1}.latency";
 
+        // FunctionMetadataprovider events
+        public const string ReadFunctionsMetadata = "functionmetadataprovider.readfunctionsmetadata";
+        public const string ReadFunctionMetadata = "functionmetadataprovider.readfunctionsmetadata.readfunctionmetadata";
+
+        // Host json file configuration events
+        public const string LoadHostConfigurationSource = "hostjsonfileconfigurationsource.loadhostconfigurationsource";
+        public const string LoadHostConfiguration = "hostjsonfileconfigurationsource.loadhostconfigurationsource.loadhostconfig";
+        public const string InitializeHostConfiguration = "hostjsonfileconfigurationsource.loadhostconfigurationsource.initializehostconfig";
+
+        // LanguageWorkerChannel events
+        public const string FunctionLoadRequestResponse = "languageworkerchannel.functionloadrequestresponse";
+
+        // ScriptStartupTypeLocator events
+        public const string ParseExtensions = "ScriptStartupTypeLocator.ParseExtensions";
+
+        // Worker configuration events
+        public const string GetConfigs = "workerconfigfactory.getconfigs";
+        public const string BuildWorkerProviderDictionary = "workerconfigfactory.getconfigs.buildworkerproviderdictionary";
+        public const string AddProvider = "workerconfigfactory.getconfigs.buildworkerproviderdictionary.addprovider";
+
         // function level events
         public const string FunctionInvokeLatency = "function.invoke.latency";
         public const string FunctionBindingTypeFormat = "function.binding.{0}";
