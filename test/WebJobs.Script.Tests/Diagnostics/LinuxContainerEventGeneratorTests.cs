@@ -184,5 +184,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             Assert.Equal(eventLevel, LinuxEventGenerator.ToEventLevel(logLevel));
         }
+
+        [Theory]
+        [MemberData(nameof(LinuxEventGeneratorTestData.GetAzureMonitoringEvents), MemberType = typeof(LinuxEventGeneratorTestData))]
+        public void ParseAzureMonitoringEvents(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
+        {
+            _generator.LogAzureMonitorDiagnosticLogEvent(level, resourceId, operationName, category, regionName, properties);
+
+            string evt = _events.Single();
+
+            Regex regex = new Regex(LinuxContainerEventGenerator.AzureMonitoringEventRegex);
+            var match = regex.Match(evt);
+
+            Assert.True(match.Success);
+            Assert.Equal(7, match.Groups.Count);
+
+            var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            Assert.Collection(groupMatches,
+                p => Assert.Equal((int)LinuxEventGenerator.ToEventLevel(level), int.Parse(p)),
+                p => Assert.Equal(resourceId, p),
+                p => Assert.Equal(operationName, p),
+                p => Assert.Equal(category, p),
+                p => Assert.Equal(regionName, p),
+                p => Assert.Equal(properties, p));
+        }
     }
 }

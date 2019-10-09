@@ -26,5 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             yield return new object[] { LogLevel.Information, string.Empty, "TestApp", "TestFunction", "TestEvent", string.Empty, "This string includes a quoted \"substring\" in the middle", "Another \"quoted substring\"", "TestExceptionType", "Another \"quoted substring\"", "E2D5A6ED-4CE3-4CFD-8878-FD4814F0A1F3", "3AD41658-1C4E-4C9D-B0B9-24F2BDAE2829", "F0AAA9AD-C3A6-48B9-A75E-57BB280EBB53", "TestRuntimeSiteName" };
             yield return new object[] { LogLevel.Information, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
         }
+
+        public static IEnumerable<object[]> GetAzureMonitoringEvents()
+        {
+            yield return new object[] { LogLevel.Information, "TestResourceId", "TestOperationName", "TestCategory", "TestRegionName", "TestProperties" };
+            yield return new object[] { LogLevel.Information, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
+        }
     }
 }
