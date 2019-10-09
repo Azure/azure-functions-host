@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _logger.LogDebug("Creating language worker channel for runtime:{runtime}", runtime);
             try
             {
-                languageWorkerChannel = _languageWorkerChannelFactory.Create(scriptRootPath, runtime, null, 0);
+                languageWorkerChannel = _languageWorkerChannelFactory.Create(scriptRootPath, runtime, _metricsLogger, 0);
                 AddOrUpdateWorkerChannels(runtime, languageWorkerChannel);
                 await languageWorkerChannel.StartWorkerProcessAsync().ContinueWith(processStartTask =>
                 {
