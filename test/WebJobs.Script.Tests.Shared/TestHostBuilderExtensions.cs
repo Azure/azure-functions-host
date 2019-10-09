@@ -4,6 +4,7 @@
 using System;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -34,7 +35,7 @@ namespace Microsoft.WebJobs.Script.Tests
                 ScriptPath = TestHelpers.FunctionsTestDirectory,
                 LogPath = TestHelpers.GetHostLogFileDirectory().FullName
             };
-
+            TestMetricsLogger metricsLogger = new TestMetricsLogger();
             configure?.Invoke(webHostOptions);
 
             // Register root services
@@ -48,9 +49,10 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<AspNetCore.Hosting.IApplicationLifetime>(services);
             AddMockedSingleton<IDependencyValidator>(services);
             services.AddSingleton<HostNameProvider>();
+            services.AddSingleton<IMetricsLogger>(metricsLogger);
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
-            services.AddFunctionMetadataProvider(webHostOptions);
+            services.AddFunctionMetadataProvider(webHostOptions, metricsLogger);
 
             configureRootServices?.Invoke(services);
 
@@ -78,7 +80,7 @@ namespace Microsoft.WebJobs.Script.Tests
             return services.AddSingleton<T>(mock.Object);
         }
 
-        private static IServiceCollection AddFunctionMetadataProvider(this IServiceCollection services, ScriptApplicationHostOptions options)
+        private static IServiceCollection AddFunctionMetadataProvider(this IServiceCollection services, ScriptApplicationHostOptions options, IMetricsLogger metricsLogger)
         {
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
             var source = new TestChangeTokenSource();
@@ -89,7 +91,7 @@ namespace Microsoft.WebJobs.Script.Tests
             {
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
-            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance, metricsLogger);
             return services.AddSingleton<IFunctionMetadataProvider>(metadataProvider);
         }
     }
