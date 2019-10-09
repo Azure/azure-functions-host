@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <configuration xmlns:xdt="http://schemas.microsoft.com/XML-Document-Transform">
   <system.webServer>
-    <aspNetCore processPath="D:\Program Files (x86)\dotnet\dotnet.exe" arguments=".\Microsoft.Azure.WebJobs.Script.WebHost.dll" stdoutLogEnabled="false" hostingModel="inprocess" startupTimeLimit="3600" xdt:Transform="Replace" />
+    <aspNetCore processPath="%PROGRAMFILES(X86)%\dotnet\dotnet.exe" arguments=".\Microsoft.Azure.WebJobs.Script.WebHost.dll" stdoutLogEnabled="false" hostingModel="inprocess" startupTimeLimit="3600" xdt:Transform="Replace" />
   </system.webServer>
 </configuration>

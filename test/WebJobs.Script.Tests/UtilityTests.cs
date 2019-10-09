@@ -9,6 +9,7 @@ using System.Globalization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -371,6 +372,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Thread.CurrentThread.CurrentCulture = new CultureInfo(cultureInfo);
             Assert.Equal(expectedResult, Utility.IsValidFunctionName(functionName));
             Thread.CurrentThread.CurrentCulture = defaultCulture;
+        }
+
+        [Theory]
+        [InlineData("node", "node")]
+        [InlineData("java", "java")]
+        [InlineData("", "node")]
+        [InlineData(null, "java")]
+        public void IsSupported_Returns_True(string language, string funcMetadataLanguage)
+        {
+            FunctionMetadata func1 = new FunctionMetadata()
+            {
+                Name = "func1",
+                Language = funcMetadataLanguage
+            };
+            Assert.True(Utility.IsFunctionMetadataLanguageSupportedByWorkerRuntime(func1, language));
+        }
+
+        [Theory]
+        [InlineData("node", "java")]
+        [InlineData("java", "node")]
+        [InlineData("python", "")]
+        public void IsSupported_Returns_False(string language, string funcMetadataLanguage)
+        {
+            FunctionMetadata func1 = new FunctionMetadata()
+            {
+                Name = "func1",
+                Language = funcMetadataLanguage
+            };
+            Assert.False(Utility.IsFunctionMetadataLanguageSupportedByWorkerRuntime(func1, language));
         }
     }
 }

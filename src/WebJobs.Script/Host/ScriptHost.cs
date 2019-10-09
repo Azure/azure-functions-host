@@ -432,7 +432,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             FileUtility.EnsureDirectoryExists(_hostLogPath);
 
-            if (!_environment.FileSystemIsReadOnly())
+            if (!_environment.IsFileSystemReadOnly())
             {
                 FileUtility.EnsureDirectoryExists(ScriptOptions.RootScriptPath);
             }
@@ -475,7 +475,7 @@ namespace Microsoft.Azure.WebJobs.Script
             else
             {
                 _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
-                _descriptorProviders.Add(new WorkerFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
+                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
             }
 
             Collection<FunctionDescriptor> functions;

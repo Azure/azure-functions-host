@@ -16,14 +16,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         private readonly IConfiguration _configuration;
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
         private readonly IDisposable _standbyOptionsOnChangeSubscription;
+        private readonly IServiceProvider _serviceProvider;
 
         public ScriptApplicationHostOptionsSetup(IConfiguration configuration, IOptionsMonitor<StandbyOptions> standbyOptions,
-            IOptionsMonitorCache<ScriptApplicationHostOptions> cache)
+            IOptionsMonitorCache<ScriptApplicationHostOptions> cache, IServiceProvider serviceProvider)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
-
+            _serviceProvider = serviceProvider;
             // If standby options change, invalidate this options cache.
             _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => _cache.Clear());
         }
@@ -40,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
             // Indicate that a WebHost is hosting the ScriptHost
             options.HasParentScope = true;
+            options.RootServiceProvider = _serviceProvider;
 
             // During assignment, we need a way to get the non-placeholder ScriptPath
             // while we are still in PlaceholderMode. This is a way for us to request it from the

@@ -239,7 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else if (desiredState == ScriptHostState.Running && currentState == ScriptHostState.Offline)
             {
-                if (_environment.FileSystemIsReadOnly())
+                if (_environment.IsFileSystemReadOnly())
                 {
                     return BadRequest();
                 }
@@ -249,7 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else if (desiredState == ScriptHostState.Offline && currentState != ScriptHostState.Offline)
             {
-                if (_environment.FileSystemIsReadOnly())
+                if (_environment.IsFileSystemReadOnly())
                 {
                     return BadRequest();
                 }
@@ -278,13 +278,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public IActionResult GetAdminToken()
         {
-            if (!_environment.IsLinuxContainerEnvironment())
+            if (!_environment.IsLinuxConsumption())
             {
                 return BadRequest("Endpoint is only available when running in Linux Container");
             }
 
             string requestHeaderToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
             return Ok(requestHeaderToken);
+        }
+
+        [HttpGet]
+        [HttpPost]
+        [Route("admin/warmup")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [RequiresRunningHost]
+        public async Task<IActionResult> Warmup([FromServices] IScriptJobHost scriptHost)
+        {
+            await scriptHost.TryInvokeWarmupAsync();
+            return Ok();
         }
 
         [AcceptVerbs("GET", "POST", "DELETE")]

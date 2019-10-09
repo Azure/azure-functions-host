@@ -11,33 +11,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class EnvironmentTests
     {
         [Fact]
-        public void IsAppServiceWindowsEnvironment_SetAzureWebsiteInstanceId_ReturnsTrue()
+        public void IsWindowsAzureManagedHosting_SetAzureWebsiteInstanceId_ReturnsTrue()
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                Assert.True(environment.IsAppServiceWindowsEnvironment());
+                Assert.True(environment.IsWindowsAzureManagedHosting());
             }
             else
             {
-                Assert.False(environment.IsAppServiceWindowsEnvironment());
+                Assert.False(environment.IsWindowsAzureManagedHosting());
             }
         }
 
         [Fact]
-        public void IsAppServiceWindowsEnvironment_AzureWebsiteInstanceIdNotSet_ReturnsFalse()
+        public void IsWindowsAzureManagedHosting_AzureWebsiteInstanceIdNotSet_ReturnsFalse()
         {
             var environment = new TestEnvironment();
-            Assert.False(environment.IsAppServiceWindowsEnvironment());
+            Assert.False(environment.IsWindowsAzureManagedHosting());
         }
 
         [Fact]
-        public void IsCoreToolsEnvironment_SetAzureWebsiteInstanceId_ReturnsTrue()
+        public void IsCoreTools_SetAzureWebsiteInstanceId_ReturnsTrue()
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(CoreToolsEnvironment, "true");
-            Assert.True(environment.IsCoreToolsEnvironment());
+            Assert.True(environment.IsCoreTools());
         }
 
         [Fact]
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
-            Assert.False(environment.IsLinuxAppServiceEnvWithPersistentFileSystem());
+            Assert.False(environment.IsLinuxAppServiceWithPersistentFileSystem());
         }
 
         [Fact]
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
             environment.SetEnvironmentVariable(FunctionsLogsMountPath, Guid.NewGuid().ToString("N"));
-            Assert.True(environment.IsLinuxAppServiceEnvWithPersistentFileSystem());
+            Assert.True(environment.IsLinuxAppServiceWithPersistentFileSystem());
         }
 
         [Fact]
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
             environment.SetEnvironmentVariable(FunctionsLogsMountPath, Guid.NewGuid().ToString("N"));
             environment.SetEnvironmentVariable(LinuxAzureAppServiceStorage, "false");
-            Assert.False(environment.IsLinuxAppServiceEnvWithPersistentFileSystem());
+            Assert.False(environment.IsLinuxAppServiceWithPersistentFileSystem());
         }
 
         [Fact]
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
             environment.SetEnvironmentVariable(LinuxAzureAppServiceStorage, "true");
-            Assert.False(environment.IsLinuxAppServiceEnvWithPersistentFileSystem());
+            Assert.False(environment.IsLinuxAppServiceWithPersistentFileSystem());
         }
 
         [Fact]
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
             environment.SetEnvironmentVariable(FunctionsLogsMountPath, Guid.NewGuid().ToString("N"));
             environment.SetEnvironmentVariable(LinuxAzureAppServiceStorage, "true");
-            Assert.True(environment.IsLinuxAppServiceEnvWithPersistentFileSystem());
+            Assert.True(environment.IsLinuxAppServiceWithPersistentFileSystem());
         }
 
         [Fact]
@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
-            Assert.True(environment.IsAppServiceWindowsEnvironment());
+            Assert.True(environment.IsWindowsAzureManagedHosting());
             Assert.True(environment.IsPersistentFileSystemAvailable());
         }
 
@@ -104,21 +104,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void IsContainerEnvironment_valid_ReturnsTrue()
+        public void IsContainer_valid_ReturnsTrue()
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(RunningInContainer, "true");
-            Assert.True(environment.IsContainerEnvironment());
+            Assert.True(environment.IsContainer());
         }
 
         [Theory]
         [InlineData("false")]
         [InlineData(null)]
-        public void IsContainerEnvironment_Invalid_ReturnsFalse(string runningInContainerValue)
+        public void IsContainer_Invalid_ReturnsFalse(string runningInContainerValue)
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(RunningInContainer, runningInContainerValue);
-            Assert.False(environment.IsContainerEnvironment());
+            Assert.False(environment.IsContainer());
         }
 
         [Fact]
@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
             environment.SetEnvironmentVariable(FunctionsLogsMountPath, Guid.NewGuid().ToString("N"));
             environment.SetEnvironmentVariable(LinuxAzureAppServiceStorage, "false");
-            Assert.False(environment.IsLinuxAppServiceEnvWithPersistentFileSystem());
+            Assert.False(environment.IsLinuxAppServiceWithPersistentFileSystem());
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 Assert.True(environment.IsPersistentFileSystemAvailable());
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
             environment.SetEnvironmentVariable(FunctionsLogsMountPath, Guid.NewGuid().ToString("N"));
-            Assert.True(environment.IsLinuxAppServiceEnvWithPersistentFileSystem());
+            Assert.True(environment.IsLinuxAppServiceWithPersistentFileSystem());
             Assert.True(environment.IsPersistentFileSystemAvailable());
         }
 

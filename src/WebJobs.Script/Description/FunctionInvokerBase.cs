@@ -216,15 +216,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     // Per function instance
     public class FunctionInstanceMonitor
     {
-        // From ctor
         private readonly FunctionMetadata _metadata;
         private readonly IMetricsLogger _metrics;
         private readonly Guid _invocationId;
 
-        private readonly Stopwatch _invocationStopWatch = new Stopwatch();
-
-        private FunctionStartedEvent startedEvent;
-        private object invokeLatencyEvent;
+        private FunctionStartedEvent _startedEvent;
+        private object _invokeLatencyEvent;
 
         public FunctionInstanceMonitor(
             FunctionMetadata metadata,
@@ -238,36 +235,37 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public void Start()
         {
-            startedEvent = new FunctionStartedEvent(_invocationId, _metadata);
-            _metrics.BeginEvent(startedEvent);
-            invokeLatencyEvent = FunctionInvokerBase.LogInvocationMetrics(_metrics, _metadata);
-            _invocationStopWatch.Start();
+            _startedEvent = new FunctionStartedEvent(_invocationId, _metadata);
+            _metrics.BeginEvent(_startedEvent);
+            _invokeLatencyEvent = FunctionInvokerBase.LogInvocationMetrics(_metrics, _metadata);
         }
 
         // Called on success and failure
         public void End(bool success)
         {
-            startedEvent.Success = success;
+            _startedEvent.Success = success;
             string eventName = success ? MetricEventNames.FunctionInvokeSucceeded : MetricEventNames.FunctionInvokeFailed;
-            dynamic data = new JObject();
-            data.Language = startedEvent.FunctionMetadata.Language;
-            data.FunctionName = _metadata != null ? _metadata.Name : string.Empty;
-            data.Success = success;
-            string jsonData = data.ToString();
-            startedEvent.Data = jsonData;
-            _metrics.LogEvent(eventName, startedEvent.FunctionName, jsonData);
 
-            _metrics.EndEvent(startedEvent);
-
-            if (invokeLatencyEvent != null)
+            var data = new JObject
             {
-                MetricEvent metricEvent = invokeLatencyEvent as MetricEvent;
-                if (metricEvent != null)
-                {
-                    metricEvent.Data = jsonData;
-                }
-                _metrics.EndEvent(invokeLatencyEvent);
+                ["Language"] = _startedEvent.FunctionMetadata.Language,
+                ["FunctionName"] = _metadata != null ? _metadata.Name : string.Empty,
+                ["Success"] = success
+            };
+
+            string jsonData = data.ToString();
+
+            _startedEvent.Data = jsonData;
+            _metrics.LogEvent(eventName, _startedEvent.FunctionName, jsonData);
+
+            _metrics.EndEvent(_startedEvent);
+
+            if (_invokeLatencyEvent is MetricEvent metricEvent)
+            {
+                metricEvent.Data = jsonData;
             }
+
+            _metrics.EndEvent(_invokeLatencyEvent);
         }
     }
 }

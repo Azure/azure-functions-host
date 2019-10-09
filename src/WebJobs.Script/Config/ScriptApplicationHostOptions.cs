@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+
 namespace Microsoft.Azure.WebJobs.Script
 {
     public class ScriptApplicationHostOptions
@@ -25,5 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// a set of common services will not be registered as they are supplied from the parent WebHost.
         /// </summary>
         public bool HasParentScope { get; set; }
+
+        public IServiceProvider RootServiceProvider { get; set; }
     }
 }

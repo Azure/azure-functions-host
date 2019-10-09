@@ -43,11 +43,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IEnvironment _environment;
         private readonly HostNameProvider _hostNameProvider;
+        private readonly IFunctionMetadataProvider _functionMetadataProvider;
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
 
         private CloudBlockBlob _hashBlob;
 
-        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider)
+        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataProvider functionMetadataProvider)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
@@ -59,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _webHostEnvironment = webHostEnvironment;
             _environment = environment;
             _hostNameProvider = hostNameProvider;
+            _functionMetadataProvider = functionMetadataProvider;
         }
 
         internal bool ArmCacheEnabled
@@ -135,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         internal static bool IsSyncTriggersEnvironment(IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)
         {
-            if (environment.IsCoreToolsEnvironment())
+            if (environment.IsCoreTools())
             {
                 // don't sync triggers when running locally or not running in a cloud
                 // hosted environment
@@ -158,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             // Windows (Dedicated/Consumption)
             // Linux Consumption
-            if ((environment.IsAppServiceWindowsEnvironment() || environment.IsLinuxContainerEnvironment()) &&
+            if ((environment.IsWindowsAzureManagedHosting() || environment.IsLinuxConsumption()) &&
                 !environment.IsContainerReady())
             {
                 // container ready flag not set yet – site not fully specialized/initialized
@@ -247,7 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public async Task<string> GetSyncTriggersPayload()
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionsMetadata = WebFunctionsManager.GetFunctionsMetadata(hostOptions, _workerConfigs, _logger);
+            var functionsMetadata = _functionMetadataProvider.GetFunctionMetadata();
 
             // trigger information used by the ScaleController
             var triggers = await GetFunctionTriggers(functionsMetadata, hostOptions);

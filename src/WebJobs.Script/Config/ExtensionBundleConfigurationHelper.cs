@@ -34,9 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 ConfigureBundleVersion(extensionBundleSection, options);
 
                 string homeDirectory = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
-                if ((_environment.IsAppServiceEnvironment()
-                    || _environment.IsLinuxContainerEnvironment()
-                    || _environment.IsContainerEnvironment())
+                if ((_environment.IsAppService()
+                    || _environment.IsLinuxConsumption()
+                    || _environment.IsContainer())
                     && !string.IsNullOrEmpty(homeDirectory))
                 {
                     options.DownloadPath = Path.Combine(homeDirectory, "data", "Functions", ScriptConstants.ExtensionBundleDirectory, options.Id);
@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private void ConfigureProbingPaths(ExtensionBundleOptions options)
         {
-            if (_environment.IsAppServiceWindowsEnvironment())
+            if (_environment.IsWindowsAzureManagedHosting())
             {
                 string windowsDefaultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
                                                          ScriptConstants.DefaultExtensionBundleDirectory,
@@ -77,9 +77,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             }
 
             var homeDirectory = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
-            if ((_environment.IsLinuxAppServiceEnvironment()
-                || _environment.IsLinuxContainerEnvironment()
-                || _environment.IsContainerEnvironment())
+            if ((_environment.IsLinuxAppService()
+                || _environment.IsLinuxConsumption()
+                || _environment.IsContainer())
                 && !string.IsNullOrEmpty(homeDirectory))
             {
                 string linuxDefaultPath = Path.Combine(Path.GetPathRoot(homeDirectory), ScriptConstants.DefaultExtensionBundleDirectory, options.Id);

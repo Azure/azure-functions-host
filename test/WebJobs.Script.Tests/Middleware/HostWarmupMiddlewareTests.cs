@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 
             request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
-            Assert.True(environment.IsLinuxContainerEnvironment());
+            Assert.True(environment.IsLinuxConsumption());
             Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment, environment));
         }
     }

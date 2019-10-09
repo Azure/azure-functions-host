@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             // preferInterpretation will be set to true to significanly improve cold start in consumption mode
             // it will be set to false for premium and appservice plans to make sure throughput is not impacted
             // there is no throughput drop in consumption with this setting.
-            var preferInterpretation = SystemEnvironment.Instance.IsDynamic() ? true : false;
+            var preferInterpretation = SystemEnvironment.Instance.IsWindowsConsumption() ? true : false;
             var container = new Container(r => rules, preferInterpretation: preferInterpretation);
 
             container.Populate(descriptors);

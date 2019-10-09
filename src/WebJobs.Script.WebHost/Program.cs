@@ -59,9 +59,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     config.Add(new WebScriptHostConfigurationSource
                     {
-                        IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppServiceEnvironment(),
-                        IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsLinuxContainerEnvironment(),
-                        IsLinuxAppServiceEnvironment = SystemEnvironment.Instance.IsLinuxAppServiceEnvironment()
+                        IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppService(),
+                        IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsLinuxConsumption(),
+                        IsLinuxAppServiceEnvironment = SystemEnvironment.Instance.IsLinuxAppService()
                     });
                 })
                 .ConfigureLogging((context, loggingBuilder) =>
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private static void InitializeProcess()
         {
-            if (SystemEnvironment.Instance.IsLinuxContainerEnvironment())
+            if (SystemEnvironment.Instance.IsLinuxConsumption())
             {
                 // Linux containers always start out in placeholder mode
                 SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 SystemEnvironment.Instance.SetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey, authEncryptionKey);
             }
 
-            ConfigureMinimumThreads(SystemEnvironment.Instance.IsDynamic());
+            ConfigureMinimumThreads(SystemEnvironment.Instance.IsWindowsConsumption());
         }
 
         private static void ConfigureMinimumThreads(bool isDynamicSku)

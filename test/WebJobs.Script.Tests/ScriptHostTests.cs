@@ -24,6 +24,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
+using WebJobs.Script.Tests;
 using Xunit;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
@@ -368,32 +369,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             try
             {
-                string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                var loggerProvider = new TestLoggerProvider();
-                var environment = new TestEnvironment();
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion, "latest");
+                using (var tempDirectory = new TempDirectory())
+                {
+                    string rootPath = Path.Combine(tempDirectory.Path, Guid.NewGuid().ToString());
+                    Directory.CreateDirectory(rootPath);
+                    var loggerProvider = new TestLoggerProvider();
+                    var environment = new TestEnvironment();
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion, "latest");
 
-                EnvironmentExtensions.BaseDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "SiteExtensions", "Functions", "2.0.0");
+                    EnvironmentExtensions.BaseDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "SiteExtensions", "Functions", "2.0.0");
 
-                IHost host = new HostBuilder()
-                    .ConfigureServices(s =>
-                    {
-                        s.AddSingleton<IEnvironment>(environment);
-                    })
-                    .ConfigureLogging(l =>
-                    {
-                        l.AddProvider(loggerProvider);
-                    })
-                    .ConfigureDefaultTestWebScriptHost(o =>
-                    {
-                        o.ScriptPath = rootPath;
-                    })
-                    .Build();
+                    IHost host = new HostBuilder()
+                        .ConfigureServices(s =>
+                        {
+                            s.AddSingleton<IEnvironment>(environment);
+                        })
+                        .ConfigureLogging(l =>
+                        {
+                            l.AddProvider(loggerProvider);
+                        })
+                        .ConfigureDefaultTestWebScriptHost(o =>
+                        {
+                            o.ScriptPath = rootPath;
+                        })
+                        .Build();
 
-                var scriptHost = host.GetScriptHost();
-                await scriptHost.InitializeAsync();
-                Assert.Single(loggerProvider.GetAllLogMessages(), m => m.Level == LogLevel.Warning && m.FormattedMessage.StartsWith("Site extension version currently set to 'latest'."));
+                    var scriptHost = host.GetScriptHost();
+                    await scriptHost.InitializeAsync();
+                    Assert.Single(loggerProvider.GetAllLogMessages(), m => m.Level == LogLevel.Warning && m.FormattedMessage.StartsWith("Site extension version currently set to 'latest'."));
+                }
             }
             finally
             {

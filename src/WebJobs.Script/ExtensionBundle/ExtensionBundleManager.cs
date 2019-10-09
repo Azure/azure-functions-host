@@ -85,10 +85,10 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         {
             bool bundleFound = TryLocateExtensionBundle(out string bundlePath);
 
-            if ((_environment.IsAppServiceEnvironment()
-                || _environment.IsCoreToolsEnvironment()
-                || _environment.IsLinuxContainerEnvironment()
-                || _environment.IsContainerEnvironment())
+            if ((_environment.IsAppService()
+                || _environment.IsCoreTools()
+                || _environment.IsLinuxConsumption()
+                || _environment.IsContainer())
                 && (!bundleFound || _options.EnsureLatest))
             {
                 string latestBundleVersion = await GetLatestMatchingBundleVersionAsync(httpClient);

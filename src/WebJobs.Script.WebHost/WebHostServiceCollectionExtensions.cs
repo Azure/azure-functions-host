@@ -85,11 +85,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IEventGenerator>(p =>
             {
                 var environment = p.GetService<IEnvironment>();
-                if (environment.IsLinuxContainerEnvironment())
+                if (environment.IsLinuxConsumption())
                 {
                     return new LinuxContainerEventGenerator(environment);
                 }
-                else if (SystemEnvironment.Instance.IsLinuxAppServiceEnvironment())
+                else if (SystemEnvironment.Instance.IsLinuxAppService())
                 {
                     return new LinuxAppServiceEventGenerator(new LinuxAppServiceFileLoggerFactory());
                 }
@@ -101,6 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Management services
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
+            services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
             services.AddSingleton(_ => new HttpClient());
@@ -160,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxContainerEnvironment())
+                if (environment.IsLinuxConsumption())
                 {
                     var instanceManager = s.GetService<IInstanceManager>();
                     var logger = s.GetService<ILogger<LinuxContainerInitializationHostService>>();
