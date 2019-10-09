@@ -229,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
             var config = configBuilder.Build();
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
 
             var expectedExecutablePath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dummyExecutableName");
@@ -245,13 +245,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
             var config = configBuilder.Build();
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
 
             var actualExecutablePath = configFactory.GetExecutablePathForPowerShell(@"D:\CustomExecutableFolder\CustomExecutableName");
 
             Assert.Equal(@"D:\CustomExecutableFolder\CustomExecutableName", actualExecutablePath);
         }
-        
+
         [Theory]
         [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", "3.7/LINUX/X64")]
         [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", "3.7/X64")]
