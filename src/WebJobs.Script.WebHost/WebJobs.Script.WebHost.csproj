@@ -6,7 +6,8 @@
     <RootNamespace>Microsoft.Azure.WebJobs.Script.WebHost</RootNamespace>
     <PackageId>Microsoft.Azure.WebJobs.Script.WebHost</PackageId>
     <IsPackable Condition="'$(IsPackable)' != ''">true</IsPackable>
-    <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>    
+    <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
+    <TieredCompilation>false</TieredCompilation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <PublishReadyToRun>true</PublishReadyToRun>
