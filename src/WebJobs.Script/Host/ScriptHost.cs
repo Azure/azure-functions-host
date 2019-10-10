@@ -432,7 +432,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             FileUtility.EnsureDirectoryExists(_hostLogPath);
 
-            if (!_environment.FileSystemIsReadOnly())
+            if (!_environment.IsFileSystemReadOnly())
             {
                 FileUtility.EnsureDirectoryExists(ScriptOptions.RootScriptPath);
             }

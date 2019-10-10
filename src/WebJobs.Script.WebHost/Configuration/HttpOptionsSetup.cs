@@ -19,12 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
         public void Configure(HttpOptions options)
         {
-            if (_environment.IsDynamic())
+            if (_environment.IsWindowsConsumption())
             {
                 // when running under dynamic, we choose some default
                 // throttle settings.
                 // these can be overridden by the user in host.json
-                if (_environment.IsAppServiceEnvironment())
+                if (_environment.IsAppService())
                 {
                     // dynamic throttles are based on sandbox counters
                     // which only exist in AppService

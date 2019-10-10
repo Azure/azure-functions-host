@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // JobHost/ScriptHost scoped services.
             builder.UseMiddleware<ScriptHostRequestServiceProviderMiddleware>();
 
-            if (!environment.IsAppServiceEnvironment())
+            if (!environment.IsAppService())
             {
                 builder.UseMiddleware<AppServiceHeaderFixupMiddleware>();
             }

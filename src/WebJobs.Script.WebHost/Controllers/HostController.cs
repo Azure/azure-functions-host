@@ -25,6 +25,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -47,7 +48,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IEnvironment _environment;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IFunctionsSyncManager _functionsSyncManager;
-        private readonly IExtensionBundleManager _extensionBundleManager;
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
             IOptions<JobHostOptions> hostOptions,
@@ -56,8 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             IWebFunctionsManager functionsManager,
             IEnvironment environment,
             IScriptHostManager scriptHostManager,
-            IFunctionsSyncManager functionsSyncManager,
-            IExtensionBundleManager extensionBundleManager)
+            IFunctionsSyncManager functionsSyncManager)
         {
             _applicationHostOptions = applicationHostOptions;
             _hostOptions = hostOptions;
@@ -67,14 +66,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _environment = environment;
             _scriptHostManager = scriptHostManager;
             _functionsSyncManager = functionsSyncManager;
-            _extensionBundleManager = extensionBundleManager;
         }
 
         [HttpGet]
         [Route("admin/host/status")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         [TypeFilter(typeof(EnableDebugModeFilter))]
-        public async Task<IActionResult> GetHostStatus([FromServices] IScriptHostManager scriptHostManager, [FromServices] IHostIdProvider hostIdProvider)
+        public async Task<IActionResult> GetHostStatus([FromServices] IScriptHostManager scriptHostManager, [FromServices] IHostIdProvider hostIdProvider, [FromServices] IServiceProvider serviceProvider = null)
         {
             var status = new HostStatus
             {
@@ -85,14 +83,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 ProcessUptime = (long)(DateTime.UtcNow - Process.GetCurrentProcess().StartTime).TotalMilliseconds
             };
 
-            var bundleInfo = await _extensionBundleManager.GetExtensionBundleDetails();
-            if (bundleInfo != null)
+            var bundleManager = serviceProvider.GetService<IExtensionBundleManager>();
+            if (bundleManager != null)
             {
-                status.ExtensionBundle = new Models.ExtensionBundle()
+                var bundleInfo = await bundleManager.GetExtensionBundleDetails();
+                if (bundleInfo != null)
                 {
-                    Id = bundleInfo.Id,
-                    Version = bundleInfo.Version
-                };
+                    status.ExtensionBundle = new Models.ExtensionBundle()
+                    {
+                        Id = bundleInfo.Id,
+                        Version = bundleInfo.Version
+                    };
+                }
             }
 
             var lastError = scriptHostManager.LastError;
@@ -239,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else if (desiredState == ScriptHostState.Running && currentState == ScriptHostState.Offline)
             {
-                if (_environment.FileSystemIsReadOnly())
+                if (_environment.IsFileSystemReadOnly())
                 {
                     return BadRequest();
                 }
@@ -249,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else if (desiredState == ScriptHostState.Offline && currentState != ScriptHostState.Offline)
             {
-                if (_environment.FileSystemIsReadOnly())
+                if (_environment.IsFileSystemReadOnly())
                 {
                     return BadRequest();
                 }
@@ -278,7 +280,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public IActionResult GetAdminToken()
         {
-            if (!_environment.IsLinuxContainerEnvironment())
+            if (!_environment.IsLinuxConsumption())
             {
                 return BadRequest("Endpoint is only available when running in Linux Container");
             }

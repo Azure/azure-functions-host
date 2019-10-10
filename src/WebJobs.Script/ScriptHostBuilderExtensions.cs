@@ -107,13 +107,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var extensionBundleOptions = GetExtensionBundleOptions(context);
                 var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory);
+                webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
                 if (!skipHostInitialization)
                 {
                     // Only set our external startup if we're not suppressing host initialization
                     // as we don't want to load user assemblies otherwise.
                     webJobsBuilder.UseScriptExternalStartup(applicationHostOptions, loggerFactory, bundleManager);
                 }
-                webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
 
                 configureWebJobs?.Invoke(webJobsBuilder);
             }, o => o.AllowPartialHostStartup = true);

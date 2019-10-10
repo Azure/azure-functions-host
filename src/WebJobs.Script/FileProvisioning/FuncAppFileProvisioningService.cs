@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            if (!_environment.FileSystemIsReadOnly())
+            if (!_environment.IsFileSystemReadOnly())
             {
                 var funcAppFileProvisioner = _funcAppFileProvisionerFactory.CreatFileProvisioner(_environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName));
                 if (funcAppFileProvisioner != null)
