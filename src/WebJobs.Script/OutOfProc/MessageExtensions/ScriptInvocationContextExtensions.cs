@@ -60,6 +60,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
                 else
                 {
+                    if (traceContext.Attributes.ContainsKey(tag.Key))
+                    {
+                        logger?.LogWarning($"Overwriting '{tag.Key}' with existing value '{traceContext.Attributes[tag.Key]}' with '{tag.Value}'");
+                    }
                     traceContext.Attributes[tag.Key] = tag.Value;
                 }
             }
