@@ -193,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
             string evt = _events.Single();
 
-            Regex regex = new Regex(LinuxContainerEventGenerator.AzureMonitoringEventRegex);
+            Regex regex = new Regex(LinuxContainerEventGenerator.AzureMonitorEventRegex);
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
