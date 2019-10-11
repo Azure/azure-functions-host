@@ -231,25 +231,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var testLogger = new TestLogger("test");
             var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
 
-            var expectedExecutablePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dummyExecutableName");
+            var expectedExecutablePath =
+                RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dummyExecutableName")
+                    : "dummyExecutableName";
 
             var actualExecutablePath = configFactory.GetExecutablePathForPowerShell("dummyExecutableName");
 
             Assert.Equal(expectedExecutablePath, actualExecutablePath);
         }
 
-        [Fact]
-        public void PowerShell_RootedExecutablePath()
+        [Theory]
+        [InlineData(@"D:\CustomExecutableFolder\CustomExecutableName")]
+        [InlineData(@"/CustomExecutableFolder/CustomExecutableName")]
+        public void PowerShell_RootedExecutablePath(string defaultExecutablePath)
         {
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
             var config = configBuilder.Build();
             var testLogger = new TestLogger("test");
             var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
 
-            var actualExecutablePath = configFactory.GetExecutablePathForPowerShell(@"D:\CustomExecutableFolder\CustomExecutableName");
+            var actualExecutablePath = configFactory.GetExecutablePathForPowerShell(defaultExecutablePath);
 
-            Assert.Equal(@"D:\CustomExecutableFolder\CustomExecutableName", actualExecutablePath);
+            Assert.Equal(defaultExecutablePath, actualExecutablePath);
         }
 
         [Theory]

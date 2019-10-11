@@ -222,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal string GetExecutablePathForPowerShell(string defaultExecutablePath)
         {
-            if (Path.IsPathRooted(defaultExecutablePath))
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || Path.IsPathRooted(defaultExecutablePath))
             {
                 return defaultExecutablePath;
             }
