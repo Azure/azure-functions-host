@@ -112,10 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 if (UsePlaceholderChannel(_workerRuntime))
                 {
                     _logger.LogDebug("Loading environment variables for runtime: {runtime}", _workerRuntime);
-                    using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationSendEnvironmentReloadRequest))
-                    {
-                        await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
-                    }
+                    await languageWorkerChannel.SendFunctionEnvironmentReloadRequest();
                 }
                 else
                 {
@@ -124,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     await ShutdownChannelIfExistsAsync(_workerRuntime, languageWorkerChannel.Id);
                 }
             }
-            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationShutdownStandbyChannels))
+            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationScheduleShutdownStandbyChannels))
             {
                 _shutdownStandbyWorkerChannels();
             }
@@ -185,14 +182,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 var standbyWorkerChannels = _workerChannels.Where(ch => !ch.Key.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase));
                 foreach (var runtime in standbyWorkerChannels)
                 {
-                    using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationRuntimeShutdown, runtime.Key)))
+                    using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationShutdownStandbyChannels, runtime.Key)))
                     {
                         _logger.LogInformation("Disposing standby channel for runtime:{language}", runtime.Key);
                         if (_workerChannels.TryRemove(runtime.Key, out Dictionary<string, TaskCompletionSource<ILanguageWorkerChannel>> standbyChannels))
                         {
                             foreach (string workerId in standbyChannels.Keys)
                             {
-                                IDisposable latencyEvent = _metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationRuntimeShutdownWorker, workerId));
+                                IDisposable latencyEvent = _metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationShutdownStandbyChannel, workerId));
                                 standbyChannels[workerId]?.Task.ContinueWith(channelTask =>
                                 {
                                     if (channelTask.Status == TaskStatus.Faulted)

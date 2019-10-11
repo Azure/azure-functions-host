@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
             IEnumerable<WorkerConfig> workerConfigs = TestReadWorkerProviderFromConfig(configs, testLogger, testMetricsLogger);
-            AreExpectedMetricsGenerated(testMetricsLogger);
+            AreRequiredMetricsEmitted(testMetricsLogger);
             Assert.Single(workerConfigs);
 
             WorkerConfig worker = workerConfigs.FirstOrDefault();
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
             // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), testMetricsLogger);
-            AreExpectedMetricsGenerated(testMetricsLogger);
+            AreRequiredMetricsEmitted(testMetricsLogger);
             Assert.Single(workerConfigs);
             Assert.Equal(Path.Combine(rootPath, testLanguage, $"{WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig}.{testLanguage}"), workerConfigs.Single().Description.DefaultWorkerPath);
             WorkerConfig worker = workerConfigs.FirstOrDefault();
@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), testMetricsLogger, null, keyValuePairs);
-            AreExpectedMetricsGenerated(testMetricsLogger);
+            AreRequiredMetricsEmitted(testMetricsLogger);
             Assert.Single(workerConfigs);
             Assert.Equal(Path.Combine(rootPath, testLanguage, $"{WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig}.{testLanguage}"), workerConfigs.Single().Description.DefaultWorkerPath);
             WorkerConfig worker = workerConfigs.FirstOrDefault();
@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), testMetricsLogger);
-            AreExpectedMetricsGenerated(testMetricsLogger);
+            AreRequiredMetricsEmitted(testMetricsLogger);
             Assert.Single(workerConfigs);
             Assert.Null(workerConfigs.Single().Description.DefaultWorkerPath);
         }
@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{OutOfProcConstants.WorkerDescriptionArguments}"] = "--inspect=5689"
             };
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), testMetricsLogger, null, keyValuePairs);
-            AreExpectedMetricsGenerated(testMetricsLogger);
+            AreRequiredMetricsEmitted(testMetricsLogger);
             Assert.Single(workerConfigs);
             WorkerConfig workerConfig = workerConfigs.Single();
             Assert.Equal(Path.Combine(rootPath, testLanguage, $"{WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig}.{testLanguage}"), workerConfig.Description.DefaultWorkerPath);
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
             // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, testLogger, testMetricsLogger);
-            AreExpectedMetricsGenerated(testMetricsLogger);
+            AreRequiredMetricsEmitted(testMetricsLogger);
             var logs = testLogger.GetLogMessages();
             var errorLog = logs.Where(log => log.Level == LogLevel.Error).FirstOrDefault();
             Assert.NotNull(errorLog);
@@ -179,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
 
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), testMetricsLogger, null, keyValuePairs);
-            AreExpectedMetricsGenerated(testMetricsLogger);
+            AreRequiredMetricsEmitted(testMetricsLogger);
             Assert.Single(workerConfigs);
             WorkerConfig workerConfig = workerConfigs.Single();
             Assert.Equal(Path.Combine(customRootPath, testLanguage, $"{WorkerConfigTestUtilities.TestWorkerPathInWorkerConfig}.{testLanguage}"), workerConfig.Description.DefaultWorkerPath);
@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
 
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), testMetricsLogger, null, keyValuePairs);
-            AreExpectedMetricsGenerated(testMetricsLogger);
+            AreRequiredMetricsEmitted(testMetricsLogger);
             Assert.Empty(workerConfigs);
         }
 
@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
             IEnumerable<WorkerConfig> workerConfigs = TestReadWorkerProviderFromConfig(configs, testLogger, testMetricsLogger);
-            AreExpectedMetricsGenerated(testMetricsLogger);
+            AreRequiredMetricsEmitted(testMetricsLogger);
             Assert.Single(workerConfigs);
 
             WorkerConfig worker = workerConfigs.FirstOrDefault();
@@ -233,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 [$"{LanguageWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{OutOfProcConstants.WorkerDescriptionDefaultExecutablePath}"] = testExePath
             };
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), testMetricsLogger, null, keyValuePairs, true);
-            AreExpectedMetricsGenerated(testMetricsLogger);
+            AreRequiredMetricsEmitted(testMetricsLogger);
             Assert.Single(workerConfigs);
 
             WorkerConfig worker = workerConfigs.FirstOrDefault();
@@ -354,11 +354,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
         }
 
-        private bool AreExpectedMetricsGenerated(TestMetricsLogger metricsLogger)
+        private bool AreRequiredMetricsEmitted(TestMetricsLogger metricsLogger)
         {
-            return metricsLogger.EventsBegan.Contains(MetricEventNames.GetConfigs) && metricsLogger.EventsEnded.Contains(MetricEventNames.GetConfigs)
-                    && metricsLogger.EventsBegan.Contains(MetricEventNames.BuildWorkerProviderDictionary) && metricsLogger.EventsEnded.Contains(MetricEventNames.BuildWorkerProviderDictionary)
-                    && metricsLogger.EventsBegan.Contains(MetricEventNames.AddProvider) && metricsLogger.EventsEnded.Contains(MetricEventNames.AddProvider);
+            bool hasBegun = false;
+            bool hasEnded = false;
+            foreach (string begin in metricsLogger.EventsBegan)
+            {
+                if (begin.Contains(MetricEventNames.AddProvider.Substring(0, MetricEventNames.AddProvider.IndexOf('{'))))
+                {
+                    hasBegun = true;
+                    break;
+                }
+            }
+            foreach (string end in metricsLogger.EventsEnded)
+            {
+                if (end.Contains(MetricEventNames.AddProvider.Substring(0, MetricEventNames.AddProvider.IndexOf('{'))))
+                {
+                    hasEnded = true;
+                    break;
+                }
+            }
+            return hasBegun && hasEnded && (metricsLogger.EventsBegan.Contains(MetricEventNames.GetConfigs) && metricsLogger.EventsEnded.Contains(MetricEventNames.GetConfigs));
         }
-}
+    }
 }

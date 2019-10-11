@@ -168,10 +168,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
 
             await _languageWorkerChannelManager.SpecializeAsync();
-            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationSendEnvironmentReloadRequest)
-                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationSendEnvironmentReloadRequest)
-                && testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationShutdownStandbyChannels)
-                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationShutdownStandbyChannels));
+            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationEnvironmentReloadRequestResponse)
+                && testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels));
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
@@ -196,10 +195,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             await _languageWorkerChannelManager.SpecializeAsync();
 
-            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationSendEnvironmentReloadRequest)
-                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationSendEnvironmentReloadRequest)
-                && testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationShutdownStandbyChannels)
-                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationShutdownStandbyChannels));
+            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationEnvironmentReloadRequestResponse)
+                && testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels));
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
@@ -224,10 +222,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             await _languageWorkerChannelManager.SpecializeAsync();
 
-            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationSendEnvironmentReloadRequest)
-                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationSendEnvironmentReloadRequest)
-                && testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationShutdownStandbyChannels)
-                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationShutdownStandbyChannels));
+            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationEnvironmentReloadRequestResponse)
+                && testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels));
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
@@ -304,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             bool hasEnded = false;
             foreach (string begin in metricsLogger.EventsBegan)
             {
-                if (begin.Contains(MetricEventNames.SpecializationRuntimeShutdown.Substring(0, MetricEventNames.SpecializationRuntimeShutdown.IndexOf('{'))))
+                if (begin.Contains(MetricEventNames.SpecializationShutdownStandbyChannels.Substring(0, MetricEventNames.SpecializationShutdownStandbyChannels.IndexOf('{'))))
                 {
                     hasBegun = true;
                     break;
@@ -312,7 +309,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             }
             foreach (string end in metricsLogger.EventsEnded)
             {
-                if (end.Contains(MetricEventNames.SpecializationRuntimeShutdown.Substring(0, MetricEventNames.SpecializationRuntimeShutdown.IndexOf('{'))))
+                if (end.Contains(MetricEventNames.SpecializationShutdownStandbyChannels.Substring(0, MetricEventNames.SpecializationShutdownStandbyChannels.IndexOf('{'))))
                 {
                     hasEnded = true;
                     break;

@@ -59,10 +59,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance, testMetricsLogger);
             Assert.Equal(17, metadataProvider.GetFunctionMetadata(false).Length);
-            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.ReadFunctionsMetadata)
-                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.ReadFunctionsMetadata)
-                && testMetricsLogger.EventsBegan.Contains(MetricEventNames.ReadFunctionMetadata)
-                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.ReadFunctionMetadata));
+            Assert.True(AreRequiredMetricsEmitted(testMetricsLogger));
+        }
+
+        private bool AreRequiredMetricsEmitted(TestMetricsLogger metricsLogger)
+        {
+            bool hasBegun = false;
+            bool hasEnded = false;
+            foreach (string begin in metricsLogger.EventsBegan)
+            {
+                if (begin.Contains(MetricEventNames.ReadFunctionMetadata.Substring(0, MetricEventNames.ReadFunctionMetadata.IndexOf('{'))))
+                {
+                    hasBegun = true;
+                    break;
+                }
+            }
+            foreach (string end in metricsLogger.EventsEnded)
+            {
+                if (end.Contains(MetricEventNames.ReadFunctionMetadata.Substring(0, MetricEventNames.ReadFunctionMetadata.IndexOf('{'))))
+                {
+                    hasEnded = true;
+                    break;
+                }
+            }
+            return hasBegun && hasEnded && (metricsLogger.EventsBegan.Contains(MetricEventNames.ReadFunctionsMetadata)
+                && metricsLogger.EventsEnded.Contains(MetricEventNames.ReadFunctionsMetadata));
         }
 
         [Fact]

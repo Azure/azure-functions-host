@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private FunctionMetadata ReadFunctionMetadata(string functionDirectory, IEnumerable<WorkerConfig> workerConfigs, Dictionary<string, ICollection<string>> functionErrors, IFileSystem fileSystem = null)
         {
-            using (_metricsLogger.LatencyEvent(MetricEventNames.ReadFunctionMetadata))
+            using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.ReadFunctionMetadata, functionDirectory)))
             {
                 string functionName = null;
 

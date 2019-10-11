@@ -84,11 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void BuildWorkerProviderDictionary()
         {
-            using (_metricsLogger.LatencyEvent(MetricEventNames.BuildWorkerProviderDictionary))
-            {
-                AddProviders();
-                AddProvidersFromAppSettings();
-            }
+            AddProviders();
+            AddProvidersFromAppSettings();
         }
 
         internal void AddProviders()
@@ -121,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void AddProvider(string workerDir)
         {
-            using (_metricsLogger.LatencyEvent(MetricEventNames.AddProvider))
+            using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.AddProvider, workerDir)))
             {
                 try
                 {

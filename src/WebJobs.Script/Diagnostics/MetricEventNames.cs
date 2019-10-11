@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         // FunctionMetadataprovider events
         public const string ReadFunctionsMetadata = "functionmetadataprovider.readfunctionsmetadata";
-        public const string ReadFunctionMetadata = "functionmetadataprovider.readfunctionsmetadata.readfunctionmetadata";
+        public const string ReadFunctionMetadata = "functionmetadataprovider.readfunctionsmetadata.readfunctionmetadata.{0}";
 
         // Host json file configuration events
         public const string LoadHostConfigurationSource = "hostjsonfileconfigurationsource.loadhostconfigurationsource";
@@ -43,8 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         // Worker configuration events
         public const string GetConfigs = "workerconfigfactory.getconfigs";
-        public const string BuildWorkerProviderDictionary = "workerconfigfactory.getconfigs.buildworkerproviderdictionary";
-        public const string AddProvider = "workerconfigfactory.getconfigs.buildworkerproviderdictionary.addprovider";
+        public const string AddProvider = "workerconfigfactory.getconfigs.buildworkerproviderdictionary.addprovider.{0}";
 
         // function level events
         public const string FunctionInvokeLatency = "function.invoke.latency";
@@ -80,12 +79,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string SpecializationSpecializeHost = "specialization.standbymanager.specializehost";
         public const string SpecializationStandbyManagerInitialize = "specialization.standbymanager.initialize";
         public const string SpecializationLanguageWorkerChannelManagerSpecialize = "specialization.webhostlanguageworkerchannelmanager.specialize";
-        public const string SpecializationSendEnvironmentReloadRequest = "specialization.webhostlanguageworkerchannel.sendfunctionenvironmentreloadrequest";
         public const string SpecializationEnvironmentReloadRequestResponse = "specialization.webhostlanguageworkerchannel.sendfunctionenvironmentreloadrequest.functionenvironmentreloadresponse";
-        public const string SpecializationShutdownStandbyChannels = "specialization.scheduleshutdownstandbychannels";
+        public const string SpecializationScheduleShutdownStandbyChannels = "specialization.scheduleshutdownstandbychannels";
         public const string SpecializationRestartHost = "specialization.scripthostmanager.restarthost";
         public const string SpecializationDelayUntilHostReady = "specialization.scripthostmanager.delayuntilhostready";
-        public const string SpecializationRuntimeShutdown = "specialization.webhostlanguageworkerchannelmanager.scheduleshutdownstandbychannels.{0}";
-        public const string SpecializationRuntimeShutdownWorker = "specialization.webhostlanguageworkerchannelmanager.scheduleshutdownstandbychannels.Worker.{0}";
+        public const string SpecializationShutdownStandbyChannels = "specialization.webhostlanguageworkerchannelmanager.scheduleshutdownstandbychannels.{0}";
+        public const string SpecializationShutdownStandbyChannel = "specialization.webhostlanguageworkerchannelmanager.scheduleshutdownstandbychannels.Worker.{0}";
     }
 }
