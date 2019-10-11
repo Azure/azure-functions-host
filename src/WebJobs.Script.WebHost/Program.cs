@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using System.Threading;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -36,18 +37,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args = null)
         {
+            // by default, this will be false
+            string allowSynchronousIOString = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AllowSynchronousIOKey);
+            bool.TryParse(allowSynchronousIOString, out bool allowSynchronousIO);
+
             return AspNetCore.WebHost.CreateDefaultBuilder(args)
                 .ConfigureKestrel(o =>
                 {
                     o.Limits.MaxRequestBodySize = 104857600;
-
-                    // TODO: https://github.com/Azure/azure-functions-host/issues/4876
-                    o.AllowSynchronousIO = true;
+                    o.AllowSynchronousIO = allowSynchronousIO;
                 })
                 .UseSetting(WebHostDefaults.EnvironmentKey, Environment.GetEnvironmentVariable(EnvironmentSettingNames.EnvironmentNameKey))
                 .ConfigureServices(services =>
                 {
                     services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
+                    services.Configure<IISServerOptions>(o =>
+                    {
+                        o.AllowSynchronousIO = allowSynchronousIO;
+                    });
                 })
                 .ConfigureAppConfiguration((builderContext, config) =>
                 {
