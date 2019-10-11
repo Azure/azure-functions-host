@@ -49,7 +49,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="2.2.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
     <PackageReference Include="NuGet.Frameworks" Version="4.7.0" />
     <PackageReference Include="NuGet.LibraryModel" Version="4.7.0" />
     <PackageReference Include="NuGet.ProjectModel" Version="4.7.0" />
