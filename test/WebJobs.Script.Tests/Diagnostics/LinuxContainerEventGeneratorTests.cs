@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         }
 
         [Theory]
-        [MemberData(nameof(LinuxEventGeneratorTestData.GetAzureMonitoringEvents), MemberType = typeof(LinuxEventGeneratorTestData))]
+        [MemberData(nameof(LinuxEventGeneratorTestData.GetAzureMonitorEvents), MemberType = typeof(LinuxEventGeneratorTestData))]
         public void ParseAzureMonitoringEvents(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
         {
             _generator.LogAzureMonitorDiagnosticLogEvent(level, resourceId, operationName, category, regionName, properties);

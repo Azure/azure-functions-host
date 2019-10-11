@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             yield return new object[] { LogLevel.Information, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
         }
 
-        public static IEnumerable<object[]> GetAzureMonitoringEvents()
+        public static IEnumerable<object[]> GetAzureMonitorEvents()
         {
             yield return new object[] { LogLevel.Information, "TestResourceId", "TestOperationName", "TestCategory", "TestRegionName", "TestProperties" };
             yield return new object[] { LogLevel.Information, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
