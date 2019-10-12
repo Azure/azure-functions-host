@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Moq.Protected;
+using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
@@ -58,6 +59,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Name = Path.GetTempFileName().Replace(".", string.Empty),
                 Value = Guid.NewGuid().ToString()
             };
+            var allowedOrigins = new string[]
+            {
+                "https://functions.azure.com",
+                "https://functions-staging.azure.com",
+                "https://functions-next.azure.com"
+            };
+            var supportCredentials = true;
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             var context = new HostAssignmentContext
@@ -65,7 +73,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Environment = new Dictionary<string, string>
                 {
                     { envValue.Name, envValue.Value }
-                }
+                },
+                CorsSettings = new CorsSettings
+                {
+                    AllowedOrigins = allowedOrigins,
+                    SupportCredentials = supportCredentials,
+                },
             };
             bool result = _instanceManager.StartAssignment(context, isWarmup: false);
             Assert.True(result);
@@ -76,6 +89,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var value = _environment.GetEnvironmentVariable(envValue.Name);
             Assert.Equal(value, envValue.Value);
+
+            var supportCredentialsValue = _environment.GetEnvironmentVariable(EnvironmentSettingNames.CorsSupportCredentials);
+            Assert.Equal(supportCredentialsValue, supportCredentials.ToString());
+
+            var allowedOriginsValue = _environment.GetEnvironmentVariable(EnvironmentSettingNames.CorsAllowedOrigins);
+            Assert.Equal(allowedOriginsValue, JsonConvert.SerializeObject(allowedOrigins));
 
             // verify logs
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();

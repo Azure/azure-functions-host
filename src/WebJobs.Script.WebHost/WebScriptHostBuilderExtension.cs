@@ -38,6 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.ConfigureOptions<HttpOptionsSetup>();
                     services.ConfigureOptions<CustomHttpHeadersOptionsSetup>();
                     services.ConfigureOptions<HostHstsOptionsSetup>();
+                    services.ConfigureOptions<HostCorsOptionsSetup>();
+                    services.ConfigureOptions<CorsOptionsSetup>();
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
@@ -84,6 +86,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, CustomHttpHeadersMiddleware>());
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, HstsConfigurationMiddleware>());
+                    if (environment.IsLinuxConsumption())
+                    {
+                        services.AddCors();
+                        services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
+                        services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, CorsConfigurationMiddleware>());
+                    }
                     services.TryAddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
 
                     // Make sure the registered IHostIdProvider is used

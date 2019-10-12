@@ -82,5 +82,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionsSecretsPath = "FUNCTIONS_SECRETS_PATH";
         public const string FunctionsTestDataPath = "FUNCTIONS_TEST_DATA_PATH";
         public const string MeshInitURI = "MESH_INIT_URI";
+
+        // CORS settings
+        public const string CorsAllowedOrigins = "CORS_ALLOWED_ORIGINS";
+        public const string CorsSupportCredentials = "CORS_SUPPORT_CREDENTIALS";
     }
 }
