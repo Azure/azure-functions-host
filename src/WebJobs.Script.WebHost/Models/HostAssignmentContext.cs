@@ -110,6 +110,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             {
                 environment.SetEnvironmentVariable(pair.Key, pair.Value);
             }
+
+            if (CorsSettings != null)
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.CorsSupportCredentials, CorsSettings.SupportCredentials.ToString());
+
+                if (CorsSettings.AllowedOrigins != null)
+                {
+                    var allowedOrigins = JsonConvert.SerializeObject(CorsSettings.AllowedOrigins);
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.CorsAllowedOrigins, allowedOrigins);
+                }
+            }
         }
     }
 }

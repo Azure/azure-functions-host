@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsDuplicateHttpHeadersKey = "MS_AzureFunctionsDuplicateHttpHeaders";
         public const string JobHostMiddlewarePipelineRequestDelegate = "MS_JobHostMiddlewarePipelineRequestDelegate";
         public const string HstsMiddlewareRequestDelegate = "MS_HstsMiddlewareRequestDelegate";
+        public const string CorsMiddlewareRequestDelegate = "MS_CorsMiddlewareRequestDelegate";
 
         public const string LegacyPlaceholderTemplateSiteName = "FunctionsPlaceholderTemplateSite";
 
