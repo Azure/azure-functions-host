@@ -275,30 +275,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         private IEnumerable<FunctionMetadata> GetTestFunctionsList_WithDisabled(string runtime)
         {
-            return new List<FunctionMetadata>()
+            var defaultList = GetTestFunctionsList(runtime);
+
+            return defaultList.Append(new FunctionMetadata()
             {
-                new FunctionMetadata()
-                {
-                     Language = runtime,
-                     Name = "js1",
-                     FunctionId = "TestFunctionId1"
-                },
-
-                new FunctionMetadata()
-                {
-                     Language = runtime,
-                     Name = "js2",
-                     FunctionId = "TestFunctionId2"
-                },
-
-                new FunctionMetadata()
-                {
-                     Language = runtime,
-                     Name = "js3",
-                     FunctionId = "TestFunctionId3",
-                     IsDisabled = true
-                }
-            };
+                Language = runtime,
+                Name = "disabled1",
+                FunctionId = "DisabledFunctionId1",
+                IsDisabled = true
+            });
         }
 
         private bool AreExpectedMetricsGenerated()
