@@ -192,6 +192,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 foreach (FunctionMetadata metadata in _functions)
                 {
+                    if (metadata.IsDisabled)
+                    {
+                        _workerChannelLogger.LogDebug("Not loading disabled function {functionName}.", metadata.Name);
+                        continue;
+                    }
                     SendFunctionLoadRequest(metadata);
                 }
             }

@@ -170,6 +170,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
+        public void SendLoadRequests_PublishesOutboundEvents_IgnoresDisabled()
+        {
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList_WithDisabled("node"));
+            _workerChannel.SendFunctionLoadRequests();
+            var traces = _logger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
+            Assert.True(functionLoadLogs.Count() == 2);
+        }
+
+        [Fact]
         public void SendSendFunctionEnvironmentReloadRequest_PublishesOutboundEvents()
         {
             Environment.SetEnvironmentVariable("TestNull", null);
@@ -259,6 +269,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                      Language = runtime,
                      Name = "js2",
                      FunctionId = "TestFunctionId2"
+                }
+            };
+        }
+
+        private IEnumerable<FunctionMetadata> GetTestFunctionsList_WithDisabled(string runtime)
+        {
+            return new List<FunctionMetadata>()
+            {
+                new FunctionMetadata()
+                {
+                     Language = runtime,
+                     Name = "js1",
+                     FunctionId = "TestFunctionId1"
+                },
+
+                new FunctionMetadata()
+                {
+                     Language = runtime,
+                     Name = "js2",
+                     FunctionId = "TestFunctionId2"
+                },
+
+                new FunctionMetadata()
+                {
+                     Language = runtime,
+                     Name = "js3",
+                     FunctionId = "TestFunctionId3",
+                     IsDisabled = true
                 }
             };
         }
