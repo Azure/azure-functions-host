@@ -19,9 +19,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData(null, null, null)]
         public void TestGetRpcTraceContext_WithExpectedValues(string traceparent, string tracestate, IEnumerable<KeyValuePair<string, string>> attributes)
         {
+            IEnumerable<KeyValuePair<string, string>> expectedAttributes = null;
             if (!string.IsNullOrEmpty(traceparent))
             {
-                attributes = new List<KeyValuePair<string, string>> { new KeyValuePair<string, string>("key1", "value1") };
+                attributes = new List<KeyValuePair<string, string>> { new KeyValuePair<string, string>("key1", "value1"), new KeyValuePair<string, string>("key1", "value2") };
+                expectedAttributes = new List<KeyValuePair<string, string>> { new KeyValuePair<string, string>("key1", "value2") };
             }
 
             RpcTraceContext traceContext = ScriptInvocationContextExtensions.GetRpcTraceContext(traceparent, tracestate, attributes, NullLogger.Instance);
@@ -31,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             if (attributes != null)
             {
-                Assert.True(attributes.SequenceEqual(traceContext.Attributes));
+                Assert.True(expectedAttributes.SequenceEqual(traceContext.Attributes));
             }
             else
             {

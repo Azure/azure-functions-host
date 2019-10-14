@@ -6,7 +6,6 @@ using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
@@ -61,7 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 }
                 else
                 {
-                    traceContext.Attributes.Add(tag.Key, tag.Value);
+                    if (traceContext.Attributes.ContainsKey(tag.Key))
+                    {
+                        logger?.LogWarning($"Overwriting '{tag.Key}' with existing value '{traceContext.Attributes[tag.Key]}' with '{tag.Value}'");
+                    }
+                    traceContext.Attributes[tag.Key] = tag.Value;
                 }
             }
 
