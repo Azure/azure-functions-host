@@ -7,6 +7,8 @@
 if ($includeSuffix)
 {
     $extensionVersion += "-prerelease"
+} else {
+    $extensionVersion += "-beta"
 }
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
