@@ -43,5 +43,10 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public const string TypedDataCollection = "TypedDataCollection";
         public const string RpcHttpBodyOnly = "RpcHttpBodyOnly";
         public const string RpcHttpTriggerMetadataRemoved = "RpcHttpTriggerMetadataRemoved";
+
+        // dotnet executable file path components
+        public const string DotNetExecutableName = "dotnet";
+        public const string DotNetExecutableNameWithExtension = DotNetExecutableName + ".exe";
+        public const string DotNetFolderName = "dotnet";
     }
 }
