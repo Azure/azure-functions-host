@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Configuration;
@@ -31,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IWebHostLanguageWorkerChannelManager _languageWorkerChannelManager;
         private readonly IConfigurationRoot _configuration;
         private readonly ILogger _logger;
+        private readonly IMetricsLogger _metricsLogger;
         private readonly HostNameProvider _hostNameProvider;
         private readonly IDisposable _changeTokenCallbackSubscription;
         private readonly TimeSpan _specializationTimerInterval;
@@ -42,17 +44,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         public StandbyManager(IScriptHostManager scriptHostManager, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IApplicationLifetime applicationLifetime)
-            : this(scriptHostManager, languageWorkerChannelManager, configuration, webHostEnvironment, environment, options, logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(500))
+            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IApplicationLifetime applicationLifetime, IMetricsLogger metricsLogger)
+            : this(scriptHostManager, languageWorkerChannelManager, configuration, webHostEnvironment, environment, options, logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(500), metricsLogger)
         {
         }
 
         public StandbyManager(IScriptHostManager scriptHostManager, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IApplicationLifetime applicationLifetime, TimeSpan specializationTimerInterval)
+            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IApplicationLifetime applicationLifetime, TimeSpan specializationTimerInterval, IMetricsLogger metricsLogger)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _specializationTask = new Lazy<Task>(SpecializeHostCoreAsync, LazyThreadSafetyMode.ExecutionAndPublication);
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -68,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public Task SpecializeHostAsync()
         {
+            IDisposable latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.SpecializationSpecializeHost);
             return _specializationTask.Value.ContinueWith(t =>
             {
                 if (t.IsFaulted)
@@ -77,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _logger.LogError(t.Exception, $"Specialization failed. Shutting down.");
                     _applicationLifetime.StopApplication();
                 }
+                latencyEvent.Dispose();
             });
         }
 
@@ -102,12 +107,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // user dependencies
             FunctionAssemblyLoadContext.ResetSharedContext();
 
-            await _languageWorkerChannelManager.SpecializeAsync();
+            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationLanguageWorkerChannelManagerSpecialize))
+            {
+                await _languageWorkerChannelManager.SpecializeAsync();
+            }
 
             NotifyChange();
 
-            await _scriptHostManager.RestartHostAsync();
-            await _scriptHostManager.DelayUntilHostReady();
+            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationRestartHost))
+            {
+                await _scriptHostManager.RestartHostAsync();
+            }
+
+            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationDelayUntilHostReady))
+            {
+                await _scriptHostManager.DelayUntilHostReady();
+            }
         }
 
         public void NotifyChange()
@@ -141,21 +156,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task InitializeAsync()
         {
-            if (await _semaphore.WaitAsync(timeout: TimeSpan.FromSeconds(30)))
+            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationStandbyManagerInitialize))
             {
-                try
+                if (await _semaphore.WaitAsync(timeout: TimeSpan.FromSeconds(30)))
                 {
-                    await CreateStandbyWarmupFunctions();
+                    try
+                    {
+                        await CreateStandbyWarmupFunctions();
 
-                    // start a background timer to identify when specialization happens
-                    // specialization usually happens via an http request (e.g. scale controller
-                    // ping) but this timer is started as well to handle cases where we
-                    // might not receive a request
-                    _specializationTimer = new Timer(OnSpecializationTimerTick, null, _specializationTimerInterval, _specializationTimerInterval);
-                }
-                finally
-                {
-                    _semaphore.Release();
+                        // start a background timer to identify when specialization happens
+                        // specialization usually happens via an http request (e.g. scale controller
+                        // ping) but this timer is started as well to handle cases where we
+                        // might not receive a request
+                        _specializationTimer = new Timer(OnSpecializationTimerTick, null, _specializationTimerInterval, _specializationTimerInterval);
+                    }
+                    finally
+                    {
+                        _semaphore.Release();
+                    }
                 }
             }
         }

@@ -17,8 +17,33 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string HostStartupGrpcServerLatency = "host.startup.outofproc.grpcserver.initialize.latency";
         public const string HostStartupRuntimeLanguage = "host.startup.runtime.language.{0}";
 
+        // Script host level events
+        public const string ScriptHostManagerBuildScriptHost = "scripthostmanager.buildscripthost.latency";
+        public const string ScriptHostManagerStartScriptHost = "scripthostmanager.startscripthost.latency";
+        public const string ScriptHostManagerStartService = "scripthostmanager.start.latency";
+        public const string ScriptHostManagerRestartService = "scripthostmanager.restart.latency";
+
         // language worker level events
         public const string WorkerInitializeLatency = "host.startup.outofproc.{0}worker.initialize.attempt{1}.latency";
+
+        // FunctionMetadataprovider events
+        public const string ReadFunctionsMetadata = "functionmetadataprovider.readfunctionsmetadata";
+        public const string ReadFunctionMetadata = "functionmetadataprovider.readfunctionsmetadata.readfunctionmetadata.{0}";
+
+        // Host json file configuration events
+        public const string LoadHostConfigurationSource = "hostjsonfileconfigurationsource.loadhostconfigurationsource";
+        public const string LoadHostConfiguration = "hostjsonfileconfigurationsource.loadhostconfigurationsource.loadhostconfig";
+        public const string InitializeHostConfiguration = "hostjsonfileconfigurationsource.loadhostconfigurationsource.initializehostconfig";
+
+        // LanguageWorkerChannel events
+        public const string FunctionLoadRequestResponse = "languageworkerchannel.functionloadrequestresponse";
+
+        // ScriptStartupTypeLocator events
+        public const string ParseExtensions = "ScriptStartupTypeLocator.ParseExtensions";
+
+        // Worker configuration events
+        public const string GetConfigs = "workerconfigfactory.getconfigs";
+        public const string AddProvider = "workerconfigfactory.getconfigs.buildworkerproviderdictionary.addprovider.{0}";
 
         // function level events
         public const string FunctionInvokeLatency = "function.invoke.latency";
@@ -49,5 +74,16 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string LinuxContainerSpecializationFileCommand = "linux.container.specialization.file.command";
         public const string LinuxContainerSpecializationAzureFilesMount = "linux.container.specialization.azure.files.mount";
         public const string LinuxContainerSpecializationGetPackageType = "linux.container.specialization.get.package.type";
+
+        // Specialization events
+        public const string SpecializationSpecializeHost = "specialization.standbymanager.specializehost";
+        public const string SpecializationStandbyManagerInitialize = "specialization.standbymanager.initialize";
+        public const string SpecializationLanguageWorkerChannelManagerSpecialize = "specialization.webhostlanguageworkerchannelmanager.specialize";
+        public const string SpecializationEnvironmentReloadRequestResponse = "specialization.webhostlanguageworkerchannel.sendfunctionenvironmentreloadrequest.functionenvironmentreloadresponse";
+        public const string SpecializationScheduleShutdownStandbyChannels = "specialization.scheduleshutdownstandbychannels";
+        public const string SpecializationRestartHost = "specialization.scripthostmanager.restarthost";
+        public const string SpecializationDelayUntilHostReady = "specialization.scripthostmanager.delayuntilhostready";
+        public const string SpecializationShutdownStandbyChannels = "specialization.webhostlanguageworkerchannelmanager.scheduleshutdownstandbychannels.{0}";
+        public const string SpecializationShutdownStandbyChannel = "specialization.webhostlanguageworkerchannelmanager.scheduleshutdownstandbychannels.Worker.{0}";
     }
 }

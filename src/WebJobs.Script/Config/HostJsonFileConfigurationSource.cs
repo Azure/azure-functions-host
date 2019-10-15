@@ -7,21 +7,22 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using static System.Environment;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
     public class HostJsonFileConfigurationSource : IConfigurationSource
     {
         private readonly ILogger _logger;
+        private readonly IMetricsLogger _metricsLogger;
 
-        public HostJsonFileConfigurationSource(ScriptApplicationHostOptions applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory)
+        public HostJsonFileConfigurationSource(ScriptApplicationHostOptions applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
         {
             if (loggerFactory == null)
             {
@@ -30,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             HostOptions = applicationHostOptions;
             Environment = environment;
+            _metricsLogger = metricsLogger;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
         }
 
@@ -39,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
-            return new HostJsonFileConfigurationProvider(this, _logger);
+            return new HostJsonFileConfigurationProvider(this, _logger, _metricsLogger);
         }
 
         public class HostJsonFileConfigurationProvider : ConfigurationProvider
@@ -53,12 +55,14 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             private readonly HostJsonFileConfigurationSource _configurationSource;
             private readonly Stack<string> _path;
             private readonly ILogger _logger;
+            private readonly IMetricsLogger _metricsLogger;
 
-            public HostJsonFileConfigurationProvider(HostJsonFileConfigurationSource configurationSource, ILogger logger)
+            public HostJsonFileConfigurationProvider(HostJsonFileConfigurationSource configurationSource, ILogger logger, IMetricsLogger metricsLogger)
             {
                 _configurationSource = configurationSource;
                 _path = new Stack<string>();
                 _logger = logger;
+                _metricsLogger = metricsLogger;
             }
 
             public override void Load()
@@ -125,68 +129,77 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             /// </summary>
             private JObject LoadHostConfigurationFile()
             {
-                // Before configuration has been fully read, configure a default logger factory
-                // to ensure we can log any configuration errors. There's no filters at this point,
-                // but that's okay since we can't build filters until we apply configuration below.
-                // We'll recreate the loggers after config is read. We initialize the public logger
-                // to the startup logger until we've read configuration settings and can create the real logger.
-                // The "startup" logger is used in this class for startup related logs. The public logger is used
-                // for all other logging after startup.
+                using (_metricsLogger.LatencyEvent(MetricEventNames.LoadHostConfigurationSource))
+                {
+                    // Before configuration has been fully read, configure a default logger factory
+                    // to ensure we can log any configuration errors. There's no filters at this point,
+                    // but that's okay since we can't build filters until we apply configuration below.
+                    // We'll recreate the loggers after config is read. We initialize the public logger
+                    // to the startup logger until we've read configuration settings and can create the real logger.
+                    // The "startup" logger is used in this class for startup related logs. The public logger is used
+                    // for all other logging after startup.
 
-                ScriptApplicationHostOptions options = _configurationSource.HostOptions;
-                string hostFilePath = Path.Combine(options.ScriptPath, ScriptConstants.HostMetadataFileName);
-                JObject hostConfigObject = LoadHostConfig(hostFilePath);
-                InitializeHostConfig(hostFilePath, hostConfigObject);
-                string sanitizedJson = SanitizeHostJson(hostConfigObject);
+                    ScriptApplicationHostOptions options = _configurationSource.HostOptions;
+                    string hostFilePath = Path.Combine(options.ScriptPath, ScriptConstants.HostMetadataFileName);
+                    JObject hostConfigObject = LoadHostConfig(hostFilePath);
+                    InitializeHostConfig(hostFilePath, hostConfigObject);
+                    string sanitizedJson = SanitizeHostJson(hostConfigObject);
 
-                _logger.HostConfigApplied();
+                    _logger.HostConfigApplied();
 
-                // Do not log these until after all the configuration is done so the proper filters are applied.
-                _logger.HostConfigReading(hostFilePath);
-                _logger.HostConfigRead(sanitizedJson);
+                    // Do not log these until after all the configuration is done so the proper filters are applied.
+                    _logger.HostConfigReading(hostFilePath);
+                    _logger.HostConfigRead(sanitizedJson);
 
-                return hostConfigObject;
+                    return hostConfigObject;
+                }
             }
 
             private void InitializeHostConfig(string hostJsonPath, JObject hostConfigObject)
             {
-                // If the object is empty, initialize it to include the version and write the file.
-                if (!hostConfigObject.HasValues)
+                using (_metricsLogger.LatencyEvent(MetricEventNames.InitializeHostConfiguration))
                 {
-                    _logger.HostConfigEmpty();
+                    // If the object is empty, initialize it to include the version and write the file.
+                    if (!hostConfigObject.HasValues)
+                    {
+                        _logger.HostConfigEmpty();
 
-                    hostConfigObject = GetDefaultHostConfigObject();
-                    TryWriteHostJson(hostJsonPath, hostConfigObject);
-                }
+                        hostConfigObject = GetDefaultHostConfigObject();
+                        TryWriteHostJson(hostJsonPath, hostConfigObject);
+                    }
 
-                if (hostConfigObject["version"]?.Value<string>() != "2.0")
-                {
-                    throw new HostConfigurationException($"The {ScriptConstants.HostMetadataFileName} file is missing the required 'version' property. See https://aka.ms/functions-hostjson for steps to migrate the configuration file.");
+                    if (hostConfigObject["version"]?.Value<string>() != "2.0")
+                    {
+                        throw new HostConfigurationException($"The {ScriptConstants.HostMetadataFileName} file is missing the required 'version' property. See https://aka.ms/functions-hostjson for steps to migrate the configuration file.");
+                    }
                 }
             }
 
             internal JObject LoadHostConfig(string configFilePath)
             {
-                JObject hostConfigObject;
-                try
+                using (_metricsLogger.LatencyEvent(MetricEventNames.LoadHostConfiguration))
                 {
-                    string json = File.ReadAllText(configFilePath);
-                    hostConfigObject = JObject.Parse(json);
-                }
-                catch (JsonException ex)
-                {
-                    throw new FormatException($"Unable to parse host configuration file '{configFilePath}'.", ex);
-                }
-                catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
-                {
-                    // if no file exists we default the config
-                    _logger.HostConfigNotFound();
+                    JObject hostConfigObject;
+                    try
+                    {
+                        string json = File.ReadAllText(configFilePath);
+                        hostConfigObject = JObject.Parse(json);
+                    }
+                    catch (JsonException ex)
+                    {
+                        throw new FormatException($"Unable to parse host configuration file '{configFilePath}'.", ex);
+                    }
+                    catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
+                    {
+                        // if no file exists we default the config
+                        _logger.HostConfigNotFound();
 
-                    hostConfigObject = GetDefaultHostConfigObject();
-                    TryWriteHostJson(configFilePath, hostConfigObject);
-                }
+                        hostConfigObject = GetDefaultHostConfigObject();
+                        TryWriteHostJson(configFilePath, hostConfigObject);
+                    }
 
-                return hostConfigObject;
+                    return hostConfigObject;
+                }
             }
 
             private JObject GetDefaultHostConfigObject()

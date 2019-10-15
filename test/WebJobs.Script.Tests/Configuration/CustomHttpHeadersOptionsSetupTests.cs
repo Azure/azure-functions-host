@@ -94,11 +94,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         private IConfiguration BuildHostJsonConfiguration(IEnvironment environment = null)
         {
             environment = environment ?? new TestEnvironment();
-
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
 
-            var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory);
+            var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory, new TestMetricsLogger());
 
             var configurationBuilder = new ConfigurationBuilder()
                 .Add(configSource);

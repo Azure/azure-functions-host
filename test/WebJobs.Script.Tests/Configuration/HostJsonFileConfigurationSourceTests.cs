@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
@@ -48,7 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void MissingHostJson_CreatesDefaultFile()
         {
             Assert.False(File.Exists(_hostJsonFile));
-            BuildHostJsonConfiguration();
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+
+            BuildHostJsonConfiguration(testMetricsLogger);
+
+            AreExpectedMetricsGenerated(testMetricsLogger);
 
             Assert.Equal(_defaultHostJson, File.ReadAllText(_hostJsonFile));
 
@@ -63,7 +68,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             File.WriteAllText(_hostJsonFile, json);
             Assert.True(File.Exists(_hostJsonFile));
-            BuildHostJsonConfiguration();
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+
+            BuildHostJsonConfiguration(testMetricsLogger);
+
+            AreExpectedMetricsGenerated(testMetricsLogger);
 
             Assert.Equal(_defaultHostJson, File.ReadAllText(_hostJsonFile));
 
@@ -78,11 +87,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
               'functions': [ 'FunctionA', 'FunctionB' ]
             }";
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             Assert.True(File.Exists(_hostJsonFile));
 
-            var ex = Assert.Throws<HostConfigurationException>(() => BuildHostJsonConfiguration());
+            var ex = Assert.Throws<HostConfigurationException>(() => BuildHostJsonConfiguration(testMetricsLogger));
             Assert.StartsWith("The host.json file is missing the required 'version' property.", ex.Message);
         }
 
@@ -95,8 +105,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 { EnvironmentSettingNames.AzureWebsiteZipDeployment, "1" }
             });
-
-            IConfiguration config = BuildHostJsonConfiguration(environment);
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+            IConfiguration config = BuildHostJsonConfiguration(testMetricsLogger, environment);
+            AreExpectedMetricsGenerated(testMetricsLogger);
             Assert.Equal(config["AzureFunctionsJobHost:version"], "2.0");
 
             var log = _loggerProvider.GetAllLogMessages().Single(l => l.FormattedMessage == "No host configuration file found. Creating a default host.json file.");
@@ -121,10 +132,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     'MyCustomValue': 'abc'
                 }
             }";
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             File.WriteAllText(_hostJsonFile, hostJsonContent);
 
-            BuildHostJsonConfiguration();
+            BuildHostJsonConfiguration(testMetricsLogger);
+
+            AreExpectedMetricsGenerated(testMetricsLogger);
 
             string hostJsonSanitized = @"
             {
@@ -140,25 +154,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             // for formatting
             var hostJson = JObject.Parse(hostJsonSanitized);
-
             var logger = _loggerProvider.CreatedLoggers.Single(l => l.Category == LogCategories.Startup);
             var logMessage = logger.GetLogMessages().Single(l => l.FormattedMessage.StartsWith("Host configuration file read")).FormattedMessage;
             Assert.Equal($"Host configuration file read:{Environment.NewLine}{hostJson}", logMessage);
         }
 
-        private IConfiguration BuildHostJsonConfiguration(IEnvironment environment = null)
+        private IConfiguration BuildHostJsonConfiguration(TestMetricsLogger testMetricsLogger, IEnvironment environment = null)
         {
             environment = environment ?? new TestEnvironment();
-
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
 
-            var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory);
+            var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory, testMetricsLogger);
 
             var configurationBuilder = new ConfigurationBuilder()
                 .Add(configSource);
 
             return configurationBuilder.Build();
+        }
+
+        private bool AreExpectedMetricsGenerated(TestMetricsLogger metricsLogger)
+        {
+            return metricsLogger.EventsBegan.Contains(MetricEventNames.LoadHostConfigurationSource) && metricsLogger.EventsEnded.Contains(MetricEventNames.LoadHostConfigurationSource)
+                    && metricsLogger.EventsBegan.Contains(MetricEventNames.LoadHostConfiguration) && metricsLogger.EventsEnded.Contains(MetricEventNames.LoadHostConfiguration)
+                    && metricsLogger.EventsBegan.Contains(MetricEventNames.InitializeHostConfiguration) && metricsLogger.EventsEnded.Contains(MetricEventNames.InitializeHostConfiguration);
         }
     }
 }

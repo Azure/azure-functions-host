@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();
             IDependencyValidator validator = rootServiceProvider.GetService<IDependencyValidator>();
+            IMetricsLogger metricsLogger = rootServiceProvider.GetService<IMetricsLogger>();
 
             builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory, validator))
                 .ConfigureServices(services =>
@@ -38,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.ConfigureOptions<CustomHttpHeadersOptionsSetup>();
                     services.ConfigureOptions<HostHstsOptionsSetup>();
                 })
-                .AddScriptHost(webHostOptions, configLoggerFactory, webJobsBuilder =>
+                .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
                     webJobsBuilder
                         .AddAzureStorageCoreServices();

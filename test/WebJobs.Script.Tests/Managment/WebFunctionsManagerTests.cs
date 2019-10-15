@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var workerOptions = new LanguageWorkerOptions();
             FileUtility.Instance = fileSystem;
             var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings());
-            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, languageWorkerOptions, NullLogger<FunctionMetadataProvider>.Instance);
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, languageWorkerOptions, NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
             var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, languageWorkerOptions, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, metadataProvider);
             _webFunctionsManager = new WebFunctionsManager(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object, functionsSyncManager, hostNameProvider, metadataProvider);
         }

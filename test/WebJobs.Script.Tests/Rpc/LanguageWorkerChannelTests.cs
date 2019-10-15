@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private string _workerId = "testWorkerId";
         private string _scriptRootPath = "c:\testdir";
         private IScriptEventManager _eventManager = new ScriptEventManager();
-        private Mock<IMetricsLogger> _mockMetricsLogger = new Mock<IMetricsLogger>();
+        private TestMetricsLogger _metricsLogger = new TestMetricsLogger();
         private Mock<ILanguageWorkerConsoleLogSource> _mockConsoleLogger = new Mock<ILanguageWorkerConsoleLogSource>();
         private Mock<FunctionRpc.FunctionRpcBase> _mockFunctionRpcService = new Mock<FunctionRpc.FunctionRpcBase>();
         private TestRpcServer _testRpcServer = new TestRpcServer();
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                _testWorkerConfig,
                _mockLanguageWorkerProcess.Object,
                _logger,
-               _mockMetricsLogger.Object,
+               _metricsLogger,
                0);
         }
 
@@ -74,6 +74,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
+        public async Task SendEnvironmentReloadRequest_Generates_ExpectedMetrics()
+        {
+            _metricsLogger.ClearCollections();
+            Task waitForMetricsTask = Task.Factory.StartNew(() =>
+            {
+                while (!_metricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationEnvironmentReloadRequestResponse))
+                {
+                }
+            });
+            Task reloadRequestResponse = _workerChannel.SendFunctionEnvironmentReloadRequest().ContinueWith(t => { });
+            await Task.WhenAny(reloadRequestResponse, waitForMetricsTask, Task.Delay(5000));
+            Assert.True(_metricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationEnvironmentReloadRequestResponse));
+        }
+
+        [Fact]
         public async Task StartWorkerProcessAsync_WorkerProcess_Throws()
         {
             Mock<ILanguageWorkerProcess> mockLanguageWorkerProcessThatThrows = new Mock<ILanguageWorkerProcess>();
@@ -86,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                _testWorkerConfig,
                mockLanguageWorkerProcessThatThrows.Object,
                _logger,
-               _mockMetricsLogger.Object,
+               _metricsLogger,
                0);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync());
         }
@@ -145,10 +160,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void SendLoadRequests_PublishesOutboundEvents()
         {
+            _metricsLogger.ClearCollections();
             _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             _workerChannel.SendFunctionLoadRequests();
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
+            AreExpectedMetricsGenerated();
             Assert.True(functionLoadLogs.Count() == 2);
         }
 
@@ -215,7 +232,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             var functionLoadRequest = _workerChannel.GetFunctionLoadRequest(metadata);
             Assert.False(functionLoadRequest.Metadata.IsProxy);
-
             FunctionMetadata proxyMetadata = new FunctionMetadata()
             {
                 Language = "node",
@@ -245,6 +261,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                      FunctionId = "TestFunctionId2"
                 }
             };
+        }
+
+        private bool AreExpectedMetricsGenerated()
+        {
+            return _metricsLogger.EventsBegan.Contains(MetricEventNames.FunctionLoadRequestResponse);
         }
     }
 }

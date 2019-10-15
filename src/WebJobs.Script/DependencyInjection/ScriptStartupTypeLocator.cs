@@ -8,13 +8,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Properties;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -30,15 +28,17 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly ILogger _logger;
         private readonly IExtensionBundleManager _extensionBundleManager;
         private readonly IFunctionMetadataProvider _functionMetadataProvider;
+        private readonly IMetricsLogger _metricsLogger;
 
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
-        public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager, IFunctionMetadataProvider functionMetadataProvider)
+        public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager, IFunctionMetadataProvider functionMetadataProvider, IMetricsLogger metricsLogger)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
             _logger = logger;
             _functionMetadataProvider = functionMetadataProvider;
+            _metricsLogger = metricsLogger;
         }
 
         private static string[] GetBuiltinExtensionAssemblies()
@@ -150,29 +150,32 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
         private ExtensionReference[] ParseExtensions(string metadataFilePath)
         {
-            if (!File.Exists(metadataFilePath))
+            using (_metricsLogger.LatencyEvent(MetricEventNames.ParseExtensions))
             {
-                return Array.Empty<ExtensionReference>();
-            }
-
-            try
-            {
-                var extensionMetadata = JObject.Parse(File.ReadAllText(metadataFilePath));
-
-                var extensionItems = extensionMetadata["extensions"]?.ToObject<List<ExtensionReference>>();
-                if (extensionItems == null)
+                if (!File.Exists(metadataFilePath))
                 {
-                    _logger.ScriptStartUpUnableParseMetadataMissingProperty(metadataFilePath);
                     return Array.Empty<ExtensionReference>();
                 }
 
-                return extensionItems.ToArray();
-            }
-            catch (JsonReaderException exc)
-            {
-                _logger.ScriptStartUpUnableParseMetadata(exc, metadataFilePath);
+                try
+                {
+                    var extensionMetadata = JObject.Parse(File.ReadAllText(metadataFilePath));
 
-                return Array.Empty<ExtensionReference>();
+                    var extensionItems = extensionMetadata["extensions"]?.ToObject<List<ExtensionReference>>();
+                    if (extensionItems == null)
+                    {
+                        _logger.ScriptStartUpUnableParseMetadataMissingProperty(metadataFilePath);
+                        return Array.Empty<ExtensionReference>();
+                    }
+
+                    return extensionItems.ToArray();
+                }
+                catch (JsonReaderException exc)
+                {
+                    _logger.ScriptStartUpUnableParseMetadata(exc, metadataFilePath);
+
+                    return Array.Empty<ExtensionReference>();
+                }
             }
         }
 
