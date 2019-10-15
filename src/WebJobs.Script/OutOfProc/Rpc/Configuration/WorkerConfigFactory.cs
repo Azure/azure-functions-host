@@ -65,7 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     arguments.ExecutablePath = GetExecutablePathForJava(description.DefaultExecutablePath);
                 }
-
                 arguments.ExecutableArguments.AddRange(description.Arguments);
                 var config = new WorkerConfig()
                 {
