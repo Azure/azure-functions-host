@@ -85,6 +85,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 throw new FileNotFoundException($"Did not find {nameof(DefaultWorkerPath)} for language: {Language}");
             }
+
+            ResolveDotNetDefaultExecutablePath();
         }
 
         public void ValidateWorkerPath(string workerPath, OSPlatform os, Architecture architecture, string version)
@@ -126,6 +128,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             if (!SupportedRuntimeVersions.Any(s => s.Equals(version, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new NotSupportedException($"Version {version} is not supported for language {Language}");
+            }
+        }
+
+        private void ResolveDotNetDefaultExecutablePath()
+        {
+            const string DotNetExecutableName = "dotnet";
+            const string DotNetFolderName = "dotnet";
+
+            if (DefaultExecutablePath == DotNetExecutableName && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var programFilesFolder = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+                DefaultExecutablePath = Path.Combine(programFilesFolder, DotNetFolderName, DotNetExecutableName);
             }
         }
     }

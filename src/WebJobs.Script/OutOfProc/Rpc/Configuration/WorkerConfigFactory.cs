@@ -65,10 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 {
                     arguments.ExecutablePath = GetExecutablePathForJava(description.DefaultExecutablePath);
                 }
-                else if (description.Language.Equals(LanguageWorkerConstants.PowerShellLanguageWorkerName))
-                {
-                    arguments.ExecutablePath = GetExecutablePathForPowerShell(description.DefaultExecutablePath);
-                }
 
                 arguments.ExecutableArguments.AddRange(description.Arguments);
                 var config = new WorkerConfig()
@@ -218,17 +214,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             {
                 return Path.GetFullPath(Path.Combine(javaHome, "bin", defaultExecutablePath));
             }
-        }
-
-        internal string GetExecutablePathForPowerShell(string defaultExecutablePath)
-        {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || Path.IsPathRooted(defaultExecutablePath))
-            {
-                return defaultExecutablePath;
-            }
-
-            var programFilesFolder = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-            return Path.Combine(programFilesFolder, "dotnet", defaultExecutablePath);
         }
 
         internal bool IsHydrationNeeded(string workerPath)
