@@ -237,6 +237,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             }
         }
 
+        [Theory]
+        [InlineData("dotnet")]
+        [InlineData("DotNet")]
+        [InlineData("dotnet.exe")]
+        [InlineData("DOTNET.EXE")]
+        public void ValidateWorkerDescription_ResolvesDotNetDefaultWorkerExecutablePath(string defaultExecutablePath)
+        {
+            var expectedExecutablePath =
+                RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", defaultExecutablePath)
+                    : defaultExecutablePath;
+
+            var workerDescription = new RpcWorkerDescription { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = defaultExecutablePath };
+            workerDescription.ApplyDefaultsAndValidate();
+            Assert.Equal(expectedExecutablePath, workerDescription.DefaultExecutablePath);
+        }
+
+        [Theory]
+        [InlineData(@"D:\CustomExecutableFolder\dotnet")]
+        [InlineData(@"/CustomExecutableFolder/dotnet")]
+        [InlineData("AnythingElse")]
+        public void ValidateWorkerDescription_DoesNotModifyDefaultWorkerExecutablePath_WhenDoesNotStrictlyMatchDotNet(string defaultExecutablePath)
+        {
+            var workerDescription = new RpcWorkerDescription { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = defaultExecutablePath };
+            workerDescription.ApplyDefaultsAndValidate();
+            Assert.Equal(defaultExecutablePath, workerDescription.DefaultExecutablePath);
+        }
+
         private IEnumerable<WorkerConfig> TestReadWorkerProviderFromConfig(IEnumerable<TestLanguageWorkerConfig> configs, ILogger testLogger, string language = null, Dictionary<string, string> keyValuePairs = null, bool appSvcEnv = false)
         {
             Mock<IEnvironment> mockEnvironment = new Mock<IEnvironment>();
