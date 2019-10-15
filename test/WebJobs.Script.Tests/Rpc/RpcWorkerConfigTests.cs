@@ -237,22 +237,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             }
         }
 
-        [Fact]
-        public void ValidateWorkerDescription_ResolvesDotNetDefaultWorkerExecutablePath()
+        [Theory]
+        [InlineData("dotnet")]
+        [InlineData("DotNet")]
+        [InlineData("dotnet.exe")]
+        [InlineData("DOTNET.EXE")]
+        public void ValidateWorkerDescription_ResolvesDotNetDefaultWorkerExecutablePath(string defaultExecutablePath)
         {
             var expectedExecutablePath =
                 RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dotnet")
-                    : "dotnet";
+                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", defaultExecutablePath)
+                    : defaultExecutablePath;
 
-            var workerDescription = new RpcWorkerDescription { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = "dotnet" };
+            var workerDescription = new RpcWorkerDescription { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = defaultExecutablePath };
             workerDescription.ApplyDefaultsAndValidate();
             Assert.Equal(expectedExecutablePath, workerDescription.DefaultExecutablePath);
         }
 
         [Theory]
-        [InlineData("DotNet")]
-        [InlineData("dotnet.exe")]
         [InlineData(@"D:\CustomExecutableFolder\dotnet")]
         [InlineData(@"/CustomExecutableFolder/dotnet")]
         [InlineData("AnythingElse")]

@@ -136,10 +136,12 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             const string DotNetExecutableName = "dotnet";
             const string DotNetFolderName = "dotnet";
 
-            if (DefaultExecutablePath == DotNetExecutableName && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                && (DefaultExecutablePath.Equals(DotNetExecutableName, StringComparison.OrdinalIgnoreCase)
+                    || DefaultExecutablePath.Equals(DotNetExecutableName + ".exe", StringComparison.OrdinalIgnoreCase)))
             {
                 var programFilesFolder = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-                DefaultExecutablePath = Path.Combine(programFilesFolder, DotNetFolderName, DotNetExecutableName);
+                DefaultExecutablePath = Path.Combine(programFilesFolder, DotNetFolderName, DefaultExecutablePath);
             }
         }
     }
