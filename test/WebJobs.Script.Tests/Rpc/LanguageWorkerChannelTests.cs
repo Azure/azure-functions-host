@@ -74,6 +74,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
+        public async Task SendEnvironmentReloadRequest_Generates_ExpectedMetrics()
+        {
+            _metricsLogger.ClearCollections();
+            Task waitForMetricsTask = Task.Factory.StartNew(() =>
+            {
+                while (!_metricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationEnvironmentReloadRequestResponse))
+                {
+                }
+            });
+            Task reloadRequestResponse = _workerChannel.SendFunctionEnvironmentReloadRequest().ContinueWith(t => { });
+            await Task.WhenAny(reloadRequestResponse, waitForMetricsTask, Task.Delay(5000));
+            Assert.True(_metricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationEnvironmentReloadRequestResponse));
+        }
+
+        [Fact]
         public async Task StartWorkerProcessAsync_WorkerProcess_Throws()
         {
             Mock<ILanguageWorkerProcess> mockLanguageWorkerProcessThatThrows = new Mock<ILanguageWorkerProcess>();
