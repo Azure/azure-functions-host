@@ -9,6 +9,7 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
@@ -21,14 +22,16 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly IEnumerable<WorkerConfig> _workerConfigs;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
+        private readonly IMetricsLogger _metricsLogger;
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
         private ImmutableArray<FunctionMetadata> _functions;
 
-        public FunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILogger<FunctionMetadataProvider> logger)
+        public FunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILogger<FunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
         {
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _applicationHostOptions = applicationHostOptions;
+            _metricsLogger = metricsLogger;
             _logger = logger;
         }
 
@@ -50,26 +53,29 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<WorkerConfig> workerConfigs, Dictionary<string, ICollection<string>> functionErrors = null, IFileSystem fileSystem = null)
         {
-            fileSystem = fileSystem ?? FileUtility.Instance;
-            functionErrors = functionErrors ?? new Dictionary<string, ICollection<string>>();
-
-            var functions = new Collection<FunctionMetadata>();
-
-            if (!fileSystem.Directory.Exists(_applicationHostOptions.CurrentValue.ScriptPath))
+            using (_metricsLogger.LatencyEvent(MetricEventNames.ReadFunctionsMetadata))
             {
+                fileSystem = fileSystem ?? FileUtility.Instance;
+                functionErrors = functionErrors ?? new Dictionary<string, ICollection<string>>();
+
+                var functions = new Collection<FunctionMetadata>();
+
+                if (!fileSystem.Directory.Exists(_applicationHostOptions.CurrentValue.ScriptPath))
+                {
+                    return functions;
+                }
+
+                var functionDirectories = fileSystem.Directory.EnumerateDirectories(_applicationHostOptions.CurrentValue.ScriptPath).ToImmutableArray();
+                foreach (var functionDirectory in functionDirectories)
+                {
+                    var function = ReadFunctionMetadata(functionDirectory, workerConfigs, functionErrors, fileSystem);
+                    if (function != null)
+                    {
+                        functions.Add(function);
+                    }
+                }
                 return functions;
             }
-
-            var functionDirectories = fileSystem.Directory.EnumerateDirectories(_applicationHostOptions.CurrentValue.ScriptPath).ToImmutableArray();
-            foreach (var functionDirectory in functionDirectories)
-            {
-                var function = ReadFunctionMetadata(functionDirectory, workerConfigs, functionErrors, fileSystem);
-                if (function != null)
-                {
-                    functions.Add(function);
-                }
-            }
-            return functions;
         }
 
         private Collection<FunctionMetadata> ReadFunctionsMetadata()
@@ -80,41 +86,44 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private FunctionMetadata ReadFunctionMetadata(string functionDirectory, IEnumerable<WorkerConfig> workerConfigs, Dictionary<string, ICollection<string>> functionErrors, IFileSystem fileSystem = null)
         {
-            string functionName = null;
-
-            try
+            using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.ReadFunctionMetadata, functionDirectory)))
             {
-                // read the function config
-                if (!Utility.TryReadFunctionConfig(functionDirectory, out string json, fileSystem))
+                string functionName = null;
+
+                try
                 {
-                    // not a function directory
-                    return null;
+                    // read the function config
+                    if (!Utility.TryReadFunctionConfig(functionDirectory, out string json, fileSystem))
+                    {
+                        // not a function directory
+                        return null;
+                    }
+
+                    functionName = Path.GetFileName(functionDirectory);
+
+                    ValidateName(functionName);
+
+                    JObject functionConfig = JObject.Parse(json);
+
+                    if (!TryParseFunctionMetadata(functionName, functionConfig, functionDirectory, workerConfigs, out FunctionMetadata functionMetadata, out string functionError, fileSystem))
+                    {
+                        // for functions in error, log the error and don't
+                        // add to the functions collection
+                        Utility.AddFunctionError(functionErrors, functionName, functionError);
+                        return null;
+                    }
+                    else if (functionMetadata != null)
+                    {
+                        return functionMetadata;
+                    }
                 }
-
-                functionName = Path.GetFileName(functionDirectory);
-
-                ValidateName(functionName);
-
-                JObject functionConfig = JObject.Parse(json);
-
-                if (!TryParseFunctionMetadata(functionName, functionConfig, functionDirectory, workerConfigs, out FunctionMetadata functionMetadata, out string functionError, fileSystem))
+                catch (Exception ex)
                 {
-                    // for functions in error, log the error and don't
-                    // add to the functions collection
-                    Utility.AddFunctionError(functionErrors, functionName, functionError);
-                    return null;
+                    // log any unhandled exceptions and continue
+                    Utility.AddFunctionError(functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
                 }
-                else if (functionMetadata != null)
-                {
-                    return functionMetadata;
-                }
+                return null;
             }
-            catch (Exception ex)
-            {
-                // log any unhandled exceptions and continue
-                Utility.AddFunctionError(functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
-            }
-            return null;
         }
 
         internal static void ValidateName(string name, bool isProxy = false)

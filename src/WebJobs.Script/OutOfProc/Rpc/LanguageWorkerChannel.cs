@@ -5,13 +5,11 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -35,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly WorkerConfig _workerConfig;
         private readonly string _runtime;
 
+        private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
         private bool _disposing;
         private WorkerInitResponse _initMessage;
@@ -53,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private IEnumerable<FunctionMetadata> _functions;
         private Capabilities _workerCapabilities;
         private ILogger _workerChannelLogger;
+        private IMetricsLogger _metricsLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>();
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>();
@@ -75,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             _runtime = workerConfig.Description.Language;
             _languageWorkerProcess = languageWorkerProcess;
             _workerChannelLogger = logger;
+            _metricsLogger = metricsLogger;
 
             _workerCapabilities = new Capabilities(_workerChannelLogger);
 
@@ -145,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             });
         }
 
-        internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res)
+        internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res, IDisposable latencyEvent)
         {
             _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse");
             if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
@@ -154,6 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 _reloadTask.SetResult(false);
             }
             _reloadTask.SetResult(true);
+            latencyEvent.Dispose();
         }
 
         internal void WorkerInitResponse(RpcEvent initEvent)
@@ -198,11 +200,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         public Task SendFunctionEnvironmentReloadRequest()
         {
             _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
+            IDisposable latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.SpecializationEnvironmentReloadRequestResponse);
+
             _eventSubscriptions
                 .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
                 .Timeout(workerInitTimeout)
                 .Take(1)
-                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse), HandleWorkerEnvReloadError));
+                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse, latencyEvent), HandleWorkerEnvReloadError));
 
             IDictionary processEnv = Environment.GetEnvironmentVariables();
 
@@ -228,6 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void SendFunctionLoadRequest(FunctionMetadata metadata)
         {
+            _functionLoadRequestResponseEvent = _metricsLogger.LatencyEvent(MetricEventNames.FunctionLoadRequestResponse);
             _workerChannelLogger.LogDebug("Sending FunctionLoadRequest for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
 
             // send a load request for the registered function
@@ -269,6 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         internal void LoadResponse(FunctionLoadResponse loadResponse)
         {
+            _functionLoadRequestResponseEvent?.Dispose();
             _workerChannelLogger.LogDebug("Received FunctionLoadResponse for functionId:{functionId}", loadResponse.FunctionId);
             if (loadResponse.Result.IsFailure(out Exception ex))
             {

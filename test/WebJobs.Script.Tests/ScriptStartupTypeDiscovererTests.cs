@@ -1,19 +1,17 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.Storage;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Logging;
@@ -43,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
 
             using (var directory = new TempDirectory())
@@ -67,13 +66,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
                 var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
                 var traces = testLoggerProvider.GetAllLogMessages();
 
                 // Assert
+                AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Single(types);
                 Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
                 Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"The extension startup type '{references[0].TypeName}' belongs to a builtin extension")));
@@ -92,17 +92,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
                 LoggerFactory factory = new LoggerFactory();
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
                 factory.AddProvider(testLoggerProvider);
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
                 var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
+                var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
                 var traces = testLoggerProvider.GetAllLogMessages();
 
                 // Assert
+                AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.NotNull(types);
                 Assert.Equal(types.Count(), 0);
                 Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Unable to find or download extension bundle")));
@@ -126,6 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             using (var directory = new TempDirectory())
             {
@@ -150,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
                 var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -158,6 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // Assert
                 Assert.Single(types);
+                AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
                 Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"The extension startup type '{references[0].TypeName}' belongs to a builtin extension")));
                 Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"The extension startup type '{references[1].TypeName}' belongs to a builtin extension")));
@@ -173,11 +177,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
             LoggerFactory factory = new LoggerFactory();
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
             factory.AddProvider(testLoggerProvider);
             var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
             var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(ImmutableArray<FunctionMetadata>.Empty);
-            var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
+            var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider, testMetricsLogger);
 
             // Act
             var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -185,6 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Assert
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Unable to find or download extension bundle")));
+            AreExpectedMetricsGenerated(testMetricsLogger);
             Assert.NotNull(types);
             Assert.Equal(types.Count(), 0);
         }
@@ -195,6 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
             var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
             var references = new[] { storageExtensionReference, sendGridExtensionReference };
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             var extensions = new JObject
             {
@@ -225,10 +232,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).Returns(Task.FromResult(directory.Path));
 
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
+
+                // Assert
+                AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Equal(types.Count(), 2);
                 Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.FirstOrDefault().FullName);
             }
@@ -248,6 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
 
             using (var directory = new TempDirectory())
@@ -271,10 +282,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // mock Function metadata
                 var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
+
+                // Assert
+                AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Single(types);
                 Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
             }
@@ -288,6 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
             sendGridExtensionReference.Bindings.Add("sendGrid");
             var references = new[] { storageExtensionReference, sendGridExtensionReference };
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             var extensions = new JObject
             {
@@ -319,10 +334,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).Returns(Task.FromResult(directory.Path));
 
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
+
+                //Assert
+                AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Single(types);
                 Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
             }
@@ -336,6 +354,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
             sendGridExtensionReference.Bindings.Add("sendGrid");
             var references = new[] { storageExtensionReference, sendGridExtensionReference };
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             var extensions = new JObject
             {
@@ -365,10 +384,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
 
                 var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider();
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
+
+                // Assert
+                AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Equal(types.Count(), 2);
                 Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.FirstOrDefault().FullName);
             }
@@ -383,6 +405,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionMetadataProvider = new Mock<IFunctionMetadataProvider>();
             functionMetadataProvider.Setup(e => e.GetFunctionMetadata(true)).Returns(functionMetadataCollection.ToImmutableArray());
             return functionMetadataProvider.Object;
+        }
+
+        private bool AreExpectedMetricsGenerated(TestMetricsLogger metricsLogger)
+        {
+            return metricsLogger.EventsBegan.Contains(MetricEventNames.ParseExtensions) && metricsLogger.EventsEnded.Contains(MetricEventNames.ParseExtensions);
         }
     }
 }

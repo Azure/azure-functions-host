@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
 
-            var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory);
+            var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory, new TestMetricsLogger());
 
             var configurationBuilder = new ConfigurationBuilder()
                 .Add(configSource);

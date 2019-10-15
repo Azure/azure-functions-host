@@ -4,8 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.OutOfProc;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
@@ -35,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), LanguageWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
@@ -50,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                    })
                    .Build();
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
@@ -66,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
@@ -81,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
             var testEnvVariables = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
@@ -105,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
             var testEnvVariables = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
@@ -129,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
             var testEnvVariables = new Dictionary<string, string>
             {
                 { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51" }
@@ -152,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
             var testEnvVariables = new Dictionary<string, string>
             {
                 { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51" }
@@ -175,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
             var testEnvVariables = new Dictionary<string, string>
             {
                 { "JAVA_HOME", string.Empty }
@@ -209,7 +211,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
             var languageSection = config.GetSection("languageWorkers:java");
             var testEnvVariables = new Dictionary<string, string>
             {
@@ -257,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
 
             Assert.Equal(expectedPath, configFactory.GetHydratedWorkerPath(workerDescription));
         }
@@ -297,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
 
             Assert.Equal(expectedPath, configFactory.GetHydratedWorkerPath(workerDescription));
         }
@@ -336,7 +337,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Mock<ISystemRuntimeInformation> mockRuntimeInfo = new Mock<ISystemRuntimeInformation>();
             mockRuntimeInfo.Setup(r => r.GetOSArchitecture()).Returns(unsupportedArch);
             mockRuntimeInfo.Setup(r => r.GetOSPlatform()).Returns(OSPlatform.Linux);
-            var configFactory = new WorkerConfigFactory(config, testLogger, mockRuntimeInfo.Object, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, mockRuntimeInfo.Object, _testEnvironment, new TestMetricsLogger());
 
             var ex = Assert.Throws<PlatformNotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
             Assert.Equal(ex.Message, $"Architecture {unsupportedArch.ToString()} is not supported for language {workerDescription.Language}");
@@ -373,7 +374,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             Mock<ISystemRuntimeInformation> mockRuntimeInfo = new Mock<ISystemRuntimeInformation>();
             mockRuntimeInfo.Setup(r => r.GetOSArchitecture()).Returns(Architecture.X64);
             mockRuntimeInfo.Setup(r => r.GetOSPlatform()).Returns(bogusOS);
-            var configFactory = new WorkerConfigFactory(config, testLogger, mockRuntimeInfo.Object, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, mockRuntimeInfo.Object, _testEnvironment, new TestMetricsLogger());
 
             var ex = Assert.Throws<PlatformNotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
             Assert.Equal(ex.Message, $"OS BogusOS is not supported for language {workerDescription.Language}");
@@ -401,7 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
 
             var ex = Assert.Throws<NotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
             Assert.Equal(ex.Message, $"Version {workerDescription.DefaultRuntimeVersion} is not supported for language {workerDescription.Language}");
@@ -431,7 +432,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment);
+            var configFactory = new WorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
 
             var ex = Assert.Throws<NotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
             Assert.Equal(ex.Message, $"Version 3.4 is not supported for language {workerDescription.Language}");

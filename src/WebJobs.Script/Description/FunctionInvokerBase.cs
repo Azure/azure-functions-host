@@ -250,7 +250,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 ["Language"] = _startedEvent.FunctionMetadata.Language,
                 ["FunctionName"] = _metadata != null ? _metadata.Name : string.Empty,
-                ["Success"] = success
+                ["Success"] = success,
+                ["IsStopwatchHighResolution"] = Stopwatch.IsHighResolution
             };
 
             string jsonData = data.ToString();

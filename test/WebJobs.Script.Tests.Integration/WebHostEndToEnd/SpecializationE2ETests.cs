@@ -299,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment,
                 IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, Microsoft.AspNetCore.Hosting.IApplicationLifetime applicationLifetime)
                 : base(scriptHostManager, languageWorkerChannelManager, configuration, webHostEnvironment, environment, options,
-                      logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(-1))
+                      logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(-1), new TestMetricsLogger())
             {
             }
         }

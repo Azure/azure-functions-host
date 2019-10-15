@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
@@ -62,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             _testLogger = new TestLogger("WebHostLanguageWorkerChannelManagerTests");
             _rpcWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, _testLogger, _scriptRootPath);
-            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor);
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, new TestMetricsLogger());
         }
 
         [Fact]
@@ -81,14 +82,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task ShutdownStandByChannels_Succeeds()
         {
+            var testMetricsLogger = new TestMetricsLogger();
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
-            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor);
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger);
 
             ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
 
             ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
 
             _languageWorkerChannelManager.ScheduleShutdownStandbyChannels();
+            Assert.True(AreRequiredMetricsEmitted(testMetricsLogger));
             var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName);
             Assert.Null(initializedChannel);
             Assert.Null(_languageWorkerChannelManager.GetChannels(LanguageWorkerConstants.NodeLanguageWorkerName));
@@ -100,13 +103,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task ShutdownStandByChannels_WorkerRuntinmeDotNet_Succeeds()
         {
+            var testMetricsLogger = new TestMetricsLogger();
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName);
-            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor);
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger);
 
             ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
             ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
 
             _languageWorkerChannelManager.ScheduleShutdownStandbyChannels();
+            Assert.True(AreRequiredMetricsEmitted(testMetricsLogger));
             ILanguageWorkerChannel initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName);
             Assert.Null(initializedChannel);
             initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
@@ -137,13 +142,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task ShutdownStandyChannels_WorkerRuntime_Node_Set()
         {
+            var testMetricsLogger = new TestMetricsLogger();
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
-            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor);
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger);
 
             ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
 
             _languageWorkerChannelManager.ScheduleShutdownStandbyChannels();
-
+            Assert.True(AreRequiredMetricsEmitted(testMetricsLogger));
             var initializedChannel = await _languageWorkerChannelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
         }
@@ -153,14 +159,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [InlineData("Node")]
         public async Task SpecializeAsync_Node_ReadOnly_KeepsProcessAlive(string runtime)
         {
+            var testMetricsLogger = new TestMetricsLogger();
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, runtime);
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
 
-            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor);
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger);
 
             ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
 
             await _languageWorkerChannelManager.SpecializeAsync();
+            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels));
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
@@ -175,14 +184,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task SpecializeAsync_Java_KeepsProcessAlive()
         {
+            var testMetricsLogger = new TestMetricsLogger();
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "0");
 
-            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor);
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger);
 
             ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
 
             await _languageWorkerChannelManager.SpecializeAsync();
+
+            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels));
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
@@ -197,14 +210,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task SpecializeAsync_Java_ReadOnly_KeepsProcessAlive()
         {
+            var testMetricsLogger = new TestMetricsLogger();
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
 
-            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor);
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger);
 
             ILanguageWorkerChannel javaWorkerChannel = CreateTestChannel(LanguageWorkerConstants.JavaLanguageWorkerName);
 
             await _languageWorkerChannelManager.SpecializeAsync();
+
+            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels));
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
@@ -219,11 +236,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task SpecializeAsync_Node_NotReadOnly_KillsProcess()
         {
+            var testMetricsLogger = new TestMetricsLogger();
             _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.NodeLanguageWorkerName);
             // This is an invalid setting configuration, but just to show that run from zip is NOT set
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "0");
 
-            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor);
+            _languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger);
 
             ILanguageWorkerChannel nodeWorkerChannel = CreateTestChannel(LanguageWorkerConstants.NodeLanguageWorkerName);
 
@@ -268,10 +286,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public async Task InitializeLanguageWorkerChannel_ThrowsOnProcessStartup()
         {
             var languageWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, null, _scriptRootPath, throwOnProcessStartUp: true);
-            var languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, languageWorkerChannelFactory, _optionsMonitor);
+            var languageWorkerChannelManager = new WebHostLanguageWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, languageWorkerChannelFactory, _optionsMonitor, new TestMetricsLogger());
             var languageWorkerChannel = await languageWorkerChannelManager.InitializeLanguageWorkerChannel("test", _scriptRootPath);
             var ex = await Assert.ThrowsAsync<AggregateException>(async () => await languageWorkerChannelManager.GetChannelAsync("test"));
             Assert.Contains("Process startup failed", ex.InnerException.Message);
+        }
+
+        private bool AreRequiredMetricsEmitted(TestMetricsLogger metricsLogger)
+        {
+            bool hasBegun = false;
+            bool hasEnded = false;
+            foreach (string begin in metricsLogger.EventsBegan)
+            {
+                if (begin.Contains(MetricEventNames.SpecializationShutdownStandbyChannels.Substring(0, MetricEventNames.SpecializationShutdownStandbyChannels.IndexOf('{'))))
+                {
+                    hasBegun = true;
+                    break;
+                }
+            }
+            foreach (string end in metricsLogger.EventsEnded)
+            {
+                if (end.Contains(MetricEventNames.SpecializationShutdownStandbyChannels.Substring(0, MetricEventNames.SpecializationShutdownStandbyChannels.IndexOf('{'))))
+                {
+                    hasEnded = true;
+                    break;
+                }
+            }
+            return hasBegun && hasEnded;
         }
 
         private ILanguageWorkerChannel CreateTestChannel(string language)

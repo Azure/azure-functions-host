@@ -313,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
                 };
 
-                return new FunctionMetadataProvider(_optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance);
+                return new FunctionMetadataProvider(_optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
             }
         }
 
