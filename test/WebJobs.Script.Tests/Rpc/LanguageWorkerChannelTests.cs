@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _workerChannel.SetupFunctionInvocationBuffers(functions);
             _workerChannel.SendFunctionLoadRequests();
             var traces = _logger.GetLogMessages();
-            var functionLoadLogs = traces.Where(m => m.FormattedMessage?.Contains(_expectedLoadMsg) ?? false);
+            var functionLoadLogs = traces.Where(m => m.FormattedMessage?.Contains(_expectedLoadMsgPartial) ?? false);
             var t = functionLoadLogs.Last<LogMessage>().FormattedMessage;
 
             // Make sure that disabled func shows up last
