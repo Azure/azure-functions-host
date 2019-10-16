@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     {
         private static string _expectedLogMsg = "Outbound event subscribe event handler invoked";
         private static string _expectedSystemLogMessage = "Random system log message";
-        private static string _expectedLoadMsg = "Sending FunctionLoadRequest for ";
+        private static string _expectedLoadMsgPartial = "Sending FunctionLoadRequest for ";
 
         private Mock<ILanguageWorkerProcess> _mockLanguageWorkerProcess = new Mock<ILanguageWorkerProcess>();
         private string _workerId = "testWorkerId";
