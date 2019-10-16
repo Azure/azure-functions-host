@@ -24,9 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IEventGenerator _eventGenerator;
         private readonly int _functionActivityFlushIntervalSeconds;
         private readonly Timer _metricsFlushTimer;
+        private readonly IEnvironment _environment;
         private readonly object _functionActivityTrackerLockObject = new object();
         private static string appName;
-        private static string subscriptionId;
         private bool _disposed;
         private IMetricsPublisher _metricsPublisher;
 
@@ -34,8 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             // we read these in the ctor (not static ctor) since it can change on the fly
             appName = GetNormalizedString(environment.GetAzureWebsiteUniqueSlotName());
-            subscriptionId = environment.GetSubscriptionId() ?? string.Empty;
-
+            _environment = environment;
             _eventGenerator = generator;
             _functionActivityFlushIntervalSeconds = functionActivityFlushIntervalSeconds;
             QueuedEvents = new ConcurrentDictionary<string, SystemMetricEvent>(StringComparer.OrdinalIgnoreCase);
@@ -201,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
 
                 _eventGenerator.LogFunctionDetailsEvent(
-                    appName,
+                    GetNormalizedString(_environment.GetAzureWebsiteUniqueSlotName()),
                     GetNormalizedString(function.Name),
                     function.Metadata != null ? SerializeBindings(function.Metadata.InputBindings) : GetNormalizedString(null),
                     function.Metadata != null ? SerializeBindings(function.Metadata.OutputBindings) : GetNormalizedString(null),
@@ -280,8 +279,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             foreach (SystemMetricEvent metricEvent in metricEvents)
             {
                 _eventGenerator.LogFunctionMetricEvent(
-                    subscriptionId,
-                    appName,
+                    _environment.GetSubscriptionId() ?? string.Empty,
+                    GetNormalizedString(_environment.GetAzureWebsiteUniqueSlotName()),
                     metricEvent.FunctionName ?? string.Empty,
                     metricEvent.EventName.ToLowerInvariant(),
                     metricEvent.Average,

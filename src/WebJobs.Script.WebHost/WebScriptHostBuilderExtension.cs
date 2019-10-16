@@ -68,17 +68,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 })
                 .ConfigureServices(services =>
                 {
-                    var webHostEnvironment = rootServiceProvider.GetService<IScriptWebHostEnvironment>();
-                    var environment = rootServiceProvider.GetService<IEnvironment>();
-                    if (FunctionsSyncManager.IsSyncTriggersEnvironment(webHostEnvironment, environment))
-                    {
-                        services.AddSingleton<IHostedService, FunctionsSyncService>();
-                    }
+                var webHostEnvironment = rootServiceProvider.GetService<IScriptWebHostEnvironment>();
+                var environment = rootServiceProvider.GetService<IEnvironment>();
+                if (FunctionsSyncManager.IsSyncTriggersEnvironment(webHostEnvironment, environment))
+                {
+                    services.AddSingleton<IHostedService, FunctionsSyncService>();
+                }
 
-                    services.AddSingleton<HttpRequestQueue>();
-                    services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
-                    services.AddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
-                    services.AddSingleton<IScriptJobHostEnvironment, WebScriptJobHostEnvironment>();
+                services.AddSingleton<HttpRequestQueue>();
+                services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
+                services.AddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
+                services.AddSingleton<IScriptJobHostEnvironment, WebScriptJobHostEnvironment>();
 
                     services.AddSingleton<DefaultScriptWebHookProvider>();
                     services.TryAddSingleton<IScriptWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
@@ -93,21 +93,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                     services.TryAddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
 
-                    // Make sure the registered IHostIdProvider is used
-                    IHostIdProvider provider = rootServiceProvider.GetService<IHostIdProvider>();
-                    if (provider != null)
-                    {
-                        services.AddSingleton<IHostIdProvider>(provider);
-                    }
+                // Make sure the registered IHostIdProvider is used
+                IHostIdProvider provider = rootServiceProvider.GetService<IHostIdProvider>();
+                if (provider != null)
+                {
+                    services.AddSingleton<IHostIdProvider>(provider);
+                }
 
-                    // Logging and diagnostics
-                    services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
-                    services.AddSingleton<IEventCollectorProvider, FunctionInstanceLogCollectorProvider>();
+                // Logging and diagnostics
+                services.AddSingleton<IMetricsLogger>(a => new WebHostMetricsLoggerDecorator(metricsLogger));
+                services.AddSingleton<IEventCollectorProvider, FunctionInstanceLogCollectorProvider>();
 
-                    // Hosted services
-                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
+                // Hosted services
+                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
 
-                    ConfigureRegisteredBuilders(services, rootServiceProvider);
+                ConfigureRegisteredBuilders(services, rootServiceProvider);
                 });
 
             var debugStateProvider = rootServiceProvider.GetService<IDebugStateProvider>();
