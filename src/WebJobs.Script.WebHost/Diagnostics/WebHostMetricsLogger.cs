@@ -14,8 +14,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly MetricsEventManager _metricsEventManager;
         private bool disposed = false;
 
-        public WebHostMetricsLogger(IOptionsMonitor<MetricsOptions> metricsOptions, IEventGenerator eventGenerator, IMetricsPublisher metricsPublisher)
-            : this(metricsOptions, eventGenerator, metricsPublisher, 5)
+        public WebHostMetricsLogger(IOptionsMonitor<AppServiceOptions> appServiceOptions, IEventGenerator eventGenerator, IMetricsPublisher metricsPublisher)
+            : this(appServiceOptions, eventGenerator, metricsPublisher, 5)
         {
         }
 
@@ -24,9 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _metricsEventManager = eventManager;
         }
 
-        protected WebHostMetricsLogger(IOptionsMonitor<MetricsOptions> metricsOptions, IEventGenerator eventGenerator, IMetricsPublisher metricsPublisher, int metricEventIntervalInSeconds)
+        protected WebHostMetricsLogger(IOptionsMonitor<AppServiceOptions> appServiceOptions, IEventGenerator eventGenerator, IMetricsPublisher metricsPublisher, int metricEventIntervalInSeconds)
         {
-            _metricsEventManager = new MetricsEventManager(metricsOptions, eventGenerator, metricEventIntervalInSeconds, metricsPublisher);
+            _metricsEventManager = new MetricsEventManager(appServiceOptions, eventGenerator, metricEventIntervalInSeconds, metricsPublisher);
         }
 
         public object BeginEvent(string eventName, string functionName = null, string data = null)

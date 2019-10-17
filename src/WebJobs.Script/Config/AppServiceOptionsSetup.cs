@@ -5,16 +5,16 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
-    internal class MetricsOptionsSetup : IConfigureOptions<MetricsOptions>
+    internal class AppServiceOptionsSetup : IConfigureOptions<AppServiceOptions>
     {
         private readonly IEnvironment _environment;
 
-        public MetricsOptionsSetup(IEnvironment environment)
+        public AppServiceOptionsSetup(IEnvironment environment)
         {
             _environment = environment;
         }
 
-        public void Configure(MetricsOptions options)
+        public void Configure(AppServiceOptions options)
         {
             options.AppName = _environment.GetAzureWebsiteUniqueSlotName() ?? string.Empty;
             options.SubscriptionId = _environment.GetSubscriptionId() ?? string.Empty;

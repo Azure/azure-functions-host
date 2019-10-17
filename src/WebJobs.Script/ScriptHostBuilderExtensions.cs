@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static void AddCommonServices(IServiceCollection services)
         {
-            services.ConfigureOptions<MetricsOptionsSetup>();
+            services.ConfigureOptions<AppServiceOptionsSetup>();
 
             // The scope for these services is beyond a single host instance.
             // They are not recreated for each new host instance, so you have

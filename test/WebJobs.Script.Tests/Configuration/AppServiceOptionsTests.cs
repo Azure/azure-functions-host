@@ -10,10 +10,10 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
-    public class MetricsOptionsTests
+    public class AppServiceOptionsTests
     {
         [Fact]
-        public void MetricsOptions_ReloadedOnSpecialization()
+        public void AppServiceOptions_ReloadedOnSpecialization()
         {
             var env = new TestEnvironment();
             var token = new TestChangeTokenSource<StandbyOptions>();
@@ -23,13 +23,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 .ConfigureServices(s =>
                 {
                     s.AddSingleton<IEnvironment>(env);
-                    s.ConfigureOptions<MetricsOptionsSetup>();
-                    s.AddSingleton<IOptionsChangeTokenSource<MetricsOptions>, MetricsOptionsChangeTokenSource>();
+                    s.ConfigureOptions<AppServiceOptionsSetup>();
+                    s.AddSingleton<IOptionsChangeTokenSource<AppServiceOptions>, AppServiceOptionsChangeTokenSource>();
                     s.AddSingleton<IOptionsChangeTokenSource<StandbyOptions>>(token);
                 })
                 .Build();
 
-            var options = host.Services.GetService<IOptionsMonitor<MetricsOptions>>();
+            var options = host.Services.GetService<IOptionsMonitor<AppServiceOptions>>();
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "blah");
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName, "blah");
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteOwnerName, "blahh+1234");

@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
-    public class MetricsOptions
+    public class AppServiceOptions
     {
         public string AppName { get; set; }
 

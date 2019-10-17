@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
             services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
-            services.AddSingleton<IOptionsChangeTokenSource<MetricsOptions>, MetricsOptionsChangeTokenSource>();
+            services.AddSingleton<IOptionsChangeTokenSource<AppServiceOptions>, AppServiceOptionsChangeTokenSource>();
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
