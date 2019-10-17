@@ -131,9 +131,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded.ElementAt(0);
             Assert.Same(startedEvent, completedStartEvent);
             Assert.True(completedStartEvent.Success);
+            Assert.Equal(startedEvent.FunctionName, "TestFunction");
 
             // verify invoke failed event
-            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e == MetricEventNames.FunctionInvokeSucceeded)));
+            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e == $"{MetricEventNames.FunctionInvokeSucceeded}_testfunction")));
 
             // verify latency event
             var startLatencyEvent = _metricsLogger.EventsBegan.ElementAt(0);
@@ -188,9 +189,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var completedStartEvent = (FunctionStartedEvent)_metricsLogger.MetricEventsEnded.ElementAt(0);
             Assert.Same(startedEvent, completedStartEvent);
             Assert.False(completedStartEvent.Success);
+            Assert.Equal(startedEvent.FunctionName, "TestFunction");
 
             // verify invoke failed event
-            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e == MetricEventNames.FunctionInvokeFailed)));
+
+            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e == $"{MetricEventNames.FunctionInvokeFailed}_testfunction")));
 
             // verify latency event
             var startLatencyEvent = _metricsLogger.EventsBegan.ElementAt(0);
