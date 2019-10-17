@@ -8,10 +8,12 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
@@ -24,17 +26,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IEventGenerator _eventGenerator;
         private readonly int _functionActivityFlushIntervalSeconds;
         private readonly Timer _metricsFlushTimer;
-        private readonly IEnvironment _environment;
         private readonly object _functionActivityTrackerLockObject = new object();
-        private static string appName;
         private bool _disposed;
         private IMetricsPublisher _metricsPublisher;
+        private IOptionsMonitor<MetricsOptions> _metricsOptions;
 
-        public MetricsEventManager(IEnvironment environment, IEventGenerator generator, int functionActivityFlushIntervalSeconds, IMetricsPublisher metricsPublisher, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
+        public MetricsEventManager(IOptionsMonitor<MetricsOptions> metricsOptions, IEventGenerator generator, int functionActivityFlushIntervalSeconds, IMetricsPublisher metricsPublisher, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
         {
             // we read these in the ctor (not static ctor) since it can change on the fly
-            appName = GetNormalizedString(environment.GetAzureWebsiteUniqueSlotName());
-            _environment = environment;
+            _metricsOptions = metricsOptions;
             _eventGenerator = generator;
             _functionActivityFlushIntervalSeconds = functionActivityFlushIntervalSeconds;
             QueuedEvents = new ConcurrentDictionary<string, SystemMetricEvent>(StringComparer.OrdinalIgnoreCase);
@@ -162,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 if (instance == null)
                 {
-                    instance = new FunctionActivityTracker(_eventGenerator, _metricsPublisher, _functionActivityFlushIntervalSeconds);
+                    instance = new FunctionActivityTracker(_metricsOptions, _eventGenerator, _metricsPublisher, _functionActivityFlushIntervalSeconds);
                 }
                 instance.FunctionStarted(startedEvent);
             }
@@ -200,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
 
                 _eventGenerator.LogFunctionDetailsEvent(
-                    GetNormalizedString(_environment.GetAzureWebsiteUniqueSlotName()),
+                    _metricsOptions.CurrentValue.AppName,
                     GetNormalizedString(function.Name),
                     function.Metadata != null ? SerializeBindings(function.Metadata.InputBindings) : GetNormalizedString(null),
                     function.Metadata != null ? SerializeBindings(function.Metadata.OutputBindings) : GetNormalizedString(null),
@@ -279,8 +279,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             foreach (SystemMetricEvent metricEvent in metricEvents)
             {
                 _eventGenerator.LogFunctionMetricEvent(
-                    _environment.GetSubscriptionId() ?? string.Empty,
-                    GetNormalizedString(_environment.GetAzureWebsiteUniqueSlotName()),
+                    _metricsOptions.CurrentValue.SubscriptionId,
+                    _metricsOptions.CurrentValue.AppName,
                     metricEvent.FunctionName ?? string.Empty,
                     metricEvent.EventName.ToLowerInvariant(),
                     metricEvent.Average,
@@ -329,11 +329,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             private ConcurrentQueue<FunctionMetrics> _functionMetricsQueue = new ConcurrentQueue<FunctionMetrics>();
             private Dictionary<string, RunningFunctionInfo> _runningFunctions = new Dictionary<string, RunningFunctionInfo>();
             private bool _disposed = false;
+            private IOptionsMonitor<MetricsOptions> _metricsOptions;
             private IMetricsPublisher _metricsPublisher;
 
-            internal FunctionActivityTracker(IEventGenerator generator, IMetricsPublisher metricsPublisher, int functionActivityFlushInterval)
+            internal FunctionActivityTracker(IOptionsMonitor<MetricsOptions> metricsOptions, IEventGenerator generator, IMetricsPublisher metricsPublisher, int functionActivityFlushInterval)
             {
                 MetricsEventGenerator = generator;
+                _metricsOptions = metricsOptions;
                 _functionActivityFlushInterval = functionActivityFlushInterval;
                 _metricsPublisher = metricsPublisher;
                 Task.Run(
@@ -476,7 +478,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 MetricsEventGenerator.LogFunctionExecutionEvent(
                     _executionId,
-                    appName,
+                    _metricsOptions.CurrentValue.AppName,
                     concurrency,
                     runningFunctionInfo.Name,
                     runningFunctionInfo.InvocationId.ToString(),
@@ -521,7 +523,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 foreach (var functionEvent in aggregatedEventsPerFunction)
                 {
-                    MetricsEventGenerator.LogFunctionExecutionAggregateEvent(appName, functionEvent.FunctionName, (long)functionEvent.TotalExectionTimeInMs, (long)functionEvent.StartedCount, (long)functionEvent.SucceededCount, (long)functionEvent.FailedCount);
+                    MetricsEventGenerator.LogFunctionExecutionAggregateEvent(_metricsOptions.CurrentValue.AppName, functionEvent.FunctionName, (long)functionEvent.TotalExectionTimeInMs, (long)functionEvent.StartedCount, (long)functionEvent.SucceededCount, (long)functionEvent.FailedCount);
                 }
             }
 
