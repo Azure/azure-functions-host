@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
     {
         private static string _expectedLogMsg = "Outbound event subscribe event handler invoked";
         private static string _expectedSystemLogMessage = "Random system log message";
+        private static string _expectedLoadMsgPartial = "Sending FunctionLoadRequest for ";
 
         private Mock<ILanguageWorkerProcess> _mockLanguageWorkerProcess = new Mock<ILanguageWorkerProcess>();
         private string _workerId = "testWorkerId";
@@ -168,6 +169,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
+        public void SendLoadRequests_PublishesOutboundEvents_OrdersDisabled()
+        {
+            var funcName = "ADisabledFunc";
+            var functions = GetTestFunctionsList_WithDisabled("node", funcName);
+
+            // Make sure disabled func is input as first
+            Assert.True(functions.First().Name == funcName);
+
+            _workerChannel.SetupFunctionInvocationBuffers(functions);
+            _workerChannel.SendFunctionLoadRequests();
+            var traces = _logger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => m.FormattedMessage?.Contains(_expectedLoadMsgPartial) ?? false);
+            var t = functionLoadLogs.Last<LogMessage>().FormattedMessage;
+
+            // Make sure that disabled func shows up last
+            Assert.True(functionLoadLogs.Last<LogMessage>().FormattedMessage.Contains(funcName));
+            Assert.False(functionLoadLogs.First<LogMessage>().FormattedMessage.Contains(funcName));
+            Assert.True(functionLoadLogs.Count() == 3);
+        }
+
+        [Fact]
         public void SendSendFunctionEnvironmentReloadRequest_PublishesOutboundEvents()
         {
             Environment.SetEnvironmentVariable("TestNull", null);
@@ -259,6 +281,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                      FunctionId = "TestFunctionId2"
                 }
             };
+        }
+
+        private IEnumerable<FunctionMetadata> GetTestFunctionsList_WithDisabled(string runtime, string funcName)
+        {
+            var disabledList = new List<FunctionMetadata>()
+            {
+                new FunctionMetadata()
+                {
+                    Language = runtime,
+                    Name = funcName,
+                    FunctionId = "DisabledFunctionId1",
+                    IsDisabled = true
+                }
+            };
+
+            return disabledList.Union(GetTestFunctionsList(runtime));
         }
 
         private bool AreExpectedMetricsGenerated()
