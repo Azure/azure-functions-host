@@ -211,6 +211,15 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
+        public async Task TerminateAsync()
+        {
+            IEnumerable<ILanguageWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync();
+            foreach (ILanguageWorkerChannel workerChannel in workerChannels)
+            {
+                await workerChannel.DrainInvocationsAsync();
+            }
+        }
+
         public async Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
             try

@@ -47,6 +47,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
+        public async Task TerminateTests()
+        {
+            int expectedProcessCount = 2;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(LanguageWorkerConstants.NodeLanguageWorkerName));
+
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+
+            for (int restartCount = 0; restartCount < expectedProcessCount * 3; restartCount++)
+            {
+                foreach (var currChannel in functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels())
+                {
+                    var convertedChannel = (TestLanguageWorkerChannel)currChannel;
+                    convertedChannel.Cache.Add(1);
+                }
+            }
+            await functionDispatcher.TerminateAsync();
+            for (int restartCount = 0; restartCount < expectedProcessCount * 3; restartCount++)
+            {
+                foreach (var currChannel in functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels())
+                {
+                    Assert.True(((TestLanguageWorkerChannel)currChannel).Cache.Count == 0);
+                }
+            }
+        }
+
+        [Fact]
         public void MaxProcessCount_Returns_Default()
         {
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher();

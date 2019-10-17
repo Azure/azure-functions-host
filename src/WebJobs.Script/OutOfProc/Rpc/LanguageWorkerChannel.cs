@@ -480,5 +480,13 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             return !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(LanguageWorkerConstants.RpcHttpTriggerMetadataRemoved));
         }
+
+        public async Task DrainInvocationsAsync()
+        {
+            foreach (ScriptInvocationContext currContext in _executingInvocations.Values)
+            {
+                await currContext.ResultSource.Task;
+            }
+        }
     }
 }

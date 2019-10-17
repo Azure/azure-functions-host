@@ -171,5 +171,10 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             _disposing = true;
             Dispose(true);
         }
+
+        public Task TerminateAsync()
+        {
+            return Task.CompletedTask;
+        }
     }
 }

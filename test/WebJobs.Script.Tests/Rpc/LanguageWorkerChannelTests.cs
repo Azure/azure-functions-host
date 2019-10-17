@@ -159,6 +159,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
+        public async Task Drain_Verify()
+        {
+            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+            Guid invocationId = Guid.NewGuid();
+            LanguageWorkerChannel channel = new LanguageWorkerChannel(
+               _workerId,
+               _scriptRootPath,
+               _eventManager,
+               _testWorkerConfig,
+               _mockLanguageWorkerProcess.Object,
+               _logger,
+               _metricsLogger,
+               0);
+            channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            ScriptInvocationContext scriptInvocationContext = new ScriptInvocationContext()
+            {
+                FunctionMetadata = GetTestFunctionsList("node").FirstOrDefault(),
+                ExecutionContext = new ExecutionContext()
+                {
+                    InvocationId = invocationId,
+                    FunctionName = "js1",
+                    FunctionAppDirectory = _scriptRootPath,
+                    FunctionDirectory = _scriptRootPath
+                },
+                BindingData = new Dictionary<string, object>(),
+                Inputs = new List<(string name, DataType type, object val)>(),
+                ResultSource = resultSource
+            };
+            channel.SendInvocationRequest(scriptInvocationContext);
+            Task result = channel.DrainInvocationsAsync();
+            Assert.NotEqual(result.Status, TaskStatus.RanToCompletion);
+            channel.InvokeResponse(new InvocationResponse
+            {
+                InvocationId = invocationId.ToString(),
+                Result = new StatusResult
+                {
+                    Status = StatusResult.Types.Status.Success
+                },
+            });
+            await result;
+            Assert.Equal(result.Status, TaskStatus.RanToCompletion);
+        }
+
+        [Fact]
         public void SendLoadRequests_PublishesOutboundEvents()
         {
             _metricsLogger.ClearCollections();
