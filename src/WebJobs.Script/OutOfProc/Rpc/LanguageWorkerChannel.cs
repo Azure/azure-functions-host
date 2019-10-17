@@ -190,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             if (_functions != null)
             {
-                foreach (FunctionMetadata metadata in _functions)
+                foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled))
                 {
                     SendFunctionLoadRequest(metadata);
                 }
