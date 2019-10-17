@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockMetricsPublisher = new Mock<IMetricsPublisher>();
             var testMetricsOptions = new Mock<IOptionsMonitor<MetricsOptions>>();
             testMetricsOptions.Setup(a => a.CurrentValue).Returns(new MetricsOptions { AppName = "RandomAppName", SubscriptionId = Guid.NewGuid().ToString() });
-            _metricsEventManager = new MetricsEventManager(new Mock<IOptionsMonitor<MetricsOptions>>().Object, mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000, mockMetricsPublisher.Object);
+            _metricsEventManager = new MetricsEventManager(testMetricsOptions.Object, mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000, mockMetricsPublisher.Object);
             _metricsLogger = new WebHostMetricsLogger(_metricsEventManager);
         }
 
@@ -389,7 +389,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             int flushInterval = 10;
             Mock<IEventGenerator> mockGenerator = new Mock<IEventGenerator>();
-            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(new TestEnvironment(), mockGenerator.Object, flushInterval, null, flushInterval) { CallBase = true };
+            var testMetricsOptions = new Mock<IOptionsMonitor<MetricsOptions>>();
+            testMetricsOptions.Setup(a => a.CurrentValue).Returns(new MetricsOptions { AppName = "RandomAppName", SubscriptionId = Guid.NewGuid().ToString() });
+            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(testMetricsOptions.Object, mockGenerator.Object, flushInterval, null, flushInterval) { CallBase = true };
             MetricsEventManager eventManager = mockEventManager.Object;
 
             int numFlushes = 0;
