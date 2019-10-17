@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -42,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private int _hostStartCount;
         private bool _disposed = false;
 
+        private static IDisposable _telemetryConfiguration;
         private static IDisposable _requestTrackingModule;
 
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory, IServiceProvider rootServiceProvider,
@@ -329,6 +331,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             _requestTrackingModule?.Dispose();
             _requestTrackingModule = null;
+
+            _telemetryConfiguration?.Dispose();
+            _telemetryConfiguration = null;
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
@@ -592,8 +597,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
             };
 
-            module.Initialize(null);
+            var telemetryConfig = new TelemetryConfiguration();
 
+            module.Initialize(telemetryConfig);
+
+            _telemetryConfiguration = telemetryConfig;
             _requestTrackingModule = module;
         }
 
