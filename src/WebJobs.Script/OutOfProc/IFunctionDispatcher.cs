@@ -16,6 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         Task InitializeAsync(IEnumerable<FunctionMetadata> functions);
 
-        Task TerminateAsync();
+        Task ShutdownAsync();
     }
 }

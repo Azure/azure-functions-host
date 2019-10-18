@@ -172,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             Dispose(true);
         }
 
-        public Task TerminateAsync()
+        public Task ShutdownAsync()
         {
             return Task.CompletedTask;
         }

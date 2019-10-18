@@ -211,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public async Task TerminateAsync()
+        public async Task ShutdownAsync()
         {
             IEnumerable<ILanguageWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync();
             foreach (ILanguageWorkerChannel workerChannel in workerChannels)
