@@ -11,7 +11,6 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
@@ -61,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly string _instanceId;
         private readonly IEnvironment _environment;
+        private static readonly int _processId = Process.GetCurrentProcess().Id;
 
         private IPrimaryHostStateProvider _primaryHostStateProvider;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
@@ -289,22 +289,16 @@ namespace Microsoft.Azure.WebJobs.Script
 
             string extensionVersion = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion);
             string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
-            _logger.StartingHost(hostId, InstanceId, Version, InDebugMode, InDiagnosticMode, extensionVersion);
+            _logger.StartingHost(hostId, InstanceId, Version, _processId, AppDomain.CurrentDomain.Id, InDebugMode, InDiagnosticMode, extensionVersion);
         }
 
         private void LogHostFunctionErrors()
         {
-            if (FunctionErrors.Count > 0)
+            // Split these into individual logs so we can include the functionName.
+            foreach (var error in FunctionErrors)
             {
-                var builder = new StringBuilder();
-                builder.AppendLine(string.Format(CultureInfo.InvariantCulture, "The following {0} functions are in error:", FunctionErrors.Count));
-                foreach (var error in FunctionErrors)
-                {
-                    string functionErrors = string.Join(Environment.NewLine, error.Value);
-                    builder.AppendLine(string.Format(CultureInfo.InvariantCulture, "{0}: {1}", error.Key, functionErrors));
-                }
-                string message = builder.ToString();
-                _logger.FunctionsErrors(message);
+                string functionErrors = string.Join(Environment.NewLine, error.Value);
+                _logger.FunctionError(error.Key, functionErrors);
             }
         }
 

@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     /// <summary>
     /// Provides a logger for writing Worker and Function logs to specific files.
     /// </summary>
-    internal class FunctionFileLoggerProvider : ILoggerProvider
+    internal class FunctionFileLoggerProvider : ILoggerProvider, ISupportExternalScope
     {
         private readonly ConcurrentDictionary<string, FileWriter> _fileWriterCache = new ConcurrentDictionary<string, FileWriter>(StringComparer.OrdinalIgnoreCase);
         private readonly Func<bool> _isFileLoggingEnabled;
@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         private readonly string _hostInstanceId;
         private static readonly Regex _workerCategoryRegex = new Regex(@"^Worker\.[^\s]+\.[^\s]+");
 
+        private IExternalScopeProvider _scopeProvider;
         private bool _disposed = false;
 
         public FunctionFileLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IFileLoggingStatusManager fileLoggingStatusManager,
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
                 // Make sure that we return the same fileWriter if multiple loggers write to the same path. This happens
                 // with Function logs as Function.{FunctionName} and Function.{FunctionName}.User both go to the same file.
                 FileWriter fileWriter = _fileWriterCache.GetOrAdd(filePath, (p) => new FileWriter(Path.Combine(_roogLogPath, filePath)));
-                return new FileLogger(categoryName, fileWriter, _isFileLoggingEnabled, _isPrimary, LogType.Function);
+                return new FileLogger(categoryName, fileWriter, _isFileLoggingEnabled, _isPrimary, LogType.Function, _scopeProvider);
             }
 
             // If it's not a supported category, we won't log anything from this provider.
@@ -71,6 +72,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             }
 
             return filePath;
+        }
+
+        public void SetScopeProvider(IExternalScopeProvider scopeProvider)
+        {
+            _scopeProvider = scopeProvider;
         }
 
         public void Dispose()

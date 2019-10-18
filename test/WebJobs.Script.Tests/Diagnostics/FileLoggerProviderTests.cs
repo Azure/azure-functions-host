@@ -4,6 +4,7 @@
 using System.IO;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -34,6 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
             using (var provider = new FunctionFileLoggerProvider(new OptionsWrapper<ScriptJobHostOptions>(options), fileStatus.Object, primaryStatus.Object))
             {
+                provider.SetScopeProvider(new LoggerExternalScopeProvider());
+
                 provider.CreateLogger(LogCategories.CreateFunctionCategory("Test1"));
                 provider.CreateLogger(LogCategories.CreateFunctionUserCategory("Test1"));
                 provider.CreateLogger(LogCategories.CreateFunctionCategory("Test1"));
