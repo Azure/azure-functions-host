@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IHostIdProvider _hostIdProvider;
+        private readonly IHttpRoutesManager _httpRoutesManager;
         private readonly IProxyMetadataManager _proxyMetadataManager;
         private readonly IEnumerable<WorkerConfig> _workerConfigs;
         private readonly IMetricsLogger _metricsLogger = null;
@@ -80,7 +81,6 @@ namespace Microsoft.Azure.WebJobs.Script
             IJobHostContextFactory jobHostContextFactory,
             IConfiguration configuration,
             IDistributedLockManager distributedLockManager,
-            IScriptHostManager scriptHostManager,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IFunctionDispatcher functionDispatcher,
@@ -95,6 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IPrimaryHostStateProvider primaryHostStateProvider,
             IJobHostMetadataProvider metadataProvider,
             IHostIdProvider hostIdProvider,
+            IHttpRoutesManager httpRoutesManager,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -109,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _distributedLockManager = distributedLockManager;
             _functionMetadataManager = functionMetadataManager;
             _hostIdProvider = hostIdProvider;
+            _httpRoutesManager = httpRoutesManager;
             _proxyMetadataManager = proxyMetadataManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             ScriptOptions = scriptHostOptions.Value;
@@ -844,6 +846,8 @@ namespace Microsoft.Azure.WebJobs.Script
         protected override void OnHostInitialized()
         {
             ApplyJobHostMetadata();
+
+            _httpRoutesManager.InitializeHttpFunctionRoutes(this);
 
             _logger.ScriptHostInitialized(_stopwatch.ElapsedMilliseconds);
 
