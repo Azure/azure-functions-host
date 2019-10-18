@@ -294,9 +294,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/warmup")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         [RequiresRunningHost]
-        public async Task<IActionResult> Warmup([FromServices] IScriptJobHost scriptHost)
+        public async Task<IActionResult> Warmup([FromServices] WebJobsScriptHostService hostService)
         {
-            await scriptHost.TryInvokeWarmupAsync();
+            var jobHost = hostService.Services?.GetService<IScriptJobHost>();
+            if (jobHost == null)
+            {
+                _logger.LogError($"No active host available.");
+                return StatusCode(503);
+            }
+
+            await jobHost.TryInvokeWarmupAsync();
             return Ok();
         }
 
