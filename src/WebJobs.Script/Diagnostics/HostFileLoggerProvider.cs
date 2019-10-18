@@ -11,12 +11,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     /// <summary>
     /// Provides a logger for writing all host logs to a single Host file.
     /// </summary>
-    internal class HostFileLoggerProvider : ILoggerProvider
+    internal class HostFileLoggerProvider : ILoggerProvider, ISupportExternalScope
     {
         private readonly FileWriter _writer;
         private readonly Func<bool> _isFileLoggingEnabled;
 
         private bool _disposed = false;
+        private IExternalScopeProvider _scopeProvider;
 
         public HostFileLoggerProvider(IOptions<ScriptJobHostOptions> options, IFileLoggingStatusManager fileLoggingStatusManager)
         {
@@ -26,7 +27,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         public ILogger CreateLogger(string categoryName)
         {
-            return new FileLogger(categoryName, _writer, _isFileLoggingEnabled, () => true, LogType.Host);
+            return new FileLogger(categoryName, _writer, _isFileLoggingEnabled, () => true, LogType.Host, _scopeProvider);
+        }
+
+        public void SetScopeProvider(IExternalScopeProvider scopeProvider)
+        {
+            _scopeProvider = scopeProvider;
         }
 
         public void Dispose()

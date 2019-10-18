@@ -22,21 +22,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly LogLevel _logLevel;
         private readonly IDebugStateProvider _debugStateProvider;
         private readonly IScriptEventManager _eventManager;
+        private readonly IExternalScopeProvider _scopeProvider;
 
-        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider, IScriptEventManager eventManager)
+        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment,
+            IDebugStateProvider debugStateProvider, IScriptEventManager eventManager, IExternalScopeProvider scopeProvider)
         {
             _environment = environment;
             _eventGenerator = eventGenerator;
             _categoryName = categoryName ?? string.Empty;
             _logLevel = LogLevel.Debug;
-            _functionName = LogCategories.IsFunctionCategory(_categoryName) ? _categoryName.Split('.')[1] : string.Empty;
+            _functionName = LogCategories.IsFunctionCategory(_categoryName) ? _categoryName.Split('.')[1] : null;
             _isUserFunction = LogCategories.IsFunctionUserCategory(_categoryName);
             _hostInstanceId = hostInstanceId;
             _debugStateProvider = debugStateProvider;
             _eventManager = eventManager;
+            _scopeProvider = scopeProvider;
         }
 
-        public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope.Push(state);
+        public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
 
         public bool IsEnabled(LogLevel logLevel)
         {
@@ -63,7 +66,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
             // propagate special exceptions through the EventManager
-            string source = _categoryName ?? Utility.GetValueFromState(state, ScriptConstants.LogPropertySourceKey);
+            var stateProps = state as IEnumerable<KeyValuePair<string, object>> ?? new Dictionary<string, object>();
+
+            string source = _categoryName ?? Utility.GetStateValueOrDefault<string>(stateProps, ScriptConstants.LogPropertySourceKey);
             if (exception is FunctionIndexingException && _eventManager != null)
             {
                 _eventManager.Publish(new FunctionIndexingEvent("FunctionIndexingException", source, exception));
@@ -83,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            IDictionary<string, object> scopeProps = DictionaryLoggerScope.GetMergedStateDictionary() ?? new Dictionary<string, object>();
+            IDictionary<string, object> scopeProps = _scopeProvider.GetScopeDictionary();
 
             // Apply standard event properties
             // Note: we must be sure to default any null values to empty string
@@ -93,11 +98,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string summary = Sanitizer.Sanitize(formattedMessage) ?? string.Empty;
             string innerExceptionType = string.Empty;
             string innerExceptionMessage = string.Empty;
-            string functionName = _functionName;
-            string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : Utility.GetValueFromState(state, ScriptConstants.LogPropertyEventNameKey);
+            string functionName = _functionName ?? Utility.ResolveFunctionName(stateProps, scopeProps) ?? string.Empty;
+            string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : Utility.GetStateValueOrDefault<string>(stateProps, ScriptConstants.LogPropertyEventNameKey) ?? string.Empty;
             string functionInvocationId = Utility.GetValueFromScope(scopeProps, ScriptConstants.LogPropertyFunctionInvocationIdKey) ?? string.Empty;
             string hostInstanceId = _hostInstanceId;
-            string activityId = Utility.GetValueFromState(state, ScriptConstants.LogPropertyActivityIdKey);
+            string activityId = Utility.GetStateValueOrDefault<string>(stateProps, ScriptConstants.LogPropertyActivityIdKey) ?? string.Empty;
             string runtimeSiteName = _environment.GetRuntimeSiteName() ?? string.Empty;
 
             // Populate details from the exception.

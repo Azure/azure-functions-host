@@ -14,6 +14,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Logging;
@@ -34,6 +35,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
+        private static readonly string[] _allowedFunctionNameKeys = new[]
+        {
+            "functionName",
+            LogConstants.NameKey,
+            ScopeKeys.FunctionName
+        };
+
         private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.DotNetAssembly };
 
         internal static async Task InvokeWithRetriesAsync(Action action, int maxRetries, TimeSpan retryInterval)
@@ -397,14 +405,16 @@ namespace Microsoft.Azure.WebJobs.Script
             return (TValue)kvps.Last().Value;
         }
 
-        public static string GetValueFromState<TState>(TState state, string key)
+        public static string ResolveFunctionName(IEnumerable<KeyValuePair<string, object>> stateProps, IDictionary<string, object> scopeProps)
         {
-            string value = string.Empty;
-            if (state is IEnumerable<KeyValuePair<string, object>> stateDict)
-            {
-                value = GetStateValueOrDefault<string>(stateDict, key) ?? string.Empty;
-            }
-            return value;
+            // State wins, then scope. To find function name, we'll look for any of these values.
+            // "last" wins with state values, so reverse it.
+            var firstKvp = stateProps
+                .Reverse()
+                .Concat(scopeProps)
+                .FirstOrDefault(p => _allowedFunctionNameKeys.Contains(p.Key));
+
+            return firstKvp.Value?.ToString();
         }
 
         public static string GetValueFromScope(IDictionary<string, object> scopeProperties, string key)

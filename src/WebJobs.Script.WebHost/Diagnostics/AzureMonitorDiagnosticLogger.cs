@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Logging;
@@ -62,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             (string exceptionType, string exceptionMessage, string exceptionDetails) = exception.GetExceptionDetails();
 
             var scopeProps = _scopeProvider.GetScopeDictionary();
+            var stateProps = state as IEnumerable<KeyValuePair<string, object>> ?? new Dictionary<string, object>();
 
             // Build up a JSON string for the Azure Monitor 'properties' bag
             StringWriter sw = new StringWriter();
@@ -72,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 WritePropertyIfNotNull(writer, "category", _category);
                 WritePropertyIfNotNull(writer, "hostVersion", _hostVersion);
                 WritePropertyIfNotNull(writer, "functionInvocationId", Utility.GetValueFromScope(scopeProps, ScopeKeys.FunctionInvocationId));
-                WritePropertyIfNotNull(writer, "functionName", Utility.GetValueFromScope(scopeProps, ScopeKeys.FunctionName));
+                WritePropertyIfNotNull(writer, "functionName", Utility.ResolveFunctionName(stateProps, scopeProps));
                 WritePropertyIfNotNull(writer, "hostInstanceId", _hostInstanceId);
                 WritePropertyIfNotNull(writer, "activityId", Utility.GetValueFromScope(scopeProps, ScriptConstants.LogPropertyActivityIdKey));
                 WritePropertyIfNotNull(writer, "level", logLevel.ToString());
