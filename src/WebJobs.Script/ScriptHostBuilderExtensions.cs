@@ -22,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
@@ -134,6 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
                 services.AddSingleton<ScriptSettingsManager>();
                 services.AddTransient<IExtensionsManager, ExtensionsManager>();
+                services.TryAddSingleton<IHttpRoutesManager, DefaultHttpRouteManager>();
                 services.TryAddSingleton<IMetricsLogger, MetricsLogger>();
                 services.TryAddSingleton<IScriptJobHostEnvironment, ConsoleScriptJobHostEnvironment>();
                 services.AddTransient<IExtensionBundleContentProvider, ExtensionBundleContentProvider>();
