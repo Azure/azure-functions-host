@@ -483,6 +483,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public async Task DrainInvocationsAsync()
         {
+            _workerChannelLogger.LogDebug($"Count of in-buffer invocations waiting to be drained out: {_executingInvocations.Count}");
             foreach (ScriptInvocationContext currContext in _executingInvocations.Values)
             {
                 await currContext.ResultSource.Task;

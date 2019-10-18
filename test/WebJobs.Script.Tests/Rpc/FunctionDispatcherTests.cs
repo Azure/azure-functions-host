@@ -52,13 +52,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             int expectedProcessCount = 2;
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
             await functionDispatcher.InitializeAsync(GetTestFunctionsList(LanguageWorkerConstants.NodeLanguageWorkerName));
-
             await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
 
             foreach (var currChannel in functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels())
             {
                 var initializedChannel = (TestLanguageWorkerChannel)currChannel;
-                initializedChannel.ExecutionContexts.Add(1);
+                initializedChannel.ExecutionContexts.Add(Task.Factory.StartNew(() => { }));
             }
 
             await functionDispatcher.ShutdownAsync();
