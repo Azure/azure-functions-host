@@ -58,13 +58,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             foreach (var currChannel in functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels())
             {
                 var initializedChannel = (TestLanguageWorkerChannel)currChannel;
-                initializedChannel.Cache.Add(1);
+                initializedChannel.ExecutionContexts.Add(1);
             }
 
             await functionDispatcher.ShutdownAsync();
             foreach (var currChannel in functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels())
             {
-                Assert.True(((TestLanguageWorkerChannel)currChannel).Cache.Count == 0);
+                Assert.True(((TestLanguageWorkerChannel)currChannel).ExecutionContexts.Count == 0);
             }
         }
 

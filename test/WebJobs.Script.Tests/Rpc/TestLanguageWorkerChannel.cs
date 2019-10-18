@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => throw new NotImplementedException();
 
-        public List<int> Cache => _executionContexts;
+        public List<int> ExecutionContexts => _executionContexts;
 
         public LanguageWorkerChannelState State => _state;
 
@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         public Task DrainInvocationsAsync()
         {
-            Cache.Clear();
+            ExecutionContexts.Clear();
             return Task.CompletedTask;
         }
     }
