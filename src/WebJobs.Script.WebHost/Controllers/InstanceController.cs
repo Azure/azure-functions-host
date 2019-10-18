@@ -71,5 +71,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             return Ok(_instanceManager.GetInstanceInfo());
         }
+
+        [HttpPost]
+        [Route("admin/instance/disable")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        public async Task<IActionResult> Disable([FromServices] IScriptHostManager hostManager)
+        {
+            _logger.LogDebug("Disabling container");
+            // Mark the container disabled. We check for this on host restart
+            await Utility.MarkContainerDisabled(_logger);
+            var tIgnore = Task.Run(() => hostManager.RestartHostAsync());
+            return Ok();
+        }
     }
 }
