@@ -37,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebJobsSecretStorageKeyVaultConnectionString = "AzureWebJobsSecretStorageKeyVaultConnectionString";
         public const string AzureWebsiteArmCacheEnabled = "WEBSITE_FUNCTIONS_ARMCACHE_ENABLED";
         public const string MountEnabled = "WEBSITE_MOUNT_ENABLED";
+        public const string UserDataMountEnabled = "WEBSITE_USER_DATA_MOUNT_ENABLED";
+        public const string UserDataHome = "USER_DATA_HOME";
         public const string MsiEndpoint = "MSI_ENDPOINT";
         public const string MsiSecret = "MSI_SECRET";
         public const string DotnetSkipFirstTimeExperience = "DOTNET_SKIP_FIRST_TIME_EXPERIENCE";

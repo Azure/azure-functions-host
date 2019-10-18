@@ -27,5 +27,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(expectedMsiEnabled, actualMsiEnabled);
             Assert.Equal(msiEndpoint, actualMsiEndpoint);
         }
+
+        [Theory]
+        [InlineData(null, false)]
+        [InlineData("0", false)]
+        [InlineData("1", true)]
+        [InlineData("abcd", false)]
+        public void Verifies_If_User_Data_Mount_Is_Enabled(string mountEnvVariable, bool isMountEnabled)
+        {
+            var hostAssignmentContext = new HostAssignmentContext {Environment = new Dictionary<string, string>()};
+            if (mountEnvVariable != null)
+            {
+                hostAssignmentContext.Environment[EnvironmentSettingNames.UserDataMountEnabled] = mountEnvVariable;
+            }
+
+            Assert.Equal(isMountEnabled, hostAssignmentContext.IsUserDataMountEnabled());
+        }
     }
 }
