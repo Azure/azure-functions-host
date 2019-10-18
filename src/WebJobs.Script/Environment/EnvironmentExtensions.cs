@@ -157,6 +157,16 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets a value indicating whether this specific linux consumption container instance is in offline mode.
+        /// </summary>
+        /// <param name="environment">The environment to verify</param>
+        /// <returns><see cref="true"/> if running in a Linux Consumption App Service app and the container is in draining mode; otherwise, false.</returns>
+        public static bool IsLinuxConsumptionContainerDisabled(this IEnvironment environment)
+        {
+            return environment.IsLinuxConsumption() && Utility.IsContainerDisabled();
+        }
+
+        /// <summary>
         /// Gets a value indicating whether the application is running in a Linux App Service
         /// environment (Dedicated Linux).
         /// </summary>
