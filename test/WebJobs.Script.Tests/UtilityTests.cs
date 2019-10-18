@@ -102,6 +102,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData("Function1", "Function1", "en-US", true)]
+        [InlineData("function1", "Function1", "en-US", true)]
+        [InlineData("Função", "FunçÃo", "pt-BR", true)]
+        [InlineData("HttptRIGGER", "Httptrigger", "ja-JP", true)]
+        [InlineData("Iasdf1", "iasdf1", "tr-TR", true)]
+        public void FunctionNamesMatch_ReturnsExpectedResult(string functionNameA, string functionNameB, string cultureInfo, bool expectMatch)
+        {
+            CultureInfo environmentCulture = Thread.CurrentThread.CurrentCulture;
+
+            try
+            {
+                Thread.CurrentThread.CurrentCulture = new CultureInfo(cultureInfo);
+                Assert.Equal(expectMatch, Utility.FunctionNamesMatch(functionNameA, functionNameB));
+            }
+            finally
+            {
+                Thread.CurrentThread.CurrentCulture = environmentCulture;
+            }
+        }
+
+        [Theory]
         [InlineData(1, null, null, null, "00:00:00")]
         [InlineData(2, null, null, null, "00:00:02")]
         [InlineData(3, null, null, null, "00:00:04")]

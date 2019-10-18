@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionMetadata = _functionMetadataProvider.GetFunctionMetadata(true)
-                .FirstOrDefault(metadata => metadata.Name == name);
+                .FirstOrDefault(metadata => Utility.FunctionNamesMatch(metadata.Name, name));
 
             if (functionMetadata != null)
             {
