@@ -272,6 +272,51 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 await MountCifs(assignmentContext.AzureFilesConnectionString, assignmentContext.AzureFilesContentShare, "/home");
             }
+
+            // Irrespective of deployment mechanism mount the share for user data files.
+            if (assignmentContext.IsUserDataMountEnabled())
+            {
+                if (!string.IsNullOrEmpty(assignmentContext.AzureFilesConnectionString) &&
+                    !string.IsNullOrEmpty(assignmentContext.AzureFilesContentShare))
+                {
+                    await MountUserData(assignmentContext);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        $"{EnvironmentSettingNames.AzureFilesConnectionString} or {EnvironmentSettingNames.AzureFilesContentShare} is empty. User data share will not be mounted");
+                }
+            }
+        }
+
+        private async Task MountUserData(HostAssignmentContext assignmentContext)
+        {
+            var userDataHome = _environment.GetEnvironmentVariable(EnvironmentSettingNames.UserDataHome);
+            if (!string.IsNullOrEmpty(userDataHome))
+            {
+                await Utility.InvokeWithRetriesAsync(async () =>
+                {
+                    try
+                    {
+                        using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationUserDataMount))
+                        {
+                            await MountCifs(assignmentContext.AzureFilesConnectionString,
+                                assignmentContext.AzureFilesContentShare, userDataHome);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        string error = $"Error mounting user data";
+                        _logger.LogError(e, error);
+                        throw;
+                    }
+                    _logger.LogInformation($"User data mounted successfully");
+                }, 1, TimeSpan.FromSeconds(0.5));
+            }
+            else
+            {
+                _logger.LogWarning($"{EnvironmentSettingNames.UserDataHome} is empty. User data share will not be mounted");
+            }
         }
 
         private async Task ApplyBlobPackageContext(RunFromPackageContext pkgContext, string targetPath)

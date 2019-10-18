@@ -72,6 +72,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             }
         }
 
+        public bool IsUserDataMountEnabled()
+        {
+            Environment.TryGetValue(EnvironmentSettingNames.UserDataMountEnabled, out var mountEnabled);
+            return !string.IsNullOrEmpty(mountEnabled) &&
+                   string.Equals(mountEnabled, "1", StringComparison.OrdinalIgnoreCase);
+        }
+
         public bool IsMSIEnabled(out string endpoint)
         {
             endpoint = null;
