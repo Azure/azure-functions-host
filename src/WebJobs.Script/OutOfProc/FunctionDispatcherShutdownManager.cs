@@ -3,10 +3,9 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Hosting;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Rpc
 {
     internal sealed class FunctionDispatcherShutdownManager : IHostedService
     {
