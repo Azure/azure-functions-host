@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             FunctionMetadata GetMetadataFromCollection(IEnumerable<FunctionMetadata> functions)
             {
-                return functions.FirstOrDefault(p => string.Equals(p.Name, functionName, StringComparison.OrdinalIgnoreCase));
+                return functions.FirstOrDefault(p => Utility.FunctionNamesMatch(p.Name, functionName));
             }
 
             return GetMetadataFromCollection(_metadataManager.Functions)
