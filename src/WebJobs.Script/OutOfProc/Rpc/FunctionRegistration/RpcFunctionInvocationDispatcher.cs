@@ -216,6 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             IEnumerable<ILanguageWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync();
             foreach (ILanguageWorkerChannel workerChannel in workerChannels)
             {
+                _logger.LogDebug($"Waiting for invocations of '{workerChannel.Id}' to drain");
                 await workerChannel.DrainInvocationsAsync();
             }
         }
