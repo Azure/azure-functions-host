@@ -47,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     configureWebJobs?.Invoke(webJobsBuilder);
 
                     ConfigureRegisteredBuilders(webJobsBuilder, rootServiceProvider);
+
+                    webJobsBuilder.Services.AddSingleton<IHttpRoutesManager, WebScriptHostHttpRoutesManager>();
                 })
                 .ConfigureAppConfiguration(configurationBuilder =>
                 {
@@ -96,7 +98,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.AddSingleton<IEventCollectorProvider, FunctionInstanceLogCollectorProvider>();
 
                     // Hosted services
-                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HttpInitializationService>());
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
 
                     ConfigureRegisteredBuilders(services, rootServiceProvider);

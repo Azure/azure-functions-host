@@ -42,7 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             expected.ExpectCollection<IHostedService>()
                 .Expect<JobHostService>("Microsoft.Azure.WebJobs.Hosting.OptionsLoggingService")
                 .Expect<PrimaryHostCoordinator>()
-                .Expect<HttpInitializationService>()
                 .Expect<FileMonitoringService>()
                 .Expect<LanguageWorkerConsoleLogService>()
                 .Optional<FunctionsScaleMonitorService>()
