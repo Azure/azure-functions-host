@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request)
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionMetadata = _functionMetadataProvider.GetFunctionMetadata().First(metadata => metadata.Name == name);
+            var functionMetadata = _functionMetadataProvider.GetFunctionMetadata(false).FirstOrDefault(metadata => metadata.Name == name);
             if (functionMetadata != null)
             {
                 string routePrefix = await GetRoutePrefix(hostOptions.RootScriptPath);
