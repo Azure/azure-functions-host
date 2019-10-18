@@ -17,17 +17,19 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         private readonly Func<bool> _isPrimary;
         private readonly string _categoryName;
         private readonly LogType _logType;
+        private readonly IExternalScopeProvider _scopeProvider;
 
-        public FileLogger(string categoryName, FileWriter fileWriter, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary, LogType logType)
+        public FileLogger(string categoryName, FileWriter fileWriter, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary, LogType logType, IExternalScopeProvider scopeProvider)
         {
             _fileWriter = fileWriter;
             _isFileLoggingEnabled = isFileLoggingEnabled;
             _isPrimary = isPrimary;
             _categoryName = categoryName;
             _logType = logType;
+            _scopeProvider = scopeProvider ?? throw new ArgumentNullException(nameof(scopeProvider));
         }
 
-        public IDisposable BeginScope<TState>(TState state) => DictionaryLoggerScope.Push(state);
+        public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
 
         public bool IsEnabled(LogLevel logLevel)
         {

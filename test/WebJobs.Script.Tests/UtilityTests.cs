@@ -10,6 +10,7 @@ using System.IO.Abstractions;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -449,6 +450,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(appOffline, checkAppOffline);
 
             FileUtility.Instance = null;
+        }
+
+        [Fact]
+        public void ResolveFunctionName_StateWins()
+        {
+            var state = new Dictionary<string, object>
+            {
+                { "functionName", "A" }
+            };
+
+            var scope = new Dictionary<string, object>
+            {
+                { ScopeKeys.FunctionName, "B" }
+            };
+
+            Assert.Equal("A", Utility.ResolveFunctionName(state, scope));
+        }
+
+        [Fact]
+        public void ResolveFunctionName_LastStateWins()
+        {
+            var state = new Dictionary<string, object>
+            {
+                { "functionName", "A" },
+                { LogConstants.NameKey, "C" },
+            };
+
+            var scope = new Dictionary<string, object>
+            {
+                { ScopeKeys.FunctionName, "B" }
+            };
+
+            Assert.Equal("C", Utility.ResolveFunctionName(state, scope));
+        }
+
+        [Fact]
+        public void ResolveFunctionName_Scope()
+        {
+            var state = new Dictionary<string, object>
+            {
+                { "notFunctionName", "A" },
+            };
+
+            var scope = new Dictionary<string, object>
+            {
+                { ScopeKeys.FunctionName, "B" }
+            };
+
+            Assert.Equal("B", Utility.ResolveFunctionName(state, scope));
         }
     }
 }

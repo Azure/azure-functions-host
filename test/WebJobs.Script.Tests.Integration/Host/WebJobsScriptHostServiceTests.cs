@@ -163,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 @"Information Generating 2 job function\(s\)",
                 "Host initialization: ConsecutiveErrors=0, StartupCount=1",
-                @"Information Starting Host \(HostId=(.*), InstanceId=(.*), Version=(.+), ProcessId=[0-9]+, AppDomainId=[0-9]+, InDebugMode=False, InDiagnosticMode=False, FunctionsExtensionVersion=\)",
+                @"Information Starting Host \(HostId=(.*), InstanceId=(.*), Version=(.+), ProcessId=[0-9]+, AppDomainId=[0-9]+, InDebugMode=False, InDiagnosticMode=False, FunctionsExtensionVersion=\(null\)\)",
                 "Information Found the following functions:",
                 "Information Job host started",
             };
@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             logs = _testHost.GetScriptHostLogMessages();
             foreach (string pattern in expectedPatternsScriptHost)
             {
-                Assert.True(logs.Any(p => Regex.IsMatch($"{p.Level} {p.FormattedMessage}", pattern)), $"Expected trace event {pattern} not found.");
+                Assert.True(logs.Any(p => Regex.IsMatch($"{p.Level} {p.FormattedMessage}", pattern)), $"Expected trace event {pattern} not found.{Environment.NewLine}{_testHost.GetLog()}");
             }
         }
 
