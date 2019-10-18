@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.IO.Abstractions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
@@ -104,6 +105,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName)).Returns(string.Empty);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns("LinuxContainer");
 
+            var fileSystem = new Mock<IFileSystem>();
+            fileSystem.Setup(f =>
+                    f.File.Exists(It.Is<string>(path => path.EndsWith(ScriptConstants.DisableContainerFileName))))
+                .Returns(false);
+            FileUtility.Instance = fileSystem.Object;
+
             _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer, _mockLanguageWorkerChannelManager.Object, _logger);
             await _rpcInitializationService.StartAsync(CancellationToken.None);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.PythonLanguageWorkerName), Times.Once);
@@ -111,6 +118,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
             await testRpcServer.ShutdownAsync();
+
+            FileUtility.Instance = null;
+        }
+
+        [Fact]
+        public async Task RpcInitializationService_Does_Not_Initialize_RpcServerAndChannels_LinuxConsumption_DisabledContainer()
+        {
+            IRpcServer testRpcServer = new TestRpcServer();
+            var mockEnvironment = new Mock<IEnvironment>();
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns("LinuxContainer");
+
+            var fileSystem = new Mock<IFileSystem>();
+            fileSystem.Setup(f =>
+                    f.File.Exists(It.Is<string>(path => path.EndsWith(ScriptConstants.DisableContainerFileName))))
+                .Returns(true);
+            FileUtility.Instance = fileSystem.Object;
+
+            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer, _mockLanguageWorkerChannelManager.Object, _logger);
+            await _rpcInitializationService.StartAsync(CancellationToken.None);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.PythonLanguageWorkerName), Times.Never);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.NodeLanguageWorkerName), Times.Never);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
+            Assert.DoesNotContain("testserver", testRpcServer.Uri.ToString());
+            await testRpcServer.ShutdownAsync();
+
+            FileUtility.Instance = null;
         }
 
         [Fact]
@@ -122,6 +155,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName)).Returns(string.Empty);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns("LinuxContainer");
 
+            var fileSystem = new Mock<IFileSystem>();
+            fileSystem.Setup(f =>
+                    f.File.Exists(It.Is<string>(path => path.EndsWith(ScriptConstants.DisableContainerFileName))))
+                .Returns(false);
+            FileUtility.Instance = fileSystem.Object;
+
             _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer, _mockLanguageWorkerChannelManager.Object, _logger);
             await _rpcInitializationService.StartAsync(CancellationToken.None);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.PythonLanguageWorkerName), Times.Never);
@@ -129,6 +168,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
             await testRpcServer.ShutdownAsync();
+
+            FileUtility.Instance = null;
         }
 
         [Fact]

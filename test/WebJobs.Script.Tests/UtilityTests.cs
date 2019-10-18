@@ -6,11 +6,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Dynamic;
 using System.Globalization;
+using System.IO.Abstractions;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -401,6 +403,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Language = funcMetadataLanguage
             };
             Assert.False(Utility.IsFunctionMetadataLanguageSupportedByWorkerRuntime(func1, language));
+        }
+
+        [Theory]
+        [InlineData(true, true, true)]
+        [InlineData(true, false, false)]
+        [InlineData(false, true, false)]
+        [InlineData(false, false, false)]
+        public void AppOfflineTests(bool isLinuxContainerEnvironment, bool containerDisabledFileExists, bool appOffline)
+        {
+            var vars = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureWebsiteInstanceId, isLinuxContainerEnvironment ? string.Empty : "Website_instance_id" },
+                { EnvironmentSettingNames.ContainerName, isLinuxContainerEnvironment ? "Container-Name" : string.Empty }
+            };
+
+            var fileSystem = new Mock<IFileSystem>();
+            fileSystem.Setup(f =>
+                    f.File.Exists(It.Is<string>(path => path.EndsWith(ScriptConstants.DisableContainerFileName))))
+                .Returns(containerDisabledFileExists);
+            FileUtility.Instance = fileSystem.Object;
+
+            var checkAppOffline = Utility.CheckAppOffline(new TestEnvironment(vars), string.Empty);
+            Assert.Equal(appOffline, checkAppOffline);
+
+            FileUtility.Instance = null;
         }
     }
 }
