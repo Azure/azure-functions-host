@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
+using Microsoft.Azure.AppService.Proxy.Common.Expressions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -19,6 +20,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions.Internal;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -251,12 +253,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // Validate the host startup traces. Order by message string as the requests may come in
             // slightly out-of-order or on different threads
             TraceTelemetry[] traces = null;
+            string routesManagerLogCategory = TypeNameHelper.GetTypeDisplayName(typeof(WebHost.WebScriptHostHttpRoutesManager));
 
             await TestHelpers.Await(() =>
             {
                 traces = _fixture.Channel.Telemetries
                     .OfType<TraceTelemetry>()
-                    .Where(t => t.Properties[LogConstants.CategoryNameKey].ToString().StartsWith("Host."))
+                    .Where(t =>
+                    {
+                        string category = t.Properties[LogConstants.CategoryNameKey].ToString();
+                        return category.StartsWith("Host.") || category.StartsWith(routesManagerLogCategory);
+                    })
                     .OrderBy(t => t.Message)
                     .ToArray();
 
@@ -287,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTrace(traces[idx++], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
             ValidateTrace(traces[idx++], "Host started (", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Initializing function HTTP routes" + Environment.NewLine 
-                + "Mapped function route 'api/HttpTrigger-Scenarios'", "Host.HttpRoutes");
+                + "Mapped function route 'api/HttpTrigger-Scenarios'", routesManagerLogCategory);
             ValidateTrace(traces[idx++], "Initializing Host", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Initializing Warmup Extension", LogCategories.CreateTriggerCategory("Warmup"));
             ValidateTrace(traces[idx++], "Job host started", LogCategories.Startup);
