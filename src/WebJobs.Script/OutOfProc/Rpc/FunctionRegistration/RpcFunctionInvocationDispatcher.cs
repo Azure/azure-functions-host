@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
         private readonly int _debounceSeconds = 10;
         private readonly int _maxAllowedProcessCount = 10;
+        private readonly TimeSpan _shutdownTimeout = TimeSpan.FromSeconds(10);
         private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(OutOfProcConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
         private IScriptEventManager _eventManager;
@@ -213,8 +214,8 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public async Task ShutdownAsync()
         {
-            _logger.LogDebug("Waiting for FunctionDispatcher to shutdown");
-            Task timeoutTask = Task.Delay(5000);
+            _logger.LogDebug($"Waiting for {nameof(RpcFunctionInvocationDispatcher)} to shutdown");
+            Task timeoutTask = Task.Delay(_shutdownTimeout);
             IEnumerable<ILanguageWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync();
             foreach (ILanguageWorkerChannel workerChannel in workerChannels)
             {
@@ -223,13 +224,14 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                 Task completedTask = await Task.WhenAny(drainTask, timeoutTask);
                 if (completedTask.Equals(timeoutTask))
                 {
-                    _logger.LogDebug($"Stopping FunctionDispatcher timed out");
+                    _logger.LogDebug($"Draining invocations from language worker channel '{workerChannel.Id}' timed out.");
                 }
                 else
                 {
-                    _logger.LogDebug("Draining of FunctionDispatcher completed");
+                    _logger.LogDebug($"Draining invocations from language worker channel '{workerChannel.Id}' completed.");
                 }
             }
+            _logger.LogDebug($"Completed shutdown of {nameof(RpcFunctionInvocationDispatcher)}");
         }
 
         public async Task InvokeAsync(ScriptInvocationContext invocationContext)

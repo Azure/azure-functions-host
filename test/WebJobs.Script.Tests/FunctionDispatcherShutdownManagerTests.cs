@@ -12,21 +12,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class FunctionDispatcherShutdownManagerTests
     {
-        private ILoggerFactory _loggerFactory;
-        private ILogger<FunctionDispatcherShutdownManager> _logger;
-
-        public FunctionDispatcherShutdownManagerTests()
-        {
-            _loggerFactory = new LoggerFactory();
-            _logger = _loggerFactory.CreateLogger<FunctionDispatcherShutdownManager>();
-        }
-
         [Fact]
         public async Task Test_StopAsync()
         {
             Mock<IFunctionDispatcher> functionDispatcher = new Mock<IFunctionDispatcher>();
             functionDispatcher.Setup(a => a.ShutdownAsync()).Returns(Task.CompletedTask);
-            var functionDispatcherShutdownManager = new FunctionDispatcherShutdownManager(functionDispatcher.Object, _logger);
+            var functionDispatcherShutdownManager = new FunctionDispatcherShutdownManager(functionDispatcher.Object);
             await functionDispatcherShutdownManager.StopAsync(CancellationToken.None);
             functionDispatcher.Verify(a => a.ShutdownAsync(), Times.Once);
         }
