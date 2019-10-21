@@ -26,17 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            _logger.LogDebug("Waiting for FunctionDispatcher to shutdown");
-            Task timeoutTask = Task.Delay(5000);
-            Task completedTask = await Task.WhenAny(timeoutTask, _functionDispatcher.ShutdownAsync());
-            if (completedTask.Equals(timeoutTask))
-            {
-                _logger.LogDebug($"Stopping FunctionDispatcher timed out");
-            }
-            else
-            {
-                _logger.LogDebug("Draining of FunctionDispatcher completed");
-            }
+            await _functionDispatcher.ShutdownAsync();
         }
     }
 }

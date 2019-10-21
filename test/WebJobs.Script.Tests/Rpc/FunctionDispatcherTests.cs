@@ -68,6 +68,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         }
 
         [Fact]
+        public async Task ShutdownTests_WithInfinitelyRunningTasks_Timesout()
+        {
+            int expectedProcessCount = 2;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(LanguageWorkerConstants.NodeLanguageWorkerName));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+
+            foreach (var currChannel in functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels())
+            {
+                var initializedChannel = (TestLanguageWorkerChannel)currChannel;
+                initializedChannel.ExecutionContexts.Add(new Task<bool>(() => true));   // A task that never starts and therefore never runs to completion
+            }
+
+            await functionDispatcher.ShutdownAsync();
+            foreach (var currChannel in functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels())
+            {
+                Assert.True(((TestLanguageWorkerChannel)currChannel).ExecutionContexts.Count > 0);
+            }
+        }
+
+        [Fact]
         public void MaxProcessCount_Returns_Default()
         {
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher();

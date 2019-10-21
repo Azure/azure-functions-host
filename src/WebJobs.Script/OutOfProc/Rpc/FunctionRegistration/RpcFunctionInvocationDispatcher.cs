@@ -213,11 +213,22 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public async Task ShutdownAsync()
         {
+            _logger.LogDebug("Waiting for FunctionDispatcher to shutdown");
+            Task timeoutTask = Task.Delay(5000);
             IEnumerable<ILanguageWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync();
             foreach (ILanguageWorkerChannel workerChannel in workerChannels)
             {
                 _logger.LogDebug($"Waiting for invocations of '{workerChannel.Id}' to drain");
-                await workerChannel.DrainInvocationsAsync();
+                Task drainTask = workerChannel.DrainInvocationsAsync();
+                Task completedTask = await Task.WhenAny(drainTask, timeoutTask);
+                if (completedTask.Equals(timeoutTask))
+                {
+                    _logger.LogDebug($"Stopping FunctionDispatcher timed out");
+                }
+                else
+                {
+                    _logger.LogDebug("Draining of FunctionDispatcher completed");
+                }
             }
         }
 
