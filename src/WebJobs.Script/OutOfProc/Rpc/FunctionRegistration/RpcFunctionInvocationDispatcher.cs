@@ -216,22 +216,17 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         {
             _logger.LogDebug($"Waiting for {nameof(RpcFunctionInvocationDispatcher)} to shutdown");
             Task timeoutTask = Task.Delay(_shutdownTimeout);
-            IEnumerable<ILanguageWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync();
-            foreach (ILanguageWorkerChannel workerChannel in workerChannels)
+            IList<Task> workerChannelTasks = (await GetInitializedWorkerChannelsAsync()).Select(a => a.DrainInvocationsAsync()).ToList();
+            Task completedTask = await Task.WhenAny(timeoutTask, Task.WhenAll(workerChannelTasks));
+
+            if (completedTask.Equals(timeoutTask))
             {
-                _logger.LogDebug($"Waiting for invocations of '{workerChannel.Id}' to drain");
-                Task drainTask = workerChannel.DrainInvocationsAsync();
-                Task completedTask = await Task.WhenAny(drainTask, timeoutTask);
-                if (completedTask.Equals(timeoutTask))
-                {
-                    _logger.LogDebug($"Draining invocations from language worker channel '{workerChannel.Id}' timed out.");
-                }
-                else
-                {
-                    _logger.LogDebug($"Draining invocations from language worker channel '{workerChannel.Id}' completed.");
-                }
+                _logger.LogDebug($"Draining invocations from language worker channel timed out. Shutting down '{nameof(RpcFunctionInvocationDispatcher)}'");
             }
-            _logger.LogDebug($"Completed shutdown of {nameof(RpcFunctionInvocationDispatcher)}");
+            else
+            {
+                _logger.LogDebug($"Draining invocations from language worker channel completed. Shutting down '{nameof(RpcFunctionInvocationDispatcher)}'");
+            }
         }
 
         public async Task InvokeAsync(ScriptInvocationContext invocationContext)
