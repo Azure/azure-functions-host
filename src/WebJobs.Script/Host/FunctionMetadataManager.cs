@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (functionsWhiteList != null)
             {
                 _logger.LogInformation($"A function whitelist has been specified, excluding all but the following functions: [{string.Join(", ", functionsWhiteList)}]");
-                metadata = metadata.Where(function => functionsWhiteList.Any(functionName => functionName.Equals(function.Name, StringComparison.CurrentCultureIgnoreCase))).ToImmutableArray();
+                metadata = metadata.Where(function => functionsWhiteList.Any(functionName => Utility.FunctionNamesMatch(function.Name, functionName))).ToImmutableArray();
                 Errors = _functionMetadataProvider.FunctionErrors.Where(kvp => functionsWhiteList.Any(functionName => functionName.Equals(kvp.Key, StringComparison.CurrentCultureIgnoreCase))).ToImmutableDictionary<string, ImmutableArray<string>>();
             }
             _logger.FunctionMetadataManagerFunctionsLoaded(metadata.Length);

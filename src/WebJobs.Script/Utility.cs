@@ -172,6 +172,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return FunctionNameValidationRegex.IsMatch(functionName);
         }
 
+        public static bool FunctionNamesMatch(string functionName, string comparand)
+        {
+            return string.Equals(functionName, comparand, StringComparison.OrdinalIgnoreCase);
+        }
+
         // "Namespace.Class.Method" --> "Namespace.Class"
         public static string GetFullClassName(string fullFunctionName)
         {

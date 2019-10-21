@@ -13,7 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     internal sealed partial class WebScriptHostHttpRoutesManager : IHttpRoutesManager
     {
-        private static readonly string[] _allMethods = new string[] { "all" };
         private readonly IOptions<HttpOptions> _httpOptions;
         private readonly IWebJobsRouter _router;
         private readonly ILoggerFactory _loggerFactory;
@@ -87,14 +86,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _router.AddFunctionRoutes(functionRouter, proxyRouter);
 
-            ILogger logger = _loggerFactory.CreateLogger("Host.HttpRoutes");
+            ILogger logger = _loggerFactory.CreateLogger<WebScriptHostHttpRoutesManager>();
             logger.LogInformation(routesLogBuilder.ToString());
         }
 
         private void LogRouteMap(StringBuilder builder, string functionName, string route, string[] methods, bool isProxy, string prefix)
         {
-            methods = methods ?? _allMethods;
-            string methodList = string.Join(',', methods);
+            string methodList = methods is null ? "all" : string.Join(',', methods);
 
             if (isProxy)
             {
