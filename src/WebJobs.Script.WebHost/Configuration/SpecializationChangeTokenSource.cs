@@ -7,11 +7,11 @@ using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
-    internal class AppServiceOptionsChangeTokenSource : IOptionsChangeTokenSource<AppServiceOptions>
+    internal class SpecializationChangeTokenSource<TOptions> : IOptionsChangeTokenSource<TOptions>
     {
         private readonly IOptionsChangeTokenSource<StandbyOptions> _standby;
 
-        public AppServiceOptionsChangeTokenSource(IOptionsChangeTokenSource<StandbyOptions> standby)
+        public SpecializationChangeTokenSource(IOptionsChangeTokenSource<StandbyOptions> standby)
         {
             // When standby occurs, we also want compat options to re-evaluate.
             _standby = standby;

@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 {
                     s.AddSingleton<IEnvironment>(env);
                     s.ConfigureOptions<AppServiceOptionsSetup>();
-                    s.AddSingleton<IOptionsChangeTokenSource<AppServiceOptions>, AppServiceOptionsChangeTokenSource>();
+                    s.AddSingleton<IOptionsChangeTokenSource<AppServiceOptions>, SpecializationChangeTokenSource<AppServiceOptions>>();
                     s.AddSingleton<IOptionsChangeTokenSource<StandbyOptions>>(token);
                 })
                 .Build();

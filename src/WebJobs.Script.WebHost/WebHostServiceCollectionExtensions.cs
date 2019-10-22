@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
             services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
-            services.AddSingleton<IOptionsChangeTokenSource<AppServiceOptions>, AppServiceOptionsChangeTokenSource>();
+            services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
@@ -186,6 +186,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var nullMetricsLogger = s.GetService<ILogger<NullMetricsPublisher>>();
                 return new NullMetricsPublisher(nullMetricsLogger);
             });
+        }
+
+        private static IServiceCollection ConfigureOptionsWithChangeTokenSource<TOptions, TOptionsSetup, TOptionsChangeTokenSource>(this IServiceCollection services)
+            where TOptions : class
+            where TOptionsSetup : class, IConfigureOptions<TOptions>
+            where TOptionsChangeTokenSource : class, IOptionsChangeTokenSource<TOptions>
+        {
+            services.ConfigureOptions<TOptionsSetup>();
+            services.AddSingleton<IOptionsChangeTokenSource<TOptions>, TOptionsChangeTokenSource>();
+
+            return services;
         }
     }
 }
