@@ -278,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
 
             // Make sure the error was logged to the correct logger
-            Assert.Contains(hostALogger.GetAllLogMessages(), m => m.FormattedMessage != null && m.FormattedMessage.Contains("Host startup was canceled."));
+            Assert.Contains(hostALogger.GetAllLogMessages(), m => m.FormattedMessage != null && m.FormattedMessage.StartsWith("Host startup operation '") && m.FormattedMessage.EndsWith("' was canceled."));
 
             // Make sure we orphaned the correct host
             hostA.Verify(m => m.StopAsync(It.IsAny<CancellationToken>()), Times.Exactly(1));

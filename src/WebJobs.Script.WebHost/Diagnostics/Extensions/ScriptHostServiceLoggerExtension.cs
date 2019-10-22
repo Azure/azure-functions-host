@@ -22,29 +22,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(501, nameof(UnhealthyCountExceeded)),
                 "Host unhealthy count exceeds the threshold of {healthCheckThreshold} for time window {healthCheckWindow}. Initiating shutdown.");
 
-        private static readonly Action<ILogger, Exception> _offline =
-            LoggerMessage.Define(
+        private static readonly Action<ILogger, Guid, Exception> _offline =
+            LoggerMessage.Define<Guid>(
                 LogLevel.Information,
                 new EventId(502, nameof(Offline)),
-                "Host is offline.");
+                "Host created with operation id '{operationId}' is offline.");
 
-        private static readonly Action<ILogger, Exception> _initializing =
-            LoggerMessage.Define(
+        private static readonly Action<ILogger, Guid, Exception> _initializing =
+            LoggerMessage.Define<Guid>(
                 LogLevel.Information,
                 new EventId(503, nameof(Initializing)),
-                "Initializing Host.");
+                "Initializing Host. OperationId: '{operationId}'.");
 
-        private static readonly Action<ILogger, int, int, Exception> _initialization =
-            LoggerMessage.Define<int, int>(
+        private static readonly Action<ILogger, int, int, Guid, Exception> _initialization =
+            LoggerMessage.Define<int, int, Guid>(
                 LogLevel.Information,
                 new EventId(504, nameof(Initialization)),
-                "Host initialization: ConsecutiveErrors={attemptCount}, StartupCount={startCount}");
+                "Host initialization: ConsecutiveErrors={attemptCount}, StartupCount={startCount}, OperationId={operationId}");
 
-        private static readonly Action<ILogger, Exception> _inStandByMode =
-            LoggerMessage.Define(
+        private static readonly Action<ILogger, Guid, Exception> _inStandByMode =
+            LoggerMessage.Define<Guid>(
                 LogLevel.Information,
                 new EventId(505, nameof(InStandByMode)),
-                "Host is in standby mode");
+                "Host is in standby mode. OperationId: '{operationId}'.");
 
         private static readonly Action<ILogger, Exception> _unhealthyRestart =
             LoggerMessage.Define(
@@ -88,35 +88,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(512, nameof(Restarted)),
                 "Host restarted.");
 
-        private static readonly Action<ILogger, string, string, Exception> _building =
-            LoggerMessage.Define<string, string>(
+        private static readonly Action<ILogger, bool, bool, Guid, Exception> _building =
+            LoggerMessage.Define<bool, bool, Guid>(
                 LogLevel.Information,
                 new EventId(513, nameof(Building)),
-                "Building host: startup suppressed:{skipHostStartup}, configuration suppressed: {skipHostJsonConfiguration}");
+                "Building host: startup suppressed: '{skipHostStartup}', configuration suppressed: '{skipHostJsonConfiguration}', startup operation id: '{operationId}'");
 
-        private static readonly Action<ILogger, Exception> _startupWasCanceled =
-            LoggerMessage.Define(
+        private static readonly Action<ILogger, Guid, Exception> _startupOperationWasCanceled =
+            LoggerMessage.Define<Guid>(
                 LogLevel.Debug,
-                new EventId(514, nameof(StartupWasCanceled)),
-                "Host startup was canceled.");
+                new EventId(514, nameof(StartupOperationWasCanceled)),
+                "Host startup operation '{operationId}' was canceled.");
 
-        private static readonly Action<ILogger, Exception> _errorOccured =
-            LoggerMessage.Define(
+        private static readonly Action<ILogger, Guid, Exception> _errorOccuredDuringStartupOperation =
+            LoggerMessage.Define<Guid>(
                 LogLevel.Error,
-                new EventId(515, nameof(ErrorOccured)),
-                "A host error has occurred");
+                new EventId(515, nameof(ErrorOccuredDuringStartupOperation)),
+                "A host error has occurred during startup operation '{operationId}'.");
 
-        private static readonly Action<ILogger, Exception> _errorOccuredInactive =
-            LoggerMessage.Define(
+        private static readonly Action<ILogger, Guid, Exception> _errorOccuredInactive =
+            LoggerMessage.Define<Guid>(
                 LogLevel.Warning,
                 new EventId(516, nameof(ErrorOccuredInactive)),
-                "A host error has occurred on an inactive host");
+                "A host error has occurred on an inactive host during startup operation '{operationId}'.");
 
-        private static readonly Action<ILogger, Exception> _cancellationRequested =
-            LoggerMessage.Define(
+        private static readonly Action<ILogger, Guid, Exception> _cancellationRequested =
+            LoggerMessage.Define<Guid>(
                 LogLevel.Debug,
                 new EventId(517, nameof(CancellationRequested)),
-                "Cancellation requested. A new host will not be started.");
+                "Cancellation requested for startup operation '{operationId}'. A new host will not be started.");
 
         private static readonly Action<ILogger, string, string, Exception> _activeHostChanging =
             LoggerMessage.Define<string, string>(
@@ -128,13 +128,39 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             LoggerMessage.Define(
                 LogLevel.Debug,
                 new EventId(519, nameof(EnteringRestart)),
-                "Restart requested. Cancelling any active host startup.");
+                "Restart requested.");
 
         private static readonly Action<ILogger, Exception> _restartBeforeStart =
             LoggerMessage.Define(
                 LogLevel.Debug,
                 new EventId(520, nameof(RestartBeforeStart)),
                 "RestartAsync was called before StartAsync. Delaying restart until StartAsync has been called.");
+
+        private static readonly Action<ILogger, Guid, Exception> _startupOperationStarting =
+            LoggerMessage.Define<Guid>(
+                LogLevel.Debug,
+                new EventId(521, nameof(StartupOperationStarting)),
+                "Startup operation '{operationId}' starting.");
+
+        private static readonly Action<ILogger, Guid, Exception> _cancelingStartupOperationForRestart =
+            LoggerMessage.Define<Guid>(
+                LogLevel.Debug,
+                new EventId(522, nameof(CancelingStartupOperationForRestart)),
+                "Canceling startup operation '{operationId}' to unblock restart.");
+
+        // EventId 523 and 524 are defined in ScriptHostStartupOperation.
+
+        private static readonly Action<ILogger, Guid, string, Exception> _startupOperationStartingHost =
+            LoggerMessage.Define<Guid, string>(
+                LogLevel.Debug,
+                new EventId(525, nameof(StartupOperationStartingHost)),
+                "Startup operation '{operationId}' is starting host instance '{hostInstanceId}'.");
+
+        private static readonly Action<ILogger, Exception> _scriptHostServiceRestartCanceledByRuntime =
+            LoggerMessage.Define(
+                LogLevel.Information,
+                new EventId(526, nameof(ScriptHostServiceInitCanceledByRuntime)),
+                "Restart cancellation requested by runtime.");
 
         public static void ScriptHostServiceInitCanceledByRuntime(this ILogger logger)
         {
@@ -146,24 +172,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             _unehealthyCountExceeded(logger, healthCheckThreshold, healthCheckWindow, null);
         }
 
-        public static void Offline(this ILogger logger)
+        public static void Offline(this ILogger logger, Guid operationId)
         {
-            _offline(logger, null);
+            _offline(logger, operationId, null);
         }
 
-        public static void Initializing(this ILogger logger)
+        public static void Initializing(this ILogger logger, Guid operationId)
         {
-            _initializing(logger, null);
+            _initializing(logger, operationId, null);
         }
 
-        public static void Initialization(this ILogger logger, int attemptCount, int startCount)
+        public static void Initialization(this ILogger logger, int attemptCount, int startCount, Guid operationId)
         {
-            _initialization(logger, attemptCount, startCount, null);
+            _initialization(logger, attemptCount, startCount, operationId, null);
         }
 
-        public static void InStandByMode(this ILogger logger)
+        public static void InStandByMode(this ILogger logger, Guid operationId)
         {
-            _inStandByMode(logger, null);
+            _inStandByMode(logger, operationId, null);
         }
 
         public static void UnhealthyRestart(this ILogger logger)
@@ -201,29 +227,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             _restarted(logger, null);
         }
 
-        public static void Building(this ILogger logger, string skipHostStartup, string skipHostJsonConfiguration)
+        public static void Building(this ILogger logger, bool skipHostStartup, bool skipHostJsonConfiguration, Guid operationId)
         {
-            _building(logger, skipHostStartup, skipHostJsonConfiguration, null);
+            _building(logger, skipHostStartup, skipHostJsonConfiguration, operationId, null);
         }
 
-        public static void StartupWasCanceled(this ILogger logger)
+        public static void StartupOperationWasCanceled(this ILogger logger, Guid operationId)
         {
-            _startupWasCanceled(logger, null);
+            _startupOperationWasCanceled(logger, operationId, null);
         }
 
-        public static void ErrorOccured(this ILogger logger, Exception ex)
+        public static void ErrorOccuredDuringStartupOperation(this ILogger logger, Guid operationId, Exception ex)
         {
-            _errorOccured(logger, ex);
+            _errorOccuredDuringStartupOperation(logger, operationId, ex);
         }
 
-        public static void ErrorOccuredInactive(this ILogger logger, Exception ex)
+        public static void ErrorOccuredInactive(this ILogger logger, Guid operationId, Exception ex)
         {
-            _errorOccuredInactive(logger, ex);
+            _errorOccuredInactive(logger, operationId, ex);
         }
 
-        public static void CancellationRequested(this ILogger logger)
+        public static void CancellationRequested(this ILogger logger, Guid operationId)
         {
-            _cancellationRequested(logger, null);
+            _cancellationRequested(logger, operationId, null);
         }
 
         public static void ActiveHostChanging(this ILogger logger, string oldHostInstanceId, string newHostInstanceId)
@@ -239,6 +265,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
         public static void RestartBeforeStart(this ILogger logger)
         {
             _restartBeforeStart(logger, null);
+        }
+
+        public static void StartupOperationStarting(this ILogger logger, Guid operationId)
+        {
+            _startupOperationStarting(logger, operationId, null);
+        }
+
+        public static void CancelingStartupOperationForRestart(this ILogger logger, Guid operationId)
+        {
+            _cancelingStartupOperationForRestart(logger, operationId, null);
+        }
+
+        public static void StartupOperationStartingHost(this ILogger logger, Guid operationId, string hostInstanceId)
+        {
+            _startupOperationStartingHost(logger, operationId, hostInstanceId, null);
+        }
+
+        public static void ScriptHostServiceRestartCanceledByRuntime(this ILogger logger)
+        {
+            _scriptHostServiceRestartCanceledByRuntime(logger, null);
         }
     }
 }

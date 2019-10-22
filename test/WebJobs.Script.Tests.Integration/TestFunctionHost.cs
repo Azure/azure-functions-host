@@ -115,6 +115,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public IServiceProvider JobHostServices => _hostService.Services;
 
+        public IServiceProvider WebHostServices => _testServer.Host.Services;
+
         public ScriptJobHostOptions ScriptOptions => JobHostServices.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
         public ISecretManager SecretManager => _testServer.Host.Services.GetService<ISecretManagerProvider>().Current;
@@ -197,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         /// <returns>The messages from the WebHost LoggerProvider</returns>
         public IList<LogMessage> GetWebHostLogMessages() => _webHostLoggerProvider.GetAllLogMessages();
 
-        public string GetLog() => string.Join(Environment.NewLine, GetScriptHostLogMessages());
+        public string GetLog() => string.Join(Environment.NewLine, GetScriptHostLogMessages().Concat(GetWebHostLogMessages()).OrderBy(m => m.Timestamp));
 
         public void ClearLogMessages() => _scriptHostLoggerProvider.ClearAllLogMessages();
 
