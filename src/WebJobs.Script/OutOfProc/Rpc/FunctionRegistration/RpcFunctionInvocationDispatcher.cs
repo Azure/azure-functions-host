@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
         private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
         private readonly int _debounceSeconds = 10;
         private readonly int _maxAllowedProcessCount = 10;
+        private readonly TimeSpan _shutdownTimeout = TimeSpan.FromSeconds(10);
         private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(OutOfProcConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
         private IScriptEventManager _eventManager;
@@ -208,6 +209,23 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
                     await InitializeJobhostLanguageWorkerChannelAsync(0);
                     StartWorkerProcesses(1, InitializeJobhostLanguageWorkerChannelAsync);
                 }
+            }
+        }
+
+        public async Task ShutdownAsync()
+        {
+            _logger.LogDebug($"Waiting for {nameof(RpcFunctionInvocationDispatcher)} to shutdown");
+            Task timeoutTask = Task.Delay(_shutdownTimeout);
+            IList<Task> workerChannelTasks = (await GetInitializedWorkerChannelsAsync()).Select(a => a.DrainInvocationsAsync()).ToList();
+            Task completedTask = await Task.WhenAny(timeoutTask, Task.WhenAll(workerChannelTasks));
+
+            if (completedTask.Equals(timeoutTask))
+            {
+                _logger.LogDebug($"Draining invocations from language worker channel timed out. Shutting down '{nameof(RpcFunctionInvocationDispatcher)}'");
+            }
+            else
+            {
+                _logger.LogDebug($"Draining invocations from language worker channel completed. Shutting down '{nameof(RpcFunctionInvocationDispatcher)}'");
             }
         }
 

@@ -178,6 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 services.AddSingleton<IHostedService, LanguageWorkerConsoleLogService>();
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
+                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionDispatcherShutdownManager>());
 
                 if (SystemEnvironment.Instance.IsRuntimeScaleMonitoringEnabled())
                 {

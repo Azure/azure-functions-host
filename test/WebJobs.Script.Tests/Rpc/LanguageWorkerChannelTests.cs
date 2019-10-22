@@ -138,22 +138,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void SendInvocationRequest_PublishesOutboundEvent()
         {
-            ScriptInvocationContext scriptInvocationContext = new ScriptInvocationContext()
-            {
-                FunctionMetadata = GetTestFunctionsList("node").FirstOrDefault(),
-                ExecutionContext = new ExecutionContext()
-                {
-                    InvocationId = Guid.NewGuid(),
-                    FunctionName = "js1",
-                    FunctionAppDirectory = _scriptRootPath,
-                    FunctionDirectory = _scriptRootPath
-                },
-                BindingData = new Dictionary<string, object>(),
-                Inputs = new List<(string name, DataType type, object val)>()
-            };
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
             _workerChannel.SendInvocationRequest(scriptInvocationContext);
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+        }
+
+        [Fact]
+        public async Task Drain_Verify()
+        {
+            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+            Guid invocationId = Guid.NewGuid();
+            LanguageWorkerChannel channel = new LanguageWorkerChannel(
+               _workerId,
+               _scriptRootPath,
+               _eventManager,
+               _testWorkerConfig,
+               _mockLanguageWorkerProcess.Object,
+               _logger,
+               _metricsLogger,
+               0);
+            channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
+            channel.SendInvocationRequest(scriptInvocationContext);
+            Task result = channel.DrainInvocationsAsync();
+            Assert.NotEqual(result.Status, TaskStatus.RanToCompletion);
+            channel.InvokeResponse(new InvocationResponse
+            {
+                InvocationId = invocationId.ToString(),
+                Result = new StatusResult
+                {
+                    Status = StatusResult.Types.Status.Success
+                },
+            });
+            await result;
+            Assert.Equal(result.Status, TaskStatus.RanToCompletion);
         }
 
         [Fact]
@@ -284,6 +303,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                      Name = "js2",
                      FunctionId = "TestFunctionId2"
                 }
+            };
+        }
+
+        private ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource)
+        {
+            return new ScriptInvocationContext()
+            {
+                FunctionMetadata = GetTestFunctionsList("node").FirstOrDefault(),
+                ExecutionContext = new ExecutionContext()
+                {
+                    InvocationId = invocationId,
+                    FunctionName = "js1",
+                    FunctionAppDirectory = _scriptRootPath,
+                    FunctionDirectory = _scriptRootPath
+                },
+                BindingData = new Dictionary<string, object>(),
+                Inputs = new List<(string name, DataType type, object val)>(),
+                ResultSource = resultSource
             };
         }
 

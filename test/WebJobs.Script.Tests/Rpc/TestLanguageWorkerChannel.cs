@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private string _runtime;
         private ILogger _testLogger;
         private LanguageWorkerChannelState _state;
+        private List<Task> _executionContexts;
 
         public TestLanguageWorkerChannel(string workerId, string runtime = null, IScriptEventManager eventManager = null, ILogger testLogger = null, bool isWebhostChannel = false, bool throwOnProcessStartUp = false)
         {
@@ -30,11 +31,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _runtime = runtime;
             _testLogger = testLogger;
             _throwOnProcessStartUp = throwOnProcessStartUp;
+            _executionContexts = new List<Task>();
         }
 
         public string Id => _workerId;
 
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => throw new NotImplementedException();
+
+        public List<Task> ExecutionContexts => _executionContexts;
 
         public LanguageWorkerChannelState State => _state;
 
@@ -95,6 +99,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             Exception testEx = new Exception("Test Worker Error");
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, testEx, timestamp));
+        }
+
+        public async Task DrainInvocationsAsync()
+        {
+            await Task.WhenAll(ExecutionContexts);
+            ExecutionContexts.Clear();
         }
     }
 }
