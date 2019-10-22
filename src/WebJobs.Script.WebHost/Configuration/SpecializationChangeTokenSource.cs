@@ -7,6 +7,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
+    // An implementation of IOptionsChangeTokenSource<TOptions> that automatically signals its change token when specialization occurs.
     internal class SpecializationChangeTokenSource<TOptions> : IOptionsChangeTokenSource<TOptions>
     {
         private readonly IOptionsChangeTokenSource<StandbyOptions> _standby;
