@@ -212,10 +212,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void SendSendFunctionEnvironmentReloadRequest_SanitizedEnvironmentVariables()
         {
-            Environment.SetEnvironmentVariable("TestNull", null);
-            Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
-            Environment.SetEnvironmentVariable("TestValid", "TestValue");
-            FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(Environment.GetEnvironmentVariables());
+            var environmentVariables = new Dictionary<string, string>()
+            {
+                { "TestNull", null },
+                { "TestEmpty", string.Empty },
+                { "TestValid", "TestValue" }
+            };
+
+            FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(environmentVariables);
             Assert.False(envReloadRequest.EnvironmentVariables.ContainsKey("TestNull"));
             Assert.False(envReloadRequest.EnvironmentVariables.ContainsKey("TestEmpty"));
             Assert.True(envReloadRequest.EnvironmentVariables.ContainsKey("TestValid"));
