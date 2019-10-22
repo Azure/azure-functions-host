@@ -225,7 +225,11 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             FunctionEnvironmentReloadRequest request = new FunctionEnvironmentReloadRequest();
             foreach (DictionaryEntry entry in processEnv)
             {
-                request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
+                // Do not add environment variables with empty or null values (see issue #4488 for context)
+                if (!string.IsNullOrEmpty(entry.Value?.ToString()))
+                {
+                    request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
+                }
             }
             return request;
         }
