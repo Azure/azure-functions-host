@@ -10,19 +10,19 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
     // An implementation of IOptionsChangeTokenSource<TOptions> that automatically signals its change token when specialization occurs.
     internal class SpecializationChangeTokenSource<TOptions> : IOptionsChangeTokenSource<TOptions>
     {
-        private readonly IOptionsChangeTokenSource<StandbyOptions> _standby;
+        private readonly IOptionsChangeTokenSource<StandbyOptions> _standbyChangeTokenSource;
 
-        public SpecializationChangeTokenSource(IOptionsChangeTokenSource<StandbyOptions> standby)
+        public SpecializationChangeTokenSource(IOptionsChangeTokenSource<StandbyOptions> standbyChangeTokenSource)
         {
             // When standby occurs, we also want compat options to re-evaluate.
-            _standby = standby;
+            _standbyChangeTokenSource = standbyChangeTokenSource;
         }
 
         public string Name { get; }
 
         public IChangeToken GetChangeToken()
         {
-            return _standby.GetChangeToken();
+            return _standbyChangeTokenSource.GetChangeToken();
         }
     }
 }

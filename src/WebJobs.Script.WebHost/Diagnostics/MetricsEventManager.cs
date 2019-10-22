@@ -276,11 +276,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 throw new ArgumentNullException(nameof(metricEvents));
             }
 
+            AppServiceOptions currentAppServiceOptions = _appServiceOptions.CurrentValue;
             foreach (SystemMetricEvent metricEvent in metricEvents)
             {
                 _eventGenerator.LogFunctionMetricEvent(
-                    _appServiceOptions.CurrentValue.SubscriptionId,
-                    _appServiceOptions.CurrentValue.AppName,
+                    currentAppServiceOptions.SubscriptionId,
+                    currentAppServiceOptions.AppName,
                     metricEvent.FunctionName ?? string.Empty,
                     metricEvent.EventName.ToLowerInvariant(),
                     metricEvent.Average,

@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         public WebhostMetricsLoggerDecoratorTests()
         {
             _metricsLogger = new Mock<IMetricsLogger>();
-            _metricsLoggerDecorator = new WebHostMetricsLoggerDecorator(_metricsLogger.Object);
+            _metricsLoggerDecorator = new NonDisposableMetricsLogger(_metricsLogger.Object);
         }
 
         [Fact]
