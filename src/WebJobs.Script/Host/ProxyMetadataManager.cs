@@ -157,7 +157,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     proxyMetadata.Name = proxyName;
                     proxyMetadata.IsProxy = true;
-
                     proxies.Add(proxyMetadata);
                 }
                 catch (Exception ex)

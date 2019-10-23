@@ -2,11 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Headers;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Primitives;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Extensions
 {
@@ -90,6 +95,65 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
                                 mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0);
             }
             return false;
+        }
+
+        public static async Task<JObject> GetRequestAsJObject(this HttpRequest request)
+        {
+            var jObjectHttp = new JObject();
+            jObjectHttp["Url"] = $"{(request.IsHttps ? "https" : "http")}://{request.Host.ToString()}{request.Path.ToString()}{request.QueryString.ToString()}"; // [http|https]://{url}{path}{query}
+            jObjectHttp["Method"] = request.Method.ToString();
+            if (request.Query != null)
+            {
+                jObjectHttp["Query"] = request.GetQueryCollectionAsString();
+            }
+            if (request.Headers != null)
+            {
+                jObjectHttp["Headers"] = JObject.FromObject(request.Headers);
+            }
+            if (request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out object routeData))
+            {
+                Dictionary<string, object> parameters = (Dictionary<string, object>)routeData;
+                if (parameters != null)
+                {
+                    jObjectHttp["Params"] = JObject.FromObject(parameters);
+                }
+            }
+
+            if (request.HttpContext?.User?.Identities != null)
+            {
+                jObjectHttp["Identities"] = JsonConvert.SerializeObject(request.HttpContext.User.Identities);
+            }
+
+            // parse request body as content-type
+            if (request.Body != null && request.ContentLength > 0)
+            {
+                if (request.IsMediaTypeOctetOrMultipart())
+                {
+                    jObjectHttp["Body"] = request.GetRequestBodyAsBytes();
+                }
+                else
+                {
+                    jObjectHttp["Body"] = await request.ReadAsStringAsync();
+                }
+            }
+
+            return jObjectHttp;
+        }
+
+        internal static string GetQueryCollectionAsString(this HttpRequest request)
+        {
+            return JsonConvert.SerializeObject(request.GetQueryCollectionAsDictionary());
+        }
+
+        internal static IDictionary<string, string> GetQueryCollectionAsDictionary(this HttpRequest request)
+        {
+            var queryParamsDictionary = new Dictionary<string, string>();
+            foreach (var key in request.Query.Keys)
+            {
+                request.Query.TryGetValue(key, out StringValues value);
+                queryParamsDictionary.Add(key, value.ToString());
+            }
+            return queryParamsDictionary;
         }
     }
 }

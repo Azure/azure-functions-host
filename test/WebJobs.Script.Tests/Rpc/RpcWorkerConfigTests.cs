@@ -244,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [MemberData(nameof(InvalidWorkerDescriptions))]
         public void InvalidWorkerDescription_Throws(WorkerDescription workerDescription)
         {
-            Assert.Throws<ValidationException>(() => workerDescription.ApplyDefaultsAndValidate());
+            Assert.Throws<ValidationException>(() => workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory()));
         }
 
         [Theory]
@@ -254,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             try
             {
                 WorkerConfigTestUtilities.CreateTestWorkerFileInCurrentDir();
-                workerDescription.ApplyDefaultsAndValidate();
+                workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory());
             }
             finally
             {
@@ -275,7 +275,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                     : defaultExecutablePath;
 
             var workerDescription = new RpcWorkerDescription { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = defaultExecutablePath };
-            workerDescription.ApplyDefaultsAndValidate();
+            workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory());
             Assert.Equal(expectedExecutablePath, workerDescription.DefaultExecutablePath);
         }
 
@@ -286,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public void ValidateWorkerDescription_DoesNotModifyDefaultWorkerExecutablePath_WhenDoesNotStrictlyMatchDotNet(string defaultExecutablePath)
         {
             var workerDescription = new RpcWorkerDescription { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = defaultExecutablePath };
-            workerDescription.ApplyDefaultsAndValidate();
+            workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory());
             Assert.Equal(defaultExecutablePath, workerDescription.DefaultExecutablePath);
         }
 

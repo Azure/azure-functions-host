@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.OutOfProc;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc
@@ -16,6 +17,9 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
 
         public string WorkingDirectory { get; set; }
 
-        public abstract string GetFormatedArguments();
+        // Environment variables to set on child process
+        public IDictionary<string, string> EnvironmentVariables { get; set; } = new Dictionary<string, string>();
+
+        public abstract string GetFormattedArguments();
     }
 }

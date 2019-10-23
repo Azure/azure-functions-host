@@ -66,9 +66,18 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc
             }
         }
 
-        public override void ApplyDefaultsAndValidate()
+        public override void ApplyDefaultsAndValidate(string workerDirectory)
         {
-            base.ApplyDefaultsAndValidate();
+            if (workerDirectory == null)
+            {
+                throw new ArgumentNullException(nameof(workerDirectory));
+            }
+            Arguments = Arguments ?? new List<string>();
+            WorkerDirectory = WorkerDirectory ?? workerDirectory;
+            if (!string.IsNullOrEmpty(DefaultWorkerPath) && !Path.IsPathRooted(DefaultWorkerPath))
+            {
+                DefaultWorkerPath = Path.Combine(WorkerDirectory, DefaultWorkerPath);
+            }
             if (string.IsNullOrEmpty(Language))
             {
                 throw new ValidationException($"WorkerDescription {nameof(Language)} cannot be empty");

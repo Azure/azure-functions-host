@@ -29,10 +29,10 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
             _processRegistry = processRegistry ?? throw new ArgumentNullException(nameof(processRegistry));
         }
 
-        public ILanguageWorkerProcess Create(string workerId, string scriptRootPath, WorkerProcessArguments workerArgs)
+        public ILanguageWorkerProcess Create(string workerId, string scriptRootPath, HttpWorkerOptions httpWorkerOptions)
         {
-            ILogger workerProcessLogger = _loggerFactory.CreateLogger($"Worker.HttpInvokerProcess.{workerId}");
-            return new HttpWorkerProcess(workerId, scriptRootPath, workerArgs, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource);
+            ILogger workerProcessLogger = _loggerFactory.CreateLogger($"Worker.HttpWorkerProcess.{workerId}");
+            return new HttpWorkerProcess(workerId, scriptRootPath, httpWorkerOptions, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource);
         }
     }
 }

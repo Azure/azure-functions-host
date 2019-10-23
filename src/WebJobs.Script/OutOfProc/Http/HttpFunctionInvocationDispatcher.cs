@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
     {
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
-        private readonly IHttpWorkerChannelFactory _httpInvokerChannelFactory;
+        private readonly IHttpWorkerChannelFactory _httpWorkerChannelFactory;
         private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
         private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(OutOfProcConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
@@ -33,21 +33,21 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         private bool _disposed = false;
         private bool _disposing = false;
         private ConcurrentStack<HttpWorkerErrorEvent> _invokerErrors = new ConcurrentStack<HttpWorkerErrorEvent>();
-        private IHttpWorkerChannel _httpInvokerChannel;
+        private IHttpWorkerChannel _httpWorkerChannel;
 
         public HttpFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
             IScriptJobHostEnvironment scriptJobHostEnvironment,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
-            IHttpWorkerChannelFactory httpInvokerChannelFactory)
+            IHttpWorkerChannelFactory httpWorkerChannelFactory)
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
             _scriptJobHostEnvironment = scriptJobHostEnvironment;
             _eventManager = eventManager;
             _logger = loggerFactory.CreateLogger<HttpFunctionInvocationDispatcher>();
-            _httpInvokerChannelFactory = httpInvokerChannelFactory ?? throw new ArgumentNullException(nameof(httpInvokerChannelFactory));
+            _httpWorkerChannelFactory = httpWorkerChannelFactory ?? throw new ArgumentNullException(nameof(httpWorkerChannelFactory));
 
             State = FunctionDispatcherState.Default;
 
@@ -62,17 +62,17 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         internal Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {
             // TODO: Add process managment for http invoker
-            _httpInvokerChannel = _httpInvokerChannelFactory.Create(_scriptOptions.RootScriptPath, _metricsLogger, attemptCount);
-            _httpInvokerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
+            _httpWorkerChannel = _httpWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _metricsLogger, attemptCount);
+            _httpWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
                  {
                      if (workerInitTask.IsCompleted)
                      {
-                         _logger.LogDebug("Adding http invoker channel. workerId:{id}", _httpInvokerChannel.Id);
+                         _logger.LogDebug("Adding http worker channel. workerId:{id}", _httpWorkerChannel.Id);
                          State = FunctionDispatcherState.Initialized;
                      }
                      else
                      {
-                         _logger.LogWarning("Failed to start http invoker process. workerId:{id}", _httpInvokerChannel.Id);
+                         _logger.LogWarning("Failed to start http worker process. workerId:{id}", _httpWorkerChannel.Id);
                      }
                  });
             return Task.CompletedTask;
@@ -92,8 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
 
         public Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
-            // TODO
-            return _httpInvokerChannel.InvokeFunction(invocationContext);
+            return _httpWorkerChannel.InvokeFunction(invocationContext);
         }
 
         public async void WorkerError(HttpWorkerErrorEvent workerError)
@@ -118,9 +117,9 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         private async Task DisposeAndRestartWorkerChannel(string workerId)
         {
                 _logger.LogDebug("Disposing channel for workerId: {channelId}", workerId);
-                if (_httpInvokerChannel != null)
+                if (_httpWorkerChannel != null)
                 {
-                    (_httpInvokerChannel as IDisposable)?.Dispose();
+                    (_httpWorkerChannel as IDisposable)?.Dispose();
                 }
                 _logger.LogDebug("Restarting http invoker channel");
                 await RestartWorkerChannel(workerId);
@@ -132,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             {
                 await InitializeJobhostLanguageWorkerChannelAsync(_invokerErrors.Count);
             }
-            else if (_httpInvokerChannel == null)
+            else if (_httpWorkerChannel == null)
             {
                 _logger.LogError("Exceeded http invoker restart retry count. Shutting down Functions Host");
                 _scriptJobHostEnvironment.Shutdown();
@@ -159,9 +158,10 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         {
             if (!_disposed && disposing)
             {
-                _logger.LogDebug("Disposing {HttpFunctionInvokeDispatcher}", nameof(HttpFunctionInvocationDispatcher));
+                _logger.LogDebug($"Disposing {nameof(HttpFunctionInvocationDispatcher)}");
                 _workerErrorSubscription.Dispose();
                 _workerRestartSubscription.Dispose();
+                (_httpWorkerChannel as IDisposable)?.Dispose();
                 _disposed = true;
             }
         }
