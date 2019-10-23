@@ -88,9 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, HstsConfigurationMiddleware>());
                     if (environment.IsLinuxConsumption())
                     {
-                        services.AddCors();
                         services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
-                        services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, CorsConfigurationMiddleware>());
+                        services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
                     }
                     services.TryAddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
 

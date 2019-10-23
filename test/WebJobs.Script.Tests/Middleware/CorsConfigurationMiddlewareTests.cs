@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -35,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             var testOptions = new CorsOptions();
             testOptions.AddDefaultPolicy(testPolicy);
             var corsOptions = new OptionsWrapper<CorsOptions>(testOptions);
-            var corsFactory = new CorsMiddlewareFactory(corsOptions);
+            var corsFactory = new CorsMiddlewareFactory(corsOptions, NullLoggerFactory.Instance);
 
             bool nextInvoked = false;
             RequestDelegate next = (context) =>
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 return Task.CompletedTask;
             };
 
-            var middleware = new CorsConfigurationMiddleware(hostCorsOptions, corsFactory);
+            var middleware = new JobHostCorsMiddleware(hostCorsOptions, corsFactory);
 
             var httpContext = new DefaultHttpContext();
             await middleware.Invoke(httpContext, next);
@@ -83,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                     services.AddTransient<IConfigureOptions<HostCorsOptions>>(factory => new TestHostCorsOptionsSetup(hostCorsOptions));
                     services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
                     services.AddCors();
-                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, CorsConfigurationMiddleware>());
+                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
                     services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
                 });
 
@@ -136,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                     services.AddTransient<IConfigureOptions<HostCorsOptions>>(factory => new TestHostCorsOptionsSetup(hostCorsOptions));
                     services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
                     services.AddCors();
-                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, CorsConfigurationMiddleware>());
+                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
                     services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
                 });
 
