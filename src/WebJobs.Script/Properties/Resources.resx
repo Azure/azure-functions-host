@@ -156,7 +156,4 @@
   <data name="ExtensionBundleTemplatesNotFound" xml:space="preserve">
     <value>Templates not found within the extension bundle or extension bundle is not configured for the function app.</value>
   </data>
-  <data name="FunctionConfigurationError" xml:space="preserve">
-    <value>Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.</value>
-  </data>
 </root>

@@ -169,15 +169,6 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to &apos;run&apos; or alternatively you can specify the name of the entry point script explicitly by adding a &apos;scriptFile&apos; property to your function metadata..
-        /// </summary>
-        internal static string FunctionConfigurationError {
-            get {
-                return ResourceManager.GetString("FunctionConfigurationError", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Bundle version matching the {0} was not found.
         /// </summary>
         internal static string MatchingBundleNotFound {
