@@ -48,12 +48,10 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             ICollection<string> functionsWhiteList = _scriptOptions.Value.Functions;
             _logger.FunctionMetadataManagerLoadingFunctionsMetadata();
+
             List<FunctionMetadata> functionMetadataList = _functionMetadataProvider.GetFunctionMetadata().ToList();
-            foreach (var error in _functionMetadataProvider.FunctionErrors)
-            {
-                ICollection<string> functionErrors = error.Value.ToList();
-                _functionErrors.Add(error.Key, functionErrors);
-            }
+            _functionErrors = _functionMetadataProvider.FunctionErrors.ToDictionary(kvp => kvp.Key, kvp => (ICollection<string>)kvp.Value.ToList());
+
             // Validate
             foreach (FunctionMetadata functionMetadata in functionMetadataList.ToList())
             {
